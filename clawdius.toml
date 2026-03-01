@@ -1,0 +1,13 @@
+[project]
+name = "clawdius"
+rigor_level = "high"
+lifecycle_phase = "context_discovery"
+
+[storage]
+database_path = ".clawdius/graph/index.db"
+vector_path = ".clawdius/graph/vectors.lance"
+
+[llm]
+default_provider = "anthropic"
+model = "claude-3-5-sonnet-latest"
+mcp_enabled = true

@@ -1,0 +1,4 @@
+[capabilities]
+allow_network = false
+allow_fs_write = ["./.clawdius", "./src", "./target"]
+sandbox_backend = "bubblewrap"
