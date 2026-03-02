@@ -1,0 +1,185 @@
+# Domain Constraints: Sentinel Sandbox
+# Document: YP-SECURITY-SANDBOX-001
+# Version: 1.0.0
+
+[metadata]
+algorithm = "Sentinel Sandbox"
+yellow_paper = "YP-SECURITY-SANDBOX-001"
+constraint_count = 14
+created = "2026-03-01"
+compliance = ["NIST SP 800-53", "OWASP ASVS"]
+
+# =============================================================================
+# ISOLATION CONSTRAINTS
+# =============================================================================
+
+[[constraints]]
+id = "SEC-001"
+category = "isolation"
+name = "Minimum Sandbox Startup Time"
+description = "Maximum time to initialize sandbox environment"
+value = 50
+unit = "milliseconds"
+source = "UX requirement"
+rationale = "Responsive user experience"
+verifiable = true
+
+[[constraints]]
+id = "SEC-002"
+category = "isolation"
+name = "Container Timeout"
+description = "Maximum execution time for containerized operations"
+value = 300
+unit = "seconds"
+source = "DoS prevention"
+rationale = "Prevent resource exhaustion from runaway processes"
+verifiable = true
+
+[[constraints]]
+id = "SEC-003"
+category = "isolation"
+name = "WASM Memory Limit"
+description = "Maximum linear memory for WASM sandbox"
+value = 4294967296
+unit = "bytes"
+source = "Resource bound"
+rationale = "Prevent memory exhaustion attacks"
+verifiable = true
+
+# =============================================================================
+# CAPABILITY CONSTRAINTS
+# =============================================================================
+
+[[constraints]]
+id = "SEC-004"
+category = "capability"
+name = "Capability Token Size"
+description = "Maximum size of capability token"
+value = 256
+unit = "bytes"
+source = "Protocol limit"
+rationale = "Efficient serialization and validation"
+verifiable = true
+
+[[constraints]]
+id = "SEC-005"
+category = "capability"
+name = "Maximum Mount Points"
+description = "Maximum number of filesystem mount points per sandbox"
+value = 10
+unit = "mounts"
+source = "Attack surface reduction"
+rationale = "Limit filesystem access scope"
+verifiable = true
+
+[[constraints]]
+id = "SEC-006"
+category = "capability"
+name = "Capability Hierarchy Depth"
+description = "Maximum depth of capability derivation chain"
+value = 8
+unit = "levels"
+source = "Performance bound"
+rationale = "Prevent deep derivation chains"
+verifiable = true
+
+# =============================================================================
+# SECRET MANAGEMENT CONSTRAINTS
+# =============================================================================
+
+[[constraints]]
+id = "SEC-007"
+category = "secret"
+name = "Secret Memory Zeroing"
+description = "Whether secrets must be zeroed after use"
+value = true
+source = "NIST SP 800-53"
+rationale = "Prevent secret recovery from memory"
+verifiable = true
+implementation = "SECURE_ZERO_MEMORY"
+
+[[constraints]]
+id = "SEC-008"
+category = "secret"
+name = "Forbidden Environment Variables"
+description = "Environment variable patterns that are never exposed to sandbox"
+value = ["*_KEY", "*_SECRET", "*_TOKEN", "*_PASSWORD", "*_CREDENTIAL", "AWS_*", "GCP_*", "AZURE_*"]
+source = "Secret protection"
+rationale = "Prevent credential exposure via environment"
+verifiable = true
+
+# =============================================================================
+# RPC CONSTRAINTS
+# =============================================================================
+
+[[constraints]]
+id = "SEC-009"
+category = "rpc"
+name = "RPC Version Compatibility"
+description = "RPC versions must match at major level"
+value = "major_version_match"
+source = "API stability"
+rationale = "Prevent breaking changes across versions"
+verifiable = true
+
+[[constraints]]
+id = "SEC-010"
+category = "rpc"
+name = "Maximum RPC Payload Size"
+description = "Maximum size of RPC request/response payload"
+value = 16777216
+unit = "bytes"
+source = "Memory bound"
+rationale = "Prevent memory exhaustion via large payloads"
+verifiable = true
+
+# =============================================================================
+# VALIDATION CONSTRAINTS
+# =============================================================================
+
+[[constraints]]
+id = "SEC-011"
+category = "validation"
+name = "Settings File Maximum Size"
+description = "Maximum size of settings.toml file"
+value = 65536
+unit = "bytes"
+source = "Parse performance"
+rationale = "Prevent DoS via large config files"
+verifiable = true
+
+[[constraints]]
+id = "SEC-012"
+category = "validation"
+name = "Path Traversal Protection"
+description = "File paths must be within project root"
+value = true
+source = "OWASP ASVS"
+rationale = "Prevent directory traversal attacks"
+verifiable = true
+validation = "canonical_path_check"
+
+# =============================================================================
+# AUDIT CONSTRAINTS
+# =============================================================================
+
+[[constraints]]
+id = "SEC-013"
+category = "audit"
+name = "Security Event Log Retention"
+description = "How long security events must be retained"
+value = 365
+unit = "days"
+source = "NIST SP 800-53"
+rationale = "Forensic analysis capability"
+verifiable = true
+
+[[constraints]]
+id = "SEC-014"
+category = "audit"
+name = "Capability Audit Trail"
+description = "All capability derivations must be logged"
+value = true
+source = "Compliance requirement"
+rationale = "Trace capability delegation chain"
+verifiable = true

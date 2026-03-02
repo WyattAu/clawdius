@@ -1,0 +1,207 @@
+# Interface Contract: Graph-RAG Component
+# Component ID: COMP-GRAPH-001
+# Blue Paper: BP-GRAPH-RAG-001
+# Version: 1.0.0
+
+[contract]
+id = "IC-GRAPH-001"
+component = "COMP-GRAPH-001"
+version = "1.0.0"
+status = "APPROVED"
+created = "2026-03-01"
+
+[interface.GraphRag]
+description = "Knowledge retrieval interface"
+type = "struct"
+
+[[interface.GraphRag.operations]]
+name = "index_project"
+description = "Index project files"
+input_type = "&Path"
+output_type = "Result<IndexStats, GraphError>"
+async = true
+
+[interface.GraphRag.operations.preconditions]
+- = "Path exists and is a directory"
+- = "Languages are supported"
+
+[interface.GraphRag.operations.postconditions]
+- = "AST nodes stored in SQLite"
+- = "Embeddings stored in LanceDB"
+- = "Incremental delta indexing"
+
+[[interface.GraphRag.operations.errors]]
+code = "0x4001"
+name = "DatabaseError"
+description = "SQLite/LanceDB error"
+recovery = "Retry or rebuild index"
+
+[[interface.GraphRag.operations.errors]]
+code = "0x4002"
+name = "ParseError"
+description = "tree-sitter parse failed"
+recovery = "Skip file and continue"
+
+[[interface.GraphRag.operations.errors]]
+code = "0x4003"
+name = "EmbeddingError"
+description = "Embedding generation failed"
+recovery = "Retry with backoff"
+
+[[interface.GraphRag.operations]]
+name = "query_structural"
+description = "Query AST graph"
+input_type = "AstQuery"
+output_type = "Result<Vec<AstNode>, GraphError>"
+
+[interface.GraphRag.operations.preconditions]
+- = "Index exists"
+
+[interface.GraphRag.operations.postconditions]
+- = "Results match query predicates"
+- = "Latency < 10ms"
+
+[[interface.GraphRag.operations]]
+name = "query_semantic"
+description = "Semantic similarity search"
+input_type = ["&str", "usize"]
+output_type = "Result<Vec<Chunk>, GraphError>"
+async = true
+
+[interface.GraphRag.operations.preconditions]
+- = "Vector index exists"
+
+[interface.GraphRag.operations.postconditions]
+- = "Top-k results returned"
+- = "Latency < 50ms"
+
+[[interface.GraphRag.operations]]
+name = "hybrid_query"
+description = "Combined structural + semantic query"
+input_type = "HybridQuery"
+output_type = "Result<QueryResult, GraphError>"
+async = true
+
+[interface.GraphRag.operations.preconditions]
+- = "Both indexes exist"
+
+[interface.GraphRag.operations.postconditions]
+- = "Results ranked by relevance"
+- = "Latency < 100ms"
+
+[[interface.GraphRag.operations]]
+name = "get_call_graph"
+description = "Get call graph for function"
+input_type = "&NodeId"
+output_type = "Result<CallGraph, GraphError>"
+
+[[interface.GraphRag.operations]]
+name = "find_impact"
+description = "Find impacted nodes for change"
+input_type = "&NodeId"
+output_type = "Result<Vec<NodeId>, GraphError>"
+
+[interface.AstNode]
+description = "AST node representation"
+type = "struct"
+
+[interface.AstNode.fields]
+id = { type = "NodeId", description = "Unique node identifier" }
+node_type = { type = "NodeType", description = "Node type enum" }
+name = { type = "Option<String>", description = "Node name" }
+file_path = { type = "PathBuf", description = "Source file" }
+start_line = { type = "u32", description = "Start line" }
+end_line = { type = "u32", description = "End line" }
+documentation = { type = "Option<String>", description = "Doc comments" }
+
+[interface.NodeType]
+description = "AST node types"
+type = "enum"
+variants = ["Module", "Function", "Struct", "Enum", "Trait", "Impl", "TypeAlias", "Constant", "Static", "Use", "Macro", "Field", "Variant", "Parameter", "Local"]
+
+[interface.EdgeType]
+description = "AST edge types"
+type = "enum"
+variants = ["Calls", "Defines", "Implements", "Imports", "Contains", "References", "Extends", "CompliesWith"]
+
+[interface.Chunk]
+description = "Code chunk for embedding"
+type = "struct"
+
+[interface.Chunk.fields]
+id = { type = "Uuid", description = "Chunk identifier" }
+content = { type = "String", description = "Chunk text" }
+embedding = { type = "Vec<f32>", description = "Vector embedding" }
+source_path = { type = "PathBuf", description = "Source file" }
+start_line = { type = "u32", description = "Start line" }
+end_line = { type = "u32", description = "End line" }
+language = { type = "Language", description = "Programming language" }
+
+[interface.McpTool]
+description = "MCP tool trait"
+type = "trait"
+
+[[interface.McpTool.operations]]
+name = "name"
+description = "Tool name"
+output_type = "&str"
+
+[[interface.McpTool.operations]]
+name = "description"
+description = "Tool description"
+output_type = "&str"
+
+[[interface.McpTool.operations]]
+name = "schema"
+description = "JSON schema for parameters"
+output_type = "serde_json::Value"
+
+[[interface.McpTool.operations]]
+name = "execute"
+description = "Execute tool"
+input_type = "serde_json::Value"
+output_type = "Result<serde_json::Value, McpError>"
+
+[interface.McpHost]
+description = "MCP protocol host"
+type = "struct"
+
+[[interface.McpHost.operations]]
+name = "register_tool"
+description = "Register MCP tool"
+input_type = "Box<dyn McpTool>"
+
+[[interface.McpHost.operations]]
+name = "list_tools"
+description = "List available tools"
+output_type = "Vec<ToolInfo>"
+
+[[interface.McpHost.operations]]
+name = "call_tool"
+description = "Execute tool by name"
+input_type = ["&str", "serde_json::Value"]
+output_type = "Result<serde_json::Value, McpError>"
+async = true
+
+[invariants]
+- = "AST nodes have unique IDs"
+- = "Edges reference existing nodes"
+- = "Embeddings have consistent dimensionality"
+- = "Index is consistent after crash (ACID)"
+
+[performance]
+index_file_max_ms = 100
+structural_query_max_ms = 10
+semantic_search_max_ms = 50
+hybrid_query_max_ms = 100
+
+[languages]
+supported = ["Rust", "TypeScript", "Python", "Cpp", "Go", "Java"]
+parser = "tree-sitter"
+embedding_model = "codebert"
+embedding_dimension = 1536
+
+[storage]
+ast_backend = "SQLite"
+vector_backend = "LanceDB"
+cache_enabled = true

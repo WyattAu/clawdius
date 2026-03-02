@@ -1,0 +1,361 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., 0.6.0)'
+        required: true
+        type: string
+      prerelease:
+        description: 'Pre-release'
+        required: false
+        type: boolean
+        default: false
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  validate:
+    name: Validate Release
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Determine version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION="${GITHUB_REF#refs/tags/v}"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Version: $VERSION"
+      
+      - name: Validate version format
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?$ ]]; then
+            echo "::error::Invalid version format: $VERSION"
+            exit 1
+          fi
+      
+      - name: Check VERSION.md matches
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          VERSION_FILE=$(grep "^| \*\*Version\*\*" VERSION.md | awk '{print $4}')
+          if [ "$VERSION_FILE" != "$VERSION" ]; then
+            echo "::error::VERSION.md shows $VERSION_FILE but releasing $VERSION"
+            exit 1
+          fi
+      
+      - name: Check CHANGELOG.md has entry
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          if ! grep -q "## \[$VERSION\]" CHANGELOG.md; then
+            echo "::error::CHANGELOG.md missing entry for $VERSION"
+            exit 1
+          fi
+
+  quality-gates:
+    name: Quality Gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    needs: validate
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt, llvm-tools-preview
+      
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-release-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-release-
+      
+      - name: Install tools
+        run: |
+          cargo install cargo-nextest cargo-deny cargo-audit cargo-llvm-cov --locked
+      
+      - name: Run lint checks
+        run: |
+          cargo fmt --all -- --check
+          cargo clippy --all-targets --all-features -- -D warnings
+      
+      - name: Run dependency checks
+        run: |
+          cargo deny check --all-features
+          cargo audit --deny warnings
+      
+      - name: Run tests
+        run: cargo nextest run --all-features --profile ci
+      
+      - name: Check coverage
+        run: |
+          cargo llvm-cov --all-features --summary-only
+          COVERAGE=$(cargo llvm-cov --all-features --summary-only 2>&1 | grep -oP '\d+\.\d+%' | head -1 | tr -d '%')
+          if (( $(echo "$COVERAGE < 85.0" | bc -l) )); then
+            echo "::error::Coverage ${COVERAGE}% below 85% threshold"
+            exit 1
+          fi
+      
+      - name: Run benchmarks (regression check)
+        run: |
+          cargo bench -- --save-baseline release noplot || true
+
+  build:
+    name: Build ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    needs: [validate, quality-gates]
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            archive: tar.gz
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-musl
+            archive: tar.gz
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            archive: tar.gz
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            archive: tar.gz
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            archive: zip
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-${{ matrix.target }}-
+      
+      - name: Install musl tools (Linux)
+        if: matrix.target == 'x86_64-unknown-linux-musl'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y musl-tools
+      
+      - name: Build release
+        run: cargo build --release --target ${{ matrix.target }}
+        env:
+          RUSTFLAGS: "-C target-cpu=native -C lto=fat -C codegen-units=1"
+      
+      - name: Create archive (Unix)
+        if: matrix.archive == 'tar.gz'
+        run: |
+          VERSION="${{ needs.validate.outputs.version }}"
+          ARCHIVE="clawdius-${VERSION}-${{ matrix.target }}.tar.gz"
+          cd target/${{ matrix.target }}/release
+          tar -czvf ../../../${ARCHIVE} clawdius
+          sha256sum ../../../${ARCHIVE} > ../../../${ARCHIVE}.sha256
+      
+      - name: Create archive (Windows)
+        if: matrix.archive == 'zip'
+        run: |
+          VERSION="${{ needs.validate.outputs.version }}"
+          ARCHIVE="clawdius-${VERSION}-${{ matrix.target }}.zip"
+          cd target/${{ matrix.target }}/release
+          7z a ../../../${ARCHIVE} clawdius.exe
+          cd ../../..
+          sha256sum ${ARCHIVE} > ${ARCHIVE}.sha256
+        shell: bash
+      
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: clawdius-${{ matrix.target }}
+          path: |
+            clawdius-*.tar.gz
+            clawdius-*.tar.gz.sha256
+            clawdius-*.zip
+            clawdius-*.zip.sha256
+          retention-days: 30
+
+  sbom:
+    name: Generate SBOM
+    runs-on: ubuntu-latest
+    needs: [validate, quality-gates]
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+      
+      - name: Install cargo-cyclonedx
+        run: cargo install cargo-cyclonedx --locked
+      
+      - name: Generate SBOM
+        run: cargo cyclonedx --all-features --format json
+      
+      - name: Rename SBOM
+        run: |
+          VERSION="${{ needs.validate.outputs.version }}"
+          mv target/clawdius.cdx.json clawdius-${VERSION}-sbom.json
+      
+      - name: Upload SBOM
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: clawdius-*-sbom.json
+          retention-days: 90
+
+  github-release:
+    name: GitHub Release
+    runs-on: ubuntu-latest
+    needs: [validate, build, sbom]
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts/
+      
+      - name: Prepare release assets
+        run: |
+          mkdir -p release-assets
+          find artifacts/ -name "*.tar.gz" -o -name "*.zip" -o -name "*.sha256" | xargs -I {} cp {} release-assets/
+          find artifacts/ -name "*-sbom.json" | xargs -I {} cp {} release-assets/
+      
+      - name: Extract changelog
+        id: changelog
+        run: |
+          VERSION="${{ needs.validate.outputs.version }}"
+          # Extract changelog section for this version
+          sed -n "/## \[$VERSION\]/,/^## \[/p" CHANGELOG.md | head -n -1 > release-notes.md
+          echo "changelog<<EOF" >> $GITHUB_OUTPUT
+          cat release-notes.md >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+      
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: Clawdius ${{ needs.validate.outputs.version }}
+          body_path: release-notes.md
+          draft: false
+          prerelease: ${{ github.event.inputs.prerelease == 'true' || contains(needs.validate.outputs.version, '-') }}
+          files: release-assets/*
+          generate_release_notes: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  publish-crates:
+    name: Publish to Crates.io
+    runs-on: ubuntu-latest
+    needs: [validate, github-release]
+    if: ${{ !contains(needs.validate.outputs.version, '-') }}
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+      
+      - name: Publish to crates.io
+        run: cargo publish --token ${{ secrets.CRATES_IO_TOKEN }}
+        continue-on-error: true
+
+  notify:
+    name: Notify
+    runs-on: ubuntu-latest
+    needs: [validate, github-release]
+    if: always()
+    steps:
+      - name: Notify on success
+        if: needs.github-release.result == 'success'
+        run: |
+          VERSION="${{ needs.validate.outputs.version }}"
+          echo "✅ Release $VERSION published successfully!"
+          # Add Slack/Discord notification here
+      
+      - name: Notify on failure
+        if: needs.github-release.result == 'failure'
+        run: |
+          VERSION="${{ needs.validate.outputs.version }}"
+          echo "❌ Release $VERSION failed!"
+          # Add Slack/Discord notification here
+
+  post-release:
+    name: Post-Release Tasks
+    runs-on: ubuntu-latest
+    needs: [github-release]
+    if: success()
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+      
+      - name: Bump version for next development cycle
+        run: |
+          VERSION="${{ needs.validate.outputs.version }}"
+          # Parse version
+          IFS='.' read -ra PARTS <<< "$VERSION"
+          MAJOR="${PARTS[0]}"
+          MINOR="${PARTS[1]}"
+          PATCH="${PARTS[2]}"
+          
+          # Bump patch version for next dev cycle
+          NEW_PATCH=$((PATCH + 1))
+          NEW_VERSION="${MAJOR}.${MINOR}.${NEW_PATCH}-dev"
+          
+          # Update VERSION.md
+          sed -i "s/| \*\*Version\*\* | .*/| \*\*Version\*\* | $NEW_VERSION |/" VERSION.md
+          
+          # Commit and push
+          git add VERSION.md
+          git commit -m "chore: bump version to $NEW_VERSION for next development cycle"
+          git push origin main
+
+  rollback:
+    name: Rollback
+    runs-on: ubuntu-latest
+    if: failure() && needs.github-release.result == 'failure'
+    needs: [validate, github-release]
+    steps:
+      - name: Rollback instructions
+        run: |
+          VERSION="${{ needs.validate.outputs.version }}"
+          echo "::warning::Release $VERSION failed. Manual rollback may be required."
+          echo ""
+          echo "Rollback steps:"
+          echo "1. Delete the GitHub release: gh release delete v$VERSION"
+          echo "2. Delete the git tag: git push --delete origin v$VERSION"
+          echo "3. Yank from crates.io (if published): cargo yank --version $VERSION"

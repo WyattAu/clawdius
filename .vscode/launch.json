@@ -1,0 +1,133 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug main binary",
+      "cargo": {
+        "args": ["build", "--bin=clawdius", "--package=clawdius"],
+        "filter": {
+          "name": "clawdius",
+          "kind": "bin"
+        }
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "RUST_LOG": "debug",
+        "RUST_BACKTRACE": "1"
+      }
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug main (with args)",
+      "cargo": {
+        "args": ["build", "--bin=clawdius", "--package=clawdius"],
+        "filter": {
+          "name": "clawdius",
+          "kind": "bin"
+        }
+      },
+      "args": ["${input:cliArgs}"],
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "RUST_LOG": "debug",
+        "RUST_BACKTRACE": "1"
+      }
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug unit tests",
+      "cargo": {
+        "args": ["test", "--no-run", "--lib", "--package=clawdius"],
+        "filter": {
+          "kind": "lib"
+        }
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "RUST_LOG": "debug",
+        "RUST_BACKTRACE": "1"
+      }
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug integration tests",
+      "cargo": {
+        "args": ["test", "--no-run", "--test=integration", "--package=clawdius"],
+        "filter": {
+          "kind": "test"
+        }
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "RUST_LOG": "debug",
+        "RUST_BACKTRACE": "1"
+      }
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug specific test",
+      "cargo": {
+        "args": ["test", "--no-run", "--lib", "--package=clawdius"],
+        "filter": {
+          "kind": "lib"
+        }
+      },
+      "args": ["${input:testName}", "--nocapture"],
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "RUST_LOG": "debug",
+        "RUST_BACKTRACE": "1"
+      }
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug release binary",
+      "cargo": {
+        "args": ["build", "--release", "--bin=clawdius", "--package=clawdius"],
+        "filter": {
+          "name": "clawdius",
+          "kind": "bin"
+        }
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "RUST_LOG": "info"
+      }
+    },
+    {
+      "type": "lldb",
+      "request": "attach",
+      "name": "Attach to process",
+      "pid": "${input:pid}",
+      "stopOnEntry": false
+    }
+  ],
+  "inputs": [
+    {
+      "id": "cliArgs",
+      "type": "promptString",
+      "description": "Enter command line arguments"
+    },
+    {
+      "id": "testName",
+      "type": "promptString",
+      "description": "Enter test name or pattern"
+    },
+    {
+      "id": "pid",
+      "type": "promptString",
+      "description": "Enter process ID to attach"
+    }
+  ]
+}

@@ -1,0 +1,548 @@
+# Performance Baseline Metrics
+# Document ID: PERF-BASELINE-001
+# Version: 1.0.0
+# Phase: 5.5 (Performance Regression Baseline)
+# Status: APPROVED
+# Created: 2026-03-01
+# Source: Phase 5 Prototype Results
+
+[metadata]
+document_id = "PERF-BASELINE-001"
+version = "1.0.0"
+created = "2026-03-01"
+source_commit = "phase-5-complete"
+sample_size = 1000
+confidence_level = 0.99
+measurement_tool = "criterion"
+platform = "Linux x86_64"
+rust_version = "1.85.0"
+
+# ============================================================================
+# BOOT METRICS
+# ============================================================================
+
+[boot]
+component = "Boot"
+description = "Time to interactive TUI"
+requirement = "REQ-6.2"
+critical = true
+
+[boot.latency]
+mean_ns = 12000000      # 12ms
+p50_ns = 11500000       # 11.5ms
+p95_ns = 16500000       # 16.5ms
+p99_ns = 18500000       # 18.5ms
+p99_9_ns = 19500000     # 19.5ms
+std_dev_ns = 1500000    # 1.5ms
+target_ns = 20000000    # <20ms
+headroom_pct = 40       # 40% below target
+
+# ============================================================================
+# FSM TRANSITION METRICS
+# ============================================================================
+
+[fsm.phase_transition]
+component = "FSM"
+benchmark = "phase_0_to_1"
+description = "Single phase transition"
+requirement = "BP-NEXUS-FSM-001"
+critical = false
+
+[fsm.phase_transition.latency]
+mean_ns = 850           # 0.85µs
+p50_ns = 820            # 0.82µs
+p95_ns = 950            # 0.95µs
+p99_ns = 1200           # 1.2µs
+p99_9_ns = 3500         # 3.5µs
+std_dev_ns = 180
+target_ns = 1000        # <1µs
+headroom_pct = 15
+
+[fsm.full_cycle]
+component = "FSM"
+benchmark = "full_cycle_24_phases"
+description = "Complete 24-phase cycle"
+requirement = "BP-NEXUS-FSM-001"
+critical = false
+
+[fsm.full_cycle.latency]
+mean_ns = 23000         # 23µs
+p50_ns = 22000          # 22µs
+p95_ns = 35000          # 35µs
+p99_ns = 48000          # 48µs
+p99_9_ns = 85000        # 85µs
+std_dev_ns = 8500
+target_ns = 50000       # <50µs
+headroom_pct = 54
+
+# ============================================================================
+# RING BUFFER METRICS (HFT CRITICAL)
+# ============================================================================
+
+[ring_buffer.push]
+component = "RingBuffer"
+benchmark = "write_single"
+description = "Lock-free SPSC push operation"
+requirement = "HC-003"
+critical = true
+
+[ring_buffer.push.latency]
+mean_ns = 21            # 21ns
+p50_ns = 19             # 19ns
+p95_ns = 28             # 28ns
+p99_ns = 42             # 42ns
+p99_9_ns = 85           # 85ns
+std_dev_ns = 12
+target_ns = 100         # <100ns
+headroom_pct = 79
+
+[ring_buffer.pop]
+component = "RingBuffer"
+benchmark = "read_single"
+description = "Lock-free SPSC pop operation"
+requirement = "HC-003"
+critical = true
+
+[ring_buffer.pop.latency]
+mean_ns = 20            # 20ns
+p50_ns = 19             # 19ns
+p95_ns = 27             # 27ns
+p99_ns = 38             # 38ns
+p99_9_ns = 78           # 78ns
+std_dev_ns = 10
+target_ns = 100         # <100ns
+headroom_pct = 80
+
+[ring_buffer.roundtrip]
+component = "RingBuffer"
+benchmark = "write_read_roundtrip"
+description = "Combined push + pop operation"
+requirement = "HC-003"
+critical = true
+
+[ring_buffer.roundtrip.latency]
+mean_ns = 43            # 43ns
+p50_ns = 40             # 40ns
+p95_ns = 58             # 58ns
+p99_ns = 82             # 82ns
+p99_9_ns = 165          # 165ns
+std_dev_ns = 22
+target_ns = 200         # <200ns
+headroom_pct = 79
+
+# ============================================================================
+# WALLET GUARD METRICS (HFT CRITICAL)
+# ============================================================================
+
+[wallet_guard.full_validation]
+component = "WalletGuard"
+benchmark = "full_validation"
+description = "Complete pre-trade risk check"
+requirement = "HC-004"
+critical = true
+
+[wallet_guard.full_validation.latency]
+mean_ns = 847           # 847ns
+p50_ns = 812            # 812ns
+p95_ns = 1200           # 1.2µs
+p99_ns = 2500           # 2.5µs
+p99_9_ns = 15000        # 15µs
+std_dev_ns = 2800
+target_ns = 100000      # <100µs
+headroom_pct = 99
+
+[wallet_guard.position_check]
+component = "WalletGuard"
+benchmark = "position_check_only"
+description = "Position limit check only"
+requirement = "HC-004"
+critical = false
+
+[wallet_guard.position_check.latency]
+mean_ns = 125           # 125ns
+p50_ns = 118            # 118ns
+p95_ns = 180            # 180ns
+p99_ns = 320            # 320ns
+p99_9_ns = 850          # 850ns
+std_dev_ns = 95
+target_ns = 10000       # <10µs
+headroom_pct = 99
+
+[wallet_guard.margin_check]
+component = "WalletGuard"
+benchmark = "margin_check_only"
+description = "Margin requirement check only"
+requirement = "HC-004"
+critical = false
+
+[wallet_guard.margin_check.latency]
+mean_ns = 380           # 380ns
+p50_ns = 365            # 365ns
+p95_ns = 520            # 520ns
+p99_ns = 850            # 850ns
+p99_9_ns = 2800         # 2.8µs
+std_dev_ns = 320
+target_ns = 50000       # <50µs
+headroom_pct = 99
+
+# ============================================================================
+# SANDBOX SPAWN METRICS
+# ============================================================================
+
+[sandbox.tier_1_readonly]
+component = "Sentinel"
+benchmark = "spawn_tier_1_readonly"
+description = "Tier 1 read-only sandbox spawn"
+requirement = "BP-SENTINEL-001"
+critical = false
+
+[sandbox.tier_1_readonly.latency]
+mean_ns = 28000000      # 28ms
+p50_ns = 26000000       # 26ms
+p95_ns = 42000000       # 42ms
+p99_ns = 55000000       # 55ms
+p99_9_ns = 68000000     # 68ms
+std_dev_ns = 12000000
+target_ns = 50000000    # <50ms
+headroom_pct = 44
+
+[sandbox.tier_2_network]
+component = "Sentinel"
+benchmark = "spawn_tier_2_network"
+description = "Tier 2 network sandbox spawn"
+requirement = "BP-SENTINEL-001"
+critical = false
+
+[sandbox.tier_2_network.latency]
+mean_ns = 48000000      # 48ms
+p50_ns = 45000000       # 45ms
+p95_ns = 68000000       # 68ms
+p99_ns = 85000000       # 85ms
+p99_9_ns = 95000000     # 95ms
+std_dev_ns = 15000000
+target_ns = 75000000    # <75ms
+headroom_pct = 36
+
+[sandbox.tier_3_write]
+component = "Sentinel"
+benchmark = "spawn_tier_3_write"
+description = "Tier 3 write sandbox spawn"
+requirement = "BP-SENTINEL-001"
+critical = false
+
+[sandbox.tier_3_write.latency]
+mean_ns = 72000000      # 72ms
+p50_ns = 68000000       # 68ms
+p95_ns = 92000000       # 92ms
+p99_ns = 115000000      # 115ms
+p99_9_ns = 135000000    # 135ms
+std_dev_ns = 18000000
+target_ns = 100000000   # <100ms
+headroom_pct = 28
+
+[sandbox.tier_4_full]
+component = "Sentinel"
+benchmark = "spawn_tier_4_full"
+description = "Tier 4 full access sandbox spawn"
+requirement = "BP-SENTINEL-001"
+critical = false
+
+[sandbox.tier_4_full.latency]
+mean_ns = 98000000      # 98ms
+p50_ns = 92000000       # 92ms
+p95_ns = 125000000      # 125ms
+p99_ns = 145000000      # 145ms
+p99_9_ns = 180000000    # 180ms
+std_dev_ns = 25000000
+target_ns = 150000000   # <150ms
+headroom_pct = 35
+
+# ============================================================================
+# WASM RPC METRICS
+# ============================================================================
+
+[wasm_rpc.ping]
+component = "Brain"
+benchmark = "rpc_roundtrip_ping"
+description = "WASM RPC ping round-trip"
+requirement = "BP-BRAIN-001"
+critical = false
+
+[wasm_rpc.ping.latency]
+mean_ns = 45000         # 45µs
+p50_ns = 42000          # 42µs
+p95_ns = 78000          # 78µs
+p99_ns = 120000         # 120µs
+p99_9_ns = 380000       # 380µs
+std_dev_ns = 28000
+target_ns = 100000      # <100µs
+headroom_pct = 55
+
+[wasm_rpc.chat]
+component = "Brain"
+benchmark = "rpc_roundtrip_chat"
+description = "WASM RPC chat round-trip"
+requirement = "BP-BRAIN-001"
+critical = false
+
+[wasm_rpc.chat.latency]
+mean_ns = 580000        # 580µs
+p50_ns = 520000         # 520µs
+p95_ns = 920000         # 920µs
+p99_ns = 1250000        # 1.25ms
+p99_9_ns = 1800000      # 1.8ms
+std_dev_ns = 280000
+target_ns = 1000000     # <1ms
+headroom_pct = 42
+
+[wasm_rpc.code]
+component = "Brain"
+benchmark = "rpc_roundtrip_code"
+description = "WASM RPC code analysis round-trip"
+requirement = "BP-BRAIN-001"
+critical = false
+
+[wasm_rpc.code.latency]
+mean_ns = 720000        # 720µs
+p50_ns = 680000         # 680µs
+p95_ns = 1150000        # 1.15ms
+p99_ns = 1500000        # 1.5ms
+p99_9_ns = 1900000      # 1.9ms
+std_dev_ns = 320000
+target_ns = 1000000     # <1ms
+headroom_pct = 28
+
+# ============================================================================
+# GRAPH-RAG METRICS
+# ============================================================================
+
+[graph_rag.semantic_search]
+component = "GraphRAG"
+benchmark = "semantic_search"
+description = "Semantic code search query"
+requirement = "REQ-5.1"
+critical = false
+
+[graph_rag.semantic_search.latency]
+mean_ns = 28000000      # 28ms
+p50_ns = 25000000       # 25ms
+p95_ns = 42000000       # 42ms
+p99_ns = 58000000       # 58ms
+p99_9_ns = 85000000     # 85ms
+std_dev_ns = 12000000
+target_ns = 50000000    # <50ms
+headroom_pct = 44
+
+[graph_rag.ast_lookup]
+component = "GraphRAG"
+benchmark = "ast_lookup"
+description = "AST structure lookup"
+requirement = "BP-GRAPH-RAG-001"
+critical = false
+
+[graph_rag.ast_lookup.latency]
+mean_ns = 4500000       # 4.5ms
+p50_ns = 4200000        # 4.2ms
+p95_ns = 7500000        # 7.5ms
+p99_ns = 9800000        # 9.8ms
+p99_9_ns = 18000000     # 18ms
+std_dev_ns = 2500000
+target_ns = 10000000    # <10ms
+headroom_pct = 55
+
+[graph_rag.parse_10k]
+component = "GraphRAG"
+benchmark = "parse_10k_files"
+description = "Parse 10,000 source files"
+requirement = "REQ-5.1"
+critical = true
+
+[graph_rag.parse_10k.latency]
+mean_ns = 3200000000    # 3.2s
+p50_ns = 3000000000     # 3.0s
+p95_ns = 4200000000     # 4.2s
+p99_ns = 4800000000     # 4.8s
+p99_9_ns = 6500000000   # 6.5s
+std_dev_ns = 800000000
+target_ns = 5000000000  # <5s
+headroom_pct = 36
+
+# ============================================================================
+# HFT PIPELINE METRICS
+# ============================================================================
+
+[hft_pipeline.market_data_ingestion]
+component = "HftPipeline"
+benchmark = "market_data_ingestion"
+description = "Single market data message ingestion"
+requirement = "REQ-5.2"
+critical = true
+
+[hft_pipeline.market_data_ingestion.latency]
+mean_ns = 450           # 450ns
+p50_ns = 420            # 420ns
+p95_ns = 680            # 680ns
+p99_ns = 950            # 950ns
+p99_9_ns = 1500         # 1.5µs
+std_dev_ns = 220
+target_ns = 1000        # <1µs
+headroom_pct = 55
+
+[hft_pipeline.signal_generation]
+component = "HftPipeline"
+benchmark = "signal_generation"
+description = "Trading signal generation"
+requirement = "HC-001"
+critical = true
+
+[hft_pipeline.signal_generation.latency]
+mean_ns = 85000         # 85µs
+p50_ns = 78000          # 78µs
+p95_ns = 145000         # 145µs
+p99_ns = 195000         # 195µs
+p99_9_ns = 380000       # 380µs
+std_dev_ns = 45000
+target_ns = 200000      # <200µs
+headroom_pct = 58
+
+[hft_pipeline.full_pipeline]
+component = "HftPipeline"
+benchmark = "full_pipeline"
+description = "End-to-end HFT signal pipeline"
+requirement = "HC-001"
+critical = true
+
+[hft_pipeline.full_pipeline.latency]
+mean_ns = 450000        # 450µs
+p50_ns = 420000         # 420µs
+p95_ns = 720000         # 720µs
+p99_ns = 950000         # 950µs
+p99_9_ns = 1500000      # 1.5ms
+std_dev_ns = 250000
+target_ns = 1000000     # <1ms
+headroom_pct = 55
+
+# ============================================================================
+# TUI RENDERING METRICS
+# ============================================================================
+
+[tui.frame_render]
+component = "TUI"
+benchmark = "frame_render"
+description = "Full TUI frame render"
+requirement = "REQ-7.1"
+critical = true
+
+[tui.frame_render.latency]
+mean_ns = 8500000       # 8.5ms
+p50_ns = 8000000        # 8.0ms
+p95_ns = 12500000       # 12.5ms
+p99_ns = 15500000       # 15.5ms
+p99_9_ns = 18500000     # 18.5ms
+std_dev_ns = 2800000
+target_ns = 16670000    # <16.67ms (60 FPS)
+headroom_pct = 49
+
+# ============================================================================
+# THROUGHPUT BASELINES
+# ============================================================================
+
+[throughput.market_data]
+component = "RingBuffer"
+description = "Market data messages per second"
+requirement = "HFT-015"
+critical = true
+
+[throughput.market_data.rate]
+mean = 8500000          # 8.5M msg/s
+p50 = 8200000
+p95 = 9500000
+p99 = 11000000
+target = 10000000       # 10M msg/s
+headroom_pct = 15
+
+[throughput.file_parsing]
+component = "GraphRAG"
+description = "Source files parsed per second"
+requirement = "REQ-5.1"
+critical = false
+
+[throughput.file_parsing.rate]
+mean = 2800             # 2800 files/s
+p50 = 2650
+p95 = 3500
+p99 = 4200
+target = 2000           # 2000 files/s
+headroom_pct = 40
+
+# ============================================================================
+# MEMORY BASELINES
+# ============================================================================
+
+[memory.standard_mode]
+description = "Total heap in standard mode"
+requirement = "memory_management.md"
+critical = false
+
+[memory.standard_mode.bytes]
+mean = 38000000         # 38 MB
+p99 = 48000000          # 48 MB
+target = 54000000       # 54 MB
+headroom_pct = 30
+
+[memory.hft_mode]
+description = "Total heap in HFT mode"
+requirement = "memory_management.md"
+critical = true
+
+[memory.hft_mode.bytes]
+mean = 680000000       # 680 MB
+p99 = 780000000        # 780 MB
+target = 838000000     # 838 MB
+headroom_pct = 19
+
+# ============================================================================
+# REGRESSION THRESHOLDS BY COMPONENT
+# ============================================================================
+
+[thresholds.critical_hft]
+description = "HFT critical path components"
+warning_pct = 5.0
+failure_pct = 20.0
+block_merge = true
+components = [
+    "ring_buffer.push",
+    "ring_buffer.pop",
+    "ring_buffer.roundtrip",
+    "wallet_guard.full_validation",
+    "hft_pipeline.market_data_ingestion",
+    "hft_pipeline.signal_generation",
+    "hft_pipeline.full_pipeline",
+]
+
+[thresholds.boot]
+description = "Boot and initialization"
+warning_pct = 10.0
+failure_pct = 50.0
+block_merge = true
+components = ["boot"]
+
+[thresholds.standard]
+description = "Standard performance components"
+warning_pct = 10.0
+failure_pct = 50.0
+block_merge = false
+components = [
+    "fsm.phase_transition",
+    "fsm.full_cycle",
+    "sandbox.*",
+    "wasm_rpc.*",
+    "graph_rag.*",
+    "tui.frame_render",
+]
+
+[thresholds.throughput]
+description = "Throughput measurements"
+warning_pct = -5.0      # Negative = throughput decrease is regression
+failure_pct = -20.0
+block_merge = true

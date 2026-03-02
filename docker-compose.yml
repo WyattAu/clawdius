@@ -1,0 +1,30 @@
+version: "3.9"
+
+services:
+  clawdius:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: clawdius:0.1.0
+    container_name: clawdius
+    restart: unless-stopped
+    volumes:
+      - ./.clawdius:/app/.clawdius:rw
+      - ./clawdius.toml:/app/clawdius.toml:ro
+    environment:
+      - RUST_LOG=info
+      - CLAWDIUS_HOME=/app/.clawdius
+    networks:
+      - clawdius-network
+    security_opt:
+      - no-new-privileges:true
+    read_only: false
+    tmpfs:
+      - /tmp:noexec,nosuid,size=64m
+
+networks:
+  clawdius-network:
+    driver: bridge
+
+volumes:
+  clawdius-data:

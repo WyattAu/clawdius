@@ -1,0 +1,337 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "version": "1.0.0",
+  "phase": "1.25",
+  "created": "2026-03-01",
+  "concepts": [
+    {
+      "id": "CONCEPT-FSM-001",
+      "name": "Finite State Machine",
+      "name_zh": "有限状态机",
+      "name_ru": "Конечный автомат",
+      "name_de": "Endlicher Automat",
+      "name_ja": "有限オートマトン",
+      "category": "Computer Science",
+      "source": "YP-FSM-NEXUS-001",
+      "tqa_level": 5,
+      "confidence": 0.98,
+      "definition": "A computational model consisting of a finite number of states, transitions between those states, and actions.",
+      "formal_notation": "\\mathcal{P} = \\{p_0, p_1, \\ldots, p_{23}\\}",
+      "attributes": {
+        "state_count": 24,
+        "type": "deterministic"
+      }
+    },
+    {
+      "id": "CONCEPT-TYPESTATE-001",
+      "name": "Typestate Pattern",
+      "name_zh": "类型状态模式",
+      "name_ru": "Паттерн типосостояния",
+      "name_de": "Typestate-Muster",
+      "name_ja": "タイプステートパターン",
+      "category": "Software Engineering",
+      "source": "YP-FSM-NEXUS-001",
+      "tqa_level": 5,
+      "confidence": 0.95,
+      "definition": "A programming pattern that encodes state transitions in the type system, making illegal states unrepresentable at compile time.",
+      "formal_notation": "\\mathcal{T}: \\mathcal{P} \\rightarrow \\text{Type}",
+      "attributes": {
+        "enforcement": "compile-time",
+        "language": "Rust"
+      }
+    },
+    {
+      "id": "CONCEPT-PHASE-001",
+      "name": "Nexus Phase",
+      "name_zh": "Nexus阶段",
+      "name_ru": "Фаза Nexus",
+      "name_de": "Nexus-Phase",
+      "name_ja": "Nexusフェーズ",
+      "category": "Process Engineering",
+      "source": "YP-FSM-NEXUS-001",
+      "tqa_level": 4,
+      "confidence": 0.92,
+      "definition": "A distinct stage in the R&D lifecycle with defined entry/exit criteria and artifact production requirements.",
+      "attributes": {
+        "total_phases": 24,
+        "categories": ["Discovery", "Requirements", "Architecture", "Planning", "Implementation", "Verification", "Validation", "Transition"]
+      }
+    },
+    {
+      "id": "CONCEPT-GATE-001",
+      "name": "Quality Gate",
+      "name_zh": "质量门",
+      "name_ru": "Ворота качества",
+      "name_de": "Qualitätsschranke",
+      "name_ja": "品質ゲート",
+      "category": "Quality Assurance",
+      "source": "YP-FSM-NEXUS-001",
+      "tqa_level": 5,
+      "confidence": 0.97,
+      "definition": "A predicate over system state that must be satisfied before phase transition can occur.",
+      "formal_notation": "\\gamma: \\mathcal{P} \\times \\mathcal{P}(\\mathcal{A}) \\rightarrow \\{\\top, \\bot\\}",
+      "attributes": {
+        "composition": "conjunction",
+        "enforcement": "mandatory"
+      }
+    },
+    {
+      "id": "CONCEPT-TRANSITION-001",
+      "name": "Phase Transition Function",
+      "name_zh": "阶段转换函数",
+      "name_ru": "Функция фазового перехода",
+      "name_de": "Phasenübergangsfunktion",
+      "name_ja": "フェーズ遷移関数",
+      "category": "Formal Methods",
+      "source": "YP-FSM-NEXUS-001",
+      "tqa_level": 5,
+      "confidence": 0.99,
+      "definition": "A deterministic function mapping current phase and event to the next phase.",
+      "formal_notation": "\\delta: \\mathcal{P} \\times \\mathcal{E} \\rightarrow \\mathcal{P}",
+      "attributes": {
+        "deterministic": true,
+        "bounded": true
+      }
+    },
+    {
+      "id": "CONCEPT-HFT-001",
+      "name": "High-Frequency Trading",
+      "name_zh": "高频交易",
+      "name_ru": "Высокочастотная торговля",
+      "name_de": "Hochfrequenzhandel",
+      "name_ja": "高頻度取引",
+      "category": "Finance",
+      "source": "YP-HFT-BROKER-001",
+      "tqa_level": 5,
+      "confidence": 0.96,
+      "definition": "Algorithmic trading characterized by high-speed order execution with sub-millisecond latency requirements.",
+      "attributes": {
+        "latency_bound": "<1ms",
+        "zero_gc": true
+      }
+    },
+    {
+      "id": "CONCEPT-WALLET-GUARD-001",
+      "name": "Wallet Guard",
+      "name_zh": "钱包守护",
+      "name_ru": "Защита кошелька",
+      "name_de": "Wallet-Wächter",
+      "name_ja": "ウォレットガード",
+      "category": "Risk Management",
+      "source": "YP-HFT-BROKER-001",
+      "tqa_level": 5,
+      "confidence": 0.94,
+      "definition": "Pre-trade risk validation algorithm enforcing position limits, drawdown constraints, and margin requirements per SEC Rule 15c3-5.",
+      "formal_notation": "\\mathcal{K}: \\mathcal{W} \\times \\text{Order} \\rightarrow \\{\\text{APPROVE}, \\text{REJECT}\\}",
+      "attributes": {
+        "wcet": "<100μs",
+        "regulatory": "SEC 15c3-5"
+      }
+    },
+    {
+      "id": "CONCEPT-RING-BUFFER-001",
+      "name": "Lock-Free Ring Buffer",
+      "name_zh": "无锁环形缓冲区",
+      "name_ru": "Блоксвободный кольцевой буфер",
+      "name_de": "Sperrfreier Ringpuffer",
+      "name_ja": "ロックフリーリングバッファ",
+      "category": "Data Structures",
+      "source": "YP-HFT-BROKER-001",
+      "tqa_level": 5,
+      "confidence": 0.97,
+      "definition": "A single-producer single-consumer queue using atomic operations for thread-safe access without locks.",
+      "formal_notation": "\\mathcal{R}[i] = \\mathcal{R}[i \\mod B]",
+      "attributes": {
+        "size": "2^20 entries",
+        "pattern": "SPSC",
+        "memory_order": "Acquire/Release"
+      }
+    },
+    {
+      "id": "CONCEPT-ARENA-001",
+      "name": "Arena Allocator",
+      "name_zh": "竞技场分配器",
+      "name_ru": "Арена распределения",
+      "name_de": "Arena-Allokator",
+      "name_ja": "アリーナアロケータ",
+      "category": "Memory Management",
+      "source": "YP-HFT-BROKER-001",
+      "tqa_level": 5,
+      "confidence": 0.95,
+      "definition": "A linear allocator that pre-allocates memory and resets en masse, eliminating per-object deallocation overhead.",
+      "attributes": {
+        "zero_gc": true,
+        "wcet": "O(1) amortized"
+      }
+    },
+    {
+      "id": "CONCEPT-ZERO-GC-001",
+      "name": "Zero-GC Memory Model",
+      "name_zh": "零GC内存模型",
+      "name_ru": "Модель памяти без сборки мусора",
+      "name_de": "Null-GC-Speichermodell",
+      "name_ja": "ゼロGCメモリモデル",
+      "category": "Memory Management",
+      "source": "YP-HFT-BROKER-001",
+      "tqa_level": 5,
+      "confidence": 0.98,
+      "definition": "A memory management strategy that guarantees zero garbage collection pauses through arena allocation and ownership semantics.",
+      "formal_notation": "\\forall \\text{ hot path } P: \\text{alloc}(P) = 0",
+      "attributes": {
+        "gc_pause": "0μs",
+        "technique": "arena + ownership"
+      }
+    },
+    {
+      "id": "CONCEPT-WCET-001",
+      "name": "Worst-Case Execution Time",
+      "name_zh": "最坏执行时间",
+      "name_ru": "Наихудшее время выполнения",
+      "name_de": "Schlechteste Ausführungszeit",
+      "name_ja": "最悪実行時間",
+      "category": "Real-Time Systems",
+      "source": "YP-HFT-BROKER-001",
+      "tqa_level": 5,
+      "confidence": 0.96,
+      "definition": "The maximum time a program takes to execute on specific hardware, used for real-time scheduling guarantees.",
+      "formal_notation": "T_{\\text{wcet}} \\in \\mathbb{R}^+",
+      "attributes": {
+        "analysis": "static",
+        "application": "hard real-time"
+      }
+    },
+    {
+      "id": "CONCEPT-SANDBOX-001",
+      "name": "Sandboxing",
+      "name_zh": "沙箱",
+      "name_ru": "Песочница",
+      "name_de": "Sandbox",
+      "name_ja": "サンドボックス",
+      "category": "Security",
+      "source": "YP-SECURITY-SANDBOX-001",
+      "tqa_level": 5,
+      "confidence": 0.97,
+      "definition": "An isolation technique for executing untrusted code in a restricted environment with limited system access.",
+      "attributes": {
+        "tiers": 4,
+        "jit": true
+      }
+    },
+    {
+      "id": "CONCEPT-CAPABILITY-001",
+      "name": "Capability-Based Security",
+      "name_zh": "基于能力的安全",
+      "name_ru": "Возможностная безопасность",
+      "name_de": "Capability-basierte Sicherheit",
+      "name_ja": "ケイパビリティベースセキュリティ",
+      "category": "Security Model",
+      "source": "YP-SECURITY-SANDBOX-001",
+      "tqa_level": 5,
+      "confidence": 0.95,
+      "definition": "A security model where access rights are represented as unforgeable tokens (capabilities) that can only be attenuated.",
+      "formal_notation": "c = (\\text{resource}, \\text{permissions}, \\text{signature})",
+      "attributes": {
+        "derivation": "attenuation-only",
+        "unforgeable": true
+      }
+    },
+    {
+      "id": "CONCEPT-ISOLATION-001",
+      "name": "Isolation Boundary",
+      "name_zh": "隔离边界",
+      "name_ru": "Граница изоляции",
+      "name_de": "Isolationsgrenze",
+      "name_ja": "隔離境界",
+      "category": "Security Architecture",
+      "source": "YP-SECURITY-SANDBOX-001",
+      "tqa_level": 5,
+      "confidence": 0.98,
+      "definition": "A memory and resource boundary that prevents components in different domains from accessing each other's resources.",
+      "formal_notation": "\\mathcal{I}: \\text{Component} \\rightarrow \\text{Domain}",
+      "attributes": {
+        "memory_isolation": true,
+        "namespace_isolation": true
+      }
+    },
+    {
+      "id": "CONCEPT-SECRET-001",
+      "name": "Secret Isolation",
+      "name_zh": "秘密隔离",
+      "name_ru": "Изоляция секретов",
+      "name_de": "Geheimnis-Isolierung",
+      "name_ja": "シークレット隔離",
+      "category": "Credential Management",
+      "source": "YP-SECURITY-SANDBOX-001",
+      "tqa_level": 5,
+      "confidence": 0.96,
+      "definition": "A security pattern where API keys and credentials are stored in OS keychain and never exposed to sandboxed code.",
+      "attributes": {
+        "storage": "OS keychain",
+        "exposure": "never"
+      }
+    },
+    {
+      "id": "CONCEPT-JIT-SANDBOX-001",
+      "name": "JIT Sandboxing",
+      "name_zh": "即时沙箱",
+      "name_ru": "JIT-песочница",
+      "name_de": "JIT-Sandbox",
+      "name_ja": "JITサンドボックス",
+      "category": "Security",
+      "source": "YP-SECURITY-SANDBOX-001",
+      "tqa_level": 4,
+      "confidence": 0.93,
+      "definition": "Just-In-Time selection of sandbox tier based on toolchain and trust level.",
+      "attributes": {
+        "tiers": ["Native Passthrough", "OS Container", "WASM Sandbox", "Hardened Container"],
+        "selection": "automatic"
+      }
+    },
+    {
+      "id": "CONCEPT-THREAT-001",
+      "name": "Threat Mitigation Model",
+      "name_zh": "威胁缓解模型",
+      "name_ru": "Модель устранения угроз",
+      "name_de": "Bedrohungsminderungsmodell",
+      "name_ja": "脅威緩和モデル",
+      "category": "Security",
+      "source": "YP-SECURITY-SANDBOX-001",
+      "tqa_level": 4,
+      "confidence": 0.91,
+      "definition": "A formal model mapping threat vectors to countermeasures.",
+      "formal_notation": "\\mathcal{M}: \\mathcal{T} \\rightarrow \\text{Countermeasure}",
+      "attributes": {
+        "threats": ["Brain-Leaking", "Supply Chain", "Repository RCE", "Credential Exfiltration"]
+      }
+    }
+  ],
+  "statistics": {
+    "total_concepts": 18,
+    "by_category": {
+      "Computer Science": 1,
+      "Software Engineering": 1,
+      "Process Engineering": 1,
+      "Quality Assurance": 1,
+      "Formal Methods": 1,
+      "Finance": 1,
+      "Risk Management": 1,
+      "Data Structures": 1,
+      "Memory Management": 2,
+      "Real-Time Systems": 1,
+      "Security": 3,
+      "Security Model": 1,
+      "Security Architecture": 1,
+      "Credential Management": 1
+    },
+    "by_source": {
+      "YP-FSM-NEXUS-001": 5,
+      "YP-HFT-BROKER-001": 6,
+      "YP-SECURITY-SANDBOX-001": 7
+    },
+    "avg_confidence": 0.956,
+    "tqa_distribution": {
+      "level_5": 15,
+      "level_4": 3
+    }
+  }
+}

@@ -1,0 +1,130 @@
+# Yellow Paper Registry
+# Tracks all Yellow Papers in the Clawdius research phase
+# Version: 1.0.0
+# Created: 2026-03-01
+
+[registry]
+total_papers = 3
+phase = 1
+status = "COMPLETE"
+
+# =============================================================================
+# YELLOW PAPER ENTRIES
+# =============================================================================
+
+[[papers]]
+id = "YP-FSM-NEXUS-001"
+title = "Nexus R&D Lifecycle FSM Theory"
+version = "1.0.0"
+status = "APPROVED"
+algorithm_score = 7
+complexity_factors = ["State space > 2^32", "Safety-critical"]
+created = "2026-03-01"
+author = "DeepThought Research Agent"
+path = "YP-FSM-NEXUS-001.md"
+test_vectors = "test_vectors/test_vectors_fsm.toml"
+domain_constraints = "domain_constraints/domain_constraints_fsm.toml"
+trace_to = ["REQ-1.1", "REQ-1.2", "REQ-1.3", "DA-CLAWDIUS-001 §2.2"]
+
+[[papers]]
+id = "YP-HFT-BROKER-001"
+title = "HFT Broker Mode Theory"
+version = "1.0.0"
+status = "APPROVED"
+algorithm_score = 7
+complexity_factors = ["Real-time constraints", "Safety-critical financial systems"]
+created = "2026-03-01"
+author = "DeepThought Research Agent"
+path = "YP-HFT-BROKER-001.md"
+test_vectors = "test_vectors/test_vectors_hft.toml"
+domain_constraints = "domain_constraints/domain_constraints_hft.toml"
+trace_to = ["REQ-5.2", "REQ-5.3", "REQ-5.4", "DA-CLAWDIUS-001 §3", "rust_sop.md Part III"]
+
+[[papers]]
+id = "YP-SECURITY-SANDBOX-001"
+title = "Sentinel Sandbox Theory"
+version = "1.0.0"
+status = "APPROVED"
+algorithm_score = 4
+complexity_factors = ["Security-critical"]
+created = "2026-03-01"
+author = "DeepThought Research Agent"
+path = "YP-SECURITY-SANDBOX-001.md"
+test_vectors = "test_vectors/test_vectors_sandbox.toml"
+domain_constraints = "domain_constraints/domain_constraints_sandbox.toml"
+trace_to = ["REQ-3.1", "REQ-3.2", "REQ-3.3", "REQ-3.4", "DA-CLAWDIUS-001 §2.3"]
+
+# =============================================================================
+# ALGORITHM SCORING REFERENCE
+# =============================================================================
+
+[scoring_criteria]
+description = "Algorithm complexity score determines Yellow Paper requirement"
+
+[[scoring_criteria.factors]]
+factor = "State space > 2^32"
+score = 3
+applies_to = ["YP-FSM-NEXUS-001"]
+
+[[scoring_criteria.factors]]
+factor = "Safety-critical"
+score = 4
+applies_to = ["YP-FSM-NEXUS-001", "YP-HFT-BROKER-001"]
+
+[[scoring_criteria.factors]]
+factor = "Real-time constraints"
+score = 3
+applies_to = ["YP-HFT-BROKER-001"]
+
+[[scoring_criteria.factors]]
+factor = "Security-critical"
+score = 4
+applies_to = ["YP-SECURITY-SANDBOX-001"]
+
+[scoring_criteria.thresholds]
+yellow_paper_required = 5
+borderline = 4
+document_in_architecture = 2
+
+# =============================================================================
+# CROSS-REFERENCES
+# =============================================================================
+
+[cross_references]
+description = "Dependencies between Yellow Papers"
+
+[[cross_references.entry]]
+from = "YP-FSM-NEXUS-001"
+to = "YP-SECURITY-SANDBOX-001"
+relationship = "uses"
+note = "FSM transitions may trigger sandboxed operations"
+
+[[cross_references.entry]]
+from = "YP-HFT-BROKER-001"
+to = "YP-SECURITY-SANDBOX-001"
+relationship = "requires"
+note = "HFT mode requires secure notification dispatch"
+
+# =============================================================================
+# REVIEW STATUS
+# =============================================================================
+
+[review_status]
+next_review_trigger = "Blue Paper generation"
+review_cycle = "per_phase"
+last_review = "2026-03-01"
+reviewer = "DeepThought Research Agent"
+
+# =============================================================================
+# METRICS
+# =============================================================================
+
+[metrics]
+total_theorems = 9
+total_lemmas = 3
+total_definitions = 15
+total_axioms = 9
+total_algorithms = 11
+total_test_vectors = 60
+total_domain_constraints = 41
+total_citations = 20

@@ -1,0 +1,200 @@
+# Domain Constraints: HFT Broker Mode
+# Document: YP-HFT-BROKER-001
+# Version: 1.0.0
+
+[metadata]
+algorithm = "HFT Broker"
+yellow_paper = "YP-HFT-BROKER-001"
+constraint_count = 15
+created = "2026-03-01"
+compliance = ["SEC 15c3-5", "MiFID II"]
+
+# =============================================================================
+# LATENCY CONSTRAINTS
+# =============================================================================
+
+[[constraints]]
+id = "HFT-001"
+category = "latency"
+name = "Signal to Execution Latency"
+description = "Maximum time from signal generation to order execution"
+value = 1000
+unit = "microseconds"
+source = "HC-001"
+rationale = "HFT industry standard for competitive latency"
+verifiable = true
+measurement = "hardware_timestamp"
+
+[[constraints]]
+id = "HFT-002"
+category = "latency"
+name = "Risk Check Latency"
+description = "Maximum time for Wallet Guard risk check"
+value = 100
+unit = "microseconds"
+source = "HC-004"
+rationale = "Pre-trade compliance requirement"
+verifiable = true
+
+[[constraints]]
+id = "HFT-003"
+category = "latency"
+name = "GC Pause Duration"
+description = "Maximum garbage collection pause (must be zero)"
+value = 0
+unit = "microseconds"
+source = "HC-002"
+rationale = "Zero-GC requirement for deterministic latency"
+verifiable = true
+enforcement = "compile_time_check"
+
+[[constraints]]
+id = "HFT-004"
+category = "latency"
+name = "Market Data Processing Latency"
+description = "Maximum time to process single market data message"
+value = 1
+unit = "microseconds"
+source = "Derived"
+rationale = "Sub-microsecond processing for high throughput"
+verifiable = true
+
+[[constraints]]
+id = "HFT-005"
+category = "latency"
+name = "Notification Dispatch Latency"
+description = "Maximum time from signal to notification dispatch"
+value = 100
+unit = "milliseconds"
+source = "REQ-5.4"
+rationale = "Timely human oversight of trading activity"
+verifiable = true
+
+# =============================================================================
+# MEMORY CONSTRAINTS
+# =============================================================================
+
+[[constraints]]
+id = "HFT-006"
+category = "memory"
+name = "Market Data Buffer Size"
+description = "Size of market data ring buffer"
+value = 1073741824
+unit = "bytes"
+source = "HC-003"
+rationale = "WCET analysis for message burst handling"
+verifiable = true
+note = "1GB HugePage allocation"
+
+[[constraints]]
+id = "HFT-007"
+category = "memory"
+name = "Ring Buffer Entry Count"
+description = "Number of entries in ring buffer (power of 2)"
+value = 1048576
+unit = "entries"
+source = "Derived"
+rationale = "Power of 2 for efficient modulo via bitmask"
+verifiable = true
+
+[[constraints]]
+id = "HFT-008"
+category = "memory"
+name = "Cache Line Size"
+description = "CPU cache line size for padding"
+value = 64
+unit = "bytes"
+source = "x86-64 ABI"
+rationale = "Prevent false sharing between cores"
+verifiable = true
+
+[[constraints]]
+id = "HFT-009"
+category = "memory"
+name = "Arena Allocator Size"
+description = "Size of pre-allocated memory arena"
+value = 1073741824
+unit = "bytes"
+source = "Derived"
+rationale = "Pre-allocation for zero-GC guarantee"
+verifiable = true
+
+# =============================================================================
+# RISK CONSTRAINTS
+# =============================================================================
+
+[[constraints]]
+id = "HFT-010"
+category = "risk"
+name = "Maximum Position Size"
+description = "Maximum position size per symbol"
+value = "configurable"
+unit = "shares"
+source = "SEC 15c3-5"
+rationale = "Pre-trade risk control requirement"
+verifiable = true
+config_key = "risk.max_position_size"
+
+[[constraints]]
+id = "HFT-011"
+category = "risk"
+name = "Maximum Daily Drawdown"
+description = "Maximum loss allowed per trading day"
+value = "configurable"
+unit = "currency"
+source = "Risk Policy"
+rationale = "Hard stop for algorithmic errors"
+verifiable = true
+config_key = "risk.max_daily_drawdown"
+
+[[constraints]]
+id = "HFT-012"
+category = "risk"
+name = "Maximum Order Size"
+description = "Maximum size of single order"
+value = "configurable"
+unit = "shares"
+source = "SEC 15c3-5"
+rationale = "Fat finger protection"
+verifiable = true
+config_key = "risk.max_order_size"
+
+# =============================================================================
+# CONCURRENCY CONSTRAINTS
+# =============================================================================
+
+[[constraints]]
+id = "HFT-013"
+category = "concurrency"
+name = "Memory Ordering"
+description = "Atomic memory ordering for ring buffer"
+value = "Acquire/Release"
+source = "Lock-free programming"
+rationale = "Avoid SeqCst overhead on x86"
+verifiable = true
+
+[[constraints]]
+id = "HFT-014"
+category = "concurrency"
+name = "Isolated Core Count"
+description = "Number of CPU cores isolated for HFT"
+value = 4
+unit = "cores"
+source = "Deployment configuration"
+rationale = "Dedicated cores for deterministic scheduling"
+verifiable = true
+
+# =============================================================================
+# THROUGHPUT CONSTRAINTS
+# =============================================================================
+
+[[constraints]]
+id = "HFT-015"
+category = "throughput"
+name = "Maximum Messages Per Second"
+description = "Maximum market data message rate"
+value = 10000000
+unit = "messages/second"
+source = "Exchange specifications"
+rationale = "Handle peak market data bursts"
+verifiable = true

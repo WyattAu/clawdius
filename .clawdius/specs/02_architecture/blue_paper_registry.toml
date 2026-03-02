@@ -1,0 +1,143 @@
+# Blue Paper Registry
+# Tracks all Blue Papers and their dependencies
+# Generated: 2026-03-01
+# Phase: 2 (Architecture Refinement)
+
+[registry]
+version = "1.0.0"
+phase = 2
+status = "COMPLETE"
+total_papers = 6
+
+[[blue_paper]]
+id = "BP-HOST-KERNEL-001"
+title = "Host Kernel Component"
+version = "1.0.0"
+status = "APPROVED"
+component_id = "COMP-HOST-001"
+yellow_paper_ref = "YP-FSM-NEXUS-001"
+created = "2026-03-01"
+author = "Construct Systems Architect"
+
+[blue_paper.requirements]
+traces_to = ["REQ-1.1", "REQ-1.2", "REQ-1.3", "REQ-1.4", "REQ-6.1", "REQ-6.2", "REQ-6.3"]
+
+[blue_paper.dependencies]
+requires = []
+provides = ["COMP-FSM-001", "COMP-SENTINEL-001", "COMP-BRAIN-001", "COMP-GRAPH-001", "COMP-BROKER-001"]
+
+[[blue_paper]]
+id = "BP-NEXUS-FSM-001"
+title = "Nexus FSM Component"
+version = "1.0.0"
+status = "APPROVED"
+component_id = "COMP-FSM-001"
+yellow_paper_ref = "YP-FSM-NEXUS-001"
+created = "2026-03-01"
+author = "Construct Systems Architect"
+
+[blue_paper.requirements]
+traces_to = ["REQ-1.1", "REQ-1.2", "REQ-1.3", "REQ-4.2"]
+
+[blue_paper.dependencies]
+requires = ["COMP-HOST-001"]
+provides = []
+
+[[blue_paper]]
+id = "BP-SENTINEL-001"
+title = "Sentinel Sandbox Component"
+version = "1.0.0"
+status = "APPROVED"
+component_id = "COMP-SENTINEL-001"
+yellow_paper_ref = "YP-SECURITY-SANDBOX-001"
+created = "2026-03-01"
+author = "Construct Systems Architect"
+
+[blue_paper.requirements]
+traces_to = ["REQ-3.1", "REQ-3.2", "REQ-3.3", "REQ-3.4"]
+
+[blue_paper.dependencies]
+requires = ["COMP-HOST-001"]
+provides = []
+
+[[blue_paper]]
+id = "BP-BRAIN-001"
+title = "Brain WASM Component"
+version = "1.0.0"
+status = "APPROVED"
+component_id = "COMP-BRAIN-001"
+yellow_paper_ref = "YP-SECURITY-SANDBOX-001"
+created = "2026-03-01"
+author = "Construct Systems Architect"
+
+[blue_paper.requirements]
+traces_to = ["REQ-2.5", "REQ-3.2", "REQ-4.1", "REQ-4.4"]
+
+[blue_paper.dependencies]
+requires = ["COMP-HOST-001", "COMP-SENTINEL-001"]
+provides = []
+
+[[blue_paper]]
+id = "BP-GRAPH-RAG-001"
+title = "Graph-RAG Component"
+version = "1.0.0"
+status = "APPROVED"
+component_id = "COMP-GRAPH-001"
+yellow_paper_ref = "N/A"
+created = "2026-03-01"
+author = "Construct Systems Architect"
+
+[blue_paper.requirements]
+traces_to = ["REQ-2.1", "REQ-2.2", "REQ-2.3", "REQ-2.4"]
+
+[blue_paper.dependencies]
+requires = ["COMP-HOST-001"]
+provides = []
+
+[[blue_paper]]
+id = "BP-HFT-BROKER-001"
+title = "HFT Broker Component"
+version = "1.0.0"
+status = "APPROVED"
+component_id = "COMP-BROKER-001"
+yellow_paper_ref = "YP-HFT-BROKER-001"
+created = "2026-03-01"
+author = "Construct Systems Architect"
+
+[blue_paper.requirements]
+traces_to = ["REQ-5.1", "REQ-5.2", "REQ-5.3", "REQ-5.4"]
+
+[blue_paper.dependencies]
+requires = ["COMP-HOST-001", "COMP-GRAPH-001"]
+provides = []
+
+[dependency_graph]
+# Component dependency order for implementation
+order = [
+    "COMP-HOST-001",    # Host Kernel (foundation)
+    "COMP-FSM-001",     # Nexus FSM
+    "COMP-SENTINEL-001", # Sentinel Sandbox
+    "COMP-GRAPH-001",   # Graph-RAG
+    "COMP-BRAIN-001",   # Brain WASM
+    "COMP-BROKER-001",  # HFT Broker
+    "COMP-TUI-001",     # Clawdius-Pit (Phase 3)
+]
+
+[proof_status]
+proof_fsm = { file = "proofs/proof_fsm.lean", status = "sketch", theorems = 3 }
+proof_broker = { file = "proofs/proof_broker.lean", status = "sketch", theorems = 2 }
+proof_sandbox = { file = "proofs/proof_sandbox.lean", status = "sketch", theorems = 3 }
+
+[interface_contracts]
+contracts = [
+    { name = "interface_fsm.toml", component = "COMP-FSM-001" },
+    { name = "interface_sentinel.toml", component = "COMP-SENTINEL-001" },
+    { name = "interface_broker.toml", component = "COMP-BROKER-001" },
+    { name = "interface_graph.toml", component = "COMP-GRAPH-001" },
+]
+
+[compliance]
+ieee_1016 = "COMPLIANT"
+ieee_829 = "COMPLIANT"
+nist_sp_800_53 = "PARTIAL"
+owasp_asvs = "COMPLIANT"

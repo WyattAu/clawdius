@@ -1,0 +1,172 @@
+# Test Vectors: HFT Broker Mode
+# Document: YP-HFT-BROKER-001
+# Version: 1.0.0
+
+[metadata]
+algorithm = "HFT Broker"
+yellow_paper = "YP-HFT-BROKER-001"
+total_vectors = 20
+created = "2026-03-01"
+
+# =============================================================================
+# NOMINAL CASES (40% - 8 vectors)
+# =============================================================================
+
+[[nominal]]
+id = "NOM-001"
+name = "Valid Buy Order"
+description = "Valid buy order within all limits"
+input = { wallet = { cash = 100000.00, positions = { "AAPL" = 100 }, realized_pnl = 5000.00 }, order = { symbol = "AAPL", side = "BUY", quantity = 50, price = 150.00 }, params = { pi_max = 500, sigma_max = 200, lambda_max = 10000.00 } }
+expected = { result = "APPROVE", new_position = 150, latency_us = "< 10" }
+
+[[nominal]]
+id = "NOM-002"
+name = "Valid Sell Order"
+description = "Valid sell order reducing position"
+input = { wallet = { cash = 50000.00, positions = { "GOOG" = 200 }, realized_pnl = 2000.00 }, order = { symbol = "GOOG", side = "SELL", quantity = 50, price = 2800.00 }, params = { pi_max = 300, sigma_max = 100, lambda_max = 5000.00 } }
+expected = { result = "APPROVE", new_position = 150, latency_us = "< 10" }
+
+[[nominal]]
+id = "NOM-003"
+name = "Ring Buffer Write Read"
+description = "Single write and read cycle"
+input = { buffer_size = 1048576, message = { type = "QUOTE", symbol = "MSFT", bid = 300.50, ask = 300.55, timestamp_ns = 1234567890123456 } }
+expected = { read_success = true, message_preserved = true, latency_ns = "< 100" }
+
+[[nominal]]
+id = "NOM-004"
+name = "Arena Allocation"
+description = "Single arena allocation"
+input = { arena_size = 1073741824, allocation_size = 1024 }
+expected = { success = true, offset = 0, latency_ns = "< 50" }
+
+[[nominal]]
+id = "NOM-005"
+name = "Consecutive Arena Allocations"
+description = "Multiple consecutive allocations from arena"
+input = { arena_size = 1073741824, allocations = [256, 512, 1024, 2048] }
+expected = { success = true, offsets = [0, 256, 768, 1792], no_fragmentation = true }
+
+[[nominal]]
+id = "NOM-006"
+name = "Position At Limit"
+description = "Order that brings position exactly to limit"
+input = { wallet = { cash = 100000.00, positions = { "TSLA" = 450 }, realized_pnl = 0.00 }, order = { symbol = "TSLA", side = "BUY", quantity = 50, price = 200.00 }, params = { pi_max = 500, sigma_max = 100, lambda_max = 10000.00 } }
+expected = { result = "APPROVE", new_position = 500, at_limit = true }
+
+[[nominal]]
+id = "NOM-007"
+name = "Drawdown Within Limit"
+description = "Order with drawdown close to but within limit"
+input = { wallet = { cash = 50000.00, positions = {}, realized_pnl = -9500.00, session_start_pnl = 0.00 }, order = { symbol = "NVDA", side = "BUY", quantity = 10, price = 400.00 }, params = { pi_max = 100, sigma_max = 50, lambda_max = 10000.00 } }
+expected = { result = "APPROVE", current_drawdown = 9500.00 }
+
+[[nominal]]
+id = "NOM-008"
+name = "Notification Dispatch"
+description = "Signal notification within latency bound"
+input = { signal = { type = "TRADE", symbol = "AMZN", action = "BUY", confidence = 0.95 }, channel = "Matrix" }
+expected = { dispatched = true, latency_ms = "< 100" }
+
+# =============================================================================
+# BOUNDARY CASES (20% - 4 vectors)
+# =============================================================================
+
+[[boundary]]
+id = "BND-001"
+name = "Zero Position to First Order"
+description = "First order when no position exists"
+input = { wallet = { cash = 100000.00, positions = {}, realized_pnl = 0.00 }, order = { symbol = "META", side = "BUY", quantity = 100, price = 300.00 }, params = { pi_max = 200, sigma_max = 150, lambda_max = 5000.00 } }
+expected = { result = "APPROVE", new_position = 100 }
+
+[[boundary]]
+id = "BND-002"
+name = "Ring Buffer Full"
+description = "Write to ring buffer when one slot remaining"
+input = { buffer_size = 16, head = 15, tail = 0, message = { type = "TRADE" } }
+expected = { success = true, new_head = 0, full_after_write = true }
+
+[[boundary]]
+id = "BND-003"
+name = "Ring Buffer Empty"
+description = "Read from empty ring buffer"
+input = { buffer_size = 16, head = 0, tail = 0 }
+expected = { result = "EMPTY", no_message = true }
+
+[[boundary]]
+id = "BND-004"
+name = "Arena Near Capacity"
+description = "Allocation when arena nearly full"
+input = { arena_size = 1024, used = 1000, allocation_size = 24 }
+expected = { success = true, offset = 1000, remaining = 0 }
+
+# =============================================================================
+# ADVERSARIAL CASES (15% - 3 vectors)
+# =============================================================================
+
+[[adversarial]]
+id = "ADV-001"
+name = "Position Limit Exceeded"
+description = "Order that would exceed position limit"
+input = { wallet = { cash = 1000000.00, positions = { "AAPL" = 480 }, realized_pnl = 0.00 }, order = { symbol = "AAPL", side = "BUY", quantity = 50, price = 150.00 }, params = { pi_max = 500, sigma_max = 100, lambda_max = 50000.00 } }
+expected = { result = "REJECT", reason = "Position limit exceeded", new_position_would_be = 530 }
+
+[[adversarial]]
+id = "ADV-002"
+name = "Daily Drawdown Exceeded"
+description = "Order when daily drawdown limit already reached"
+input = { wallet = { cash = 10000.00, positions = {}, realized_pnl = -10500.00, session_start_pnl = 0.00 }, order = { symbol = "SPY", side = "BUY", quantity = 1, price = 400.00 }, params = { pi_max = 100, sigma_max = 50, lambda_max = 10000.00 } }
+expected = { result = "REJECT", reason = "Daily drawdown limit exceeded", current_drawdown = -10500.00 }
+
+[[adversarial]]
+id = "ADV-003"
+name = "Arena Overflow"
+description = "Allocation exceeding arena capacity"
+input = { arena_size = 1024, used = 0, allocation_size = 2048 }
+expected = { result = "ALLOCATION_FAILED", reason = "Insufficient capacity" }
+
+# =============================================================================
+# REGRESSION CASES (10% - 2 vectors)
+# =============================================================================
+
+[[regression]]
+id = "REG-001"
+name = "Integer Overflow in Position"
+description = "Large quantity that would overflow position calculation"
+input = { wallet = { cash = 1e15, positions = { "TEST" = 9223372036854775800 }, realized_pnl = 0.00 }, order = { symbol = "TEST", side = "BUY", quantity = 10, price = 1.00 }, params = { pi_max = 9223372036854775807, sigma_max = 100, lambda_max = 1e15 } }
+expected = { result = "REJECT", reason = "Position overflow", uses_checked_arithmetic = true }
+
+[[regression]]
+id = "REG-002"
+name = "Ring Buffer Wraparound"
+description = "Correct handling of index wraparound at buffer boundary"
+input = { buffer_size = 16, head = 15, tail = 15, message = { type = "TEST" } }
+expected = { write_success = true, new_head = 0, correct_modulo = true }
+
+# =============================================================================
+# PROPERTY-BASED TESTS (15% - 3 vectors)
+# =============================================================================
+
+[[property_based]]
+id = "PROP-001"
+name = "Risk Check Latency Bound"
+description = "All risk checks complete within 100 microseconds"
+generator = "random_orders"
+invariant = "forall order: latency_us(risk_check(order)) < 100"
+trials = 10000
+
+[[property_based]]
+id = "PROP-002"
+name = "Ring Buffer Index Safety"
+description = "Ring buffer indices always valid after operations"
+generator = "random_ring_ops"
+invariant = "forall op: 0 <= head < size AND 0 <= tail < size"
+trials = 100000
+
+[[property_based]]
+id = "PROP-003"
+name = "Wallet Invariant Preservation"
+description = "Valid operations preserve wallet invariants"
+generator = "valid_order_sequences"
+invariant = "cash >= 0 AND positions are bounded AND pnl is consistent"
+trials = 1000

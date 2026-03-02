@@ -1,0 +1,150 @@
+# Domain Constraints: Nexus FSM
+# Document: YP-FSM-NEXUS-001
+# Version: 1.0.0
+
+[metadata]
+algorithm = "Nexus FSM"
+yellow_paper = "YP-FSM-NEXUS-001"
+constraint_count = 12
+created = "2026-03-01"
+
+# =============================================================================
+# TEMPORAL CONSTRAINTS
+# =============================================================================
+
+[[constraints]]
+id = "FSM-001"
+category = "temporal"
+name = "Maximum Phase Transitions Per Session"
+description = "Maximum number of phase transitions allowed in a single session to prevent infinite loops"
+value = 1000
+unit = "transitions"
+rationale = "Memory bound for transition log"
+verifiable = true
+
+[[constraints]]
+id = "FSM-002"
+category = "temporal"
+name = "Minimum Phase Duration"
+description = "Minimum time that must be spent in each phase before transition is allowed"
+value = { p0 = 60, p1 = 300, p2 = 180, p3 = 600, p4 = 300, p5 = 180, p6 = 900, p7 = 600, p8 = 300, p9 = 180, p10 = 300, p11 = 180, p12 = 300, p13 = 0, p14 = 0, p15 = 300, p16 = 0, p17 = 0, p18 = 0, p19 = 600, p20 = 300, p21 = 300, p22 = 60, p23 = 0 }
+unit = "seconds"
+rationale = "Human review requirements vary by phase"
+verifiable = true
+exception = "auto_approved_transitions"
+
+[[constraints]]
+id = "FSM-003"
+category = "temporal"
+name = "Transition Log Retention"
+description = "How long transition logs must be retained for audit purposes"
+value = 90
+unit = "days"
+rationale = "Audit requirement for compliance"
+verifiable = true
+
+# =============================================================================
+# STRUCTURAL CONSTRAINTS
+# =============================================================================
+
+[[constraints]]
+id = "FSM-004"
+category = "structural"
+name = "Phase Count"
+description = "Total number of phases in the lifecycle"
+value = 24
+unit = "phases"
+rationale = "Nexus 24-phase lifecycle definition"
+verifiable = true
+immutable = true
+
+[[constraints]]
+id = "FSM-005"
+category = "structural"
+name = "Maximum Artifact Size"
+description = "Maximum size of any single artifact file"
+value = 100
+unit = "MB"
+rationale = "Storage bound and version control efficiency"
+verifiable = true
+
+[[constraints]]
+id = "FSM-006"
+category = "structural"
+name = "Maximum Artifacts Per Phase"
+description = "Maximum number of artifacts that can be produced in a single phase"
+value = 50
+unit = "files"
+rationale = "Cognitive load limit for review"
+verifiable = true
+
+# =============================================================================
+# CRYPTOGRAPHIC CONSTRAINTS
+# =============================================================================
+
+[[constraints]]
+id = "FSM-007"
+category = "cryptographic"
+name = "Hash Algorithm"
+description = "Cryptographic hash algorithm used for state fingerprinting"
+value = "SHA3-256"
+rationale = "NIST-approved, collision-resistant"
+verifiable = true
+
+[[constraints]]
+id = "FSM-008"
+category = "cryptographic"
+name = "Hash Output Length"
+description = "Length of cryptographic hash output"
+value = 256
+unit = "bits"
+rationale = "Security requirement for collision resistance"
+verifiable = true
+
+# =============================================================================
+# BEHAVIORAL CONSTRAINTS
+# =============================================================================
+
+[[constraints]]
+id = "FSM-009"
+category = "behavioral"
+name = "Backward Transitions"
+description = "Whether backward phase transitions are allowed"
+value = false
+rationale = "Lifecycle progresses forward only"
+verifiable = true
+exception = "admin_override"
+
+[[constraints]]
+id = "FSM-010"
+category = "behavioral"
+name = "Phase Skip Allowed"
+description = "Whether skipping phases is allowed"
+value = false
+rationale = "All phases must be completed for rigor"
+verifiable = true
+
+[[constraints]]
+id = "FSM-011"
+category = "behavioral"
+name = "Parallel Phase Execution"
+description = "Whether multiple phases can be active simultaneously"
+value = false
+rationale = "Deterministic single-phase-at-a-time execution"
+verifiable = true
+note = "Sub-tasks within a phase may execute in parallel"
+
+# =============================================================================
+# RESOURCE CONSTRAINTS
+# =============================================================================
+
+[[constraints]]
+id = "FSM-012"
+category = "resource"
+name = "Changelog Maximum Size"
+description = "Maximum size of the changelog file before rotation"
+value = 10
+unit = "MB"
+rationale = "Performance for changelog parsing"
+verifiable = true
+action_on_exceed = "rotate_archive"

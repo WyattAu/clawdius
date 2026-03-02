@@ -1,0 +1,127 @@
+# Tool Requirements Specification v1.0.0
+# Clawdius Build Environment
+
+[metadata]
+project = "clawdius"
+phase = "-0.5"
+last_verified = "2026-03-01"
+
+[tools.rust]
+minimum_version = "1.85.0"  # Required for 2024 edition
+edition = "2024"
+features_required = ["generic_const_exprs"]
+
+[tools.rust.components]
+required = ["rust-src", "rust-analyzer", "clippy", "llvm-tools"]
+optional = ["rustfmt-preview"]
+
+[tools.async_runtime]
+name = "monoio"
+version = "0.2.x"
+features = ["sync", "net", "time", "signal", "bytes"]
+rationale = "io_uring, thread-per-core architecture for HFT sub-microsecond latency"
+
+[tools.formal_verification]
+[[tools.formal_verification.item]]
+name = "lean4"
+minimum_version = "4.0.0"
+purpose = "Theorem proving for safety-critical algorithms"
+required_for = ["Complex Algorithm Score >= 5"]
+
+[tools.sandboxing]
+[[tools.sandboxing.item]]
+name = "bubblewrap"
+platform = "linux"
+purpose = "Tier 1 native execution sandbox"
+
+[[tools.sandboxing.item]]
+name = "sandbox-exec"
+platform = "macos"
+purpose = "Tier 1 macOS sandbox"
+
+[[tools.sandboxing.item]]
+name = "podman"
+platform = "all"
+purpose = "Tier 2 containerized execution"
+
+[tools.testing]
+[[tools.testing.item]]
+name = "cargo-nextest"
+minimum_version = "0.9.0"
+purpose = "Parallel, isolated test execution"
+replaces = "cargo test"
+
+[[tools.testing.item]]
+name = "proptest"
+version = "1.6"
+purpose = "Property-based fuzzing"
+
+[[tools.testing.item]]
+name = "cargo-mutants"
+minimum_version = "24.0"
+purpose = "Mutation testing for test rigor"
+
+[tools.supply_chain]
+[[tools.supply_chain.item]]
+name = "cargo-deny"
+minimum_version = "0.16.0"
+purpose = "Dependency linting, duplicate detection, CVE scanning"
+
+[[tools.supply_chain.item]]
+name = "cargo-vet"
+minimum_version = "0.10.0"
+purpose = "Supply chain auditing for unsafe code"
+
+[[tools.supply_chain.item]]
+name = "cargo-machete"
+purpose = "Unused dependency detection"
+
+[tools.code_quality]
+[[tools.code_quality.item]]
+name = "clippy"
+purpose = "Linting with pedantic rules"
+lints_required = ["clippy::all", "clippy::pedantic", "clippy::unwrap_used", "clippy::expect_used"]
+
+[[tools.code_quality.item]]
+name = "rustfmt"
+purpose = "Code formatting"
+
+[tools.performance]
+[[tools.performance.item]]
+name = "criterion"
+version = "0.5"
+purpose = "Statistical benchmarking"
+
+[[tools.performance.item]]
+name = "perf-tools"
+platform = "linux"
+purpose = "CPU profiling"
+
+[[tools.performance.item]]
+name = "valgrind"
+platform = "linux"
+purpose = "Memory leak detection"
+
+[tools.database]
+[[tools.database.item]]
+name = "sqlite"
+minimum_version = "3.40"
+purpose = "Structural AST graph storage"
+
+[[tools.database.item]]
+name = "lancedb"
+purpose = "Vector embeddings storage"
+
+[tools.parsing]
+[[tools.parsing.item]]
+name = "tree-sitter"
+purpose = "Multi-language AST parsing"
+languages_required = ["rust", "cpp", "typescript", "python"]
+
+[verification_commands]
+rust_version = "rustc --version"
+lean_version = "lean --version"
+bwrap_version = "bwrap --version"
+nextest_version = "cargo nextest --version"
+deny_version = "cargo deny --version"
+vet_version = "cargo vet --version"

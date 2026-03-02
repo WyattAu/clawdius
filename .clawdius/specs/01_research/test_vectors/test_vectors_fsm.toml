@@ -1,0 +1,176 @@
+# Test Vectors: Nexus FSM
+# Document: YP-FSM-NEXUS-001
+# Version: 1.0.0
+
+[metadata]
+algorithm = "Nexus FSM"
+yellow_paper = "YP-FSM-NEXUS-001"
+total_vectors = 20
+created = "2026-03-01"
+
+# =============================================================================
+# NOMINAL CASES (40% - 8 vectors)
+# =============================================================================
+
+[[nominal]]
+id = "NOM-001"
+name = "Standard Forward Transition"
+description = "Valid forward transition from Context Discovery to Domain Analysis"
+input = { current_phase = "p0", event = "context_complete", artifacts = ["context.md"] }
+expected = { next_phase = "p1", status = "success" }
+quality_gates_passed = ["exit_context", "entry_domain"]
+
+[[nominal]]
+id = "NOM-002"
+name = "Requirements to Architecture"
+description = "Valid transition from Requirements Validation to Architecture Design"
+input = { current_phase = "p5", event = "requirements_approved", artifacts = ["requirements.md", "acceptance.md", "traceability.md"] }
+expected = { next_phase = "p6", status = "success" }
+quality_gates_passed = ["requirements_complete", "architecture_entry"]
+
+[[nominal]]
+id = "NOM-003"
+name = "Implementation to Testing"
+description = "Valid transition from Integration to Unit Testing"
+input = { current_phase = "p15", event = "integration_complete", artifacts = ["integration_report.md"] }
+expected = { next_phase = "p16", status = "success" }
+quality_gates_passed = ["integration_verified"]
+
+[[nominal]]
+id = "NOM-004"
+name = "Full Lifecycle Sequence"
+description = "Complete valid sequence through all phases"
+input = { sequence = ["p0", "p1", "p2", "p3", "p4", "p5", "p6", "p7", "p8", "p9", "p10", "p11", "p12", "p13", "p14", "p15", "p16", "p17", "p18", "p19", "p20", "p21", "p22", "p23"] }
+expected = { status = "success", terminal_phase = "p23" }
+
+[[nominal]]
+id = "NOM-005"
+name = "Typestate Consumption"
+description = "Verify typestate consumes previous state"
+input = { from_phase = "p6", to_phase = "p7", artifacts = ["architecture.md"] }
+expected = { old_state_consumed = true, new_state_valid = true }
+invariant = "old_state_unavailable_after_transition"
+
+[[nominal]]
+id = "NOM-006"
+name = "Artifact Hash Logging"
+description = "Verify cryptographic hash is computed for transition"
+input = { current_phase = "p3", event = "context_complete", artifacts = ["stakeholder_map.md"] }
+expected = { hash_computed = true, hash_algorithm = "SHA3-256", hash_length = 64 }
+
+[[nominal]]
+id = "NOM-007"
+name = "Quality Gate Evaluation"
+description = "Multiple quality gates pass correctly"
+input = { current_phase = "p4", event = "analysis_complete", gates = ["requirements_validated", "stakeholder_approved", "traceability_complete"] }
+expected = { all_gates_passed = true, transition_allowed = true }
+
+[[nominal]]
+id = "NOM-008"
+name = "Changelog Entry"
+description = "Verify changelog entry is created"
+input = { current_phase = "p10", next_phase = "p11", event = "planning_complete" }
+expected = { changelog_updated = true, entry_format = "TOML" }
+
+# =============================================================================
+# BOUNDARY CASES (20% - 4 vectors)
+# =============================================================================
+
+[[boundary]]
+id = "BND-001"
+name = "First Phase Entry"
+description = "Entry into initial phase p0"
+input = { initial_state = true, phase = "p0" }
+expected = { status = "success", artifacts_required = [] }
+
+[[boundary]]
+id = "BND-002"
+name = "Terminal Phase"
+description = "Transition to terminal phase p23 (Knowledge Transfer)"
+input = { current_phase = "p22", event = "deployment_complete", artifacts = ["deployment_report.md", "runbook.md"] }
+expected = { next_phase = "p23", is_terminal = true, no_outgoing_transitions = true }
+
+[[boundary]]
+id = "BND-003"
+name = "Empty Artifacts"
+description = "Transition with minimal artifacts"
+input = { current_phase = "p0", event = "skip_context", artifacts = [] }
+expected = { status = "error", error_code = "MISSING_ARTIFACTS" }
+
+[[boundary]]
+id = "BND-004"
+name = "Maximum Artifacts"
+description = "Transition with maximum allowed artifacts"
+input = { current_phase = "p5", event = "requirements_complete", artifacts = ["req1.md", "req2.md", "req3.md", "req4.md", "req5.md", "req6.md", "req7.md", "req8.md", "req9.md", "req10.md"] }
+expected = { status = "success", artifact_count = 10 }
+
+# =============================================================================
+# ADVERSARIAL CASES (15% - 3 vectors)
+# =============================================================================
+
+[[adversarial]]
+id = "ADV-001"
+name = "Illegal Backward Transition"
+description = "Attempt to transition backwards in phase order"
+input = { current_phase = "p6", event = "back_to_requirements" }
+expected = { status = "error", error_code = "ILLEGAL_TRANSITION", reason = "Backward transitions not permitted" }
+
+[[adversarial]]
+id = "ADV-002"
+name = "Skip Multiple Phases"
+description = "Attempt to skip required intermediate phases"
+input = { current_phase = "p3", event = "jump_to_implementation", target_phase = "p13" }
+expected = { status = "error", error_code = "PHASE_SKIP_NOT_ALLOWED", missing_phases = ["p4", "p5", "p6", "p7", "p8", "p9", "p10", "p11", "p12"] }
+
+[[adversarial]]
+id = "ADV-003"
+name = "Quality Gate Bypass"
+description = "Attempt to bypass quality gate via direct state manipulation"
+input = { current_phase = "p5", event = "force_transition", gates_passed = false }
+expected = { status = "error", error_code = "GATE_BLOCKED", blocked_by = ["requirements_validation_gate"] }
+
+# =============================================================================
+# REGRESSION CASES (10% - 2 vectors)
+# =============================================================================
+
+[[regression]]
+id = "REG-001"
+name = "Typestate Double-Use Bug"
+description = "Verify old state cannot be used after transition (regression for use-after-move)"
+input = { operation = "use_after_transition", old_phase = "p6", new_phase = "p7" }
+expected = { compile_error = true, error_message = "use of moved value" }
+
+[[regression]]
+id = "REG-002"
+name = "Concurrent Transition Race"
+description = "Verify no race condition in concurrent transition attempts"
+input = { concurrent_transitions = 2, phase = "p10" }
+expected = { exactly_one_succeeds = true, no_partial_state = true }
+
+# =============================================================================
+# PROPERTY-BASED TESTS (15% - 3 vectors)
+# =============================================================================
+
+[[property_based]]
+id = "PROP-001"
+name = "Monotonic Ranking"
+description = "All valid sequences have monotonically increasing phase rankings"
+generator = "arbitrary_sequence"
+invariant = "forall i < j: rank(phase[i]) < rank(phase[j])"
+trials = 1000
+
+[[property_based]]
+id = "PROP-002"
+name = "Hash Uniqueness"
+description = "Different states produce different hashes"
+generator = "distinct_states"
+invariant = "state1 != state2 => hash(state1) != hash(state2)"
+trials = 1000
+
+[[property_based]]
+id = "PROP-003"
+name = "Gate Completeness"
+description = "All transitions require passing at least one quality gate"
+generator = "all_transitions"
+invariant = "forall transition: gates_required(transition) >= 1"
+trials = 1000

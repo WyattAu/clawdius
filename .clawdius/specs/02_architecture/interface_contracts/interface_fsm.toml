@@ -1,0 +1,127 @@
+# Interface Contract: Nexus FSM Component
+# Component ID: COMP-FSM-001
+# Blue Paper: BP-NEXUS-FSM-001
+# Version: 1.0.0
+
+[contract]
+id = "IC-FSM-001"
+component = "COMP-FSM-001"
+version = "1.0.0"
+status = "APPROVED"
+created = "2026-03-01"
+
+[interface.Fsm]
+description = "Finite State Machine for Nexus lifecycle"
+type = "generic_struct"
+generic_param = "S: PhaseState"
+
+[[interface.Fsm.operations]]
+name = "transition"
+description = "Transition to next phase"
+input_type = "Event"
+output_type = "Result<Fsm<S::Next>, TransitionError>"
+consumes_self = true
+
+[interface.Fsm.operations.preconditions]
+- = "Self is in valid state"
+- = "Event is valid for current phase"
+- = "Exit gates pass for current phase"
+- = "Entry gates pass for target phase"
+
+[interface.Fsm.operations.postconditions]
+- = "New phase is active"
+- = "Transition logged in changelog"
+- = "Artifact hash computed"
+
+[[interface.Fsm.operations.errors]]
+code = "0x1001"
+name = "InvalidEvent"
+description = "Event not valid for current phase"
+recovery = "Check phase event matrix"
+
+[[interface.Fsm.operations.errors]]
+code = "0x1002"
+name = "ExitGateFailed"
+description = "Exit quality gate failed"
+recovery = "Fix artifact and retry"
+
+[[interface.Fsm.operations.errors]]
+code = "0x1003"
+name = "EntryGateFailed"
+description = "Entry quality gate failed"
+recovery = "Fix artifact and retry"
+
+[[interface.Fsm.operations.errors]]
+code = "0x1004"
+name = "ArtifactMissing"
+description = "Required artifact not found"
+recovery = "Generate required artifact"
+
+[[interface.Fsm.operations]]
+name = "phase"
+description = "Get current phase"
+input_type = "none"
+output_type = "Phase"
+consumes_self = false
+
+[interface.Fsm.operations.preconditions]
+- = "Fsm is initialized"
+
+[interface.Fsm.operations.postconditions]
+- = "Returns valid Phase enum variant"
+
+[interface.Phase]
+description = "24-phase enumeration"
+type = "enum"
+representation = "u8"
+variants = 24
+
+[interface.Phase.invariants]
+- = "Each variant is unique"
+- = "Index monotonically increases in sequence"
+- = "KnowledgeTransfer (23) is terminal"
+
+[interface.Event]
+description = "Phase transition events"
+type = "enum"
+variants = 24
+
+[interface.Event.invariants]
+- = "Each event maps to exactly one transition"
+- = "Events are idempotent"
+
+[interface.QualityGate]
+description = "Quality gate trait for phase validation"
+type = "trait"
+
+[[interface.QualityGate.operations]]
+name = "id"
+description = "Gate identifier"
+output_type = "&str"
+
+[[interface.QualityGate.operations]]
+name = "evaluate"
+description = "Evaluate gate for phase"
+input_type = ["Phase", "&ArtifactRegistry"]
+output_type = "Result<(), GateFailure>"
+
+[quality_gates]
+entry_gates_required = true
+exit_gates_required = true
+gate_composition = "conjunction"
+
+[invariants]
+- = "Phase transitions are deterministic"
+- = "Illegal states are unrepresentable (Typestate)"
+- = "All transitions are logged with cryptographic hash"
+- = "Artifact dependencies are satisfied at each phase"
+
+[performance]
+transition_time_max_us = 100
+hash_computation_max_us = 1000
+gate_evaluation_max_us = 10000
+
+[thread_safety]
+send = true
+sync = true
+concurrent_access = "Read-only phase check allowed"

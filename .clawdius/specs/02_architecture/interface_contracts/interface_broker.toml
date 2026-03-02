@@ -1,0 +1,180 @@
+# Interface Contract: HFT Broker Component
+# Component ID: COMP-BROKER-001
+# Blue Paper: BP-HFT-BROKER-001
+# Version: 1.0.0
+
+[contract]
+id = "IC-BROKER-001"
+component = "COMP-BROKER-001"
+version = "1.0.0"
+status = "APPROVED"
+created = "2026-03-01"
+
+[interface.RingBuffer]
+description = "Lock-free SPSC ring buffer"
+type = "generic_struct"
+generic_param = "T: Copy"
+
+[[interface.RingBuffer.operations]]
+name = "push"
+description = "Push item to buffer (producer)"
+input_type = "T"
+output_type = "Result<(), RingBufferError>"
+memory_ordering = "Release"
+
+[interface.RingBuffer.operations.preconditions]
+- = "Buffer is not full"
+
+[interface.RingBuffer.operations.postconditions]
+- = "Item written at head position"
+- = "Head advanced modulo capacity"
+- = "Release fence issued"
+
+[[interface.RingBuffer.operations.errors]]
+code = "0x5001"
+name = "RingBufferFull"
+description = "Buffer is full, cannot push"
+recovery = "Consumer must drain buffer"
+
+[[interface.RingBuffer.operations]]
+name = "pop"
+description = "Pop item from buffer (consumer)"
+input_type = "none"
+output_type = "Option<T>"
+memory_ordering = "Acquire"
+
+[interface.RingBuffer.operations.preconditions]
+- = "Buffer is not empty"
+
+[interface.RingBuffer.operations.postconditions]
+- = "Item read from tail position"
+- = "Tail advanced modulo capacity"
+- = "Acquire fence issued"
+
+[interface.RingBuffer.invariants]
+- = "Head and tail always in [0, capacity)"
+- = "Full: (head + 1) % capacity == tail"
+- = "Empty: head == tail"
+- = "Single producer, single consumer"
+
+[interface.WalletGuard]
+description = "Risk check engine"
+type = "struct"
+
+[[interface.WalletGuard.operations]]
+name = "validate"
+description = "Validate order against risk parameters"
+input_type = "&Order"
+output_type = "Result<(), RiskRejection>"
+
+[interface.WalletGuard.operations.preconditions]
+- = "Wallet state is consistent"
+- = "Risk parameters are loaded"
+
+[interface.WalletGuard.operations.postconditions]
+- = "All risk checks evaluated"
+- = "WCET < 100μs"
+
+[[interface.WalletGuard.operations.errors]]
+code = "0x5002"
+name = "PositionLimitExceeded"
+description = "Position would exceed max"
+recovery = "Reduce position size"
+
+[[interface.WalletGuard.operations.errors]]
+code = "0x5003"
+name = "OrderSizeLimitExceeded"
+description = "Order size exceeds max"
+recovery = "Reduce order size"
+
+[[interface.WalletGuard.operations.errors]]
+code = "0x5004"
+name = "DailyDrawdownExceeded"
+description = "Daily loss limit reached"
+recovery = "Halt trading for day"
+
+[[interface.WalletGuard.operations.errors]]
+code = "0x5005"
+name = "InsufficientMargin"
+description = "Not enough margin for order"
+recovery = "Add capital or reduce size"
+
+[interface.WalletGuard.checks]
+position_limit = { enabled = true, description = "Max position per symbol" }
+order_size = { enabled = true, description = "Max order quantity" }
+drawdown = { enabled = true, description = "Max daily PnL loss" }
+margin = { enabled = true, description = "Margin requirement check" }
+
+[interface.Signal]
+description = "Trading signal"
+type = "struct"
+
+[interface.Signal.fields]
+id = { type = "SignalId", description = "Unique identifier" }
+symbol = { type = "Symbol", description = "Trading symbol" }
+side = { type = "Side", description = "Buy/Sell" }
+quantity = { type = "Decimal", description = "Order quantity" }
+price = { type = "Option<Decimal>", description = "Limit price (optional)" }
+strategy = { type = "StrategyId", description = "Source strategy" }
+generated_at = { type = "Instant", description = "Generation timestamp" }
+
+[interface.Strategy]
+description = "Trading strategy trait"
+type = "trait"
+
+[[interface.Strategy.operations]]
+name = "id"
+description = "Strategy identifier"
+output_type = "StrategyId"
+
+[[interface.Strategy.operations]]
+name = "on_market_data"
+description = "Process market data tick"
+input_type = "&MarketData"
+output_type = "Option<Signal>"
+
+[[interface.Strategy.operations]]
+name = "on_fill"
+description = "Handle order fill"
+input_type = "&Fill"
+output_type = "()"
+
+[interface.NotificationGateway]
+description = "Multi-channel notification dispatcher"
+type = "struct"
+
+[[interface.NotificationGateway.operations]]
+name = "dispatch"
+description = "Dispatch notification"
+input_type = "Notification"
+output_type = "Result<(), NotificationError>"
+async = true
+
+[[interface.NotificationGateway.operations.errors]]
+code = "0x5006"
+name = "NotificationFailed"
+description = "Dispatch failed"
+recovery = "Retry with exponential backoff"
+
+[invariants]
+- = "Invalid orders always rejected by Wallet Guard"
+- = "Ring buffer indices always valid"
+- = "Signal dispatch completes in <1ms"
+- = "Notification dispatch completes in <100ms"
+
+[performance]
+signal_to_execution_max_us = 1000
+risk_check_max_us = 100
+market_data_processing_max_us = 1
+notification_dispatch_max_ms = 100
+
+[compliance]
+sec_15c3_5 = true
+mifid_ii = true
+audit_trail = true
+timestamp_precision = "microsecond"
+
+[thread_safety]
+ring_buffer = "SPSC lock-free"
+wallet = "Single-threaded mutable access required"
+notifications = "Async channels"

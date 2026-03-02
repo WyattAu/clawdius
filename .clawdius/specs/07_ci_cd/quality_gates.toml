@@ -1,0 +1,419 @@
+# Quality Gates Configuration
+# Document ID: QUALITY-GATES-001
+# Version: 1.0.0
+# Phase: 6 (CI/CD Engineering)
+# Status: APPROVED
+# Created: 2026-03-01
+# Classification: Quality Assurance
+
+[metadata]
+document_id = "QUALITY-GATES-001"
+version = "1.0.0"
+created = "2026-03-01"
+enforcement = "strict"
+
+# ============================================================================
+# STAGE GATES
+# ============================================================================
+
+# Each stage gate must pass before proceeding to the next stage
+# Gates are evaluated in order: lint → test → security → bench → lean4 → coverage
+
+[stage.lint]
+name = "Lint Quality Gate"
+blocking = true
+timeout_minutes = 10
+
+[stage.lint.criteria]
+clippy_warnings = 0
+clippy_errors = 0
+rustfmt_check = "pass"
+deny_advisories = 0
+deny_licenses = 0
+deny_bans = 0
+machete_unused = 0
+
+[stage.test]
+name = "Test Quality Gate"
+blocking = true
+timeout_minutes = 30
+
+[stage.test.criteria]
+test_pass_rate_pct = 100.0
+test_count_min = 365
+flaky_test_max = 0
+mutation_score_min_pct = 85.0
+
+[stage.security]
+name = "Security Quality Gate"
+blocking = true
+timeout_minutes = 15
+
+[stage.security.criteria]
+audit_cves_critical = 0
+audit_cves_high = 0
+audit_cves_medium_max = 3
+vet_unaudited_max = 0
+secrets_detected = 0
+
+[stage.bench]
+name = "Performance Quality Gate"
+blocking = true
+timeout_minutes = 20
+
+[stage.bench.criteria]
+hft_regression_max_pct = 5.0
+boot_regression_max_pct = 10.0
+standard_regression_max_pct = 10.0
+throughput_regression_max_pct = 5.0
+
+[stage.lean4]
+name = "Formal Verification Gate"
+blocking = false
+timeout_minutes = 10
+
+[stage.lean4.criteria]
+proofs_passed = "all"
+proofs_sorry_max = 0
+type_check = "pass"
+
+[stage.coverage]
+name = "Coverage Quality Gate"
+blocking = true
+timeout_minutes = 15
+
+[stage.coverage.criteria]
+line_coverage_min_pct = 85.0
+branch_coverage_min_pct = 80.0
+function_coverage_min_pct = 90.0
+new_code_coverage_min_pct = 95.0
+
+# ============================================================================
+# CLIPPY LINT RULES
+# ============================================================================
+
+[clippy]
+treat_warnings_as_errors = true
+
+[clippy.deny]
+lints = [
+    "clippy::all",
+    "clippy::pedantic",
+    "clippy::unwrap_used",
+    "clippy::expect_used",
+    "clippy::panic",
+    "clippy::todo",
+    "clippy::unimplemented",
+    "clippy::unreachable",
+    "clippy::exit",
+    "clippy::mem_forget",
+    "clippy::same_functions_in_if_condition",
+    "clippy::wildcard_enum_match_arm",
+]
+
+[clippy.warn]
+lints = [
+    "clippy::nursery",
+    "clippy::cargo",
+    "clippy::missing_docs_in_private_items",
+    "clippy::missing_errors_doc",
+    "clippy::missing_panics_doc",
+]
+
+[clippy.allow]
+lints = [
+    "clippy::module_name_repetitions",
+    "clippy::too_many_lines",
+    "clippy::cognitive_complexity",
+]
+
+# ============================================================================
+# COVERAGE THRESHOLDS BY COMPONENT
+# ============================================================================
+
+[coverage.components]
+# Critical components require higher coverage
+
+[coverage.components.host_kernel]
+path = "src/host_kernel/**"
+line_min_pct = 95.0
+branch_min_pct = 90.0
+
+[coverage.components.nexus_fsm]
+path = "src/nexus/**"
+line_min_pct = 95.0
+branch_min_pct = 90.0
+
+[coverage.components.sentinel]
+path = "src/sentinel/**"
+line_min_pct = 95.0
+branch_min_pct = 90.0
+
+[coverage.components.hft_broker]
+path = "src/broker/**"
+line_min_pct = 98.0
+branch_min_pct = 95.0
+
+[coverage.components.brain]
+path = "src/brain/**"
+line_min_pct = 90.0
+branch_min_pct = 85.0
+
+[coverage.components.graph_rag]
+path = "src/graph/**"
+line_min_pct = 85.0
+branch_min_pct = 80.0
+
+[coverage.components.tui]
+path = "src/tui/**"
+line_min_pct = 80.0
+branch_min_pct = 75.0
+
+# ============================================================================
+# PERFORMANCE THRESHOLDS
+# ============================================================================
+
+[performance.hft_critical]
+description = "HFT critical path - strictest thresholds"
+blocking = true
+block_merge = true
+
+[performance.hft_critical.metrics]
+ring_buffer_push_ns_max = 100
+ring_buffer_pop_ns_max = 100
+ring_buffer_roundtrip_ns_max = 200
+wallet_guard_us_max = 100
+hft_pipeline_ms_max = 1
+regression_threshold_pct = 5.0
+
+[performance.boot]
+description = "Boot and initialization"
+blocking = true
+block_merge = true
+
+[performance.boot.metrics]
+boot_ms_max = 20
+regression_threshold_pct = 10.0
+
+[performance.standard]
+description = "Standard components"
+blocking = true
+block_merge = false
+
+[performance.standard.metrics]
+fsm_phase_us_max = 1
+fsm_cycle_us_max = 50
+sandbox_spawn_ms_max = 150
+wasm_rpc_ms_max = 1
+graph_rag_ms_max = 50
+tui_frame_ms_max = 16.67
+regression_threshold_pct = 10.0
+
+[performance.throughput]
+description = "Throughput requirements"
+blocking = true
+block_merge = true
+
+[performance.throughput.metrics]
+market_data_msg_per_sec_min = 10000000
+file_parsing_per_sec_min = 2000
+regression_threshold_pct = -5.0  # Negative means decrease is failure
+
+# ============================================================================
+# SECURITY THRESHOLDS
+# ============================================================================
+
+[security.vulnerabilities]
+# CVE severity thresholds
+critical_max = 0
+high_max = 0
+medium_max = 3
+low_max = 10
+info_max = 50
+
+[security.vulnerabilities.exceptions]
+# Allowed vulnerabilities with justification
+# Format: CVE-ID = { expires = "YYYY-MM-DD", reason = "..." }
+
+[security.dependencies]
+# Dependency security requirements
+unmaintained_max = 0
+yanked_max = 0
+duplicate_versions_max = 5
+
+[security.supply_chain]
+# Supply chain security requirements
+vet_coverage_min_pct = 100.0
+audited_dependencies_pct = 100.0
+unsafe_deps_require_audit = true
+
+[security.secrets]
+# Secret detection
+secrets_detected_max = 0
+entropy_threshold = 4.5
+patterns_checked = [
+    "api_key",
+    "secret",
+    "password",
+    "token",
+    "private_key",
+]
+
+# ============================================================================
+# MUTATION TESTING THRESHOLDS
+# ============================================================================
+
+[mutation]
+enabled = true
+timeout_minutes = 60
+parallel_workers = 4
+
+[mutation.thresholds]
+# Mutation score = (killed / total) * 100
+score_min_pct = 85.0
+# For critical components
+hft_score_min_pct = 95.0
+security_score_min_pct = 95.0
+
+[mutation.operators]
+# Mutation operators to use
+included = [
+    "Arithmetic",
+    "Logical",
+    "Comparison",
+    "Boolean",
+    "Boundary",
+    "Negate",
+]
+
+[mutation.exceptions]
+# Files/modules to exclude from mutation testing
+exclude = [
+    "src/main.rs",
+    "tests/**",
+    "benches/**",
+]
+
+# ============================================================================
+# DOCUMENTATION THRESHOLDS
+# ============================================================================
+
+[documentation]
+# Documentation quality requirements
+public_items_documented_pct = 100.0
+examples_compile = true
+links_valid = true
+
+[documentation.missing_docs]
+# Allow missing docs for specific categories
+allow_private = true
+allow_crate_level = false
+allow_impl = true
+
+# ============================================================================
+# BUILD QUALITY GATES
+# ============================================================================
+
+[build.warnings]
+# Treat compiler warnings as errors
+warnings_as_errors = true
+# Specific warnings to deny
+deny = [
+    "unused_variables",
+    "unused_mut",
+    "dead_code",
+    "unused_imports",
+    "unused_must_use",
+]
+
+[build.size]
+# Binary size constraints (release)
+binary_max_mb = 50
+debug_binary_max_mb = 200
+
+[build.time]
+# Build time constraints
+debug_build_max_minutes = 5
+release_build_max_minutes = 15
+
+# ============================================================================
+# LEAN4 FORMAL VERIFICATION GATES
+# ============================================================================
+
+[lean4]
+enabled = true
+blocking = false  # Non-blocking for now, will become blocking later
+
+[lean4.proofs]
+# Required proofs
+fsm_termination = true
+fsm_deadlock_freedom = true
+sandbox_isolation = true
+capability_monotonicity = true
+
+[lean4.exceptions]
+# Files allowed to contain `sorry` (temporary)
+sorry_allowed_in = []
+
+# ============================================================================
+# GATE BYPASS POLICIES
+# ============================================================================
+
+[bypass]
+# Who can bypass quality gates
+allowed_roles = ["admin", "release-manager"]
+require_justification = true
+log_bypasses = true
+
+[bypass.expiration]
+# Bypass expires after this time
+max_hours = 24
+auto_revoke = true
+
+[bypass.audit]
+# Audit trail for bypasses
+retention_days = 365
+notify_on_bypass = ["security-team", "qa-team"]
+
+# ============================================================================
+# QUALITY SCORE CALCULATION
+# ============================================================================
+
+[score]
+# Overall quality score calculation
+# Score = weighted average of all gate scores
+
+[score.weights]
+lint = 0.15
+test = 0.25
+security = 0.25
+performance = 0.15
+coverage = 0.15
+lean4 = 0.05
+
+[score.thresholds]
+# Minimum quality score to pass
+passing_min = 85.0
+excellent_min = 95.0
+blocking_min = 80.0
+
+# ============================================================================
+# REPORTING
+# ============================================================================
+
+[reporting]
+# Quality gate reporting configuration
+
+[reporting.formats]
+output = ["json", "html", "markdown"]
+include_history = true
+include_trends = true
+
+[reporting.destinations]
+github_pr_comment = true
+slack_notification = true
+email_on_failure = true
+
+[reporting.retention]
+days = 90
+include_failed_runs = true

@@ -1,0 +1,199 @@
+# Interface Contract: Sentinel Sandbox Component
+# Component ID: COMP-SENTINEL-001
+# Blue Paper: BP-SENTINEL-001
+# Version: 1.0.0
+
+[contract]
+id = "IC-SENTINEL-001"
+component = "COMP-SENTINEL-001"
+version = "1.0.0"
+status = "APPROVED"
+created = "2026-03-01"
+
+[interface.Sentinel]
+description = "Sandbox management and capability enforcement"
+type = "struct"
+
+[[interface.Sentinel.operations]]
+name = "spawn"
+description = "Spawn sandboxed execution"
+input_type = "SpawnRequest"
+output_type = "Result<Sandbox, SandboxError>"
+async = true
+
+[interface.Sentinel.operations.preconditions]
+- = "Toolchain is recognized"
+- = "Trust level is valid"
+- = "Required capabilities are available"
+
+[interface.Sentinel.operations.postconditions]
+- = "Sandbox is isolated per tier specification"
+- = "Capabilities are attenuated"
+- = "Timeout is enforced"
+
+[[interface.Sentinel.operations.errors]]
+code = "0x2001"
+name = "SandboxSpawnFailed"
+description = "Sandbox creation failed"
+recovery = "Retry with lower tier"
+
+[[interface.Sentinel.operations.errors]]
+code = "0x2002"
+name = "CapabilityDenied"
+description = "Permission not granted"
+recovery = "Request capability from host"
+
+[[interface.Sentinel.operations.errors]]
+code = "0x2008"
+name = "SandboxTimeout"
+description = "Execution exceeded timeout"
+recovery = "Increase timeout or optimize"
+
+[[interface.Sentinel.operations]]
+name = "validate_settings"
+description = "Validate settings.toml for safety"
+input_type = "&Path"
+output_type = "Result<Settings, ValidationError>"
+
+[interface.Sentinel.operations.preconditions]
+- = "Path exists and is readable"
+- = "Global policy is loaded"
+
+[interface.Sentinel.operations.postconditions]
+- = "No forbidden environment keys present"
+- = "All commands are in allowlist"
+- = "All mounts are within project root"
+
+[[interface.Sentinel.operations.errors]]
+code = "0x2004"
+name = "SettingsInvalid"
+description = "TOML validation failed"
+recovery = "Fix settings file"
+
+[[interface.Sentinel.operations.errors]]
+code = "0x2005"
+name = "ForbiddenKey"
+description = "Secret detected in environment"
+recovery = "Remove forbidden key"
+
+[[interface.Sentinel.operations.errors]]
+code = "0x2006"
+name = "UnsafeMount"
+description = "Mount path outside project"
+recovery = "Use relative path within project"
+
+[[interface.Sentinel.operations]]
+name = "derive_capability"
+description = "Derive attenuated capability"
+input_type = ["&Capability", "PermissionSet"]
+output_type = "Result<Capability, CapabilityError>"
+
+[interface.Sentinel.operations.preconditions]
+- = "Parent capability is valid (signature verified)"
+- = "Subset is actually subset of parent permissions"
+
+[interface.Sentinel.operations.postconditions]
+- = "Child permissions ⊆ parent permissions"
+- = "Child signature is valid"
+
+[[interface.Sentinel.operations.errors]]
+code = "0x2003"
+name = "CapabilityExpired"
+description = "Token has expired"
+recovery = "Request new capability"
+
+[[interface.Sentinel.operations]]
+name = "proxy_request"
+description = "Proxy authenticated request"
+input_type = "ProxiedRequest"
+output_type = "Result<Response, ProxyError>"
+async = true
+
+[interface.Sentinel.operations.preconditions]
+- = "Request has valid capability"
+- = "Credential exists in keyring"
+
+[interface.Sentinel.operations.postconditions]
+- = "Secret never crosses sandbox boundary"
+- = "Secret memory is zeroed after use"
+
+[[interface.Sentinel.operations.errors]]
+code = "0x2007"
+name = "SecretNotFound"
+description = "Credential not in keyring"
+recovery = "Store secret in OS keyring"
+
+[interface.Capability]
+description = "Unforgeable capability token"
+type = "struct"
+
+[interface.Capability.fields]
+resource = { type = "ResourceScope", description = "Resource scope" }
+permissions = { type = "PermissionSet", description = "Permission bitmap" }
+signature = { type = "[u8; 32]", description = "HMAC-SHA256 signature" }
+expires_at = { type = "Option<Instant>", description = "Optional expiry" }
+
+[interface.Capability.invariants]
+- = "Signature is valid HMAC with host key"
+- = "Permissions cannot be modified after creation"
+- = "Derivation only attenuates permissions"
+
+[interface.SandboxTier]
+description = "Sandbox isolation tier"
+type = "enum"
+variants = ["Tier1", "Tier2", "Tier3", "Tier4"]
+
+[interface.SandboxTier.tiers.Tier1]
+name = "Native Passthrough"
+isolation = "none"
+toolchains = ["Rust", "Cpp", "Vulkan"]
+trust_required = "TrustedAudited"
+
+[interface.SandboxTier.tiers.Tier2]
+name = "OS Container"
+isolation = "bubblewrap/podman"
+toolchains = ["NodeJs", "Python", "Ruby"]
+trust_required = "Trusted"
+
+[interface.SandboxTier.tiers.Tier3]
+name = "WASM Sandbox"
+isolation = "wasmtime"
+toolchains = ["LLMReasoning"]
+trust_required = "Untrusted"
+
+[interface.SandboxTier.tiers.Tier4]
+name = "Hardened Container"
+isolation = "gVisor/Kata"
+toolchains = ["*"]
+trust_required = "Untrusted"
+
+[interface.Permission]
+description = "Permission flags"
+type = "bitflags"
+bits = 8
+
+[interface.Permission.flags]
+FS_READ = 0b00000001
+FS_WRITE = 0b00000010
+NET_TCP = 0b00000100
+NET_UDP = 0b00001000
+EXEC_SPAWN = 0b00010000
+SECRET_ACCESS = 0b00100000
+ENV_READ = 0b01000000
+ENV_WRITE = 0b10000000
+
+[invariants]
+- = "Capabilities are unforgeable (HMAC security)"
+- = "Derivation only attenuates permissions"
+- = "Secrets never cross sandbox boundary"
+- = "Settings validation prevents RCE"
+
+[security]
+least_privilege = true
+capability_derivation = "attenuation-only"
+secret_isolation = true
+settings_validation = true
+
+[performance]
+sandbox_spawn_max_ms = 50
+capability_validation_max_us = 100

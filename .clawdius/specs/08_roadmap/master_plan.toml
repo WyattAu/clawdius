@@ -1,0 +1,574 @@
+# Master Implementation Plan
+# Topological sort of all implementation tasks
+# Generated: 2026-03-01
+# Phase: 8 (Execution Graph Generation)
+
+[metadata]
+version = "1.0.0"
+created = "2026-03-01"
+status = "APPROVED"
+total_tasks = 47
+critical_path_length = 23
+
+[milestones]
+
+[milestones.m1]
+name = "Core Infrastructure"
+description = "Foundation components: Host Kernel and FSM"
+tasks = ["TASK-HOST-001", "TASK-HOST-002", "TASK-HOST-003", "TASK-HOST-004", "TASK-HOST-005", "TASK-FSM-001", "TASK-FSM-002", "TASK-FSM-003", "TASK-FSM-004"]
+estimated_effort = "40h"
+
+[milestones.m2]
+name = "Security Layer"
+description = "Sentinel Sandbox and Brain WASM components"
+tasks = ["TASK-SENT-001", "TASK-SENT-002", "TASK-SENT-003", "TASK-SENT-004", "TASK-SENT-005", "TASK-BRAIN-001", "TASK-BRAIN-002", "TASK-BRAIN-003", "TASK-BRAIN-004"]
+estimated_effort = "48h"
+
+[milestones.m3]
+name = "Intelligence Layer"
+description = "Graph-RAG knowledge store"
+tasks = ["TASK-GRAPH-001", "TASK-GRAPH-002", "TASK-GRAPH-003", "TASK-GRAPH-004", "TASK-GRAPH-005"]
+estimated_effort = "32h"
+
+[milestones.m4]
+name = "Domain Layer"
+description = "HFT Broker with Wallet Guard"
+tasks = ["TASK-BROKER-001", "TASK-BROKER-002", "TASK-BROKER-003", "TASK-BROKER-004", "TASK-BROKER-005"]
+estimated_effort = "40h"
+
+[milestones.m5]
+name = "Interface Layer"
+description = "Clawdius-Pit TUI and integration"
+tasks = ["TASK-TUI-001", "TASK-TUI-002", "TASK-TUI-003", "TASK-TUI-004", "TASK-INT-001", "TASK-INT-002", "TASK-INT-003"]
+estimated_effort = "36h"
+
+[milestones.m6]
+name = "Verification & Validation"
+description = "Testing, security audit, performance validation"
+tasks = ["TASK-TEST-001", "TASK-TEST-002", "TASK-SEC-001", "TASK-PERF-001", "TASK-DOC-001"]
+estimated_effort = "32h"
+
+[critical_path]
+tasks = [
+    "TASK-HOST-001", "TASK-HOST-002", "TASK-FSM-001", "TASK-FSM-002",
+    "TASK-SENT-001", "TASK-SENT-002", "TASK-BRAIN-001", "TASK-GRAPH-001",
+    "TASK-GRAPH-002", "TASK-BROKER-001", "TASK-BROKER-002", "TASK-TUI-001",
+    "TASK-INT-001", "TASK-TEST-001", "TASK-SEC-001", "TASK-PERF-001"
+]
+total_effort = "128h"
+
+# =============================================================================
+# MILESTONE 1: Core Infrastructure
+# =============================================================================
+
+[[task]]
+id = "TASK-HOST-001"
+description = "Implement monoio runtime initialization and configuration"
+component = "COMP-HOST-001"
+milestone = "m1"
+dependencies = []
+outputs = ["src/host/runtime.rs"]
+verification = "cargo test host::runtime"
+estimated_effort = "4h"
+priority = "critical"
+traces_to = ["REQ-6.2"]
+
+[[task]]
+id = "TASK-HOST-002"
+description = "Implement HostKernel struct with lifecycle management"
+component = "COMP-HOST-001"
+milestone = "m1"
+dependencies = ["TASK-HOST-001"]
+outputs = ["src/host/kernel.rs"]
+verification = "cargo test host::kernel"
+estimated_effort = "6h"
+priority = "critical"
+traces_to = ["REQ-1.1", "REQ-6.1"]
+
+[[task]]
+id = "TASK-HOST-003"
+description = "Implement HAL trait and Linux backend (bubblewrap, libsecret, inotify)"
+component = "COMP-HOST-001"
+milestone = "m1"
+dependencies = ["TASK-HOST-002"]
+outputs = ["src/host/hal.rs", "src/host/hal/linux.rs"]
+verification = "cargo test host::hal"
+estimated_effort = "8h"
+priority = "critical"
+traces_to = ["REQ-6.3"]
+
+[[task]]
+id = "TASK-HOST-004"
+description = "Implement HAL macOS backend (sandbox-exec, Keychain, fsevents)"
+component = "COMP-HOST-001"
+milestone = "m1"
+dependencies = ["TASK-HOST-003"]
+outputs = ["src/host/hal/macos.rs"]
+verification = "cargo test --target aarch64-apple-darwin host::hal"
+estimated_effort = "6h"
+priority = "high"
+traces_to = ["REQ-6.3"]
+
+[[task]]
+id = "TASK-HOST-005"
+description = "Implement ComponentRegistry with thread-safe access"
+component = "COMP-HOST-001"
+milestone = "m1"
+dependencies = ["TASK-HOST-002"]
+outputs = ["src/host/registry.rs"]
+verification = "cargo test host::registry"
+estimated_effort = "4h"
+priority = "high"
+traces_to = ["REQ-1.1"]
+
+[[task]]
+id = "TASK-FSM-001"
+description = "Implement 24-phase enumeration with Typestate pattern"
+component = "COMP-FSM-001"
+milestone = "m1"
+dependencies = ["TASK-HOST-002"]
+outputs = ["src/fsm/phase.rs", "src/fsm/state.rs"]
+verification = "cargo test fsm::phase"
+estimated_effort = "6h"
+priority = "critical"
+traces_to = ["REQ-1.1", "REQ-1.2"]
+
+[[task]]
+id = "TASK-FSM-002"
+description = "Implement transition engine with quality gate evaluation"
+component = "COMP-FSM-001"
+milestone = "m1"
+dependencies = ["TASK-FSM-001"]
+outputs = ["src/fsm/transition.rs", "src/fsm/gate.rs"]
+verification = "cargo test fsm::transition"
+estimated_effort = "8h"
+priority = "critical"
+traces_to = ["REQ-1.1", "REQ-4.2"]
+
+[[task]]
+id = "TASK-FSM-003"
+description = "Implement ArtifactRegistry with cryptographic hashing"
+component = "COMP-FSM-001"
+milestone = "m1"
+dependencies = ["TASK-FSM-001"]
+outputs = ["src/fsm/artifact.rs"]
+verification = "cargo test fsm::artifact"
+estimated_effort = "4h"
+priority = "high"
+traces_to = ["REQ-1.3"]
+
+[[task]]
+id = "TASK-FSM-004"
+description = "Implement changelog service integration"
+component = "COMP-FSM-001"
+milestone = "m1"
+dependencies = ["TASK-FSM-003"]
+outputs = ["src/fsm/changelog.rs"]
+verification = "cargo test fsm::changelog"
+estimated_effort = "4h"
+priority = "medium"
+traces_to = ["REQ-1.3"]
+
+# =============================================================================
+# MILESTONE 2: Security Layer
+# =============================================================================
+
+[[task]]
+id = "TASK-SENT-001"
+description = "Implement 4-tier sandbox selection algorithm"
+component = "COMP-SENTINEL-001"
+milestone = "m2"
+dependencies = ["TASK-HOST-003"]
+outputs = ["src/sentinel/tier.rs", "src/sentinel/selector.rs"]
+verification = "cargo test sentinel::tier"
+estimated_effort = "6h"
+priority = "critical"
+traces_to = ["REQ-3.1"]
+
+[[task]]
+id = "TASK-SENT-002"
+description = "Implement capability token system with HMAC signatures"
+component = "COMP-SENTINEL-001"
+milestone = "m2"
+dependencies = ["TASK-SENT-001"]
+outputs = ["src/sentinel/capability.rs", "src/sentinel/derivation.rs"]
+verification = "cargo test sentinel::capability"
+estimated_effort = "8h"
+priority = "critical"
+traces_to = ["REQ-3.1", "REQ-3.2"]
+
+[[task]]
+id = "TASK-SENT-003"
+description = "Implement Settings.toml validation (anti-RCE)"
+component = "COMP-SENTINEL-001"
+milestone = "m2"
+dependencies = ["TASK-SENT-001"]
+outputs = ["src/sentinel/validator.rs"]
+verification = "cargo test sentinel::validator"
+estimated_effort = "4h"
+priority = "critical"
+traces_to = ["REQ-3.4"]
+
+[[task]]
+id = "TASK-SENT-004"
+description = "Implement secret proxy with keyring integration"
+component = "COMP-SENTINEL-001"
+milestone = "m2"
+dependencies = ["TASK-HOST-003", "TASK-SENT-002"]
+outputs = ["src/sentinel/secret.rs"]
+verification = "cargo test sentinel::secret"
+estimated_effort = "6h"
+priority = "high"
+traces_to = ["REQ-3.3"]
+
+[[task]]
+id = "TASK-SENT-005"
+description = "Implement sandbox spawner with bubblewrap backend"
+component = "COMP-SENTINEL-001"
+milestone = "m2"
+dependencies = ["TASK-SENT-002", "TASK-SENT-003"]
+outputs = ["src/sentinel/spawner.rs", "src/sentinel/backends/bubblewrap.rs"]
+verification = "cargo test sentinel::spawner"
+estimated_effort = "8h"
+priority = "high"
+traces_to = ["REQ-3.1"]
+
+[[task]]
+id = "TASK-BRAIN-001"
+description = "Implement wasmtime runtime integration with fuel limiting"
+component = "COMP-BRAIN-001"
+milestone = "m2"
+dependencies = ["TASK-SENT-002"]
+outputs = ["src/brain/runtime.rs", "src/brain/wasm.rs"]
+verification = "cargo test brain::runtime"
+estimated_effort = "6h"
+priority = "critical"
+traces_to = ["REQ-3.2"]
+
+[[task]]
+id = "TASK-BRAIN-002"
+description = "Implement Brain-Host RPC protocol v1.0.0"
+component = "COMP-BRAIN-001"
+milestone = "m2"
+dependencies = ["TASK-BRAIN-001"]
+outputs = ["src/brain/rpc.rs", "src/brain/protocol.rs"]
+verification = "cargo test brain::rpc"
+estimated_effort = "8h"
+priority = "critical"
+traces_to = ["REQ-4.1"]
+
+[[task]]
+id = "TASK-BRAIN-003"
+description = "Implement LLM provider orchestration via genai"
+component = "COMP-BRAIN-001"
+milestone = "m2"
+dependencies = ["TASK-BRAIN-002"]
+outputs = ["src/brain/provider.rs", "src/brain/orchestrator.rs"]
+verification = "cargo test brain::provider"
+estimated_effort = "6h"
+priority = "high"
+traces_to = ["REQ-2.5"]
+
+[[task]]
+id = "TASK-BRAIN-004"
+description = "Implement SOP validation engine"
+component = "COMP-BRAIN-001"
+milestone = "m2"
+dependencies = ["TASK-BRAIN-002"]
+outputs = ["src/brain/sop.rs", "src/brain/rules.rs"]
+verification = "cargo test brain::sop"
+estimated_effort = "6h"
+priority = "high"
+traces_to = ["REQ-4.1", "REQ-4.4"]
+
+# =============================================================================
+# MILESTONE 3: Intelligence Layer
+# =============================================================================
+
+[[task]]
+id = "TASK-GRAPH-001"
+description = "Implement SQLite AST schema and query engine"
+component = "COMP-GRAPH-001"
+milestone = "m3"
+dependencies = ["TASK-HOST-002"]
+outputs = ["src/graph/ast.rs", "src/graph/schema.sql"]
+verification = "cargo test graph::ast"
+estimated_effort = "8h"
+priority = "critical"
+traces_to = ["REQ-2.1"]
+
+[[task]]
+id = "TASK-GRAPH-002"
+description = "Implement tree-sitter parsing pipeline with language detection"
+component = "COMP-GRAPH-001"
+milestone = "m3"
+dependencies = ["TASK-GRAPH-001"]
+outputs = ["src/graph/parser.rs", "src/graph/languages.rs"]
+verification = "cargo test graph::parser"
+estimated_effort = "8h"
+priority = "critical"
+traces_to = ["REQ-2.1"]
+
+[[task]]
+id = "TASK-GRAPH-003"
+description = "Implement LanceDB vector store with embedding generation"
+component = "COMP-GRAPH-001"
+milestone = "m3"
+dependencies = ["TASK-GRAPH-001"]
+outputs = ["src/graph/vector.rs", "src/graph/embedding.rs"]
+verification = "cargo test graph::vector"
+estimated_effort = "6h"
+priority = "high"
+traces_to = ["REQ-2.2"]
+
+[[task]]
+id = "TASK-GRAPH-004"
+description = "Implement hybrid query with result fusion"
+component = "COMP-GRAPH-001"
+milestone = "m3"
+dependencies = ["TASK-GRAPH-002", "TASK-GRAPH-003"]
+outputs = ["src/graph/query.rs", "src/graph/ranker.rs"]
+verification = "cargo test graph::query"
+estimated_effort = "6h"
+priority = "high"
+traces_to = ["REQ-2.1", "REQ-2.2"]
+
+[[task]]
+id = "TASK-GRAPH-005"
+description = "Implement MCP host with tool registry"
+component = "COMP-GRAPH-001"
+milestone = "m3"
+dependencies = ["TASK-GRAPH-004"]
+outputs = ["src/graph/mcp.rs", "src/graph/tools.rs"]
+verification = "cargo test graph::mcp"
+estimated_effort = "4h"
+priority = "medium"
+traces_to = ["REQ-2.4"]
+
+# =============================================================================
+# MILESTONE 4: Domain Layer
+# =============================================================================
+
+[[task]]
+id = "TASK-BROKER-001"
+description = "Implement lock-free SPSC ring buffer with CachePadded atomics"
+component = "COMP-BROKER-001"
+milestone = "m4"
+dependencies = ["TASK-HOST-002"]
+outputs = ["src/broker/ring_buffer.rs"]
+verification = "cargo test broker::ring_buffer --release"
+estimated_effort = "8h"
+priority = "critical"
+traces_to = ["REQ-5.2"]
+
+[[task]]
+id = "TASK-BROKER-002"
+description = "Implement Wallet Guard with 4 risk checks (SEC 15c3-5)"
+component = "COMP-BROKER-001"
+milestone = "m4"
+dependencies = ["TASK-BROKER-001"]
+outputs = ["src/broker/wallet_guard.rs", "src/broker/risk.rs"]
+verification = "cargo test broker::wallet_guard"
+estimated_effort = "8h"
+priority = "critical"
+traces_to = ["REQ-5.3"]
+
+[[task]]
+id = "TASK-BROKER-003"
+description = "Implement arena allocator for zero-GC hot path"
+component = "COMP-BROKER-001"
+milestone = "m4"
+dependencies = ["TASK-BROKER-001"]
+outputs = ["src/broker/arena.rs"]
+verification = "cargo test broker::arena"
+estimated_effort = "6h"
+priority = "high"
+traces_to = ["REQ-5.2"]
+
+[[task]]
+id = "TASK-BROKER-004"
+description = "Implement signal engine with strategy interface"
+component = "COMP-BROKER-001"
+milestone = "m4"
+dependencies = ["TASK-BROKER-002", "TASK-BROKER-003"]
+outputs = ["src/broker/signal.rs", "src/broker/strategy.rs"]
+verification = "cargo test broker::signal"
+estimated_effort = "6h"
+priority = "high"
+traces_to = ["REQ-5.1"]
+
+[[task]]
+id = "TASK-BROKER-005"
+description = "Implement notification gateway (Matrix, WhatsApp, Telegram)"
+component = "COMP-BROKER-001"
+milestone = "m4"
+dependencies = ["TASK-BROKER-004"]
+outputs = ["src/broker/notification.rs", "src/broker/bridges.rs"]
+verification = "cargo test broker::notification"
+estimated_effort = "6h"
+priority = "medium"
+traces_to = ["REQ-5.4"]
+
+# =============================================================================
+# MILESTONE 5: Interface Layer
+# =============================================================================
+
+[[task]]
+id = "TASK-TUI-001"
+description = "Implement Clawdius-Pit TUI framework with ratatui"
+component = "COMP-TUI-001"
+milestone = "m5"
+dependencies = ["TASK-FSM-002", "TASK-GRAPH-004"]
+outputs = ["src/tui/app.rs", "src/tui/ui.rs"]
+verification = "cargo test tui::app"
+estimated_effort = "8h"
+priority = "high"
+traces_to = ["REQ-6.2"]
+
+[[task]]
+id = "TASK-TUI-002"
+description = "Implement phase dashboard and status views"
+component = "COMP-TUI-001"
+milestone = "m5"
+dependencies = ["TASK-TUI-001"]
+outputs = ["src/tui/views/dashboard.rs", "src/tui/views/status.rs"]
+verification = "cargo test tui::views"
+estimated_effort = "6h"
+priority = "medium"
+traces_to = ["REQ-6.2"]
+
+[[task]]
+id = "TASK-TUI-003"
+description = "Implement chat interface with Brain integration"
+component = "COMP-TUI-001"
+milestone = "m5"
+dependencies = ["TASK-TUI-001", "TASK-BRAIN-003"]
+outputs = ["src/tui/views/chat.rs"]
+verification = "cargo test tui::chat"
+estimated_effort = "6h"
+priority = "high"
+traces_to = ["REQ-2.5"]
+
+[[task]]
+id = "TASK-TUI-004"
+description = "Implement broker monitoring dashboard"
+component = "COMP-TUI-001"
+milestone = "m5"
+dependencies = ["TASK-TUI-001", "TASK-BROKER-004"]
+outputs = ["src/tui/views/broker.rs"]
+verification = "cargo test tui::broker"
+estimated_effort = "4h"
+priority = "medium"
+traces_to = ["REQ-5.4"]
+
+[[task]]
+id = "TASK-INT-001"
+description = "Implement CLI command dispatcher"
+component = "COMP-HOST-001"
+milestone = "m5"
+dependencies = ["TASK-FSM-002", "TASK-GRAPH-004"]
+outputs = ["src/cli/dispatcher.rs", "src/cli/commands.rs"]
+verification = "cargo test cli::dispatcher"
+estimated_effort = "6h"
+priority = "critical"
+traces_to = ["REQ-1.1"]
+
+[[task]]
+id = "TASK-INT-002"
+description = "Implement end-to-end chat workflow"
+component = "COMP-HOST-001"
+milestone = "m5"
+dependencies = ["TASK-INT-001", "TASK-BRAIN-003", "TASK-GRAPH-004"]
+outputs = ["src/workflows/chat.rs"]
+verification = "cargo test workflows::chat"
+estimated_effort = "4h"
+priority = "high"
+traces_to = ["REQ-2.5"]
+
+[[task]]
+id = "TASK-INT-003"
+description = "Implement refactoring workflow with Graph-RAG"
+component = "COMP-HOST-001"
+milestone = "m5"
+dependencies = ["TASK-INT-001", "TASK-GRAPH-004"]
+outputs = ["src/workflows/refactor.rs"]
+verification = "cargo test workflows::refactor"
+estimated_effort = "4h"
+priority = "high"
+traces_to = ["REQ-5.1"]
+
+# =============================================================================
+# MILESTONE 6: Verification & Validation
+# =============================================================================
+
+[[task]]
+id = "TASK-TEST-001"
+description = "Complete unit test suite with >85% coverage"
+component = "ALL"
+milestone = "m6"
+dependencies = ["TASK-INT-002", "TASK-INT-003"]
+outputs = ["tests/", "coverage/"]
+verification = "cargo nextest run && cargo llvm-cov"
+estimated_effort = "12h"
+priority = "critical"
+traces_to = ["REQ-4.3"]
+
+[[task]]
+id = "TASK-TEST-002"
+description = "Complete integration tests for all workflows"
+component = "ALL"
+milestone = "m6"
+dependencies = ["TASK-TEST-001"]
+outputs = ["tests/integration/"]
+verification = "cargo nextest run --test integration"
+estimated_effort = "8h"
+priority = "high"
+traces_to = ["REQ-4.3"]
+
+[[task]]
+id = "TASK-SEC-001"
+description = "Security audit and penetration testing"
+component = "COMP-SENTINEL-001"
+milestone = "m6"
+dependencies = ["TASK-TEST-001"]
+outputs = [".reports/security_audit.md"]
+verification = "Manual review + automated scans"
+estimated_effort = "8h"
+priority = "critical"
+traces_to = ["REQ-3.1", "REQ-3.2", "REQ-3.3", "REQ-3.4"]
+
+[[task]]
+id = "TASK-PERF-001"
+description = "Performance validation and WCET verification"
+component = "COMP-BROKER-001"
+milestone = "m6"
+dependencies = ["TASK-TEST-001"]
+outputs = [".reports/performance_validation.md"]
+verification = "cargo bench --bench wcet"
+estimated_effort = "6h"
+priority = "critical"
+traces_to = ["REQ-5.2", "REQ-5.3"]
+
+[[task]]
+id = "TASK-DOC-001"
+description = "Complete API documentation and user guides"
+component = "ALL"
+milestone = "m6"
+dependencies = ["TASK-TEST-002"]
+outputs = ["docs/", "API.md"]
+verification = "cargo doc --no-deps"
+estimated_effort = "6h"
+priority = "medium"
+traces_to = ["REQ-4.4"]
+
+[verification]
+test_framework = "cargo-nextest"
+coverage_tool = "cargo-llvm-cov"
+benchmark_tool = "criterion"
+mutation_tool = "cargo-mutants"
+fuzzing_tool = "cargo-fuzz"
+
+[compliance]
+standards = ["IEEE-1016", "IEEE-829", "NIST-SP-800-53", "OWASP-ASVS", "SEC-15c3-5"]
+audit_required = true
+sign_off_required = true

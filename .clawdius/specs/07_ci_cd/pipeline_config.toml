@@ -1,0 +1,354 @@
+# CI/CD Pipeline Configuration
+# Document ID: CICD-CONFIG-001
+# Version: 1.0.0
+# Phase: 6 (CI/CD Engineering)
+# Status: APPROVED
+# Created: 2026-03-01
+# Classification: Infrastructure Configuration
+
+[metadata]
+document_id = "CICD-CONFIG-001"
+version = "1.0.0"
+created = "2026-03-01"
+ci_platform = "GitHub Actions"
+runner_default = "ubuntu-latest"
+runner_hft = "self-hosted-hft"
+
+# ============================================================================
+# PIPELINE STAGES
+# ============================================================================
+
+[stages]
+order = ["lint", "test", "security", "bench", "lean4", "coverage", "deploy"]
+
+[stages.lint]
+name = "Lint & Format"
+description = "Code quality and style enforcement"
+blocking = true
+timeout_minutes = 10
+tools = ["clippy", "rustfmt", "cargo-deny", "cargo-machete"]
+fail_fast = true
+
+[stages.test]
+name = "Test Suite"
+description = "Unit and integration tests"
+blocking = true
+timeout_minutes = 30
+tools = ["cargo-nextest", "cargo-mutants"]
+parallel = true
+max_parallel = 4
+
+[stages.security]
+name = "Security Scan"
+description = "Vulnerability and supply chain scanning"
+blocking = true
+timeout_minutes = 15
+tools = ["cargo-audit", "cargo-vet", "cargo-deny"]
+fail_fast = true
+
+[stages.bench]
+name = "Performance Benchmarks"
+description = "Regression detection against baselines"
+blocking = true
+timeout_minutes = 20
+tools = ["criterion", "critcmp"]
+fail_fast = false
+
+[stages.lean4]
+name = "Lean4 Verification"
+description = "Formal verification proofs"
+blocking = false
+timeout_minutes = 10
+tools = ["lean"]
+fail_fast = false
+
+[stages.coverage]
+name = "Code Coverage"
+description = "Test coverage analysis"
+blocking = true
+timeout_minutes = 15
+tools = ["llvm-cov", "codecov"]
+fail_fast = false
+
+[stages.deploy]
+name = "Deploy"
+description = "Artifact publication and deployment"
+blocking = true
+timeout_minutes = 10
+tools = ["cargo-publish", "gh-release"]
+environment = "production"
+
+# ============================================================================
+# TRIGGERS
+# ============================================================================
+
+[triggers]
+pull_request = ["main", "develop"]
+push = ["main", "develop"]
+schedule = ["0 2 * * *"]  # 2 AM UTC daily
+workflow_dispatch = true
+
+[triggers.paths]
+include = [
+    "src/**",
+    "benches/**",
+    "tests/**",
+    "Cargo.toml",
+    "Cargo.lock",
+    ".clawdius/**",
+    "lean/**",
+]
+exclude = [
+    "*.md",
+    "docs/**",
+    ".github/ISSUE_TEMPLATE/**",
+]
+
+# ============================================================================
+# MATRIX CONFIGURATION
+# ============================================================================
+
+[matrix.os]
+include = [
+    { name = "ubuntu-22.04", tier = 1, rust = "stable" },
+    { name = "ubuntu-24.04", tier = 1, rust = "stable" },
+    { name = "macos-13", tier = 2, rust = "stable" },
+    { name = "macos-14", tier = 2, rust = "stable" },
+]
+exclude = []
+
+[matrix.rust]
+versions = ["stable", "1.85.0"]
+default = "stable"
+
+[matrix.features]
+default = []
+hft = ["hft"]
+full = ["hft", "llm", "tui"]
+combinations = [
+    [],
+    ["hft"],
+    ["full"],
+]
+
+# ============================================================================
+# TIMEOUTS AND RETRIES
+# ============================================================================
+
+[timeouts]
+job_default_minutes = 60
+workflow_total_minutes = 120
+step_default_minutes = 15
+cache_restore_minutes = 5
+
+[timeouts.per_stage]
+lint = 10
+test = 30
+security = 15
+bench = 20
+lean4 = 10
+coverage = 15
+deploy = 10
+
+[retries]
+max_attempts = 3
+backoff_seconds = [10, 30, 60]
+flaky_tests = 2
+
+# ============================================================================
+# PARALLELISM
+# ============================================================================
+
+[parallelism]
+test_shards = 4
+benchmark_shards = 2
+coverage_shards = 2
+
+[parallelism.nextest]
+test_threads = "auto"
+harness_threads = 1
+reuse_build = true
+
+# ============================================================================
+# CACHING
+# ============================================================================
+
+[cache.cargo]
+enabled = true
+key_prefix = "cargo"
+paths = [
+    "~/.cargo/registry",
+    "~/.cargo/git",
+    "target",
+]
+hash_files = ["Cargo.lock", "**/Cargo.toml"]
+ttl_days = 7
+
+[cache.nextest]
+enabled = true
+key_prefix = "nextest"
+path = "target/nextest"
+hash_files = ["Cargo.lock"]
+ttl_days = 7
+
+[cache.benchmark]
+enabled = true
+key_prefix = "criterion"
+path = "target/criterion"
+hash_files = ["Cargo.lock"]
+ttl_days = 30
+
+[cache.lean]
+enabled = true
+key_prefix = "lean"
+path = ".lake"
+hash_files = ["lean-toolchain", "lakefile.lean"]
+ttl_days = 7
+
+# ============================================================================
+# ARTIFACTS
+# ============================================================================
+
+[artifacts.test_results]
+path = "target/nextest/default/junit.xml"
+retention_days = 30
+upload_on_failure = true
+
+[artifacts.coverage]
+path = "target/llvm-cov/coverage.json"
+retention_days = 30
+upload_on_failure = false
+
+[artifacts.benchmarks]
+path = "target/criterion/"
+retention_days = 90
+upload_on_failure = false
+
+[artifacts.binaries]
+path = "target/release/clawdius"
+retention_days = 30
+upload_on_failure = false
+
+[artifacts.logs]
+path = "logs/"
+retention_days = 7
+upload_on_failure = true
+
+# ============================================================================
+# NOTIFICATIONS
+# ============================================================================
+
+[notifications.slack]
+enabled = true
+channel = "#clawdius-ci"
+on_success = false
+on_failure = true
+on_regression = true
+
+[notifications.github]
+enabled = true
+commit_status = true
+pr_comments = true
+check_annotations = true
+
+[notifications.email]
+enabled = false
+on_critical_failure = true
+
+# ============================================================================
+# ENVIRONMENT VARIABLES
+# ============================================================================
+
+[env.common]
+CARGO_TERM_COLOR = "always"
+CARGO_INCREMENTAL = "1"
+RUST_BACKTRACE = "short"
+NEXTEST_EXPERIMENTAL_DOUBLE_SPAWN = "1"
+
+[env.ci]
+CARGO_NET_RETRY = "10"
+CARGO_NET_GIT_FETCH_WITH_CLI = "true"
+CI = "true"
+
+[env.release]
+CARGO_INCREMENTAL = "0"
+RUSTFLAGS = "-C target-cpu=native -C lto=fat -C codegen-units=1"
+
+# ============================================================================
+# BRANCH PROTECTION
+# ============================================================================
+
+[branch_protection.main]
+required_checks = [
+    "lint",
+    "test",
+    "security",
+    "bench",
+    "coverage",
+]
+required_reviews = 1
+enforce_admins = false
+allow_force_pushes = false
+allow_deletions = false
+
+[branch_protection.develop]
+required_checks = ["lint", "test"]
+required_reviews = 0
+enforce_admins = false
+
+# ============================================================================
+# TOOL INSTALLATION
+# ============================================================================
+
+[tools.rust]
+method = "dtolnay/rust-toolchain"
+components = ["clippy", "rustfmt", "llvm-tools-preview"]
+
+[tools.cargo-nextest]
+method = "cargo-binstall"
+version = "latest"
+
+[tools.cargo-deny]
+method = "cargo-binstall"
+version = "latest"
+
+[tools.cargo-vet]
+method = "cargo-binstall"
+version = "latest"
+
+[tools.cargo-machete]
+method = "cargo-binstall"
+version = "latest"
+
+[tools.cargo-llvm-cov]
+method = "cargo-binstall"
+version = "latest"
+
+[tools.cargo-mutants]
+method = "cargo-binstall"
+version = "latest"
+
+[tools.critcmp]
+method = "cargo-binstall"
+version = "latest"
+
+# ============================================================================
+# HFT-SPECIFIC CONFIGURATION
+# ============================================================================
+
+[hft.runner]
+type = "self-hosted"
+labels = ["hft", "isolated-cores"]
+requires_isolation = true
+
+[hft.isolation]
+cpu_cores = [0, 1, 2, 3]
+hugepages = true
+mlockall = true
+disable_swap = true
+
+[hft.benchmarks]
+timeout_multiplier = 2.0
+warmup_iterations = 1000
+measurement_iterations = 10000
+statistical_confidence = 0.99

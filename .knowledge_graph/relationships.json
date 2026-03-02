@@ -1,0 +1,275 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "version": "1.0.0",
+  "phase": "1.25",
+  "created": "2026-03-01",
+  "relationships": [
+    {
+      "id": "REL-001",
+      "source": "CONCEPT-FSM-001",
+      "target": "CONCEPT-TYPESTATE-001",
+      "type": "IMPLEMENTS",
+      "weight": 0.95,
+      "evidence": "YP-FSM-NEXUS-001 Definition 2"
+    },
+    {
+      "id": "REL-002",
+      "source": "CONCEPT-FSM-001",
+      "target": "CONCEPT-PHASE-001",
+      "type": "ENFORCES",
+      "weight": 0.97,
+      "evidence": "YP-FSM-NEXUS-001 YP-4"
+    },
+    {
+      "id": "REL-003",
+      "source": "CONCEPT-TYPESTATE-001",
+      "target": "CONCEPT-FSM-001",
+      "type": "USES",
+      "weight": 0.90,
+      "evidence": "YP-FSM-NEXUS-001 Lemma 1"
+    },
+    {
+      "id": "REL-004",
+      "source": "CONCEPT-TYPESTATE-001",
+      "target": "CONCEPT-TRANSITION-001",
+      "type": "PREVENTS",
+      "weight": 0.95,
+      "evidence": "YP-FSM-NEXUS-001 Lemma 1: illegal states unrepresentable"
+    },
+    {
+      "id": "REL-005",
+      "source": "CONCEPT-PHASE-001",
+      "target": "CONCEPT-GATE-001",
+      "type": "HAS",
+      "weight": 0.98,
+      "evidence": "YP-FSM-NEXUS-001 Definition 4"
+    },
+    {
+      "id": "REL-006",
+      "source": "CONCEPT-PHASE-001",
+      "target": "CONCEPT-PHASE-001",
+      "type": "PRECEDES",
+      "weight": 0.95,
+      "evidence": "YP-FSM-NEXUS-001 Axiom 3"
+    },
+    {
+      "id": "REL-007",
+      "source": "CONCEPT-GATE-001",
+      "target": "CONCEPT-TRANSITION-001",
+      "type": "BLOCKS",
+      "weight": 0.92,
+      "evidence": "YP-FSM-NEXUS-001 Definition 1"
+    },
+    {
+      "id": "REL-008",
+      "source": "CONCEPT-TRANSITION-001",
+      "target": "CONCEPT-PHASE-001",
+      "type": "MAPS_TO",
+      "weight": 0.99,
+      "evidence": "YP-FSM-NEXUS-001 Definition 1"
+    },
+    {
+      "id": "REL-009",
+      "source": "CONCEPT-HFT-001",
+      "target": "CONCEPT-ZERO-GC-001",
+      "type": "REQUIRES",
+      "weight": 0.98,
+      "evidence": "YP-HFT-BROKER-001 HC-002"
+    },
+    {
+      "id": "REL-010",
+      "source": "CONCEPT-HFT-001",
+      "target": "CONCEPT-WCET-001",
+      "type": "REQUIRES",
+      "weight": 0.95,
+      "evidence": "YP-HFT-BROKER-001 Axiom 1"
+    },
+    {
+      "id": "REL-011",
+      "source": "CONCEPT-WALLET-GUARD-001",
+      "target": "CONCEPT-WCET-001",
+      "type": "SATISFIES",
+      "weight": 0.93,
+      "evidence": "YP-HFT-BROKER-001 Theorem 3"
+    },
+    {
+      "id": "REL-012",
+      "source": "CONCEPT-WALLET-GUARD-001",
+      "target": "CONCEPT-HFT-001",
+      "type": "VALIDATES",
+      "weight": 0.96,
+      "evidence": "YP-HFT-BROKER-001 Theorem 1"
+    },
+    {
+      "id": "REL-013",
+      "source": "CONCEPT-RING-BUFFER-001",
+      "target": "CONCEPT-ZERO-GC-001",
+      "type": "ENABLES",
+      "weight": 0.94,
+      "evidence": "YP-HFT-BROKER-001 Axiom 2"
+    },
+    {
+      "id": "REL-014",
+      "source": "CONCEPT-RING-BUFFER-001",
+      "target": "CONCEPT-WCET-001",
+      "type": "SATISFIES",
+      "weight": 0.91,
+      "evidence": "YP-HFT-BROKER-001 Lemma 1"
+    },
+    {
+      "id": "REL-015",
+      "source": "CONCEPT-ARENA-001",
+      "target": "CONCEPT-ZERO-GC-001",
+      "type": "GUARANTEES",
+      "weight": 0.97,
+      "evidence": "YP-HFT-BROKER-001 Theorem 2"
+    },
+    {
+      "id": "REL-016",
+      "source": "CONCEPT-ARENA-001",
+      "target": "CONCEPT-WCET-001",
+      "type": "ENABLES",
+      "weight": 0.92,
+      "evidence": "YP-HFT-BROKER-001 Definition 3"
+    },
+    {
+      "id": "REL-017",
+      "source": "CONCEPT-SANDBOX-001",
+      "target": "CONCEPT-ISOLATION-001",
+      "type": "IMPLEMENTS",
+      "weight": 0.98,
+      "evidence": "YP-SECURITY-SANDBOX-001 YP-4"
+    },
+    {
+      "id": "REL-018",
+      "source": "CONCEPT-SANDBOX-001",
+      "target": "CONCEPT-CAPABILITY-001",
+      "type": "ENFORCES",
+      "weight": 0.96,
+      "evidence": "YP-SECURITY-SANDBOX-001 Axiom 1"
+    },
+    {
+      "id": "REL-019",
+      "source": "CONCEPT-CAPABILITY-001",
+      "target": "CONCEPT-ISOLATION-001",
+      "type": "ENABLES",
+      "weight": 0.94,
+      "evidence": "YP-SECURITY-SANDBOX-001 Lemma 1"
+    },
+    {
+      "id": "REL-020",
+      "source": "CONCEPT-CAPABILITY-001",
+      "target": "CONCEPT-SANDBOX-001",
+      "type": "PREVENTS",
+      "weight": 0.95,
+      "evidence": "YP-SECURITY-SANDBOX-001 Theorem 2"
+    },
+    {
+      "id": "REL-021",
+      "source": "CONCEPT-ISOLATION-001",
+      "target": "CONCEPT-SECRET-001",
+      "type": "PROTECTS",
+      "weight": 0.97,
+      "evidence": "YP-SECURITY-SANDBOX-001 Theorem 3"
+    },
+    {
+      "id": "REL-022",
+      "source": "CONCEPT-SECRET-001",
+      "target": "CONCEPT-ISOLATION-001",
+      "type": "REQUIRES",
+      "weight": 0.93,
+      "evidence": "YP-SECURITY-SANDBOX-001 Definition 5"
+    },
+    {
+      "id": "REL-023",
+      "source": "CONCEPT-JIT-SANDBOX-001",
+      "target": "CONCEPT-SANDBOX-001",
+      "type": "SELECTS",
+      "weight": 0.91,
+      "evidence": "YP-SECURITY-SANDBOX-001 Algorithm 1"
+    },
+    {
+      "id": "REL-024",
+      "source": "CONCEPT-THREAT-001",
+      "target": "CONCEPT-SANDBOX-001",
+      "type": "MITIGATES",
+      "weight": 0.89,
+      "evidence": "YP-SECURITY-SANDBOX-001 YP-4"
+    },
+    {
+      "id": "REL-025",
+      "source": "CONCEPT-THREAT-001",
+      "target": "CONCEPT-CAPABILITY-001",
+      "type": "COUNTERS",
+      "weight": 0.92,
+      "evidence": "YP-SECURITY-SANDBOX-001 Definition 5"
+    },
+    {
+      "id": "REL-026",
+      "source": "CONCEPT-ZERO-GC-001",
+      "target": "CONCEPT-WCET-001",
+      "type": "ENABLES",
+      "weight": 0.96,
+      "evidence": "YP-HFT-BROKER-001 Theorem 2"
+    },
+    {
+      "id": "REL-027",
+      "source": "CONCEPT-FSM-001",
+      "target": "CONCEPT-WCET-001",
+      "type": "REQUIRES",
+      "weight": 0.85,
+      "evidence": "Cross-domain: deterministic phases need bounded execution"
+    },
+    {
+      "id": "REL-028",
+      "source": "CONCEPT-SANDBOX-001",
+      "target": "CONCEPT-FSM-001",
+      "type": "PROTECTS",
+      "weight": 0.88,
+      "evidence": "Cross-domain: sandbox ensures phase integrity"
+    }
+  ],
+  "relationship_types": {
+    "IMPLEMENTS": "Source concept implements target concept",
+    "ENFORCES": "Source concept enforces constraints of target",
+    "USES": "Source concept uses target concept",
+    "PREVENTS": "Source concept prevents target concept's negative outcomes",
+    "HAS": "Source concept has target concept as component",
+    "PRECEDES": "Source concept comes before target in sequence",
+    "BLOCKS": "Source concept blocks invalid transitions to target",
+    "MAPS_TO": "Source concept maps directly to target",
+    "REQUIRES": "Source concept requires target concept",
+    "SATISFIES": "Source concept satisfies target concept's constraints",
+    "VALIDATES": "Source concept validates target concept",
+    "ENABLES": "Source concept enables target concept",
+    "GUARANTEES": "Source concept guarantees target concept's property",
+    "PROTECTS": "Source concept protects target concept",
+    "SELECTS": "Source concept selects from target concept",
+    "MITIGATES": "Source concept mitigates target concept's risks",
+    "COUNTERS": "Source concept counters target concept"
+  },
+  "statistics": {
+    "total_relationships": 28,
+    "by_type": {
+      "IMPLEMENTS": 2,
+      "ENFORCES": 2,
+      "USES": 1,
+      "PREVENTS": 2,
+      "HAS": 1,
+      "PRECEDES": 1,
+      "BLOCKS": 1,
+      "MAPS_TO": 1,
+      "REQUIRES": 4,
+      "SATISFIES": 2,
+      "VALIDATES": 1,
+      "ENABLES": 4,
+      "GUARANTEES": 1,
+      "PROTECTS": 2,
+      "SELECTS": 1,
+      "MITIGATES": 1,
+      "COUNTERS": 1
+    },
+    "cross_domain_relationships": 2,
+    "avg_weight": 0.936
+  }
+}

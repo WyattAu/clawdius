@@ -1,0 +1,180 @@
+SPDXVersion: SPDX-2.3
+DataLicense: CC0-1.0
+SPDXID: SPDXRef-DOCUMENT
+DocumentName: Clawdius
+DocumentNamespace: https://clawdius.dev/sbom/clawdius-0.1.0
+Creator: Tool: cargo-deny and manual generation
+Creator: Organization: Clawdius Team
+Created: 2026-03-01T05:45:00Z
+
+PackageName: clawdius
+SPDXID: SPDXRef-Package-clawdius
+PackageVersion: 0.1.0
+PackageDownloadLocation: https://github.com/clawdius/clawdius
+FilesAnalyzed: false
+PackageLicenseConcluded: Apache-2.0
+PackageLicenseDeclared: Apache-2.0
+PackageCopyrightText: <text>Copyright 2026 Clawdius Team</text>
+
+Relationship: SPDXRef-DOCUMENT DESCRIBES SPDXRef-Package-clawdius
+
+PackageName: monoio
+SPDXID: SPDXRef-Package-monoio
+PackageVersion: 0.2
+ExternalRef: PACKAGE-MANAGER purl pkg:cargo/monoio@0.2.4
+PackageLicenseConcluded: Apache-2.0
+FilesAnalyzed: false
+
+PackageName: wasmtime
+SPDXID: SPDXRef-Package-wasmtime
+PackageVersion: 42
+ExternalRef: PACKAGE-MANAGER purl pkg:cargo/wasmtime@42.0.1
+PackageLicenseConcluded: Apache-2.0
+FilesAnalyzed: false
+
+PackageName: rusqlite
+SPDXID: SPDXRef-Package-rusqlite
+PackageVersion: 0.38
+ExternalRef: PACKAGE-MANAGER purl pkg:cargo/rusqlite@0.38.0
+PackageLicenseConcluded: MIT
+FilesAnalyzed: false
+
+PackageName: lancedb
+SPDXID: SPDXRef-Package-lancedb
+PackageVersion: 0.26
+ExternalRef: PACKAGE-MANAGER purl pkg:cargo/lancedb@0.26.2
+PackageLicenseConcluded: Apache-2.0
+FilesAnalyzed: false
+
+PackageName: genai
+SPDXID: SPDXRef-Package-genai
+PackageVersion: 0.5
+ExternalRef: PACKAGE-MANAGER purl pkg:cargo/genai@0.5.3
+PackageLicenseConcluded: Apache-2.0
+FilesAnalyzed: false
+
+PackageName: tree-sitter
+SPDXID: SPDXRef-Package-tree-sitter
+PackageVersion: 0.26
+ExternalRef: PACKAGE-MANAGER purl pkg:cargo/tree-sitter@0.26.0
+PackageLicenseConcluded: MIT
+FilesAnalyzed: false
+
+PackageName: ratatui
+SPDXID: SPDXRef-Package-ratatui
+PackageVersion: 0.30
+ExternalRef: PACKAGE-MANAGER purl pkg:cargo/ratatui@0.30.0
+PackageLicenseConcluded: MIT
+FilesAnalyzed: false
+
+PackageName: serde
+SPDXID: SPDXRef-Package-serde
+PackageVersion: 1.0
+ExternalRef: PACKAGE-MANAGER purl pkg:cargo/serde@1.0.228
+PackageLicenseConcluded: Apache-2.0 OR MIT
+FilesAnalyzed: false
+
+PackageName: serde_json
+SPDXID: SPDXRef-Package-serde_json
+PackageVersion: 1.0
+ExternalRef: PACKAGE-MANAGER purl pkg:cargo/serde_json@1.0.149
+PackageLicenseConcluded: Apache-2.0 OR MIT
+FilesAnalyzed: false
+
+PackageName: toml
+SPDXID: SPDXRef-Package-toml
+PackageVersion: 1.0
+ExternalRef: PACKAGE-MANAGER purl pkg:cargo/toml@1.0.3+spec-1.1.0
+PackageLicenseConcluded: Apache-2.0 OR MIT
+FilesAnalyzed: false
+
+PackageName: rkyv
+SPDXID: SPDXRef-Package-rkyv
+PackageVersion: 0.8
+ExternalRef: PACKAGE-MANAGER purl pkg:cargo/rkyv@0.8.10
+PackageLicenseConcluded: MIT
+FilesAnalyzed: false
+
+PackageName: async-openai
+SPDXID: SPDXRef-Package-async-openai
+PackageVersion: 0.33
+ExternalRef: PACKAGE-MANAGER purl pkg:cargo/async-openai@0.33.0
+PackageLicenseConcluded: Apache-2.0
+FilesAnalyzed: false
+
+PackageName: crossterm
+SPDXID: SPDXRef-Package-crossterm
+PackageVersion: 0.29
+ExternalRef: PACKAGE-MANAGER purl pkg:cargo/crossterm@0.29.0
+PackageLicenseConcluded: Apache-2.0
+FilesAnalyzed: false
+
+PackageName: keyring
+SPDXID: SPDXRef-Package-keyring
+PackageVersion: 3.6
+ExternalRef: PACKAGE-MANAGER purl pkg:cargo/keyring@3.6.2
+PackageLicenseConcluded: Apache-2.0 OR MIT
+FilesAnalyzed: false
+
+PackageName: uuid
+SPDXID: SPDXRef-Package-uuid
+PackageVersion: 1.21
+ExternalRef: PACKAGE-MANAGER purl pkg:cargo/uuid@1.21.0
+PackageLicenseConcluded: Apache-2.0 OR MIT
+FilesAnalyzed: false
+
+PackageName: thiserror
+SPDXID: SPDXRef-Package-thiserror
+PackageVersion: 2.0
+ExternalRef: PACKAGE-MANAGER purl pkg:cargo/thiserror@2.0.18
+PackageLicenseConcluded: Apache-2.0 OR MIT
+FilesAnalyzed: false
+
+PackageName: tracing
+SPDXID: SPDXRef-Package-tracing
+PackageVersion: 0.1
+ExternalRef: PACKAGE-MANAGER purl pkg:cargo/tracing@0.1.44
+PackageLicenseConcluded: MIT
+FilesAnalyzed: false
+
+PackageName: tracing-subscriber
+SPDXID: SPDXRef-Package-tracing-subscriber
+PackageVersion: 0.3
+ExternalRef: PACKAGE-MANAGER purl pkg:cargo/tracing-subscriber@0.3.20
+PackageLicenseConcluded: MIT
+FilesAnalyzed: false
+
+PackageName: syntect
+SPDXID: SPDXRef-Package-syntect
+PackageVersion: 5.3
+ExternalRef: PACKAGE-MANAGER purl pkg:cargo/syntect@5.3.0
+PackageLicenseConcluded: Apache-2.0
+FilesAnalyzed: false
+
+PackageName: mimalloc
+SPDXID: SPDXRef-Package-mimalloc
+PackageVersion: 0.1
+ExternalRef: PACKAGE-MANAGER purl pkg:cargo/mimalloc@0.1.46
+PackageLicenseConcluded: MIT
+FilesAnalyzed: false
+
+Relationship: SPDXRef-Package-clawdius DEPENDS_ON SPDXRef-Package-monoio
+Relationship: SPDXRef-Package-clawdius DEPENDS_ON SPDXRef-Package-wasmtime
+Relationship: SPDXRef-Package-clawdius DEPENDS_ON SPDXRef-Package-rusqlite
+Relationship: SPDXRef-Package-clawdius DEPENDS_ON SPDXRef-Package-lancedb
+Relationship: SPDXRef-Package-clawdius DEPENDS_ON SPDXRef-Package-genai
+Relationship: SPDXRef-Package-clawdius DEPENDS_ON SPDXRef-Package-tree-sitter
+Relationship: SPDXRef-Package-clawdius DEPENDS_ON SPDXRef-Package-ratatui
+Relationship: SPDXRef-Package-clawdius DEPENDS_ON SPDXRef-Package-serde
+Relationship: SPDXRef-Package-clawdius DEPENDS_ON SPDXRef-Package-serde_json
+Relationship: SPDXRef-Package-clawdius DEPENDS_ON SPDXRef-Package-toml
+Relationship: SPDXRef-Package-clawdius DEPENDS_ON SPDXRef-Package-rkyv
+Relationship: SPDXRef-Package-clawdius DEPENDS_ON SPDXRef-Package-async-openai
+Relationship: SPDXRef-Package-clawdius DEPENDS_ON SPDXRef-Package-crossterm
+Relationship: SPDXRef-Package-clawdius DEPENDS_ON SPDXRef-Package-keyring
+Relationship: SPDXRef-Package-clawdius DEPENDS_ON SPDXRef-Package-uuid
+Relationship: SPDXRef-Package-clawdius DEPENDS_ON SPDXRef-Package-thiserror
+Relationship: SPDXRef-Package-clawdius DEPENDS_ON SPDXRef-Package-tracing
+Relationship: SPDXRef-Package-clawdius DEPENDS_ON SPDXRef-Package-tracing-subscriber
+Relationship: SPDXRef-Package-clawdius DEPENDS_ON SPDXRef-Package-syntect
+Relationship: SPDXRef-Package-clawdius OPTIONAL_DEPENDENCY SPDXRef-Package-mimalloc
