@@ -1,0 +1,40 @@
+# Sample Clawdius Configuration
+# Copy this to .clawdius/config.toml and customize as needed
+
+[project]
+name = "my-project"
+rigor_level = "high"  # low, medium, high
+lifecycle_phase = "context_discovery"  # context_discovery, active_development, maintenance
+
+[storage]
+database_path = ".clawdius/graph/index.db"
+vector_path = ".clawdius/graph/vectors.lance"
+sessions_path = ".clawdius/sessions.db"
+
+[llm]
+default_provider = "anthropic"
+max_tokens = 4096
+
+[llm.anthropic]
+model = "claude-3-5-sonnet-20241022"
+api_key_env = "ANTHROPIC_API_KEY"
+
+[session]
+max_history = 100
+auto_checkpoint = true
+
+[output]
+format = "markdown"  # markdown, json, plain
+color = true
+
+[shell_sandbox]
+enabled = true
+timeout_seconds = 30
+max_memory_mb = 512
+
+[telemetry]
+# Crash reporting configuration
+crash_reporting = false
+# Sentry DSN (can also be set via SENTRY_DSN environment variable)
+# sentry_dsn = "https://your-key@sentry.io/project-id"
+sentry_dsn = ""

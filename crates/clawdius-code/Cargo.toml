@@ -1,0 +1,42 @@
+[package]
+name = "clawdius-code"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Clawdius Code - VSCode extension helper binary"
+
+[[bin]]
+name = "clawdius-code"
+path = "src/main.rs"
+
+[dependencies]
+clawdius-core = { path = "../clawdius-core" }
+
+# CLI
+clap.workspace = true
+
+# Async
+tokio = { workspace = true, features = ["rt-multi-thread", "macros", "sync", "io-util", "process"] }
+
+# JSON-RPC
+jsonrpsee = { version = "0.24", features = ["server", "client-core", "ws-client"] }
+
+# Serialization
+serde.workspace = true
+serde_json.workspace = true
+
+# Utilities
+tracing.workspace = true
+tracing-subscriber.workspace = true
+anyhow.workspace = true
+uuid.workspace = true
+
+# Allocator
+mimalloc = { workspace = true, optional = true }
+
+[features]
+default = ["mimalloc"]
+
+[lints]
+workspace = true

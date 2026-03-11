@@ -1,0 +1,74 @@
+# Clawdius Configuration Example
+
+[project]
+name = "my-project"
+rigor_level = "high"  # low, medium, high
+lifecycle_phase = "context_discovery"
+
+[storage]
+database_path = ".clawdius/graph/index.db"
+vector_path = ".clawdius/graph/vectors.lance"
+sessions_path = ".clawdius/sessions.db"
+
+[llm]
+default_provider = "anthropic"
+max_tokens = 4096
+
+[llm.anthropic]
+model = "claude-3-5-sonnet-20241022"
+api_key_env = "ANTHROPIC_API_KEY"
+
+[llm.openai]
+model = "gpt-4o"
+api_key_env = "OPENAI_API_KEY"
+
+[llm.ollama]
+model = "llama3.2"
+base_url = "http://localhost:11434"
+
+[llm.retry]
+max_retries = 3
+initial_delay_ms = 1000
+max_delay_ms = 30000
+exponential_base = 2.0
+retry_on = ["rate_limit", "timeout", "server_error", "network_error"]
+
+[session]
+compact_threshold = 0.85
+keep_recent = 4
+min_messages = 10
+auto_save = true
+
+[output]
+format = "text"
+show_progress = true
+
+[shell_sandbox]
+blocked_commands = [
+    "rm -rf /",
+    "mkfs",
+    "dd if=/dev/zero",
+    "dd if=/dev/urandom",
+    ":(){ :|:& };:",
+    "chmod -R 777 /",
+    "chown -R",
+    "> /dev/sda",
+    "mv /* /dev/null",
+    "wget",
+    "curl -X POST"
+]
+timeout_secs = 120
+max_output_bytes = 1048576
+restrict_to_cwd = true
+
+[telemetry]
+crash_reporting = false
+sentry_dsn = ""
+
+[telemetry.logging]
+level = "info"  # trace, debug, info, warn, error
+json_format = false
+show_target = true
+show_thread_ids = false
+show_thread_names = false
+compact = true

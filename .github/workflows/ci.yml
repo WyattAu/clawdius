@@ -2,9 +2,11 @@ name: CI
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main, master, develop]
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+*'
   pull_request:
-    branches: [main, develop]
+    branches: [main, master, develop]
   workflow_dispatch:
 
 env:
@@ -24,18 +26,13 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
+          toolchain: 1.85
           components: clippy, rustfmt
       
       - name: Cache cargo registry
-        uses: actions/cache@v4
+        uses: Swatinem/rust-cache@v2
         with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-cargo-lint-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-lint-
+          key: lint
       
       - name: Check formatting
         run: cargo fmt --all -- --check
@@ -66,12 +63,14 @@ jobs:
         run: cargo machete
 
   test:
-    name: Test
+    name: Test (${{ matrix.rust }}, shard ${{ matrix.shard }})
     runs-on: ubuntu-latest
     timeout-minutes: 30
     needs: lint
     strategy:
+      fail-fast: false
       matrix:
+        rust: [stable, 1.85]
         shard: [1, 2, 3, 4]
     steps:
       - uses: actions/checkout@v4
@@ -79,28 +78,26 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
+          toolchain: ${{ matrix.rust }}
           components: llvm-tools-preview
       
       - name: Cache cargo registry
-        uses: actions/cache@v4
+        uses: Swatinem/rust-cache@v2
         with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-cargo-test-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-test-
+          key: test-${{ matrix.rust }}-${{ matrix.shard }}
       
       - name: Install cargo-nextest
         run: cargo install cargo-nextest --locked
       
+      - name: Check compilation
+        run: cargo check --all-targets --all-features
+      
       - name: Build tests
-        run: cargo nextest build --all-features
+        run: cargo nextest build --workspace --all-features
       
       - name: Run tests (shard ${{ matrix.shard }})
         run: |
-          cargo nextest run --all-features \
+          cargo nextest run --workspace --all-features \
             --profile ci \
             --shard ${{ matrix.shard }}/4 \
             --reporter junit:target/nextest/junit-${{ matrix.shard }}.xml
@@ -109,7 +106,7 @@ jobs:
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: test-results-${{ matrix.shard }}
+          name: test-results-${{ matrix.rust }}-${{ matrix.shard }}
           path: target/nextest/
           retention-days: 30
 
@@ -138,17 +135,13 @@ jobs:
       
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.85
       
       - name: Cache cargo registry
-        uses: actions/cache@v4
+        uses: Swatinem/rust-cache@v2
         with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-cargo-mutants-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-mutants-
+          key: mutants
       
       - name: Install cargo-mutants
         run: cargo install cargo-mutants --locked
@@ -156,6 +149,7 @@ jobs:
       - name: Run mutation tests
         run: |
           cargo mutants \
+            --workspace \
             --in-place \
             --timeout-seconds 300 \
             --max-test-duration-seconds 60 \
@@ -173,31 +167,26 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
+          toolchain: 1.85
           components: llvm-tools-preview
       
       - name: Cache cargo registry
-        uses: actions/cache@v4
+        uses: Swatinem/rust-cache@v2
         with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-cargo-cov-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-cov-
+          key: coverage
       
       - name: Install cargo-llvm-cov
         run: cargo install cargo-llvm-cov --locked
       
       - name: Generate coverage report
         run: |
-          cargo llvm-cov --all-features \
+          cargo llvm-cov --workspace --all-features \
             --lcov --output-path lcov.info \
             --ignore-filename-regex "(tests|benches|examples)/"
       
       - name: Check coverage thresholds
         run: |
-          COVERAGE=$(cargo llvm-cov --all-features --summary-only 2>&1 | grep -oP '\d+\.\d+%' | head -1 | tr -d '%')
+          COVERAGE=$(cargo llvm-cov --workspace --all-features --summary-only 2>&1 | grep -oP '\d+\.\d+%' | head -1 | tr -d '%')
           echo "Line coverage: ${COVERAGE}%"
           if (( $(echo "$COVERAGE < 85.0" | bc -l) )); then
             echo "::error::Coverage ${COVERAGE}% is below threshold 85%"
@@ -220,44 +209,136 @@ jobs:
             target/llvm-cov/
           retention-days: 30
 
-  lean4:
-    name: Lean4 Verification
+  vscode-extension:
+    name: VSCode Extension
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    needs: lint
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       
-      - name: Install Lean4
-        uses: leanprover/lean-action@v1
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          lake-package-directory: lean
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: editors/vscode/package-lock.json
       
-      - name: Cache Lean4 build
-        uses: actions/cache@v4
-        with:
-          path: lean/.lake
-          key: ${{ runner.os }}-lean-${{ hashFiles('lean/lakefile.lean', 'lean-toolchain') }}
-          restore-keys: |
-            ${{ runner.os }}-lean-
+      - name: Install dependencies
+        working-directory: editors/vscode
+        run: npm ci
       
-      - name: Build Lean4 proofs
-        working-directory: lean
-        run: lake build
+      - name: Compile TypeScript
+        working-directory: editors/vscode
+        run: npm run compile
       
-      - name: Check for sorry
-        working-directory: lean
+      - name: Run linter
+        working-directory: editors/vscode
+        run: npm run lint
+      
+      - name: Package extension
+        working-directory: editors/vscode
         run: |
-          if grep -rq "sorry" .; then
-            echo "::warning::Found 'sorry' in proofs - incomplete verification"
+          npm install -g @vscode/vsce
+          vsce package --out clawdius-code.vsix
+      
+      - name: Upload extension artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: vscode-extension
+          path: editors/vscode/clawdius-code.vsix
+          retention-days: 30
+
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: github.event_name == 'push' || github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.85
+      
+      - name: Cache cargo registry
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: security
+      
+      - name: Install cargo-audit
+        run: cargo install cargo-audit --locked
+      
+      - name: Run cargo audit
+        run: cargo audit
+      
+      - name: Install cargo-deny
+        run: cargo install cargo-deny --locked
+      
+      - name: Check advisories (CVEs)
+        run: cargo deny check advisories
+      
+      - name: Check licenses
+        run: cargo deny check licenses
+      
+      - name: Check bans (duplicates)
+        run: cargo deny check bans
+      
+      - name: Check sources
+        run: cargo deny check sources
+
+  fuzz:
+    name: Fuzz Testing
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: lint
+    if: github.event_name == 'pull_request' || github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install Rust toolchain (nightly)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: nightly
+          components: llvm-tools-preview
+      
+      - name: Cache cargo registry
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: fuzz
+      
+      - name: Install cargo-fuzz
+        run: cargo install cargo-fuzz --locked
+      
+      - name: Build fuzz targets
+        run: cargo fuzz build
+      
+      - name: Run fuzz_parser (60s)
+        run: timeout 60s cargo fuzz run fuzz_parser -- -max_total_time=55 || true
+      
+      - name: Run fuzz_config (60s)
+        run: timeout 60s cargo fuzz run fuzz_config -- -max_total_time=55 || true
+      
+      - name: Run fuzz_rpc (60s)
+        run: timeout 60s cargo fuzz run fuzz_rpc -- -max_total_time=55 || true
+      
+      - name: Run fuzz_mention (60s)
+        run: timeout 60s cargo fuzz run fuzz_mention -- -max_total_time=55 || true
+      
+      - name: Check for crash artifacts
+        run: |
+          if ls fuzz/artifacts/*/crash-* 2>/dev/null; then
+            echo "::error::Fuzzing found crashes!"
+            exit 1
           fi
+          echo "No crashes found"
 
   build:
-    name: Build
+    name: Build (${{ matrix.target }})
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 15
+    timeout-minutes: 20
     needs: [test]
+    if: "!startsWith(github.ref, 'refs/tags/')"
     strategy:
       matrix:
         include:
@@ -267,69 +348,219 @@ jobs:
             target: x86_64-apple-darwin
           - os: macos-latest
             target: aarch64-apple-darwin
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
     steps:
       - uses: actions/checkout@v4
       
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
+          toolchain: 1.85
           targets: ${{ matrix.target }}
       
       - name: Cache cargo registry
-        uses: actions/cache@v4
+        uses: Swatinem/rust-cache@v2
         with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-cargo-build-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-build-${{ matrix.target }}-
+          key: build-${{ matrix.target }}
       
-      - name: Build release
-        run: cargo build --release --target ${{ matrix.target }}
+      - name: Build release binaries
+        run: |
+          cargo build --release --target ${{ matrix.target }} -p clawdius
+          cargo build --release --target ${{ matrix.target }} -p clawdius-code
       
-      - name: Upload binary
+      - name: Upload binary artifact
         uses: actions/upload-artifact@v4
         with:
           name: clawdius-${{ matrix.target }}
-          path: target/${{ matrix.target }}/release/clawdius
+          path: |
+            target/${{ matrix.target }}/release/clawdius
+            target/${{ matrix.target }}/release/clawdius-code
+            target/${{ matrix.target }}/release/clawdius.exe
+            target/${{ matrix.target }}/release/clawdius-code.exe
+            !target/${{ matrix.target }}/release/*.d
+            !target/${{ matrix.target }}/release/*.rlib
           retention-days: 30
+          if-no-files-found: warn
+
+  release:
+    name: Release
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    needs: [test, vscode-extension]
+    if: startsWith(github.ref, 'refs/tags/')
+    permissions:
+      contents: write
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            archive: tar.gz
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-musl
+            archive: tar.gz
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            archive: tar.gz
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            archive: tar.gz
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            archive: zip
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.85
+          targets: ${{ matrix.target }}
+      
+      - name: Cache cargo registry
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: release-${{ matrix.target }}
+      
+      - name: Install musl tools (Linux musl)
+        if: matrix.target == 'x86_64-unknown-linux-musl'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y musl-tools
+      
+      - name: Build release binaries
+        run: |
+          cargo build --release --target ${{ matrix.target }} -p clawdius
+          cargo build --release --target ${{ matrix.target }} -p clawdius-code
+        env:
+          RUSTFLAGS: "-C target-cpu=native -C lto=fat -C codegen-units=1"
+      
+      - name: Create archive (Unix)
+        if: matrix.archive == 'tar.gz'
+        run: |
+          VERSION="${GITHUB_REF#refs/tags/v}"
+          ARCHIVE="clawdius-${VERSION}-${{ matrix.target }}.tar.gz"
+          cd target/${{ matrix.target }}/release
+          tar -czvf ../../../${ARCHIVE} clawdius clawdius-code
+          cd ../../../
+          sha256sum ${ARCHIVE} > ${ARCHIVE}.sha256
+      
+      - name: Create archive (Windows)
+        if: matrix.archive == 'zip'
+        run: |
+          VERSION="${GITHUB_REF#refs/tags/v}"
+          ARCHIVE="clawdius-${VERSION}-${{ matrix.target }}.zip"
+          cd target/${{ matrix.target }}/release
+          7z a ../../../${ARCHIVE} clawdius.exe clawdius-code.exe
+          cd ../../../
+          sha256sum ${ARCHIVE} > ${ARCHIVE}.sha256
+        shell: bash
+      
+      - name: Upload release artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ matrix.target }}
+          path: |
+            clawdius-*.tar.gz
+            clawdius-*.tar.gz.sha256
+            clawdius-*.zip
+            clawdius-*.zip.sha256
+          retention-days: 90
+
+  create-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: [release, vscode-extension]
+    if: startsWith(github.ref, 'refs/tags/')
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts/
+      
+      - name: Prepare release assets
+        run: |
+          mkdir -p release-assets
+          find artifacts/ -type f \( -name "*.tar.gz" -o -name "*.zip" -o -name "*.sha256" \) -exec cp {} release-assets/ \;
+          find artifacts/ -type f -name "*.vsix" -exec cp {} release-assets/ \;
+      
+      - name: Extract changelog
+        id: changelog
+        run: |
+          VERSION="${GITHUB_REF#refs/tags/v}"
+          sed -n "/## \[$VERSION\]/,/^## \[/p" CHANGELOG.md | head -n -1 > release-notes.md || echo "Release v${VERSION}" > release-notes.md
+          echo "changelog<<EOF" >> $GITHUB_OUTPUT
+          cat release-notes.md >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+      
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: Clawdius ${{ github.ref_name }}
+          body_path: release-notes.md
+          draft: false
+          prerelease: ${{ contains(github.ref, '-') }}
+          files: release-assets/*
+          generate_release_notes: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   quality-gate:
     name: Quality Gate
     runs-on: ubuntu-latest
-    needs: [lint, test, coverage]
-    if: always()
+    needs: [lint, test, coverage, vscode-extension, security]
+    if: always() && !startsWith(github.ref, 'refs/tags/')
     steps:
       - name: Evaluate quality gate
         run: |
           echo "=== Quality Gate Evaluation ==="
           echo ""
           
-          # Check lint
+          FAILED=0
+          
           if [ "${{ needs.lint.result }}" == "success" ]; then
             echo "✅ Lint: PASSED"
           else
             echo "❌ Lint: FAILED"
-            exit 1
+            FAILED=1
           fi
           
-          # Check tests
           if [ "${{ needs.test.result }}" == "success" ]; then
             echo "✅ Tests: PASSED"
           else
             echo "❌ Tests: FAILED"
-            exit 1
+            FAILED=1
           fi
           
-          # Check coverage
           if [ "${{ needs.coverage.result }}" == "success" ]; then
-            echo "✅ Coverage: PASSED"
+            echo "✅ Coverage: PASSED (≥85%)"
           else
             echo "❌ Coverage: FAILED"
-            exit 1
+            FAILED=1
+          fi
+          
+          if [ "${{ needs.vscode-extension.result }}" == "success" ]; then
+            echo "✅ VSCode Extension: PASSED"
+          else
+            echo "❌ VSCode Extension: FAILED"
+            FAILED=1
+          fi
+          
+          if [ "${{ needs.security.result }}" == "success" ]; then
+            echo "✅ Security: PASSED"
+          else
+            echo "❌ Security: FAILED"
+            FAILED=1
           fi
           
           echo ""
+          if [ $FAILED -eq 1 ]; then
+            echo "=== Quality Gate FAILED ==="
+            exit 1
+          fi
           echo "=== All Quality Gates PASSED ==="

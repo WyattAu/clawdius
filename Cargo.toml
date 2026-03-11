@@ -1,33 +1,36 @@
-[package]
-name = "clawdius"
-version = "0.1.0"
-edition = "2024"
-authors = ["Clawdius Team"]
-description = "High-Assurance Rust-Native Engineering Engine"
+# Clawdius Monorepo Workspace
+# 
+# This workspace contains all crates for the Clawdius ecosystem:
+# - clawdius: CLI tool (standalone)
+# - clawdius-code: VSCode extension helper binary
+# - clawdius-core: Shared library (LLM, sessions, tools, etc.)
+# - clawdius-webview: Leptos-based WASM webview UI
+
+[workspace]
+resolver = "2"
+members = [
+    "crates/clawdius",
+    "crates/clawdius-core",
+    "crates/clawdius-code",
+    "crates/clawdius-webview",
+]
+
+[workspace.package]
+version = "1.0.0-rc.1"
+edition = "2021"
+authors = ["Clawdius Team <team@clawdius.dev>"]
 license = "Apache-2.0"
 repository = "https://github.com/clawdius/clawdius"
-keywords = ["ai", "agent", "hft", "security", "formal-verification"]
-categories = ["development-tools", "finance", "security"]
+homepage = "https://clawdius.dev"
+documentation = "https://docs.clawdius.dev"
+rust-version = "1.75"
+keywords = ["ai", "llm", "coding-assistant", "agent", "sandbox"]
+categories = ["development-tools", "command-line-utilities", "api-bindings"]
 
-[profile.release]
-panic = "abort"        # Disable stack unwinding per HFT SOP
-lto = "fat"            # Link-time optimization
-codegen-units = 1      # Maximum optimization
-strip = true           # Binary size reduction
-opt-level = 3          # Maximum performance
-
-[profile.dev]
-panic = "abort"
-
-[dependencies]
-# === Async Runtime (monoio - io_uring, thread-per-core) ===
-# Features: async-cancel, bytes, iouring, legacy, macros, utils (all default)
-# Additional: signal (for signal handling), sync (for channels), tracing
+[workspace.dependencies]
+# === Async Runtime ===
 monoio = { version = "0.2", features = ["signal", "sync", "tracing"] }
-
-# === CLI ===
-clap = { version = "4", features = ["derive"] }
-atty = "0.2"
+tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros", "sync", "time", "process", "io-util", "signal"] }
 
 # === Serialization ===
 serde = { version = "1.0", features = ["derive"] }
@@ -35,18 +38,26 @@ serde_json = "1.0"
 toml = "1.0"
 rkyv = { version = "0.8", features = ["std"] }
 
+# === CLI ===
+clap = { version = "4", features = ["derive", "env"] }
+
 # === Database ===
 rusqlite = { version = "0.38", features = ["bundled"] }
-# lancedb = "0.26"  # TODO: Re-enable when protoc is available
 
 # === LLM Integration ===
 genai = "0.5"
 async-openai = "0.33"
-reqwest = { version = "0.12", features = ["json", "blocking"] }
+# Fix RUSTSEC-2026-0037 (HIGH - CVSS 8.7) - quinn-proto via reqwest/genai chain
+reqwest = { version = "0.12", features = ["json", "stream"] }
+# Note: lancedb's object_store vulnerability needs upstream lancedb update
 
 # === Code Analysis ===
 tree-sitter = "0.26"
 tree-sitter-rust = "0.24"
+tree-sitter-python = "0.23"
+tree-sitter-javascript = "0.23"
+tree-sitter-typescript = "0.23"
+tree-sitter-go = "0.23"
 syntect = "5.3"
 
 # === Terminal UI ===
@@ -56,40 +67,103 @@ crossterm = { version = "0.29", features = ["event-stream"] }
 # === WASM Runtime (Brain Isolation) ===
 wasmtime = "42"
 
+# === JSON-RPC ===
+jsonrpsee = { version = "0.24", features = ["server", "client", "ws-client"] }
+
 # === Security ===
 keyring = "3.6"
+rpassword = "7.3"
+
+# === HTTP ===
+axum = "0.8"
+tower = "0.5"
+tower-http = { version = "0.6", features = ["cors", "fs"] }
+
+# === Browser Automation ===
+# NOTE: default-features = false is required to exclude async-std (RUSTSEC-2025-0052)
+chromiumoxide = { version = "0.7", default-features = false, features = ["tokio-runtime", "bytes"] }
+# headless_chrome removed - chromiumoxide provides equivalent functionality without async-std
+
+# === Leptos (Webview) ===
+leptos = { version = "0.7", features = ["csr"] }
+leptos_meta = { version = "0.7", features = ["csr"] }
+leptos_router = { version = "0.7", features = ["csr"] }
+leptos-use = "0.15"
+wasm-bindgen = "0.2"
+web-sys = "0.3"
+console_error_panic_hook = "0.1"
 
 # === Utilities ===
 uuid = { version = "1.21", features = ["v4", "serde"] }
+which = "7.0"
 thiserror = "2.0"
+anyhow = "1.0"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+tracing-appender = "0.2"
 sha3 = "0.10"
+blake3 = "1.5"
 dotenvy = "0.15"
+walkdir = "2.5"
+chrono = { version = "0.4.39", features = ["serde"] }
+base64 = "0.22"
+regex = "1.11"
+glob = "0.3"
+ignore = "0.4"
+notify = "8.0"
+futures = "0.3"
+async-trait = "0.1"
+pin-project = "1.1"
+bytes = "1.9"
+tokio-stream = "0.1"
+async-stream = "0.3"
+lru = "0.12"
+
+# === Token Counting ===
+tiktoken-rs = "0.5"
+
+# === Diff ===
+similar = "2.6"
+
+# === Git ===
+git2 = "0.19"
+
+# === Vector Database ===
+lancedb = "0.4"
+arrow = "51"
+arrow-array = "51"
+arrow-schema = "51"
+
+# === ML/Embeddings ===
+candle-core = "0.4"
+candle-nn = "0.4"
+candle-transformers = "0.4"
+tokenizers = "0.15"
+hf-hub = "0.3"
+
+# === Internationalization ===
+fluent = "0.17"
+fluent-bundle = "0.16"
+unic-langid = "0.9"
 
 # === High-Performance Allocator ===
-mimalloc = { version = "0.1", optional = true }
+mimalloc = "0.1"
 
-[dev-dependencies]
+# === HFT Broker ===
+crossbeam-utils = "0.8"
+rust_decimal = "1.35"
+
+# === Testing ===
 proptest = "1.6"
 rstest = "0.25"
 criterion = "0.5"
 tempfile = "3.17"
-reqwest = { version = "0.12", features = ["json"] }
-tokio = { version = "1", features = ["rt", "macros"] }
+mockall = "0.13"
 
-[features]
-default = ["mimalloc"]
-hft-mode = []           # Enable HFT-specific optimizations
-broker-mode = []        # Enable financial trading features
-
-[workspace]
-members = [
-    # Future crates will be added here
-    # "crates/clawdius-sentinel",
-    # "crates/clawdius-graph",
-    # "crates/clawdius-brain",
-]
+# === System Information ===
+sysinfo = "0.33"
+parking_lot = "0.12"
+once_cell = "1.20"
 
 [workspace.lints.rust]
 unsafe_code = "deny"
@@ -104,5 +178,22 @@ expect_used = "allow"
 panic = "warn"
 todo = "warn"
 
-[lints]
-workspace = true
+[profile.release]
+panic = "abort"
+lto = "fat"
+strip = "symbols"
+opt-level = 3
+codegen-units = 1
+debug = false
+debug-assertions = false
+overflow-checks = false
+rpath = false
+
+[profile.dev]
+panic = "abort"
+
+# WASM-specific profile
+[profile.release.package.clawdius-webview]
+opt-level = "z"      # Optimize for size
+
+# No workspace features - each crate defines its own

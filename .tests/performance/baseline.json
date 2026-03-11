@@ -1,0 +1,8 @@
+{
+  "session_create": 10,
+  "session_load": 5,
+  "context_resolve": 1,
+  "file_index": 50,
+  "checkpoint_create": 20,
+  "timeline_query": 5
+}

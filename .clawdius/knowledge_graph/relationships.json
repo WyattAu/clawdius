@@ -1,0 +1,291 @@
+{
+  "relationships": [
+    {
+      "source_id": "CONCEPT-001",
+      "target_id": "CONCEPT-002",
+      "type": "implements",
+      "confidence": 0.95,
+      "evidence": "YP-FSM-NEXUS-001: Nexus FSM implements FSM theory with 24 phases"
+    },
+    {
+      "source_id": "CONCEPT-001",
+      "target_id": "CONCEPT-003",
+      "type": "uses",
+      "confidence": 0.92,
+      "evidence": "YP-FSM-NEXUS-001 Definition 3: Typestate pattern enforces state consumption"
+    },
+    {
+      "source_id": "CONCEPT-003",
+      "target_id": "CONCEPT-002",
+      "type": "enforces",
+      "confidence": 0.90,
+      "evidence": "Typestate pattern makes illegal states unrepresentable at compile time"
+    },
+    {
+      "source_id": "CONCEPT-001",
+      "target_id": "CONCEPT-004",
+      "type": "requires",
+      "confidence": 0.95,
+      "evidence": "YP-FSM-NEXUS-001 Definition 1: Legal transition requires quality gates"
+    },
+    {
+      "source_id": "CONCEPT-005",
+      "target_id": "CONCEPT-004",
+      "type": "has",
+      "confidence": 0.90,
+      "evidence": "Each phase has entry and exit quality gates"
+    },
+    {
+      "source_id": "CONCEPT-005",
+      "target_id": "CONCEPT-007",
+      "type": "produces",
+      "confidence": 0.90,
+      "evidence": "YP-FSM-NEXUS-001: Phases produce artifacts with cryptographic hashes"
+    },
+    {
+      "source_id": "CONCEPT-006",
+      "target_id": "CONCEPT-005",
+      "type": "connects",
+      "confidence": 0.95,
+      "evidence": "Transitions connect phases via events"
+    },
+    {
+      "source_id": "CONCEPT-008",
+      "target_id": "CONCEPT-009",
+      "type": "implements",
+      "confidence": 0.92,
+      "evidence": "YP-SECURITY-SANDBOX-001: Sentinel implements capability-based security"
+    },
+    {
+      "source_id": "CONCEPT-008",
+      "target_id": "CONCEPT-010",
+      "type": "enforces",
+      "confidence": 0.90,
+      "evidence": "Sandbox enforces isolation boundaries between components"
+    },
+    {
+      "source_id": "CONCEPT-008",
+      "target_id": "CONCEPT-011",
+      "type": "provides",
+      "confidence": 0.95,
+      "evidence": "Sentinel provides 4-tier isolation (Native, Container, WASM, Hardened)"
+    },
+    {
+      "source_id": "CONCEPT-009",
+      "target_id": "CONCEPT-010",
+      "type": "enables",
+      "confidence": 0.88,
+      "evidence": "Capabilities enable fine-grained control across isolation boundaries"
+    },
+    {
+      "source_id": "CONCEPT-011",
+      "target_id": "CONCEPT-028",
+      "type": "includes",
+      "confidence": 0.90,
+      "evidence": "Tier 3 uses wasmtime for WASM sandbox"
+    },
+    {
+      "source_id": "CONCEPT-011",
+      "target_id": "CONCEPT-035",
+      "type": "includes",
+      "confidence": 0.90,
+      "evidence": "Tier 2 uses bubblewrap for OS container"
+    },
+    {
+      "source_id": "CONCEPT-012",
+      "target_id": "CONCEPT-036",
+      "type": "uses",
+      "confidence": 0.90,
+      "evidence": "Secret isolation uses OS keychain for credential storage"
+    },
+    {
+      "source_id": "CONCEPT-021",
+      "target_id": "CONCEPT-013",
+      "type": "prevents",
+      "confidence": 0.92,
+      "evidence": "YP-SECURITY-SANDBOX-001 Theorem 2: Brain WASM prevents Brain-Leaking"
+    },
+    {
+      "source_id": "CONCEPT-021",
+      "target_id": "CONCEPT-028",
+      "type": "runs-in",
+      "confidence": 0.95,
+      "evidence": "BP-BRAIN-001: Brain runs in wasmtime WASM sandbox"
+    },
+    {
+      "source_id": "CONCEPT-021",
+      "target_id": "CONCEPT-027",
+      "type": "uses",
+      "confidence": 0.90,
+      "evidence": "Brain uses versioned RPC for Host communication"
+    },
+    {
+      "source_id": "CONCEPT-014",
+      "target_id": "CONCEPT-017",
+      "type": "requires",
+      "confidence": 0.95,
+      "evidence": "YP-HFT-BROKER-001 Axiom 2: HFT requires Zero-GC for determinism"
+    },
+    {
+      "source_id": "CONCEPT-014",
+      "target_id": "CONCEPT-019",
+      "type": "requires",
+      "confidence": 0.92,
+      "evidence": "HFT requires WCET bounds for timing guarantees"
+    },
+    {
+      "source_id": "CONCEPT-015",
+      "target_id": "CONCEPT-039",
+      "type": "implements",
+      "confidence": 0.95,
+      "evidence": "YP-HFT-BROKER-001 Theorem 1: Wallet Guard implements SEC 15c3-5"
+    },
+    {
+      "source_id": "CONCEPT-015",
+      "target_id": "CONCEPT-037",
+      "type": "enforces",
+      "confidence": 0.90,
+      "evidence": "Wallet Guard enforces position limits"
+    },
+    {
+      "source_id": "CONCEPT-015",
+      "target_id": "CONCEPT-038",
+      "type": "enforces",
+      "confidence": 0.90,
+      "evidence": "Wallet Guard enforces daily drawdown limits"
+    },
+    {
+      "source_id": "CONCEPT-016",
+      "target_id": "CONCEPT-017",
+      "type": "enables",
+      "confidence": 0.90,
+      "evidence": "Ring buffer enables zero-allocation market data processing"
+    },
+    {
+      "source_id": "CONCEPT-016",
+      "target_id": "CONCEPT-040",
+      "type": "uses",
+      "confidence": 0.88,
+      "evidence": "Ring buffer uses cache-padded counters to prevent false sharing"
+    },
+    {
+      "source_id": "CONCEPT-018",
+      "target_id": "CONCEPT-017",
+      "type": "enables",
+      "confidence": 0.92,
+      "evidence": "Arena allocation enables Zero-GC guarantee"
+    },
+    {
+      "source_id": "CONCEPT-020",
+      "target_id": "CONCEPT-001",
+      "type": "orchestrates",
+      "confidence": 0.95,
+      "evidence": "BP-HOST-KERNEL-001: Host Kernel orchestrates Nexus FSM"
+    },
+    {
+      "source_id": "CONCEPT-020",
+      "target_id": "CONCEPT-008",
+      "type": "manages",
+      "confidence": 0.92,
+      "evidence": "Host Kernel manages Sentinel Sandbox"
+    },
+    {
+      "source_id": "CONCEPT-020",
+      "target_id": "CONCEPT-021",
+      "type": "hosts",
+      "confidence": 0.95,
+      "evidence": "Host Kernel hosts Brain WASM module"
+    },
+    {
+      "source_id": "CONCEPT-020",
+      "target_id": "CONCEPT-022",
+      "type": "integrates",
+      "confidence": 0.90,
+      "evidence": "Host Kernel integrates Graph-RAG for knowledge retrieval"
+    },
+    {
+      "source_id": "CONCEPT-020",
+      "target_id": "CONCEPT-029",
+      "type": "uses",
+      "confidence": 0.92,
+      "evidence": "BP-HOST-KERNEL-001 ADR-HOST-001: Host uses monoio runtime"
+    },
+    {
+      "source_id": "CONCEPT-020",
+      "target_id": "CONCEPT-030",
+      "type": "abstracts",
+      "confidence": 0.90,
+      "evidence": "Host Kernel abstracts platform via HAL"
+    },
+    {
+      "source_id": "CONCEPT-022",
+      "target_id": "CONCEPT-023",
+      "type": "contains",
+      "confidence": 0.95,
+      "evidence": "Graph-RAG contains AST Index for structural analysis"
+    },
+    {
+      "source_id": "CONCEPT-022",
+      "target_id": "CONCEPT-024",
+      "type": "contains",
+      "confidence": 0.95,
+      "evidence": "Graph-RAG contains Vector Store for semantic search"
+    },
+    {
+      "source_id": "CONCEPT-022",
+      "target_id": "CONCEPT-025",
+      "type": "exposes",
+      "confidence": 0.90,
+      "evidence": "Graph-RAG exposes tools via MCP Host"
+    },
+    {
+      "source_id": "CONCEPT-023",
+      "target_id": "CONCEPT-026",
+      "type": "uses",
+      "confidence": 0.95,
+      "evidence": "AST Index uses tree-sitter for parsing"
+    },
+    {
+      "source_id": "CONCEPT-021",
+      "target_id": "CONCEPT-022",
+      "type": "queries",
+      "confidence": 0.88,
+      "evidence": "Brain queries Graph-RAG for context enrichment"
+    },
+    {
+      "source_id": "CONCEPT-021",
+      "target_id": "CONCEPT-033",
+      "type": "validates",
+      "confidence": 0.90,
+      "evidence": "Brain validates code against SOP rules"
+    },
+    {
+      "source_id": "CONCEPT-008",
+      "target_id": "CONCEPT-034",
+      "type": "mitigates",
+      "confidence": 0.90,
+      "evidence": "Sentinel mitigates supply chain attacks via isolation"
+    },
+    {
+      "source_id": "CONCEPT-020",
+      "target_id": "CONCEPT-012",
+      "type": "enforces",
+      "confidence": 0.92,
+      "evidence": "Host Kernel enforces secret isolation via proxy pattern"
+    },
+    {
+      "source_id": "CONCEPT-030",
+      "target_id": "CONCEPT-035",
+      "type": "provides",
+      "confidence": 0.90,
+      "evidence": "HAL provides bubblewrap backend for Linux"
+    },
+    {
+      "source_id": "CONCEPT-030",
+      "target_id": "CONCEPT-036",
+      "type": "integrates",
+      "confidence": 0.88,
+      "evidence": "HAL integrates OS keychain (libsecret/Keychain)"
+    }
+  ]
+}

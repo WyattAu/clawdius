@@ -1,0 +1,197 @@
+{
+    "name": "clawdius-code",
+    "displayName": "Clawdius Code",
+    "description": "AI-powered coding assistant",
+    "version": "0.1.0",
+    "publisher": "clawdius",
+    "engines": {
+        "vscode": "^1.85.0"
+    },
+    "categories": [
+        "Programming Languages",
+        "Machine Learning",
+        "Other"
+    ],
+    "activationEvents": [
+        "onStartupFinished"
+    ],
+    "main": "./out/extension.js",
+    "icon": "media/icon.svg",
+    "contributes": {
+        "viewsContainers": {
+            "activitybar": [
+                {
+                    "id": "clawdius-chatView",
+                    "title": "Clawdius",
+                    "icon": "media/claw.svg"
+                }
+            ]
+        },
+        "views": {
+            "clawdius-chatView": [
+                {
+                    "type": "webview",
+                    "id": "clawdius.chatView",
+                    "name": "Chat"
+                }
+            ]
+        },
+        "commands": [
+            {
+                "command": "clawdius.chat",
+                "title": "Clawdius: Ask a question"
+            },
+            {
+                "command": "clawdius.chatSelection",
+                "title": "Clawdius: Chat with selection"
+            },
+            {
+                "command": "clawdius.addContext",
+                "title": "Clawdius: Add file to context"
+            },
+            {
+                "command": "clawdius.addFileContext",
+                "title": "Clawdius: Add current file to context"
+            },
+            {
+                "command": "clawdius.checkpoint",
+                "title": "Clawdius: Create checkpoint"
+            },
+            {
+                "command": "clawdius.openChat",
+                "title": "Clawdius: Open chat view"
+            },
+            {
+                "command": "clawdius.showDiff",
+                "title": "Clawdius: Show diff for current change"
+            },
+            {
+                "command": "clawdius.acceptChange",
+                "title": "Clawdius: Accept current change"
+            },
+            {
+                "command": "clawdius.rejectChange",
+                "title": "Clawdius: Reject current change"
+            },
+            {
+                "command": "clawdius.showAllChanges",
+                "title": "Clawdius: Show all pending changes"
+            },
+            {
+                "command": "clawdius.testDiff",
+                "title": "Clawdius: Test diff view (demo)"
+            },
+            {
+                "command": "clawdius.testMultipleDiffs",
+                "title": "Clawdius: Test multiple diffs (demo)"
+            }
+        ],
+        "menus": {
+            "editor/context": [
+                {
+                    "command": "clawdius.chatSelection",
+                    "when": "editorHasSelection",
+                    "group": "clawdius@1"
+                },
+                {
+                    "command": "clawdius.addContext",
+                    "group": "clawdius@2"
+                }
+            ]
+        },
+        "keybindings": [
+            {
+                "command": "clawdius.acceptChange",
+                "key": "ctrl+shift+enter",
+                "mac": "cmd+shift+enter",
+                "when": "editorTextFocus && clawdius.hasPendingChanges"
+            },
+            {
+                "command": "clawdius.rejectChange",
+                "key": "ctrl+shift+escape",
+                "mac": "cmd+shift+escape",
+                "when": "editorTextFocus && clawdius.hasPendingChanges"
+            },
+            {
+                "command": "clawdius.showAllChanges",
+                "key": "ctrl+shift+d",
+                "mac": "cmd+shift+d"
+            }
+        ],
+        "configuration": {
+            "title": "Clawdius",
+            "properties": {
+                "clawdius.binaryPath": {
+                    "type": "string",
+                    "default": "",
+                    "description": "Path to clawdius-code binary (empty for auto-detect)"
+                },
+                "clawdius.provider": {
+                    "type": "string",
+                    "default": "anthropic",
+                    "enum": ["anthropic", "openai", "deepseek", "ollama", "zai", "openrouter"],
+                    "description": "LLM provider to use"
+                },
+                "clawdius.model": {
+                    "type": "string",
+                    "default": "",
+                    "description": "Model to use (provider-specific, empty for default)"
+                },
+                "clawdius.autoSave": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Automatically save sessions"
+                },
+                "clawdius.compactThreshold": {
+                    "type": "number",
+                    "default": 0.85,
+                    "description": "Context window percentage to trigger auto-compact (0.0-1.0)"
+                },
+                "clawdius.maxTokens": {
+                    "type": "number",
+                    "default": 4096,
+                    "description": "Maximum tokens in LLM response"
+                },
+                "clawdius.sandbox": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Enable sandbox for code execution"
+                },
+                "clawdius.completion.enabled": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Enable inline code completions"
+                },
+                "clawdius.completion.triggerCharacters": {
+                    "type": "array",
+                    "default": [".", "(", " "],
+                    "description": "Characters that trigger completion suggestions"
+                },
+                "clawdius.completion.debounceDelay": {
+                    "type": "number",
+                    "default": 300,
+                    "description": "Debounce delay in milliseconds for completion requests"
+                },
+                "clawdius.completion.maxTokens": {
+                    "type": "number",
+                    "default": 100,
+                    "description": "Maximum tokens in completion response"
+                }
+            }
+        }
+    },
+    "scripts": {
+        "vscode:prepublish": "npm run compile",
+        "compile": "tsc -p ./",
+        "watch": "tsc -watch -p ./",
+        "lint": "eslint src --ext ts"
+    },
+    "devDependencies": {
+        "@types/node": "^20.10.0",
+        "@types/vscode": "^1.85.0",
+        "@typescript-eslint/eslint-plugin": "^6.13.0",
+        "@typescript-eslint/parser": "^6.13.0",
+        "eslint": "^8.54.0",
+        "typescript": "^5.3.0"
+    }
+}

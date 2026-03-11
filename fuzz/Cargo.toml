@@ -1,0 +1,45 @@
+[package]
+name = "clawdius-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2024"
+
+[package.metadata]
+cargo-fuzz = true
+
+[workspace]
+
+[dependencies]
+clawdius-core = { path = "../crates/clawdius-core" }
+libfuzzer-sys = "0.4"
+toml = "1.0"
+
+[[bin]]
+name = "fuzz_parser"
+path = "fuzz_targets/fuzz_parser.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "fuzz_config"
+path = "fuzz_targets/fuzz_config.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "fuzz_rpc"
+path = "fuzz_targets/fuzz_rpc.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "fuzz_mention"
+path = "fuzz_targets/fuzz_mention.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "fuzz_diff_engine"
+path = "fuzz_targets/fuzz_diff_engine.rs"
+test = false
+doc = false

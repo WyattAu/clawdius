@@ -142,7 +142,7 @@ jobs:
     name: Fuzz Testing
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    if: false  # Disabled until fuzz targets are implemented
     strategy:
       matrix:
         target:
@@ -207,19 +207,19 @@ jobs:
       - name: Run security tests
         run: |
           cargo nextest run \
-            --all-features \
+            --workspace --all-features \
             -E 'test(security)'
       
       - name: Run input validation tests
         run: |
           cargo nextest run \
-            --all-features \
+            --workspace --all-features \
             -E 'test(input_validation)'
       
       - name: Run sandbox escape tests
         run: |
           cargo nextest run \
-            --all-features \
+            --workspace --all-features \
             -E 'test(sandbox_escape)'
 
   sbom:
@@ -237,7 +237,7 @@ jobs:
         run: cargo install cargo-cyclonedx --locked
       
       - name: Generate SBOM
-        run: cargo cyclonedx --all-features --format json
+        run: cargo cyclonedx --workspace --all-features --format json
       
       - name: Upload SBOM
         uses: actions/upload-artifact@v4

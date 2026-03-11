@@ -1,0 +1,191 @@
+# Domain Constraints: Security (Sentinel)
+# Document: YP-SECURITY-001
+# Version: 1.0.0
+
+[metadata]
+algorithm = "Security Domain"
+yellow_paper = "YP-SECURITY-001"
+constraint_count = 16
+created = "2026-03-08"
+compliance = ["NIST SP 800-53", "OWASP ASVS", "CWE"]
+
+# =============================================================================
+# AUTHENTICATION CONSTRAINTS
+# =============================================================================
+
+[[constraints]]
+id = "SEC-AUTH-001"
+category = "authentication"
+name = "Capability Token Expiry"
+description = "Maximum validity period for capability tokens"
+value = 3600
+unit = "seconds"
+source = "Session security"
+rationale = "Limit window for token misuse"
+verifiable = true
+
+[[constraints]]
+id = "SEC-AUTH-002"
+category = "authentication"
+name = "HMAC Key Length"
+description = "Minimum length of HMAC signing key"
+value = 256
+unit = "bits"
+source = "NIST SP 800-107"
+rationale = "Prevent key recovery attacks"
+verifiable = true
+
+# =============================================================================
+# ISOLATION CONSTRAINTS
+# =============================================================================
+
+[[constraints]]
+id = "SEC-ISO-001"
+category = "isolation"
+name = "Tier 1 Allowed Toolchains"
+description = "Toolchains permitted in Tier 1 (native passthrough)"
+value = ["Rust", "Cpp", "Vulkan"]
+source = "Audit requirement"
+rationale = "Only audited native code"
+verifiable = true
+
+[[constraints]]
+id = "SEC-ISO-002"
+category = "isolation"
+name = "Tier 2 Isolation Mechanism"
+description = "Isolation technology for OS containers"
+value = "bubblewrap"
+source = "Attack surface minimization"
+rationale = "Lightweight namespace isolation"
+verifiable = true
+
+[[constraints]]
+id = "SEC-ISO-003"
+category = "isolation"
+name = "Tier 3 Isolation Mechanism"
+description = "Isolation technology for WASM sandboxes"
+value = "wasmtime"
+source = "Memory safety"
+rationale = "WASM provides strong isolation"
+verifiable = true
+
+[[constraints]]
+id = "SEC-ISO-004"
+category = "isolation"
+name = "Tier 4 Isolation Mechanism"
+description = "Isolation technology for hardened containers"
+value = "gVisor"
+source = "Defense in depth"
+rationale = "Kernel-level isolation"
+verifiable = true
+
+# =============================================================================
+# RESOURCE CONSTRAINTS
+# =============================================================================
+
+[[constraints]]
+id = "SEC-RES-001"
+category = "resource"
+name = "Maximum Sandbox Count"
+description = "Maximum concurrent sandboxes per host"
+value = 100
+unit = "sandboxes"
+source = "Resource bound"
+rationale = "Prevent resource exhaustion"
+verifiable = true
+
+[[constraints]]
+id = "SEC-RES-002"
+category = "resource"
+name = "Default Timeout"
+description = "Default execution timeout for sandboxed operations"
+value = 300
+unit = "seconds"
+source = "DoS prevention"
+rationale = "Bound execution time"
+verifiable = true
+configurable = true
+
+[[constraints]]
+id = "SEC-RES-003"
+category = "resource"
+name = "Maximum Environment Variables"
+description = "Maximum environment variables passed to sandbox"
+value = 50
+unit = "variables"
+source = "Attack surface"
+rationale = "Limit environment injection surface"
+verifiable = true
+
+# =============================================================================
+# CRYPTOGRAPHIC CONSTRAINTS
+# =============================================================================
+
+[[constraints]]
+id = "SEC-CRYPTO-001"
+category = "cryptographic"
+name = "Signature Algorithm"
+description = "Algorithm for capability token signatures"
+value = "HMAC-SHA256"
+source = "NIST-approved"
+rationale = "Proven cryptographic security"
+verifiable = true
+
+[[constraints]]
+id = "SEC-CRYPTO-002"
+category = "cryptographic"
+name = "Random Number Generator"
+description = "CSPRNG for security-sensitive operations"
+value = "ChaCha20"
+source = "NIST SP 800-90A"
+rationale = "Strong cryptographic randomness"
+verifiable = true
+
+# =============================================================================
+# AUDIT CONSTRAINTS
+# =============================================================================
+
+[[constraints]]
+id = "SEC-AUDIT-001"
+category = "audit"
+name = "Security Event Retention"
+description = "Retention period for security audit logs"
+value = 365
+unit = "days"
+source = "Compliance requirement"
+rationale = "Forensic analysis capability"
+verifiable = true
+
+[[constraints]]
+id = "SEC-AUDIT-002"
+category = "audit"
+name = "Capability Derivation Logging"
+description = "All capability derivations must be logged"
+value = true
+source = "Traceability"
+rationale = "Track capability delegation chain"
+verifiable = true
+
+# =============================================================================
+# INPUT VALIDATION CONSTRAINTS
+# =============================================================================
+
+[[constraints]]
+id = "SEC-VAL-001"
+category = "validation"
+name = "Path Canonicalization Required"
+description = "All file paths must be canonicalized before use"
+value = true
+source = "OWASP ASVS"
+rationale = "Prevent path traversal attacks"
+verifiable = true
+
+[[constraints]]
+id = "SEC-VAL-002"
+category = "validation"
+name = "Command Allowlist Required"
+description = "Commands must be in explicit allowlist"
+value = true
+source = "RCE prevention"
+rationale = "Prevent arbitrary command execution"
+verifiable = true

@@ -9,6 +9,7 @@ use std::sync::Mutex;
 use crate::ast_store::{AstNode, AstQuery, AstStore, CallGraph, IndexStats, NodeId};
 use crate::component::{Component, ComponentId, ComponentInfo, ComponentState};
 use crate::error::{ClawdiusError, Result};
+use crate::llm::{EmbedRequest, LlmClient, Provider};
 use crate::mcp::McpHost;
 use crate::parser::{LanguageDetector, Parser, ParsedFile};
 use crate::vector_store::{Chunker, SearchResult, VectorStore, VectorStoreConfig};
@@ -64,6 +65,8 @@ pub struct GraphRagConfig {
     pub max_chunk_size: usize,
     /// Chunk overlap
     pub chunk_overlap: usize,
+    /// Provider to use for embeddings
+    pub embedding_provider: Provider,
 }
 
 impl Default for GraphRagConfig {
@@ -74,6 +77,7 @@ impl Default for GraphRagConfig {
             vector_store_path: PathBuf::from(".clawdius/graph/vectors"),
             max_chunk_size: 1000,
             chunk_overlap: 100,
+            embedding_provider: Provider::OpenAI,
         }
     }
 }
@@ -88,6 +92,13 @@ impl GraphRagConfig {
             vector_store_path: root.join("vectors"),
             ..Default::default()
         }
+    }
+
+    /// Set the embedding provider
+    #[must_use]
+    pub fn with_embedding_provider(mut self, provider: Provider) -> Self {
+        self.embedding_provider = provider;
+        self
     }
 }
 
@@ -112,6 +123,8 @@ pub struct GraphRag {
     mcp_host: McpHost,
     /// Language detector
     detector: LanguageDetector,
+    /// LLM client for embeddings
+    llm_client: LlmClient,
 }
 
 impl GraphRag {
@@ -133,6 +146,7 @@ impl GraphRag {
             chunker: Chunker::new(1000, 100),
             mcp_host: McpHost::new(),
             detector: LanguageDetector::new(),
+            llm_client: LlmClient::new(),
         })
     }
 
@@ -329,8 +343,19 @@ impl GraphRag {
         ast_store.stats()
     }
 
-    async fn generate_embedding(&self, _text: &str) -> Result<Vec<f32>> {
-        Ok(vec![0.0; crate::vector_store::EMBEDDING_DIMENSION])
+    async fn generate_embedding(&self, text: &str) -> Result<Vec<f32>> {
+        let request = EmbedRequest::new(self.config.embedding_provider, vec![text.to_string()]);
+
+        let response = self
+            .llm_client
+            .embed(request)
+            .map_err(|e| ClawdiusError::Database(format!("Embedding generation failed: {e}")))?;
+
+        response
+            .embeddings
+            .first()
+            .map(|e| e.vector.clone())
+            .ok_or_else(|| ClawdiusError::Database("No embedding returned".into()))
     }
 }
 

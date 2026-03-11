@@ -1,23 +1,122 @@
 # Clawdius Architecture Overview
 
-**Version:** 0.6.0  
-**Last Updated:** 2026-03-01
+**Version:** 0.7.0  
+**Last Updated:** 2026-03-06
 
 ---
 
 ## Table of Contents
 
-1. [High-Level Architecture](#1-high-level-architecture)
-2. [Component Overview](#2-component-overview)
-3. [Data Flow](#3-data-flow)
-4. [Deployment Architecture](#4-deployment-architecture)
-5. [Security Architecture](#5-security-architecture)
+1. [Monorepo Structure](#1-monorepo-structure)
+2. [High-Level Architecture](#2-high-level-architecture)
+3. [Component Overview](#3-component-overview)
+4. [Data Flow](#4-data-flow)
+5. [Deployment Architecture](#5-deployment-architecture)
+6. [Security Architecture](#6-security-architecture)
 
 ---
 
-## 1. High-Level Architecture
+## 1. Monorepo Structure
 
-### 1.1 System Diagram
+### 1.1 Workspace Organization
+
+Clawdius is organized as a Rust workspace with multiple crates:
+
+```
+clawdius/
+├── crates/
+│   ├── clawdius/              # CLI application (binary)
+│   │   ├── src/
+│   │   │   ├── main.rs        # Entry point
+│   │   │   ├── cli.rs         # CLI argument parsing
+│   │   │   ├── tui/           # Terminal UI (ratatui)
+│   │   │   └── commands/      # Command implementations
+│   │   └── Cargo.toml
+│   │
+│   ├── clawdius-core/         # Core library
+│   │   ├── src/
+│   │   │   ├── lib.rs         # Library entry point
+│   │   │   ├── llm/           # LLM integration
+│   │   │   ├── session/       # Session management
+│   │   │   ├── tools/         # Tool system
+│   │   │   ├── graph_rag/     # Graph-RAG system
+│   │   │   ├── sandbox/       # Sandboxing
+│   │   │   └── mcp/           # Model Context Protocol
+│   │   └── Cargo.toml
+│   │
+│   ├── clawdius-code/         # VSCode extension helper (binary)
+│   │   ├── src/
+│   │   │   └── main.rs        # JSON-RPC server
+│   │   └── Cargo.toml
+│   │
+│   └── clawdius-webview/      # Leptos WASM webview (library)
+│       ├── src/
+│       │   └── lib.rs         # Web-based UI
+│       └── Cargo.toml
+│
+├── editors/
+│   └── vscode/                # VSCode extension (TypeScript)
+│       ├── src/
+│       │   ├── extension.ts   # Extension entry point
+│       │   ├── client.ts      # JSON-RPC client
+│       │   └── providers/     # VSCode providers
+│       └── package.json
+│
+├── .docs/                     # Documentation
+├── tests/                     # Integration tests
+├── benches/                   # Benchmarks
+└── Cargo.toml                 # Workspace configuration
+```
+
+### 1.2 Crate Responsibilities
+
+| Crate | Type | Purpose | Dependencies |
+|-------|------|---------|--------------|
+| **clawdius** | Binary | CLI tool, TUI, command orchestration | clawdius-core |
+| **clawdius-core** | Library | Core functionality: LLM, sessions, tools, sandboxing | External only |
+| **clawdius-code** | Binary | JSON-RPC server for VSCode extension | clawdius-core |
+| **clawdius-webview** | WASM Library | Browser-based UI (Leptos) | clawdius-core |
+
+### 1.3 Dependency Graph
+
+```
+clawdius (CLI)
+    └── clawdius-core
+            ├── External: tokio, reqwest, rusqlite, tree-sitter
+            └── External: wasmtime, jsonrpsee
+
+clawdius-code (VSCode helper)
+    └── clawdius-core
+
+clawdius-webview (WASM UI)
+    └── clawdius-core (subset)
+            └── External: leptos, wasm-bindgen
+
+editors/vscode (TypeScript)
+    └── clawdius-code (via JSON-RPC)
+```
+
+### 1.4 Build Process
+
+```bash
+# Build all crates
+cargo build --release
+
+# Build specific crate
+cargo build -p clawdius
+
+# Build with features
+cargo build --features hft-mode
+
+# Build VSCode extension
+cd editors/vscode && pnpm run compile
+```
+
+---
+
+## 2. High-Level Architecture
+
+### 2.1 System Diagram
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -42,7 +141,7 @@
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-### 1.2 Core Design Principles
+### 2.2 Core Design Principles
 
 | Principle | Description |
 |-----------|-------------|
@@ -51,11 +150,21 @@
 | **Deterministic Execution** | monoio thread-per-core eliminates scheduler jitter |
 | **Defense in Depth** | Multiple isolation layers |
 
+### 2.3 Monorepo Benefits
+
+| Benefit | Description |
+|---------|-------------|
+| **Code Sharing** | Core library shared across all binaries |
+| **Atomic Changes** | Single PR can update CLI, library, and extensions |
+| **Simplified Dependencies** | Workspace-level dependency management |
+| **Unified Testing** | Cross-crate integration tests |
+| **Consistent Versioning** | Single version for all components |
+
 ---
 
-## 2. Component Overview
+## 3. Component Overview
 
-### 2.1 Host Kernel
+### 3.1 Host Kernel
 
 The central orchestrator managing all subsystems.
 
@@ -66,10 +175,11 @@ The central orchestrator managing all subsystems.
 - Inter-component communication
 
 **Key Files:**
-- `src/main.rs` - Entry point and runtime setup
-- `src/fsm.rs` - State machine implementation
+- `crates/clawdius/src/main.rs` - Entry point and runtime setup
+- `crates/clawdius/src/fsm.rs` - State machine implementation
+- `crates/clawdius-core/src/kernel.rs` - Host kernel implementation
 
-### 2.2 Nexus FSM
+### 3.2 Nexus FSM
 
 The 24-phase R&D lifecycle state machine.
 
@@ -125,7 +235,7 @@ Continuous Monitoring (21)
 Knowledge Transfer (22)
 ```
 
-### 2.3 Sentinel Sandbox
+### 3.3 Sentinel Sandbox
 
 Multi-tier execution isolation system.
 
@@ -138,7 +248,9 @@ Multi-tier execution isolation system.
 | 3 | Untrusted | LLM reasoning | WASM (Wasmtime) |
 | 4 | Hardened | Unknown code | Hardened container |
 
-### 2.4 Brain (WASM)
+**Implementation:** `crates/clawdius-core/src/sandbox/`
+
+### 3.4 Brain (WASM)
 
 Isolated LLM reasoning module.
 
@@ -148,7 +260,9 @@ Isolated LLM reasoning module.
 - Fuel-based execution limits
 - Memory isolation
 
-### 2.5 Graph-RAG
+**Implementation:** `crates/clawdius-core/src/brain/`
+
+### 3.5 Graph-RAG
 
 Knowledge management system.
 
@@ -157,11 +271,107 @@ Knowledge management system.
 - **LanceDB Vector Store:** Semantic code embeddings
 - **tree-sitter:** Multi-language parsing
 
+**Implementation:** `crates/clawdius-core/src/graph_rag/`
+
+### 3.6 CLI (clawdius crate)
+
+Command-line interface and TUI.
+
+**Components:**
+- **CLI Parser:** clap-based argument parsing
+- **TUI:** ratatui-based terminal UI (60 FPS)
+- **Commands:** Implementation of all CLI commands
+
+**Implementation:** `crates/clawdius/`
+
+### 3.7 VSCode Extension
+
+Editor integration.
+
+**Components:**
+- **Extension:** TypeScript VSCode extension
+- **Helper Binary:** JSON-RPC server (clawdius-code)
+- **Webview:** Optional browser-based UI (clawdius-webview)
+
+**Implementation:** `editors/vscode/`, `crates/clawdius-code/`, `crates/clawdius-webview/`
+
+### 3.8 Timeline System
+
+File change tracking and rollback system.
+
+**Components:**
+- **Checkpoint Manager:** Create and manage file snapshots
+- **Diff Engine:** Compare checkpoints and generate diffs
+- **Rollback Handler:** Restore files to previous states
+- **History Tracker:** Track file change history
+
+**Implementation:** `crates/clawdius-core/src/timeline/`
+
+**Architecture:**
+```
+┌─────────────────────────────────────────────────┐
+│            Timeline Manager                      │
+│  ┌──────────────┐  ┌─────────────────────────┐ │
+│  │  Checkpoint  │  │    Diff Engine          │ │
+│  │  Manager     │  │  - Unified diff         │ │
+│  │              │  │  - JSON diff            │ │
+│  └──────────────┘  └─────────────────────────┘ │
+│  ┌──────────────┐  ┌─────────────────────────┐ │
+│  │   Rollback   │  │    History Tracker      │ │
+│  │   Handler    │  │  - File operations      │ │
+│  │              │  │  - Change tracking      │ │
+│  └──────────────┘  └─────────────────────────┘ │
+└─────────────────────────────────────────────────┘
+         │                          │
+         ▼                          ▼
+  ┌──────────────┐          ┌──────────────┐
+  │   SQLite DB  │          │   File System│
+  │  (metadata)  │          │  (snapshots) │
+  └──────────────┘          └──────────────┘
+```
+
+### 3.9 Completion Handler
+
+Enhanced code completion system.
+
+**Components:**
+- **LRU Cache:** Cache completion results for faster responses
+- **Language Detectors:** Detect and handle different languages
+- **Fallback System:** Provide fallback completions on timeout
+- **Provider Integration:** Integrate with LLM providers
+
+**Implementation:** `crates/clawdius-core/src/completions/`
+
+**Supported Languages:**
+- Rust
+- Python
+- JavaScript/TypeScript
+- Go
+
+**Architecture:**
+```
+┌─────────────────────────────────────────────────┐
+│        Completion Handler                        │
+│  ┌──────────────────────────────────────────┐  │
+│  │           LRU Cache (100 entries)         │  │
+│  └──────────────────────────────────────────┘  │
+│  ┌──────────────────────────────────────────┐  │
+│  │         Language Handlers                 │  │
+│  │  ┌─────────┐ ┌─────────┐ ┌────────────┐ │  │
+│  │  │  Rust   │ │ Python  │ │ JavaScript │ │  │
+│  │  └─────────┘ └─────────┘ └────────────┘ │  │
+│  └──────────────────────────────────────────┘  │
+│  ┌──────────────────────────────────────────┐  │
+│  │    Fallback & Timeout Handling            │  │
+│  └──────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────┘
+```
+
 ---
 
-## 3. Data Flow
+## 4. Data Flow
 
-### 3.1 Initialization Sequence
+### 4.1 Initialization Sequence
 
 ```mermaid
 sequenceDiagram
@@ -184,7 +394,7 @@ sequenceDiagram
     end
 ```
 
-### 3.2 Chat Request Flow
+### 4.2 Chat Request Flow
 
 ```mermaid
 sequenceDiagram
@@ -208,7 +418,7 @@ sequenceDiagram
     TUI-->>User: Display response
 ```
 
-### 3.3 Refactoring Flow
+### 4.3 Refactoring Flow
 
 ```mermaid
 sequenceDiagram
@@ -231,9 +441,31 @@ sequenceDiagram
 
 ---
 
-## 4. Deployment Architecture
+## 5. Deployment Architecture
 
-### 4.1 Single Binary Distribution
+### 5.1 Monorepo Distribution
+
+Clawdius is distributed as multiple components from a single monorepo:
+
+```
+clawdius-monorepo
+│
+├── clawdius (CLI binary)
+│   ├── Linux x86_64 (static)
+│   ├── macOS x86_64 / ARM64
+│   └── WSL2
+│
+├── clawdius-code (VSCode helper binary)
+│   └── Same platforms as CLI
+│
+├── clawdius-webview (WASM module)
+│   └── Browser-independent
+│
+└── VSCode Extension (.vsix)
+    └── Universal extension
+```
+
+### 5.2 Single Binary Distribution (CLI)
 
 ```
 clawdius (15MB stripped)
@@ -249,7 +481,7 @@ clawdius (15MB stripped)
     └── podman (optional)
 ```
 
-### 4.2 Memory Layout
+### 5.3 Memory Layout
 
 ```
 ┌────────────────────────────────────┐ 0xFFFFFFFF
@@ -267,7 +499,7 @@ clawdius (15MB stripped)
 └────────────────────────────────────┘ 0x00000000
 ```
 
-### 4.3 Resource Budgets
+### 5.4 Resource Budgets
 
 | Mode | Memory | Description |
 |------|--------|-------------|
@@ -276,9 +508,9 @@ clawdius (15MB stripped)
 
 ---
 
-## 5. Security Architecture
+## 6. Security Architecture
 
-### 5.1 Trust Boundaries
+### 6.1 Trust Boundaries
 
 ```
 ┌─────────────────────────────────────────────────────┐
@@ -314,7 +546,7 @@ clawdius (15MB stripped)
 └─────────────────────────────────────────────────────┘
 ```
 
-### 5.2 Capability System
+### 6.2 Capability System
 
 ```
 ┌─────────────────┐
@@ -337,7 +569,7 @@ clawdius (15MB stripped)
 └─────────────────┘
 ```
 
-### 5.3 Secret Management
+### 6.3 Secret Management
 
 | Secret | Storage | Access |
 |--------|---------|--------|
@@ -351,11 +583,65 @@ Secrets are **never** exposed to:
 - Sandboxed processes
 - Logs or traces
 
+### 6.4 Cross-Crate Communication
+
+#### 6.4.1 CLI ↔ Core
+
+Direct function calls via Rust API:
+
+```rust
+// crates/clawdius/src/main.rs
+use clawdius_core::{GraphRag, LlmClient};
+
+let graph_rag = GraphRag::new("./project")?;
+let client = LlmClient::new(Provider::OpenAI)?;
+```
+
+#### 6.4.2 VSCode ↔ Core
+
+JSON-RPC over stdio:
+
+```
+VSCode Extension (TypeScript)
+         │
+         │ JSON-RPC (stdio)
+         ▼
+clawdius-code Binary
+         │
+         │ Direct calls
+         ▼
+clawdius-core Library
+```
+
+**Protocol:**
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "semantic_search",
+  "params": {"query": "error handling", "limit": 10},
+  "id": 1
+}
+```
+
+#### 6.4.3 Webview ↔ Core
+
+WASM bindings:
+
+```rust
+// crates/clawdius-webview/src/lib.rs
+#[wasm_bindgen]
+pub fn semantic_search(query: &str, limit: usize) -> Result<JsValue, JsValue> {
+    let graph_rag = GraphRag::new("./project")?;
+    let results = graph_rag.semantic_search(query, limit)?;
+    Ok(JsValue::from_serde(&results)?)
+}
+```
+
 ---
 
-## 6. Performance Architecture
+## 7. Performance Architecture
 
-### 6.1 Latency Targets
+### 7.1 Latency Targets
 
 | Component | Target | Actual |
 |-----------|--------|--------|
@@ -365,7 +651,7 @@ Secrets are **never** exposed to:
 | Wallet Guard check | <100µs | 847ns |
 | Graph-RAG query | <50ms | 28ms |
 
-### 6.2 HFT Data Path
+### 7.2 HFT Data Path
 
 ```
 Market Data WebSocket
@@ -391,9 +677,9 @@ Market Data WebSocket
 
 ---
 
-## 7. Platform Support
+## 8. Platform Support
 
-### 7.1 Platform Abstraction Layer
+### 8.1 Platform Abstraction Layer
 
 | Feature | Linux | macOS | WSL2 |
 |---------|-------|-------|------|
@@ -402,7 +688,7 @@ Market Data WebSocket
 | Keyring | libsecret | Keychain | Secret Service |
 | FS Watch | inotify | fsevents | inotify |
 
-### 7.2 Feature Detection
+### 8.2 Feature Detection
 
 ```rust
 // Runtime feature detection
@@ -415,20 +701,117 @@ type Runtime = tokio::runtime::Runtime;
 
 ---
 
-## 8. Extension Points
+## 9. Extension Points
 
-### 8.1 MCP Tools
+### 9.1 MCP Tools
 
 Clawdius implements the Model Context Protocol for external tool integration.
 
-### 8.2 Custom SOPs
+### 9.2 Custom SOPs
 
 Users can define project-specific SOPs in `.clawdius/sops/`.
 
-### 8.3 LLM Providers
+### 9.3 LLM Providers
 
 Supported via `genai`:
 - OpenAI
 - Anthropic
 - DeepSeek
 - Ollama (local)
+
+### 9.4 Custom Crates
+
+The monorepo structure allows easy addition of new crates:
+
+```bash
+# Add new crate to workspace
+mkdir crates/clawdius-newfeature
+cd crates/clawdius-newfeature
+cargo init --lib
+
+# Add to workspace Cargo.toml
+# members = [..., "crates/clawdius-newfeature"]
+```
+
+---
+
+## 10. Build System
+
+### 10.1 Workspace Features
+
+```toml
+# Root Cargo.toml
+[workspace]
+members = [
+    "crates/clawdius",
+    "crates/clawdius-core",
+    "crates/clawdius-code",
+    "crates/clawdius-webview",
+]
+
+[workspace.dependencies]
+# Shared dependencies across all crates
+tokio = { version = "1", features = ["rt-multi-thread"] }
+serde = { version = "1.0", features = ["derive"] }
+# ...
+```
+
+### 10.2 Feature Propagation
+
+```toml
+# crates/clawdius/Cargo.toml
+[features]
+default = ["mimalloc"]
+hft-mode = ["clawdius-core/hft-mode"]
+broker-mode = ["clawdius-core/broker-mode"]
+
+# crates/clawdius-core/Cargo.toml
+[features]
+default = []
+hft-mode = []
+broker-mode = []
+```
+
+### 10.3 Build Commands
+
+```bash
+# Build all crates
+cargo build --release
+
+# Build specific crate
+cargo build -p clawdius
+
+# Build with features
+cargo build --features hft-mode
+
+# Run tests for all crates
+cargo test --all
+
+# Run benchmarks
+cargo bench --all
+
+# Check all crates
+cargo check --all-targets --all-features
+```
+
+### 10.4 CI/CD Pipeline
+
+```yaml
+# .github/workflows/ci.yml
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - run: cargo test --all
+      - run: cargo clippy --all-targets --all-features
+      - run: cargo fmt --check
+  
+  build:
+    needs: test
+    strategy:
+      matrix:
+        target: [x86_64-unknown-linux-gnu, x86_64-apple-darwin]
+    steps:
+      - run: cargo build --release --target ${{ matrix.target }}
+```

@@ -1,0 +1,74 @@
+v0.6.0 P3-P4 - Error Handling and Structured Logging
+Files Changed/Created
+=====================
+
+MODIFIED FILES:
+1. crates/clawdius-core/src/error.rs
+   - Added new error variants (LlmProvider, RateLimited, ContextLimit, ToolExecution, SessionNotFound, CircuitBreakerOpen)
+   - Added helper methods (is_retryable, retry_after_ms, is_rate_limited, is_timeout, is_circuit_breaker)
+
+2. crates/clawdius-core/src/telemetry/mod.rs
+   - Added LoggingConfig struct
+   - Added init_logging() function
+   - Enhanced with comprehensive logging configuration options
+
+3. crates/clawdius-core/src/lib.rs
+   - Added retry module
+   - Added telemetry module
+   - Re-exported new types and functions
+
+4. crates/clawdius-core/src/config.rs
+   - Fixed Default implementation to include telemetry field
+
+5. crates/clawdius-core/src/telemetry/crash.rs
+   - Fixed test code (removed unsafe env var removal)
+
+6. src/main.rs
+   - Updated init_logging() to use centralized configuration
+
+CREATED FILES:
+1. crates/clawdius-core/src/retry.rs
+   - CircuitBreaker implementation
+   - with_retry_and_circuit() function
+   - CircuitState enum
+   - Comprehensive tests
+
+2. crates/clawdius-core/tests/error_types_test.rs
+   - Tests for new error types
+   - Tests for error helper methods
+
+3. docs/error-handling-and-logging.md
+   - Comprehensive usage guide
+   - Examples and best practices
+
+4. docs/implementation-summary-v0.6.0-p3-p4.md
+   - Detailed implementation notes
+   - Benefits and next steps
+
+5. clawdius.example.toml
+   - Example configuration file
+   - Shows all logging options
+
+6. IMPLEMENTATION_REPORT.md
+   - Final implementation report
+   - Verification status
+
+7. CHANGES.md
+   - Summary of changes
+   - Usage examples
+
+8. verify-implementation.sh
+   - Verification script
+   - Checks all implementation components
+
+9. FILES_CHANGED.txt
+   - This file
+
+TOTAL:
+- 6 files modified
+- 9 files created
+- 15 files total
+
+VERIFICATION:
+Run: ./verify-implementation.sh
+Result: All checks passed ✅

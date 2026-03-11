@@ -1,0 +1,129 @@
+{
+  "metadata": {
+    "graph_id": "KG-CLAWDIUS-001",
+    "name": "Clawdius Knowledge Graph",
+    "version": "1.0.0",
+    "created": "2026-03-08",
+    "last_updated": "2026-03-08",
+    "language": "EN",
+    "maintainer": "Clawdius Project"
+  },
+  "statistics": {
+    "total_concepts": 40,
+    "total_relationships": 42,
+    "total_terms": 27,
+    "languages_supported": 7,
+    "source_documents": {
+      "yellow_papers": 3,
+      "blue_papers": 6,
+      "total": 9
+    },
+    "categories": {
+      "Process Engineering": 6,
+      "Computer Science": 3,
+      "Software Engineering": 2,
+      "Quality Assurance": 2,
+      "Security": 7,
+      "Security Architecture": 1,
+      "Credential Management": 2,
+      "Finance": 1,
+      "Risk Management": 3,
+      "Data Structures": 1,
+      "Memory Management": 2,
+      "Real-Time Systems": 1,
+      "Architecture": 3,
+      "AI/ML": 2,
+      "Code Analysis": 1,
+      "Integration": 2,
+      "Developer Tools": 1,
+      "Communication": 1,
+      "Runtime": 2,
+      "Security Tools": 1,
+      "Regulation": 1,
+      "Computer Architecture": 1
+    }
+  },
+  "sources": {
+    "yellow_papers": [
+      {
+        "id": "YP-FSM-NEXUS-001",
+        "title": "Nexus R&D Lifecycle FSM Theory",
+        "concepts_extracted": 7
+      },
+      {
+        "id": "YP-SECURITY-SANDBOX-001",
+        "title": "Sentinel Sandbox Theory",
+        "concepts_extracted": 6
+      },
+      {
+        "id": "YP-HFT-BROKER-001",
+        "title": "HFT Broker Mode Theory",
+        "concepts_extracted": 7
+      }
+    ],
+    "blue_papers": [
+      {
+        "id": "BP-NEXUS-FSM-001",
+        "title": "Nexus FSM Component Blue Paper",
+        "concepts_extracted": 2
+      },
+      {
+        "id": "BP-HOST-KERNEL-001",
+        "title": "Host Kernel Component Blue Paper",
+        "concepts_extracted": 4
+      },
+      {
+        "id": "BP-BRAIN-001",
+        "title": "Brain WASM Component Blue Paper",
+        "concepts_extracted": 3
+      },
+      {
+        "id": "BP-SENTINEL-001",
+        "title": "Sentinel Sandbox Component Blue Paper",
+        "concepts_extracted": 2
+      },
+      {
+        "id": "BP-GRAPH-RAG-001",
+        "title": "Graph-RAG Component Blue Paper",
+        "concepts_extracted": 5
+      },
+      {
+        "id": "BP-HFT-BROKER-001",
+        "title": "HFT Broker Component Blue Paper",
+        "concepts_extracted": 2
+      }
+    ]
+  },
+  "relationship_types": {
+    "implements": 5,
+    "uses": 9,
+    "enforces": 6,
+    "requires": 4,
+    "has": 1,
+    "produces": 1,
+    "connects": 1,
+    "provides": 3,
+    "enables": 4,
+    "includes": 2,
+    "prevents": 1,
+    "runs-in": 1,
+    "contains": 2,
+    "exposes": 1,
+    "queries": 1,
+    "validates": 1,
+    "mitigates": 1,
+    "orchestrates": 1,
+    "manages": 1,
+    "hosts": 1,
+    "integrates": 2,
+    "abstracts": 1
+  },
+  "confidence_metrics": {
+    "average_confidence": 0.9125,
+    "min_confidence": 0.88,
+    "max_confidence": 0.98,
+    "high_confidence_count": 38,
+    "medium_confidence_count": 2
+  },
+  "languages": ["EN", "ZH", "RU", "DE", "FR", "JP", "KO"]
+}

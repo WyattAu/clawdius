@@ -65,6 +65,19 @@ impl Provider {
         }
     }
 
+    /// Returns the default embedding model for this provider
+    #[must_use]
+    pub fn default_embedding_model(&self) -> &'static str {
+        match self {
+            Self::OpenAI => "text-embedding-3-small",
+            Self::ZAi => "text-embedding-3-small",
+            Self::OpenRouter => "text-embedding-3-small",
+            Self::DeepSeek => "text-embedding-3-small",
+            Self::Ollama => "nomic-embed-text",
+            Self::Anthropic => "text-embedding-3-small",
+        }
+    }
+
     /// Returns the environment variable name for this provider's API key
     #[must_use]
     pub const fn api_key_env(&self) -> &'static str {
@@ -348,6 +361,14 @@ impl EmbedRequest {
         self.model = Some(model.into());
         self
     }
+
+    /// Returns the effective model name
+    #[must_use]
+    pub fn effective_model(&self) -> &str {
+        self.model
+            .as_deref()
+            .unwrap_or_else(|| self.provider.default_embedding_model())
+    }
 }
 
 /// Text embedding response
@@ -418,8 +439,26 @@ struct OpenAiErrorResponse {
     error: OpenAiError,
 }
 
+#[derive(Debug, Serialize)]
+struct OpenAiEmbedRequest {
+    model: String,
+    input: Vec<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct OpenAiEmbedResponse {
+    data: Vec<OpenAiEmbedData>,
+    usage: OpenAiUsage,
+}
+
+#[derive(Debug, Deserialize)]
+struct OpenAiEmbedData {
+    index: usize,
+    embedding: Vec<f32>,
+}
+
 /// LLM client for making API calls
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct LlmClient {
     http_client: reqwest::blocking::Client,
 }
@@ -441,6 +480,17 @@ impl LlmClient {
             Provider::Anthropic => "https://api.anthropic.com/v1/messages",
             Provider::DeepSeek => "https://api.deepseek.com/v1/chat/completions",
             Provider::Ollama => "http://localhost:11434/v1/chat/completions",
+        }
+    }
+
+    fn get_embedding_endpoint(&self, provider: Provider) -> &'static str {
+        match provider {
+            Provider::ZAi => "https://api.z.ai/api/coding/paas/v4/embeddings",
+            Provider::OpenRouter => "https://openrouter.ai/api/v1/embeddings",
+            Provider::OpenAI => "https://api.openai.com/v1/embeddings",
+            Provider::DeepSeek => "https://api.deepseek.com/v1/embeddings",
+            Provider::Ollama => "http://localhost:11434/v1/embeddings",
+            Provider::Anthropic => "https://api.openai.com/v1/embeddings",
         }
     }
 
@@ -555,15 +605,146 @@ impl LlmClient {
         })
     }
 
-    /// Performs an embedding request (stub)
+    /// Performs an embedding request
     ///
     /// # Errors
-    /// Returns an error indicating integration is not yet implemented
-    pub fn embed(&self, _request: EmbedRequest) -> crate::error::Result<EmbedResponse> {
-        Err(crate::error::BrainError::LlmCallFailed {
-            reason: "Embedding integration not yet implemented".into(),
+    /// Returns an error if the embedding call fails or the client is not configured.
+    pub fn embed(&self, request: EmbedRequest) -> crate::error::Result<EmbedResponse> {
+        if request.provider == Provider::Ollama {
+            return self.embed_ollama(request);
         }
-        .into())
+
+        let api_key = request.provider.load_api_key().ok_or_else(|| {
+            crate::error::BrainError::LlmCallFailed {
+                reason: format!(
+                    "API key not found for provider {}. Set {} environment variable.",
+                    request.provider,
+                    request.provider.api_key_env()
+                ),
+            }
+        })?;
+
+        let endpoint = self.get_embedding_endpoint(request.provider);
+        let model = request.effective_model().to_string();
+
+        let openai_request = OpenAiEmbedRequest {
+            model: model.clone(),
+            input: request.input.clone(),
+        };
+
+        let mut http_request = self
+            .http_client
+            .post(endpoint)
+            .bearer_auth(&api_key)
+            .json(&openai_request);
+
+        if request.provider == Provider::OpenRouter {
+            http_request = http_request.header("HTTP-Referer", "https://clawdius.dev");
+        }
+
+        let response =
+            http_request
+                .send()
+                .map_err(|e| crate::error::BrainError::LlmCallFailed {
+                    reason: format!("HTTP request failed: {e}"),
+                })?;
+
+        let status = response.status();
+        let body = response
+            .text()
+            .map_err(|e| crate::error::BrainError::LlmCallFailed {
+                reason: format!("Failed to read response body: {e}"),
+            })?;
+
+        if !status.is_success() {
+            if let Ok(error_response) = serde_json::from_str::<OpenAiErrorResponse>(&body) {
+                return Err(crate::error::BrainError::LlmCallFailed {
+                    reason: error_response.error.message,
+                }
+                .into());
+            }
+            return Err(crate::error::BrainError::LlmCallFailed {
+                reason: format!("API error ({}): {}", status, body),
+            }
+            .into());
+        }
+
+        let openai_response: OpenAiEmbedResponse =
+            serde_json::from_str(&body).map_err(|e| crate::error::BrainError::LlmCallFailed {
+                reason: format!("Failed to parse response: {e}"),
+            })?;
+
+        let embeddings = openai_response
+            .data
+            .into_iter()
+            .map(|d| Embedding {
+                index: d.index,
+                vector: d.embedding,
+            })
+            .collect();
+
+        Ok(EmbedResponse {
+            embeddings,
+            usage: Usage::new(
+                openai_response.usage.prompt_tokens,
+                openai_response.usage.completion_tokens,
+            ),
+        })
+    }
+
+    fn embed_ollama(&self, request: EmbedRequest) -> crate::error::Result<EmbedResponse> {
+        let endpoint = self.get_embedding_endpoint(request.provider);
+        let model = request.effective_model().to_string();
+
+        let openai_request = OpenAiEmbedRequest {
+            model: model.clone(),
+            input: request.input.clone(),
+        };
+
+        let response = self
+            .http_client
+            .post(endpoint)
+            .json(&openai_request)
+            .send()
+            .map_err(|e| crate::error::BrainError::LlmCallFailed {
+                reason: format!("HTTP request failed: {e}"),
+            })?;
+
+        let status = response.status();
+        let body = response
+            .text()
+            .map_err(|e| crate::error::BrainError::LlmCallFailed {
+                reason: format!("Failed to read response body: {e}"),
+            })?;
+
+        if !status.is_success() {
+            return Err(crate::error::BrainError::LlmCallFailed {
+                reason: format!("API error ({}): {}", status, body),
+            }
+            .into());
+        }
+
+        let openai_response: OpenAiEmbedResponse =
+            serde_json::from_str(&body).map_err(|e| crate::error::BrainError::LlmCallFailed {
+                reason: format!("Failed to parse response: {e}"),
+            })?;
+
+        let embeddings = openai_response
+            .data
+            .into_iter()
+            .map(|d| Embedding {
+                index: d.index,
+                vector: d.embedding,
+            })
+            .collect();
+
+        Ok(EmbedResponse {
+            embeddings,
+            usage: Usage::new(
+                openai_response.usage.prompt_tokens,
+                openai_response.usage.completion_tokens,
+            ),
+        })
     }
 }
 
@@ -709,7 +890,7 @@ mod tests {
         assert_eq!(Provider::ZAi.default_model(), "glm-4.5");
         assert_eq!(
             Provider::OpenRouter.default_model(),
-            "meta-llama/llama-3-8b-instruct:free"
+            "liquid/lfm-2.5-1.2b-instruct:free"
         );
     }
 
@@ -825,5 +1006,166 @@ mod tests {
 
         assert_eq!(request.provider, deserialized.provider);
         assert_eq!(request.messages.len(), deserialized.messages.len());
+    }
+
+    #[test]
+    fn test_provider_default_embedding_model() {
+        assert_eq!(
+            Provider::OpenAI.default_embedding_model(),
+            "text-embedding-3-small"
+        );
+        assert_eq!(
+            Provider::ZAi.default_embedding_model(),
+            "text-embedding-3-small"
+        );
+        assert_eq!(
+            Provider::OpenRouter.default_embedding_model(),
+            "text-embedding-3-small"
+        );
+        assert_eq!(
+            Provider::DeepSeek.default_embedding_model(),
+            "text-embedding-3-small"
+        );
+        assert_eq!(
+            Provider::Ollama.default_embedding_model(),
+            "nomic-embed-text"
+        );
+        assert_eq!(
+            Provider::Anthropic.default_embedding_model(),
+            "text-embedding-3-small"
+        );
+    }
+
+    #[test]
+    fn test_embed_request_builder() {
+        let request = EmbedRequest::new(Provider::OpenAI, vec!["hello".into(), "world".into()])
+            .with_model("text-embedding-3-large");
+
+        assert_eq!(request.effective_model(), "text-embedding-3-large");
+        assert_eq!(request.input.len(), 2);
+    }
+
+    #[test]
+    fn test_embed_request_default_model() {
+        let request = EmbedRequest::new(Provider::Ollama, vec!["test".into()]);
+        assert_eq!(request.effective_model(), "nomic-embed-text");
+    }
+
+    #[test]
+    fn test_embed_request_serialization() {
+        let request = EmbedRequest::new(Provider::OpenAI, vec!["hello".into(), "world".into()])
+            .with_model("text-embedding-3-small");
+
+        let json = serde_json::to_string(&request).unwrap();
+        let deserialized: EmbedRequest = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(request.provider, deserialized.provider);
+        assert_eq!(request.input.len(), deserialized.input.len());
+        assert_eq!(request.model, deserialized.model);
+    }
+
+    #[test]
+    fn test_embed_response_serialization() {
+        let response = EmbedResponse {
+            embeddings: vec![
+                Embedding {
+                    index: 0,
+                    vector: vec![0.1, 0.2, 0.3],
+                },
+                Embedding {
+                    index: 1,
+                    vector: vec![0.4, 0.5, 0.6],
+                },
+            ],
+            usage: Usage::new(10, 0),
+        };
+
+        let json = serde_json::to_string(&response).unwrap();
+        let deserialized: EmbedResponse = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(response.embeddings.len(), deserialized.embeddings.len());
+        assert_eq!(
+            response.embeddings[0].index,
+            deserialized.embeddings[0].index
+        );
+        assert_eq!(
+            response.embeddings[0].vector.len(),
+            deserialized.embeddings[0].vector.len()
+        );
+    }
+
+    #[test]
+    fn test_openai_embed_request_serialization() {
+        let request = OpenAiEmbedRequest {
+            model: "text-embedding-3-small".into(),
+            input: vec!["test input".into()],
+        };
+
+        let json = serde_json::to_string(&request).unwrap();
+        assert!(json.contains("text-embedding-3-small"));
+        assert!(json.contains("test input"));
+    }
+
+    #[test]
+    fn test_openai_embed_response_deserialization() {
+        let json = r#"{
+            "data": [
+                {"index": 0, "embedding": [0.1, 0.2, 0.3]},
+                {"index": 1, "embedding": [0.4, 0.5, 0.6]}
+            ],
+            "usage": {"prompt_tokens": 10, "completion_tokens": 0, "total_tokens": 10}
+        }"#;
+
+        let response: OpenAiEmbedResponse = serde_json::from_str(json).unwrap();
+        assert_eq!(response.data.len(), 2);
+        assert_eq!(response.data[0].index, 0);
+        assert_eq!(response.data[0].embedding, vec![0.1, 0.2, 0.3]);
+        assert_eq!(response.usage.prompt_tokens, 10);
+    }
+
+    #[test]
+    fn test_llm_client_embed_missing_api_key() {
+        let client = LlmClient::new();
+        let request = EmbedRequest::new(Provider::OpenAI, vec!["test".into()]);
+        let result = client.embed(request);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        let err_msg = err.to_string();
+        assert!(err_msg.contains("API key not found"));
+    }
+
+    #[test]
+    fn test_llm_client_embed_ollama_no_api_key_needed() {
+        let client = LlmClient::new();
+        let request = EmbedRequest::new(Provider::Ollama, vec!["test".into()]);
+        let result = client.embed(request);
+        assert!(result.is_err());
+        let err_msg = result.unwrap_err().to_string();
+        assert!(!err_msg.contains("API key not found"));
+    }
+
+    #[test]
+    fn test_get_embedding_endpoint() {
+        let client = LlmClient::new();
+        assert_eq!(
+            client.get_embedding_endpoint(Provider::OpenAI),
+            "https://api.openai.com/v1/embeddings"
+        );
+        assert_eq!(
+            client.get_embedding_endpoint(Provider::ZAi),
+            "https://api.z.ai/api/coding/paas/v4/embeddings"
+        );
+        assert_eq!(
+            client.get_embedding_endpoint(Provider::OpenRouter),
+            "https://openrouter.ai/api/v1/embeddings"
+        );
+        assert_eq!(
+            client.get_embedding_endpoint(Provider::DeepSeek),
+            "https://api.deepseek.com/v1/embeddings"
+        );
+        assert_eq!(
+            client.get_embedding_endpoint(Provider::Ollama),
+            "http://localhost:11434/v1/embeddings"
+        );
     }
 }

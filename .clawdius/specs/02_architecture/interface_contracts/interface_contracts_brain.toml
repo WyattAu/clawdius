@@ -1,0 +1,211 @@
+# Interface Contract: Brain WASM Component
+# Component ID: COMP-BRAIN-001
+# Blue Paper: BP-BRAIN-001
+# Version: 1.0.0
+
+[contract]
+id = "IC-BRAIN-001"
+component = "COMP-BRAIN-001"
+version = "1.0.0"
+status = "APPROVED"
+created = "2026-03-08"
+
+[interface.Brain]
+description = "LLM reasoning engine in WASM sandbox"
+type = "struct"
+sandbox_tier = 3
+
+[[interface.Brain.operations]]
+name = "initialize"
+description = "Initialize brain with configuration"
+input_type = "BrainConfig"
+output_type = "Result<Brain, BrainError>"
+async = true
+
+[interface.Brain.operations.preconditions]
+- = "WASM module is valid"
+- = "Memory limit is within bounds"
+- = "Capability token is valid"
+
+[interface.Brain.operations.postconditions]
+- = "Brain is ready for inference"
+- = "Model loaded in WASM linear memory"
+
+[[interface.Brain.operations.errors]]
+code = "0x3001"
+name = "ModuleLoadFailed"
+description = "WASM module failed to load"
+recovery = "Check module validity"
+
+[[interface.Brain.operations.errors]]
+code = "0x3002"
+name = "MemoryLimitExceeded"
+description = "Memory request exceeds limit"
+recovery = "Reduce model size or increase limit"
+
+[[interface.Brain.operations]]
+name = "reason"
+description = "Execute reasoning step"
+input_type = "ReasoningRequest"
+output_type = "Result<ReasoningResult, BrainError>"
+async = true
+
+[interface.Brain.operations.preconditions]
+- = "Brain is initialized"
+- = "Context fits in memory"
+- = "Token count within limits"
+
+[interface.Brain.operations.postconditions]
+- = "Response is deterministic for same input"
+- = "Memory usage returns to baseline after"
+- = "No side effects outside sandbox"
+
+[[interface.Brain.operations.errors]]
+code = "0x3003"
+name = "ContextTooLong"
+description = "Input exceeds context window"
+recovery = "Truncate or summarize input"
+
+[[interface.Brain.operations.errors]]
+code = "0x3004"
+name = "InferenceFailed"
+description = "Model inference error"
+recovery = "Retry with different parameters"
+
+[[interface.Brain.operations.errors]]
+code = "0x3005"
+name = "TimeoutExceeded"
+description = "Inference exceeded time limit"
+recovery = "Reduce max_tokens or simplify request"
+
+[[interface.Brain.operations]]
+name = "stream_reason"
+description = "Stream reasoning output"
+input_type = "ReasoningRequest"
+output_type = "impl Stream<Item = Result<Token, BrainError>>"
+async = true
+
+[interface.Brain.operations.preconditions]
+- = "Brain is initialized"
+- = "Streaming is enabled in config"
+
+[interface.Brain.operations.postconditions]
+- = "Tokens yielded in order"
+- = "Stream terminates on completion or error"
+
+[[interface.Brain.operations]]
+name = "reset"
+description = "Reset brain state"
+input_type = "none"
+output_type = "Result<(), BrainError>"
+
+[interface.Brain.operations.preconditions]
+- = "Brain is initialized"
+
+[interface.Brain.operations.postconditions]
+- = "All state cleared"
+- = "Memory returned to initial state"
+
+[interface.ReasoningRequest]
+description = "Reasoning request structure"
+type = "struct"
+
+[interface.ReasoningRequest.fields]
+prompt = { type = "String", description = "Input prompt" }
+system = { type = "Option<String>", description = "System prompt" }
+max_tokens = { type = "u32", description = "Maximum output tokens" }
+temperature = { type = "f32", description = "Sampling temperature" }
+stop_sequences = { type = "Vec<String>", description = "Stop generation sequences" }
+tools = { type = "Vec<Tool>", description = "Available tools" }
+
+[interface.ReasoningResult]
+description = "Reasoning result structure"
+type = "struct"
+
+[interface.ReasoningResult.fields]
+content = { type = "String", description = "Generated content" }
+tool_calls = { type = "Vec<ToolCall>", description = "Tool calls to execute" }
+finish_reason = { type = "FinishReason", description = "Why generation stopped" }
+usage = { type = "TokenUsage", description = "Token usage stats" }
+
+[interface.Tool]
+description = "Tool definition for function calling"
+type = "struct"
+
+[interface.Tool.fields]
+name = { type = "String", description = "Tool name" }
+description = { type = "String", description = "Tool description" }
+parameters = { type = "JsonSchema", description = "Parameter JSON schema" }
+
+[interface.ToolCall]
+description = "Tool call from model"
+type = "struct"
+
+[interface.ToolCall.fields]
+id = { type = "String", description = "Call identifier" }
+name = { type = "String", description = "Tool name" }
+arguments = { type = "serde_json::Value", description = "Call arguments" }
+
+[interface.FinishReason]
+description = "Reason for generation completion"
+type = "enum"
+variants = ["Stop", "MaxTokens", "ToolCall", "ContentFilter", "Error"]
+
+[interface.TokenUsage]
+description = "Token usage statistics"
+type = "struct"
+
+[interface.TokenUsage.fields]
+prompt_tokens = { type = "u32", description = "Input tokens" }
+completion_tokens = { type = "u32", description = "Output tokens" }
+total_tokens = { type = "u32", description = "Total tokens" }
+
+[interface.BrainConfig]
+description = "Brain configuration"
+type = "struct"
+
+[interface.BrainConfig.fields]
+model_path = { type = "PathBuf", description = "Path to model weights" }
+memory_limit = { type = "usize", description = "Maximum linear memory" }
+compute_threads = { type = "usize", description = "Number of compute threads" }
+timeout_ms = { type = "u64", description = "Inference timeout" }
+
+[interface.WasmRuntime]
+description = "WASM runtime configuration"
+type = "struct"
+implementation = "wasmtime"
+
+[interface.WasmRuntime.config]
+memory_limit_bytes = 4294967296
+fuel_consumption = true
+wasi_enabled = false
+networking_enabled = false
+filesystem_enabled = false
+
+[invariants]
+- = "Brain executes in isolated WASM sandbox (Tier 3)"
+- = "No direct filesystem access from WASM"
+- = "No network access from WASM"
+- = "Memory is strictly bounded"
+- = "Inference is deterministic for same seed"
+- = "Tool calls are proxied through host"
+
+[security]
+sandbox_tier = 3
+isolation = "wasmtime"
+capability_required = "LLM_REASONING"
+secrets_exposed = false
+filesystem_mounts = []
+
+[performance]
+initialization_max_ms = 5000
+inference_latency_p50_ms = 100
+inference_latency_p99_ms = 500
+streaming_first_token_ms = 50
+max_concurrent_requests = 10
+
+[resource_limits]
+max_memory_bytes = 4294967296
+max_request_tokens = 32768
+max_response_tokens = 4096
+max_tool_calls_per_request = 10

@@ -56,9 +56,11 @@ use std::process::ExitCode;
 mod cli;
 
 mod ast_store;
+mod knowledge;
 mod brain;
 mod broker;
 mod capability;
+mod compliance;
 mod component;
 mod config;
 mod error;
@@ -69,6 +71,7 @@ mod llm;
 mod market_data;
 mod mcp;
 mod parser;
+mod proof;
 mod ring_buffer;
 mod risk_types;
 mod rpc;
@@ -90,6 +93,11 @@ pub use broker::{Broker, BrokerConfig, BrokerMode, BrokerMetrics, BROKER_VERSION
 pub use capability::{
     CapabilityError, CapabilityRequest, CapabilityToken, HostPattern, PathPattern, Permission,
     PermissionSet, ResourceScope,
+};
+pub use compliance::{
+    Artifact, ArtifactType, ComplianceGap, ComplianceLevel, ComplianceMatrix,
+    ComplianceMatrixGenerator, ComplianceStatus, EvidenceType, Requirement, RequirementMapping,
+    Standard, StandardDomain,
 };
 pub use component::{Component, ComponentId, ComponentInfo, ComponentState};
 pub use config::{Config, RigorLevel};
@@ -121,6 +129,10 @@ pub use llm::{
 };
 pub use mcp::{McpError, McpHost, McpTool, ToolDefinition, ToolRequest, ToolResponse};
 pub use parser::{LanguageDetector, ParsedFile, Parser};
+pub use proof::{
+    Priority, Proof, ProofGenerator, ProofId, ProofRequest, ProofResult, ProofStatus,
+    Property, PropertyType,
+};
 pub use rpc::{
     ProtocolVersion, RpcError, RpcMethod, RpcRequest, RpcResponse, UsageStats, PROTOCOL_VERSION,
 };
@@ -137,6 +149,10 @@ pub use version::VERSION;
 pub use wasm_runtime::{
     create_engine, WasmConfig, WasmError, WasmRuntime, DEFAULT_FUEL, DEFAULT_MEMORY_LIMIT,
     DEFAULT_STACK_LIMIT, DEFAULT_TIMEOUT_SECS,
+};
+pub use knowledge::{
+    Concept, KnowledgeGraph, Language as ResearchLanguage, ResearchFinding, ResearchSynthesizer,
+    SynthesisRequest, SynthesisResult, TqaLevel,
 };
 
 /// Global allocator for high-performance scenarios
@@ -166,7 +182,7 @@ fn main() -> ExitCode {
         return handle_cli_command(command);
     }
 
-    if args.no_tui || !atty::is(atty::Stream::Stdout) {
+    if args.no_tui || !std::io::stdout().is_terminal() {
         return run_headless();
     }
 
@@ -181,6 +197,31 @@ fn handle_cli_command(command: &cli::Commands) -> ExitCode {
             provider,
         } => handle_chat_command(message, model.as_deref(), provider),
         cli::Commands::Init { path } => handle_init_command(path),
+        cli::Commands::Refactor {
+            from,
+            to,
+            path,
+            dry_run,
+        } => handle_refactor_command(from, to, path, *dry_run),
+        cli::Commands::Verify { proof, lean_path } => {
+            handle_verify_command(proof, lean_path.as_deref())
+        }
+        cli::Commands::Broker {
+            config,
+            paper_trade,
+        } => handle_broker_command(config.as_deref(), *paper_trade),
+        cli::Commands::Compliance {
+            standards,
+            path,
+            format,
+            output,
+        } => handle_compliance_command(standards, path, format, output.as_deref()),
+        cli::Commands::Research {
+            query,
+            languages,
+            tqa_level,
+            max_results,
+        } => handle_research_command(query, languages.as_deref(), *tqa_level, *max_results),
     }
 }
 
@@ -238,6 +279,384 @@ fn handle_init_command(path: &std::path::Path) -> ExitCode {
     }
 }
 
+fn handle_refactor_command(from: &str, to: &str, path: &std::path::Path, dry_run: bool) -> ExitCode {
+    println!("Refactoring: {} -> {}", from, to);
+    println!("Path: {}", path.display());
+
+    let graph_path = path.join(".clawdius/graph");
+    let config = GraphRagConfig::with_root(&graph_path);
+    let mut graph_rag = match GraphRag::new(config) {
+        Ok(g) => g,
+        Err(e) => {
+            eprintln!("Error initializing Graph-RAG: {}", e);
+            return ExitCode::FAILURE;
+        }
+    };
+
+    if let Err(e) = graph_rag.initialize() {
+        eprintln!("Error initializing Graph-RAG: {}", e);
+        return ExitCode::FAILURE;
+    }
+
+    println!("Indexing project...");
+    
+    let mut rt = match monoio::RuntimeBuilder::<monoio::IoUringDriver>::new()
+        .enable_timer()
+        .build()
+    {
+        Ok(rt) => rt,
+        Err(e) => {
+            eprintln!("Error creating runtime: {}", e);
+            return ExitCode::FAILURE;
+        }
+    };
+
+    let stats = match rt.block_on(graph_rag.index_project(path)) {
+        Ok(s) => s,
+        Err(e) => {
+            eprintln!("Error indexing project: {}", e);
+            return ExitCode::FAILURE;
+        }
+    };
+
+    println!(
+        "Indexed {} nodes, {} edges in {} files",
+        stats.node_count, stats.edge_count, stats.files_indexed
+    );
+
+    println!("\nMigration Plan:");
+    println!("================");
+    println!("Source Language: {}", from);
+    println!("Target Language: {}", to);
+    println!("Files to Migrate: {}", stats.files_indexed);
+
+    if dry_run {
+        println!("\n[DRY RUN] No changes applied.");
+        println!("Run without --dry-run to apply changes.");
+    } else {
+        println!("\nRefactoring not yet implemented.");
+        println!("Use --dry-run to preview changes.");
+        return ExitCode::FAILURE;
+    }
+
+    ExitCode::SUCCESS
+}
+
+fn handle_verify_command(
+    proof_path: &std::path::Path,
+    lean_path: Option<&std::path::Path>,
+) -> ExitCode {
+    use std::path::PathBuf;
+
+    let lean_bin = lean_path
+        .map(std::path::Path::to_path_buf)
+        .unwrap_or_else(|| PathBuf::from("lean"));
+
+    println!("Lean4 Proof Verification");
+    println!("=========================");
+    println!("Proof path: {}", proof_path.display());
+    println!("Lean binary: {}", lean_bin.display());
+
+    let version_output = match std::process::Command::new(&lean_bin)
+        .arg("--version")
+        .output()
+    {
+        Ok(o) => o,
+        Err(e) => {
+            eprintln!("Error: Lean binary not found: {}", e);
+            eprintln!("Install Lean4: https://leanprover.github.io/lean4/doc/setup.html");
+            return ExitCode::FAILURE;
+        }
+    };
+
+    if !version_output.status.success() {
+        eprintln!("Error: Failed to get Lean version");
+        return ExitCode::FAILURE;
+    }
+
+    print!(
+        "Lean version: {}",
+        String::from_utf8_lossy(&version_output.stdout)
+    );
+
+    let mut verified = 0;
+    let mut failed = 0;
+
+    if proof_path.is_file() {
+        match verify_lean_proof(&lean_bin, proof_path) {
+            Ok(()) => {
+                println!("✓ {} - VERIFIED", proof_path.display());
+                verified += 1;
+            }
+            Err(e) => {
+                println!("✗ {} - FAILED: {}", proof_path.display(), e);
+                failed += 1;
+            }
+        }
+    } else if proof_path.is_dir() {
+        for entry in walkdir::WalkDir::new(proof_path)
+            .into_iter()
+            .filter_map(std::result::Result::ok)
+            .filter(|e| {
+                e.path()
+                    .extension()
+                    .map(|ext| ext == "lean")
+                    .unwrap_or(false)
+            })
+        {
+            match verify_lean_proof(&lean_bin, entry.path()) {
+                Ok(()) => {
+                    println!("✓ {} - VERIFIED", entry.path().display());
+                    verified += 1;
+                }
+                Err(e) => {
+                    println!("✗ {} - FAILED: {}", entry.path().display(), e);
+                    failed += 1;
+                }
+            }
+        }
+    }
+
+    println!("\nResults: {} verified, {} failed", verified, failed);
+
+    if failed > 0 {
+        ExitCode::FAILURE
+    } else {
+        ExitCode::SUCCESS
+    }
+}
+
+fn verify_lean_proof(
+    lean_bin: &std::path::Path,
+    proof_path: &std::path::Path,
+) -> std::result::Result<(), String> {
+    let output = std::process::Command::new(lean_bin)
+        .arg(proof_path)
+        .output()
+        .map_err(|e| format!("Failed to run lean: {}", e))?;
+
+    if output.status.success() {
+        Ok(())
+    } else {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        Err(stderr.to_string())
+    }
+}
+
+fn handle_broker_command(
+    config_path: Option<&std::path::Path>,
+    paper_trade: bool,
+) -> ExitCode {
+    use std::path::PathBuf;
+
+    println!("Clawdius HFT Broker");
+    println!("==================");
+
+    if paper_trade {
+        println!("Mode: PAPER TRADING (no real orders)");
+    } else {
+        println!("Mode: LIVE TRADING");
+        println!("WARNING: Real trading mode enabled!");
+    }
+
+    let config_path = config_path
+        .map(std::path::Path::to_path_buf)
+        .unwrap_or_else(|| PathBuf::from(".clawdius/broker.toml"));
+
+    println!("Config: {}", config_path.display());
+
+    let broker_config = BrokerConfig {
+        mode: if paper_trade {
+            BrokerMode::Paper
+        } else {
+            BrokerMode::Live
+        },
+        ..Default::default()
+    };
+
+    let mut broker = match Broker::new(broker_config) {
+        Ok(b) => b,
+        Err(e) => {
+            eprintln!("Error initializing broker: {}", e);
+            return ExitCode::FAILURE;
+        }
+    };
+
+    if let Err(e) = broker.initialize() {
+        eprintln!("Error initializing broker: {}", e);
+        return ExitCode::FAILURE;
+    }
+
+    println!("\nBroker initialized successfully");
+    println!("Press Ctrl+C to shutdown");
+
+    println!("\nBroker ready. Awaiting market data...");
+    println!("(Full implementation requires signal handling and event loop)");
+
+    ExitCode::SUCCESS
+}
+
+fn handle_compliance_command(
+    standards_str: &str,
+    path: &std::path::Path,
+    format: &str,
+    output: Option<&std::path::Path>,
+) -> ExitCode {
+    use compliance::{parse_standards, scan_for_artifacts, ComplianceMatrixGenerator};
+
+    println!("Clawdius Compliance Matrix Generator");
+    println!("=====================================");
+
+    let standards = parse_standards(standards_str);
+    if standards.is_empty() {
+        eprintln!("Error: No valid standards specified");
+        eprintln!("Valid standards: iso26262, do178c, iec62304, iec61508, en50128, ieee1016, nist800-53, etc.");
+        return ExitCode::FAILURE;
+    }
+
+    println!("Standards: {}", standards.len());
+    for std in &standards {
+        println!("  - {}", std.full_name());
+    }
+
+    println!("\nScanning project: {}", path.display());
+    let artifacts = scan_for_artifacts(path);
+    println!("Found {} artifacts", artifacts.len());
+
+    let generator = ComplianceMatrixGenerator::new();
+    let project_name = path
+        .file_name()
+        .map(|n| n.to_string_lossy().to_string())
+        .unwrap_or_else(|| "Project".into());
+
+    println!("\nGenerating compliance matrix...");
+    let matrix = generator.generate(&project_name, &standards, &artifacts);
+
+    println!("Compliance: {:.1}%", matrix.compliance_percentage);
+    println!("Requirements mapped: {}", matrix.requirements.len());
+    println!("Gaps identified: {}", matrix.gaps.len());
+
+    let output_content = match format.to_lowercase().as_str() {
+        "toml" => generator.export_toml(&matrix),
+        _ => generator.export_markdown(&matrix),
+    };
+
+    match output {
+        Some(output_path) => {
+            if let Err(e) = std::fs::write(output_path, &output_content) {
+                eprintln!("Error writing output file: {}", e);
+                return ExitCode::FAILURE;
+            }
+            println!("\nOutput written to: {}", output_path.display());
+        }
+        None => {
+            println!("\n{}", output_content);
+        }
+    }
+
+    if matrix.compliance_percentage < 100.0 {
+        println!("\nCompliance gaps detected. Review the matrix for required actions.");
+    }
+
+    ExitCode::SUCCESS
+}
+
+fn handle_research_command(
+    query: &str,
+    languages: Option<&str>,
+    tqa_level: u8,
+    max_results: usize,
+) -> ExitCode {
+    use std::path::PathBuf;
+
+    println!("Multi-Lingual Research Synthesis");
+    println!("=================================");
+    println!("Query: {}", query);
+
+    let langs: Vec<ResearchLanguage> = languages
+        .map(|s| {
+            s.split(',')
+                .filter_map(|l| match l.trim().to_lowercase().as_str() {
+                    "en" => Some(ResearchLanguage::EN),
+                    "zh" | "cn" => Some(ResearchLanguage::ZH),
+                    "ru" => Some(ResearchLanguage::RU),
+                    "de" => Some(ResearchLanguage::DE),
+                    "fr" => Some(ResearchLanguage::FR),
+                    "jp" | "ja" => Some(ResearchLanguage::JP),
+                    "ko" | "kr" => Some(ResearchLanguage::KO),
+                    "es" => Some(ResearchLanguage::ES),
+                    "it" => Some(ResearchLanguage::IT),
+                    "pt" => Some(ResearchLanguage::PT),
+                    "nl" => Some(ResearchLanguage::NL),
+                    "pl" => Some(ResearchLanguage::PL),
+                    "cs" => Some(ResearchLanguage::CS),
+                    "ar" => Some(ResearchLanguage::AR),
+                    "fa" => Some(ResearchLanguage::FA),
+                    "tr" => Some(ResearchLanguage::TR),
+                    _ => None,
+                })
+                .collect()
+        })
+        .unwrap_or_else(|| {
+            vec![
+                ResearchLanguage::EN,
+                ResearchLanguage::ZH,
+                ResearchLanguage::RU,
+                ResearchLanguage::DE,
+                ResearchLanguage::JP,
+            ]
+        });
+
+    println!("Languages: {:?}", langs);
+    println!("Min TQA Level: {}", tqa_level);
+    println!("Max Results/Language: {}", max_results);
+
+    let knowledge_path = PathBuf::from(".knowledge_graph/concept_mappings.md");
+    let mut synthesizer = ResearchSynthesizer::new();
+
+    if knowledge_path.exists() {
+        if let Err(e) = synthesizer.load_graph(&knowledge_path) {
+            println!("\nNote: Could not load knowledge graph: {}", e);
+            println!("Using empty graph for demonstration.");
+        }
+    } else {
+        println!("\nNote: Knowledge graph not found at {:?}", knowledge_path);
+        println!("Run 'clawdius init' to create the default structure.");
+    }
+
+    let min_tqa = match tqa_level {
+        5 => TqaLevel::Level5,
+        4 => TqaLevel::Level4,
+        3 => TqaLevel::Level3,
+        2 => TqaLevel::Level2,
+        _ => TqaLevel::Level1,
+    };
+
+    let request = SynthesisRequest {
+        query: query.into(),
+        languages: langs,
+        min_tqa_level: min_tqa,
+        max_results_per_language: max_results,
+        domain: None,
+    };
+
+    println!(
+        "\nSearching across {} languages...",
+        request.languages.len()
+    );
+    println!("Results would be synthesized from: ");
+    for lang in &request.languages {
+        println!("  - {} databases: {:?}", lang.name(), lang.databases());
+    }
+
+    println!(
+        "\nKnowledge graph contains {} concepts.",
+        synthesizer.graph().count()
+    );
+
+    ExitCode::SUCCESS
+}
+
 fn run_headless() -> ExitCode {
     println!("Clawdius running in headless mode");
     println!("Use 'clawdius chat \"message\"' to interact with the LLM");
@@ -268,17 +687,8 @@ fn run_with_tui_mode() -> ExitCode {
 
 /// Initialize the logging subsystem
 fn init_logging() {
-    use tracing_subscriber::{fmt, EnvFilter};
-
-    let filter = EnvFilter::try_from_default_env()
-        .unwrap_or_else(|_| EnvFilter::new("info,clawdius=debug"));
-
-    fmt()
-        .with_env_filter(filter)
-        .with_target(false)
-        .with_thread_ids(false)
-        .compact()
-        .init();
+    let config = clawdius_core::LoggingConfig::default();
+    clawdius_core::init_logging(&config);
 }
 
 /// Run the application with TUI

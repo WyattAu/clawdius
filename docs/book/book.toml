@@ -1,0 +1,37 @@
+[book]
+title = "Clawdius Documentation"
+authors = ["Clawdius Team"]
+description = "The High-Assurance Engineering Engine"
+language = "en"
+multilingual = false
+src = "src"
+repository = "https://github.com/clawdius/clawdius"
+
+[build]
+build-dir = "book"
+create-missing = true
+use-default-preprocessors = true
+
+[output.html]
+default-theme = "rust"
+preferred-dark-theme = "ayu"
+git-repository-url = "https://github.com/clawdius/clawdius"
+git-repository-icon = "fa-github"
+edit-url-template = "https://github.com/clawdius/clawdius/edit/main/docs/book/src/{path}"
+site-url = "/"
+cname = "docs.clawdius.dev"
+
+[output.html.print]
+enable = true
+
+[output.html.search]
+enable = true
+limit-results = 30
+use-boolean-and = true
+
+[output.html.fold]
+enable = true
+level = 1
+
+[preprocessor.links]
+renderers = ["html"]

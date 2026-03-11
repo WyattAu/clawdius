@@ -1,0 +1,268 @@
+# Interface Contract: Host Kernel Component
+# Component ID: COMP-HOST-001
+# Blue Paper: BP-HOST-KERNEL-001
+# Version: 1.0.0
+
+[contract]
+id = "IC-HOST-001"
+component = "COMP-HOST-001"
+version = "1.0.0"
+status = "APPROVED"
+created = "2026-03-08"
+
+[interface.HostKernel]
+description = "Host kernel for sandbox orchestration and resource management"
+type = "struct"
+
+[[interface.HostKernel.operations]]
+name = "spawn_sandbox"
+description = "Spawn sandboxed execution environment"
+input_type = "SpawnRequest"
+output_type = "Result<SandboxHandle, HostError>"
+async = true
+
+[interface.HostKernel.operations.preconditions]
+- = "Toolchain is registered"
+- = "Trust level is valid"
+- = "Resources are available"
+
+[interface.HostKernel.operations.postconditions]
+- = "Sandbox is isolated per tier"
+- = "Capabilities are enforced"
+- = "Resource limits are set"
+
+[[interface.HostKernel.operations.errors]]
+code = "0x6001"
+name = "ResourceExhausted"
+description = "Insufficient system resources"
+recovery = "Wait and retry"
+
+[[interface.HostKernel.operations.errors]]
+code = "0x6002"
+name = "ToolchainNotRegistered"
+description = "Toolchain not in registry"
+recovery = "Register toolchain first"
+
+[[interface.HostKernel.operations.errors]]
+code = "0x6003"
+name = "SandboxLimitReached"
+description = "Maximum sandboxes running"
+recovery = "Terminate unused sandboxes"
+
+[[interface.HostKernel.operations]]
+name = "execute_in_sandbox"
+description = "Execute command in sandbox"
+input_type = ["SandboxHandle", "Command"]
+output_type = "Result<ExecutionResult, HostError>"
+async = true
+
+[interface.HostKernel.operations.preconditions]
+- = "Sandbox handle is valid"
+- = "Command is in allowlist"
+- = "Capabilities permit operation"
+
+[interface.HostKernel.operations.postconditions]
+- = "Execution logged for audit"
+- = "Resources cleaned up on completion"
+- = "Timeout enforced"
+
+[[interface.HostKernel.operations.errors]]
+code = "0x6004"
+name = "CommandDenied"
+description = "Command not in allowlist"
+recovery = "Add to allowlist or use different command"
+
+[[interface.HostKernel.operations.errors]]
+code = "0x6005"
+name = "ExecutionTimeout"
+description = "Command exceeded timeout"
+recovery = "Increase timeout or optimize"
+
+[[interface.HostKernel.operations.errors]]
+code = "0x6006"
+name = "SandboxKilled"
+description = "Sandbox terminated externally"
+recovery = "Check system resources"
+
+[[interface.HostKernel.operations]]
+name = "proxy_secret"
+description = "Proxy authenticated request with secret"
+input_type = "SecretProxyRequest"
+output_type = "Result<Response, HostError>"
+async = true
+
+[interface.HostKernel.operations.preconditions]
+- = "Credential exists in keyring"
+- = "Request has valid capability"
+- = "Service is registered"
+
+[interface.HostKernel.operations.postconditions]
+- = "Secret never exposed to sandbox"
+- = "Secret memory zeroed after use"
+- = "Audit log entry created"
+
+[[interface.HostKernel.operations.errors]]
+code = "0x6007"
+name = "SecretNotFound"
+description = "Credential not in keyring"
+recovery = "Store credential in OS keyring"
+
+[[interface.HostKernel.operations.errors]]
+code = "0x6008"
+name = "SecretAccessDenied"
+description = "Capability does not permit access"
+recovery = "Request appropriate capability"
+
+[[interface.HostKernel.operations]]
+name = "register_capability"
+description = "Register capability with host"
+input_type = "CapabilityRequest"
+output_type = "Result<Capability, HostError>"
+
+[interface.HostKernel.operations.preconditions]
+- = "Requester is authorized"
+- = "Resource is accessible"
+- = "Permissions are valid"
+
+[interface.HostKernel.operations.postconditions]
+- = "Capability token is signed"
+- = "Capability is logged"
+
+[[interface.HostKernel.operations]]
+name = "validate_capability"
+description = "Validate capability token"
+input_type = "&Capability"
+output_type = "Result<CapabilityInfo, HostError>"
+
+[interface.HostKernel.operations.preconditions]
+- = "Token is well-formed"
+
+[interface.HostKernel.operations.postconditions]
+- = "Signature verified"
+- = "Expiry checked"
+
+[[interface.HostKernel.operations.errors]]
+code = "0x6009"
+name = "CapabilityInvalid"
+description = "Token signature invalid"
+recovery = "Request new capability"
+
+[[interface.HostKernel.operations.errors]]
+code = "0x6010"
+name = "CapabilityExpired"
+description = "Token has expired"
+recovery = "Request new capability"
+
+[interface.SpawnRequest]
+description = "Sandbox spawn request"
+type = "struct"
+
+[interface.SpawnRequest.fields]
+toolchain = { type = "ToolchainId", description = "Toolchain identifier" }
+trust_level = { type = "TrustLevel", description = "Trust level" }
+capabilities = { type = "Vec<Capability>", description = "Granted capabilities" }
+mounts = { type = "Vec<MountSpec>", description = "Filesystem mounts" }
+env = { type = "HashMap<String, String>", description = "Environment variables" }
+timeout = { type = "Duration", description = "Execution timeout" }
+resource_limits = { type = "ResourceLimits", description = "Resource constraints" }
+
+[interface.SandboxHandle]
+description = "Handle to spawned sandbox"
+type = "struct"
+
+[interface.SandboxHandle.fields]
+id = { type = "Uuid", description = "Sandbox identifier" }
+tier = { type = "SandboxTier", description = "Isolation tier" }
+status = { type = "SandboxStatus", description = "Current status" }
+pid = { type = "Option<u32>", description = "Process ID if applicable" }
+
+[interface.SandboxStatus]
+description = "Sandbox status"
+type = "enum"
+variants = ["Starting", "Running", "Completed", "Failed", "Killed"]
+
+[interface.TrustLevel]
+description = "Toolchain trust level"
+type = "enum"
+variants = ["TrustedAudited", "Trusted", "Untrusted", "Adversarial"]
+
+[interface.MountSpec]
+description = "Filesystem mount specification"
+type = "struct"
+
+[interface.MountSpec.fields]
+source = { type = "PathBuf", description = "Host path" }
+target = { type = "PathBuf", description = "Sandbox path" }
+readonly = { type = "bool", description = "Read-only flag" }
+
+[interface.ResourceLimits]
+description = "Resource limit specification"
+type = "struct"
+
+[interface.ResourceLimits.fields]
+memory_bytes = { type = "Option<usize>", description = "Memory limit" }
+cpu_cores = { type = "Option<f32>", description = "CPU core limit" }
+disk_bytes = { type = "Option<usize>", description = "Disk quota" }
+network = { type = "bool", description = "Network access" }
+
+[interface.SecretProxyRequest]
+description = "Secret proxy request"
+type = "struct"
+
+[interface.SecretProxyRequest.fields]
+service = { type = "String", description = "Service identifier" }
+account = { type = "String", description = "Account identifier" }
+request = { type = "HttpRequest", description = "HTTP request to proxy" }
+capability = { type = "Capability", description = "Authorizing capability" }
+
+[interface.RpcHost]
+description = "RPC host interface"
+type = "struct"
+
+[[interface.RpcHost.operations]]
+name = "register_service"
+description = "Register RPC service"
+input_type = "RpcService"
+output_type = "Result<(), HostError>"
+
+[[interface.RpcHost.operations]]
+name = "call"
+description = "Call RPC method"
+input_type = ["&str", "serde_json::Value"]
+output_type = "Result<serde_json::Value, RpcError>"
+async = true
+
+[interface.RpcVersion]
+description = "RPC version"
+type = "struct"
+
+[interface.RpcVersion.fields]
+major = { type = "u32", description = "Major version" }
+minor = { type = "u32", description = "Minor version" }
+patch = { type = "u32", description = "Patch version" }
+
+[invariants]
+- = "Sandbox isolation is enforced per tier"
+- = "Capabilities are unforgeable (HMAC)"
+- = "Secrets never cross sandbox boundary"
+- = "All operations are audited"
+- = "Resource limits are enforced"
+- = "Timeout is always applied"
+
+[security]
+capability_enforcement = true
+secret_isolation = true
+audit_logging = true
+resource_limits = true
+sandbox_escape_prevention = true
+
+[performance]
+sandbox_spawn_max_ms = 50
+capability_validation_max_us = 100
+rpc_call_max_ms = 1000
+
+[audit]
+all_operations = true
+retention_days = 365
+log_format = "JSON"
+log_destination = "file"

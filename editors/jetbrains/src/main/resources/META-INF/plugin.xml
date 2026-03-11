@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<idea-plugin>
+    <id>com.clawdius.intellij</id>
+    <name>Clawdius</name>
+    <vendor email="support@clawdius.dev" url="https://clawdius.dev">Clawdius</vendor>
+    
+    <description><![CDATA[
+    <h1>Clawdius - High-Assurance AI Coding Assistant</h1>
+    
+    <p>Clawdius is a security-first AI coding assistant with native Rust performance, 
+    4-tier sandboxing, and Lean4 formal verification.</p>
+    
+    <h2>Features</h2>
+    <ul>
+        <li>🤖 AI-powered code chat</li>
+        <li>✨ Inline code completions</li>
+        <li>🔒 Sandboxed code execution</li>
+        <li>📚 Graph-RAG code understanding</li>
+        <li>🔍 Code search and navigation</li>
+        <li>📝 Code explanation and documentation</li>
+        <li>🐛 Debug assistance</li>
+        <li>♻️ Refactoring suggestions</li>
+    </ul>
+    
+    <h2>Security</h2>
+    <p>Clawdius runs code in isolated sandboxes (WASM, container, or filtered) 
+    to protect your system from potentially harmful operations.</p>
+    ]]></description>
+    
+    <depends>com.intellij.modules.platform</depends>
+    <depends>com.intellij.modules.lang</depends>
+    
+    <extensions defaultExtensionNs="com.intellij">
+        <!-- Tool Window -->
+        <toolWindow id="Clawdius"
+                    secondary="true"
+                    icon="/META-INF/pluginIcon.svg"
+                    anchor="right"
+                    factoryClass="com.clawdius.ClawdiusToolWindowFactory"/>
+        
+        <!-- Configuration -->
+        <applicationConfigurable 
+            parentId="tools"
+            instance="com.clawdius.settings.ClawdiusConfigurable"
+            id="com.clawdius.settings.ClawdiusConfigurable"
+            displayName="Clawdius"/>
+        
+        <!-- Notification Group -->
+        <notificationGroup id="Clawdius Notifications" 
+                           displayType="BALLOON"/>
+        
+        <!-- Editor Action -->
+        <editorActionHandler 
+            action="com.clawdius.actions.ExplainCodeAction"
+            implementationClass="com.clawdius.actions.ExplainCodeHandler"/>
+    </extensions>
+    
+    <actions>
+        <!-- Chat Action -->
+        <action id="Clawdius.Chat"
+                class="com.clawdius.actions.OpenChatAction"
+                text="Open Clawdius Chat"
+                description="Open the Clawdius AI chat window"
+                icon="/META-INF/pluginIcon.svg">
+            <keyboard-shortcut keymap="$default" first-keystroke="ctrl shift C"/>
+            <add-to-group group-id="ToolsMenu" anchor="first"/>
+        </action>
+        
+        <!-- Explain Code Action -->
+        <action id="Clawdius.ExplainCode"
+                class="com.clawdius.actions.ExplainCodeAction"
+                text="Explain Code"
+                description="Explain the selected code using AI"
+                icon="/META-INF/pluginIcon.svg">
+            <add-to-group group-id="EditorPopupMenu" anchor="first"/>
+        </action>
+        
+        <!-- Refactor Action -->
+        <action id="Clawdius.Refactor"
+                class="com.clawdius.actions.RefactorCodeAction"
+                text="AI Refactor"
+                description="Get AI-powered refactoring suggestions"
+                icon="/META-INF/pluginIcon.svg">
+            <add-to-group group-id="EditorPopupMenu" anchor="after" relative-to-action="Clawdius.ExplainCode"/>
+        </action>
+        
+        <!-- Generate Tests Action -->
+        <action id="Clawdius.GenerateTests"
+                class="com.clawdius.actions.GenerateTestsAction"
+                text="Generate Tests"
+                description="Generate unit tests for the selected code"
+                icon="/META-INF/pluginIcon.svg">
+            <add-to-group group-id="EditorPopupMenu" anchor="after" relative-to-action="Clawdius.Refactor"/>
+        </action>
+        
+        <!-- Group -->
+        <group id="Clawdius.Menu" text="Clawdius" popup="true">
+            <reference ref="Clawdius.Chat"/>
+            <separator/>
+            <reference ref="Clawdius.ExplainCode"/>
+            <reference ref="Clawdius.Refactor"/>
+            <reference ref="Clawdius.GenerateTests"/>
+            <add-to-group group-id="ToolsMenu" anchor="first"/>
+        </group>
+    </actions>
+</idea-plugin>

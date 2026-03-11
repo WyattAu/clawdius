@@ -1,0 +1,160 @@
+[package]
+name = "clawdius-core"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+documentation = "https://docs.rs/clawdius-core"
+description = "Core library for Clawdius - High-assurance AI coding assistant with multi-tier sandboxing"
+readme = "README.md"
+keywords = ["ai", "llm", "coding-assistant", "agent", "sandbox", "formal-verification"]
+categories = ["development-tools", "api-bindings", "asynchronous"]
+exclude = [
+    "/tests",
+    "/examples",
+    "/.github",
+    "/fuzz",
+    "*.md",
+    "*.log",
+]
+
+[lib]
+name = "clawdius_core"
+path = "src/lib.rs"
+
+[dependencies]
+# Async
+tokio.workspace = true
+futures.workspace = true
+async-trait.workspace = true
+
+# Serialization
+serde.workspace = true
+serde_json.workspace = true
+toml.workspace = true
+
+# Database
+rusqlite.workspace = true
+
+# LLM
+reqwest.workspace = true
+genai.workspace = true
+
+# Code Analysis
+tree-sitter.workspace = true
+tree-sitter-rust.workspace = true
+tree-sitter-python.workspace = true
+tree-sitter-javascript.workspace = true
+tree-sitter-typescript.workspace = true
+tree-sitter-go.workspace = true
+
+# WASM Runtime
+wasmtime.workspace = true
+
+# JSON-RPC
+jsonrpsee = { version = "0.24", features = ["server"] }
+
+# Utilities
+uuid.workspace = true
+thiserror.workspace = true
+anyhow.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+blake3.workspace = true
+sha3.workspace = true
+chrono.workspace = true
+regex.workspace = true
+tokio-stream.workspace = true
+lru.workspace = true
+url = "2.5"
+which.workspace = true
+tempfile.workspace = true
+
+# Token counting
+tiktoken-rs.workspace = true
+
+# Git
+git2.workspace = true
+
+# Diff
+similar.workspace = true
+
+# Encoding
+base64 = "0.22"
+
+# Vector Database (optional)
+lancedb = { workspace = true, optional = true }
+arrow = { workspace = true, optional = true }
+arrow-array = { workspace = true, optional = true }
+arrow-schema = { workspace = true, optional = true }
+
+# ML/Embeddings (optional)
+candle-core = { workspace = true, optional = true }
+candle-nn = { workspace = true, optional = true }
+candle-transformers = { workspace = true, optional = true }
+tokenizers = { workspace = true, optional = true }
+hf-hub = { workspace = true, optional = true }
+
+# HFT Broker
+crossbeam-utils.workspace = true
+rust_decimal.workspace = true
+
+# Keyring (optional)
+keyring = { workspace = true, optional = true }
+
+# Browser Automation
+chromiumoxide.workspace = true
+
+# Crash Reporting (optional)
+sentry = { version = "0.32", optional = true }
+
+# File watching
+notify.workspace = true
+walkdir.workspace = true
+
+# URL encoding
+urlencoding = "2.1"
+
+# System information
+sysinfo.workspace = true
+parking_lot.workspace = true
+once_cell.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+criterion = { workspace = true }
+mockall.workspace = true
+
+[[bench]]
+name = "core_bench"
+harness = false
+
+[[bench]]
+name = "llm_benchmark"
+harness = false
+
+[[bench]]
+name = "tools_benchmark"
+harness = false
+
+[[bench]]
+name = "session_benchmark"
+harness = false
+
+[[bench]]
+name = "hft_bench"
+harness = false
+
+[features]
+default = []
+hft-mode = []
+broker-mode = []
+keyring = ["dep:keyring"]
+crash-reporting = ["dep:sentry"]
+embeddings = ["dep:candle-core", "dep:candle-nn", "dep:candle-transformers", "dep:tokenizers", "dep:hf-hub"]
+vector-db = ["dep:lancedb", "dep:arrow", "dep:arrow-array", "dep:arrow-schema"]
+
+[lints]
+workspace = true

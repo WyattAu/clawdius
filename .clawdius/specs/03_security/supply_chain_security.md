@@ -602,7 +602,7 @@ allow-git = []
 
 | Package | Issue | Mitigation | Action |
 |---------|-------|------------|--------|
-| bincode | Unmaintained | Low risk, used by tree-sitter | Monitor, plan replacement |
+| bincode | Unmaintained | Low risk, transitive via syntect | Cannot remove without replacing syntect |
 | fxhash | Unmaintained | Low risk, not in hot path | Monitor, plan replacement |
 | paste | Unmaintained | Proc macro, no runtime risk | Monitor |
 | yaml-rust | Unmaintained | Not directly used | Transitive, monitor |

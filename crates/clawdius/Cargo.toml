@@ -1,0 +1,69 @@
+[package]
+name = "clawdius"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Clawdius CLI - High-Assurance Rust-Native Engineering Engine"
+
+[[bin]]
+name = "clawdius"
+path = "src/main.rs"
+
+[dependencies]
+clawdius-core = { path = "../clawdius-core" }
+
+# CLI
+clap.workspace = true
+
+# Async
+monoio.workspace = true
+tokio.workspace = true
+futures.workspace = true
+
+# Serialization
+serde.workspace = true
+serde_json.workspace = true
+toml.workspace = true
+
+# Terminal UI
+ratatui.workspace = true
+crossterm.workspace = true
+
+# Syntax highlighting
+syntect.workspace = true
+
+# Utilities
+tracing.workspace = true
+tracing-subscriber.workspace = true
+anyhow.workspace = true
+thiserror.workspace = true
+chrono.workspace = true
+uuid.workspace = true
+rpassword.workspace = true
+regex.workspace = true
+
+# Allocator
+mimalloc = { workspace = true, optional = true }
+
+# Keyring (optional)
+keyring = { workspace = true, optional = true }
+
+[dev-dependencies]
+tempfile.workspace = true
+criterion = { workspace = true }
+
+[[bench]]
+name = "cli_bench"
+harness = false
+
+[features]
+default = ["mimalloc"]
+hft-mode = ["clawdius-core/hft-mode"]
+broker-mode = ["clawdius-core/broker-mode"]
+keyring = ["clawdius-core/keyring", "dep:keyring"]
+crash-reporting = ["clawdius-core/crash-reporting"]
+vector-db = ["clawdius-core/vector-db"]
+
+[lints]
+workspace = true

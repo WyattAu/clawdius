@@ -104,12 +104,12 @@ jobs:
           cargo audit --deny warnings
       
       - name: Run tests
-        run: cargo nextest run --all-features --profile ci
+        run: cargo nextest run --workspace --all-features --profile ci
       
       - name: Check coverage
         run: |
-          cargo llvm-cov --all-features --summary-only
-          COVERAGE=$(cargo llvm-cov --all-features --summary-only 2>&1 | grep -oP '\d+\.\d+%' | head -1 | tr -d '%')
+          cargo llvm-cov --workspace --all-features --summary-only
+          COVERAGE=$(cargo llvm-cov --workspace --all-features --summary-only 2>&1 | grep -oP '\d+\.\d+%' | head -1 | tr -d '%')
           if (( $(echo "$COVERAGE < 85.0" | bc -l) )); then
             echo "::error::Coverage ${COVERAGE}% below 85% threshold"
             exit 1
@@ -117,7 +117,7 @@ jobs:
       
       - name: Run benchmarks (regression check)
         run: |
-          cargo bench -- --save-baseline release noplot || true
+          cargo bench --workspace -- --save-baseline release noplot || true
 
   build:
     name: Build ${{ matrix.target }}
@@ -126,12 +126,18 @@ jobs:
     needs: [validate, quality-gates]
     strategy:
       matrix:
-        include:
+          include:
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             archive: tar.gz
           - os: ubuntu-latest
             target: x86_64-unknown-linux-musl
+            archive: tar.gz
+          - os: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
+            archive: tar.gz
+          - os: ubuntu-latest
+            target: aarch64-unknown-linux-musl
             archive: tar.gz
           - os: macos-latest
             target: x86_64-apple-darwin
@@ -167,8 +173,24 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y musl-tools
       
-      - name: Build release
-        run: cargo build --release --target ${{ matrix.target }}
+      - name: Install cross-compilation tools (Linux ARM64)
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+          echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
+      
+      - name: Install cross-compilation tools (Linux ARM64 musl)
+        if: matrix.target == 'aarch64-unknown-linux-musl'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu musl-tools
+          echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
+      
+      - name: Build release binaries
+        run: |
+          cargo build --release --target ${{ matrix.target }} -p clawdius
+          cargo build --release --target ${{ matrix.target }} -p clawdius-code
         env:
           RUSTFLAGS: "-C target-cpu=native -C lto=fat -C codegen-units=1"
       
@@ -178,7 +200,7 @@ jobs:
           VERSION="${{ needs.validate.outputs.version }}"
           ARCHIVE="clawdius-${VERSION}-${{ matrix.target }}.tar.gz"
           cd target/${{ matrix.target }}/release
-          tar -czvf ../../../${ARCHIVE} clawdius
+          tar -czvf ../../../${ARCHIVE} clawdius clawdius-code
           sha256sum ../../../${ARCHIVE} > ../../../${ARCHIVE}.sha256
       
       - name: Create archive (Windows)
@@ -187,7 +209,7 @@ jobs:
           VERSION="${{ needs.validate.outputs.version }}"
           ARCHIVE="clawdius-${VERSION}-${{ matrix.target }}.zip"
           cd target/${{ matrix.target }}/release
-          7z a ../../../${ARCHIVE} clawdius.exe
+          7z a ../../../${ARCHIVE} clawdius.exe clawdius-code.exe
           cd ../../..
           sha256sum ${ARCHIVE} > ${ARCHIVE}.sha256
         shell: bash
@@ -217,7 +239,7 @@ jobs:
         run: cargo install cargo-cyclonedx --locked
       
       - name: Generate SBOM
-        run: cargo cyclonedx --all-features --format json
+        run: cargo cyclonedx --workspace --all-features --format json
       
       - name: Rename SBOM
         run: |
@@ -284,8 +306,16 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
       
-      - name: Publish to crates.io
-        run: cargo publish --token ${{ secrets.CRATES_IO_TOKEN }}
+      - name: Publish clawdius-core (library)
+        run: cargo publish --token ${{ secrets.CRATES_IO_TOKEN }} -p clawdius-core
+        continue-on-error: true
+      
+      - name: Publish clawdius (CLI)
+        run: cargo publish --token ${{ secrets.CRATES_IO_TOKEN }} -p clawdius
+        continue-on-error: true
+      
+      - name: Publish clawdius-code (VSCode helper)
+        run: cargo publish --token ${{ secrets.CRATES_IO_TOKEN }} -p clawdius-code
         continue-on-error: true
 
   notify:

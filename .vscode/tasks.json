@@ -2,290 +2,86 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "build",
-      "type": "cargo",
-      "command": "build",
-      "problemMatcher": ["$rustc"],
+      "label": "cargo build",
+      "type": "shell",
+      "command": "cargo",
+      "args": ["build", "--workspace"],
       "group": {
         "kind": "build",
         "isDefault": true
       },
-      "presentation": {
-        "echo": true,
-        "reveal": "always",
-        "focus": false,
-        "panel": "shared",
-        "showReuseMessage": true,
-        "clear": true
-      }
+      "problemMatcher": ["$rustc"]
     },
     {
-      "label": "build (release)",
-      "type": "cargo",
-      "command": "build",
-      "args": ["--release"],
-      "problemMatcher": ["$rustc"],
-      "group": "build",
-      "presentation": {
-        "echo": true,
-        "reveal": "always",
-        "focus": false,
-        "panel": "shared",
-        "showReuseMessage": true,
-        "clear": true
-      }
-    },
-    {
-      "label": "check",
-      "type": "cargo",
-      "command": "check",
-      "args": ["--all-targets"],
-      "problemMatcher": ["$rustc"],
-      "group": "build",
-      "presentation": {
-        "echo": true,
-        "reveal": "silent",
-        "focus": false,
-        "panel": "shared",
-        "showReuseMessage": true,
-        "clear": true
-      }
-    },
-    {
-      "label": "test",
-      "type": "cargo",
-      "command": "test",
-      "problemMatcher": ["$rustc"],
+      "label": "cargo test",
+      "type": "shell",
+      "command": "cargo",
+      "args": ["test", "--workspace"],
       "group": {
         "kind": "test",
         "isDefault": true
       },
-      "presentation": {
-        "echo": true,
-        "reveal": "always",
-        "focus": false,
-        "panel": "shared",
-        "showReuseMessage": true,
-        "clear": true
-      }
+      "problemMatcher": ["$rustc"]
     },
     {
-      "label": "test (integration)",
-      "type": "cargo",
-      "command": "test",
-      "args": ["--ignored"],
-      "problemMatcher": ["$rustc"],
-      "group": "test",
-      "presentation": {
-        "echo": true,
-        "reveal": "always",
-        "focus": false,
-        "panel": "shared",
-        "showReuseMessage": true,
-        "clear": true
-      }
-    },
-    {
-      "label": "test (LLM)",
-      "type": "cargo",
-      "command": "test",
-      "args": ["--test", "llm_integration", "--", "--ignored"],
-      "problemMatcher": ["$rustc"],
-      "group": "test",
-      "presentation": {
-        "echo": true,
-        "reveal": "always",
-        "focus": false,
-        "panel": "shared",
-        "showReuseMessage": true,
-        "clear": true
-      }
-    },
-    {
-      "label": "clippy",
-      "type": "cargo",
-      "command": "clippy",
-      "args": ["--all-targets", "--all-features", "--", "-D", "warnings"],
-      "problemMatcher": ["$rustc"],
-      "presentation": {
-        "echo": true,
-        "reveal": "always",
-        "focus": false,
-        "panel": "shared",
-        "showReuseMessage": true,
-        "clear": true
-      }
-    },
-    {
-      "label": "format",
-      "type": "cargo",
-      "command": "fmt",
-      "presentation": {
-        "echo": true,
-        "reveal": "silent",
-        "focus": false,
-        "panel": "shared",
-        "showReuseMessage": true,
-        "clear": true
-      }
-    },
-    {
-      "label": "format (check)",
-      "type": "cargo",
-      "command": "fmt",
-      "args": ["--", "--check"],
-      "presentation": {
-        "echo": true,
-        "reveal": "always",
-        "focus": false,
-        "panel": "shared",
-        "showReuseMessage": true,
-        "clear": true
-      }
-    },
-    {
-      "label": "run",
-      "type": "cargo",
-      "command": "run",
-      "problemMatcher": ["$rustc"],
-      "presentation": {
-        "echo": true,
-        "reveal": "always",
-        "focus": false,
-        "panel": "shared",
-        "showReuseMessage": true,
-        "clear": true
-      }
-    },
-    {
-      "label": "run (release)",
-      "type": "cargo",
-      "command": "run",
-      "args": ["--release"],
-      "problemMatcher": ["$rustc"],
-      "presentation": {
-        "echo": true,
-        "reveal": "always",
-        "focus": false,
-        "panel": "shared",
-        "showReuseMessage": true,
-        "clear": true
-      }
-    },
-    {
-      "label": "clean",
-      "type": "cargo",
-      "command": "clean",
-      "presentation": {
-        "echo": true,
-        "reveal": "silent",
-        "focus": false,
-        "panel": "shared",
-        "showReuseMessage": true,
-        "clear": true
-      }
-    },
-    {
-      "label": "docs",
-      "type": "cargo",
-      "command": "doc",
-      "args": ["--no-deps"],
-      "problemMatcher": ["$rustc"],
-      "presentation": {
-        "echo": true,
-        "reveal": "silent",
-        "focus": false,
-        "panel": "shared",
-        "showReuseMessage": true,
-        "clear": true
-      }
-    },
-    {
-      "label": "docs (open)",
-      "type": "cargo",
-      "command": "doc",
-      "args": ["--no-deps", "--open"],
-      "problemMatcher": ["$rustc"],
-      "presentation": {
-        "echo": true,
-        "reveal": "always",
-        "focus": false,
-        "panel": "shared",
-        "showReuseMessage": true,
-        "clear": true
-      }
-    },
-    {
-      "label": "benchmark",
-      "type": "cargo",
-      "command": "bench",
-      "problemMatcher": ["$rustc"],
-      "presentation": {
-        "echo": true,
-        "reveal": "always",
-        "focus": false,
-        "panel": "shared",
-        "showReuseMessage": true,
-        "clear": true
-      }
-    },
-    {
-      "label": "coverage",
-      "type": "cargo",
-      "command": "llvm-cov",
-      "args": ["--all-features", "--workspace", "--lcov", "--output-path", "lcov.info"],
-      "problemMatcher": ["$rustc"],
-      "presentation": {
-        "echo": true,
-        "reveal": "always",
-        "focus": false,
-        "panel": "shared",
-        "showReuseMessage": true,
-        "clear": true
-      }
-    },
-    {
-      "label": "docker: build",
+      "label": "cargo clippy",
       "type": "shell",
-      "command": "docker",
-      "args": ["build", "-t", "clawdius:latest", "."],
-      "presentation": {
-        "echo": true,
-        "reveal": "always",
-        "focus": false,
-        "panel": "shared",
-        "showReuseMessage": true,
-        "clear": true
-      }
+      "command": "cargo",
+      "args": ["clippy", "--workspace", "--", "-D", "warnings"],
+      "group": "none",
+      "problemMatcher": ["$rustc"]
     },
     {
-      "label": "docker: run",
+      "label": "cargo fmt",
       "type": "shell",
-      "command": "docker",
-      "args": ["run", "--rm", "-it", "clawdius:latest"],
-      "presentation": {
-        "echo": true,
-        "reveal": "always",
-        "focus": true,
-        "panel": "shared",
-        "showReuseMessage": true,
-        "clear": true
+      "command": "cargo",
+      "args": ["fmt", "--all"],
+      "group": "none"
+    },
+    {
+      "label": "cargo doc",
+      "type": "shell",
+      "command": "cargo",
+      "args": ["doc", "--workspace", "--no-deps"],
+      "group": "none"
+    },
+    {
+      "label": "Run CLI",
+      "type": "shell",
+      "command": "cargo",
+      "args": ["run", "--package", "clawdius", "--", "chat", "hello"],
+      "group": "none",
+      "dependsOn": ["cargo build"]
+    },
+    {
+      "label": "Run TUI",
+      "type": "shell",
+      "command": "cargo",
+      "args": ["run", "--package", "clawdius"],
+      "group": "none",
+      "dependsOn": ["cargo build"]
+    },
+    {
+      "label": "Build WASM",
+      "type": "shell",
+      "command": "cargo",
+      "args": ["build", "--target", "wasm32-unknown-unknown", "--package", "clawdius-webview"],
+      "group": "none"
+    },
+    {
+      "label": "Build VSCode Extension",
+      "type": "shell",
+      "command": "npm",
+      "args": ["run", "compile"],
+      "options": {
+        "cwd": "${workspaceFolder}/editors/vscode"
       },
-      "dependsOn": ["docker: build"]
+      "group": "none"
     },
     {
-      "label": "all checks",
-      "dependsOn": ["format (check)", "clippy", "test"],
-      "dependsOrder": "sequence",
-      "group": "test",
-      "presentation": {
-        "echo": true,
-        "reveal": "always",
-        "focus": false,
-        "panel": "shared",
-        "showReuseMessage": true,
-        "clear": true
-      }
+      "label": "Full CI",
+      "dependsOn": ["cargo fmt", "cargo clippy", "cargo test"],
+      "group": "none"
     }
   ]
 }

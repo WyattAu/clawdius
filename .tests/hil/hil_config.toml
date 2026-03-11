@@ -1,0 +1,120 @@
+# Hardware-in-the-Loop (HIL) Test Configuration
+# This configures HIL testing for Clawdius hardware integration testing
+
+[general]
+name = "clawdius-hil"
+version = "0.1.0"
+description = "HIL testing infrastructure for Clawdius"
+
+[execution]
+# Run in mock mode (no real hardware) - default for CI
+mock_mode = true
+
+# Timeout for individual tests (seconds)
+test_timeout = 60
+
+# Maximum concurrent hardware operations
+max_concurrent = 4
+
+# Retry failed tests
+retry_count = 2
+retry_delay_ms = 500
+
+[hardware.targets]
+# Define hardware targets for testing
+# When mock_mode = true, these are simulated
+
+[hardware.targets.raspberry_pi]
+enabled = false
+description = "Raspberry Pi 4/5 target"
+architecture = "aarch64"
+connection = { type = "ssh", host = "", port = 22 }
+resources = { memory_mb = 4096, cpu_cores = 4 }
+
+[hardware.targets.jetson_nano]
+enabled = false
+description = "NVIDIA Jetson Nano"
+architecture = "aarch64"
+connection = { type = "ssh", host = "", port = 22 }
+resources = { memory_mb = 4096, cpu_cores = 4, gpu = "maxwell" }
+
+[hardware.targets.stm32]
+enabled = false
+description = "STM32 microcontroller"
+architecture = "arm"
+connection = { type = "serial", port = "/dev/ttyUSB0", baud_rate = 115200 }
+resources = { memory_kb = 512, flash_kb = 2048 }
+
+[hardware.targets.esp32]
+enabled = false
+description = "ESP32 microcontroller"
+architecture = "xtensa"
+connection = { type = "serial", port = "/dev/ttyUSB0", baud_rate = 921600 }
+resources = { memory_kb = 520, flash_mb = 4 }
+
+[mock]
+# Mock hardware configuration for CI testing
+simulate_delays = true
+min_delay_ms = 1
+max_delay_ms = 50
+inject_failures = false
+failure_rate = 0.0
+
+[mock.sensors]
+# Simulated sensor data
+temperature = { min = 20.0, max = 80.0, unit = "celsius" }
+voltage = { min = 3.0, max = 5.0, unit = "volts" }
+current = { min = 0.0, max = 2.0, unit = "amps" }
+
+[mock.network]
+# Simulated network conditions
+latency_ms = 10
+jitter_ms = 2
+packet_loss_rate = 0.0
+
+[tests]
+# Test categories and their configurations
+
+[tests.unit]
+enabled = true
+timeout = 30
+pattern = "hil_unit_*"
+
+[tests.integration]
+enabled = true
+timeout = 60
+pattern = "hil_integration_*"
+
+[tests.stress]
+enabled = false
+timeout = 300
+pattern = "hil_stress_*"
+iterations = 100
+
+[tests.safety]
+enabled = true
+timeout = 120
+pattern = "hil_safety_*"
+
+[reporting]
+# Test result reporting configuration
+output_dir = ".tests/hil/results"
+format = "junit"
+include_logs = true
+include_metrics = true
+
+[reporting.artifacts]
+save_dumps = true
+save_traces = true
+retention_days = 30
+
+[ci]
+# CI-specific configuration
+fail_fast = true
+parallel_jobs = 4
+report_on_cancel = true
+
+[ci.triggers]
+on_pull_request = true
+on_merge = true
+on_schedule = "0 2 * * *"  # Daily at 2 AM UTC

@@ -1,0 +1,9 @@
+name = "my-custom-mode"
+description = "Custom mode for my-custom-mode"
+system_prompt = """
+You are Clawdius, a custom assistant specialized in my-custom-mode.
+
+Add your specific instructions here.
+"""
+temperature = 0.7
+tools = ["file", "shell", "git"]

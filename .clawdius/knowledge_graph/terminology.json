@@ -1,0 +1,364 @@
+{
+  "terms": [
+    {
+      "canonical": "Finite State Machine",
+      "translations": {
+        "ZH": "有限状态机",
+        "RU": "Конечный автомат",
+        "DE": "Endlicher Automat",
+        "FR": "Automate fini",
+        "JP": "有限オートマトン",
+        "KO": "유한 상태 기계"
+      },
+      "concept_id": "CONCEPT-002"
+    },
+    {
+      "canonical": "Typestate Pattern",
+      "translations": {
+        "ZH": "类型状态模式",
+        "RU": "Паттерн Typestate",
+        "DE": "Typestate-Muster",
+        "FR": "Patron Typestate",
+        "JP": "型状態パターン",
+        "KO": "타입스테이트 패턴"
+      },
+      "concept_id": "CONCEPT-003"
+    },
+    {
+      "canonical": "Quality Gate",
+      "translations": {
+        "ZH": "质量门",
+        "RU": "Ворота качества",
+        "DE": "Qualitätsschranke",
+        "FR": "Porte de qualité",
+        "JP": "品質ゲート",
+        "KO": "품질 게이트"
+      },
+      "concept_id": "CONCEPT-004"
+    },
+    {
+      "canonical": "Phase",
+      "translations": {
+        "ZH": "阶段",
+        "RU": "Фаза",
+        "DE": "Phase",
+        "FR": "Phase",
+        "JP": "フェーズ",
+        "KO": "단계"
+      },
+      "concept_id": "CONCEPT-005"
+    },
+    {
+      "canonical": "Transition",
+      "translations": {
+        "ZH": "转换",
+        "RU": "Переход",
+        "DE": "Übergang",
+        "FR": "Transition",
+        "JP": "遷移",
+        "KO": "전이"
+      },
+      "concept_id": "CONCEPT-006"
+    },
+    {
+      "canonical": "Artifact",
+      "translations": {
+        "ZH": "工件",
+        "RU": "Артефакт",
+        "DE": "Artefakt",
+        "FR": "Artefact",
+        "JP": "アーティファクト",
+        "KO": "산출물"
+      },
+      "concept_id": "CONCEPT-007"
+    },
+    {
+      "canonical": "Sandbox",
+      "translations": {
+        "ZH": "沙箱",
+        "RU": "Песочница",
+        "DE": "Sandbox",
+        "FR": "Bac à sable",
+        "JP": "サンドボックス",
+        "KO": "샌드박스"
+      },
+      "concept_id": "CONCEPT-008"
+    },
+    {
+      "canonical": "Capability",
+      "translations": {
+        "ZH": "能力",
+        "RU": "Возможность",
+        "DE": "Fähigkeit",
+        "FR": "Capacité",
+        "JP": "ケーパビリティ",
+        "KO": "역량"
+      },
+      "concept_id": "CONCEPT-009"
+    },
+    {
+      "canonical": "Isolation",
+      "translations": {
+        "ZH": "隔离",
+        "RU": "Изоляция",
+        "DE": "Isolierung",
+        "FR": "Isolation",
+        "JP": "隔離",
+        "KO": "격리"
+      },
+      "concept_id": "CONCEPT-010"
+    },
+    {
+      "canonical": "High-Frequency Trading",
+      "translations": {
+        "ZH": "高频交易",
+        "RU": "Высокочастотная торговля",
+        "DE": "Hochfrequenzhandel",
+        "FR": "Négociation à haute fréquence",
+        "JP": "高頻度取引",
+        "KO": "고빈도 거래"
+      },
+      "concept_id": "CONCEPT-014"
+    },
+    {
+      "canonical": "Risk Check",
+      "translations": {
+        "ZH": "风险检查",
+        "RU": "Проверка рисков",
+        "DE": "Risikoprüfung",
+        "FR": "Contrôle des risques",
+        "JP": "リスクチェック",
+        "KO": "위험 검사"
+      },
+      "concept_id": "CONCEPT-015"
+    },
+    {
+      "canonical": "Ring Buffer",
+      "translations": {
+        "ZH": "环形缓冲区",
+        "RU": "Кольцевой буфер",
+        "DE": "Ringpuffer",
+        "FR": "Tampon circulaire",
+        "JP": "リングバッファ",
+        "KO": "링 버퍼"
+      },
+      "concept_id": "CONCEPT-016"
+    },
+    {
+      "canonical": "Garbage Collection",
+      "translations": {
+        "ZH": "垃圾回收",
+        "RU": "Сборка мусора",
+        "DE": "Müllabfuhr",
+        "FR": "Ramasse-miettes",
+        "JP": "ガベージコレクション",
+        "KO": "가비지 컬렉션"
+      },
+      "concept_id": "CONCEPT-017"
+    },
+    {
+      "canonical": "Arena Allocator",
+      "translations": {
+        "ZH": "竞技场分配器",
+        "RU": "Арена-аллокатор",
+        "DE": "Arena-Allokator",
+        "FR": "Allocateur d'arène",
+        "JP": "アリーナアロケータ",
+        "KO": "아레나 할당자"
+      },
+      "concept_id": "CONCEPT-018"
+    },
+    {
+      "canonical": "Worst-Case Execution Time",
+      "translations": {
+        "ZH": "最坏情况执行时间",
+        "RU": "Время выполнения в худшем случае",
+        "DE": "Schlechteste Ausführungszeit",
+        "FR": "Temps d'exécution le plus défavorable",
+        "JP": "最悪実行時間",
+        "KO": "최악 실행 시간"
+      },
+      "concept_id": "CONCEPT-019"
+    },
+    {
+      "canonical": "Kernel",
+      "translations": {
+        "ZH": "内核",
+        "RU": "Ядро",
+        "DE": "Kernel",
+        "FR": "Noyau",
+        "JP": "カーネル",
+        "KO": "커널"
+      },
+      "concept_id": "CONCEPT-020"
+    },
+    {
+      "canonical": "WebAssembly",
+      "translations": {
+        "ZH": "网页汇编",
+        "RU": "WebAssembly",
+        "DE": "WebAssembly",
+        "FR": "WebAssembly",
+        "JP": "WebAssembly",
+        "KO": "웹어셈블리"
+      },
+      "concept_id": "CONCEPT-028"
+    },
+    {
+      "canonical": "Abstract Syntax Tree",
+      "translations": {
+        "ZH": "抽象语法树",
+        "RU": "Абстрактное синтаксическое дерево",
+        "DE": "Abstrakter Syntaxbaum",
+        "FR": "Arbre syntaxique abstrait",
+        "JP": "抽象構文木",
+        "KO": "추상 구문 트리"
+      },
+      "concept_id": "CONCEPT-023"
+    },
+    {
+      "canonical": "Vector Store",
+      "translations": {
+        "ZH": "向量存储",
+        "RU": "Векторное хранилище",
+        "DE": "Vektorspeicher",
+        "FR": "Magasin de vecteurs",
+        "JP": "ベクトルストア",
+        "KO": "벡터 저장소"
+      },
+      "concept_id": "CONCEPT-024"
+    },
+    {
+      "canonical": "Embedding",
+      "translations": {
+        "ZH": "嵌入",
+        "RU": "Встраивание",
+        "DE": "Einbettung",
+        "FR": "Plongement",
+        "JP": "エンベディング",
+        "KO": "임베딩"
+      },
+      "concept_id": "CONCEPT-024"
+    },
+    {
+      "canonical": "Retrieval-Augmented Generation",
+      "translations": {
+        "ZH": "检索增强生成",
+        "RU": "Генерация с дополненной выборкой",
+        "DE": "Abrufgestützte Generierung",
+        "FR": "Génération augmentée par récupération",
+        "JP": "検索拡張生成",
+        "KO": "검색 증강 생성"
+      },
+      "concept_id": "CONCEPT-022"
+    },
+    {
+      "canonical": "Position",
+      "translations": {
+        "ZH": "持仓",
+        "RU": "Позиция",
+        "DE": "Position",
+        "FR": "Position",
+        "JP": "ポジション",
+        "KO": "포지션"
+      },
+      "concept_id": "CONCEPT-037"
+    },
+    {
+      "canonical": "Drawdown",
+      "translations": {
+        "ZH": "回撤",
+        "RU": "Просадка",
+        "DE": "Rückgang",
+        "FR": "Drawdown",
+        "JP": "ドローダウン",
+        "KO": "낙폭"
+      },
+      "concept_id": "CONCEPT-038"
+    },
+    {
+      "canonical": "Credential",
+      "translations": {
+        "ZH": "凭证",
+        "RU": "Учетные данные",
+        "DE": "Anmeldedaten",
+        "FR": "Identifiant",
+        "JP": "認証情報",
+        "KO": "자격 증명"
+      },
+      "concept_id": "CONCEPT-012"
+    },
+    {
+      "canonical": "Supply Chain",
+      "translations": {
+        "ZH": "供应链",
+        "RU": "Цепочка поставок",
+        "DE": "Lieferkette",
+        "FR": "Chaîne d'approvisionnement",
+        "JP": "サプライチェーン",
+        "KO": "공급망"
+      },
+      "concept_id": "CONCEPT-034"
+    },
+    {
+      "canonical": "Standard Operating Procedure",
+      "translations": {
+        "ZH": "标准操作程序",
+        "RU": "Стандартная операционная процедура",
+        "DE": "Standardarbeitsanweisung",
+        "FR": "Procédure opérationnelle standard",
+        "JP": "標準作業手順書",
+        "KO": "표준 운영 절차"
+      },
+      "concept_id": "CONCEPT-033"
+    },
+    {
+      "canonical": "Cache Line",
+      "translations": {
+        "ZH": "缓存行",
+        "RU": "Кэш-линия",
+        "DE": "Cache-Zeile",
+        "FR": "Ligne de cache",
+        "JP": "キャッシュライン",
+        "KO": "캐시 라인"
+      },
+      "concept_id": "CONCEPT-040"
+    },
+    {
+      "canonical": "Atomic Operation",
+      "translations": {
+        "ZH": "原子操作",
+        "RU": "Атомарная операция",
+        "DE": "Atomare Operation",
+        "FR": "Opération atomique",
+        "JP": "アトミック操作",
+        "KO": "원자 연산"
+      },
+      "concept_id": "CONCEPT-016"
+    },
+    {
+      "canonical": "Memory Barrier",
+      "translations": {
+        "ZH": "内存屏障",
+        "RU": "Барьер памяти",
+        "DE": "Speicherbarriere",
+        "FR": "Barrière mémoire",
+        "JP": "メモリバリア",
+        "KO": "메모리 배리어"
+      },
+      "concept_id": "CONCEPT-016"
+    },
+    {
+      "canonical": "Remote Procedure Call",
+      "translations": {
+        "ZH": "远程过程调用",
+        "RU": "Удалённый вызов процедур",
+        "DE": "Fernaufruf",
+        "FR": "Appel de procédure à distance",
+        "JP": "リモートプロシージャコール",
+        "KO": "원격 프로시저 호출"
+      },
+      "concept_id": "CONCEPT-027"
+    }
+  ]
+}

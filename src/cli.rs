@@ -42,6 +42,84 @@ pub enum Commands {
         #[arg(help = "Project path")]
         path: PathBuf,
     },
+
+    #[command(about = "Plan and execute a cross-language refactor")]
+    Refactor {
+        #[arg(short, long)]
+        #[arg(help = "Source language (e.g., typescript, python)")]
+        from: String,
+
+        #[arg(short, long)]
+        #[arg(help = "Target language (e.g., rust, go)")]
+        to: String,
+
+        #[arg(short, long, default_value = ".")]
+        #[arg(help = "Path to file or directory")]
+        path: PathBuf,
+
+        #[arg(long)]
+        #[arg(help = "Preview changes without applying")]
+        dry_run: bool,
+    },
+
+    #[command(about = "Run Lean4 proof verification")]
+    Verify {
+        #[arg(short, long)]
+        #[arg(help = "Path to .lean proof file or directory")]
+        proof: PathBuf,
+
+        #[arg(long)]
+        #[arg(help = "Path to lean binary")]
+        lean_path: Option<PathBuf>,
+    },
+
+    #[command(about = "Activate HFT broker mode")]
+    Broker {
+        #[arg(short, long)]
+        #[arg(help = "Path to broker config")]
+        config: Option<PathBuf>,
+
+        #[arg(long)]
+        #[arg(help = "Enable paper trading (no real orders)")]
+        paper_trade: bool,
+    },
+
+    #[command(about = "Generate compliance matrix")]
+    Compliance {
+        #[arg(short, long)]
+        #[arg(help = "Standards to include (comma-separated: iso26262,do178c,iec62304)")]
+        standards: String,
+
+        #[arg(short, long, default_value = ".")]
+        #[arg(help = "Project root path")]
+        path: PathBuf,
+
+        #[arg(short, long, default_value = "markdown")]
+        #[arg(help = "Output format (markdown, toml)")]
+        format: String,
+
+        #[arg(short, long)]
+        #[arg(help = "Output file path")]
+        output: Option<PathBuf>,
+    },
+
+    #[command(about = "Multi-lingual research synthesis")]
+    Research {
+        #[arg(help = "Research query")]
+        query: String,
+
+        #[arg(short, long)]
+        #[arg(help = "Languages to search (comma-separated: en,zh,ru,de,jp)")]
+        languages: Option<String>,
+
+        #[arg(short = 'L', long, default_value = "3")]
+        #[arg(help = "Minimum TQA level (1-5)")]
+        tqa_level: u8,
+
+        #[arg(short, long, default_value = "10")]
+        #[arg(help = "Maximum results per language")]
+        max_results: usize,
+    },
 }
 
 impl Cli {

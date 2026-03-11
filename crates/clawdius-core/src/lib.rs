@@ -1,0 +1,90 @@
+#![doc = include_str!("../README.md")]
+#![cfg_attr(not(feature = "broker-mode"), deny(unsafe_code))]
+#![allow(missing_docs)]
+#![warn(rustdoc::missing_crate_level_docs)]
+#![warn(rust_2018_idioms)]
+#![doc(
+    html_logo_url = "https://github.com/clawdius/clawdius/raw/main/docs/logo.png",
+    html_favicon_url = "https://github.com/clawdius/clawdius/raw/main/docs/favicon.ico"
+)]
+
+pub mod actions;
+pub mod agents;
+pub mod api;
+pub mod audit;
+pub mod auth;
+pub mod brain;
+pub mod broker;
+pub mod checkpoint;
+pub mod commands;
+pub mod config;
+pub mod context;
+pub mod diff;
+pub mod enterprise;
+pub mod error;
+pub mod graph_rag;
+pub mod i18n;
+pub mod knowledge;
+pub mod llm;
+pub mod memory;
+pub mod modes;
+pub mod nexus;
+pub mod onboarding;
+pub mod output;
+pub mod plugin;
+pub mod proof;
+pub mod retry;
+pub mod rpc;
+pub mod sandbox;
+pub mod session;
+pub mod skills;
+pub mod telemetry;
+pub mod timeline;
+pub mod tools;
+pub mod workspace;
+
+// Re-exports for convenience
+pub use agents::{
+    AgentError, AgentMessage, AgentRole, AgentStatus, AgentTeam, TeamConfig, TeamResult,
+};
+pub use api::{ApiConfig, ApiGateway, ChatRequest, ChatResponse, HealthResponse};
+pub use config::Config;
+#[cfg(feature = "vector-db")]
+pub use context::{AggregatedContext, ContextAggregator};
+pub use context::{
+    CompactResult, Context, ContextCompactor, ContextCompactorConfig, ContextItem, Mention,
+    MentionResolver, ProviderTokenLimits,
+};
+pub use diff::{DiffPreview, DiffRenderer, DiffStats, DiffTheme, FileDiff};
+pub use enterprise::{
+    AuditEvent, AuditLogger, AuditQuery, AuditStorage, ComplianceControl, ComplianceFramework,
+    ComplianceReport, ComplianceTemplate, ControlAssessment, OAuthProvider, Permission, SAMLConfig,
+    SSOConfig, SSOManager, SSOProvider, SSOUser, Team, TeamManager, TeamMember, TeamRole,
+    TeamSettings,
+};
+pub use error::{EnhancedError, Error, ErrorHelpers, Result};
+pub use knowledge::{
+    KnowledgeGraph, Language, ResearchQuery, ResearchSynthesizer, SynthesizedResult,
+};
+pub use memory::{MemoryEntry, MemoryMetadata, ProjectMemory};
+pub use onboarding::{Onboarding, OnboardingStatus};
+pub use output::OutputFormat;
+pub use plugin::{
+    HookContext, HookResult, HookType, PluginEntry as Plugin, PluginHost, PluginHostBuilder,
+    PluginHostConfig, PluginLoader, PluginRegistry, PluginValidationResult, WasmInfo,
+    WasmPluginTrait,
+};
+pub use proof::{LeanVerifier, ProofDefinition, ProofTemplate, VerificationResult};
+pub use retry::{with_retry_and_circuit, CircuitBreaker, CircuitState};
+pub use session::{Session, SessionManager, SessionStore};
+pub use skills::{Skill, SkillContext, SkillError, SkillMeta, SkillRegistry, SkillResult};
+pub use telemetry::{CrashReporter, TelemetryConfig};
+pub use timeline::{CheckpointId, TimelineManager};
+#[cfg(feature = "vector-db")]
+pub use workspace::{IndexStats, WorkspaceIndexer};
+
+/// Current version
+pub const VERSION: &str = env!("CARGO_PKG_VERSION");
+
+/// Crate name
+pub const CRATE_NAME: &str = env!("CARGO_CRATE_NAME");

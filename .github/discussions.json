@@ -1,0 +1,36 @@
+{
+  "categories": [
+    {
+      "name": "📢 Announcements",
+      "description": "Official announcements from the Clawdius team",
+      "emoji": ":loudspeaker:"
+    },
+    {
+      "name": "❓ Q&A",
+      "description": "Get help using Clawdius - ask questions and find answers",
+      "emoji": ":question:"
+    },
+    {
+      "name": "💡 Ideas & Feature Requests",
+      "description": "Share ideas and suggest new features",
+      "emoji": ":bulb:"
+    },
+    {
+      "name": "🎉 Show & Tell",
+      "description": "Show off your Clawdius projects and workflows",
+      "emoji": ":tada:"
+    },
+    {
+      "name": "🔧 Plugins & Extensions",
+      "description": "Share and discuss Clawdius plugins",
+      "emoji": ":wrench:"
+    },
+    {
+      "name": "💬 General",
+      "description": "General discussions about Clawdius",
+      "emoji": ":speech_balloon:"
+    }
+  ],
+  "enable_discussions": true,
+  "welcome_message": "Welcome to Clawdius Discussions! 🦀\n\nBefore posting, please:\n- Check the [Documentation](https://docs.clawdius.dev)\n- Search existing discussions\n- Use appropriate category\n\nBe respectful and helpful. See our [Code of Conduct](../CODE_OF_CONDUCT.md)."
+}

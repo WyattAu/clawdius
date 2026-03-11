@@ -1,0 +1,42 @@
+name: Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+  checks: write
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    name: AI Code Review
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Run Clawdius Code Review
+        uses: ./.github/actions/review
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+          config-path: '.clawdius'
+          review-scope: 'changed-files'
+          output-format: 'comment'
+          fail-on-issues: 'false'
+          rust-toolchain: 'stable'
+          cache-key: 'clawdius-v1'
+      
+      - name: Upload Review Logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: review-logs
+          path: review-output/
+          retention-days: 7
