@@ -22,6 +22,7 @@ use crate::error::{Error, Result};
 pub struct ChangeId(pub String);
 
 impl ChangeId {
+    #[must_use]
     pub fn new() -> Self {
         Self(uuid::Uuid::new_v4().to_string())
     }
@@ -90,6 +91,7 @@ pub struct FileChangeRecord {
 }
 
 impl FileChangeRecord {
+    #[must_use]
     pub fn new(path: PathBuf, change_type: ChangeType, source: ChangeSource) -> Self {
         Self {
             id: ChangeId::new(),
@@ -108,38 +110,45 @@ impl FileChangeRecord {
         }
     }
 
+    #[must_use]
     pub fn with_hashes(mut self, old_hash: Option<String>, new_hash: Option<String>) -> Self {
         self.old_hash = old_hash;
         self.new_hash = new_hash;
         self
     }
 
+    #[must_use]
     pub fn with_sizes(mut self, old_size: Option<usize>, new_size: Option<usize>) -> Self {
         self.old_size = old_size;
         self.new_size = new_size;
         self
     }
 
+    #[must_use]
     pub fn with_line_changes(mut self, line_changes: Vec<LineChange>) -> Self {
         self.line_changes = line_changes;
         self
     }
 
+    #[must_use]
     pub fn with_checkpoint(mut self, checkpoint_id: CheckpointId) -> Self {
         self.checkpoint_id = Some(checkpoint_id);
         self
     }
 
+    #[must_use]
     pub fn with_session(mut self, session_id: String) -> Self {
         self.session_id = Some(session_id);
         self
     }
 
+    #[must_use]
     pub fn with_metadata(mut self, key: String, value: String) -> Self {
         self.metadata.insert(key, value);
         self
     }
 
+    #[must_use]
     pub fn additions(&self) -> usize {
         self.line_changes
             .iter()
@@ -147,6 +156,7 @@ impl FileChangeRecord {
             .count()
     }
 
+    #[must_use]
     pub fn deletions(&self) -> usize {
         self.line_changes
             .iter()
@@ -154,6 +164,7 @@ impl FileChangeRecord {
             .count()
     }
 
+    #[must_use]
     pub fn modifications(&self) -> usize {
         self.line_changes
             .iter()
@@ -180,6 +191,7 @@ pub struct ChangeTracker {
 }
 
 impl ChangeTracker {
+    #[must_use]
     pub fn new(max_changes: usize) -> Self {
         Self {
             changes: Arc::new(RwLock::new(Vec::new())),
@@ -321,6 +333,7 @@ impl ChangeTracker {
 pub struct DiffCalculator;
 
 impl DiffCalculator {
+    #[must_use]
     pub fn compute_line_diff(old_content: &str, new_content: &str) -> Vec<LineChange> {
         use similar::{ChangeTag, TextDiff};
 
@@ -359,6 +372,7 @@ impl DiffCalculator {
         changes
     }
 
+    #[must_use]
     pub fn hash_content(content: &str) -> String {
         let mut hasher = Sha3_256::new();
         hasher.update(content.as_bytes());
@@ -377,8 +391,8 @@ pub struct FileState {
 
 impl FileState {
     pub fn from_path(path: &Path) -> Result<Self> {
-        let content = std::fs::read_to_string(path).map_err(|e| Error::Io(e))?;
-        let _metadata = std::fs::metadata(path).map_err(|e| Error::Io(e))?;
+        let content = std::fs::read_to_string(path).map_err(Error::Io)?;
+        let _metadata = std::fs::metadata(path).map_err(Error::Io)?;
 
         Ok(Self {
             path: path.to_path_buf(),
@@ -388,6 +402,7 @@ impl FileState {
         })
     }
 
+    #[must_use]
     pub fn from_content(path: &Path, content: &str) -> Self {
         Self {
             path: path.to_path_buf(),

@@ -12,7 +12,7 @@ use std::sync::{Arc, Mutex};
 
 use super::{NexusError, PhaseId, Result};
 
-const PERSISTENCE_SCHEMA_SQL: &str = r#"
+const PERSISTENCE_SCHEMA_SQL: &str = r"
 CREATE TABLE IF NOT EXISTS fsm_state (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     session_id TEXT NOT NULL UNIQUE,
@@ -85,7 +85,7 @@ CREATE TABLE IF NOT EXISTS checkpoints (
 
 CREATE INDEX IF NOT EXISTS idx_checkpoints_session ON checkpoints(session_id);
 CREATE INDEX IF NOT EXISTS idx_checkpoints_phase ON checkpoints(phase);
-"#;
+";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SessionStatus {
@@ -122,8 +122,7 @@ impl std::str::FromStr for SessionStatus {
             "recovering" => Ok(SessionStatus::Recovering),
             "archived" => Ok(SessionStatus::Archived),
             _ => Err(NexusError::LockError(format!(
-                "Invalid session status: {}",
-                s
+                "Invalid session status: {s}"
             ))),
         }
     }
@@ -160,10 +159,7 @@ impl std::str::FromStr for PhaseStatus {
             "completed" => Ok(PhaseStatus::Completed),
             "failed" => Ok(PhaseStatus::Failed),
             "skipped" => Ok(PhaseStatus::Skipped),
-            _ => Err(NexusError::LockError(format!(
-                "Invalid phase status: {}",
-                s
-            ))),
+            _ => Err(NexusError::LockError(format!("Invalid phase status: {s}"))),
         }
     }
 }
@@ -176,6 +172,7 @@ impl SessionId {
         SessionId(id.into())
     }
 
+    #[must_use]
     pub fn generate() -> Self {
         SessionId(uuid::Uuid::new_v4().to_string())
     }
@@ -191,6 +188,7 @@ impl std::fmt::Display for SessionId {
 pub struct SnapshotId(pub String);
 
 impl SnapshotId {
+    #[must_use]
     pub fn generate() -> Self {
         SnapshotId(uuid::Uuid::new_v4().to_string())
     }
@@ -206,6 +204,7 @@ impl std::fmt::Display for SnapshotId {
 pub struct CheckpointId(pub String);
 
 impl CheckpointId {
+    #[must_use]
     pub fn generate() -> Self {
         CheckpointId(uuid::Uuid::new_v4().to_string())
     }
@@ -228,6 +227,7 @@ pub struct FsmState {
 }
 
 impl FsmState {
+    #[must_use]
     pub fn new(session_id: SessionId, current_phase: PhaseId) -> Self {
         let now = Utc::now();
         Self {
@@ -240,6 +240,7 @@ impl FsmState {
         }
     }
 
+    #[must_use]
     pub fn with_metadata(mut self, metadata: serde_json::Value) -> Self {
         self.metadata = metadata;
         self
@@ -265,6 +266,7 @@ pub struct PhaseStateRecord {
 }
 
 impl PhaseStateRecord {
+    #[must_use]
     pub fn new(session_id: SessionId, phase: PhaseId) -> Self {
         Self {
             session_id,
@@ -344,10 +346,7 @@ impl std::str::FromStr for SnapshotType {
             "incremental" => Ok(SnapshotType::Incremental),
             "checkpoint" => Ok(SnapshotType::Checkpoint),
             "recovery" => Ok(SnapshotType::Recovery),
-            _ => Err(NexusError::LockError(format!(
-                "Invalid snapshot type: {}",
-                s
-            ))),
+            _ => Err(NexusError::LockError(format!("Invalid snapshot type: {s}"))),
         }
     }
 }
@@ -386,6 +385,7 @@ pub struct Checkpoint {
 }
 
 impl Checkpoint {
+    #[must_use]
     pub fn new(session_id: SessionId, phase: PhaseId) -> Self {
         Self {
             checkpoint_id: CheckpointId::generate(),
@@ -397,11 +397,13 @@ impl Checkpoint {
         }
     }
 
+    #[must_use]
     pub fn with_artifacts(mut self, artifacts: Vec<String>) -> Self {
         self.artifact_ids = artifacts;
         self
     }
 
+    #[must_use]
     pub fn with_event_count(mut self, count: u64) -> Self {
         self.event_count = count;
         self
@@ -431,6 +433,7 @@ impl StatePersistence {
         Ok(persistence)
     }
 
+    #[must_use]
     pub fn in_memory() -> Self {
         let conn = Connection::open_in_memory().expect("Failed to create in-memory database");
         conn.execute_batch("PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;")
@@ -449,7 +452,7 @@ impl StatePersistence {
     fn get_connection(&self) -> Result<std::sync::MutexGuard<'_, Connection>> {
         self.conn
             .lock()
-            .map_err(|e| NexusError::LockError(format!("Failed to acquire database lock: {}", e)))
+            .map_err(|e| NexusError::LockError(format!("Failed to acquire database lock: {e}")))
     }
 
     fn initialize_schema(&self) -> Result<()> {
@@ -466,7 +469,7 @@ impl StatePersistence {
              VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
             params![
                 state.session_id.0,
-                state.current_phase.0 as i32,
+                i32::from(state.current_phase.0),
                 state.status.to_string(),
                 state.created_at.to_rfc3339(),
                 state.updated_at.to_rfc3339(),
@@ -502,11 +505,9 @@ impl StatePersistence {
                         .parse()
                         .unwrap_or(SessionStatus::Active),
                     created_at: DateTime::parse_from_rfc3339(&row.get::<_, String>(3)?)
-                        .map(|dt| dt.with_timezone(&Utc))
-                        .unwrap_or_else(|_| Utc::now()),
+                        .map_or_else(|_| Utc::now(), |dt| dt.with_timezone(&Utc)),
                     updated_at: DateTime::parse_from_rfc3339(&row.get::<_, String>(4)?)
-                        .map(|dt| dt.with_timezone(&Utc))
-                        .unwrap_or_else(|_| Utc::now()),
+                        .map_or_else(|_| Utc::now(), |dt| dt.with_timezone(&Utc)),
                     metadata: serde_json::from_str(&row.get::<_, String>(5)?)
                         .unwrap_or(serde_json::json!({})),
                 })
@@ -523,7 +524,7 @@ impl StatePersistence {
             "UPDATE fsm_state SET current_phase = ?1, status = ?2, updated_at = ?3, metadata = ?4
              WHERE session_id = ?5",
             params![
-                state.current_phase.0 as i32,
+                i32::from(state.current_phase.0),
                 state.status.to_string(),
                 state.updated_at.to_rfc3339(),
                 serde_json::to_string(&state.metadata).unwrap_or_default(),
@@ -563,11 +564,9 @@ impl StatePersistence {
                     .parse()
                     .unwrap_or(SessionStatus::Active),
                 created_at: DateTime::parse_from_rfc3339(&row.get::<_, String>(3)?)
-                    .map(|dt| dt.with_timezone(&Utc))
-                    .unwrap_or_else(|_| Utc::now()),
+                    .map_or_else(|_| Utc::now(), |dt| dt.with_timezone(&Utc)),
                 updated_at: DateTime::parse_from_rfc3339(&row.get::<_, String>(4)?)
-                    .map(|dt| dt.with_timezone(&Utc))
-                    .unwrap_or_else(|_| Utc::now()),
+                    .map_or_else(|_| Utc::now(), |dt| dt.with_timezone(&Utc)),
                 metadata: serde_json::from_str(&row.get::<_, String>(5)?)
                     .unwrap_or(serde_json::json!({})),
             })
@@ -595,7 +594,7 @@ impl StatePersistence {
              VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
             params![
                 state.session_id.0,
-                state.phase.0 as i32,
+                i32::from(state.phase.0),
                 state.status.to_string(),
                 state.started_at.map(|t| t.to_rfc3339()),
                 state.completed_at.map(|t| t.to_rfc3339()),
@@ -625,7 +624,7 @@ impl StatePersistence {
             .map_err(NexusError::DatabaseError)?;
 
         let result = stmt
-            .query_row(params![session_id.0, phase.0 as i32], |row| {
+            .query_row(params![session_id.0, i32::from(phase.0)], |row| {
                 Ok(PhaseStateRecord {
                     session_id: SessionId::new(row.get::<_, String>(0)?),
                     phase: PhaseId(row.get::<_, i32>(1)? as u8),
@@ -710,7 +709,7 @@ impl StatePersistence {
             params![
                 snapshot.session_id.0,
                 snapshot.snapshot_id.0,
-                snapshot.phase.0 as i32,
+                i32::from(snapshot.phase.0),
                 snapshot.snapshot_type.to_string(),
                 serde_json::to_string(&snapshot.data).unwrap_or_default(),
                 snapshot.checksum,
@@ -742,8 +741,7 @@ impl StatePersistence {
                         .unwrap_or(serde_json::json!({})),
                     checksum: row.get::<_, String>(5)?,
                     created_at: DateTime::parse_from_rfc3339(&row.get::<_, String>(6)?)
-                        .map(|dt| dt.with_timezone(&Utc))
-                        .unwrap_or_else(|_| Utc::now()),
+                        .map_or_else(|_| Utc::now(), |dt| dt.with_timezone(&Utc)),
                 })
             })
             .optional()
@@ -773,8 +771,7 @@ impl StatePersistence {
                         .unwrap_or(serde_json::json!({})),
                     checksum: row.get::<_, String>(5)?,
                     created_at: DateTime::parse_from_rfc3339(&row.get::<_, String>(6)?)
-                        .map(|dt| dt.with_timezone(&Utc))
-                        .unwrap_or_else(|_| Utc::now()),
+                        .map_or_else(|_| Utc::now(), |dt| dt.with_timezone(&Utc)),
                 })
             })
             .map_err(NexusError::DatabaseError)?;
@@ -834,8 +831,7 @@ impl StatePersistence {
                     event_data: serde_json::from_str(&row.get::<_, String>(2)?)
                         .unwrap_or(serde_json::json!({})),
                     timestamp: DateTime::parse_from_rfc3339(&row.get::<_, String>(3)?)
-                        .map(|dt| dt.with_timezone(&Utc))
-                        .unwrap_or_else(|_| Utc::now()),
+                        .map_or_else(|_| Utc::now(), |dt| dt.with_timezone(&Utc)),
                 })
             })
             .map_err(NexusError::DatabaseError)?;
@@ -855,7 +851,7 @@ impl StatePersistence {
             params![
                 checkpoint.session_id.0,
                 checkpoint.checkpoint_id.0,
-                checkpoint.phase.0 as i32,
+                i32::from(checkpoint.phase.0),
                 serde_json::to_string(&checkpoint.artifact_ids).unwrap_or_default(),
                 checkpoint.event_count as i64,
                 checkpoint.created_at.to_rfc3339(),
@@ -884,8 +880,7 @@ impl StatePersistence {
                         .unwrap_or_default(),
                     event_count: row.get::<_, i64>(4)? as u64,
                     created_at: DateTime::parse_from_rfc3339(&row.get::<_, String>(5)?)
-                        .map(|dt| dt.with_timezone(&Utc))
-                        .unwrap_or_else(|_| Utc::now()),
+                        .map_or_else(|_| Utc::now(), |dt| dt.with_timezone(&Utc)),
                 })
             })
             .optional()
@@ -913,8 +908,7 @@ impl StatePersistence {
                         .unwrap_or_default(),
                     event_count: row.get::<_, i64>(4)? as u64,
                     created_at: DateTime::parse_from_rfc3339(&row.get::<_, String>(5)?)
-                        .map(|dt| dt.with_timezone(&Utc))
-                        .unwrap_or_else(|_| Utc::now()),
+                        .map_or_else(|_| Utc::now(), |dt| dt.with_timezone(&Utc)),
                 })
             })
             .optional()
@@ -942,8 +936,7 @@ impl StatePersistence {
                         .unwrap_or_default(),
                     event_count: row.get::<_, i64>(4)? as u64,
                     created_at: DateTime::parse_from_rfc3339(&row.get::<_, String>(5)?)
-                        .map(|dt| dt.with_timezone(&Utc))
-                        .unwrap_or_else(|_| Utc::now()),
+                        .map_or_else(|_| Utc::now(), |dt| dt.with_timezone(&Utc)),
                 })
             })
             .map_err(NexusError::DatabaseError)?;
@@ -1010,7 +1003,7 @@ impl CrashRecovery {
         let mut state = self
             .persistence
             .load_session(session_id)?
-            .ok_or_else(|| NexusError::LockError(format!("Session not found: {}", session_id)))?;
+            .ok_or_else(|| NexusError::LockError(format!("Session not found: {session_id}")))?;
 
         state.status = SessionStatus::Recovering;
         state.touch();

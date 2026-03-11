@@ -30,6 +30,7 @@ pub enum LanguageKind {
 }
 
 impl LanguageKind {
+    #[must_use]
     pub fn as_str(&self) -> &'static str {
         match self {
             LanguageKind::Rust => "rust",
@@ -41,6 +42,7 @@ impl LanguageKind {
         }
     }
 
+    #[must_use]
     pub fn from_str(s: &str) -> Option<Self> {
         match s.to_lowercase().as_str() {
             "rs" | "rust" => Some(LanguageKind::Rust),
@@ -54,6 +56,7 @@ impl LanguageKind {
     }
 
     #[cfg(not(target_arch = "wasm32"))]
+    #[must_use]
     pub fn tree_sitter_language(&self) -> Language {
         match self {
             LanguageKind::Rust => RUST_LANGUAGE.into(),
@@ -65,6 +68,7 @@ impl LanguageKind {
         }
     }
 
+    #[must_use]
     pub fn file_extensions(&self) -> &[&'static str] {
         match self {
             LanguageKind::Rust => &["rs"],
@@ -83,15 +87,18 @@ impl std::fmt::Display for LanguageKind {
     }
 }
 
+#[must_use]
 pub fn detect_language(path: &Path) -> Option<LanguageKind> {
     let ext = path.extension()?.to_str()?.to_lowercase();
     LanguageKind::from_str(&ext)
 }
 
+#[must_use]
 pub fn is_supported(path: &Path) -> bool {
     detect_language(path).is_some()
 }
 
+#[must_use]
 pub fn supported_extensions() -> Vec<&'static str> {
     vec![
         "rs", "py", "pyi", "pyw", "js", "mjs", "cjs", "ts", "tsx", "go",

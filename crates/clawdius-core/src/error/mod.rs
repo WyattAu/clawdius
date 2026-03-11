@@ -229,6 +229,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 
 impl Error {
     /// Check if this error is retryable
+    #[must_use]
     pub fn is_retryable(&self) -> bool {
         matches!(
             self,
@@ -237,6 +238,7 @@ impl Error {
     }
 
     /// Get retry delay in milliseconds if applicable
+    #[must_use]
     pub fn retry_after_ms(&self) -> Option<u64> {
         match self {
             Error::RateLimited { retry_after_ms } => Some(*retry_after_ms),
@@ -246,44 +248,42 @@ impl Error {
     }
 
     /// Check if error is a rate limit error
+    #[must_use]
     pub fn is_rate_limited(&self) -> bool {
         matches!(self, Error::RateLimited { .. })
     }
 
     /// Check if error is a timeout
+    #[must_use]
     pub fn is_timeout(&self) -> bool {
         matches!(self, Error::Timeout(_))
     }
 
     /// Check if error is a circuit breaker error
+    #[must_use]
     pub fn is_circuit_breaker(&self) -> bool {
         matches!(self, Error::CircuitBreakerOpen { .. })
     }
 
     /// Convert to an enhanced error with context and suggestions
+    #[must_use]
     pub fn into_enhanced(self) -> EnhancedError {
         EnhancedError::from(self)
     }
 
     /// Get a user-friendly error message
+    #[must_use]
     pub fn user_message(&self) -> String {
         match self {
             Error::Config(msg) if msg.contains("API_KEY") => {
                 if msg.contains("ANTHROPIC") {
                     format!(
-                        "{}\n\nSet your Anthropic API key:\n  export ANTHROPIC_API_KEY=your-key",
-                        msg
+                        "{msg}\n\nSet your Anthropic API key:\n  export ANTHROPIC_API_KEY=your-key"
                     )
                 } else if msg.contains("OPENAI") {
-                    format!(
-                        "{}\n\nSet your OpenAI API key:\n  export OPENAI_API_KEY=your-key",
-                        msg
-                    )
+                    format!("{msg}\n\nSet your OpenAI API key:\n  export OPENAI_API_KEY=your-key")
                 } else if msg.contains("ZAI") {
-                    format!(
-                        "{}\n\nSet your Z.AI API key:\n  export ZAI_API_KEY=your-key",
-                        msg
-                    )
+                    format!("{msg}\n\nSet your Z.AI API key:\n  export ZAI_API_KEY=your-key")
                 } else {
                     msg.clone()
                 }
@@ -296,23 +296,20 @@ impl Error {
             }
             Error::ContextLimit { current, limit } => {
                 format!(
-                    "Context limit exceeded ({} of {} tokens used).\n\nSuggestions:\n\
+                    "Context limit exceeded ({current} of {limit} tokens used).\n\nSuggestions:\n\
                      - Use 'clawdius compact' to reduce context size\n\
-                     - Start a new session for a fresh context",
-                    current, limit
+                     - Start a new session for a fresh context"
                 )
             }
             Error::SessionNotFound { id } => {
                 format!(
-                    "Session '{}' not found.\n\nList available sessions:\n  clawdius sessions",
-                    id
+                    "Session '{id}' not found.\n\nList available sessions:\n  clawdius sessions"
                 )
             }
             Error::Sandbox(msg) => {
                 format!(
-                    "Sandbox violation: {}\n\nThis command was blocked for security.\n\
-                     Check .clawdius/config.toml for allowed commands.",
-                    msg
+                    "Sandbox violation: {msg}\n\nThis command was blocked for security.\n\
+                     Check .clawdius/config.toml for allowed commands."
                 )
             }
             _ => self.to_string(),

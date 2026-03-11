@@ -94,7 +94,7 @@ pub fn ChatInput(
                     let name = file.name();
                     let mime_type = file.type_();
 
-                    let set_attachments_clone = set_attachments.clone();
+                    let set_attachments_clone = set_attachments;
                     wasm_bindgen_futures::spawn_local(async move {
                         let array_buffer =
                             wasm_bindgen_futures::JsFuture::from(file.array_buffer())

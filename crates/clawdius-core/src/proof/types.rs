@@ -50,11 +50,12 @@ impl ProofDefinition {
     }
 
     /// Render to Lean 4 source code
+    #[must_use]
     pub fn to_lean_source(&self) -> String {
         let mut source = String::new();
 
         for dep in &self.dependencies {
-            source.push_str(&format!("import {}\n", dep));
+            source.push_str(&format!("import {dep}\n"));
         }
 
         if !self.dependencies.is_empty() {
@@ -115,7 +116,7 @@ impl ProofTemplate {
             let value = values
                 .get(placeholder)
                 .ok_or_else(|| TemplateError::MissingPlaceholder(placeholder.clone()))?;
-            result = result.replace(&format!("{{{}}}", placeholder), value);
+            result = result.replace(&format!("{{{placeholder}}}"), value);
         }
 
         Ok(result)
@@ -228,6 +229,7 @@ pub struct VerificationResult {
 
 impl VerificationResult {
     /// Create a successful result
+    #[must_use]
     pub fn success(duration: Duration) -> Self {
         Self {
             success: true,
@@ -239,6 +241,7 @@ impl VerificationResult {
     }
 
     /// Create a failed result
+    #[must_use]
     pub fn failure(errors: Vec<LeanError>, duration: Duration) -> Self {
         Self {
             success: false,
@@ -250,11 +253,13 @@ impl VerificationResult {
     }
 
     /// Check if there are any errors
+    #[must_use]
     pub fn has_errors(&self) -> bool {
         !self.errors.is_empty()
     }
 
     /// Check if there are any warnings
+    #[must_use]
     pub fn has_warnings(&self) -> bool {
         !self.warnings.is_empty()
     }

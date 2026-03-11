@@ -55,7 +55,7 @@ impl<T> Arena<T> {
         unsafe {
             let chunks = &*self.chunks.get();
             let current = &*self.current.get();
-            chunks.iter().map(|c| c.len()).sum::<usize>() + current.len()
+            chunks.iter().map(std::vec::Vec::len).sum::<usize>() + current.len()
         }
     }
 

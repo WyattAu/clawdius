@@ -31,6 +31,7 @@ impl GateCondition {
         }
     }
 
+    #[must_use]
     pub fn evaluate(&self, context: &GateContext) -> bool {
         let actual = context.metadata.get(&self.field);
         match actual {
@@ -136,6 +137,7 @@ pub struct CompositeCondition {
 }
 
 impl CompositeCondition {
+    #[must_use]
     pub fn and(conditions: Vec<GateConditionSpec>) -> Self {
         Self {
             operator: LogicalOperator::And,
@@ -143,6 +145,7 @@ impl CompositeCondition {
         }
     }
 
+    #[must_use]
     pub fn or(conditions: Vec<GateConditionSpec>) -> Self {
         Self {
             operator: LogicalOperator::Or,
@@ -150,6 +153,7 @@ impl CompositeCondition {
         }
     }
 
+    #[must_use]
     pub fn not(condition: GateConditionSpec) -> Self {
         Self {
             operator: LogicalOperator::Not,
@@ -157,15 +161,12 @@ impl CompositeCondition {
         }
     }
 
+    #[must_use]
     pub fn evaluate(&self, context: &GateContext) -> bool {
         match self.operator {
             LogicalOperator::And => self.conditions.iter().all(|c| c.evaluate(context)),
             LogicalOperator::Or => self.conditions.iter().any(|c| c.evaluate(context)),
-            LogicalOperator::Not => !self
-                .conditions
-                .first()
-                .map(|c| c.evaluate(context))
-                .unwrap_or(true),
+            LogicalOperator::Not => !self.conditions.first().is_none_or(|c| c.evaluate(context)),
         }
     }
 }
@@ -179,6 +180,7 @@ pub struct GateConditionSpec {
 }
 
 impl GateConditionSpec {
+    #[must_use]
     pub fn simple(condition: GateCondition) -> Self {
         Self {
             simple: Some(condition),
@@ -186,6 +188,7 @@ impl GateConditionSpec {
         }
     }
 
+    #[must_use]
     pub fn composite(composite: CompositeCondition) -> Self {
         Self {
             simple: None,
@@ -193,6 +196,7 @@ impl GateConditionSpec {
         }
     }
 
+    #[must_use]
     pub fn evaluate(&self, context: &GateContext) -> bool {
         if let Some(ref simple) = self.simple {
             simple.evaluate(context)
@@ -211,6 +215,7 @@ pub struct GateAction {
 }
 
 impl GateAction {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             on_pass: Vec::new(),
@@ -218,11 +223,13 @@ impl GateAction {
         }
     }
 
+    #[must_use]
     pub fn on_pass(mut self, action: GateActionType) -> Self {
         self.on_pass.push(action);
         self
     }
 
+    #[must_use]
     pub fn on_fail(mut self, action: GateActionType) -> Self {
         self.on_fail.push(action);
         self
@@ -324,26 +331,31 @@ impl CustomGateConfig {
         self
     }
 
+    #[must_use]
     pub fn with_severity(mut self, severity: ExtendedGateSeverity) -> Self {
         self.severity = severity;
         self
     }
 
+    #[must_use]
     pub fn for_phases(mut self, phases: Vec<PhaseId>) -> Self {
         self.applicable_phases = phases;
         self
     }
 
+    #[must_use]
     pub fn with_timeout(mut self, timeout_ms: u64) -> Self {
         self.timeout_ms = Some(timeout_ms);
         self
     }
 
+    #[must_use]
     pub fn with_retry(mut self, retry: bool) -> Self {
         self.retry_on_fail = retry;
         self
     }
 
+    #[must_use]
     pub fn with_action(mut self, action: GateAction) -> Self {
         self.actions = action;
         self
@@ -365,6 +377,7 @@ impl std::fmt::Debug for CustomGate {
 }
 
 impl CustomGate {
+    #[must_use]
     pub fn new(config: CustomGateConfig) -> Self {
         Self {
             config,
@@ -372,11 +385,13 @@ impl CustomGate {
         }
     }
 
+    #[must_use]
     pub fn with_predicate(mut self, predicate: GatePredicate) -> Self {
         self.predicate = Some(predicate);
         self
     }
 
+    #[must_use]
     pub fn from_config(config: CustomGateConfig) -> Self {
         Self::new(config)
     }
@@ -392,10 +407,12 @@ impl CustomGate {
         }
     }
 
+    #[must_use]
     pub fn id(&self) -> &str {
         &self.config.id
     }
 
+    #[must_use]
     pub fn severity(&self) -> ExtendedGateSeverity {
         self.config.severity
     }
@@ -470,6 +487,7 @@ pub struct PhaseGateConfig {
 }
 
 impl PhaseGateConfig {
+    #[must_use]
     pub fn new(phase: PhaseId) -> Self {
         Self {
             phase,
@@ -491,16 +509,19 @@ impl PhaseGateConfig {
         self
     }
 
+    #[must_use]
     pub fn with_required_pass_count(mut self, count: usize) -> Self {
         self.required_pass_count = count;
         self
     }
 
+    #[must_use]
     pub fn with_allow_warnings(mut self, allow: bool) -> Self {
         self.allow_warnings = allow;
         self
     }
 
+    #[must_use]
     pub fn with_custom_gate(mut self, gate: CustomGateConfig) -> Self {
         self.custom_gates.push(gate);
         self
@@ -516,6 +537,7 @@ pub struct AdvancedGateEvaluator {
 }
 
 impl AdvancedGateEvaluator {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             standard_gates: Vec::new(),
@@ -601,10 +623,12 @@ impl AdvancedGateEvaluator {
         Ok(true)
     }
 
+    #[must_use]
     pub fn gate_count(&self) -> usize {
         self.standard_gates.len() + self.custom_gates.len()
     }
 
+    #[must_use]
     pub fn custom_gate_count(&self) -> usize {
         self.custom_gates.len()
     }
@@ -649,21 +673,25 @@ impl GateBuilder {
         self
     }
 
+    #[must_use]
     pub fn condition(mut self, condition: GateConditionSpec) -> Self {
         self.condition = Some(condition);
         self
     }
 
+    #[must_use]
     pub fn severity(mut self, severity: ExtendedGateSeverity) -> Self {
         self.severity = severity;
         self
     }
 
+    #[must_use]
     pub fn for_phase(mut self, phase: PhaseId) -> Self {
         self.phases.push(phase);
         self
     }
 
+    #[must_use]
     pub fn on_fail_block(mut self) -> Self {
         self.actions.on_fail.push(GateActionType::BlockTransition);
         self
@@ -691,6 +719,7 @@ impl GateBuilder {
     }
 }
 
+#[must_use]
 pub fn create_default_phase_configs() -> HashMap<PhaseId, PhaseGateConfig> {
     let mut configs = HashMap::new();
 
@@ -756,6 +785,7 @@ pub fn create_default_phase_configs() -> HashMap<PhaseId, PhaseGateConfig> {
     configs
 }
 
+#[must_use]
 pub fn create_sample_custom_gates() -> Vec<CustomGate> {
     vec![
         CustomGate::new(

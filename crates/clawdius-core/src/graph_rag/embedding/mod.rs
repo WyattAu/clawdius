@@ -5,8 +5,8 @@
 //!
 //! # Available Embedders
 //!
-//! - **SimpleEmbedder**: Hash-based embedder for testing and fallback (always available)
-//! - **SentenceEmbedder**: Real sentence transformer embeddings using BERT models (requires `embeddings` feature)
+//! - **`SimpleEmbedder`**: Hash-based embedder for testing and fallback (always available)
+//! - **`SentenceEmbedder`**: Real sentence transformer embeddings using BERT models (requires `embeddings` feature)
 //!
 //! # Configuration
 //!

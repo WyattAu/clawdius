@@ -57,11 +57,13 @@ pub struct CheckpointId(pub String);
 
 impl CheckpointId {
     /// Create a new checkpoint ID
+    #[must_use]
     pub fn new() -> Self {
         Self(uuid::Uuid::new_v4().to_string())
     }
 
     /// Create from string
+    #[must_use]
     pub fn from_string(s: String) -> Self {
         Self(s)
     }

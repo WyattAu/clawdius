@@ -152,7 +152,7 @@ pub use vector::{SearchResult, VectorEntry, VectorStore};
 /// Graph-RAG configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GraphRagConfig {
-    /// Path to SQLite database
+    /// Path to `SQLite` database
     pub database_path: String,
     /// Path to vector store
     pub vector_path: String,

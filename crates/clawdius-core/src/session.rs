@@ -129,7 +129,7 @@
 //!
 //! # Thread Safety
 //!
-//! The session store uses SQLite with proper locking and can be safely shared
+//! The session store uses `SQLite` with proper locking and can be safely shared
 //! across threads. The [`SessionManager`] is designed for concurrent access.
 //!
 //! # Error Handling
@@ -138,7 +138,7 @@
 //!
 //! - [`Error::Session`]: General session errors
 //! - [`Error::SessionNotFound`]: Session doesn't exist
-//! - [`Error::Database`]: SQLite database errors
+//! - [`Error::Database`]: `SQLite` database errors
 //!
 //! [`Error`]: crate::Error
 //! [`SessionManager`]: manager::SessionManager

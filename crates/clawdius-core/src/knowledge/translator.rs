@@ -56,6 +56,7 @@ impl Default for Translator {
 }
 
 impl Translator {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             cache: HashMap::new(),
@@ -118,7 +119,7 @@ impl Translator {
             }
         }
 
-        format!("[{}]", text)
+        format!("[{text}]")
     }
 
     pub async fn translate_batch(
@@ -138,11 +139,13 @@ impl Translator {
         self.cache.clear();
     }
 
+    #[must_use]
     pub fn cache_size(&self) -> usize {
         self.cache.len()
     }
 }
 
+#[must_use]
 pub fn detect_language(text: &str) -> Option<Language> {
     let text = text.trim();
 
@@ -171,10 +174,8 @@ pub fn detect_language(text: &str) -> Option<Language> {
         return Some(Language::KO);
     }
 
-    if has_cjk {
-        if text.chars().any(|c| c >= '\u{4E00}' && c <= '\u{9FFF}') {
-            return Some(Language::ZH);
-        }
+    if has_cjk && text.chars().any(|c| ('\u{4E00}'..='\u{9FFF}').contains(&c)) {
+        return Some(Language::ZH);
     }
 
     if has_cyrillic {
@@ -184,7 +185,9 @@ pub fn detect_language(text: &str) -> Option<Language> {
             .count();
         let other_cyrillic = text
             .chars()
-            .filter(|&c| c >= '\u{0400}' && c <= '\u{04FF}' && (c < '\u{0410}' || c > '\u{044F}'))
+            .filter(|&c| {
+                ('\u{0400}'..='\u{04FF}').contains(&c) && !('\u{0410}'..='\u{044F}').contains(&c)
+            })
             .count();
 
         if russian_chars > 0 && other_cyrillic == 0 {

@@ -5,13 +5,14 @@ use super::types::ProofTemplate;
 /// Template for termination proofs
 ///
 /// Proves that a function terminates for all inputs
+#[must_use]
 pub fn termination_proof_template() -> ProofTemplate {
     ProofTemplate::new(
         "termination",
-        r#"/-- Termination proof for {function_name} -/
+        r"/-- Termination proof for {function_name} -/
 theorem {name}_terminates : ∀ (input : {input_type}), 
     ∃ (output : {output_type}), {function_name} input = output := by
-  {proof_body}"#,
+  {proof_body}",
     )
     .with_description("Proves that a function terminates for all inputs")
 }
@@ -19,14 +20,15 @@ theorem {name}_terminates : ∀ (input : {input_type}),
 /// Template for correctness proofs
 ///
 /// Proves that a function satisfies its specification
+#[must_use]
 pub fn correctness_proof_template() -> ProofTemplate {
     ProofTemplate::new(
         "correctness",
-        r#"/-- Correctness proof for {function_name} -/
+        r"/-- Correctness proof for {function_name} -/
 theorem {name}_correct : ∀ (input : {input_type}),
     {precondition} input →
     {postcondition} ({function_name} input) := by
-  {proof_body}"#,
+  {proof_body}",
     )
     .with_description("Proves that a function satisfies its specification")
 }
@@ -34,15 +36,16 @@ theorem {name}_correct : ∀ (input : {input_type}),
 /// Template for safety proofs
 ///
 /// Proves that a function never enters an unsafe state
+#[must_use]
 pub fn safety_proof_template() -> ProofTemplate {
     ProofTemplate::new(
         "safety",
-        r#"/-- Safety proof for {function_name} -/
+        r"/-- Safety proof for {function_name} -/
 theorem {name}_safe : ∀ (input : {input_type}),
     {invariant} input →
     {invariant} ({function_name} input) ∧
     {safety_property} ({function_name} input) := by
-  {proof_body}"#,
+  {proof_body}",
     )
     .with_description("Proves that a function maintains safety invariants")
 }
@@ -52,11 +55,11 @@ theorem {name}_safe : ∀ (input : {input_type}),
 pub fn bisimulation_proof_template() -> ProofTemplate {
     ProofTemplate::new(
         "bisimulation",
-        r#"/-- Bisimulation proof between {impl_a} and {impl_b} -/
+        r"/-- Bisimulation proof between {impl_a} and {impl_b} -/
 theorem {name}_bisim : ∀ (s : State) (a : Action),
     {relation} s →
     {relation} ({step_a} s a) ({step_b} s a) := by
-  {proof_body}"#,
+  {proof_body}",
     )
     .with_description("Proves bisimulation between two implementations")
 }
@@ -66,11 +69,11 @@ theorem {name}_bisim : ∀ (s : State) (a : Action),
 pub fn memory_safety_proof_template() -> ProofTemplate {
     ProofTemplate::new(
         "memory_safety",
-        r#"/-- Memory safety proof for {function_name} -/
+        r"/-- Memory safety proof for {function_name} -/
 theorem {name}_memory_safe : ∀ (ptr : {pointer_type}) (len : Nat),
     {valid_pointer} ptr len →
     {access_in_bounds} ({function_name} ptr) len := by
-  {proof_body}"#,
+  {proof_body}",
     )
     .with_description("Proves memory safety for pointer operations")
 }
@@ -80,10 +83,10 @@ theorem {name}_memory_safe : ∀ (ptr : {pointer_type}) (len : Nat),
 pub fn crypto_security_proof_template() -> ProofTemplate {
     ProofTemplate::new(
         "crypto_security",
-        r#"/-- Security proof for {primitive} -/
+        r"/-- Security proof for {primitive} -/
 theorem {name}_secure : ∀ (adv : Adversary) (msg : Message),
     {advantage} adv {primitive} msg ≤ {bound} := by
-  {proof_body}"#,
+  {proof_body}",
     )
     .with_description("Proves cryptographic security bounds")
 }
@@ -93,11 +96,11 @@ theorem {name}_secure : ∀ (adv : Adversary) (msg : Message),
 pub fn concurrency_safety_proof_template() -> ProofTemplate {
     ProofTemplate::new(
         "concurrency_safety",
-        r#"/-- Concurrency safety proof -/
+        r"/-- Concurrency safety proof -/
 theorem {name}_concurrent_safe : ∀ (t1 t2 : Thread) (s : SharedState),
     {race_free} t1 t2 s →
     {linearizable} ({op1} t1 s) ({op2} t2 s) := by
-  {proof_body}"#,
+  {proof_body}",
     )
     .with_description("Proves thread safety and race freedom")
 }

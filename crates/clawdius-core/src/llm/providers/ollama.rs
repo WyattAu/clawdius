@@ -69,7 +69,7 @@ impl LlmClient for OllamaProvider {
 
         response
             .first_text()
-            .map(|s| s.to_string())
+            .map(std::string::ToString::to_string)
             .ok_or_else(|| Error::Llm("No response text".into()))
     }
 
@@ -103,14 +103,14 @@ impl LlmClient for OllamaProvider {
                                 }
                             }
                             Err(e) => {
-                                let _ = tx.send(format!("[Error: {}]", e)).await;
+                                let _ = tx.send(format!("[Error: {e}]")).await;
                                 break;
                             }
                         }
                     }
                 }
                 Err(e) => {
-                    let _ = tx.send(format!("[Error: {}]", e)).await;
+                    let _ = tx.send(format!("[Error: {e}]")).await;
                 }
             }
         });

@@ -28,6 +28,7 @@ pub struct ContextBuilder {
 
 impl ContextBuilder {
     /// Create a new context builder
+    #[must_use]
     pub fn new(max_tokens: usize) -> Self {
         Self {
             items: Vec::new(),
@@ -36,12 +37,14 @@ impl ContextBuilder {
     }
 
     /// Add a context item
+    #[must_use]
     pub fn add(mut self, item: ContextItem) -> Self {
         self.items.push(item);
         self
     }
 
     /// Add multiple items
+    #[must_use]
     pub fn add_all(mut self, items: Vec<ContextItem>) -> Self {
         self.items.extend(items);
         self
@@ -65,11 +68,12 @@ impl ContextBuilder {
     }
 
     /// Build formatted content string
+    #[must_use]
     pub fn build_content(&self) -> ContextContent {
         let parts: Vec<String> = self
             .items
             .iter()
-            .map(|item| item.to_formatted_string())
+            .map(super::ContextItem::to_formatted_string)
             .collect();
 
         let content = parts.join("\n---\n");

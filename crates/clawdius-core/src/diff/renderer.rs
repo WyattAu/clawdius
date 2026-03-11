@@ -15,16 +15,19 @@ pub struct Color {
 
 impl Color {
     /// Create a new color
+    #[must_use]
     pub const fn new(r: u8, g: u8, b: u8) -> Self {
         Self { r, g, b }
     }
 
     /// Convert to ANSI escape sequence
+    #[must_use]
     pub fn to_ansi(&self) -> String {
         format!("\x1b[38;2;{};{};{}m", self.r, self.g, self.b)
     }
 
     /// Convert to hex color string
+    #[must_use]
     pub fn to_hex(&self) -> String {
         format!("#{:02x}{:02x}{:02x}", self.r, self.g, self.b)
     }
@@ -62,6 +65,7 @@ impl Default for DiffTheme {
 
 impl DiffTheme {
     /// Create a dark theme
+    #[must_use]
     pub fn dark() -> Self {
         Self {
             addition_color: Color::new(78, 201, 176),
@@ -72,6 +76,7 @@ impl DiffTheme {
     }
 
     /// Create a light theme
+    #[must_use]
     pub fn light() -> Self {
         Self {
             addition_color: Color::new(34, 139, 34),
@@ -96,11 +101,13 @@ impl Default for DiffRenderer {
 
 impl DiffRenderer {
     /// Create a new renderer with the given theme
+    #[must_use]
     pub fn new(theme: DiffTheme) -> Self {
         Self { theme }
     }
 
     /// Render diff for terminal with ANSI colors
+    #[must_use]
     pub fn render_terminal(&self, diff: &FileDiff) -> String {
         let mut output = String::new();
         let reset = "\x1b[0m";
@@ -109,14 +116,8 @@ impl DiffRenderer {
         let path_str = diff.path.to_string_lossy();
         let header_color = self.theme.header_color.to_ansi();
 
-        output.push_str(&format!(
-            "{}{}--- {}{}\n",
-            bold, header_color, path_str, reset
-        ));
-        output.push_str(&format!(
-            "{}{}+++ {}{}\n",
-            bold, header_color, path_str, reset
-        ));
+        output.push_str(&format!("{bold}{header_color}--- {path_str}{reset}\n"));
+        output.push_str(&format!("{bold}{header_color}+++ {path_str}{reset}\n"));
 
         for hunk in &diff.hunks {
             output.push_str(&format!(
@@ -150,6 +151,7 @@ impl DiffRenderer {
     }
 
     /// Render diff as HTML for webview
+    #[must_use]
     pub fn render_html(&self, diff: &FileDiff) -> String {
         let mut html = String::new();
 
@@ -203,9 +205,10 @@ impl DiffRenderer {
     }
 
     /// Get CSS styles for HTML rendering
+    #[must_use]
     pub fn get_css(&self) -> String {
         format!(
-            r#".diff-container {{
+            r".diff-container {{
   font-family: monospace;
   font-size: 13px;
   line-height: 1.5;
@@ -260,7 +263,7 @@ impl DiffRenderer {
 .diff-line.removed {{
   background: rgba({}, {}, {}, 0.2);
   color: #{:02x}{:02x}{:02x};
-}}"#,
+}}",
             self.theme.header_color.r,
             self.theme.header_color.g,
             self.theme.header_color.b,

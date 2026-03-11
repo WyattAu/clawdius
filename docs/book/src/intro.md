@@ -1,84 +1,100 @@
-# Clawdius Documentation
+# Introduction to Clawdius
 
-Welcome to the official documentation for **Clawdius** — the high-assurance AI coding assistant.
+**Clawdius** is a high-assurance AI coding assistant built in Rust. It combines the power of large language models with formal verification, secure sandboxing, and enterprise-grade features to provide a trustworthy development companion.
 
-## What is Clawdius?
+## Why Clawdius?
 
-Clawdius is a next-generation AI agentic engine built for developers who:
+### 🛡️ Security First
 
-- **Can't afford hallucinations** — Formal verification with 104 Lean4 theorems
-- **Can't afford latency** — Native Rust, <20ms boot time, zero GC pauses
-- **Can't compromise on security** — 7-tier sandboxing with capability tokens
+Clawdius was designed from the ground up with security as a primary concern:
 
-### Key Features
+- **7 Sandbox Backends**: From lightweight WASM to hardware-isolated Firecracker microVMs
+- **104 Formal Verification Theorems**: Mathematically proven correctness for critical operations
+- **Enterprise SSO**: SAML 2.0, OIDC, Okta, Azure AD, and GitHub integration
+- **Comprehensive Audit Logging**: SQLite, Elasticsearch, and webhook backends
 
-| Feature | Description |
-|---------|-------------|
-| 🛡️ **Multi-Tier Sandboxing** | 7 backends: WASM, Bubblewrap, Container, gVisor, Firecracker, etc. |
-| 🧮 **Formal Verification** | 104 Lean4 theorems proving core algorithms |
-| 🚀 **Native Performance** | <20ms cold start, ~100MB memory, zero GC |
-| 🏢 **Enterprise Ready** | SSO, audit logging, compliance templates |
-| 🔌 **Plugin System** | WASM-based plugins with marketplace |
-| 🧠 **Graph-RAG** | Structural + semantic code understanding |
+### ⚡ Native Performance
 
-## Quick Links
+Built in Rust for maximum performance:
 
-- **New to Clawdius?** Start with the [Installation Guide](./getting-started/installation.md)
-- **Have questions?** Check [GitHub Discussions](https://github.com/clawdius/clawdius/discussions)
-- **Found a bug?** Open an [Issue](https://github.com/clawdius/clawdius/issues)
-- **Want to contribute?** Read [CONTRIBUTING.md](https://github.com/clawdius/clawdius/blob/main/CONTRIBUTING.md)
+- **<20ms cold boot**: Faster than any competitor
+- **Zero-copy streaming**: Efficient real-time output
+- **Memory-efficient**: Minimal resource footprint
+- **Cross-platform**: Linux, macOS, Windows support
 
-## Why Choose Clawdius?
+### 🔧 Extensible Architecture
 
-### vs Claude Code / Cursor
+- **Plugin System**: WASM-based plugins with 26 hook types
+- **Multiple LLM Providers**: Anthropic, OpenAI, Ollama, and custom endpoints
+- **Graph-RAG**: Enhanced context through code graph analysis
+- **Timeline & Checkpoints**: Full session history and rollback
 
-| Aspect | Clawdius | Others |
-|--------|----------|--------|
-| Runtime | Rust (Native) | Node.js/Electron |
-| Boot Time | <20ms | 500ms-2s |
-| Sandboxing | 7 backends | None/Limited |
-| Formal Proofs | 104 theorems | None |
-| Enterprise | Full SSO/Audit | Limited |
+## Feature Comparison
 
-See [Comparison](./COMPARISON.md) for detailed feature comparison.
+| Feature | Clawdius | Competitors |
+|---------|----------|-------------|
+| Sandbox Backends | 7 | 1-3 |
+| Formal Verification | 104 theorems | None |
+| Cold Boot Time | <20ms | 100-500ms |
+| Plugin System | WASM + 26 hooks | Limited or None |
+| Enterprise SSO | Full (SAML, OIDC) | Limited |
+| Audit Logging | 4 backends | Basic or None |
+| Graph-RAG | Built-in | External add-on |
+| Self-Hosted | Full support | Limited |
 
-## Architecture
+## Quick Start
+
+```bash
+# Install from crates.io
+cargo install clawdius
+
+# Or download pre-built binary
+curl -fsSL https://clawdius.dev/install.sh | sh
+
+# Set your API key
+clawdius config set api_key YOUR_ANTHROPIC_API_KEY
+
+# Start chatting
+clawdius chat
+```
+
+## Architecture Overview
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                        Clawdius                              │
+│                        Clawdius CLI                          │
 ├─────────────────────────────────────────────────────────────┤
-│  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────────────┐ │
-│  │   CLI   │  │   TUI   │  │  VSCode │  │  JSON-RPC API   │ │
-│  └────┬────┘  └────┬────┘  └────┬────┘  └────────┬────────┘ │
-│       │            │            │                 │          │
-│       └────────────┴────────────┴─────────────────┘          │
-│                           │                                   │
-│  ┌────────────────────────┴────────────────────────────────┐ │
-│  │                    clawdius-core                         │ │
-│  │  ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌───────────────┐  │ │
-│  │  │   LLM   │ │ Session │ │  Tools  │ │ Graph-RAG     │  │ │
-│  │  │  Layer  │ │ Manager │ │ Engine  │ │ (SQLite+Lance)│  │ │
-│  │  └─────────┘ └─────────┘ └─────────┘ └───────────────┘  │ │
-│  │  ┌─────────────────────────────────────────────────────┐│ │
-│  │  │              Sentinel Sandbox Layer                  ││ │
-│  │  │  WASM │ Filtered │ Bubblewrap │ Container │ gVisor  ││ │
-│  │  └─────────────────────────────────────────────────────┘│ │
-│  └─────────────────────────────────────────────────────────┘ │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐  │
+│  │   Session   │  │   Context   │  │      Timeline       │  │
+│  │   Manager   │  │   Builder   │  │    & Checkpoints    │  │
+│  └─────────────┘  └─────────────┘  └─────────────────────┘  │
+├─────────────────────────────────────────────────────────────┤
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐  │
+│  │     LLM     │  │   Graph-    │  │      Plugin         │  │
+│  │  Providers  │  │    RAG      │  │      System         │  │
+│  └─────────────┘  └─────────────┘  └─────────────────────┘  │
+├─────────────────────────────────────────────────────────────┤
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐  │
+│  │   Sandbox   │  │   Tool      │  │     Enterprise      │  │
+│  │  Executors  │  │   Runner    │  │     Features        │  │
+│  └─────────────┘  └─────────────┘  └─────────────────────┘  │
 └─────────────────────────────────────────────────────────────┘
 ```
 
+## What's Next?
+
+- [Installation Guide](./getting-started/installation.md) - Get Clawdius running on your system
+- [Configuration](./getting-started/configuration.md) - Customize Clawdius for your workflow
+- [First Chat](./getting-started/first-chat.md) - Your first conversation with Clawdius
+- [Architecture Overview](./concepts/architecture.md) - Understand how Clawdius works
+
 ## Getting Help
 
-- 📖 **Documentation:** You're reading it!
-- 💬 **Discord:** [discord.gg/clawdius](https://discord.gg/clawdius)
-- 🐛 **Issues:** [GitHub Issues](https://github.com/clawdius/clawdius/issues)
-- ❓ **Q&A:** [GitHub Discussions](https://github.com/clawdius/clawdius/discussions)
+- **Documentation**: [docs.clawdius.dev](https://docs.clawdius.dev)
+- **GitHub**: [github.com/WyattAu/clawdius](https://github.com/WyattAu/clawdius)
+- **Discord**: [Join our community](https://discord.gg/clawdius)
+- **GitHub Discussions**: For Q&A and feature requests
 
 ## License
 
-Clawdius is released under the [Apache 2.0 License](https://github.com/clawdius/clawdius/blob/main/LICENSE).
-
----
-
-> **"Clawdius: Build like an Emperor. Protect like a Sentinel."**
+Clawdius is licensed under the [MIT License](https://github.com/WyattAu/clawdius/blob/main/LICENSE).

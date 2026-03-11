@@ -19,7 +19,7 @@ pub enum ComplianceFramework {
     Gdpr,
     /// PCI DSS
     PciDss,
-    /// FedRAMP
+    /// `FedRAMP`
     FedRamp,
     /// NIST 800-53
     Nist800_53,
@@ -33,6 +33,7 @@ pub enum ComplianceFramework {
 
 impl ComplianceFramework {
     /// Get framework display name
+    #[must_use]
     pub fn display_name(&self) -> &'static str {
         match self {
             Self::Soc2Type2 => "SOC 2 Type II",
@@ -49,6 +50,7 @@ impl ComplianceFramework {
     }
 
     /// Get framework description
+    #[must_use]
     pub fn description(&self) -> &'static str {
         match self {
             Self::Soc2Type2 => "Service Organization Control 2 - Security, availability, processing integrity, confidentiality, and privacy",
@@ -118,6 +120,7 @@ pub struct ComplianceTemplate {
 
 impl ComplianceTemplate {
     /// Load SOC 2 Type II template
+    #[must_use]
     pub fn soc2_type2() -> Self {
         Self {
             framework: ComplianceFramework::Soc2Type2,
@@ -209,6 +212,7 @@ impl ComplianceTemplate {
     }
 
     /// Load HIPAA template
+    #[must_use]
     pub fn hipaa() -> Self {
         Self {
             framework: ComplianceFramework::Hipaa,
@@ -297,6 +301,7 @@ impl ComplianceTemplate {
     }
 
     /// Load GDPR template
+    #[must_use]
     pub fn gdpr() -> Self {
         Self {
             framework: ComplianceFramework::Gdpr,
@@ -357,11 +362,13 @@ impl ComplianceTemplate {
     }
 
     /// Get control by ID
+    #[must_use]
     pub fn get_control(&self, id: &str) -> Option<&ComplianceControl> {
         self.controls.iter().find(|c| c.id == id)
     }
 
     /// Get controls by category
+    #[must_use]
     pub fn get_controls_by_category(&self, category: &str) -> Vec<&ComplianceControl> {
         self.controls
             .iter()
@@ -536,6 +543,7 @@ pub struct ComplianceManager {
 
 impl ComplianceManager {
     /// Create a new compliance manager
+    #[must_use]
     pub fn new() -> Self {
         let mut templates = HashMap::new();
         templates.insert(
@@ -552,11 +560,13 @@ impl ComplianceManager {
     }
 
     /// Get available frameworks
+    #[must_use]
     pub fn available_frameworks(&self) -> Vec<ComplianceFramework> {
         self.templates.keys().copied().collect()
     }
 
     /// Get a template
+    #[must_use]
     pub fn get_template(&self, framework: ComplianceFramework) -> Option<&ComplianceTemplate> {
         self.templates.get(&framework)
     }
@@ -619,6 +629,7 @@ impl ComplianceManager {
     }
 
     /// Get reports
+    #[must_use]
     pub fn get_reports(&self) -> &[ComplianceReport] {
         &self.reports
     }

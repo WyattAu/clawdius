@@ -56,8 +56,9 @@ pub enum DiffLine {
 
 impl FileDiff {
     /// Compute a diff between old and new content
+    #[must_use]
     pub fn compute(path: PathBuf, old: Option<&str>, new: &str) -> Self {
-        let old_content = old.map(|s| s.to_string());
+        let old_content = old.map(std::string::ToString::to_string);
         let old_str = old.unwrap_or("");
 
         let text_diff = TextDiff::from_lines(old_str, new);
@@ -114,12 +115,13 @@ impl FileDiff {
     }
 
     /// Convert to unified diff format
+    #[must_use]
     pub fn to_unified(&self) -> String {
         let mut output = String::new();
 
         let path_str = self.path.to_string_lossy();
-        output.push_str(&format!("--- {}\n", path_str));
-        output.push_str(&format!("+++ {}\n", path_str));
+        output.push_str(&format!("--- {path_str}\n"));
+        output.push_str(&format!("+++ {path_str}\n"));
 
         for hunk in &self.hunks {
             output.push_str(&format!(
@@ -145,6 +147,7 @@ impl FileDiff {
     }
 
     /// Get statistics for this diff
+    #[must_use]
     pub fn stats(&self) -> DiffStats {
         let mut additions = 0;
         let mut deletions = 0;

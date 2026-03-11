@@ -7,7 +7,7 @@
 //!
 //! The sandbox system uses a tiered approach based on trust levels:
 //!
-//! - **Tier 1 (TrustedAudited)**: Trusted, audited code (Rust/C++)
+//! - **Tier 1 (`TrustedAudited`)**: Trusted, audited code (Rust/C++)
 //!   - Minimal restrictions
 //!   - Direct execution
 //!   - For core system components

@@ -33,6 +33,7 @@ pub struct Localization {
 
 impl Localization {
     /// Create new localization manager
+    #[must_use]
     pub fn new(lang: Language) -> Self {
         Self {
             current: lang,
@@ -41,6 +42,7 @@ impl Localization {
     }
 
     /// Get translation for key
+    #[must_use]
     pub fn t(&self, key: &str) -> String {
         self.translations
             .get(&self.current)

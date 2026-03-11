@@ -85,6 +85,7 @@ pub struct FileWatcher {
 
 impl FileWatcher {
     /// Create new file watcher
+    #[must_use]
     pub fn new(workspace_root: PathBuf, config: WatcherConfig) -> Self {
         Self {
             config,
@@ -131,11 +132,11 @@ impl FileWatcher {
             },
             notify::Config::default(),
         )
-        .map_err(|e| Error::Io(std::io::Error::new(std::io::ErrorKind::Other, e)))?;
+        .map_err(|e| Error::Io(std::io::Error::other(e)))?;
 
         watcher
             .watch(&self.workspace_root, RecursiveMode::Recursive)
-            .map_err(|e| Error::Io(std::io::Error::new(std::io::ErrorKind::Other, e)))?;
+            .map_err(|e| Error::Io(std::io::Error::other(e)))?;
 
         let callback = Arc::new(callback);
         let last_checkpoint = Arc::clone(&self.last_checkpoint);
@@ -172,7 +173,7 @@ impl FileWatcher {
                             }
                         }
                     }
-                    _ = tokio::time::sleep(Duration::from_millis(100)) => {
+                    () = tokio::time::sleep(Duration::from_millis(100)) => {
                         // Check for shutdown periodically
                     }
                 }
@@ -204,8 +205,7 @@ impl FileWatcher {
                 if path_str.contains(dir_pattern) || relative_str.starts_with(dir_pattern) {
                     return true;
                 }
-            } else if pattern.starts_with('*') {
-                let suffix = &pattern[1..];
+            } else if let Some(suffix) = pattern.strip_prefix('*') {
                 if path_str.ends_with(suffix) || relative_str.ends_with(suffix) {
                     return true;
                 }
@@ -255,6 +255,7 @@ impl FileWatcher {
     }
 
     /// Check if path should be ignored (public for testing)
+    #[must_use]
     pub fn should_ignore(&self, path: &Path) -> bool {
         Self::should_ignore_path(path, &self.config.ignore_patterns, &self.workspace_root)
     }

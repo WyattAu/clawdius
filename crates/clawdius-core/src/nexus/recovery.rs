@@ -25,6 +25,7 @@ pub struct CircuitBreaker {
 }
 
 impl CircuitBreaker {
+    #[must_use]
     pub fn new(config: &RecoveryConfig) -> Self {
         Self {
             state: Arc::new(parking_lot::Mutex::new(CircuitState::Closed)),
@@ -123,6 +124,7 @@ pub struct RetryExecutor {
 }
 
 impl RetryExecutor {
+    #[must_use]
     pub fn new(config: RetryConfig) -> Self {
         let initial_delay = config.initial_delay;
         Self {
@@ -181,6 +183,7 @@ impl RetryExecutor {
         }
     }
 
+    #[must_use]
     pub fn attempt_count(&self) -> usize {
         self.attempt
     }
@@ -198,6 +201,7 @@ pub struct RecoveryManager {
 }
 
 impl RecoveryManager {
+    #[must_use]
     pub fn new(config: &RecoveryConfig) -> Self {
         Self {
             circuit_breaker: CircuitBreaker::new(config),
@@ -228,7 +232,7 @@ impl RecoveryManager {
             }
         }
 
-        result.map_err(|e| RecoveryError::OperationFailed(format!("{:?}", e)))
+        result.map_err(|e| RecoveryError::OperationFailed(format!("{e:?}")))
     }
 
     pub async fn execute_async<T, E, F, Fut>(
@@ -258,7 +262,7 @@ impl RecoveryManager {
             }
         }
 
-        result.map_err(|e| RecoveryError::OperationFailed(format!("{:?}", e)))
+        result.map_err(|e| RecoveryError::OperationFailed(format!("{e:?}")))
     }
 
     pub fn circuit_breaker(&self) -> &CircuitBreaker {
@@ -288,17 +292,12 @@ pub enum RecoveryError<E> {
     Inner(#[from] E),
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum DegradationLevel {
+    #[default]
     Full,
     Degraded,
     Minimal,
-}
-
-impl Default for DegradationLevel {
-    fn default() -> Self {
-        Self::Full
-    }
 }
 
 #[derive(Debug)]
@@ -310,6 +309,7 @@ pub struct GracefulDegradation {
 }
 
 impl GracefulDegradation {
+    #[must_use]
     pub fn new(recovery_threshold: u64) -> Self {
         Self {
             level: Arc::new(parking_lot::Mutex::new(DegradationLevel::Full)),

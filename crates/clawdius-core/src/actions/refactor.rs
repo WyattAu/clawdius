@@ -6,11 +6,11 @@ use crate::Result;
 pub struct ExtractFunction;
 
 impl CodeAction for ExtractFunction {
-    fn id(&self) -> &str {
+    fn id(&self) -> &'static str {
         "refactor.extract.function"
     }
 
-    fn title(&self) -> &str {
+    fn title(&self) -> &'static str {
         "Extract to function"
     }
 
@@ -47,7 +47,7 @@ impl CodeAction for ExtractFunction {
                 },
                 TextEdit {
                     range: selection_range,
-                    new_text: format!("{}()", function_name),
+                    new_text: format!("{function_name}()"),
                 },
             ],
             title: self.title().to_string(),
@@ -59,11 +59,11 @@ impl CodeAction for ExtractFunction {
 pub struct ExtractVariable;
 
 impl CodeAction for ExtractVariable {
-    fn id(&self) -> &str {
+    fn id(&self) -> &'static str {
         "refactor.extract.variable"
     }
 
-    fn title(&self) -> &str {
+    fn title(&self) -> &'static str {
         "Extract to variable"
     }
 
@@ -102,7 +102,7 @@ impl CodeAction for ExtractVariable {
                 },
                 TextEdit {
                     range: selection_range,
-                    new_text: var_name.to_string(),
+                    new_text: var_name.clone(),
                 },
             ],
             title: self.title().to_string(),
@@ -114,11 +114,11 @@ impl CodeAction for ExtractVariable {
 pub struct InlineVariable;
 
 impl CodeAction for InlineVariable {
-    fn id(&self) -> &str {
+    fn id(&self) -> &'static str {
         "refactor.inline.variable"
     }
 
-    fn title(&self) -> &str {
+    fn title(&self) -> &'static str {
         "Inline variable"
     }
 
@@ -183,11 +183,11 @@ impl CodeAction for InlineVariable {
 pub struct RenameSymbol;
 
 impl CodeAction for RenameSymbol {
-    fn id(&self) -> &str {
+    fn id(&self) -> &'static str {
         "refactor.rename"
     }
 
-    fn title(&self) -> &str {
+    fn title(&self) -> &'static str {
         "Rename symbol"
     }
 
@@ -233,11 +233,11 @@ impl CodeAction for RenameSymbol {
 pub struct MoveToModule;
 
 impl CodeAction for MoveToModule {
-    fn id(&self) -> &str {
+    fn id(&self) -> &'static str {
         "refactor.move.module"
     }
 
-    fn title(&self) -> &str {
+    fn title(&self) -> &'static str {
         "Move to module"
     }
 
@@ -318,7 +318,7 @@ fn indent_selection(selection: &str) -> String {
             if line.trim().is_empty() {
                 String::new()
             } else {
-                format!("    {}", line)
+                format!("    {line}")
             }
         })
         .collect::<Vec<_>>()
@@ -356,30 +356,28 @@ fn infer_selection_range(context: &ActionContext) -> Range {
                 .document
                 .lines()
                 .nth(context.position.line)
-                .map(|l| l.len())
-                .unwrap_or(0),
+                .map_or(0, str::len),
         },
     }
 }
 
 fn extract_variable_value(document: &str, var_name: &str) -> Result<String> {
-    let pattern = format!(r"let\s+{}\s*=\s*([^;]+);", var_name);
+    let pattern = format!(r"let\s+{var_name}\s*=\s*([^;]+);");
     let re = regex::Regex::new(&pattern)
-        .map_err(|e| crate::Error::ParseError(format!("Failed to compile regex: {}", e)))?;
+        .map_err(|e| crate::Error::ParseError(format!("Failed to compile regex: {e}")))?;
 
     if let Some(caps) = re.captures(document) {
         Ok(caps[1].trim().to_string())
     } else {
         Err(crate::Error::NotFound(format!(
-            "Variable '{}' not found",
-            var_name
+            "Variable '{var_name}' not found"
         )))
     }
 }
 
 fn find_pattern_line(document: &str, pattern: &str) -> Result<usize> {
     let re = regex::Regex::new(pattern)
-        .map_err(|e| crate::Error::ParseError(format!("Failed to compile regex: {}", e)))?;
+        .map_err(|e| crate::Error::ParseError(format!("Failed to compile regex: {e}")))?;
 
     for (i, line) in document.lines().enumerate() {
         if re.is_match(line) {
@@ -388,8 +386,7 @@ fn find_pattern_line(document: &str, pattern: &str) -> Result<usize> {
     }
 
     Err(crate::Error::NotFound(format!(
-        "Pattern '{}' not found",
-        pattern
+        "Pattern '{pattern}' not found"
     )))
 }
 
@@ -426,7 +423,7 @@ fn indent_code(code: &str) -> String {
             if line.trim().is_empty() {
                 String::new()
             } else {
-                format!("    {}", line)
+                format!("    {line}")
             }
         })
         .collect::<Vec<_>>()

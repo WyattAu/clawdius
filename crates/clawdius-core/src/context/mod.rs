@@ -83,6 +83,7 @@ pub enum ContextItem {
 
 impl ContextItem {
     /// Format the context item as a string
+    #[must_use]
     pub fn to_formatted_string(&self) -> String {
         match self {
             ContextItem::File {
@@ -91,7 +92,7 @@ impl ContextItem {
                 language,
             } => {
                 let lang = language.as_deref().unwrap_or("text");
-                format!("@file:{}\n```{}\n{}\n```", path, lang, content)
+                format!("@file:{path}\n```{lang}\n{content}\n```")
             }
             ContextItem::Folder { path, files } => {
                 format!("@folder:{}\n{}", path, files.join("\n"))
@@ -102,7 +103,7 @@ impl ContextItem {
                 title,
             } => {
                 let title_str = title.as_deref().unwrap_or("Untitled");
-                format!("@url:{}\n# {}\n{}", url, title_str, content)
+                format!("@url:{url}\n# {title_str}\n{content}")
             }
             ContextItem::Problems { diagnostics } => {
                 let items: Vec<String> = diagnostics
@@ -113,7 +114,7 @@ impl ContextItem {
             }
             ContextItem::GitDiff { diff, staged } => {
                 let label = if *staged { "staged" } else { "unstaged" };
-                format!("@git:diff ({})\n{}", label, diff)
+                format!("@git:diff ({label})\n{diff}")
             }
             ContextItem::GitLog { commits } => {
                 let items: Vec<String> = commits
@@ -127,7 +128,7 @@ impl ContextItem {
                 location,
                 content,
             } => {
-                format!("@symbol:{} @ {}\n{}", name, location, content)
+                format!("@symbol:{name} @ {location}\n{content}")
             }
             ContextItem::Search { query, results } => {
                 let items: Vec<String> = results
@@ -193,6 +194,7 @@ pub struct Context {
 
 impl Context {
     /// Create a new context with a token budget
+    #[must_use]
     pub fn new(max_tokens: usize) -> Self {
         Self {
             items: Vec::new(),
@@ -213,11 +215,13 @@ impl Context {
     }
 
     /// Get remaining token budget
+    #[must_use]
     pub fn remaining_tokens(&self) -> usize {
         self.max_tokens.saturating_sub(self.current_tokens)
     }
 
     /// Get all items
+    #[must_use]
     pub fn items(&self) -> &[ContextItem] {
         &self.items
     }

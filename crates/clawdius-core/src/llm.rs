@@ -1,7 +1,7 @@
 //! LLM integration with multi-provider support.
 //!
 //! This module provides a unified interface for interacting with various LLM providers,
-//! including Anthropic (Claude), OpenAI (GPT), Ollama (local models), and Z.AI.
+//! including Anthropic (Claude), `OpenAI` (GPT), Ollama (local models), and Z.AI.
 //!
 //! # Features
 //!
@@ -34,7 +34,7 @@
 //! # }
 //! ```
 //!
-//! ## OpenAI (GPT)
+//! ## `OpenAI` (GPT)
 //!
 //! ```rust,no_run
 //! use clawdius_core::llm::{LlmConfig, create_provider, ChatMessage, ChatRole};
@@ -537,6 +537,7 @@ pub struct LlmClientWithRetry {
 }
 
 impl LlmClientWithRetry {
+    #[must_use]
     pub fn new(provider: LlmProvider, retry_config: RetryConfig) -> Self {
         Self {
             provider,
@@ -560,6 +561,7 @@ impl LlmClientWithRetry {
         .await
     }
 
+    #[must_use]
     pub fn count_tokens(&self, text: &str) -> usize {
         match &self.provider {
             LlmProvider::Anthropic(p) => p.count_tokens(text),
@@ -570,6 +572,7 @@ impl LlmClientWithRetry {
         }
     }
 
+    #[must_use]
     pub fn provider(&self) -> &LlmProvider {
         &self.provider
     }
@@ -598,6 +601,7 @@ impl LlmProvider {
         .await
     }
 
+    #[must_use]
     pub fn count_tokens(&self, text: &str) -> usize {
         match self {
             LlmProvider::Anthropic(p) => p.count_tokens(text),

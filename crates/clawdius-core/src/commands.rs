@@ -27,7 +27,7 @@ pub struct CommandArgument {
 }
 
 /// A custom command definition
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct CustomCommand {
     /// Command ID
     pub id: String,
@@ -40,16 +40,4 @@ pub struct CustomCommand {
     /// Arguments
     #[serde(default)]
     pub arguments: Vec<CommandArgument>,
-}
-
-impl Default for CustomCommand {
-    fn default() -> Self {
-        Self {
-            id: String::new(),
-            name: String::new(),
-            description: String::new(),
-            template: CommandTemplate::default(),
-            arguments: Vec::new(),
-        }
-    }
 }

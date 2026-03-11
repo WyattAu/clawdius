@@ -8,7 +8,7 @@ Core library for Clawdius - LLM integration, session management, tools, and sand
 
 `clawdius-core` is the heart of the Clawdius ecosystem, providing:
 
-- **LLM Integration:** Multi-provider support (OpenAI, Anthropic, DeepSeek, Ollama)
+- **LLM Integration:** Multi-provider support (`OpenAI`, Anthropic, `DeepSeek`, Ollama)
 - **Session Management:** Conversation state and history
 - **Tool System:** Extensible tool framework (bash, file operations, web search, etc.)
 - **Graph-RAG:** Code understanding via AST and vector indexing
@@ -22,7 +22,7 @@ Core library for Clawdius - LLM integration, session management, tools, and sand
 | Feature | Description | Dependencies Added |
 |---------|-------------|-------------------|
 | `default` | Standard features (none) | - |
-| `vector-db` | LanceDB vector storage for semantic search | lancedb, arrow |
+| `vector-db` | `LanceDB` vector storage for semantic search | lancedb, arrow |
 | `embeddings` | Real sentence transformer embeddings (BERT) | candle-core, candle-nn, candle-transformers, tokenizers, hf-hub |
 | `hft-mode` | High-frequency trading mode (arena allocators, ring buffers) | - |
 | `broker-mode` | Financial broker integration | - |
@@ -486,10 +486,10 @@ fn main() -> anyhow::Result<()> {
 | Dependency | Feature | Purpose |
 |------------|---------|---------|
 | `lancedb` | `vector-db` | Vector database for semantic search |
-| `arrow` | `vector-db` | Arrow data format for LanceDB |
+| `arrow` | `vector-db` | Arrow data format for `LanceDB` |
 | `candle-*` | `embeddings` | ML framework for embeddings |
-| `tokenizers` | `embeddings` | HuggingFace tokenizers |
-| `hf-hub` | `embeddings` | HuggingFace model hub |
+| `tokenizers` | `embeddings` | `HuggingFace` tokenizers |
+| `hf-hub` | `embeddings` | `HuggingFace` model hub |
 | `keyring` | `keyring` | OS keyring integration |
 | `sentry` | `crash-reporting` | Crash reporting |
 

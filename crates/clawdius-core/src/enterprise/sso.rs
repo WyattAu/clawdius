@@ -2,7 +2,6 @@
 //!
 //! Supports SAML 2.0 and OIDC providers for enterprise authentication.
 
-use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -48,15 +47,15 @@ pub enum SSOProvider {
 pub struct SAMLConfig {
     /// Provider name
     pub name: String,
-    /// Identity Provider (IdP) metadata URL
+    /// Identity Provider (`IdP`) metadata URL
     pub idp_metadata_url: Option<String>,
-    /// IdP entity ID
+    /// `IdP` entity ID
     pub idp_entity_id: String,
-    /// IdP SSO URL
+    /// `IdP` SSO URL
     pub idp_sso_url: String,
-    /// IdP SLO (Logout) URL
+    /// `IdP` SLO (Logout) URL
     pub idp_slo_url: Option<String>,
-    /// IdP X509 certificate (PEM format)
+    /// `IdP` X509 certificate (PEM format)
     pub idp_certificate: String,
     /// Service Provider entity ID
     pub sp_entity_id: String,
@@ -94,13 +93,13 @@ impl SAMLConfig {
         }
     }
 
-    /// Set IdP SSO URL
+    /// Set `IdP` SSO URL
     pub fn with_sso_url(mut self, url: impl Into<String>) -> Self {
         self.idp_sso_url = url.into();
         self
     }
 
-    /// Set IdP certificate
+    /// Set `IdP` certificate
     pub fn with_certificate(mut self, cert: impl Into<String>) -> Self {
         self.idp_certificate = cert.into();
         self
@@ -133,8 +132,8 @@ impl SAMLConfig {
     pub fn okta(domain: impl Into<String>, app_id: impl Into<String>) -> Self {
         let domain = domain.into();
         let app_id = app_id.into();
-        Self::new("Okta", format!("http://www.okta.com/{}", app_id))
-            .with_sso_url(format!("https://{}/app/{}/sso/saml", domain, app_id))
+        Self::new("Okta", format!("http://www.okta.com/{app_id}"))
+            .with_sso_url(format!("https://{domain}/app/{app_id}/sso/saml"))
             .map_attribute("email", "email")
             .map_attribute("firstName", "first_name")
             .map_attribute("lastName", "last_name")
@@ -144,27 +143,23 @@ impl SAMLConfig {
     /// Azure AD SAML configuration helper
     pub fn azure_ad(tenant_id: impl Into<String>, app_id: impl Into<String>) -> Self {
         let tenant_id = tenant_id.into();
-        let app_id = app_id.into();
-        Self::new(
-            "Azure AD",
-            format!("https://sts.windows.net/{}/", tenant_id),
-        )
-        .with_sso_url(format!(
-            "https://login.microsoftonline.com/{}/saml2?SAMLRequest=",
-            tenant_id
-        ))
-        .map_attribute(
-            "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress",
-            "email",
-        )
-        .map_attribute(
-            "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name",
-            "name",
-        )
-        .map_attribute(
-            "http://schemas.microsoft.com/ws/2008/06/identity/claims/groups",
-            "groups",
-        )
+        let _app_id = app_id.into();
+        Self::new("Azure AD", format!("https://sts.windows.net/{tenant_id}/"))
+            .with_sso_url(format!(
+                "https://login.microsoftonline.com/{tenant_id}/saml2?SAMLRequest="
+            ))
+            .map_attribute(
+                "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress",
+                "email",
+            )
+            .map_attribute(
+                "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name",
+                "name",
+            )
+            .map_attribute(
+                "http://schemas.microsoft.com/ws/2008/06/identity/claims/groups",
+                "groups",
+            )
     }
 }
 
@@ -181,7 +176,7 @@ pub struct OAuthProvider {
     pub auth_url: String,
     /// Token URL
     pub token_url: String,
-    /// UserInfo URL
+    /// `UserInfo` URL
     pub userinfo_url: Option<String>,
     /// JWKS URL for token verification
     pub jwks_url: Option<String>,
@@ -301,9 +296,9 @@ impl OAuthProvider {
         let domain = domain.into();
         Self::new("Okta", client_id, client_secret)
             .with_endpoints(
-                format!("https://{}/oauth2/v1/authorize", domain),
-                format!("https://{}/oauth2/v1/token", domain),
-                format!("https://{}", domain),
+                format!("https://{domain}/oauth2/v1/authorize"),
+                format!("https://{domain}/oauth2/v1/token"),
+                format!("https://{domain}"),
             )
             .map_claim("email", "email")
             .map_claim("name", "name")
@@ -319,15 +314,9 @@ impl OAuthProvider {
         let tenant_id = tenant_id.into();
         Self::new("Azure AD", client_id, client_secret)
             .with_endpoints(
-                format!(
-                    "https://login.microsoftonline.com/{}/oauth2/v2.0/authorize",
-                    tenant_id
-                ),
-                format!(
-                    "https://login.microsoftonline.com/{}/oauth2/v2.0/token",
-                    tenant_id
-                ),
-                format!("https://login.microsoftonline.com/{}/v2.0", tenant_id),
+                format!("https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/authorize"),
+                format!("https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/token"),
+                format!("https://login.microsoftonline.com/{tenant_id}/v2.0"),
             )
             .with_scope("https://graph.microsoft.com/.default")
             .map_claim("email", "email")
@@ -339,7 +328,7 @@ impl OAuthProvider {
 /// SSO authenticated user
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SSOUser {
-    /// Unique user ID from IdP
+    /// Unique user ID from `IdP`
     pub id: String,
     /// Email address
     pub email: String,
@@ -349,7 +338,7 @@ pub struct SSOUser {
     pub username: Option<String>,
     /// Avatar URL
     pub avatar_url: Option<String>,
-    /// Groups/roles from IdP
+    /// Groups/roles from `IdP`
     pub groups: Vec<String>,
     /// Custom attributes
     pub attributes: HashMap<String, String>,
@@ -363,11 +352,13 @@ pub struct SSOUser {
 
 impl SSOUser {
     /// Check if session is expired
+    #[must_use]
     pub fn is_expired(&self) -> bool {
         chrono::Utc::now() > self.expires_at
     }
 
     /// Check if user is in a group
+    #[must_use]
     pub fn in_group(&self, group: &str) -> bool {
         self.groups.iter().any(|g| g == group)
     }
@@ -381,6 +372,7 @@ pub struct SSOManager {
 
 impl SSOManager {
     /// Create a new SSO manager
+    #[must_use]
     pub fn new(config: SSOConfig) -> Self {
         Self {
             config,
@@ -389,11 +381,13 @@ impl SSOManager {
     }
 
     /// Get SSO configuration
+    #[must_use]
     pub fn config(&self) -> &SSOConfig {
         &self.config
     }
 
     /// Get a provider by name
+    #[must_use]
     pub fn get_provider(&self, name: &str) -> Option<&SSOProvider> {
         self.config.providers.iter().find(|p| match p {
             SSOProvider::Saml(c) => c.name == name,
@@ -402,6 +396,7 @@ impl SSOManager {
     }
 
     /// List available providers
+    #[must_use]
     pub fn list_providers(&self) -> Vec<&str> {
         self.config
             .providers
@@ -414,6 +409,7 @@ impl SSOManager {
     }
 
     /// Validate user session
+    #[must_use]
     pub fn validate_session(&self, session_id: &str) -> Option<&SSOUser> {
         self.sessions.get(session_id).filter(|u| !u.is_expired())
     }
@@ -436,11 +432,12 @@ impl SSOManager {
     }
 
     /// Check if email domain is allowed
+    #[must_use]
     pub fn is_domain_allowed(&self, email: &str) -> bool {
         if self.config.allowed_domains.is_empty() {
             return true;
         }
-        let domain = email.split('@').last().unwrap_or("");
+        let domain = email.split('@').next_back().unwrap_or("");
         self.config.allowed_domains.iter().any(|d| d == domain)
     }
 }

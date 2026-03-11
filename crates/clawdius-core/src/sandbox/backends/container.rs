@@ -22,6 +22,7 @@ pub enum ContainerRuntime {
 
 impl ContainerRuntime {
     /// Get the command name
+    #[must_use]
     pub fn command(&self) -> &'static str {
         match self {
             ContainerRuntime::Docker => "docker",
@@ -30,6 +31,7 @@ impl ContainerRuntime {
     }
 
     /// Check if the runtime is available
+    #[must_use]
     pub fn is_available(&self) -> bool {
         std::process::Command::new(self.command())
             .arg("--version")
@@ -39,6 +41,7 @@ impl ContainerRuntime {
     }
 
     /// Detect the best available runtime
+    #[must_use]
     pub fn detect() -> Option<Self> {
         if Self::Docker.is_available() {
             Some(Self::Docker)
@@ -103,6 +106,7 @@ impl Default for ContainerConfig {
 
 impl ContainerConfig {
     /// Create a new configuration with defaults
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
@@ -114,24 +118,28 @@ impl ContainerConfig {
     }
 
     /// Set memory limit
+    #[must_use]
     pub fn with_memory_limit(mut self, bytes: u64) -> Self {
         self.memory_limit = bytes;
         self
     }
 
     /// Set CPU limit
+    #[must_use]
     pub fn with_cpu_limit(mut self, cpus: f64) -> Self {
         self.cpu_limit = cpus;
         self
     }
 
     /// Enable network access
+    #[must_use]
     pub fn with_network(mut self, enabled: bool) -> Self {
         self.network = enabled;
         self
     }
 
     /// Add a mount point
+    #[must_use]
     pub fn with_mount(mut self, mount: ContainerMount) -> Self {
         self.mounts.push(mount);
         self
@@ -172,6 +180,7 @@ impl ContainerMount {
     }
 
     /// Make the mount read-only
+    #[must_use]
     pub fn read_only(mut self) -> Self {
         self.read_only = true;
         self
@@ -186,6 +195,7 @@ pub struct ContainerBackend {
 
 impl ContainerBackend {
     /// Create a new container backend
+    #[must_use]
     pub fn new(config: ContainerConfig) -> Self {
         Self {
             config,
@@ -194,11 +204,13 @@ impl ContainerBackend {
     }
 
     /// Create with default configuration
+    #[must_use]
     pub fn with_defaults() -> Self {
         Self::new(ContainerConfig::default())
     }
 
     /// Check if containers are available
+    #[must_use]
     pub fn is_available() -> bool {
         ContainerRuntime::detect().is_some()
     }
@@ -280,7 +292,7 @@ impl ContainerBackend {
         // Environment variables
         for (key, value) in &self.config.env {
             cmd.push("-e".to_string());
-            cmd.push(format!("{}={}", key, value));
+            cmd.push(format!("{key}={value}"));
         }
 
         // Image
@@ -305,7 +317,7 @@ impl ContainerBackend {
             .current_dir(cwd)
             .output()
             .await
-            .map_err(|e| Error::Sandbox(format!("Failed to execute container: {}", e)))?;
+            .map_err(|e| Error::Sandbox(format!("Failed to execute container: {e}")))?;
 
         Ok(output)
     }
@@ -316,11 +328,11 @@ impl ContainerBackend {
             .args(["pull", &self.config.base_image])
             .output()
             .await
-            .map_err(|e| Error::Sandbox(format!("Failed to pull image: {}", e)))?;
+            .map_err(|e| Error::Sandbox(format!("Failed to pull image: {e}")))?;
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
-            return Err(Error::Sandbox(format!("Failed to pull image: {}", stderr)));
+            return Err(Error::Sandbox(format!("Failed to pull image: {stderr}")));
         }
 
         Ok(())
@@ -332,7 +344,7 @@ impl ContainerBackend {
             .args(["ps", "--format", "{{.ID}}\t{{.Names}}\t{{.Status}}"])
             .output()
             .await
-            .map_err(|e| Error::Sandbox(format!("Failed to list containers: {}", e)))?;
+            .map_err(|e| Error::Sandbox(format!("Failed to list containers: {e}")))?;
 
         let stdout = String::from_utf8_lossy(&output.stdout);
         let containers = stdout
@@ -360,13 +372,12 @@ impl ContainerBackend {
             .args(["stop", container_id])
             .output()
             .await
-            .map_err(|e| Error::Sandbox(format!("Failed to stop container: {}", e)))?;
+            .map_err(|e| Error::Sandbox(format!("Failed to stop container: {e}")))?;
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
             return Err(Error::Sandbox(format!(
-                "Failed to stop container: {}",
-                stderr
+                "Failed to stop container: {stderr}"
             )));
         }
 
@@ -379,13 +390,12 @@ impl ContainerBackend {
             .args(["rm", "-f", container_id])
             .output()
             .await
-            .map_err(|e| Error::Sandbox(format!("Failed to remove container: {}", e)))?;
+            .map_err(|e| Error::Sandbox(format!("Failed to remove container: {e}")))?;
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
             return Err(Error::Sandbox(format!(
-                "Failed to remove container: {}",
-                stderr
+                "Failed to remove container: {stderr}"
             )));
         }
 
@@ -431,7 +441,7 @@ impl SandboxBackend for ContainerBackend {
             .args(&cmd_args)
             .current_dir(cwd)
             .output()
-            .map_err(|e| Error::Sandbox(format!("Failed to execute container: {}", e)))?;
+            .map_err(|e| Error::Sandbox(format!("Failed to execute container: {e}")))?;
 
         Ok(output)
     }
@@ -467,6 +477,7 @@ pub struct IsolationSession {
 
 impl ContainerIsolation {
     /// Create a new container isolation manager
+    #[must_use]
     pub fn new(config: ContainerConfig) -> Self {
         Self {
             backend: ContainerBackend::new(config),
@@ -475,6 +486,7 @@ impl ContainerIsolation {
     }
 
     /// Create with defaults
+    #[must_use]
     pub fn with_defaults() -> Self {
         Self::new(ContainerConfig::default())
     }

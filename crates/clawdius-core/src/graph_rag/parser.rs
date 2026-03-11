@@ -40,13 +40,14 @@ impl CodeParser {
         let mut parsers = self.parsers.lock().unwrap();
         let parser = parsers
             .get_mut(&lang)
-            .ok_or_else(|| anyhow::anyhow!("No parser available for language: {}", lang))?;
+            .ok_or_else(|| anyhow::anyhow!("No parser available for language: {lang}"))?;
 
         parser
             .parse(source, None)
             .ok_or_else(|| anyhow::anyhow!("Failed to parse source"))
     }
 
+    #[must_use]
     pub fn extract_symbols(
         &self,
         tree: &Tree,
@@ -321,6 +322,7 @@ impl CodeParser {
         node.utf8_text(source.as_bytes()).unwrap_or("").to_string()
     }
 
+    #[must_use]
     pub fn extract_references(&self, tree: &Tree, source: &str, file_id: i64) -> Vec<Reference> {
         let root = tree.root_node();
         let mut references = Vec::new();
@@ -380,6 +382,7 @@ impl CodeParser {
         self.node_text(&current, source)
     }
 
+    #[must_use]
     pub fn extract_imports(&self, tree: &Tree, source: &str, lang: LanguageKind) -> Vec<String> {
         let root = tree.root_node();
         let mut imports = Vec::new();

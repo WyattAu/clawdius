@@ -1,7 +1,7 @@
 //! Skills and Commands System
 //!
 //! This module implements a reusable skills/commands system inspired by Claude Code's skills
-//! and OpenClaw's ClawHub. Skills are reusable workflows that can be invoked with natural language.
+//! and `OpenClaw`'s `ClawHub`. Skills are reusable workflows that can be invoked with natural language.
 //!
 //! # Architecture
 //!
@@ -150,7 +150,7 @@ impl SkillContext {
     /// Get a required argument or error
     pub fn require_argument(&self, name: &str) -> Result<&String> {
         self.arguments.get(name).ok_or_else(|| {
-            SkillError::InvalidArguments(format!("Missing required argument: {}", name))
+            SkillError::InvalidArguments(format!("Missing required argument: {name}"))
         })
     }
 }
@@ -277,8 +277,7 @@ impl Skill for CodeReviewSkill {
     async fn execute(&self, context: SkillContext) -> Result<SkillResult> {
         let focus = context
             .get_argument("focus")
-            .map(String::as_str)
-            .unwrap_or("general");
+            .map_or("general", String::as_str);
 
         let selection = context
             .selection
@@ -351,8 +350,7 @@ impl Skill for GenerateTestsSkill {
     async fn execute(&self, context: SkillContext) -> Result<SkillResult> {
         let framework = context
             .get_argument("framework")
-            .map(String::as_str)
-            .unwrap_or("auto");
+            .map_or("auto", String::as_str);
 
         let selection = context.selection.as_deref().ok_or_else(|| {
             SkillError::InvalidArguments("No code selected for test generation".into())
@@ -420,8 +418,7 @@ impl Skill for RefactorSkill {
     async fn execute(&self, context: SkillContext) -> Result<SkillResult> {
         let goal = context
             .get_argument("goal")
-            .map(String::as_str)
-            .unwrap_or("readability");
+            .map_or("readability", String::as_str);
 
         let selection = context.selection.as_deref().ok_or_else(|| {
             SkillError::InvalidArguments("No code selected for refactoring".into())
@@ -491,8 +488,7 @@ impl Skill for ExplainSkill {
     async fn execute(&self, context: SkillContext) -> Result<SkillResult> {
         let level = context
             .get_argument("level")
-            .map(String::as_str)
-            .unwrap_or("intermediate");
+            .map_or("intermediate", String::as_str);
 
         let selection = context.selection.as_deref().ok_or_else(|| {
             SkillError::InvalidArguments("No code selected for explanation".into())

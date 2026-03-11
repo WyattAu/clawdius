@@ -15,10 +15,12 @@ pub struct OutputFormatter {
 }
 
 impl OutputFormatter {
+    #[must_use]
     pub fn new(options: OutputOptions) -> Self {
         Self { options }
     }
 
+    #[must_use]
     pub fn format(&self) -> OutputFormat {
         self.options.format
     }
@@ -46,18 +48,18 @@ impl OutputFormatter {
                     output.to_json()?
                 };
 
-                writeln!(writer, "{}", json)?;
+                writeln!(writer, "{json}")?;
             }
             OutputFormat::StreamJson => {
                 let mut stream_writer = StreamWriter::new(writer, OutputFormat::StreamJson);
 
                 stream_writer.write_event(&StreamEvent::start(
                     session_id,
-                    model.map(|m| m.to_string()),
+                    model.map(std::string::ToString::to_string),
                 ))?;
 
                 for token in content.split_whitespace() {
-                    stream_writer.write_event(&StreamEvent::token(format!("{} ", token)))?;
+                    stream_writer.write_event(&StreamEvent::token(format!("{token} ")))?;
                 }
 
                 stream_writer.write_event(&StreamEvent::complete(
@@ -70,16 +72,16 @@ impl OutputFormatter {
             OutputFormat::Text => {
                 if self.options.include_metadata {
                     if let Some(m) = model {
-                        writeln!(writer, "Provider: {}", provider)?;
-                        writeln!(writer, "Model: {}", m)?;
+                        writeln!(writer, "Provider: {provider}")?;
+                        writeln!(writer, "Model: {m}")?;
                     } else {
-                        writeln!(writer, "Provider: {}", provider)?;
+                        writeln!(writer, "Provider: {provider}")?;
                     }
-                    writeln!(writer, "Session: {}", session_id)?;
+                    writeln!(writer, "Session: {session_id}")?;
                     writeln!(writer)?;
                 }
 
-                writeln!(writer, "{}", content)?;
+                writeln!(writer, "{content}")?;
 
                 if self.options.include_metadata && (tokens_input > 0 || tokens_output > 0) {
                     writeln!(writer)?;
@@ -90,7 +92,7 @@ impl OutputFormatter {
                         tokens_output,
                         tokens_input + tokens_output
                     )?;
-                    writeln!(writer, "Duration: {}ms", duration_ms)?;
+                    writeln!(writer, "Duration: {duration_ms}ms")?;
                 }
             }
         }
@@ -114,7 +116,7 @@ impl OutputFormatter {
                     output.to_json()?
                 };
 
-                writeln!(writer, "{}", json)?;
+                writeln!(writer, "{json}")?;
             }
             OutputFormat::StreamJson => {
                 let mut stream_writer = StreamWriter::new(writer, OutputFormat::StreamJson);
@@ -122,7 +124,7 @@ impl OutputFormatter {
                 stream_writer.flush()?;
             }
             OutputFormat::Text => {
-                writeln!(writer, "Error: {}", error)?;
+                writeln!(writer, "Error: {error}")?;
             }
         }
 
@@ -137,7 +139,7 @@ impl OutputFormatter {
         match self.options.format {
             OutputFormat::Json => {
                 let json = serde_json::to_string_pretty(&sessions)?;
-                writeln!(writer, "{}", json)?;
+                writeln!(writer, "{json}")?;
             }
             OutputFormat::StreamJson => {
                 let mut stream_writer =
@@ -210,7 +212,7 @@ impl OutputFormatter {
             }
             OutputFormat::Text => {
                 let status = if success { "✓" } else { "✗" };
-                writeln!(writer, "{} {}: {}", status, tool_name, result)?;
+                writeln!(writer, "{status} {tool_name}: {result}")?;
             }
         }
 
@@ -225,7 +227,7 @@ impl OutputFormatter {
         match self.options.format {
             OutputFormat::Json => {
                 let json = serde_json::to_string_pretty(result)?;
-                writeln!(writer, "{}", json)?;
+                writeln!(writer, "{json}")?;
             }
             OutputFormat::StreamJson => {
                 let mut stream_writer =
@@ -244,7 +246,7 @@ impl OutputFormatter {
                         writeln!(writer, "✓ Clawdius is configured and ready!")?;
                     }
                 } else if let Some(error) = &result.error {
-                    writeln!(writer, "✗ Initialization failed: {}", error)?;
+                    writeln!(writer, "✗ Initialization failed: {error}")?;
                 }
             }
         }
@@ -260,7 +262,7 @@ impl OutputFormatter {
         match self.options.format {
             OutputFormat::Json => {
                 let json = serde_json::to_string_pretty(result)?;
-                writeln!(writer, "{}", json)?;
+                writeln!(writer, "{json}")?;
             }
             OutputFormat::StreamJson => {
                 let mut stream_writer =
@@ -274,7 +276,7 @@ impl OutputFormatter {
                     writeln!(writer, "Configuration from: {}", result.config_path)?;
                     writeln!(writer, "{}", serde_json::to_string_pretty(&result.config)?)?;
                 } else if let Some(error) = &result.error {
-                    writeln!(writer, "✗ Failed to load configuration: {}", error)?;
+                    writeln!(writer, "✗ Failed to load configuration: {error}")?;
                 }
             }
         }
@@ -291,7 +293,7 @@ impl OutputFormatter {
         match self.options.format {
             OutputFormat::Json => {
                 let json = serde_json::to_string_pretty(result)?;
-                writeln!(writer, "{}", json)?;
+                writeln!(writer, "{json}")?;
             }
             OutputFormat::StreamJson => {
                 let mut stream_writer =
@@ -328,7 +330,7 @@ impl OutputFormatter {
         match self.options.format {
             OutputFormat::Json => {
                 let json = serde_json::to_string_pretty(result)?;
-                writeln!(writer, "{}", json)?;
+                writeln!(writer, "{json}")?;
             }
             OutputFormat::StreamJson => {
                 let mut stream_writer =
@@ -374,7 +376,7 @@ impl OutputFormatter {
                         writeln!(writer)?;
                         writeln!(writer, "Warnings ({}):", result.warnings.len())?;
                         for warning in &result.warnings {
-                            writeln!(writer, "  {}", warning)?;
+                            writeln!(writer, "  {warning}")?;
                         }
                     }
                 }
@@ -392,7 +394,7 @@ impl OutputFormatter {
         match self.options.format {
             OutputFormat::Json => {
                 let json = serde_json::to_string_pretty(result)?;
-                writeln!(writer, "{}", json)?;
+                writeln!(writer, "{json}")?;
             }
             OutputFormat::StreamJson => {
                 let mut stream_writer =
@@ -439,7 +441,7 @@ impl OutputFormatter {
                         writeln!(writer, "{}", result.message)?;
                     }
                 } else if let Some(error) = &result.error {
-                    writeln!(writer, "✗ Refactor failed: {}", error)?;
+                    writeln!(writer, "✗ Refactor failed: {error}")?;
                 }
             }
         }
@@ -455,7 +457,7 @@ impl OutputFormatter {
         match self.options.format {
             OutputFormat::Json => {
                 let json = serde_json::to_string_pretty(result)?;
-                writeln!(writer, "{}", json)?;
+                writeln!(writer, "{json}")?;
             }
             OutputFormat::StreamJson => {
                 let mut stream_writer =
@@ -479,7 +481,7 @@ impl OutputFormatter {
                     )?;
 
                     if let Some(config_path) = &result.config_path {
-                        writeln!(writer, "  Config: {}", config_path)?;
+                        writeln!(writer, "  Config: {config_path}")?;
                     }
 
                     if !result.message.is_empty() {
@@ -487,7 +489,7 @@ impl OutputFormatter {
                         writeln!(writer, "{}", result.message)?;
                     }
                 } else if let Some(error) = &result.error {
-                    writeln!(writer, "✗ Broker failed: {}", error)?;
+                    writeln!(writer, "✗ Broker failed: {error}")?;
                 }
             }
         }
@@ -503,7 +505,7 @@ impl OutputFormatter {
         match self.options.format {
             OutputFormat::Json => {
                 let json = serde_json::to_string_pretty(result)?;
-                writeln!(writer, "{}", json)?;
+                writeln!(writer, "{json}")?;
             }
             OutputFormat::StreamJson => {
                 let mut stream_writer =
@@ -524,13 +526,13 @@ impl OutputFormatter {
                     writeln!(writer, "  Format: {}", result.output_format)?;
 
                     if let Some(output_path) = &result.output_path {
-                        writeln!(writer, "  Output: {}", output_path)?;
+                        writeln!(writer, "  Output: {output_path}")?;
                     }
 
                     writeln!(writer)?;
                     writeln!(writer, "{}", serde_json::to_string_pretty(&result.matrix)?)?;
                 } else if let Some(error) = &result.error {
-                    writeln!(writer, "✗ Compliance generation failed: {}", error)?;
+                    writeln!(writer, "✗ Compliance generation failed: {error}")?;
                 }
             }
         }
@@ -546,7 +548,7 @@ impl OutputFormatter {
         match self.options.format {
             OutputFormat::Json => {
                 let json = serde_json::to_string_pretty(result)?;
-                writeln!(writer, "{}", json)?;
+                writeln!(writer, "{json}")?;
             }
             OutputFormat::StreamJson => {
                 let mut stream_writer =
@@ -599,7 +601,7 @@ impl OutputFormatter {
                         }
                     }
                 } else if let Some(error) = &result.error {
-                    writeln!(writer, "✗ Research failed: {}", error)?;
+                    writeln!(writer, "✗ Research failed: {error}")?;
                 }
             }
         }
@@ -615,7 +617,7 @@ impl OutputFormatter {
         match self.options.format {
             OutputFormat::Json => {
                 let json = serde_json::to_string_pretty(result)?;
-                writeln!(writer, "{}", json)?;
+                writeln!(writer, "{json}")?;
             }
             OutputFormat::StreamJson => {
                 let mut stream_writer =
@@ -644,7 +646,7 @@ impl OutputFormatter {
                             )?;
                             writeln!(writer, "   New text:")?;
                             for line in edit.new_text.lines() {
-                                writeln!(writer, "     {}", line)?;
+                                writeln!(writer, "     {line}")?;
                             }
                         }
                         writeln!(writer)?;
@@ -654,7 +656,7 @@ impl OutputFormatter {
                         )?;
                     }
                 } else if let Some(error) = &result.error {
-                    writeln!(writer, "✗ Action failed: {}", error)?;
+                    writeln!(writer, "✗ Action failed: {error}")?;
                 }
             }
         }
@@ -670,7 +672,7 @@ impl OutputFormatter {
         match self.options.format {
             OutputFormat::Json => {
                 let json = serde_json::to_string_pretty(result)?;
-                writeln!(writer, "{}", json)?;
+                writeln!(writer, "{json}")?;
             }
             OutputFormat::StreamJson => {
                 let mut stream_writer =
@@ -686,7 +688,7 @@ impl OutputFormatter {
             OutputFormat::Text => {
                 if result.success {
                     if let Some(func) = &result.function {
-                        writeln!(writer, "Generated tests for function: {}", func)?;
+                        writeln!(writer, "Generated tests for function: {func}")?;
                     } else {
                         writeln!(writer, "Generated tests for file: {}", result.file)?;
                     }
@@ -702,7 +704,7 @@ impl OutputFormatter {
                     }
 
                     if let Some(output_path) = &result.output_path {
-                        writeln!(writer, "\n✓ Tests written to: {}", output_path)?;
+                        writeln!(writer, "\n✓ Tests written to: {output_path}")?;
                     } else {
                         writeln!(writer, "\n--- Generated Tests ---\n")?;
                         for test in &result.test_cases {
@@ -711,7 +713,7 @@ impl OutputFormatter {
                         }
                     }
                 } else if let Some(error) = &result.error {
-                    writeln!(writer, "✗ Test generation failed: {}", error)?;
+                    writeln!(writer, "✗ Test generation failed: {error}")?;
                 }
             }
         }
@@ -727,7 +729,7 @@ impl OutputFormatter {
         match self.options.format {
             OutputFormat::Json => {
                 let json = serde_json::to_string_pretty(result)?;
-                writeln!(writer, "{}", json)?;
+                writeln!(writer, "{json}")?;
             }
             OutputFormat::StreamJson => {
                 let mut stream_writer =
@@ -753,11 +755,11 @@ impl OutputFormatter {
                     if !result.errors.is_empty() {
                         writeln!(writer, "\nErrors ({}):", result.errors.len())?;
                         for error in &result.errors {
-                            writeln!(writer, "  - {}", error)?;
+                            writeln!(writer, "  - {error}")?;
                         }
                     }
                 } else if let Some(error) = &result.error {
-                    writeln!(writer, "✗ Indexing failed: {}", error)?;
+                    writeln!(writer, "✗ Indexing failed: {error}")?;
                 }
             }
         }
@@ -773,7 +775,7 @@ impl OutputFormatter {
         match self.options.format {
             OutputFormat::Json => {
                 let json = serde_json::to_string_pretty(result)?;
-                writeln!(writer, "{}", json)?;
+                writeln!(writer, "{json}")?;
             }
             OutputFormat::StreamJson => {
                 let mut stream_writer =
@@ -813,7 +815,7 @@ impl OutputFormatter {
                         }
                     }
                 } else if let Some(error) = &result.error {
-                    writeln!(writer, "✗ Context gathering failed: {}", error)?;
+                    writeln!(writer, "✗ Context gathering failed: {error}")?;
                 }
             }
         }
@@ -829,7 +831,7 @@ impl OutputFormatter {
         match self.options.format {
             OutputFormat::Json => {
                 let json = serde_json::to_string_pretty(result)?;
-                writeln!(writer, "{}", json)?;
+                writeln!(writer, "{json}")?;
             }
             OutputFormat::StreamJson => {
                 let mut stream_writer =
@@ -845,13 +847,13 @@ impl OutputFormatter {
                         "create" => {
                             writeln!(writer, "✓ Checkpoint created")?;
                             if let Some(id) = &result.checkpoint_id {
-                                writeln!(writer, "  ID: {}", id)?;
+                                writeln!(writer, "  ID: {id}")?;
                             }
                             if let Some(desc) = &result.description {
-                                writeln!(writer, "  Description: {}", desc)?;
+                                writeln!(writer, "  Description: {desc}")?;
                             }
                             if let Some(count) = result.file_count {
-                                writeln!(writer, "  Files: {}", count)?;
+                                writeln!(writer, "  Files: {count}")?;
                             }
                         }
                         "list" => {
@@ -869,18 +871,18 @@ impl OutputFormatter {
                         "restore" => {
                             writeln!(writer, "✓ Checkpoint restored")?;
                             if let Some(id) = &result.checkpoint_id {
-                                writeln!(writer, "  ID: {}", id)?;
+                                writeln!(writer, "  ID: {id}")?;
                             }
                         }
                         "delete" => {
                             writeln!(writer, "✓ Checkpoint deleted")?;
                             if let Some(id) = &result.checkpoint_id {
-                                writeln!(writer, "  ID: {}", id)?;
+                                writeln!(writer, "  ID: {id}")?;
                             }
                         }
                         "cleanup" => {
                             if let Some(count) = result.file_count {
-                                writeln!(writer, "✓ Cleaned up {} old checkpoint(s)", count)?;
+                                writeln!(writer, "✓ Cleaned up {count} old checkpoint(s)")?;
                             }
                         }
                         _ => {
@@ -892,7 +894,7 @@ impl OutputFormatter {
                         }
                     }
                 } else if let Some(error) = &result.error {
-                    writeln!(writer, "✗ Checkpoint operation failed: {}", error)?;
+                    writeln!(writer, "✗ Checkpoint operation failed: {error}")?;
                 }
             }
         }
@@ -908,7 +910,7 @@ impl OutputFormatter {
         match self.options.format {
             OutputFormat::Json => {
                 let json = serde_json::to_string_pretty(result)?;
-                writeln!(writer, "{}", json)?;
+                writeln!(writer, "{json}")?;
             }
             OutputFormat::StreamJson => {
                 let mut stream_writer =
@@ -935,10 +937,10 @@ impl OutputFormatter {
                         "create" => {
                             writeln!(writer, "✓ Created mode configuration")?;
                             if let Some(path) = &result.created_path {
-                                writeln!(writer, "  Path: {}", path)?;
+                                writeln!(writer, "  Path: {path}")?;
                             }
                             if let Some(name) = &result.mode_name {
-                                writeln!(writer, "  Name: {}", name)?;
+                                writeln!(writer, "  Name: {name}")?;
                             }
                             writeln!(writer)?;
                             writeln!(writer, "Edit the file to customize the mode's behavior.")?;
@@ -960,7 +962,7 @@ impl OutputFormatter {
                         }
                     }
                 } else if let Some(error) = &result.error {
-                    writeln!(writer, "✗ Modes operation failed: {}", error)?;
+                    writeln!(writer, "✗ Modes operation failed: {error}")?;
                 }
             }
         }
@@ -976,7 +978,7 @@ impl OutputFormatter {
         match self.options.format {
             OutputFormat::Json => {
                 let json = serde_json::to_string_pretty(result)?;
-                writeln!(writer, "{}", json)?;
+                writeln!(writer, "{json}")?;
             }
             OutputFormat::StreamJson => {
                 let mut stream_writer =
@@ -1016,7 +1018,7 @@ impl OutputFormatter {
                         }
                     )?;
                 } else if let Some(error) = &result.error {
-                    writeln!(writer, "✗ Telemetry configuration failed: {}", error)?;
+                    writeln!(writer, "✗ Telemetry configuration failed: {error}")?;
                 }
             }
         }

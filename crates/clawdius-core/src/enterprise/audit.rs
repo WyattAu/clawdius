@@ -157,12 +157,14 @@ impl AuditEvent {
     }
 
     /// Set severity
+    #[must_use]
     pub fn with_severity(mut self, severity: AuditSeverity) -> Self {
         self.severity = severity;
         self
     }
 
     /// Set resource
+    #[must_use]
     pub fn with_resource(mut self, resource: Resource) -> Self {
         self.resource = Some(resource);
         self
@@ -187,6 +189,7 @@ impl AuditEvent {
     }
 
     /// Set outcome
+    #[must_use]
     pub fn with_outcome(mut self, outcome: AuditOutcome) -> Self {
         self.outcome = outcome;
         self
@@ -201,6 +204,7 @@ impl AuditEvent {
     // Common audit events
 
     /// Login event
+    #[must_use]
     pub fn login(actor: Actor, success: bool) -> Self {
         Self::new(AuditCategory::Authentication, "user.login", actor)
             .with_severity(if success {
@@ -216,11 +220,13 @@ impl AuditEvent {
     }
 
     /// Logout event
+    #[must_use]
     pub fn logout(actor: Actor) -> Self {
         Self::new(AuditCategory::Authentication, "user.logout", actor)
     }
 
     /// File read event
+    #[must_use]
     pub fn file_read(actor: Actor, path: &str) -> Self {
         Self::new(AuditCategory::DataAccess, "file.read", actor).with_resource(Resource {
             resource_type: "file".to_string(),
@@ -231,6 +237,7 @@ impl AuditEvent {
     }
 
     /// File write event
+    #[must_use]
     pub fn file_write(actor: Actor, path: &str) -> Self {
         Self::new(AuditCategory::DataModification, "file.write", actor).with_resource(Resource {
             resource_type: "file".to_string(),
@@ -241,12 +248,14 @@ impl AuditEvent {
     }
 
     /// Command execution event
+    #[must_use]
     pub fn command(actor: Actor, command: &str) -> Self {
         Self::new(AuditCategory::System, "command.execute", actor)
             .with_detail("command", serde_json::json!(command))
     }
 
     /// Configuration change event
+    #[must_use]
     pub fn config_change(
         actor: Actor,
         key: &str,
@@ -260,6 +269,7 @@ impl AuditEvent {
     }
 
     /// Permission denied event
+    #[must_use]
     pub fn permission_denied(actor: Actor, resource: &str, action: &str) -> Self {
         Self::new(AuditCategory::Authorization, "permission.denied", actor)
             .with_severity(AuditSeverity::Warning)
@@ -269,10 +279,11 @@ impl AuditEvent {
     }
 
     /// Security alert event
+    #[must_use]
     pub fn security_alert(actor: Actor, alert_type: &str, message: &str) -> Self {
         Self::new(
             AuditCategory::Security,
-            format!("security.{}", alert_type),
+            format!("security.{alert_type}"),
             actor,
         )
         .with_severity(AuditSeverity::Critical)
@@ -285,7 +296,7 @@ impl AuditEvent {
 pub enum AuditStorage {
     /// File-based storage
     File { path: PathBuf },
-    /// SQLite database
+    /// `SQLite` database
     SQLite { path: PathBuf },
     /// Elasticsearch
     Elasticsearch { url: String, index: String },
@@ -306,6 +317,7 @@ pub struct AuditLogger {
 
 impl AuditLogger {
     /// Create a new audit logger
+    #[must_use]
     pub fn new(storage: AuditStorage) -> Self {
         Self {
             storage,
@@ -316,12 +328,14 @@ impl AuditLogger {
     }
 
     /// Set flush interval
+    #[must_use]
     pub fn with_flush_interval(mut self, interval: std::time::Duration) -> Self {
         self.flush_interval = interval;
         self
     }
 
     /// Set retention period
+    #[must_use]
     pub fn with_retention(mut self, days: u32) -> Self {
         self.retention_days = days;
         self
@@ -429,7 +443,7 @@ impl AuditLogger {
                         serde_json::to_string(&event.severity)?,
                         event.action,
                         serde_json::to_string(&event.actor)?,
-                        event.resource.as_ref().map(|r| serde_json::to_string(r)).transpose()?,
+                        event.resource.as_ref().map(serde_json::to_string).transpose()?,
                         serde_json::to_string(&event.details)?,
                         event.source_ip,
                         event.session_id,
@@ -456,9 +470,9 @@ impl AuditLogger {
         let client = reqwest::Client::new();
 
         for event in events {
-            let bulk_url = format!("{}/_bulk", url);
+            let bulk_url = format!("{url}/_bulk");
             let mut body = String::new();
-            body.push_str(&format!("{{\"index\":{{\"_index\":\"{}\"}}}}\n", index));
+            body.push_str(&format!("{{\"index\":{{\"_index\":\"{index}\"}}}}\n"));
             body.push_str(&serde_json::to_string(event)?);
             body.push('\n');
 
@@ -523,22 +537,20 @@ impl AuditLogger {
 
             if let Some(actor_id) = &query.actor_id {
                 sql.push_str(" AND actor LIKE ?");
-                params.push(Box::new(format!("%\"id\":\"{}\"", actor_id)));
+                params.push(Box::new(format!("%\"id\":\"{actor_id}\"")));
             }
 
             sql.push_str(" ORDER BY timestamp DESC LIMIT ?");
             params.push(Box::new(query.limit.unwrap_or(100) as i64));
 
             let mut stmt = conn.prepare(&sql)?;
-            let param_refs: Vec<&dyn rusqlite::ToSql> = params.iter().map(|p| p.as_ref()).collect();
+            let param_refs: Vec<&dyn rusqlite::ToSql> = params.iter().map(std::convert::AsRef::as_ref).collect();
 
             let events = stmt
                 .query_map(param_refs.as_slice(), |row| {
                     Ok(AuditEvent {
                         id: row.get(0)?,
-                        timestamp: chrono::DateTime::parse_from_rfc3339(&row.get::<_, String>(1)?)
-                            .map(|dt| dt.with_timezone(&chrono::Utc))
-                            .unwrap_or_else(|_| chrono::Utc::now()),
+                        timestamp: chrono::DateTime::parse_from_rfc3339(&row.get::<_, String>(1)?).map_or_else(|_| chrono::Utc::now(), |dt| dt.with_timezone(&chrono::Utc)),
                         category: serde_json::from_str(&row.get::<_, String>(2)?).unwrap_or(AuditCategory::System),
                         severity: serde_json::from_str(&row.get::<_, String>(3)?).unwrap_or(AuditSeverity::Info),
                         action: row.get(4)?,
@@ -579,7 +591,7 @@ impl AuditLogger {
 
     /// Cleanup old audit events
     pub async fn cleanup(&self) -> Result<usize> {
-        let cutoff = chrono::Utc::now() - chrono::Duration::days(self.retention_days as i64);
+        let cutoff = chrono::Utc::now() - chrono::Duration::days(i64::from(self.retention_days));
 
         match &self.storage {
             AuditStorage::SQLite { path } => {

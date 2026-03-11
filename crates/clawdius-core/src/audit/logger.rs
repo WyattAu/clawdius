@@ -21,6 +21,7 @@ pub struct AuditLogger {
 }
 
 impl AuditLogger {
+    #[must_use]
     pub fn new(max_entries: usize) -> Self {
         Self {
             entries: Vec::new(),
@@ -35,6 +36,7 @@ impl AuditLogger {
         self.entries.push(entry);
     }
 
+    #[must_use]
     pub fn entries(&self) -> &[AuditEntry] {
         &self.entries
     }
@@ -50,6 +52,7 @@ impl Default for AuditLogger {
     }
 }
 
+#[must_use]
 pub fn now_timestamp() -> u64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)

@@ -42,11 +42,11 @@ impl LocalLlmProvider {
     }
 
     pub fn llama(host: &str) -> Self {
-        Self::new(format!("http://{}:11434", host), "llama3.2".to_string())
+        Self::new(format!("http://{host}:11434"), "llama3.2".to_string())
     }
 
     pub fn mistral(host: &str) -> Self {
-        Self::new(format!("http://{}:11434", host), "mistral".to_string())
+        Self::new(format!("http://{host}:11434"), "mistral".to_string())
     }
 }
 
@@ -77,21 +77,20 @@ impl LlmClient for LocalLlmProvider {
             .json(&request)
             .send()
             .await
-            .map_err(|e| Error::Llm(format!("Failed to send request: {}", e)))?;
+            .map_err(|e| Error::Llm(format!("Failed to send request: {e}")))?;
 
         if !response.status().is_success() {
             let status = response.status();
             let body = response.text().await.unwrap_or_default();
             return Err(Error::Llm(format!(
-                "Request failed with status {}: {}",
-                status, body
+                "Request failed with status {status}: {body}"
             )));
         }
 
         let json: OllamaResponse = response
             .json()
             .await
-            .map_err(|e| Error::Llm(format!("Failed to parse response: {}", e)))?;
+            .map_err(|e| Error::Llm(format!("Failed to parse response: {e}")))?;
 
         Ok(json.message.content)
     }

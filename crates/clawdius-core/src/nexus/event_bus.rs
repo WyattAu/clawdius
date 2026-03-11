@@ -6,6 +6,7 @@ pub struct EventBus {
 }
 
 impl EventBus {
+    #[must_use]
     pub fn new(max_history: usize) -> Self {
         Self {
             history: Vec::with_capacity(max_history),
@@ -20,6 +21,7 @@ impl EventBus {
         self.history.push(event);
     }
 
+    #[must_use]
     pub fn history(&self) -> &[NexusEvent] {
         &self.history
     }

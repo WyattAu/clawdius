@@ -13,6 +13,7 @@ pub struct SimpleEmbedder {
 }
 
 impl SimpleEmbedder {
+    #[must_use]
     pub fn new(dimension: usize) -> Self {
         Self { dimension }
     }
@@ -40,7 +41,7 @@ impl EmbeddingGenerator for SimpleEmbedder {
             return Ok(embedding);
         }
 
-        for word in words.iter() {
+        for word in &words {
             let hash = self.hash_text(word);
             let idx = (hash as usize) % self.dimension;
             let value = ((hash % 1000) as f32 / 500.0) - 1.0;
@@ -50,7 +51,7 @@ impl EmbeddingGenerator for SimpleEmbedder {
         let norm: f32 = embedding.iter().map(|x| x * x).sum();
         if norm > 0.0 {
             let scale = 1.0 / norm.sqrt();
-            for val in embedding.iter_mut() {
+            for val in &mut embedding {
                 *val *= scale;
             }
         }

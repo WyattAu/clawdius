@@ -101,6 +101,7 @@ pub enum Method {
 
 impl Method {
     /// Parse method from string
+    #[must_use]
     pub fn from_str(s: &str) -> Option<Self> {
         match s {
             // Session
@@ -165,6 +166,7 @@ impl Method {
     }
 
     /// Convert to method string (slash format)
+    #[must_use]
     pub fn to_method(&self) -> &'static str {
         match self {
             Self::SessionCreate => "session/create",
@@ -216,6 +218,6 @@ impl std::str::FromStr for Method {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Self::from_str(s).ok_or_else(|| format!("Unknown method: {}", s))
+        Self::from_str(s).ok_or_else(|| format!("Unknown method: {s}"))
     }
 }

@@ -1,7 +1,7 @@
 //! Agent Teams / Swarms Coordination
 //!
 //! This module implements multi-agent coordination for complex tasks.
-//! Inspired by NanoClaw and Claude Code's agent teams feature.
+//! Inspired by `NanoClaw` and Claude Code's agent teams feature.
 //!
 //! # Architecture
 //!
@@ -127,7 +127,7 @@ impl AgentRole {
                  Focus on orchestration and keeping the team on track.".to_string()
             }
             AgentRole::Custom { name, instructions } => {
-                format!("You are a {} agent. {}", name, instructions)
+                format!("You are a {name} agent. {instructions}")
             }
         }
     }
@@ -432,6 +432,7 @@ impl AgentTeam {
     }
 
     /// Subscribe to team messages
+    #[must_use]
     pub fn subscribe(&self) -> broadcast::Receiver<AgentMessage> {
         self.message_bus.subscribe()
     }
@@ -498,7 +499,7 @@ impl AgentTeam {
         let result = TeamResult {
             task: task.clone(),
             success: true,
-            output: format!("Task '{}' completed by the team", task),
+            output: format!("Task '{task}' completed by the team"),
             contributions,
             total_turns,
             elapsed_ms: start.elapsed().as_millis() as u64,

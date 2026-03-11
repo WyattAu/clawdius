@@ -74,6 +74,7 @@ impl SandboxExecutor {
         self.backend.execute(command, args, cwd)
     }
 
+    #[must_use]
     pub fn backend_name(&self) -> &'static str {
         self.backend.name()
     }

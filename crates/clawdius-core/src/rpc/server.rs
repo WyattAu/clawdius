@@ -20,6 +20,7 @@ pub struct RpcServer {
 
 impl RpcServer {
     /// Create a new RPC server
+    #[must_use]
     pub fn new() -> Self {
         Self {
             handlers: Arc::new(RwLock::new(HashMap::new())),
@@ -60,7 +61,7 @@ impl RpcServer {
         }
     }
 
-    /// Run the server on stdio (for VSCode extension)
+    /// Run the server on stdio (for `VSCode` extension)
     pub async fn run_stdio(&self) -> Result<()> {
         let stdin = tokio::io::stdin();
         let stdout = tokio::io::stdout();

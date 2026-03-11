@@ -66,6 +66,7 @@ impl Response {
     }
 
     /// Create an error response
+    #[must_use]
     pub fn error(id: Id, error: Error) -> Self {
         Self {
             jsonrpc: "2.0".to_string(),
@@ -76,10 +77,11 @@ impl Response {
     }
 
     /// Create a method not found error
+    #[must_use]
     pub fn method_not_found(id: Id, method: &str) -> Self {
         Self::error(
             id,
-            Error::method_not_found(format!("Method not found: {}", method)),
+            Error::method_not_found(format!("Method not found: {method}")),
         )
     }
 
@@ -191,6 +193,7 @@ pub enum Id {
 
 impl Id {
     /// Create a numeric ID
+    #[must_use]
     pub fn number(n: i64) -> Self {
         Self::Number(n)
     }
@@ -201,11 +204,13 @@ impl Id {
     }
 
     /// Create a null ID
+    #[must_use]
     pub fn null() -> Self {
         Self::Null
     }
 
     /// Check if null
+    #[must_use]
     pub fn is_null(&self) -> bool {
         matches!(self, Self::Null)
     }

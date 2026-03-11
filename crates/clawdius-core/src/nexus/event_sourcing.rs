@@ -11,10 +11,9 @@ use std::path::PathBuf;
 use std::sync::Mutex;
 
 use super::events::NexusEvent;
-use super::phases::PhaseId;
 use super::{NexusError, Result};
 
-const EVENT_STORE_SCHEMA_SQL: &str = r#"
+const EVENT_STORE_SCHEMA_SQL: &str = r"
 CREATE TABLE IF NOT EXISTS event_store (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     aggregate_id TEXT NOT NULL,
@@ -64,7 +63,7 @@ CREATE TABLE IF NOT EXISTS replay_sessions (
 );
 
 CREATE INDEX IF NOT EXISTS idx_replay_aggregate ON replay_sessions(aggregate_id);
-"#;
+";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EventEnvelope {
@@ -104,6 +103,7 @@ impl EventEnvelope {
         self
     }
 
+    #[must_use]
     pub fn with_version(mut self, version: u32) -> Self {
         self.event_version = version;
         self
@@ -120,6 +120,7 @@ pub struct EventMetadata {
 }
 
 impl EventMetadata {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             correlation_id: None,
@@ -219,10 +220,7 @@ impl std::str::FromStr for ReplayStatus {
             "completed" => Ok(ReplayStatus::Completed),
             "failed" => Ok(ReplayStatus::Failed),
             "cancelled" => Ok(ReplayStatus::Cancelled),
-            _ => Err(NexusError::LockError(format!(
-                "Invalid replay status: {}",
-                s
-            ))),
+            _ => Err(NexusError::LockError(format!("Invalid replay status: {s}"))),
         }
     }
 }
@@ -288,6 +286,7 @@ impl EventStore {
         Ok(store)
     }
 
+    #[must_use]
     pub fn in_memory() -> Self {
         let conn = Connection::open_in_memory().expect("Failed to create in-memory database");
         conn.execute_batch("PRAGMA synchronous=OFF; PRAGMA cache_size=-64000;")
@@ -308,7 +307,7 @@ impl EventStore {
     fn get_connection(&self) -> Result<std::sync::MutexGuard<'_, Connection>> {
         self.conn
             .lock()
-            .map_err(|e| NexusError::LockError(format!("Failed to acquire database lock: {}", e)))
+            .map_err(|e| NexusError::LockError(format!("Failed to acquire database lock: {e}")))
     }
 
     fn initialize_schema(&self) -> Result<()> {
@@ -444,7 +443,7 @@ impl EventStore {
 
     fn update_projections(&self, envelope: &EventEnvelope) -> Result<()> {
         let mut projections = self.projections.lock().map_err(|e| {
-            NexusError::LockError(format!("Failed to acquire projections lock: {}", e))
+            NexusError::LockError(format!("Failed to acquire projections lock: {e}"))
         })?;
 
         for projection in projections.iter_mut() {
@@ -481,8 +480,7 @@ impl EventStore {
                     .unwrap_or(serde_json::json!({})),
                 metadata: serde_json::from_str(&row.get::<_, String>(6)?).unwrap_or_default(),
                 timestamp: DateTime::parse_from_rfc3339(&row.get::<_, String>(7)?)
-                    .map(|dt| dt.with_timezone(&Utc))
-                    .unwrap_or_else(|_| Utc::now()),
+                    .map_or_else(|_| Utc::now(), |dt| dt.with_timezone(&Utc)),
                 sequence_number: row.get(8)?,
             })
         };
@@ -529,8 +527,7 @@ impl EventStore {
                     .unwrap_or(serde_json::json!({})),
                 metadata: serde_json::from_str(&row.get::<_, String>(6)?).unwrap_or_default(),
                 timestamp: DateTime::parse_from_rfc3339(&row.get::<_, String>(7)?)
-                    .map(|dt| dt.with_timezone(&Utc))
-                    .unwrap_or_else(|_| Utc::now()),
+                    .map_or_else(|_| Utc::now(), |dt| dt.with_timezone(&Utc)),
                 sequence_number: row.get(8)?,
             })
         };
@@ -571,8 +568,7 @@ impl EventStore {
                         .unwrap_or(serde_json::json!({})),
                     metadata: serde_json::from_str(&row.get::<_, String>(6)?).unwrap_or_default(),
                     timestamp: DateTime::parse_from_rfc3339(&row.get::<_, String>(7)?)
-                        .map(|dt| dt.with_timezone(&Utc))
-                        .unwrap_or_else(|_| Utc::now()),
+                        .map_or_else(|_| Utc::now(), |dt| dt.with_timezone(&Utc)),
                     sequence_number: row.get(8)?,
                 })
             })
@@ -614,8 +610,7 @@ impl EventStore {
                         metadata: serde_json::from_str(&row.get::<_, String>(6)?)
                             .unwrap_or_default(),
                         timestamp: DateTime::parse_from_rfc3339(&row.get::<_, String>(7)?)
-                            .map(|dt| dt.with_timezone(&Utc))
-                            .unwrap_or_else(|_| Utc::now()),
+                            .map_or_else(|_| Utc::now(), |dt| dt.with_timezone(&Utc)),
                         sequence_number: row.get(8)?,
                     })
                 },
@@ -647,8 +642,7 @@ impl EventStore {
                     snapshot_data: serde_json::from_str(&row.get::<_, String>(3)?)
                         .unwrap_or(serde_json::json!({})),
                     created_at: DateTime::parse_from_rfc3339(&row.get::<_, String>(4)?)
-                        .map(|dt| dt.with_timezone(&Utc))
-                        .unwrap_or_else(|_| Utc::now()),
+                        .map_or_else(|_| Utc::now(), |dt| dt.with_timezone(&Utc)),
                 })
             })
             .optional()
@@ -716,8 +710,8 @@ impl EventStore {
 
         let mut session = ReplaySession::new(
             aggregate_id,
-            events.first().map(|e| e.sequence_number).unwrap_or(0),
-            events.last().map(|e| e.sequence_number).unwrap_or(0),
+            events.first().map_or(0, |e| e.sequence_number),
+            events.last().map_or(0, |e| e.sequence_number),
         );
 
         self.save_replay_session(&session)?;
@@ -837,8 +831,7 @@ impl EventStore {
                         .parse()
                         .unwrap_or(ReplayStatus::Pending),
                     created_at: DateTime::parse_from_rfc3339(&row.get::<_, String>(5)?)
-                        .map(|dt| dt.with_timezone(&Utc))
-                        .unwrap_or_else(|_| Utc::now()),
+                        .map_or_else(|_| Utc::now(), |dt| dt.with_timezone(&Utc)),
                     completed_at: row
                         .get::<_, Option<String>>(6)?
                         .and_then(|s| DateTime::parse_from_rfc3339(&s).ok())
@@ -854,7 +847,7 @@ impl EventStore {
 
     pub fn add_projection(&self, projection: Box<dyn EventProjection>) -> Result<()> {
         let mut projections = self.projections.lock().map_err(|e| {
-            NexusError::LockError(format!("Failed to acquire projections lock: {}", e))
+            NexusError::LockError(format!("Failed to acquire projections lock: {e}"))
         })?;
         projections.push(projection);
         Ok(())
@@ -862,7 +855,7 @@ impl EventStore {
 
     pub fn get_projection_state(&self, id: &str) -> Result<Option<serde_json::Value>> {
         let projections = self.projections.lock().map_err(|e| {
-            NexusError::LockError(format!("Failed to acquire projections lock: {}", e))
+            NexusError::LockError(format!("Failed to acquire projections lock: {e}"))
         })?;
 
         for projection in projections.iter() {
@@ -917,6 +910,7 @@ pub struct PhaseStatisticsProjection {
 }
 
 impl PhaseStatisticsProjection {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             id: "phase_statistics".to_string(),
@@ -979,6 +973,7 @@ impl Default for PhaseStatisticsProjection {
     }
 }
 
+#[must_use]
 pub fn nexus_event_to_envelope(session_id: &str, event: &NexusEvent) -> EventEnvelope {
     let (event_type, event_data) = match event {
         NexusEvent::PhaseStarted { phase, timestamp } => (
@@ -1104,6 +1099,7 @@ pub fn nexus_event_to_envelope(session_id: &str, event: &NexusEvent) -> EventEnv
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::nexus::PhaseId;
     use std::str::FromStr;
 
     fn create_test_store() -> EventStore {

@@ -48,6 +48,7 @@ pub struct TransitionRecord {
 }
 
 impl TransitionRecord {
+    #[must_use]
     pub fn new(from: PhaseId, to: PhaseId) -> Self {
         Self {
             from_phase: from,
@@ -61,22 +62,26 @@ impl TransitionRecord {
         }
     }
 
+    #[must_use]
     pub fn with_artifacts(mut self, artifacts: Vec<String>) -> Self {
         self.artifacts_created = artifacts;
         self
     }
 
+    #[must_use]
     pub fn with_gates(mut self, passed: Vec<String>, failed: Vec<String>) -> Self {
         self.gates_passed = passed;
         self.gates_failed = failed;
         self
     }
 
+    #[must_use]
     pub fn with_metadata(mut self, metadata: serde_json::Value) -> Self {
         self.metadata = metadata;
         self
     }
 
+    #[must_use]
     pub fn with_duration(mut self, duration_ms: u64) -> Self {
         self.duration_ms = duration_ms;
         self
@@ -92,6 +97,7 @@ pub struct TransitionSnapshot {
 }
 
 impl TransitionSnapshot {
+    #[must_use]
     pub fn new(phase: PhaseId, artifacts: Vec<String>) -> Self {
         Self {
             phase,
@@ -137,6 +143,7 @@ impl TransitionEngine {
         }
     }
 
+    #[must_use]
     pub fn with_max_history(mut self, max: usize) -> Self {
         self.max_history = max;
         self
@@ -285,13 +292,12 @@ impl TransitionEngine {
         metadata: Option<serde_json::Value>,
     ) -> std::result::Result<TransitionRecord, TransitionError> {
         let rt = tokio::runtime::Handle::try_current();
-        match rt {
-            Ok(handle) => handle.block_on(self.execute_transition(from, to, metadata)),
-            Err(_) => {
-                let rt = tokio::runtime::Runtime::new()
-                    .map_err(|e| TransitionError::EventBusError(e.to_string()))?;
-                rt.block_on(self.execute_transition(from, to, metadata))
-            }
+        if let Ok(handle) = rt {
+            handle.block_on(self.execute_transition(from, to, metadata))
+        } else {
+            let rt = tokio::runtime::Runtime::new()
+                .map_err(|e| TransitionError::EventBusError(e.to_string()))?;
+            rt.block_on(self.execute_transition(from, to, metadata))
         }
     }
 
@@ -358,6 +364,7 @@ impl TransitionEngine {
         self.history.write().await.clear();
     }
 
+    #[must_use]
     pub fn project_root(&self) -> &PathBuf {
         &self.project_root
     }
@@ -378,6 +385,7 @@ pub struct TransitionHistory {
 }
 
 impl TransitionHistory {
+    #[must_use]
     pub fn new(max_records: usize) -> Self {
         Self {
             records: Vec::new(),
@@ -392,10 +400,12 @@ impl TransitionHistory {
         self.records.push(record);
     }
 
+    #[must_use]
     pub fn last(&self) -> Option<&TransitionRecord> {
         self.records.last()
     }
 
+    #[must_use]
     pub fn history(&self) -> &[TransitionRecord] {
         &self.records
     }
@@ -404,6 +414,7 @@ impl TransitionHistory {
         self.records.clear();
     }
 
+    #[must_use]
     pub fn for_phase(&self, phase: PhaseId) -> Vec<&TransitionRecord> {
         self.records
             .iter()
@@ -411,6 +422,7 @@ impl TransitionHistory {
             .collect()
     }
 
+    #[must_use]
     pub fn count(&self) -> usize {
         self.records.len()
     }
@@ -421,6 +433,7 @@ pub struct TransitionTable {
 }
 
 impl TransitionTable {
+    #[must_use]
     pub fn new() -> Self {
         let mut table = Self {
             transitions: HashMap::new(),
@@ -439,19 +452,18 @@ impl TransitionTable {
                 _ => super::events::EventType::PhaseCompleted,
             };
 
-            self.transitions
-                .entry(from)
-                .or_insert_with(HashMap::new)
-                .insert(event, to);
+            self.transitions.entry(from).or_default().insert(event, to);
         }
     }
 
+    #[must_use]
     pub fn get_next(&self, from: PhaseId, event: &super::events::EventType) -> Option<PhaseId> {
         self.transitions
             .get(&from)
             .and_then(|events| events.get(event).copied())
     }
 
+    #[must_use]
     pub fn valid_transitions(&self, from: PhaseId) -> Vec<(super::events::EventType, PhaseId)> {
         self.transitions
             .get(&from)

@@ -8,9 +8,14 @@ use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use wasmtime::*;
+use wasmtime::{
+    anyhow, Caller, Config, Engine, Instance, IntoFunc, Linker, MaybeUninitExt, Module, Store, Val,
+    WasmResults, WasmTy, WasmTyList,
+};
 
-use super::api::*;
+use super::api::{
+    HookResult, Plugin, PluginConfig, PluginId, PluginMetadata, PluginState, PluginStats,
+};
 use super::hooks::{HookContext, HookType};
 use super::manifest::PluginManifest;
 
@@ -64,7 +69,7 @@ impl WasmPlugin {
         }
 
         let module = Module::from_binary(&engine, &wasm_bytes)
-            .map_err(|e| anyhow::anyhow!("Failed to compile WASM module: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("Failed to compile WASM module: {e}"))?;
 
         // Create linker with host functions
         let linker = Self::create_linker(&engine)?;
@@ -158,13 +163,13 @@ impl WasmPlugin {
 
         let export = instance
             .get_export(&mut store, name)
-            .and_then(|e| e.into_func())
-            .ok_or_else(|| anyhow::anyhow!("Export '{}' not found", name))?;
+            .and_then(wasmtime::Extern::into_func)
+            .ok_or_else(|| anyhow::anyhow!("Export '{name}' not found"))?;
 
         let mut results = vec![Val::I32(0)];
         export.call(&mut store, args, &mut results)?;
 
-        T::from_val(results.get(0))
+        T::from_val(results.first())
     }
 
     /// Check if an export exists
@@ -232,7 +237,7 @@ impl Plugin for WasmPlugin {
         }
 
         // Convert hook name to function name (e.g., "before_edit" -> "hook_before_edit")
-        let func_name = format!("hook_{}", hook_name.replace("-", "_"));
+        let func_name = format!("hook_{}", hook_name.replace('-', "_"));
 
         if !self.has_export(&func_name) {
             return Ok(HookResult::success());

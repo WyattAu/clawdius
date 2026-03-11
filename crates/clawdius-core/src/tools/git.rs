@@ -37,6 +37,7 @@ pub struct GitTool {
 }
 
 impl GitTool {
+    #[must_use]
     pub fn new(config: ShellSandboxConfig, project_dir: PathBuf) -> Self {
         GitTool {
             shell: ShellTool::new(config, project_dir),
@@ -102,7 +103,7 @@ impl GitTool {
         cwd: Option<&str>,
     ) -> crate::Result<ShellResult> {
         let full_command = if args.is_empty() {
-            format!("git {}", command)
+            format!("git {command}")
         } else {
             format!("git {} {}", command, args.join(" "))
         };
@@ -110,7 +111,7 @@ impl GitTool {
         let shell_params = ShellParams {
             command: full_command,
             timeout: 30_000,
-            cwd: cwd.map(|s| s.to_string()),
+            cwd: cwd.map(std::string::ToString::to_string),
         };
 
         self.shell.execute(shell_params)

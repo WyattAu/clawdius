@@ -20,6 +20,7 @@ pub struct ApiGateway {
 }
 
 impl ApiGateway {
+    #[must_use]
     pub fn new(config: ApiConfig) -> Self {
         Self { config }
     }
@@ -29,6 +30,7 @@ impl ApiGateway {
         Ok(())
     }
 
+    #[must_use]
     pub fn config(&self) -> &ApiConfig {
         &self.config
     }

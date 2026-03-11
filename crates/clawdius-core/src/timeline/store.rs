@@ -115,7 +115,7 @@ impl TimelineStore {
     /// Initialize database schema
     fn initialize(&self) -> Result<()> {
         self.conn.execute_batch(
-            r#"
+            r"
             CREATE TABLE IF NOT EXISTS checkpoints (
                 id TEXT PRIMARY KEY,
                 name TEXT NOT NULL,
@@ -153,7 +153,7 @@ impl TimelineStore {
             
             CREATE INDEX IF NOT EXISTS idx_file_versions_path
             ON file_versions(file_path, timestamp DESC);
-            "#,
+            ",
         )?;
 
         self.conn
@@ -172,11 +172,11 @@ impl TimelineStore {
         let path_str = path.to_string_lossy().to_string();
 
         self.conn.execute(
-            r#"
+            r"
             INSERT INTO tracked_files (path, first_seen, last_modified)
             VALUES (?1, ?2, ?2)
             ON CONFLICT(path) DO UPDATE SET last_modified = ?2
-            "#,
+            ",
             params![path_str, now],
         )?;
 
@@ -197,10 +197,10 @@ impl TimelineStore {
         let total_size: i32 = files.iter().map(|f| f.size as i32).sum();
 
         self.conn.execute(
-            r#"
+            r"
             INSERT INTO checkpoints (id, name, description, timestamp, files_count, total_size)
             VALUES (?1, ?2, ?3, ?4, ?5, ?6)
-            "#,
+            ",
             params![
                 checkpoint_id.0,
                 name,
@@ -214,13 +214,13 @@ impl TimelineStore {
         let mut version = 0;
         for file in &files {
             version += 1;
-            let snapshot_path = self.save_file_snapshot(&checkpoint_id, &file).await?;
+            let snapshot_path = self.save_file_snapshot(&checkpoint_id, file).await?;
 
             self.conn.execute(
-                r#"
+                r"
                 INSERT INTO file_versions (checkpoint_id, file_path, version, hash, size, snapshot_path, timestamp, is_binary)
                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)
-                "#,
+                ",
                 params![
                     checkpoint_id.0,
                     file.path.to_string_lossy().to_string(),
@@ -229,7 +229,7 @@ impl TimelineStore {
                     file.size as i32,
                     snapshot_path.to_string_lossy().to_string(),
                     timestamp.to_rfc3339(),
-                    if file.is_binary { 1 } else { 0 },
+                    i32::from(file.is_binary),
                 ],
             )?;
         }
@@ -300,7 +300,7 @@ impl TimelineStore {
         let sample_size = content.len().min(8192);
         let sample = &content[..sample_size];
 
-        if sample.iter().any(|&b| b == 0) {
+        if sample.contains(&0) {
             return true;
         }
 
@@ -373,11 +373,11 @@ impl TimelineStore {
     /// List all checkpoints
     pub fn list_checkpoints(&self) -> Result<Vec<CheckpointInfo>> {
         let mut stmt = self.conn.prepare(
-            r#"
+            r"
             SELECT id, name, description, timestamp, files_count, total_size
             FROM checkpoints
             ORDER BY timestamp DESC
-            "#,
+            ",
         )?;
 
         let checkpoints = stmt
@@ -387,8 +387,7 @@ impl TimelineStore {
                     name: row.get(1)?,
                     description: row.get(2)?,
                     timestamp: DateTime::parse_from_rfc3339(&row.get::<_, String>(3)?)
-                        .map(|dt| dt.with_timezone(&Utc))
-                        .unwrap_or_else(|_| Utc::now()),
+                        .map_or_else(|_| Utc::now(), |dt| dt.with_timezone(&Utc)),
                     files_count: row.get::<_, i32>(4)? as usize,
                     total_size: row.get::<_, i32>(5)? as usize,
                 })
@@ -401,11 +400,11 @@ impl TimelineStore {
     /// Get a specific checkpoint
     pub fn get_checkpoint(&self, id: &CheckpointId) -> Result<Option<CheckpointInfo>> {
         let mut stmt = self.conn.prepare(
-            r#"
+            r"
             SELECT id, name, description, timestamp, files_count, total_size
             FROM checkpoints
             WHERE id = ?1
-            "#,
+            ",
         )?;
 
         let checkpoint = stmt
@@ -415,8 +414,7 @@ impl TimelineStore {
                     name: row.get(1)?,
                     description: row.get(2)?,
                     timestamp: DateTime::parse_from_rfc3339(&row.get::<_, String>(3)?)
-                        .map(|dt| dt.with_timezone(&Utc))
-                        .unwrap_or_else(|_| Utc::now()),
+                        .map_or_else(|_| Utc::now(), |dt| dt.with_timezone(&Utc)),
                     files_count: row.get::<_, i32>(4)? as usize,
                     total_size: row.get::<_, i32>(5)? as usize,
                 })
@@ -431,12 +429,12 @@ impl TimelineStore {
         let path_str = path.to_string_lossy().to_string();
 
         let mut stmt = self.conn.prepare(
-            r#"
+            r"
             SELECT file_path, version, hash, size, timestamp, checkpoint_id
             FROM file_versions
             WHERE file_path = ?1
             ORDER BY timestamp DESC
-            "#,
+            ",
         )?;
 
         let versions = stmt
@@ -447,8 +445,7 @@ impl TimelineStore {
                     checksum: row.get(2)?,
                     size: row.get::<_, i32>(3)? as usize,
                     timestamp: DateTime::parse_from_rfc3339(&row.get::<_, String>(4)?)
-                        .map(|dt| dt.with_timezone(&Utc))
-                        .unwrap_or_else(|_| Utc::now()),
+                        .map_or_else(|_| Utc::now(), |dt| dt.with_timezone(&Utc)),
                     checkpoint_id: CheckpointId(row.get(5)?),
                 })
             })?
@@ -464,11 +461,11 @@ impl TimelineStore {
             .ok_or_else(|| Error::NotFound(format!("Checkpoint {} not found", checkpoint_id.0)))?;
 
         let mut stmt = self.conn.prepare(
-            r#"
+            r"
             SELECT file_path, snapshot_path
             FROM file_versions
             WHERE checkpoint_id = ?1
-            "#,
+            ",
         )?;
 
         let file_snapshots = stmt
@@ -486,10 +483,8 @@ impl TimelineStore {
         let current_files = self.find_tracked_files()?;
 
         for file_path in &current_files {
-            if !checkpoint_paths.contains(file_path) {
-                if file_path.exists() {
-                    fs::remove_file(file_path)?;
-                }
+            if !checkpoint_paths.contains(file_path) && file_path.exists() {
+                fs::remove_file(file_path)?;
             }
         }
 
@@ -572,11 +567,11 @@ impl TimelineStore {
     /// Get files for a checkpoint
     fn get_checkpoint_files(&self, checkpoint_id: &CheckpointId) -> Result<Vec<FileSnapshot>> {
         let mut stmt = self.conn.prepare(
-            r#"
+            r"
             SELECT file_path, hash, size, snapshot_path, is_binary
             FROM file_versions
             WHERE checkpoint_id = ?1
-            "#,
+            ",
         )?;
 
         let files = stmt
@@ -621,11 +616,11 @@ impl TimelineStore {
         checkpoint_id: &CheckpointId,
     ) -> Result<Option<String>> {
         let mut stmt = self.conn.prepare(
-            r#"
+            r"
             SELECT snapshot_path, is_binary
             FROM file_versions
             WHERE checkpoint_id = ?1 AND file_path = ?2
-            "#,
+            ",
         )?;
 
         let result = stmt
@@ -713,12 +708,12 @@ impl TimelineStore {
         end: DateTime<Utc>,
     ) -> Result<Vec<CheckpointInfo>> {
         let mut stmt = self.conn.prepare(
-            r#"
+            r"
             SELECT id, name, description, timestamp, files_count, total_size
             FROM checkpoints
             WHERE timestamp >= ?1 AND timestamp <= ?2
             ORDER BY timestamp DESC
-            "#,
+            ",
         )?;
 
         let checkpoints = stmt
@@ -728,8 +723,7 @@ impl TimelineStore {
                     name: row.get(1)?,
                     description: row.get(2)?,
                     timestamp: DateTime::parse_from_rfc3339(&row.get::<_, String>(3)?)
-                        .map(|dt| dt.with_timezone(&Utc))
-                        .unwrap_or_else(|_| Utc::now()),
+                        .map_or_else(|_| Utc::now(), |dt| dt.with_timezone(&Utc)),
                     files_count: row.get::<_, i32>(4)? as usize,
                     total_size: row.get::<_, i32>(5)? as usize,
                 })
@@ -742,15 +736,15 @@ impl TimelineStore {
     /// Query checkpoints by name pattern (supports SQL LIKE patterns)
     pub fn query_by_name(&self, pattern: &str) -> Result<Vec<CheckpointInfo>> {
         let mut stmt = self.conn.prepare(
-            r#"
+            r"
             SELECT id, name, description, timestamp, files_count, total_size
             FROM checkpoints
             WHERE name LIKE ?1
             ORDER BY timestamp DESC
-            "#,
+            ",
         )?;
 
-        let search_pattern = format!("%{}%", pattern);
+        let search_pattern = format!("%{pattern}%");
         let checkpoints = stmt
             .query_map(params![search_pattern], |row| {
                 Ok(CheckpointInfo {
@@ -758,8 +752,7 @@ impl TimelineStore {
                     name: row.get(1)?,
                     description: row.get(2)?,
                     timestamp: DateTime::parse_from_rfc3339(&row.get::<_, String>(3)?)
-                        .map(|dt| dt.with_timezone(&Utc))
-                        .unwrap_or_else(|_| Utc::now()),
+                        .map_or_else(|_| Utc::now(), |dt| dt.with_timezone(&Utc)),
                     files_count: row.get::<_, i32>(4)? as usize,
                     total_size: row.get::<_, i32>(5)? as usize,
                 })
@@ -778,11 +771,11 @@ impl TimelineStore {
         let path_str = path.to_string_lossy().to_string();
 
         let mut stmt = self.conn.prepare(
-            r#"
+            r"
             SELECT file_path, version, hash, size, timestamp, checkpoint_id
             FROM file_versions
             WHERE checkpoint_id = ?1 AND file_path = ?2
-            "#,
+            ",
         )?;
 
         let version = stmt
@@ -793,8 +786,7 @@ impl TimelineStore {
                     checksum: row.get(2)?,
                     size: row.get::<_, i32>(3)? as usize,
                     timestamp: DateTime::parse_from_rfc3339(&row.get::<_, String>(4)?)
-                        .map(|dt| dt.with_timezone(&Utc))
-                        .unwrap_or_else(|_| Utc::now()),
+                        .map_or_else(|_| Utc::now(), |dt| dt.with_timezone(&Utc)),
                     checkpoint_id: CheckpointId(row.get(5)?),
                 })
             })
@@ -892,11 +884,11 @@ impl TimelineStore {
         let files_set: std::collections::HashSet<_> = files.iter().collect();
 
         let mut stmt = self.conn.prepare(
-            r#"
+            r"
             SELECT file_path, snapshot_path
             FROM file_versions
             WHERE checkpoint_id = ?1
-            "#,
+            ",
         )?;
 
         let file_snapshots = stmt
@@ -909,14 +901,12 @@ impl TimelineStore {
             .collect::<std::result::Result<Vec<_>, _>>()?;
 
         for (file_path, snapshot_path) in &file_snapshots {
-            if files_set.contains(file_path) {
-                if snapshot_path.exists() {
-                    let content = fs::read(snapshot_path)?;
-                    if let Some(parent) = file_path.parent() {
-                        fs::create_dir_all(parent)?;
-                    }
-                    fs::write(file_path, content)?;
+            if files_set.contains(file_path) && snapshot_path.exists() {
+                let content = fs::read(snapshot_path)?;
+                if let Some(parent) = file_path.parent() {
+                    fs::create_dir_all(parent)?;
                 }
+                fs::write(file_path, content)?;
             }
         }
 
@@ -930,11 +920,11 @@ impl TimelineStore {
             .ok_or_else(|| Error::NotFound(format!("Checkpoint {} not found", checkpoint_id.0)))?;
 
         let mut stmt = self.conn.prepare(
-            r#"
+            r"
             SELECT file_path, snapshot_path, hash
             FROM file_versions
             WHERE checkpoint_id = ?1
-            "#,
+            ",
         )?;
 
         let checkpoint_files: Vec<(PathBuf, PathBuf, String)> = stmt
@@ -1000,12 +990,7 @@ impl TimelineStore {
         let mut exported_files = Vec::new();
 
         for file in files {
-            let content = if file
-                .content_path
-                .as_ref()
-                .map(|p| p.exists())
-                .unwrap_or(false)
-            {
+            let content = if file.content_path.as_ref().is_some_and(|p| p.exists()) {
                 let bytes = fs::read(file.content_path.as_ref().unwrap())?;
                 base64::Engine::encode(&base64::engine::general_purpose::STANDARD, &bytes)
             } else {
@@ -1046,10 +1031,10 @@ impl TimelineStore {
         let mut total_size = 0;
 
         self.conn.execute(
-            r#"
+            r"
             INSERT INTO checkpoints (id, name, description, timestamp, files_count, total_size)
             VALUES (?1, ?2, ?3, ?4, ?5, ?6)
-            "#,
+            ",
             params![
                 checkpoint_id.0,
                 exported.name,
@@ -1080,10 +1065,10 @@ impl TimelineStore {
             fs::write(&snapshot_path, &content)?;
 
             self.conn.execute(
-                r#"
+                r"
                 INSERT INTO file_versions (checkpoint_id, file_path, version, hash, size, snapshot_path, timestamp, is_binary)
                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)
-                "#,
+                ",
                 params![
                     checkpoint_id.0,
                     file_path.to_string_lossy().to_string(),
@@ -1092,7 +1077,7 @@ impl TimelineStore {
                     content.len() as i32,
                     snapshot_path.to_string_lossy().to_string(),
                     timestamp.to_rfc3339(),
-                    if exported_file.is_binary { 1 } else { 0 },
+                    i32::from(exported_file.is_binary),
                 ],
             )?;
 
@@ -1101,9 +1086,9 @@ impl TimelineStore {
         }
 
         self.conn.execute(
-            r#"
+            r"
             UPDATE checkpoints SET files_count = ?1, total_size = ?2 WHERE id = ?3
-            "#,
+            ",
             params![files_count, total_size, checkpoint_id.0],
         )?;
 

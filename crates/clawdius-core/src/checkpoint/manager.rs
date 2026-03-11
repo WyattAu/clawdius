@@ -87,7 +87,7 @@ impl CheckpointManager {
     /// Initialize database schema
     fn initialize(&self) -> Result<()> {
         self.conn.execute_batch(
-            r#"
+            r"
             CREATE TABLE IF NOT EXISTS checkpoints (
                 id TEXT PRIMARY KEY,
                 session_id TEXT NOT NULL,
@@ -111,7 +111,7 @@ impl CheckpointManager {
             
             CREATE INDEX IF NOT EXISTS idx_checkpoint_files_checkpoint
             ON checkpoint_files(checkpoint_id);
-            "#,
+            ",
         )?;
         Ok(())
     }
@@ -131,10 +131,10 @@ impl CheckpointManager {
         let file_count = files.len() as i32;
 
         self.conn.execute(
-            r#"
+            r"
             INSERT INTO checkpoints (id, session_id, message_id, description, timestamp, file_count)
             VALUES (?1, ?2, ?3, ?4, ?5, ?6)
-            "#,
+            ",
             params![
                 checkpoint_id,
                 session_id,
@@ -146,13 +146,13 @@ impl CheckpointManager {
         )?;
 
         for file in &files {
-            let snapshot_file = self.save_file_snapshot(&checkpoint_id, &file).await?;
+            let snapshot_file = self.save_file_snapshot(&checkpoint_id, file).await?;
 
             self.conn.execute(
-                r#"
+                r"
                 INSERT INTO checkpoint_files (checkpoint_id, path, hash, snapshot_file)
                 VALUES (?1, ?2, ?3, ?4)
-                "#,
+                ",
                 params![
                     checkpoint_id,
                     file.path.to_string_lossy().to_string(),
@@ -272,12 +272,12 @@ impl CheckpointManager {
     /// List all checkpoints for a session
     pub fn list_checkpoints(&self, session_id: &str) -> Result<Vec<Checkpoint>> {
         let mut stmt = self.conn.prepare(
-            r#"
+            r"
             SELECT id, session_id, message_id, description, timestamp
             FROM checkpoints
             WHERE session_id = ?1
             ORDER BY timestamp DESC
-            "#,
+            ",
         )?;
 
         let checkpoints = stmt
@@ -288,8 +288,7 @@ impl CheckpointManager {
                     message_id: row.get(2)?,
                     description: row.get(3)?,
                     timestamp: DateTime::parse_from_rfc3339(&row.get::<_, String>(4)?)
-                        .map(|dt| dt.with_timezone(&Utc))
-                        .unwrap_or_else(|_| Utc::now()),
+                        .map_or_else(|_| Utc::now(), |dt| dt.with_timezone(&Utc)),
                     files: Vec::new(),
                 })
             })?
@@ -301,11 +300,11 @@ impl CheckpointManager {
     /// Get a specific checkpoint by ID
     pub fn get_checkpoint(&self, checkpoint_id: &str) -> Result<Option<Checkpoint>> {
         let mut stmt = self.conn.prepare(
-            r#"
+            r"
             SELECT id, session_id, message_id, description, timestamp
             FROM checkpoints
             WHERE id = ?1
-            "#,
+            ",
         )?;
 
         let checkpoint = stmt
@@ -316,8 +315,7 @@ impl CheckpointManager {
                     message_id: row.get(2)?,
                     description: row.get(3)?,
                     timestamp: DateTime::parse_from_rfc3339(&row.get::<_, String>(4)?)
-                        .map(|dt| dt.with_timezone(&Utc))
-                        .unwrap_or_else(|_| Utc::now()),
+                        .map_or_else(|_| Utc::now(), |dt| dt.with_timezone(&Utc)),
                     files: Vec::new(),
                 })
             })
@@ -334,11 +332,11 @@ impl CheckpointManager {
     /// Load file snapshots for a checkpoint
     fn load_checkpoint_files(&self, checkpoint_id: &str) -> Result<Vec<FileSnapshot>> {
         let mut stmt = self.conn.prepare(
-            r#"
+            r"
             SELECT path, hash, snapshot_file
             FROM checkpoint_files
             WHERE checkpoint_id = ?1
-            "#,
+            ",
         )?;
 
         let files = stmt
@@ -365,7 +363,7 @@ impl CheckpointManager {
     pub async fn restore_checkpoint(&self, checkpoint_id: &str) -> Result<()> {
         let checkpoint = self
             .get_checkpoint(checkpoint_id)?
-            .ok_or_else(|| Error::NotFound(format!("Checkpoint {} not found", checkpoint_id)))?;
+            .ok_or_else(|| Error::NotFound(format!("Checkpoint {checkpoint_id} not found")))?;
 
         let checkpoint_paths: std::collections::HashSet<_> =
             checkpoint.files.iter().map(|f| f.path.clone()).collect();
@@ -373,10 +371,8 @@ impl CheckpointManager {
         let current_files = self.find_tracked_files()?;
 
         for file_path in &current_files {
-            if !checkpoint_paths.contains(file_path) {
-                if file_path.exists() {
-                    fs::remove_file(file_path)?;
-                }
+            if !checkpoint_paths.contains(file_path) && file_path.exists() {
+                fs::remove_file(file_path)?;
             }
         }
 
@@ -400,11 +396,11 @@ impl CheckpointManager {
     ) -> Result<CheckpointDiff> {
         let cp1 = self
             .get_checkpoint(checkpoint_id1)?
-            .ok_or_else(|| Error::NotFound(format!("Checkpoint {} not found", checkpoint_id1)))?;
+            .ok_or_else(|| Error::NotFound(format!("Checkpoint {checkpoint_id1} not found")))?;
 
         let cp2 = self
             .get_checkpoint(checkpoint_id2)?
-            .ok_or_else(|| Error::NotFound(format!("Checkpoint {} not found", checkpoint_id2)))?;
+            .ok_or_else(|| Error::NotFound(format!("Checkpoint {checkpoint_id2} not found")))?;
 
         let mut file_diffs = HashMap::new();
 
@@ -425,7 +421,7 @@ impl CheckpointManager {
             }
         }
 
-        for (path, _snapshot2) in &files2 {
+        for path in files2.keys() {
             if !files1.contains_key(path) {
                 file_diffs.insert(path.clone(), FileChange::Added);
             }
@@ -543,12 +539,12 @@ impl CheckpointManager {
     /// Get timeline of checkpoints for a session
     pub fn get_timeline(&self, session_id: &str) -> Result<Timeline> {
         let mut stmt = self.conn.prepare(
-            r#"
+            r"
             SELECT id, session_id, message_id, description, timestamp, file_count
             FROM checkpoints
             WHERE session_id = ?1
             ORDER BY timestamp ASC
-            "#,
+            ",
         )?;
 
         let checkpoints = stmt
@@ -558,8 +554,7 @@ impl CheckpointManager {
                     message_id: row.get(2)?,
                     description: row.get(3)?,
                     timestamp: DateTime::parse_from_rfc3339(&row.get::<_, String>(4)?)
-                        .map(|dt| dt.with_timezone(&Utc))
-                        .unwrap_or_else(|_| Utc::now()),
+                        .map_or_else(|_| Utc::now(), |dt| dt.with_timezone(&Utc)),
                     file_count: row.get::<_, i32>(5)? as usize,
                 })
             })?
@@ -579,11 +574,11 @@ impl CheckpointManager {
     /// Get summary of a specific checkpoint
     pub fn get_checkpoint_summary(&self, checkpoint_id: &str) -> Result<Option<CheckpointSummary>> {
         let mut stmt = self.conn.prepare(
-            r#"
+            r"
             SELECT id, session_id, message_id, description, timestamp, file_count
             FROM checkpoints
             WHERE id = ?1
-            "#,
+            ",
         )?;
 
         let summary = stmt
@@ -593,8 +588,7 @@ impl CheckpointManager {
                     message_id: row.get(2)?,
                     description: row.get(3)?,
                     timestamp: DateTime::parse_from_rfc3339(&row.get::<_, String>(4)?)
-                        .map(|dt| dt.with_timezone(&Utc))
-                        .unwrap_or_else(|_| Utc::now()),
+                        .map_or_else(|_| Utc::now(), |dt| dt.with_timezone(&Utc)),
                     file_count: row.get::<_, i32>(5)? as usize,
                 })
             })

@@ -23,6 +23,7 @@ pub struct FilteredBackend {
 }
 
 impl FilteredBackend {
+    #[must_use]
     pub fn new(config: SandboxConfig) -> Self {
         Self { _config: config }
     }
@@ -32,8 +33,7 @@ impl FilteredBackend {
         for pattern in BLOCKED_PATTERNS {
             if cmd_lower.contains(&pattern.to_lowercase()) {
                 return Err(Error::Sandbox(format!(
-                    "Blocked command pattern detected: {}",
-                    pattern
+                    "Blocked command pattern detected: {pattern}"
                 )));
             }
         }

@@ -33,7 +33,7 @@ pub fn render_markdown(content: &str) -> String {
     let mut in_list = false;
     let lines: Vec<&str> = content.lines().collect();
 
-    for (_i, line) in lines.iter().enumerate() {
+    for line in lines.iter() {
         let trimmed = line.trim();
 
         if trimmed.starts_with("```") {

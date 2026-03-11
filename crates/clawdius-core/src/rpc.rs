@@ -1,6 +1,6 @@
 //! JSON-RPC protocol implementation
 //!
-//! Provides JSON-RPC 2.0 server and client for VSCode extension communication.
+//! Provides JSON-RPC 2.0 server and client for `VSCode` extension communication.
 
 pub mod handlers;
 pub mod methods;

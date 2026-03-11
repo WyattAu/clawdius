@@ -29,17 +29,17 @@ impl From<WebSearchError> for crate::error::Error {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub enum SearchProvider {
+    #[default]
     DuckDuckGo,
-    Google { api_key: String, cse_id: String },
-    Bing { api_key: String },
-}
-
-impl Default for SearchProvider {
-    fn default() -> Self {
-        Self::DuckDuckGo
-    }
+    Google {
+        api_key: String,
+        cse_id: String,
+    },
+    Bing {
+        api_key: String,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -69,6 +69,7 @@ impl Default for WebSearchTool {
 }
 
 impl WebSearchTool {
+    #[must_use]
     pub fn new(provider: SearchProvider) -> Self {
         let client = Client::builder()
             .user_agent("Mozilla/5.0 (compatible; Clawdius/0.2.0)")
@@ -296,7 +297,7 @@ impl WebSearchTool {
         let mut result = String::new();
         let mut prev_empty = false;
 
-        for line in lines.iter() {
+        for line in &lines {
             let trimmed = line.trim();
             if trimmed.is_empty() {
                 if !prev_empty {
@@ -463,6 +464,7 @@ impl WebSearchTool {
     }
 }
 
+#[must_use]
 pub fn format_results_for_llm(results: &[SearchResult]) -> String {
     let mut output = String::new();
 
@@ -479,6 +481,7 @@ pub fn format_results_for_llm(results: &[SearchResult]) -> String {
     output
 }
 
+#[must_use]
 pub fn format_grounded_response(response: &GroundedResponse) -> String {
     let mut output = response.content.clone();
 

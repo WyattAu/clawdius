@@ -5,7 +5,9 @@ use std::fmt;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
+#[derive(Default)]
 pub enum Language {
+    #[default]
     EN,
     ZH,
     RU,
@@ -22,12 +24,6 @@ pub enum Language {
     AR,
     FA,
     TR,
-}
-
-impl Default for Language {
-    fn default() -> Self {
-        Language::EN
-    }
 }
 
 impl fmt::Display for Language {
@@ -74,7 +70,7 @@ impl std::str::FromStr for Language {
             "ar" | "arabic" | "العربية" => Ok(Language::AR),
             "fa" | "farsi" | "persian" | "فارسی" => Ok(Language::FA),
             "tr" | "turkish" | "türkçe" => Ok(Language::TR),
-            _ => Err(format!("Unknown language: {}", s)),
+            _ => Err(format!("Unknown language: {s}")),
         }
     }
 }
@@ -144,6 +140,7 @@ impl ConceptNode {
         self
     }
 
+    #[must_use]
     pub fn with_confidence(mut self, confidence: f32) -> Self {
         self.confidence = confidence.clamp(0.0, 1.0);
         self
@@ -154,6 +151,7 @@ impl ConceptNode {
         self
     }
 
+    #[must_use]
     pub fn matches_query(&self, query: &str) -> bool {
         let query_lower = query.to_lowercase();
         self.name.to_lowercase().contains(&query_lower)
@@ -188,6 +186,7 @@ impl ConceptEdge {
         }
     }
 
+    #[must_use]
     pub fn with_confidence(mut self, confidence: f32) -> Self {
         self.confidence = confidence.clamp(0.0, 1.0);
         self

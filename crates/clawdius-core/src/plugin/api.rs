@@ -14,10 +14,12 @@ use super::hooks::HookContext;
 pub struct PluginId(String);
 
 impl PluginId {
+    #[must_use]
     pub fn new(name: &str, version: &str) -> Self {
-        Self(format!("{}@{}", name, version))
+        Self(format!("{name}@{version}"))
     }
 
+    #[must_use]
     pub fn as_str(&self) -> &str {
         &self.0
     }
@@ -64,6 +66,7 @@ impl Default for PluginCapabilities {
 
 impl PluginCapabilities {
     /// Unrestricted capabilities (use with caution)
+    #[must_use]
     pub fn unrestricted() -> Self {
         Self {
             can_read_files: true,
@@ -77,6 +80,7 @@ impl PluginCapabilities {
     }
 
     /// Read-only capabilities
+    #[must_use]
     pub fn read_only() -> Self {
         Self {
             can_read_files: true,
@@ -197,6 +201,7 @@ pub struct HookResult {
 }
 
 impl HookResult {
+    #[must_use]
     pub fn success() -> Self {
         Self {
             success: true,
@@ -206,6 +211,7 @@ impl HookResult {
         }
     }
 
+    #[must_use]
     pub fn success_with_data(data: serde_json::Value) -> Self {
         Self {
             success: true,
@@ -224,6 +230,7 @@ impl HookResult {
         }
     }
 
+    #[must_use]
     pub fn stop() -> Self {
         Self {
             success: true,

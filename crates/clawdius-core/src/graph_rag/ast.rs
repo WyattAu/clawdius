@@ -75,6 +75,7 @@ pub enum SymbolKind {
 }
 
 impl SymbolKind {
+    #[must_use]
     pub fn as_str(&self) -> &str {
         match self {
             SymbolKind::Function => "function",
@@ -94,6 +95,7 @@ impl SymbolKind {
         }
     }
 
+    #[must_use]
     pub fn from_str(s: &str) -> Self {
         match s {
             "function" => SymbolKind::Function,
@@ -170,6 +172,7 @@ pub enum RelationshipType {
 }
 
 impl RelationshipType {
+    #[must_use]
     pub fn as_str(&self) -> &str {
         match self {
             RelationshipType::Calls => "calls",
@@ -183,6 +186,7 @@ impl RelationshipType {
         }
     }
 
+    #[must_use]
     pub fn from_str(s: &str) -> Self {
         match s {
             "calls" => RelationshipType::Calls,

@@ -92,6 +92,7 @@ pub struct ActionRegistry {
 }
 
 impl ActionRegistry {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             actions: Vec::new(),
@@ -102,6 +103,7 @@ impl ActionRegistry {
         self.actions.push(action);
     }
 
+    #[must_use]
     pub fn get_applicable_actions(&self, context: &ActionContext) -> Vec<Arc<dyn CodeAction>> {
         self.actions
             .iter()

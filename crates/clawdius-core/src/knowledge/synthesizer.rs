@@ -16,6 +16,7 @@ pub struct ResearchQuery {
 }
 
 impl ResearchQuery {
+    #[must_use]
     pub fn new(terms: Vec<String>, languages: Vec<Language>) -> Self {
         Self {
             terms,
@@ -24,6 +25,7 @@ impl ResearchQuery {
         }
     }
 
+    #[must_use]
     pub fn with_max_results(mut self, max: usize) -> Self {
         self.max_results = max;
         self
@@ -43,6 +45,7 @@ pub struct SynthesizedResult {
 }
 
 impl SynthesizedResult {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             concepts: Vec::new(),
@@ -52,21 +55,25 @@ impl SynthesizedResult {
         }
     }
 
+    #[must_use]
     pub fn with_concepts(mut self, concepts: Vec<ConceptNode>) -> Self {
         self.concepts = concepts;
         self
     }
 
+    #[must_use]
     pub fn with_relationships(mut self, relationships: Vec<ConceptEdge>) -> Self {
         self.relationships = relationships;
         self
     }
 
+    #[must_use]
     pub fn with_confidence(mut self, confidence: f32) -> Self {
         self.confidence = confidence;
         self
     }
 
+    #[must_use]
     pub fn with_sources(mut self, sources: Vec<String>) -> Self {
         self.sources = sources;
         self
@@ -95,13 +102,15 @@ impl SynthesizedResult {
                 .min(1.0);
     }
 
+    #[must_use]
     pub fn languages_covered(&self) -> Vec<Language> {
         let langs: HashSet<Language> = self.concepts.iter().map(|c| c.language).collect();
         let mut result: Vec<Language> = langs.into_iter().collect();
-        result.sort_by_key(|l| format!("{:?}", l));
+        result.sort_by_key(|l| format!("{l:?}"));
         result
     }
 
+    #[must_use]
     pub fn concepts_by_language(&self, lang: Language) -> Vec<&ConceptNode> {
         self.concepts
             .iter()
@@ -122,6 +131,7 @@ pub struct ResearchSynthesizer {
 }
 
 impl ResearchSynthesizer {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             graph: KnowledgeGraph::new(),
@@ -129,6 +139,7 @@ impl ResearchSynthesizer {
         }
     }
 
+    #[must_use]
     pub fn with_graph(graph: KnowledgeGraph) -> Self {
         Self {
             graph,
@@ -143,13 +154,13 @@ impl ResearchSynthesizer {
 
         for term in &query.terms {
             for lang in &query.languages {
-                let translated = if *lang != Language::EN {
+                let translated = if *lang == Language::EN {
+                    term.clone()
+                } else {
                     self.translator
                         .translate(term, Language::EN, *lang)
                         .await
                         .unwrap_or_else(|_| term.clone())
-                } else {
-                    term.clone()
                 };
 
                 let results = self.graph.search(&translated, Some(*lang));
@@ -236,6 +247,7 @@ impl ResearchSynthesizer {
         Ok(())
     }
 
+    #[must_use]
     pub fn graph(&self) -> &KnowledgeGraph {
         &self.graph
     }
@@ -244,6 +256,7 @@ impl ResearchSynthesizer {
         &mut self.graph
     }
 
+    #[must_use]
     pub fn translator(&self) -> &Translator {
         &self.translator
     }

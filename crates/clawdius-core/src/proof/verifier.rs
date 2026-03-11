@@ -57,12 +57,14 @@ impl LeanVerifier {
     }
 
     /// Set verification timeout
+    #[must_use]
     pub fn with_timeout(mut self, timeout: Duration) -> Self {
         self.timeout = timeout;
         self
     }
 
     /// Check if Lean is available
+    #[must_use]
     pub fn check_available(&self) -> bool {
         self.lean_path.exists() && self.lake_path.exists()
     }
@@ -72,7 +74,7 @@ impl LeanVerifier {
         let output = Command::new(&self.lean_path)
             .arg("--version")
             .output()
-            .map_err(|e| Error::Sandbox(format!("Failed to run lean --version: {}", e)))?;
+            .map_err(|e| Error::Sandbox(format!("Failed to run lean --version: {e}")))?;
 
         let version = String::from_utf8_lossy(&output.stdout);
         Ok(version.lines().next().unwrap_or("unknown").to_string())
@@ -103,8 +105,7 @@ impl LeanVerifier {
             Err(e) => {
                 return Ok(VerificationResult::failure(
                     vec![LeanError::from_message(format!(
-                        "Failed to run lake build: {}",
-                        e
+                        "Failed to run lake build: {e}"
                     ))],
                     start.elapsed(),
                 ));
@@ -117,7 +118,7 @@ impl LeanVerifier {
 
     /// Verify inline Lean code by writing to a temp file
     pub fn verify_inline(&self, code: &str) -> Result<VerificationResult> {
-        let temp_dir = tempfile::tempdir().map_err(|e| Error::Io(e))?;
+        let temp_dir = tempfile::tempdir().map_err(Error::Io)?;
 
         let proof_file = temp_dir.path().join("Proof.lean");
         std::fs::write(&proof_file, code)?;
@@ -162,8 +163,7 @@ lean_lib Proof where
             Err(e) => {
                 return Ok(VerificationResult::failure(
                     vec![LeanError::from_message(format!(
-                        "Failed to run lean --make: {}",
-                        e
+                        "Failed to run lean --make: {e}"
                     ))],
                     start.elapsed(),
                 ));
@@ -182,7 +182,7 @@ lean_lib Proof where
     ) -> VerificationResult {
         let stdout = String::from_utf8_lossy(&output.stdout);
         let stderr = String::from_utf8_lossy(&output.stderr);
-        let combined = format!("{}{}", stdout, stderr);
+        let combined = format!("{stdout}{stderr}");
 
         let mut errors = Vec::new();
         let mut warnings = Vec::new();
@@ -204,7 +204,7 @@ lean_lib Proof where
             errors,
             warnings,
             duration,
-            output: combined.to_string(),
+            output: combined.clone(),
         }
     }
 

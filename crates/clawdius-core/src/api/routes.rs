@@ -20,6 +20,7 @@ pub struct HealthResponse {
     pub version: String,
 }
 
+#[must_use]
 pub fn health_check() -> HealthResponse {
     HealthResponse {
         status: "ok".to_string(),

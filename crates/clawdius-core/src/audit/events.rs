@@ -36,11 +36,13 @@ impl AuditEventBuilder {
         self
     }
 
+    #[must_use]
     pub fn details(mut self, details: serde_json::Value) -> Self {
         self.details = details;
         self
     }
 
+    #[must_use]
     pub fn build(self) -> AuditEntry {
         AuditEntry {
             timestamp: now_timestamp(),
@@ -56,12 +58,14 @@ impl AuditEventBuilder {
     }
 }
 
+#[must_use]
 pub fn login_event(user_id: &str) -> AuditEntry {
     AuditEventBuilder::new("auth", "login")
         .user(user_id)
         .build()
 }
 
+#[must_use]
 pub fn chat_event(session_id: &str, model: &str) -> AuditEntry {
     AuditEventBuilder::new("llm", "chat")
         .session(session_id)
@@ -69,6 +73,7 @@ pub fn chat_event(session_id: &str, model: &str) -> AuditEntry {
         .build()
 }
 
+#[must_use]
 pub fn tool_event(tool: &str, action: &str) -> AuditEntry {
     AuditEventBuilder::new("tool", action)
         .resource(tool)

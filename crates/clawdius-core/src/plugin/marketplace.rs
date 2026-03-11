@@ -258,6 +258,7 @@ pub struct MarketplaceClient {
 
 impl MarketplaceClient {
     /// Create a new marketplace client
+    #[must_use]
     pub fn new(config: MarketplaceConfig) -> Self {
         Self {
             config,
@@ -509,6 +510,7 @@ pub struct CacheEntry {
 
 impl MarketplaceCache {
     /// Create a new cache
+    #[must_use]
     pub fn new() -> Self {
         Self {
             entries: HashMap::new(),
@@ -517,6 +519,7 @@ impl MarketplaceCache {
     }
 
     /// Check if an entry is valid
+    #[must_use]
     pub fn is_valid(&self, plugin_id: &str) -> bool {
         if let Some(entry) = self.entries.get(plugin_id) {
             entry.expires_at > chrono::Utc::now()
@@ -526,6 +529,7 @@ impl MarketplaceCache {
     }
 
     /// Get a cached plugin
+    #[must_use]
     pub fn get(&self, plugin_id: &str) -> Option<&MarketplacePlugin> {
         if self.is_valid(plugin_id) {
             self.entries.get(plugin_id).map(|e| &e.plugin)

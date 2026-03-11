@@ -148,6 +148,7 @@ pub enum Permission {
 
 impl Permission {
     /// Get permission description
+    #[must_use]
     pub fn description(&self) -> &'static str {
         match self {
             Self::TeamCreate => "Create new teams",
@@ -179,6 +180,7 @@ impl Permission {
     }
 
     /// Get permission category
+    #[must_use]
     pub fn category(&self) -> &'static str {
         match self {
             Self::TeamCreate
@@ -241,6 +243,7 @@ impl Default for TeamSettings {
 /// Predefined roles
 impl TeamRole {
     /// Admin role - full access
+    #[must_use]
     pub fn admin() -> Self {
         Self {
             id: "admin".to_string(),
@@ -253,6 +256,7 @@ impl TeamRole {
     }
 
     /// Developer role - code access
+    #[must_use]
     pub fn developer() -> Self {
         let permissions: HashSet<Permission> = [
             Permission::SessionCreate,
@@ -281,6 +285,7 @@ impl TeamRole {
     }
 
     /// Analyst role - read only
+    #[must_use]
     pub fn analyst() -> Self {
         let permissions: HashSet<Permission> = [
             Permission::SessionView,
@@ -302,6 +307,7 @@ impl TeamRole {
     }
 
     /// Member role - basic access
+    #[must_use]
     pub fn member() -> Self {
         let permissions: HashSet<Permission> = [
             Permission::SessionCreate,
@@ -324,6 +330,7 @@ impl TeamRole {
     }
 
     /// Billing admin role
+    #[must_use]
     pub fn billing_admin() -> Self {
         let permissions: HashSet<Permission> = [Permission::BillingManage, Permission::AuditView]
             .into_iter()
@@ -342,8 +349,15 @@ impl TeamRole {
 
 impl Permission {
     /// Get all permissions
+    #[must_use]
     pub fn all() -> Vec<Self> {
-        use Permission::*;
+        use Permission::{
+            Admin, AuditExport, AuditView, BillingManage, CodeDelete, CodeExecute, CodeRead,
+            CodeWrite, LlmManageSettings, LlmUse, LlmViewUsage, PluginConfigure, PluginInstall,
+            PluginUninstall, SessionCreate, SessionDelete, SessionShare, SessionView,
+            SessionViewAll, TeamCreate, TeamDelete, TeamInviteMembers, TeamManageRoles,
+            TeamRemoveMembers, TeamUpdate,
+        };
         vec![
             TeamCreate,
             TeamDelete,
@@ -381,6 +395,7 @@ pub struct TeamManager {
 
 impl TeamManager {
     /// Create a new team manager
+    #[must_use]
     pub fn new() -> Self {
         Self {
             teams: HashMap::new(),
@@ -441,6 +456,7 @@ impl TeamManager {
     }
 
     /// Get a team
+    #[must_use]
     pub fn get_team(&self, team_id: &str) -> Option<&Team> {
         self.teams.get(team_id)
     }
@@ -451,6 +467,7 @@ impl TeamManager {
     }
 
     /// List teams for an organization
+    #[must_use]
     pub fn list_teams(&self, organization_id: &str) -> Vec<&Team> {
         self.teams
             .values()
@@ -526,6 +543,7 @@ impl TeamManager {
     }
 
     /// Check if user has permission
+    #[must_use]
     pub fn has_permission(&self, team_id: &str, user_id: &str, permission: Permission) -> bool {
         let team = match self.teams.get(team_id) {
             Some(t) => t,
@@ -569,6 +587,7 @@ impl TeamManager {
     }
 
     /// Get all permissions for a user
+    #[must_use]
     pub fn get_user_permissions(&self, team_id: &str, user_id: &str) -> HashSet<Permission> {
         let mut permissions = HashSet::new();
 

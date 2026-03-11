@@ -18,6 +18,7 @@ pub enum OutputFormat {
 
 impl OutputFormat {
     /// Parse from string
+    #[must_use]
     pub fn from_str(s: &str) -> Option<Self> {
         match s.to_lowercase().as_str() {
             "text" => Some(Self::Text),
@@ -120,24 +121,28 @@ impl JsonOutput {
     }
 
     /// Add a tool call
+    #[must_use]
     pub fn with_tool_call(mut self, tool_call: ToolCallInfo) -> Self {
         self.tool_calls.push(tool_call);
         self
     }
 
     /// Add a file change
+    #[must_use]
     pub fn with_file_change(mut self, change: FileChange) -> Self {
         self.files_changed.push(change);
         self
     }
 
     /// Set token usage
+    #[must_use]
     pub fn with_usage(mut self, usage: TokenUsageInfo) -> Self {
         self.usage = usage;
         self
     }
 
     /// Set duration
+    #[must_use]
     pub fn with_duration(mut self, ms: u64) -> Self {
         self.duration_ms = ms;
         self
@@ -145,12 +150,12 @@ impl JsonOutput {
 
     /// Convert to JSON string
     pub fn to_json(&self) -> crate::Result<String> {
-        serde_json::to_string_pretty(self).map_err(|e| crate::Error::Serialization(e))
+        serde_json::to_string_pretty(self).map_err(crate::Error::Serialization)
     }
 
     /// Convert to compact JSON string
     pub fn to_json_compact(&self) -> crate::Result<String> {
-        serde_json::to_string(self).map_err(|e| crate::Error::Serialization(e))
+        serde_json::to_string(self).map_err(crate::Error::Serialization)
     }
 }
 
@@ -217,6 +222,7 @@ fn is_zero(val: &usize) -> bool {
 
 impl TokenUsageInfo {
     /// Create new token usage info
+    #[must_use]
     pub fn new(input: usize, output: usize) -> Self {
         Self {
             input,
@@ -334,6 +340,7 @@ pub struct MetricsResult {
 
 impl MetricsResult {
     /// Create from metrics snapshot
+    #[must_use]
     pub fn new(
         requests_total: u64,
         requests_errors: u64,
@@ -703,6 +710,7 @@ pub struct TimelineResult {
 
 impl TimelineResult {
     /// Create a timeline result
+    #[must_use]
     pub fn new(
         checkpoint_id: String,
         timestamp: DateTime<Utc>,
@@ -735,6 +743,7 @@ pub struct FileVersionInfo {
 
 impl FileVersionInfo {
     /// Create a file version info
+    #[must_use]
     pub fn new(
         path: String,
         version: u64,
@@ -1133,12 +1142,14 @@ impl CheckpointResult {
     }
 
     /// Add file count
+    #[must_use]
     pub fn with_file_count(mut self, count: usize) -> Self {
         self.file_count = Some(count);
         self
     }
 
     /// Add checkpoints list
+    #[must_use]
     pub fn with_checkpoints(mut self, checkpoints: Vec<CheckpointInfo>) -> Self {
         self.checkpoints = checkpoints;
         self
@@ -1220,12 +1231,14 @@ impl ModesResult {
     }
 
     /// Add modes list
+    #[must_use]
     pub fn with_modes(mut self, modes: Vec<ModeInfo>) -> Self {
         self.modes = modes;
         self
     }
 
     /// Add mode details
+    #[must_use]
     pub fn with_mode_details(mut self, details: ModeDetails) -> Self {
         self.mode_details = Some(details);
         self

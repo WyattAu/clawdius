@@ -6,9 +6,10 @@ use std::fs;
 use std::path::Path;
 
 /// Agent mode configuration
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 pub enum AgentMode {
     /// Everyday coding, file edits, quick fixes
+    #[default]
     Code,
     /// System design, migrations, architecture
     Architect,
@@ -28,6 +29,7 @@ pub enum AgentMode {
 
 impl AgentMode {
     /// Get system prompt for this mode
+    #[must_use]
     pub fn system_prompt(&self) -> &str {
         match self {
             Self::Code => CODE_PROMPT,
@@ -42,6 +44,7 @@ impl AgentMode {
     }
 
     /// Get temperature for this mode
+    #[must_use]
     pub fn temperature(&self) -> f32 {
         match self {
             Self::Code => 0.7,
@@ -56,6 +59,7 @@ impl AgentMode {
     }
 
     /// Get available tools for this mode
+    #[must_use]
     pub fn tools(&self) -> Vec<String> {
         match self {
             Self::Code => vec!["file".to_string(), "shell".to_string(), "git".to_string()],
@@ -70,6 +74,7 @@ impl AgentMode {
     }
 
     /// Get mode name
+    #[must_use]
     pub fn name(&self) -> &str {
         match self {
             Self::Code => "code",
@@ -84,6 +89,7 @@ impl AgentMode {
     }
 
     /// Get mode description
+    #[must_use]
     pub fn description(&self) -> &str {
         match self {
             Self::Code => "Code generation and editing",
@@ -98,6 +104,7 @@ impl AgentMode {
     }
 
     /// Parse from string
+    #[must_use]
     pub fn from_str(s: &str) -> Option<Self> {
         match s.to_lowercase().as_str() {
             "code" => Some(Self::Code),
@@ -136,7 +143,7 @@ impl AgentMode {
         }
 
         // Then check custom modes
-        let mode_file = modes_dir.join(format!("{}.toml", name));
+        let mode_file = modes_dir.join(format!("{name}.toml"));
         if mode_file.exists() {
             Self::load_from_file(&mode_file)
         } else {
@@ -180,7 +187,7 @@ impl AgentMode {
             for entry in fs::read_dir(modes_dir)? {
                 let entry = entry?;
                 let path = entry.path();
-                if path.extension().map(|e| e == "toml").unwrap_or(false) {
+                if path.extension().is_some_and(|e| e == "toml") {
                     if let Ok(config) = Self::load_from_file(&path) {
                         if let Self::Custom(custom) = config {
                             modes.push((
@@ -197,7 +204,7 @@ impl AgentMode {
     }
 }
 
-const CODE_PROMPT: &str = r#"
+const CODE_PROMPT: &str = r"
 You are Clawdius, an expert programmer and coding assistant. You help with:
 - Writing clean, efficient, and maintainable code
 - Debugging issues and fixing bugs
@@ -206,9 +213,9 @@ You are Clawdius, an expert programmer and coding assistant. You help with:
 - Code review and best practices
 
 Always follow the project's coding standards and conventions.
-"#;
+";
 
-const ARCHITECT_PROMPT: &str = r#"
+const ARCHITECT_PROMPT: &str = r"
 You are Clawdius, a software architect. You help with:
 - System design and architecture decisions
 - Planning migrations and refactoring
@@ -217,9 +224,9 @@ You are Clawdius, a software architect. You help with:
 - Creating technical documentation
 
 Focus on long-term maintainability, scalability, and best practices.
-"#;
+";
 
-const ASK_PROMPT: &str = r#"
+const ASK_PROMPT: &str = r"
 You are Clawdius, a helpful assistant. You help with:
 - Answering questions about code and concepts
 - Explaining how things work
@@ -227,9 +234,9 @@ You are Clawdius, a helpful assistant. You help with:
 - Quick tips and tricks
 
 Be concise and clear in your explanations.
-"#;
+";
 
-const DEBUG_PROMPT: &str = r#"
+const DEBUG_PROMPT: &str = r"
 You are Clawdius, a debugging specialist. You help with:
 - Analyzing error messages and stack traces
 - Finding root causes of issues
@@ -238,9 +245,9 @@ You are Clawdius, a debugging specialist. You help with:
 - Fixing bugs
 
 Think systematically and methodically.
-"#;
+";
 
-const REVIEW_PROMPT: &str = r#"
+const REVIEW_PROMPT: &str = r"
 You are Clawdius, a code reviewer. You help with:
 - Reviewing code for quality and best practices
 - Identifying potential bugs and issues
@@ -250,9 +257,9 @@ You are Clawdius, a code reviewer. You help with:
 
 Provide constructive feedback and actionable suggestions.
 Focus on the code quality, not the coder.
-"#;
+";
 
-const REFACTOR_PROMPT: &str = r#"
+const REFACTOR_PROMPT: &str = r"
 You are Clawdius, a refactoring specialist. You help with:
 - Improving code structure and readability
 - Reducing complexity and duplication
@@ -262,9 +269,9 @@ You are Clawdius, a refactoring specialist. You help with:
 
 Always preserve existing behavior and ensure tests pass.
 Make incremental, safe changes.
-"#;
+";
 
-const TEST_PROMPT: &str = r#"
+const TEST_PROMPT: &str = r"
 You are Clawdius, a test generation specialist. You help with:
 - Writing unit tests
 - Writing integration tests
@@ -273,7 +280,7 @@ You are Clawdius, a test generation specialist. You help with:
 - Testing edge cases
 
 Focus on meaningful tests that verify behavior, not just coverage.
-"#;
+";
 
 /// Mode configuration from TOML
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -309,12 +316,6 @@ pub struct CustomMode {
     /// Available tools
     #[serde(default)]
     pub tools: Vec<String>,
-}
-
-impl Default for AgentMode {
-    fn default() -> Self {
-        Self::Code
-    }
 }
 
 impl std::fmt::Display for AgentMode {

@@ -52,10 +52,10 @@
 //!
 //! The Brain system consists of:
 //!
-//! - **BrainRuntime**: The WASM runtime host
-//! - **BrainModule**: Loaded WASM modules
+//! - **`BrainRuntime`**: The WASM runtime host
+//! - **`BrainModule`**: Loaded WASM modules
 //! - **BrainRequest/BrainResponse**: RPC protocol types
-//! - **HostState**: Shared state between host and WASM
+//! - **`HostState`**: Shared state between host and WASM
 //!
 //! # Security
 //!

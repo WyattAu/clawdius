@@ -18,6 +18,7 @@ impl WorkflowId {
         WorkflowId(id.into())
     }
 
+    #[must_use]
     pub fn generate() -> Self {
         WorkflowId(uuid::Uuid::new_v4().to_string())
     }
@@ -76,6 +77,7 @@ impl TaskDefinition {
         self
     }
 
+    #[must_use]
     pub fn with_artifact_requirement(mut self, artifact: ArtifactId) -> Self {
         self.artifact_requirements.push(artifact);
         self
@@ -91,16 +93,19 @@ impl TaskDefinition {
         self
     }
 
+    #[must_use]
     pub fn with_timeout(mut self, timeout_ms: u64) -> Self {
         self.timeout_ms = Some(timeout_ms);
         self
     }
 
+    #[must_use]
     pub fn with_retry(mut self, count: u32) -> Self {
         self.retry_count = count;
         self
     }
 
+    #[must_use]
     pub fn with_metadata(mut self, metadata: serde_json::Value) -> Self {
         self.metadata = metadata;
         self
@@ -232,20 +237,24 @@ impl WorkflowDefinition {
         self
     }
 
+    #[must_use]
     pub fn with_task(mut self, task: TaskDefinition) -> Self {
         self.tasks.push(task);
         self
     }
 
+    #[must_use]
     pub fn with_metadata(mut self, metadata: serde_json::Value) -> Self {
         self.metadata = metadata;
         self
     }
 
+    #[must_use]
     pub fn get_task(&self, id: &str) -> Option<&TaskDefinition> {
         self.tasks.iter().find(|t| t.id == id)
     }
 
+    #[must_use]
     pub fn task_count(&self) -> usize {
         self.tasks.len()
     }
@@ -264,6 +273,7 @@ pub struct WorkflowExecution {
 }
 
 impl WorkflowExecution {
+    #[must_use]
     pub fn new(workflow_id: WorkflowId) -> Self {
         Self {
             execution_id: uuid::Uuid::new_v4().to_string(),
@@ -277,6 +287,7 @@ impl WorkflowExecution {
         }
     }
 
+    #[must_use]
     pub fn with_context(mut self, context: serde_json::Value) -> Self {
         self.context = context;
         self
@@ -310,6 +321,7 @@ impl WorkflowExecution {
         }
     }
 
+    #[must_use]
     pub fn completed_task_count(&self) -> usize {
         self.task_executions
             .values()
@@ -317,6 +329,7 @@ impl WorkflowExecution {
             .count()
     }
 
+    #[must_use]
     pub fn failed_task_count(&self) -> usize {
         self.task_executions
             .values()
@@ -324,6 +337,7 @@ impl WorkflowExecution {
             .count()
     }
 
+    #[must_use]
     pub fn progress_percent(&self) -> f64 {
         if self.task_executions.is_empty() {
             return 0.0;
@@ -371,6 +385,7 @@ pub struct DependencyGraph {
 }
 
 impl DependencyGraph {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             nodes: HashMap::new(),
@@ -379,12 +394,8 @@ impl DependencyGraph {
     }
 
     pub fn add_node(&mut self, id: &str) {
-        self.nodes
-            .entry(id.to_string())
-            .or_insert_with(HashSet::new);
-        self.reverse_edges
-            .entry(id.to_string())
-            .or_insert_with(HashSet::new);
+        self.nodes.entry(id.to_string()).or_default();
+        self.reverse_edges.entry(id.to_string()).or_default();
     }
 
     pub fn add_dependency(&mut self, from: &str, to: &str) {
@@ -398,6 +409,7 @@ impl DependencyGraph {
             .insert(from.to_string());
     }
 
+    #[must_use]
     pub fn has_cycle(&self) -> bool {
         let mut visited = HashSet::new();
         let mut rec_stack = HashSet::new();
@@ -487,6 +499,7 @@ impl DependencyGraph {
         Ok(())
     }
 
+    #[must_use]
     pub fn get_ready_tasks(&self, completed: &HashSet<String>) -> Vec<String> {
         self.nodes
             .keys()
@@ -495,13 +508,13 @@ impl DependencyGraph {
                     && self
                         .nodes
                         .get(*node)
-                        .map(|deps| deps.iter().all(|d| completed.contains(d)))
-                        .unwrap_or(true)
+                        .is_none_or(|deps| deps.iter().all(|d| completed.contains(d)))
             })
             .cloned()
             .collect()
     }
 
+    #[must_use]
     pub fn get_dependents(&self, task_id: &str) -> Vec<String> {
         self.reverse_edges
             .get(task_id)
@@ -541,6 +554,7 @@ pub struct WorkflowOrchestrator {
 }
 
 impl WorkflowOrchestrator {
+    #[must_use]
     pub fn new(config: ParallelConfig) -> Self {
         Self {
             workflows: Arc::new(RwLock::new(HashMap::new())),
@@ -550,6 +564,7 @@ impl WorkflowOrchestrator {
         }
     }
 
+    #[must_use]
     pub fn with_default_config() -> Self {
         Self::new(ParallelConfig::default())
     }
@@ -596,7 +611,7 @@ impl WorkflowOrchestrator {
         let workflows = self.workflows.read().await;
         let workflow = workflows
             .get(workflow_id)
-            .ok_or_else(|| NexusError::LockError(format!("Workflow not found: {}", workflow_id)))?;
+            .ok_or_else(|| NexusError::LockError(format!("Workflow not found: {workflow_id}")))?;
 
         let mut execution = WorkflowExecution::new(workflow_id.clone());
         execution.initialize_tasks(&workflow.tasks);
@@ -617,9 +632,9 @@ impl WorkflowOrchestrator {
 
     pub async fn get_ready_tasks(&self, execution_id: &str) -> Result<Vec<String>> {
         let executions = self.executions.read().await;
-        let execution = executions.get(execution_id).ok_or_else(|| {
-            NexusError::LockError(format!("Execution not found: {}", execution_id))
-        })?;
+        let execution = executions
+            .get(execution_id)
+            .ok_or_else(|| NexusError::LockError(format!("Execution not found: {execution_id}")))?;
 
         let workflows = self.workflows.read().await;
         let workflow = workflows
@@ -665,9 +680,9 @@ impl WorkflowOrchestrator {
         error: Option<String>,
     ) -> Result<()> {
         let mut executions = self.executions.write().await;
-        let execution = executions.get_mut(execution_id).ok_or_else(|| {
-            NexusError::LockError(format!("Execution not found: {}", execution_id))
-        })?;
+        let execution = executions
+            .get_mut(execution_id)
+            .ok_or_else(|| NexusError::LockError(format!("Execution not found: {execution_id}")))?;
 
         if let Some(task_exec) = execution.task_executions.get_mut(task_id) {
             task_exec.status = status;
@@ -679,9 +694,9 @@ impl WorkflowOrchestrator {
 
     pub async fn start_task(&self, execution_id: &str, task_id: &str) -> Result<()> {
         let mut executions = self.executions.write().await;
-        let execution = executions.get_mut(execution_id).ok_or_else(|| {
-            NexusError::LockError(format!("Execution not found: {}", execution_id))
-        })?;
+        let execution = executions
+            .get_mut(execution_id)
+            .ok_or_else(|| NexusError::LockError(format!("Execution not found: {execution_id}")))?;
 
         if let Some(task_exec) = execution.task_executions.get_mut(task_id) {
             task_exec.start();
@@ -697,9 +712,9 @@ impl WorkflowOrchestrator {
         artifacts: Vec<ArtifactId>,
     ) -> Result<()> {
         let mut executions = self.executions.write().await;
-        let execution = executions.get_mut(execution_id).ok_or_else(|| {
-            NexusError::LockError(format!("Execution not found: {}", execution_id))
-        })?;
+        let execution = executions
+            .get_mut(execution_id)
+            .ok_or_else(|| NexusError::LockError(format!("Execution not found: {execution_id}")))?;
 
         if let Some(task_exec) = execution.task_executions.get_mut(task_id) {
             task_exec.complete(artifacts);
@@ -724,9 +739,9 @@ impl WorkflowOrchestrator {
         error: impl Into<String>,
     ) -> Result<()> {
         let mut executions = self.executions.write().await;
-        let execution = executions.get_mut(execution_id).ok_or_else(|| {
-            NexusError::LockError(format!("Execution not found: {}", execution_id))
-        })?;
+        let execution = executions
+            .get_mut(execution_id)
+            .ok_or_else(|| NexusError::LockError(format!("Execution not found: {execution_id}")))?;
 
         if let Some(task_exec) = execution.task_executions.get_mut(task_id) {
             task_exec.fail(error);
@@ -740,9 +755,9 @@ impl WorkflowOrchestrator {
         execution_id: &str,
     ) -> Result<HashMap<String, Vec<String>>> {
         let executions = self.executions.read().await;
-        let execution = executions.get(execution_id).ok_or_else(|| {
-            NexusError::LockError(format!("Execution not found: {}", execution_id))
-        })?;
+        let execution = executions
+            .get(execution_id)
+            .ok_or_else(|| NexusError::LockError(format!("Execution not found: {execution_id}")))?;
 
         let workflows = self.workflows.read().await;
         let workflow = workflows
@@ -754,7 +769,7 @@ impl WorkflowOrchestrator {
             if let Some(group) = &task.parallel_group {
                 groups
                     .entry(group.clone())
-                    .or_insert_with(Vec::new)
+                    .or_default()
                     .push(task.id.clone());
             }
         }
@@ -790,10 +805,12 @@ impl WorkflowOrchestrator {
         self.workflows.read().await.get(id).cloned()
     }
 
+    #[must_use]
     pub fn semaphore(&self) -> Arc<Semaphore> {
         self.semaphore.clone()
     }
 
+    #[must_use]
     pub fn config(&self) -> &ParallelConfig {
         &self.config
     }
@@ -818,6 +835,7 @@ pub struct PhaseWorkflow {
 }
 
 impl PhaseWorkflow {
+    #[must_use]
     pub fn new(start: PhaseId, end: PhaseId) -> Self {
         let category = PhaseCategory::from_phase_number(start.0);
         Self {
@@ -830,6 +848,7 @@ impl PhaseWorkflow {
         }
     }
 
+    #[must_use]
     pub fn with_checkpoint(mut self, checkpoint: bool) -> Self {
         self.checkpoint_after = checkpoint;
         self
@@ -840,6 +859,7 @@ impl PhaseWorkflow {
         self
     }
 
+    #[must_use]
     pub fn with_skip_on_failure(mut self, skip: bool) -> Self {
         self.skip_on_failure = skip;
         self
@@ -852,6 +872,7 @@ impl PhaseWorkflow {
     }
 }
 
+#[must_use]
 pub fn create_standard_workflow() -> WorkflowDefinition {
     WorkflowDefinition::new("Standard R&D Lifecycle")
         .with_description("Complete 24-phase R&D lifecycle workflow")

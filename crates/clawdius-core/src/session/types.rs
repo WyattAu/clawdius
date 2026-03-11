@@ -11,16 +11,19 @@ pub struct SessionId(pub Uuid);
 
 impl SessionId {
     /// Create a new random session ID
+    #[must_use]
     pub fn new() -> Self {
         Self(Uuid::new_v4())
     }
 
     /// Create from UUID
+    #[must_use]
     pub fn from_uuid(uuid: Uuid) -> Self {
         Self(uuid)
     }
 
     /// Get the underlying UUID
+    #[must_use]
     pub fn as_uuid(&self) -> &Uuid {
         &self.0
     }
@@ -67,6 +70,7 @@ pub struct Session {
 
 impl Session {
     /// Create a new session
+    #[must_use]
     pub fn new() -> Self {
         let now = Utc::now();
         Self {
@@ -81,6 +85,7 @@ impl Session {
     }
 
     /// Create with provider and model
+    #[must_use]
     pub fn with_provider_model(provider: String, model: String) -> Self {
         let mut session = Self::new();
         session.meta.provider = Some(provider);
@@ -95,6 +100,7 @@ impl Session {
     }
 
     /// Get the last message
+    #[must_use]
     pub fn last_message(&self) -> Option<&Message> {
         self.messages.last()
     }
@@ -105,6 +111,7 @@ impl Session {
     }
 
     /// Calculate total tokens used
+    #[must_use]
     pub fn total_tokens(&self) -> usize {
         self.token_usage.total()
     }
@@ -200,6 +207,7 @@ impl Message {
     }
 
     /// Get text content
+    #[must_use]
     pub fn as_text(&self) -> Option<&str> {
         match &self.content {
             MessageContent::Text(text) => Some(text),
@@ -290,6 +298,7 @@ pub struct TokenUsage {
 
 impl TokenUsage {
     /// Total tokens used
+    #[must_use]
     pub fn total(&self) -> usize {
         self.input + self.output
     }

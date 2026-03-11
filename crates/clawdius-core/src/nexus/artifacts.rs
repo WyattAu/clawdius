@@ -1,6 +1,6 @@
 //! Artifact tracking for Nexus FSM
 //!
-//! This module implements artifact storage and retrieval using SQLite as the backend
+//! This module implements artifact storage and retrieval using `SQLite` as the backend
 //! with an LRU cache layer for performance. Artifacts represent the outputs of each
 //! phase and are tracked for dependency management and audit purposes.
 
@@ -29,6 +29,7 @@ impl ArtifactId {
         ArtifactId(id.into())
     }
 
+    #[must_use]
     pub fn generate() -> Self {
         ArtifactId(uuid::Uuid::new_v4().to_string())
     }
@@ -62,6 +63,7 @@ impl std::fmt::Display for ArtifactType {
 }
 
 impl ArtifactType {
+    #[must_use]
     pub fn from_str(s: &str) -> Option<Self> {
         match s {
             "YellowPaper" => Some(ArtifactType::YellowPaper),
@@ -76,6 +78,7 @@ impl ArtifactType {
         }
     }
 
+    #[must_use]
     pub fn all() -> Vec<ArtifactType> {
         vec![
             ArtifactType::YellowPaper,
@@ -111,6 +114,7 @@ pub struct Artifact {
 }
 
 impl Artifact {
+    #[must_use]
     pub fn new(artifact_type: ArtifactType, content: serde_json::Value, phase: PhaseId) -> Self {
         let id = ArtifactId::generate();
         let now = Utc::now();
@@ -143,24 +147,28 @@ impl Artifact {
         self
     }
 
+    #[must_use]
     pub fn with_dependencies(mut self, dependencies: Vec<ArtifactId>) -> Self {
         self.dependencies = dependencies;
         self
     }
 
+    #[must_use]
     pub fn with_tags(mut self, tags: Vec<String>) -> Self {
         self.metadata.tags = tags;
         self
     }
 
+    #[must_use]
     pub fn compute_hash(content: &serde_json::Value) -> String {
         use sha3::{Digest, Sha3_256};
 
         let mut hasher = Sha3_256::new();
-        hasher.update(&serde_json::to_vec(content).unwrap_or_default());
+        hasher.update(serde_json::to_vec(content).unwrap_or_default());
         format!("{:x}", hasher.finalize())
     }
 
+    #[must_use]
     pub fn verify_integrity(&self) -> bool {
         self.hash == Self::compute_hash(&self.content)
     }
@@ -170,7 +178,7 @@ impl Artifact {
     }
 }
 
-const SCHEMA_SQL: &str = r#"
+const SCHEMA_SQL: &str = r"
 CREATE TABLE IF NOT EXISTS artifacts (
     id TEXT PRIMARY KEY,
     artifact_type TEXT NOT NULL,
@@ -198,7 +206,7 @@ CREATE TABLE IF NOT EXISTS artifact_dependencies (
 
 CREATE INDEX IF NOT EXISTS idx_deps_artifact_id ON artifact_dependencies(artifact_id);
 CREATE INDEX IF NOT EXISTS idx_deps_dependency_id ON artifact_dependencies(dependency_id);
-"#;
+";
 
 #[derive(Debug)]
 #[allow(dead_code)]
@@ -244,7 +252,7 @@ impl ConnectionPool {
 
     fn get(&self) -> Result<std::sync::MutexGuard<'_, Vec<Connection>>> {
         self.connections.lock().map_err(|e| {
-            NexusError::LockError(format!("Failed to acquire connection pool lock: {}", e))
+            NexusError::LockError(format!("Failed to acquire connection pool lock: {e}"))
         })
     }
 
@@ -291,10 +299,9 @@ impl ArtifactTracker {
 
         if let Some(parent) = db_path.parent() {
             std::fs::create_dir_all(parent).map_err(|e| {
-                NexusError::IoError(std::io::Error::new(
-                    std::io::ErrorKind::Other,
-                    format!("Failed to create database directory: {}", e),
-                ))
+                NexusError::IoError(std::io::Error::other(format!(
+                    "Failed to create database directory: {e}"
+                )))
             })?;
         }
 
@@ -310,6 +317,7 @@ impl ArtifactTracker {
         })
     }
 
+    #[must_use]
     pub fn in_memory() -> Self {
         let pool = ConnectionPool::new(PathBuf::from(":memory:"), 1).unwrap();
         pool.initialize_schema().unwrap();
@@ -328,12 +336,10 @@ impl ArtifactTracker {
         let phase = artifact.metadata.phase.0;
         let type_str = artifact.artifact_type.to_string();
 
-        let mut store = self.store.lock().map_err(|e| {
-            NexusError::IoError(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                e.to_string(),
-            ))
-        })?;
+        let mut store = self
+            .store
+            .lock()
+            .map_err(|e| NexusError::IoError(std::io::Error::other(e.to_string())))?;
 
         store
             .by_phase
@@ -351,23 +357,19 @@ impl ArtifactTracker {
     }
 
     pub fn retrieve(&self, id: &ArtifactId) -> Result<Option<Artifact>> {
-        let store = self.store.lock().map_err(|e| {
-            NexusError::IoError(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                e.to_string(),
-            ))
-        })?;
+        let store = self
+            .store
+            .lock()
+            .map_err(|e| NexusError::IoError(std::io::Error::other(e.to_string())))?;
 
         Ok(store.artifacts.get(id).cloned())
     }
 
     pub fn delete(&self, id: &ArtifactId) -> Result<bool> {
-        let mut store = self.store.lock().map_err(|e| {
-            NexusError::IoError(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                e.to_string(),
-            ))
-        })?;
+        let mut store = self
+            .store
+            .lock()
+            .map_err(|e| NexusError::IoError(std::io::Error::other(e.to_string())))?;
 
         if let Some(artifact) = store.artifacts.remove(id) {
             if let Some(ids) = store.by_phase.get_mut(&artifact.metadata.phase.0) {
@@ -384,12 +386,10 @@ impl ArtifactTracker {
     }
 
     pub fn list_by_phase(&self, phase: PhaseId) -> Result<Vec<Artifact>> {
-        let store = self.store.lock().map_err(|e| {
-            NexusError::IoError(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                e.to_string(),
-            ))
-        })?;
+        let store = self
+            .store
+            .lock()
+            .map_err(|e| NexusError::IoError(std::io::Error::other(e.to_string())))?;
 
         let ids = store.by_phase.get(&phase.0).cloned().unwrap_or_default();
         let artifacts = ids
@@ -401,12 +401,10 @@ impl ArtifactTracker {
     }
 
     pub fn list_by_type(&self, artifact_type: ArtifactType) -> Result<Vec<Artifact>> {
-        let store = self.store.lock().map_err(|e| {
-            NexusError::IoError(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                e.to_string(),
-            ))
-        })?;
+        let store = self
+            .store
+            .lock()
+            .map_err(|e| NexusError::IoError(std::io::Error::other(e.to_string())))?;
 
         let type_str = artifact_type.to_string();
         let ids = store.by_type.get(&type_str).cloned().unwrap_or_default();
@@ -448,12 +446,10 @@ impl ArtifactTracker {
     }
 
     pub fn get_dependents(&self, id: &ArtifactId) -> Result<Vec<Artifact>> {
-        let store = self.store.lock().map_err(|e| {
-            NexusError::IoError(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                e.to_string(),
-            ))
-        })?;
+        let store = self
+            .store
+            .lock()
+            .map_err(|e| NexusError::IoError(std::io::Error::other(e.to_string())))?;
 
         let dependents: Vec<Artifact> = store
             .artifacts
@@ -466,12 +462,10 @@ impl ArtifactTracker {
     }
 
     pub fn search(&self, query: &str) -> Result<Vec<Artifact>> {
-        let store = self.store.lock().map_err(|e| {
-            NexusError::IoError(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                e.to_string(),
-            ))
-        })?;
+        let store = self
+            .store
+            .lock()
+            .map_err(|e| NexusError::IoError(std::io::Error::other(e.to_string())))?;
 
         let query_lower = query.to_lowercase();
         let results: Vec<Artifact> = store
@@ -493,12 +487,10 @@ impl ArtifactTracker {
 
     pub fn update(&self, artifact: Artifact) -> Result<()> {
         let id = artifact.id.clone();
-        let mut store = self.store.lock().map_err(|e| {
-            NexusError::IoError(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                e.to_string(),
-            ))
-        })?;
+        let mut store = self
+            .store
+            .lock()
+            .map_err(|e| NexusError::IoError(std::io::Error::other(e.to_string())))?;
 
         if store.artifacts.contains_key(&id) {
             store.artifacts.insert(id, artifact);
@@ -509,32 +501,26 @@ impl ArtifactTracker {
     }
 
     pub fn count(&self) -> Result<usize> {
-        let store = self.store.lock().map_err(|e| {
-            NexusError::IoError(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                e.to_string(),
-            ))
-        })?;
+        let store = self
+            .store
+            .lock()
+            .map_err(|e| NexusError::IoError(std::io::Error::other(e.to_string())))?;
         Ok(store.artifacts.len())
     }
 
     pub fn count_by_phase(&self, phase: PhaseId) -> Result<usize> {
-        let store = self.store.lock().map_err(|e| {
-            NexusError::IoError(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                e.to_string(),
-            ))
-        })?;
-        Ok(store.by_phase.get(&phase.0).map(|v| v.len()).unwrap_or(0))
+        let store = self
+            .store
+            .lock()
+            .map_err(|e| NexusError::IoError(std::io::Error::other(e.to_string())))?;
+        Ok(store.by_phase.get(&phase.0).map_or(0, std::vec::Vec::len))
     }
 
     pub fn clear(&self) -> Result<()> {
-        let mut store = self.store.lock().map_err(|e| {
-            NexusError::IoError(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                e.to_string(),
-            ))
-        })?;
+        let mut store = self
+            .store
+            .lock()
+            .map_err(|e| NexusError::IoError(std::io::Error::other(e.to_string())))?;
         store.artifacts.clear();
         store.by_phase.clear();
         store.by_type.clear();
@@ -546,12 +532,10 @@ impl ArtifactTracker {
     }
 
     pub fn all_artifacts(&self) -> Result<Vec<Artifact>> {
-        let store = self.store.lock().map_err(|e| {
-            NexusError::IoError(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                e.to_string(),
-            ))
-        })?;
+        let store = self
+            .store
+            .lock()
+            .map_err(|e| NexusError::IoError(std::io::Error::other(e.to_string())))?;
         Ok(store.artifacts.values().cloned().collect())
     }
 }
@@ -567,6 +551,7 @@ pub struct ArtifactQuery {
 }
 
 impl ArtifactQuery {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             phase: None,
@@ -578,11 +563,13 @@ impl ArtifactQuery {
         }
     }
 
+    #[must_use]
     pub fn phase(mut self, phase: PhaseId) -> Self {
         self.phase = Some(phase);
         self
     }
 
+    #[must_use]
     pub fn artifact_type(mut self, artifact_type: ArtifactType) -> Self {
         self.artifact_type = Some(artifact_type);
         self
@@ -598,23 +585,23 @@ impl ArtifactQuery {
         self
     }
 
+    #[must_use]
     pub fn created_after(mut self, date: DateTime<Utc>) -> Self {
         self.created_after = Some(date);
         self
     }
 
+    #[must_use]
     pub fn created_before(mut self, date: DateTime<Utc>) -> Self {
         self.created_before = Some(date);
         self
     }
 
     pub fn execute(&self, tracker: &ArtifactTracker) -> Result<Vec<Artifact>> {
-        let store = tracker.store.lock().map_err(|e| {
-            NexusError::IoError(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                e.to_string(),
-            ))
-        })?;
+        let store = tracker
+            .store
+            .lock()
+            .map_err(|e| NexusError::IoError(std::io::Error::other(e.to_string())))?;
 
         let mut results: Vec<Artifact> = store
             .artifacts

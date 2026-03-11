@@ -51,6 +51,7 @@ pub struct FileListParams {
 pub struct FileTool;
 
 impl FileTool {
+    #[must_use]
     pub fn new() -> Self {
         FileTool
     }
@@ -75,8 +76,7 @@ impl FileTool {
 
         let end = params
             .limit
-            .map(|l| (start + l).min(lines.len()))
-            .unwrap_or(lines.len());
+            .map_or(lines.len(), |l| (start + l).min(lines.len()));
 
         Ok(lines[start..end].join("\n"))
     }

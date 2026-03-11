@@ -70,6 +70,7 @@ impl Compactor {
     }
 
     /// Check if session needs compaction
+    #[must_use]
     pub fn needs_compaction(&self, session: &Session) -> bool {
         // Not enough messages
         if session.messages.len() < self.config.min_messages {
@@ -108,8 +109,7 @@ impl Compactor {
 
         // Create summary message
         let summary_message = Message::system(format!(
-            "[Previous context summarized]\n\n{}\n\n[End of summary]",
-            summary
+            "[Previous context summarized]\n\n{summary}\n\n[End of summary]"
         ));
 
         // Replace old messages with summary
@@ -167,7 +167,7 @@ impl Compactor {
                     MessageRole::Tool => "Tool",
                 };
                 let content = msg.as_text().unwrap_or("[non-text content]");
-                format!("{}: {}", role, content)
+                format!("{role}: {content}")
             })
             .collect();
 

@@ -20,6 +20,7 @@ impl Default for KnowledgeGraph {
 }
 
 impl KnowledgeGraph {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             nodes: HashMap::new(),
@@ -45,6 +46,7 @@ impl KnowledgeGraph {
         self.edges.push(edge);
     }
 
+    #[must_use]
     pub fn find_by_language(&self, lang: Language) -> Vec<&ConceptNode> {
         self.language_index
             .get(&lang)
@@ -52,6 +54,7 @@ impl KnowledgeGraph {
             .unwrap_or_default()
     }
 
+    #[must_use]
     pub fn find_equivalent(&self, concept_id: &str) -> Vec<&ConceptNode> {
         let equivalents: HashSet<String> = self
             .edges
@@ -68,6 +71,7 @@ impl KnowledgeGraph {
             .collect()
     }
 
+    #[must_use]
     pub fn search(&self, query: &str, lang: Option<Language>) -> Vec<&ConceptNode> {
         let candidates: Vec<&ConceptNode> = match lang {
             Some(l) => self.find_by_language(l),
@@ -80,6 +84,7 @@ impl KnowledgeGraph {
             .collect()
     }
 
+    #[must_use]
     pub fn get_concept(&self, id: &str) -> Option<&ConceptNode> {
         self.nodes.get(id)
     }
@@ -88,10 +93,12 @@ impl KnowledgeGraph {
         self.nodes.values()
     }
 
+    #[must_use]
     pub fn get_edges(&self) -> &[ConceptEdge] {
         &self.edges
     }
 
+    #[must_use]
     pub fn find_related(&self, concept_id: &str) -> Vec<&ConceptEdge> {
         self.edges
             .iter()
@@ -99,24 +106,27 @@ impl KnowledgeGraph {
             .collect()
     }
 
+    #[must_use]
     pub fn count_nodes(&self) -> usize {
         self.nodes.len()
     }
 
+    #[must_use]
     pub fn count_edges(&self) -> usize {
         self.edges.len()
     }
 
+    #[must_use]
     pub fn languages(&self) -> Vec<Language> {
         self.language_index.keys().copied().collect()
     }
 
     pub fn export_json(&self) -> crate::Result<String> {
-        serde_json::to_string_pretty(self).map_err(|e| crate::Error::Serialization(e))
+        serde_json::to_string_pretty(self).map_err(crate::Error::Serialization)
     }
 
     pub fn import_json(json: &str) -> crate::Result<Self> {
-        serde_json::from_str(json).map_err(|e| crate::Error::Serialization(e))
+        serde_json::from_str(json).map_err(crate::Error::Serialization)
     }
 }
 

@@ -10,10 +10,12 @@ pub struct SamlClient {
 }
 
 impl SamlClient {
+    #[must_use]
     pub fn new(config: SamlConfig) -> Self {
         Self { config }
     }
 
+    #[must_use]
     pub fn get_redirect_url(&self) -> String {
         self.config.sso_url.clone()
     }

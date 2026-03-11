@@ -38,6 +38,7 @@ pub trait SandboxBackend: Send + Sync {
     fn name(&self) -> &'static str;
 }
 
+#[must_use]
 pub fn is_bwrap_available() -> bool {
     std::process::Command::new("bwrap")
         .arg("--version")
@@ -46,6 +47,7 @@ pub fn is_bwrap_available() -> bool {
         .unwrap_or(false)
 }
 
+#[must_use]
 pub fn is_sandbox_exec_available() -> bool {
     std::process::Command::new("sandbox-exec")
         .arg("-h")
@@ -55,26 +57,31 @@ pub fn is_sandbox_exec_available() -> bool {
 }
 
 /// Check if container runtime (Docker/Podman) is available
+#[must_use]
 pub fn is_container_available() -> bool {
     ContainerBackend::is_available()
 }
 
 /// Check if gVisor (runsc) is available
+#[must_use]
 pub fn is_gvisor_available() -> bool {
     GVisorBackend::is_available()
 }
 
 /// Check if Firecracker is available
+#[must_use]
 pub fn is_firecracker_available() -> bool {
     FirecrackerBackend::is_available()
 }
 
 /// Check if KVM is available (required for Firecracker)
+#[must_use]
 pub fn is_kvm_available() -> bool {
     FirecrackerBackend::is_kvm_available()
 }
 
 /// Detect the best available sandbox backend
+#[must_use]
 pub fn detect_best_backend() -> &'static str {
     #[cfg(target_os = "linux")]
     {
@@ -108,6 +115,7 @@ pub fn detect_best_backend() -> &'static str {
 }
 
 /// List all available backends
+#[must_use]
 pub fn list_available_backends() -> Vec<(&'static str, bool)> {
     vec![
         ("direct", true), // Always available

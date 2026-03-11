@@ -263,7 +263,7 @@ fn default_phase() -> String {
 /// Storage configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StorageConfig {
-    /// Path to SQLite database
+    /// Path to `SQLite` database
     #[serde(default = "default_database_path")]
     pub database_path: PathBuf,
     /// Path to vector store
@@ -295,7 +295,7 @@ pub struct LlmConfig {
     /// Anthropic provider settings
     #[serde(default)]
     pub anthropic: Option<ProviderConfig>,
-    /// OpenAI provider settings
+    /// `OpenAI` provider settings
     #[serde(default)]
     pub openai: Option<ProviderConfig>,
     /// Ollama provider settings
@@ -386,7 +386,7 @@ pub struct ProviderConfig {
     pub model: Option<String>,
     /// Environment variable name for API key
     pub api_key_env: Option<String>,
-    /// Inline API key (not recommended, use api_key_env instead)
+    /// Inline API key (not recommended, use `api_key_env` instead)
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub api_key: Option<String>,
     /// Base URL for custom endpoints
@@ -527,11 +527,13 @@ impl Config {
     }
 
     /// Get the default config path
+    #[must_use]
     pub fn default_path() -> PathBuf {
         PathBuf::from(".clawdius/config.toml")
     }
 
     /// Load configuration from default locations, or return default if not found
+    #[must_use]
     pub fn load_or_default() -> Self {
         Self::load_default().unwrap_or_default()
     }

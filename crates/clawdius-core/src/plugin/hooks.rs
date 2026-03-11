@@ -78,6 +78,7 @@ pub enum HookType {
 
 impl HookType {
     /// Get the hook name as a string
+    #[must_use]
     pub fn as_str(&self) -> &'static str {
         match self {
             HookType::OnStartup => "on_startup",
@@ -110,6 +111,7 @@ impl HookType {
     }
 
     /// Parse a hook type from a string
+    #[must_use]
     pub fn from_str(s: &str) -> Option<Self> {
         match s {
             "on_startup" => Some(HookType::OnStartup),
@@ -143,6 +145,7 @@ impl HookType {
     }
 
     /// Get all available hook types
+    #[must_use]
     pub fn all() -> &'static [HookType] {
         &[
             HookType::OnStartup,
@@ -200,6 +203,7 @@ pub struct HookContext {
 
 impl HookContext {
     /// Create a new hook context
+    #[must_use]
     pub fn new(hook_type: HookType) -> Self {
         Self {
             hook_type,
@@ -224,6 +228,7 @@ impl HookContext {
     }
 
     /// Make the event cancellable
+    #[must_use]
     pub fn cancellable(mut self) -> Self {
         self.cancellable = true;
         self
@@ -237,6 +242,7 @@ impl HookContext {
     }
 
     /// Get a data value
+    #[must_use]
     pub fn get<T: for<'de> Deserialize<'de>>(&self, key: &str) -> Option<T> {
         self.data
             .get(key)
@@ -258,6 +264,7 @@ pub struct HookSubscription {
 }
 
 impl HookSubscription {
+    #[must_use]
     pub fn new(hook_type: HookType) -> Self {
         Self {
             hook_type,
@@ -267,11 +274,13 @@ impl HookSubscription {
         }
     }
 
+    #[must_use]
     pub fn with_priority(mut self, priority: i32) -> Self {
         self.priority = priority;
         self
     }
 
+    #[must_use]
     pub fn async_execution(mut self) -> Self {
         self.async_execution = true;
         self
@@ -310,6 +319,7 @@ impl HookStats {
         self.max_time_us = self.max_time_us.max(duration_us);
     }
 
+    #[must_use]
     pub fn average_time_us(&self) -> f64 {
         if self.invocations == 0 {
             0.0

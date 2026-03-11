@@ -57,31 +57,38 @@ impl EnhancedError {
         self
     }
 
+    #[must_use]
     pub fn with_source(mut self, source: Box<dyn Error + Send + Sync>) -> Self {
         self.source = Some(source);
         self
     }
 
+    #[must_use]
     pub fn message(&self) -> &str {
         &self.message
     }
 
+    #[must_use]
     pub fn context(&self) -> Option<&str> {
         self.context.as_deref()
     }
 
+    #[must_use]
     pub fn suggestions(&self) -> &[String] {
         &self.suggestions
     }
 
+    #[must_use]
     pub fn doc_links(&self) -> &[String] {
         &self.doc_links
     }
 
+    #[must_use]
     pub fn error_code(&self) -> Option<&str> {
         self.error_code.as_deref()
     }
 
+    #[must_use]
     pub fn format_pretty(&self) -> String {
         let mut output = String::new();
 
@@ -92,7 +99,7 @@ impl EnhancedError {
         }
 
         if let Some(ctx) = &self.context {
-            output.push_str(&format!("Context: {}\n\n", ctx));
+            output.push_str(&format!("Context: {ctx}\n\n"));
         }
 
         if !self.suggestions.is_empty() {
@@ -106,13 +113,13 @@ impl EnhancedError {
         if !self.doc_links.is_empty() {
             output.push_str("Documentation:\n");
             for link in &self.doc_links {
-                output.push_str(&format!("  - {}\n", link));
+                output.push_str(&format!("  - {link}\n"));
             }
             output.push('\n');
         }
 
         if let Some(source) = &self.source {
-            output.push_str(&format!("Caused by: {}\n", source));
+            output.push_str(&format!("Caused by: {source}\n"));
         }
 
         output
@@ -137,6 +144,7 @@ impl Error for EnhancedError {
 pub struct ErrorHelpers;
 
 impl ErrorHelpers {
+    #[must_use]
     pub fn llm_api_error(provider: &str, status: u16, message: &str) -> EnhancedError {
         let suggestion = if status == 429 {
             "You've hit a rate limit. Wait a moment and try again."
@@ -146,21 +154,19 @@ impl ErrorHelpers {
             "Check the error message for specific issues."
         };
 
-        EnhancedError::new(format!("{} API request failed (HTTP {})", provider, status))
-            .with_context(format!("Calling {} LLM API", provider))
+        EnhancedError::new(format!("{provider} API request failed (HTTP {status})"))
+            .with_context(format!("Calling {provider} LLM API"))
             .with_suggestion("Check your API key is valid and has sufficient credits")
             .with_suggestion("Verify your network connection")
             .with_suggestion(suggestion)
             .with_doc_link("https://docs.anthropic.com/api/errors")
-            .with_error_code(format!("LLM_API_{}", status))
-            .with_source(Box::new(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                message.to_string(),
-            )))
+            .with_error_code(format!("LLM_API_{status}"))
+            .with_source(Box::new(std::io::Error::other(message.to_string())))
     }
 
+    #[must_use]
     pub fn file_not_found(path: &str) -> EnhancedError {
-        EnhancedError::new(format!("File not found: {}", path))
+        EnhancedError::new(format!("File not found: {path}"))
             .with_context("Attempting to read file")
             .with_suggestion("Check the file path is correct")
             .with_suggestion("Verify the file exists")
@@ -168,52 +174,52 @@ impl ErrorHelpers {
             .with_error_code("FILE_NOT_FOUND")
     }
 
+    #[must_use]
     pub fn invalid_config(field: &str, value: &str) -> EnhancedError {
-        EnhancedError::new(format!("Invalid configuration for '{}': {}", field, value))
+        EnhancedError::new(format!("Invalid configuration for '{field}': {value}"))
             .with_context("Parsing configuration file")
             .with_suggestion(format!(
-                "Check the '{}' field in .clawdius/config.toml",
-                field
+                "Check the '{field}' field in .clawdius/config.toml"
             ))
             .with_suggestion("Refer to documentation for valid values")
             .with_doc_link("https://clawdius.dev/docs/configuration")
             .with_error_code("CONFIG_INVALID")
     }
 
+    #[must_use]
     pub fn tool_execution_failed(tool: &str, error: &str) -> EnhancedError {
-        EnhancedError::new(format!("Tool '{}' execution failed", tool))
-            .with_context(format!("Executing {} tool", tool))
+        EnhancedError::new(format!("Tool '{tool}' execution failed"))
+            .with_context(format!("Executing {tool} tool"))
             .with_suggestion("Check tool parameters are valid")
             .with_suggestion("Verify required dependencies are installed")
             .with_error_code(format!("TOOL_{}_FAILED", tool.to_uppercase()))
-            .with_source(Box::new(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                error.to_string(),
-            )))
+            .with_source(Box::new(std::io::Error::other(error.to_string())))
     }
 
+    #[must_use]
     pub fn session_not_found(id: &str) -> EnhancedError {
-        EnhancedError::new(format!("Session not found: {}", id))
+        EnhancedError::new(format!("Session not found: {id}"))
             .with_context("Loading session")
             .with_suggestion("Check the session ID is correct")
             .with_suggestion("List available sessions with 'clawdius sessions'")
             .with_error_code("SESSION_NOT_FOUND")
     }
 
+    #[must_use]
     pub fn out_of_context(max_tokens: usize) -> EnhancedError {
         EnhancedError::new("Context window limit exceeded")
             .with_context("Processing conversation")
             .with_suggestion(format!(
-                "Reduce context size (current limit: {} tokens)",
-                max_tokens
+                "Reduce context size (current limit: {max_tokens} tokens)"
             ))
             .with_suggestion("Use session compaction to summarize old messages")
             .with_suggestion("Start a new session for a fresh context")
             .with_error_code("CONTEXT_OVERFLOW")
     }
 
+    #[must_use]
     pub fn sandbox_violation(command: &str) -> EnhancedError {
-        EnhancedError::new(format!("Sandbox violation: '{}' not allowed", command))
+        EnhancedError::new(format!("Sandbox violation: '{command}' not allowed"))
             .with_context("Executing shell command in sandbox")
             .with_suggestion("This command is blocked for security")
             .with_suggestion("Check .clawdius/config.toml for allowed commands")
@@ -222,67 +228,67 @@ impl ErrorHelpers {
             .with_error_code("SANDBOX_VIOLATION")
     }
 
+    #[must_use]
     pub fn api_key_missing(provider: &str, env_var: &str) -> EnhancedError {
-        EnhancedError::new(format!("API key not set for {}", provider))
+        EnhancedError::new(format!("API key not set for {provider}"))
             .with_context("Initializing LLM provider")
-            .with_suggestion(format!("Set the {} environment variable", env_var))
+            .with_suggestion(format!("Set the {env_var} environment variable"))
             .with_suggestion("Or add it to your keyring with: clawdius auth set-key <provider>")
-            .with_suggestion(format!("Example: export {}=your-api-key", env_var))
+            .with_suggestion(format!("Example: export {env_var}=your-api-key"))
             .with_doc_link("https://clawdius.dev/docs/configuration#api-keys")
             .with_error_code(format!("{}_API_KEY_MISSING", provider.to_uppercase()))
     }
 
+    #[must_use]
     pub fn unknown_provider(provider: &str, supported: &[&str]) -> EnhancedError {
-        EnhancedError::new(format!("Unknown provider: {}", provider))
+        EnhancedError::new(format!("Unknown provider: {provider}"))
             .with_context("Creating LLM provider")
             .with_suggestion(format!("Supported providers: {}", supported.join(", ")))
             .with_suggestion("Check for typos in your configuration")
             .with_error_code("UNKNOWN_PROVIDER")
     }
 
+    #[must_use]
     pub fn database_error(operation: &str, details: &str) -> EnhancedError {
-        EnhancedError::new(format!("Database error during {}", operation))
+        EnhancedError::new(format!("Database error during {operation}"))
             .with_context("Database operation")
             .with_suggestion("Check that the database file exists and is readable")
             .with_suggestion("Verify you have write permissions")
             .with_suggestion("Try running 'clawdius db repair' if the database is corrupted")
             .with_error_code("DATABASE_ERROR")
-            .with_source(Box::new(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                details.to_string(),
-            )))
+            .with_source(Box::new(std::io::Error::other(details.to_string())))
     }
 
+    #[must_use]
     pub fn timeout_error(operation: &str, duration_secs: u64) -> EnhancedError {
-        EnhancedError::new(format!("{} timed out after {}s", operation, duration_secs))
-            .with_context(format!("Waiting for {}", operation))
+        EnhancedError::new(format!("{operation} timed out after {duration_secs}s"))
+            .with_context(format!("Waiting for {operation}"))
             .with_suggestion("Try increasing the timeout in your configuration")
             .with_suggestion("Check if the operation is taking longer than expected")
             .with_suggestion("Verify network connectivity if this is a remote operation")
             .with_error_code("TIMEOUT")
     }
 
+    #[must_use]
     pub fn rate_limited(retry_after_ms: u64) -> EnhancedError {
         let retry_secs = retry_after_ms / 1000;
         EnhancedError::new("Rate limit exceeded")
             .with_context("Calling LLM API")
-            .with_suggestion(format!("Wait {} seconds before retrying", retry_secs))
+            .with_suggestion(format!("Wait {retry_secs} seconds before retrying"))
             .with_suggestion("Consider reducing request frequency")
             .with_suggestion("Check your API usage limits")
             .with_error_code("RATE_LIMITED")
     }
 
+    #[must_use]
     pub fn retry_exhausted(attempts: u32, last_error: &str) -> EnhancedError {
-        EnhancedError::new(format!("All {} retry attempts failed", attempts))
+        EnhancedError::new(format!("All {attempts} retry attempts failed"))
             .with_context("LLM API call with retry")
             .with_suggestion("Check if the service is experiencing issues")
             .with_suggestion("Verify your network connection is stable")
             .with_suggestion("Consider increasing the retry count in configuration")
             .with_error_code("RETRY_EXHAUSTED")
-            .with_source(Box::new(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                last_error.to_string(),
-            )))
+            .with_source(Box::new(std::io::Error::other(last_error.to_string())))
     }
 }
 
@@ -300,7 +306,7 @@ impl From<crate::Error> for EnhancedError {
                     } else {
                         "unknown"
                     };
-                    let env_var = format!("{}_API_KEY", provider.to_uppercase().replace(".", ""));
+                    let env_var = format!("{}_API_KEY", provider.to_uppercase().replace('.', ""));
                     ErrorHelpers::api_key_missing(provider, &env_var)
                 } else {
                     EnhancedError::new(msg.clone())
@@ -317,14 +323,13 @@ impl From<crate::Error> for EnhancedError {
             crate::Error::RateLimited { retry_after_ms } => {
                 ErrorHelpers::rate_limited(*retry_after_ms)
             }
-            crate::Error::ContextLimit { current, limit } => EnhancedError::new(format!(
-                "Context limit exceeded: {}/{} tokens",
-                current, limit
-            ))
-            .with_context("Processing conversation")
-            .with_suggestion("Use session compaction to reduce context size")
-            .with_suggestion("Start a new session")
-            .with_error_code("CONTEXT_LIMIT"),
+            crate::Error::ContextLimit { current, limit } => {
+                EnhancedError::new(format!("Context limit exceeded: {current}/{limit} tokens"))
+                    .with_context("Processing conversation")
+                    .with_suggestion("Use session compaction to reduce context size")
+                    .with_suggestion("Start a new session")
+                    .with_error_code("CONTEXT_LIMIT")
+            }
             crate::Error::ToolExecution { tool, reason } => {
                 ErrorHelpers::tool_execution_failed(tool, reason)
             }

@@ -207,9 +207,9 @@ pub fn HistoryView() -> impl IntoView {
         send_to_vscode("exportSession", serde_json::json!({ "id": session_id }));
     };
 
-    let load_session_click = load_session.clone();
-    let delete_session_click = delete_session.clone();
-    let export_session_click = export_session.clone();
+    let load_session_click = load_session;
+    let delete_session_click = delete_session;
+    let export_session_click = export_session;
 
     view! {
         <div class="history-view">

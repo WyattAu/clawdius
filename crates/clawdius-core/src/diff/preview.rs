@@ -47,6 +47,7 @@ pub struct DiffPreview {
 
 impl DiffPreview {
     /// Create a preview from file changes
+    #[must_use]
     pub fn from_changes(changes: &[FileChange]) -> Self {
         let diffs: Vec<FileDiff> = changes
             .iter()
@@ -68,11 +69,11 @@ impl DiffPreview {
         let summary = format!(
             "{} file{} changed, {} insertion{}(+), {} deletion{}(-)",
             stats.files_changed,
-            if stats.files_changed != 1 { "s" } else { "" },
+            if stats.files_changed == 1 { "" } else { "s" },
             stats.additions,
-            if stats.additions != 1 { "s" } else { "" },
+            if stats.additions == 1 { "" } else { "s" },
             stats.deletions,
-            if stats.deletions != 1 { "s" } else { "" }
+            if stats.deletions == 1 { "" } else { "s" }
         );
 
         DiffPreview {
@@ -83,6 +84,7 @@ impl DiffPreview {
     }
 
     /// Convert to markdown format
+    #[must_use]
     pub fn to_markdown(&self) -> String {
         let mut md = String::new();
 
@@ -93,7 +95,7 @@ impl DiffPreview {
             let path_str = diff.path.to_string_lossy();
             let stats = diff.stats();
 
-            md.push_str(&format!("## `{}`\n\n", path_str));
+            md.push_str(&format!("## `{path_str}`\n\n"));
             md.push_str(&format!(
                 "+{} additions, -{} deletions\n\n",
                 stats.additions, stats.deletions
@@ -130,11 +132,13 @@ impl DiffPreview {
     }
 
     /// Check if there are any changes
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.diffs.is_empty() || self.stats.files_changed == 0
     }
 
     /// Get list of changed file paths
+    #[must_use]
     pub fn changed_files(&self) -> Vec<&PathBuf> {
         self.diffs.iter().map(|d| &d.path).collect()
     }

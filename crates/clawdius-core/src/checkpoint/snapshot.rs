@@ -35,6 +35,7 @@ pub struct SnapshotManager {
 
 impl SnapshotManager {
     /// Create a new snapshot manager
+    #[must_use]
     pub fn new(snapshot_dir: PathBuf) -> Self {
         Self { snapshot_dir }
     }

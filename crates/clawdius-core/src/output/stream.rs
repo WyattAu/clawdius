@@ -189,6 +189,7 @@ impl StreamEvent {
     }
 
     /// Create a complete event
+    #[must_use]
     pub fn complete(input: usize, output: usize, duration_ms: u64) -> Self {
         Self::Complete {
             usage: TokenUsageFinal {
@@ -262,18 +263,18 @@ impl<W: Write> StreamWriter<W> {
     fn format_event_text(&self, event: &StreamEvent) -> String {
         match event {
             StreamEvent::Start { session_id, .. } => {
-                format!("Session: {}\n", session_id)
+                format!("Session: {session_id}\n")
             }
             StreamEvent::Token { content } => content.clone(),
             StreamEvent::Thinking { content } => {
-                format!("[thinking] {}\n", content)
+                format!("[thinking] {content}\n")
             }
             StreamEvent::ToolCall { name, arguments } => {
-                format!("\n🔧 Tool: {} ({})\n", name, arguments)
+                format!("\n🔧 Tool: {name} ({arguments})\n")
             }
             StreamEvent::ToolResult { name, success, .. } => {
                 let status = if *success { "✓" } else { "✗" };
-                format!("{} Tool result: {}\n", status, name)
+                format!("{status} Tool result: {name}\n")
             }
             StreamEvent::FileChange { path, change_type } => {
                 let action = match change_type {
@@ -282,14 +283,14 @@ impl<W: Write> StreamWriter<W> {
                     ChangeType::Deleted => "deleted",
                     ChangeType::Renamed => "renamed",
                 };
-                format!("📄 File {}: {}\n", action, path)
+                format!("📄 File {action}: {path}\n")
             }
             StreamEvent::Progress {
                 message,
                 current,
                 total,
             } => {
-                format!("[{}/{}] {}\n", current, total, message)
+                format!("[{current}/{total}] {message}\n")
             }
             StreamEvent::Complete { usage, duration_ms } => {
                 format!(
@@ -298,21 +299,18 @@ impl<W: Write> StreamWriter<W> {
                 )
             }
             StreamEvent::Error { message, code, .. } => {
-                format!("✗ Error ({}): {}\n", code, message)
+                format!("✗ Error ({code}): {message}\n")
             }
             StreamEvent::Checkpoint { id, description } => {
                 let desc = description.as_deref().unwrap_or("no description");
-                format!("📍 Checkpoint: {} - {}\n", id, desc)
+                format!("📍 Checkpoint: {id} - {desc}\n")
             }
             StreamEvent::ContextAdded {
                 context_type,
                 source,
                 tokens,
             } => {
-                format!(
-                    "📎 Added {} from {} ({} tokens)\n",
-                    context_type, source, tokens
-                )
+                format!("📎 Added {context_type} from {source} ({tokens} tokens)\n")
             }
         }
     }
@@ -325,11 +323,13 @@ impl<W: Write> StreamWriter<W> {
 
 impl StreamWriter<Vec<u8>> {
     /// Create a new in-memory stream writer
+    #[must_use]
     pub fn in_memory(format: OutputFormat) -> Self {
         Self::new(Vec::new(), format)
     }
 
     /// Get the written content as a string
+    #[must_use]
     pub fn into_string(self) -> String {
         String::from_utf8_lossy(&self.writer).to_string()
     }

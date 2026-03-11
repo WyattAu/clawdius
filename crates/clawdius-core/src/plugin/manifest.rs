@@ -152,7 +152,8 @@ impl PluginManifest {
         toml::to_string_pretty(self)
     }
 
-    /// Convert to PluginMetadata
+    /// Convert to `PluginMetadata`
+    #[must_use]
     pub fn to_metadata(&self) -> PluginMetadata {
         let parts: Vec<&str> = self.id.split('@').collect();
         let (name, version) = if parts.len() == 2 {

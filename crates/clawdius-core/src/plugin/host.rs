@@ -7,7 +7,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use super::api::*;
+use super::api::{HookResult, Plugin, PluginConfig, PluginId, PluginStats};
 use super::hooks::{HookContext, HookType};
 use super::manifest::PluginManifest;
 use super::marketplace::{MarketplaceClient, MarketplaceConfig};
@@ -59,11 +59,13 @@ pub struct PluginHost {
 
 impl PluginHost {
     /// Create a new plugin host
+    #[must_use]
     pub fn new() -> Self {
         Self::with_config(PluginHostConfig::default())
     }
 
     /// Create a plugin host with custom configuration
+    #[must_use]
     pub fn with_config(config: PluginHostConfig) -> Self {
         let runtime = WasmRuntime::new().expect("Failed to create WASM runtime");
         let marketplace = MarketplaceClient::new(config.marketplace.clone());
@@ -79,6 +81,7 @@ impl PluginHost {
     }
 
     /// Get the plugin registry
+    #[must_use]
     pub fn registry(&self) -> &PluginRegistry {
         &self.registry
     }
@@ -89,6 +92,7 @@ impl PluginHost {
     }
 
     /// Get the WASM runtime
+    #[must_use]
     pub fn runtime(&self) -> &Arc<WasmRuntime> {
         &self.runtime
     }
@@ -157,7 +161,7 @@ impl PluginHost {
         // Get WASM path
         let wasm_path = dir.join(&manifest.wasm);
         if !wasm_path.exists() {
-            anyhow::bail!("WASM file not found: {:?}", wasm_path);
+            anyhow::bail!("WASM file not found: {wasm_path:?}");
         }
 
         // Load into runtime
@@ -184,7 +188,7 @@ impl PluginHost {
     ) -> Result<PluginId> {
         let request = super::marketplace::InstallRequest {
             plugin: plugin_name.to_string(),
-            version: version.map(|v| v.to_string()),
+            version: version.map(std::string::ToString::to_string),
             allow_prerelease: false,
             force: false,
             skip_dependencies: false,
@@ -214,7 +218,7 @@ impl PluginHost {
         let plugin = self
             .registry
             .get(plugin_id.as_str())
-            .ok_or_else(|| anyhow::anyhow!("Plugin not found: {}", plugin_id))?;
+            .ok_or_else(|| anyhow::anyhow!("Plugin not found: {plugin_id}"))?;
 
         // Remove plugin directory
         tokio::fs::remove_dir_all(&plugin.path).await?;
@@ -282,6 +286,7 @@ impl PluginHost {
     }
 
     /// Get marketplace client
+    #[must_use]
     pub fn marketplace(&self) -> &MarketplaceClient {
         &self.marketplace
     }
@@ -317,6 +322,7 @@ pub struct PluginHostBuilder {
 }
 
 impl PluginHostBuilder {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             config: PluginHostConfig::default(),
@@ -328,11 +334,13 @@ impl PluginHostBuilder {
         self
     }
 
+    #[must_use]
     pub fn max_plugins(mut self, max: usize) -> Self {
         self.config.max_plugins = max;
         self
     }
 
+    #[must_use]
     pub fn auto_load(mut self, auto_load: bool) -> Self {
         self.config.auto_load = auto_load;
         self
@@ -343,6 +351,7 @@ impl PluginHostBuilder {
         self
     }
 
+    #[must_use]
     pub fn build(self) -> PluginHost {
         PluginHost::with_config(self.config)
     }

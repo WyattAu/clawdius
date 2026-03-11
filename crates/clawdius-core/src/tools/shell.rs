@@ -43,6 +43,7 @@ pub struct ShellTool {
 }
 
 impl ShellTool {
+    #[must_use]
     pub fn new(config: ShellSandboxConfig, project_dir: std::path::PathBuf) -> Self {
         ShellTool {
             config,

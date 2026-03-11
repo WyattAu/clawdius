@@ -63,6 +63,7 @@ impl GateContext {
         self
     }
 
+    #[must_use]
     pub fn get_metadata(&self, key: &str) -> Option<&serde_json::Value> {
         self.metadata.get(key)
     }
@@ -116,11 +117,13 @@ impl GateResult {
         }
     }
 
+    #[must_use]
     pub fn with_details(mut self, details: serde_json::Value) -> Self {
         self.details = Some(details);
         self
     }
 
+    #[must_use]
     pub fn with_severity(mut self, severity: GateSeverity) -> Self {
         self.severity = severity;
         self
@@ -134,6 +137,7 @@ pub struct GateEvaluator {
 }
 
 impl GateEvaluator {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             gates: Vec::new(),
@@ -149,22 +153,23 @@ impl GateEvaluator {
     pub fn register_exit_gate(&mut self, phase: PhaseId, gate_id: impl Into<String>) {
         self.exit_gates
             .entry(phase)
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(gate_id.into());
     }
 
     pub fn register_entry_gate(&mut self, phase: PhaseId, gate_id: impl Into<String>) {
         self.entry_gates
             .entry(phase)
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(gate_id.into());
     }
 
+    #[must_use]
     pub fn get_gate(&self, gate_id: &str) -> Option<&dyn QualityGate> {
         self.gates
             .iter()
             .find(|g| g.id() == gate_id)
-            .map(|g| g.as_ref())
+            .map(std::convert::AsRef::as_ref)
     }
 
     pub fn evaluate_all(
@@ -180,7 +185,7 @@ impl GateEvaluator {
                 let phases = g.applicable_phases();
                 phases.is_empty() || phases.contains(&phase_id)
             })
-            .map(|g| g.as_ref())
+            .map(std::convert::AsRef::as_ref)
             .collect();
 
         let mut results = Vec::new();
@@ -235,6 +240,7 @@ impl GateEvaluator {
         Ok(results)
     }
 
+    #[must_use]
     pub fn gates_for_phase(&self, phase: PhaseId) -> Vec<&dyn QualityGate> {
         self.gates
             .iter()
@@ -242,10 +248,11 @@ impl GateEvaluator {
                 let phases = g.applicable_phases();
                 phases.is_empty() || phases.contains(&phase)
             })
-            .map(|g| g.as_ref())
+            .map(std::convert::AsRef::as_ref)
             .collect()
     }
 
+    #[must_use]
     pub fn blocking_failures(results: &[GateResult]) -> Vec<&GateResult> {
         results
             .iter()
@@ -253,6 +260,7 @@ impl GateEvaluator {
             .collect()
     }
 
+    #[must_use]
     pub fn warnings(results: &[GateResult]) -> Vec<&GateResult> {
         results
             .iter()
@@ -260,10 +268,12 @@ impl GateEvaluator {
             .collect()
     }
 
+    #[must_use]
     pub fn all_passed(results: &[GateResult]) -> bool {
         results.iter().all(|r| r.passed)
     }
 
+    #[must_use]
     pub fn gate_count(&self) -> usize {
         self.gates.len()
     }
@@ -289,10 +299,10 @@ impl std::fmt::Debug for GateEvaluator {
 pub struct DomainIdentifiedGate;
 
 impl QualityGate for DomainIdentifiedGate {
-    fn id(&self) -> &str {
+    fn id(&self) -> &'static str {
         "domain_identified"
     }
-    fn description(&self) -> &str {
+    fn description(&self) -> &'static str {
         "Domain must be clearly identified"
     }
 
@@ -323,10 +333,10 @@ impl QualityGate for DomainIdentifiedGate {
 pub struct StandardsMappedGate;
 
 impl QualityGate for StandardsMappedGate {
-    fn id(&self) -> &str {
+    fn id(&self) -> &'static str {
         "standards_mapped"
     }
-    fn description(&self) -> &str {
+    fn description(&self) -> &'static str {
         "Applicable standards must be mapped"
     }
 
@@ -358,10 +368,10 @@ impl QualityGate for StandardsMappedGate {
 pub struct EnvironmentReproducibleGate;
 
 impl QualityGate for EnvironmentReproducibleGate {
-    fn id(&self) -> &str {
+    fn id(&self) -> &'static str {
         "environment_reproducible"
     }
-    fn description(&self) -> &str {
+    fn description(&self) -> &'static str {
         "Build environment must be reproducible"
     }
 
@@ -373,7 +383,7 @@ impl QualityGate for EnvironmentReproducibleGate {
         let is_reproducible = context
             .metadata
             .get("reproducible")
-            .and_then(|v| v.as_bool())
+            .and_then(serde_json::Value::as_bool)
             .unwrap_or(false);
 
         if is_reproducible {
@@ -396,10 +406,10 @@ impl QualityGate for EnvironmentReproducibleGate {
 pub struct RequirementsCompleteGate;
 
 impl QualityGate for RequirementsCompleteGate {
-    fn id(&self) -> &str {
+    fn id(&self) -> &'static str {
         "requirements_complete"
     }
-    fn description(&self) -> &str {
+    fn description(&self) -> &'static str {
         "All requirements must be documented"
     }
 
@@ -411,13 +421,13 @@ impl QualityGate for RequirementsCompleteGate {
         let req_count = context
             .metadata
             .get("requirement_count")
-            .and_then(|v| v.as_u64())
+            .and_then(serde_json::Value::as_u64)
             .unwrap_or(0);
 
         if req_count > 0 {
             Ok(GateResult::passed(
                 self.id(),
-                format!("{} requirements documented", req_count),
+                format!("{req_count} requirements documented"),
                 context.phase,
             ))
         } else {
@@ -434,10 +444,10 @@ impl QualityGate for RequirementsCompleteGate {
 pub struct YellowPaperGate;
 
 impl QualityGate for YellowPaperGate {
-    fn id(&self) -> &str {
+    fn id(&self) -> &'static str {
         "yellow_paper_complete"
     }
-    fn description(&self) -> &str {
+    fn description(&self) -> &'static str {
         "Yellow Paper must be complete with all required sections"
     }
 
@@ -468,10 +478,10 @@ impl QualityGate for YellowPaperGate {
 pub struct BluePaperGate;
 
 impl QualityGate for BluePaperGate {
-    fn id(&self) -> &str {
+    fn id(&self) -> &'static str {
         "blue_paper_complete"
     }
-    fn description(&self) -> &str {
+    fn description(&self) -> &'static str {
         "Blue Paper must be complete with all required sections"
     }
 
@@ -502,10 +512,10 @@ impl QualityGate for BluePaperGate {
 pub struct CompilationGate;
 
 impl QualityGate for CompilationGate {
-    fn id(&self) -> &str {
+    fn id(&self) -> &'static str {
         "compilation"
     }
-    fn description(&self) -> &str {
+    fn description(&self) -> &'static str {
         "Code must compile without errors"
     }
 
@@ -517,7 +527,7 @@ impl QualityGate for CompilationGate {
         let compiles = context
             .metadata
             .get("compiles")
-            .and_then(|v| v.as_bool())
+            .and_then(serde_json::Value::as_bool)
             .unwrap_or(false);
 
         if compiles {
@@ -542,16 +552,17 @@ pub struct TestCoverageGate {
 }
 
 impl TestCoverageGate {
+    #[must_use]
     pub fn new(minimum_coverage: f64) -> Self {
         Self { minimum_coverage }
     }
 }
 
 impl QualityGate for TestCoverageGate {
-    fn id(&self) -> &str {
+    fn id(&self) -> &'static str {
         "test_coverage"
     }
-    fn description(&self) -> &str {
+    fn description(&self) -> &'static str {
         "Test coverage must meet minimum threshold"
     }
 
@@ -563,7 +574,7 @@ impl QualityGate for TestCoverageGate {
         let coverage = context
             .metadata
             .get("test_coverage")
-            .and_then(|v| v.as_f64())
+            .and_then(serde_json::Value::as_f64)
             .unwrap_or(0.0);
 
         if coverage >= self.minimum_coverage {
@@ -598,10 +609,10 @@ impl QualityGate for TestCoverageGate {
 pub struct SecurityScanGate;
 
 impl QualityGate for SecurityScanGate {
-    fn id(&self) -> &str {
+    fn id(&self) -> &'static str {
         "security_scan"
     }
-    fn description(&self) -> &str {
+    fn description(&self) -> &'static str {
         "Security vulnerabilities must be addressed"
     }
 
@@ -613,7 +624,7 @@ impl QualityGate for SecurityScanGate {
         let vulnerabilities = context
             .metadata
             .get("vulnerability_count")
-            .and_then(|v| v.as_u64())
+            .and_then(serde_json::Value::as_u64)
             .unwrap_or(0);
 
         if vulnerabilities == 0 {
@@ -625,7 +636,7 @@ impl QualityGate for SecurityScanGate {
         } else {
             Ok(GateResult::failed(
                 self.id(),
-                format!("{} security vulnerabilities found", vulnerabilities),
+                format!("{vulnerabilities} security vulnerabilities found"),
                 context.phase,
             ))
         }
@@ -636,10 +647,10 @@ impl QualityGate for SecurityScanGate {
 pub struct DocumentationGate;
 
 impl QualityGate for DocumentationGate {
-    fn id(&self) -> &str {
+    fn id(&self) -> &'static str {
         "documentation"
     }
-    fn description(&self) -> &str {
+    fn description(&self) -> &'static str {
         "Documentation must be complete"
     }
 
@@ -651,7 +662,7 @@ impl QualityGate for DocumentationGate {
         let doc_complete = context
             .metadata
             .get("documentation_complete")
-            .and_then(|v| v.as_bool())
+            .and_then(serde_json::Value::as_bool)
             .unwrap_or(false);
 
         if doc_complete {
@@ -674,10 +685,10 @@ impl QualityGate for DocumentationGate {
 pub struct DeploymentReadinessGate;
 
 impl QualityGate for DeploymentReadinessGate {
-    fn id(&self) -> &str {
+    fn id(&self) -> &'static str {
         "deployment_readiness"
     }
-    fn description(&self) -> &str {
+    fn description(&self) -> &'static str {
         "System must be ready for deployment"
     }
 
@@ -689,13 +700,13 @@ impl QualityGate for DeploymentReadinessGate {
         let all_tests_pass = context
             .metadata
             .get("all_tests_pass")
-            .and_then(|v| v.as_bool())
+            .and_then(serde_json::Value::as_bool)
             .unwrap_or(false);
 
         let security_cleared = context
             .metadata
             .get("security_cleared")
-            .and_then(|v| v.as_bool())
+            .and_then(serde_json::Value::as_bool)
             .unwrap_or(false);
 
         if all_tests_pass && security_cleared {
@@ -721,6 +732,7 @@ impl QualityGate for DeploymentReadinessGate {
     }
 }
 
+#[must_use]
 pub fn default_gates() -> Vec<Box<dyn QualityGate>> {
     vec![
         Box::new(DomainIdentifiedGate),

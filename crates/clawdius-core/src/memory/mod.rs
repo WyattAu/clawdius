@@ -209,7 +209,7 @@ impl ProjectMemory {
     fn parse_instructions(content: &str) -> String {
         // Remove frontmatter if present
         let content = if content.starts_with("---") {
-            let end = content[3..].find("---").map(|i| i + 6).unwrap_or(0);
+            let end = content[3..].find("---").map_or(0, |i| i + 6);
             &content[end..]
         } else {
             content
@@ -405,8 +405,8 @@ impl ProjectMemory {
         }
 
         self.learn(MemoryEntry::Preference {
-            key: key.into(),
-            value: value.into(),
+            key,
+            value,
             learned_at: Utc::now(),
         });
     }
@@ -499,13 +499,13 @@ impl ProjectMemory {
 
         // Add metadata
         if let Some(name) = &self.metadata.project_name {
-            output.push_str(&format!("**Project:** {}\n", name));
+            output.push_str(&format!("**Project:** {name}\n"));
         }
         if let Some(lang) = &self.metadata.primary_language {
-            output.push_str(&format!("**Language:** {}\n", lang));
+            output.push_str(&format!("**Language:** {lang}\n"));
         }
         if let Some(fw) = &self.metadata.framework {
-            output.push_str(&format!("**Framework:** {}\n", fw));
+            output.push_str(&format!("**Framework:** {fw}\n"));
         }
 
         // Add learned commands
@@ -514,9 +514,9 @@ impl ProjectMemory {
             output.push_str("\n## Build Commands\n\n");
             for (cmd, desc) in &build_commands {
                 if let Some(d) = desc {
-                    output.push_str(&format!("- `{}` - {}\n", cmd, d));
+                    output.push_str(&format!("- `{cmd}` - {d}\n"));
                 } else {
-                    output.push_str(&format!("- `{}`\n", cmd));
+                    output.push_str(&format!("- `{cmd}`\n"));
                 }
             }
         }
@@ -526,9 +526,9 @@ impl ProjectMemory {
             output.push_str("\n## Test Commands\n\n");
             for (cmd, desc) in &test_commands {
                 if let Some(d) = desc {
-                    output.push_str(&format!("- `{}` - {}\n", cmd, d));
+                    output.push_str(&format!("- `{cmd}` - {d}\n"));
                 } else {
-                    output.push_str(&format!("- `{}`\n", cmd));
+                    output.push_str(&format!("- `{cmd}`\n"));
                 }
             }
         }
@@ -538,10 +538,7 @@ impl ProjectMemory {
         if !insights.is_empty() {
             output.push_str("\n## Known Issues & Solutions\n\n");
             for (issue, solution) in &insights {
-                output.push_str(&format!(
-                    "**Issue:** {}\n**Solution:** {}\n\n",
-                    issue, solution
-                ));
+                output.push_str(&format!("**Issue:** {issue}\n**Solution:** {solution}\n\n"));
             }
         }
 
@@ -561,7 +558,7 @@ impl ProjectMemory {
         if !preferences.is_empty() {
             output.push_str("\n## Preferences\n\n");
             for (key, value) in &preferences {
-                output.push_str(&format!("- {}: {}\n", key, value));
+                output.push_str(&format!("- {key}: {value}\n"));
             }
         }
 

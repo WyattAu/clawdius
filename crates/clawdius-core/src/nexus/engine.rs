@@ -7,7 +7,16 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use super::phases::*;
+use super::phases::{
+    Phase0ContextDiscovery, Phase10PerformanceEngineering, Phase11CrossPlatformCompatibility,
+    Phase12AdversarialLoop, Phase13CICDEngineering, Phase14Documentation, Phase15KnowledgeBase,
+    Phase16ExecutionGraph, Phase17SupplyMonitoring, Phase18Deployment, Phase19Operations,
+    Phase1EnvironmentMaterialization, Phase20Closure, Phase21ContinuousMonitoring,
+    Phase22KnowledgeTransfer, Phase23Archive, Phase2RequirementsEngineering,
+    Phase3EpistemologicalDiscovery, Phase4CrossLingualIntegration, Phase5SupplyChainHardening,
+    Phase6Architecture, Phase7ConcurrencyAnalysis, Phase8SecurityEngineering,
+    Phase9ResourceManagement, PhaseState,
+};
 use super::transition::TransitionEngine;
 use super::{
     default_gates, Artifact, ArtifactId, ArtifactTracker, EventBus, GateContext, GateEvaluator,
@@ -110,7 +119,7 @@ impl<S: PhaseState> NexusEngine<S> {
         let record = self
             .transition_engine
             .execute_transition_sync(from, to, metadata)
-            .map_err(|e| NexusError::TransitionFailed(e))?;
+            .map_err(NexusError::TransitionFailed)?;
 
         self.events
             .publish_sync(super::events::NexusEvent::phase_completed(
@@ -582,6 +591,7 @@ impl NexusEngine<Phase23Archive> {
         })
     }
 
+    #[must_use]
     pub fn is_complete(&self) -> bool {
         true
     }

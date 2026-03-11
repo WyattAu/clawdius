@@ -14,10 +14,12 @@ pub struct OidcClient {
 }
 
 impl OidcClient {
+    #[must_use]
     pub fn new(config: OidcConfig) -> Self {
         Self { config }
     }
 
+    #[must_use]
     pub fn get_authorization_url(&self, state: &str) -> String {
         format!(
             "{}/authorize?client_id={}&redirect_uri={}&response_type=code&state={}",

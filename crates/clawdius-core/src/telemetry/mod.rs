@@ -12,12 +12,12 @@ pub use metrics::{
 };
 
 /// Telemetry configuration
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, Default)]
 pub struct TelemetryConfig {
     /// Enable crash reporting
     #[serde(default)]
     pub crash_reporting: bool,
-    /// Sentry DSN (can also be set via SENTRY_DSN env var)
+    /// Sentry DSN (can also be set via `SENTRY_DSN` env var)
     #[serde(default)]
     pub sentry_dsn: Option<String>,
     /// Enable metrics collection
@@ -26,17 +26,6 @@ pub struct TelemetryConfig {
     /// Enable performance monitoring
     #[serde(default)]
     pub performance_monitoring: bool,
-}
-
-impl Default for TelemetryConfig {
-    fn default() -> Self {
-        Self {
-            crash_reporting: false,
-            sentry_dsn: None,
-            metrics_enabled: false,
-            performance_monitoring: false,
-        }
-    }
 }
 
 #[cfg(test)]

@@ -137,7 +137,7 @@ impl ContextCompactor {
     /// Create a new context compactor with configuration
     pub fn new(config: ContextCompactorConfig) -> Result<Self> {
         let tokenizer = tiktoken_rs::cl100k_base()
-            .map_err(|e| crate::Error::Config(format!("Failed to initialize tokenizer: {}", e)))?;
+            .map_err(|e| crate::Error::Config(format!("Failed to initialize tokenizer: {e}")))?;
 
         Ok(Self { config, tokenizer })
     }
@@ -161,17 +161,20 @@ impl ContextCompactor {
     }
 
     /// Check if compaction is needed
+    #[must_use]
     pub fn should_compact(&self, current_tokens: usize) -> bool {
         let threshold_tokens = (self.config.max_tokens as f32 * self.config.threshold) as usize;
         current_tokens >= threshold_tokens
     }
 
     /// Estimate token count for text
+    #[must_use]
     pub fn estimate_tokens(&self, text: &str) -> usize {
         self.tokenizer.encode_with_special_tokens(text).len()
     }
 
     /// Estimate token count for a context item
+    #[must_use]
     pub fn estimate_item_tokens(&self, item: &ContextItem) -> usize {
         let text = item.to_formatted_string();
         self.estimate_tokens(&text)
@@ -270,17 +273,17 @@ impl ContextCompactor {
         for item in items {
             match item {
                 ContextItem::File { path, .. } => {
-                    summary_parts.push(format!("- File: {}", path));
+                    summary_parts.push(format!("- File: {path}"));
                 }
                 ContextItem::Folder { path, files } => {
                     summary_parts.push(format!("- Folder: {} ({} files)", path, files.len()));
                 }
                 ContextItem::Url { url, title, .. } => {
                     let title_str = title.as_deref().unwrap_or("Untitled");
-                    summary_parts.push(format!("- URL: {} ({})", url, title_str));
+                    summary_parts.push(format!("- URL: {url} ({title_str})"));
                 }
                 ContextItem::Symbol { name, location, .. } => {
-                    summary_parts.push(format!("- Symbol: {} @ {}", name, location));
+                    summary_parts.push(format!("- Symbol: {name} @ {location}"));
                 }
                 ContextItem::Search { query, results } => {
                     summary_parts.push(format!(
@@ -291,7 +294,7 @@ impl ContextCompactor {
                 }
                 ContextItem::GitDiff { staged, .. } => {
                     let label = if *staged { "staged" } else { "unstaged" };
-                    summary_parts.push(format!("- Git diff ({})", label));
+                    summary_parts.push(format!("- Git diff ({label})"));
                 }
                 ContextItem::GitLog { commits } => {
                     summary_parts.push(format!("- Git log ({} commits)", commits.len()));
@@ -312,11 +315,13 @@ impl ContextCompactor {
     }
 
     /// Get the maximum token limit
+    #[must_use]
     pub fn max_tokens(&self) -> usize {
         self.config.max_tokens
     }
 
     /// Get the threshold percentage
+    #[must_use]
     pub fn threshold(&self) -> f32 {
         self.config.threshold
     }
@@ -329,6 +334,7 @@ impl ContextCompactor {
 
 impl ProviderTokenLimits {
     /// Get the token limit for a specific model
+    #[must_use]
     pub fn get_limit(&self, model: &str) -> usize {
         let model_lower = model.to_lowercase();
 

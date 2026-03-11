@@ -9,7 +9,7 @@ use std::path::Path;
 
 const SCHEMA_VERSION: i32 = 1;
 
-const SCHEMA_SQL: &str = r#"
+const SCHEMA_SQL: &str = r"
     -- Files table
     CREATE TABLE IF NOT EXISTS files (
         id INTEGER PRIMARY KEY,
@@ -69,7 +69,7 @@ const SCHEMA_SQL: &str = r#"
     CREATE INDEX IF NOT EXISTS idx_relationships_from ON relationships(from_symbol);
     CREATE INDEX IF NOT EXISTS idx_relationships_to ON relationships(to_symbol);
     CREATE INDEX IF NOT EXISTS idx_relationships_type ON relationships(relationship_type);
-"#;
+";
 
 pub struct GraphStore {
     conn: Connection,
@@ -83,8 +83,8 @@ impl GraphStore {
             Connection::open(path)?
         };
 
-        conn.pragma_update(None, "journal_mode", &"WAL")?;
-        conn.pragma_update(None, "foreign_keys", &"ON")?;
+        conn.pragma_update(None, "journal_mode", "WAL")?;
+        conn.pragma_update(None, "foreign_keys", "ON")?;
 
         let store = Self { conn };
         store.initialize_schema()?;
@@ -372,7 +372,7 @@ impl GraphStore {
     }
 
     pub fn search_symbols(&self, query: &str) -> Result<Vec<Symbol>> {
-        let pattern = format!("%{}%", query);
+        let pattern = format!("%{query}%");
         let mut stmt = self.conn.prepare(
             "SELECT id, file_id, name, kind, signature, doc_comment, start_line, end_line, start_col, end_col
              FROM symbols WHERE name LIKE ?1 OR signature LIKE ?1 OR doc_comment LIKE ?1"

@@ -11,10 +11,12 @@ pub struct BubblewrapBackend {
 }
 
 impl BubblewrapBackend {
+    #[must_use]
     pub fn new(config: SandboxConfig) -> Self {
         Self { config }
     }
 
+    #[must_use]
     pub fn is_available() -> bool {
         Command::new("bwrap")
             .arg("--version")

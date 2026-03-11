@@ -63,6 +63,7 @@ impl EditorConfig {
     ///
     /// Checks $EDITOR first, then $VISUAL, then attempts to find common editors
     /// in PATH, finally falling back to platform defaults.
+    #[must_use]
     pub fn detect_editor() -> String {
         env::var("EDITOR")
             .or_else(|_| env::var("VISUAL"))
@@ -123,6 +124,7 @@ impl EditorConfig {
     }
 
     /// Add arguments to the editor command
+    #[must_use]
     pub fn with_args(mut self, args: Vec<String>) -> Self {
         self.args = args;
         self
@@ -143,21 +145,25 @@ impl Default for ExternalEditor {
 
 impl ExternalEditor {
     /// Create new external editor with configuration
+    #[must_use]
     pub fn new(config: EditorConfig) -> Self {
         Self { config }
     }
 
     /// Create with default config
+    #[must_use]
     pub fn default_editor() -> Self {
         Self::default()
     }
 
     /// Get the configured editor command
+    #[must_use]
     pub fn editor(&self) -> &str {
         &self.config.command
     }
 
     /// Check if the configured editor exists in PATH
+    #[must_use]
     pub fn editor_exists(&self) -> bool {
         EditorConfig::command_exists(&self.config.command)
     }
@@ -180,7 +186,7 @@ impl ExternalEditor {
         initial_content: &str,
         extension: &str,
     ) -> Result<String> {
-        let temp_file = NamedTempFile::with_suffix(format!(".{}", extension)).map_err(Error::Io)?;
+        let temp_file = NamedTempFile::with_suffix(format!(".{extension}")).map_err(Error::Io)?;
 
         let temp_path = temp_file.path();
 
@@ -200,7 +206,7 @@ impl ExternalEditor {
         if !status.success() {
             return Err(Error::ToolExecution {
                 tool: "editor".to_string(),
-                reason: format!("Editor exited with status: {}", status),
+                reason: format!("Editor exited with status: {status}"),
             });
         }
 
@@ -268,7 +274,7 @@ impl ExternalEditor {
         if !status.success() {
             return Err(Error::ToolExecution {
                 tool: "editor".to_string(),
-                reason: format!("Editor exited with status: {}", status),
+                reason: format!("Editor exited with status: {status}"),
             });
         }
 

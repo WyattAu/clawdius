@@ -19,6 +19,7 @@ impl ContextAggregator {
         }
     }
 
+    #[must_use]
     pub fn with_max_tokens(mut self, max_tokens: usize) -> Self {
         self.max_context_tokens = max_tokens;
         self
@@ -46,10 +47,12 @@ impl ContextAggregator {
         Ok(context)
     }
 
+    #[must_use]
     pub fn max_context_tokens(&self) -> usize {
         self.max_context_tokens
     }
 
+    #[must_use]
     pub fn graph_store(&self) -> &GraphStore {
         &self.graph_store
     }
@@ -62,14 +65,17 @@ pub struct AggregatedContext {
 }
 
 impl AggregatedContext {
+    #[must_use]
     pub fn total_symbols(&self) -> usize {
         self.relevant_symbols.len() + self.current_file_symbols.len()
     }
 
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.relevant_symbols.is_empty() && self.current_file_symbols.is_empty()
     }
 
+    #[must_use]
     pub fn all_symbols(&self) -> Vec<&Symbol> {
         let mut symbols: Vec<&Symbol> = self.relevant_symbols.iter().collect();
         for sym in &self.current_file_symbols {

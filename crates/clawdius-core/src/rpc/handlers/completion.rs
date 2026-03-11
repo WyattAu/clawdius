@@ -45,6 +45,7 @@ pub struct CompletionHandler {
 }
 
 impl CompletionHandler {
+    #[must_use]
     pub fn new() -> Self {
         let cache_size = NonZeroUsize::new(100).unwrap();
         Self {
@@ -77,9 +78,8 @@ impl CompletionHandler {
         if let Some(entry) = cache.get(key) {
             if entry.timestamp.elapsed() < self.cache_ttl {
                 return Some(entry.completion.clone());
-            } else {
-                cache.pop(key);
             }
+            cache.pop(key);
         }
         None
     }
@@ -137,7 +137,7 @@ impl Handler for CompletionHandler {
         let completion_req: CompletionRequest = match serde_json::from_value(params) {
             Ok(r) => r,
             Err(e) => {
-                return Response::invalid_params(request.id, format!("Invalid parameters: {}", e))
+                return Response::invalid_params(request.id, format!("Invalid parameters: {e}"))
             }
         };
 
@@ -215,12 +215,12 @@ impl CompletionHandler {
             " {\n    // Variants\n}".to_string()
         } else if line.starts_with("//") {
             // Continue comment
-            "".to_string()
+            String::new()
         } else if line.contains("todo!") {
             // Already has todo, don't add more
-            "".to_string()
+            String::new()
         } else {
-            "".to_string()
+            String::new()
         }
     }
 
@@ -231,10 +231,10 @@ impl CompletionHandler {
             "\n    \"\"\"TODO: Add class docstring\"\"\"\n    pass\n".to_string()
         } else if line.starts_with("async def ") && line.contains(':') {
             "\n    \"\"\"TODO: Add async docstring\"\"\"\n    pass\n".to_string()
-        } else if line.starts_with("#") {
-            "".to_string()
+        } else if line.starts_with('#') {
+            String::new()
         } else {
-            "".to_string()
+            String::new()
         }
     }
 
@@ -248,9 +248,9 @@ impl CompletionHandler {
         } else if line.starts_with("class ") && line.contains('{') {
             "\n  constructor() {\n    // TODO: Initialize\n  }\n".to_string()
         } else if line.starts_with("//") {
-            "".to_string()
+            String::new()
         } else {
-            "".to_string()
+            String::new()
         }
     }
 
@@ -260,17 +260,17 @@ impl CompletionHandler {
         } else if line.starts_with("type ") && line.contains("struct") {
             " {\n\t// Fields\n}".to_string()
         } else if line.starts_with("//") {
-            "".to_string()
+            String::new()
         } else {
-            "".to_string()
+            String::new()
         }
     }
 
     fn generic_completion(&self, line: &str, _lines: &[&str]) -> String {
         if line.trim().is_empty() {
-            "".to_string()
+            String::new()
         } else {
-            "".to_string()
+            String::new()
         }
     }
 
@@ -278,14 +278,13 @@ impl CompletionHandler {
         let language = self.normalize_language(&req.language);
 
         let system_prompt = format!(
-            "You are an expert code completion AI. Complete the following {} code.\n\
+            "You are an expert code completion AI. Complete the following {language} code.\n\
             Rules:\n\
             1. Only return the completion, not the entire code\n\
             2. Do not include any explanations or comments unless they are part of the code\n\
             3. Continue from where the cursor is positioned\n\
             4. Keep completions concise and relevant (max 5-10 lines)\n\
-            5. Match the existing code style and indentation",
-            language
+            5. Match the existing code style and indentation"
         );
 
         let mut user_content = String::new();

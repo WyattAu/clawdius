@@ -33,7 +33,7 @@ use crate::error::{Error, Result};
 /// A parsed mention from text
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Mention {
-    /// @file:path - Add file contents
+    /// @<file:path> - Add file contents
     File {
         /// File path
         path: PathBuf,
@@ -88,6 +88,7 @@ pub enum Mention {
 
 impl Mention {
     /// Parse @mentions from text
+    #[must_use]
     pub fn parse(text: &str) -> Vec<(usize, usize, Mention)> {
         let mut mentions = Vec::new();
 
@@ -220,6 +221,7 @@ impl MentionParser {
     }
 
     /// Parse mentions from text
+    #[must_use]
     pub fn parse(&self, text: &str) -> Vec<Mention> {
         Mention::parse(text)
             .into_iter()
@@ -228,6 +230,7 @@ impl MentionParser {
     }
 
     /// Get the working directory
+    #[must_use]
     pub fn working_dir(&self) -> &Path {
         &self.working_dir
     }
@@ -282,12 +285,12 @@ impl MentionResolver {
 
         let content = tokio::fs::read_to_string(&full_path)
             .await
-            .map_err(|e| Error::NotFound(format!("File {:?}: {}", path, e)))?;
+            .map_err(|e| Error::NotFound(format!("File {path:?}: {e}")))?;
 
         let language = path
             .extension()
             .and_then(|ext| ext.to_str())
-            .map(|s| s.to_string());
+            .map(std::string::ToString::to_string);
 
         Ok(ContextItem::File {
             path: path.display().to_string(),
@@ -301,7 +304,7 @@ impl MentionResolver {
 
         let mut entries = tokio::fs::read_dir(&full_path)
             .await
-            .map_err(|e| Error::NotFound(format!("Folder {:?}: {}", path, e)))?;
+            .map_err(|e| Error::NotFound(format!("Folder {path:?}: {e}")))?;
 
         let mut files = Vec::new();
         while let Some(entry) = entries.next_entry().await? {
@@ -324,12 +327,12 @@ impl MentionResolver {
         // Fetch URL and convert to markdown
         let response = reqwest::get(url)
             .await
-            .map_err(|e| Error::Context(format!("Failed to fetch URL: {}", e)))?;
+            .map_err(|e| Error::Context(format!("Failed to fetch URL: {e}")))?;
 
         let html = response
             .text()
             .await
-            .map_err(|e| Error::Context(format!("Failed to read response: {}", e)))?;
+            .map_err(|e| Error::Context(format!("Failed to read response: {e}")))?;
 
         // Simple HTML to markdown conversion
         // In production, use a proper HTML-to-markdown library
@@ -371,7 +374,7 @@ impl MentionResolver {
             .current_dir(&self.parser.working_dir)
             .output()
             .await
-            .map_err(|e| Error::Context(format!("Git diff failed: {}", e)))?;
+            .map_err(|e| Error::Context(format!("Git diff failed: {e}")))?;
 
         let diff = String::from_utf8_lossy(&output.stdout).to_string();
 
@@ -380,15 +383,11 @@ impl MentionResolver {
 
     async fn resolve_git_log(&self, count: usize) -> Result<ContextItem> {
         let output = tokio::process::Command::new("git")
-            .args([
-                "log",
-                &format!("-{}", count),
-                "--pretty=format:%H|%an|%s|%ci",
-            ])
+            .args(["log", &format!("-{count}"), "--pretty=format:%H|%an|%s|%ci"])
             .current_dir(&self.parser.working_dir)
             .output()
             .await
-            .map_err(|e| Error::Context(format!("Git log failed: {}", e)))?;
+            .map_err(|e| Error::Context(format!("Git log failed: {e}")))?;
 
         let log = String::from_utf8_lossy(&output.stdout);
         let commits: Vec<CommitInfo> = log

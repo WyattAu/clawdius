@@ -1,6 +1,6 @@
 //! WASM Brain Runtime implementation
 
-use wasmtime::*;
+use wasmtime::{Caller, Config, Engine, Linker, Module, Store};
 
 use crate::{Error, Result};
 
@@ -24,6 +24,7 @@ pub struct HostState {
 }
 
 impl HostState {
+    #[must_use]
     pub fn new(_fuel_limit: u64) -> Self {
         Self { fuel_used: 0 }
     }
@@ -87,7 +88,7 @@ impl BrainRuntime {
 
         let alloc_func = instance
             .get_typed_func::<i32, i32>(&mut store, "alloc")
-            .map_err(|e| Error::Brain(format!("'alloc' function not found: {}", e)))?;
+            .map_err(|e| Error::Brain(format!("'alloc' function not found: {e}")))?;
 
         let input_bytes = input.as_bytes();
         let input_ptr = alloc_func
@@ -96,11 +97,11 @@ impl BrainRuntime {
 
         memory
             .write(&mut store, input_ptr as usize, input_bytes)
-            .map_err(|e| Error::Brain(format!("Failed to write to memory: {}", e)))?;
+            .map_err(|e| Error::Brain(format!("Failed to write to memory: {e}")))?;
 
         let run = instance
             .get_typed_func::<(i32, i32), i32>(&mut store, "run")
-            .map_err(|e| Error::Brain(format!("'run' function not found: {}", e)))?;
+            .map_err(|e| Error::Brain(format!("'run' function not found: {e}")))?;
 
         let result_ptr = run
             .call(&mut store, (input_ptr, input_bytes.len() as i32))
@@ -109,16 +110,16 @@ impl BrainRuntime {
         let mut len_bytes = [0u8; 4];
         memory
             .read(&mut store, result_ptr as usize, &mut len_bytes)
-            .map_err(|e| Error::Brain(format!("Failed to read length: {}", e)))?;
+            .map_err(|e| Error::Brain(format!("Failed to read length: {e}")))?;
         let result_len = i32::from_le_bytes(len_bytes) as usize;
 
         let mut output_bytes = vec![0u8; result_len];
         memory
             .read(&mut store, (result_ptr + 4) as usize, &mut output_bytes)
-            .map_err(|e| Error::Brain(format!("Failed to read output: {}", e)))?;
+            .map_err(|e| Error::Brain(format!("Failed to read output: {e}")))?;
 
         String::from_utf8(output_bytes)
-            .map_err(|e| Error::Brain(format!("Invalid UTF-8 output: {}", e)))
+            .map_err(|e| Error::Brain(format!("Invalid UTF-8 output: {e}")))
     }
 
     pub fn execute_rpc(
@@ -129,9 +130,10 @@ impl BrainRuntime {
         let input = serde_json::to_string(&request)?;
         let output = self.execute(module, &input)?;
         serde_json::from_str(&output)
-            .map_err(|e| Error::Brain(format!("Failed to parse response: {}", e)))
+            .map_err(|e| Error::Brain(format!("Failed to parse response: {e}")))
     }
 
+    #[must_use]
     pub fn fuel_limit(&self) -> u64 {
         self.fuel_limit
     }

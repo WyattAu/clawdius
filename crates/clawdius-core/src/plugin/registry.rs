@@ -29,6 +29,7 @@ pub struct PluginRegistry {
 
 impl PluginRegistry {
     /// Create a new plugin registry
+    #[must_use]
     pub fn new() -> Self {
         Self {
             plugins: HashMap::new(),
@@ -44,7 +45,7 @@ impl PluginRegistry {
 
         // Check for conflicts
         if self.plugins.contains_key(&id) {
-            anyhow::bail!("Plugin already registered: {}", id);
+            anyhow::bail!("Plugin already registered: {id}");
         }
 
         // Build dependency index
@@ -70,31 +71,36 @@ impl PluginRegistry {
             self.dependencies.remove(id);
             Ok(())
         } else {
-            anyhow::bail!("Plugin not found: {}", id)
+            anyhow::bail!("Plugin not found: {id}")
         }
     }
 
     /// Get a plugin by ID
+    #[must_use]
     pub fn get(&self, id: &str) -> Option<&Plugin> {
         self.plugins.get(id)
     }
 
     /// Get a plugin by name
+    #[must_use]
     pub fn get_by_name(&self, name: &str) -> Option<&Plugin> {
         self.by_name.get(name).and_then(|id| self.plugins.get(id))
     }
 
     /// List all plugins
+    #[must_use]
     pub fn list(&self) -> Vec<&Plugin> {
         self.plugins.values().collect()
     }
 
     /// List enabled plugins
+    #[must_use]
     pub fn list_enabled(&self) -> Vec<&Plugin> {
         self.plugins.values().filter(|p| p.enabled).collect()
     }
 
     /// List plugins by state
+    #[must_use]
     pub fn list_by_state(&self, state: PluginState) -> Vec<&Plugin> {
         // Note: This would need runtime state tracking
         // For now, just return enabled/disabled based on state
@@ -115,21 +121,24 @@ impl PluginRegistry {
             plugin.enabled = enabled;
             Ok(())
         } else {
-            anyhow::bail!("Plugin not found: {}", id)
+            anyhow::bail!("Plugin not found: {id}")
         }
     }
 
     /// Check if a plugin is enabled
+    #[must_use]
     pub fn is_enabled(&self, id: &str) -> bool {
-        self.plugins.get(id).map(|p| p.enabled).unwrap_or(false)
+        self.plugins.get(id).is_some_and(|p| p.enabled)
     }
 
     /// Get plugin dependencies
+    #[must_use]
     pub fn get_dependencies(&self, id: &str) -> Option<&Vec<String>> {
         self.dependencies.get(id)
     }
 
     /// Get plugins that depend on a given plugin
+    #[must_use]
     pub fn get_dependents(&self, id: &str) -> Vec<&Plugin> {
         self.plugins
             .values()
@@ -165,16 +174,19 @@ impl PluginRegistry {
     }
 
     /// Get plugin count
+    #[must_use]
     pub fn count(&self) -> usize {
         self.plugins.len()
     }
 
     /// Get enabled plugin count
+    #[must_use]
     pub fn enabled_count(&self) -> usize {
         self.plugins.values().filter(|p| p.enabled).count()
     }
 
     /// Find plugins by keyword
+    #[must_use]
     pub fn find_by_keyword(&self, keyword: &str) -> Vec<&Plugin> {
         let keyword_lower = keyword.to_lowercase();
         self.plugins
@@ -194,6 +206,7 @@ impl PluginRegistry {
     }
 
     /// Find plugins by author
+    #[must_use]
     pub fn find_by_author(&self, author: &str) -> Vec<&Plugin> {
         self.plugins
             .values()

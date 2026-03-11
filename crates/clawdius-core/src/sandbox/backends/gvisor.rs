@@ -72,6 +72,7 @@ pub struct GVisorBackend {
 
 impl GVisorBackend {
     /// Create a new gVisor backend
+    #[must_use]
     pub fn new(config: GVisorConfig) -> Self {
         Self {
             config,
@@ -80,11 +81,13 @@ impl GVisorBackend {
     }
 
     /// Create with default configuration
+    #[must_use]
     pub fn with_defaults() -> Self {
         Self::new(GVisorConfig::default())
     }
 
     /// Check if gVisor (runsc) is available
+    #[must_use]
     pub fn is_available() -> bool {
         std::process::Command::new("runsc")
             .arg("--version")
@@ -176,7 +179,7 @@ impl GVisorBackend {
         // Environment variables
         for (key, value) in &self.config.env {
             cmd.push("--env".to_string());
-            cmd.push(format!("{}={}", key, value));
+            cmd.push(format!("{key}={value}"));
         }
 
         // Image (use minimal alpine)
@@ -202,7 +205,7 @@ impl GVisorBackend {
             .current_dir(cwd)
             .output()
             .await
-            .map_err(|e| Error::Sandbox(format!("Failed to execute gVisor: {}", e)))?;
+            .map_err(|e| Error::Sandbox(format!("Failed to execute gVisor: {e}")))?;
 
         // Cleanup container
         let _ = tokio::process::Command::new("runsc")
@@ -219,7 +222,7 @@ impl GVisorBackend {
             .args(["list", "--format", "{{.Name}}\t{{.Status}}"])
             .output()
             .await
-            .map_err(|e| Error::Sandbox(format!("Failed to list containers: {}", e)))?;
+            .map_err(|e| Error::Sandbox(format!("Failed to list containers: {e}")))?;
 
         let stdout = String::from_utf8_lossy(&output.stdout);
         let containers = stdout
@@ -246,13 +249,12 @@ impl GVisorBackend {
             .args(["kill", name])
             .output()
             .await
-            .map_err(|e| Error::Sandbox(format!("Failed to kill container: {}", e)))?;
+            .map_err(|e| Error::Sandbox(format!("Failed to kill container: {e}")))?;
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
             return Err(Error::Sandbox(format!(
-                "Failed to kill container: {}",
-                stderr
+                "Failed to kill container: {stderr}"
             )));
         }
 
@@ -265,13 +267,12 @@ impl GVisorBackend {
             .args(["delete", "--force", name])
             .output()
             .await
-            .map_err(|e| Error::Sandbox(format!("Failed to delete container: {}", e)))?;
+            .map_err(|e| Error::Sandbox(format!("Failed to delete container: {e}")))?;
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
             return Err(Error::Sandbox(format!(
-                "Failed to delete container: {}",
-                stderr
+                "Failed to delete container: {stderr}"
             )));
         }
 
@@ -311,7 +312,7 @@ impl SandboxBackend for GVisorBackend {
             .args(&cmd_args)
             .current_dir(cwd)
             .output()
-            .map_err(|e| Error::Sandbox(format!("Failed to execute gVisor: {}", e)))?;
+            .map_err(|e| Error::Sandbox(format!("Failed to execute gVisor: {e}")))?;
 
         // Cleanup
         let _ = std::process::Command::new("runsc")

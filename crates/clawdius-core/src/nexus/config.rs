@@ -10,7 +10,7 @@ use super::{NexusError, Result};
 
 static GLOBAL_CONFIG: OnceLock<NexusConfig> = OnceLock::new();
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct NexusConfig {
     #[serde(default)]
     pub database: DatabaseConfig,
@@ -24,19 +24,6 @@ pub struct NexusConfig {
     pub logging: LoggingConfig,
     #[serde(default)]
     pub events: EventsConfig,
-}
-
-impl Default for NexusConfig {
-    fn default() -> Self {
-        Self {
-            database: DatabaseConfig::default(),
-            cache: CacheConfig::default(),
-            metrics: MetricsConfig::default(),
-            recovery: RecoveryConfig::default(),
-            logging: LoggingConfig::default(),
-            events: EventsConfig::default(),
-        }
-    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -243,10 +230,10 @@ impl Default for EventsConfig {
 
 impl NexusConfig {
     pub fn load(path: &Path) -> Result<Self> {
-        let content = std::fs::read_to_string(path).map_err(|e| NexusError::IoError(e))?;
+        let content = std::fs::read_to_string(path).map_err(NexusError::IoError)?;
 
         let mut config: NexusConfig = toml::from_str(&content)
-            .map_err(|e| NexusError::ConfigError(format!("Failed to parse config: {}", e)))?;
+            .map_err(|e| NexusError::ConfigError(format!("Failed to parse config: {e}")))?;
 
         config.apply_env_overrides();
         config.validate()?;
@@ -254,12 +241,13 @@ impl NexusConfig {
         Ok(config)
     }
 
+    #[must_use]
     pub fn load_or_default(path: &Path) -> Self {
         Self::load(path).unwrap_or_default()
     }
 
     pub fn global() -> &'static NexusConfig {
-        GLOBAL_CONFIG.get_or_init(|| NexusConfig::default())
+        GLOBAL_CONFIG.get_or_init(NexusConfig::default)
     }
 
     pub fn set_global(config: NexusConfig) {
@@ -324,7 +312,7 @@ impl NexusConfig {
 
     pub fn to_toml(&self) -> Result<String> {
         toml::to_string_pretty(self)
-            .map_err(|e| NexusError::ConfigError(format!("Failed to serialize config: {}", e)))
+            .map_err(|e| NexusError::ConfigError(format!("Failed to serialize config: {e}")))
     }
 }
 
@@ -334,6 +322,7 @@ pub struct ConfigBuilder {
 }
 
 impl ConfigBuilder {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             config: NexusConfig::default(),
@@ -345,21 +334,25 @@ impl ConfigBuilder {
         self
     }
 
+    #[must_use]
     pub fn pool_size(mut self, size: usize) -> Self {
         self.config.database.pool_size = size;
         self
     }
 
+    #[must_use]
     pub fn cache_size(mut self, size: usize) -> Self {
         self.config.cache.max_entries = size;
         self
     }
 
+    #[must_use]
     pub fn cache_enabled(mut self, enabled: bool) -> Self {
         self.config.cache.enabled = enabled;
         self
     }
 
+    #[must_use]
     pub fn metrics_enabled(mut self, enabled: bool) -> Self {
         self.config.metrics.enabled = enabled;
         self
@@ -370,6 +363,7 @@ impl ConfigBuilder {
         self
     }
 
+    #[must_use]
     pub fn max_retries(mut self, retries: usize) -> Self {
         self.config.recovery.max_retries = retries;
         self

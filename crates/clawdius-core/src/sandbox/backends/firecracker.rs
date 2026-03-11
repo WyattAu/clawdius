@@ -147,6 +147,7 @@ struct RunningVm {
 
 impl FirecrackerBackend {
     /// Create a new Firecracker backend
+    #[must_use]
     pub fn new(config: FirecrackerConfig) -> Self {
         Self {
             config,
@@ -156,11 +157,13 @@ impl FirecrackerBackend {
     }
 
     /// Create with default configuration
+    #[must_use]
     pub fn with_defaults() -> Self {
         Self::new(FirecrackerConfig::default())
     }
 
     /// Check if Firecracker is available
+    #[must_use]
     pub fn is_available() -> bool {
         std::process::Command::new("firecracker")
             .arg("--version")
@@ -170,6 +173,7 @@ impl FirecrackerBackend {
     }
 
     /// Check if KVM is available
+    #[must_use]
     pub fn is_kvm_available() -> bool {
         Path::new("/dev/kvm").exists()
     }
@@ -212,7 +216,7 @@ impl FirecrackerBackend {
         Ok(socket_path)
     }
 
-    async fn start_with_jailer(&self, vm_id: &str, socket_path: &Path) -> Result<()> {
+    async fn start_with_jailer(&self, vm_id: &str, _socket_path: &Path) -> Result<()> {
         let mut cmd = tokio::process::Command::new("jailer");
 
         cmd.arg("--id")
@@ -238,7 +242,7 @@ impl FirecrackerBackend {
         let status = cmd
             .status()
             .await
-            .map_err(|e| Error::Sandbox(format!("Failed to start jailer: {}", e)))?;
+            .map_err(|e| Error::Sandbox(format!("Failed to start jailer: {e}")))?;
 
         if !status.success() {
             return Err(Error::Sandbox("Jailer failed to start".to_string()));
@@ -258,7 +262,7 @@ impl FirecrackerBackend {
 
         let _child = cmd
             .spawn()
-            .map_err(|e| Error::Sandbox(format!("Failed to start firecracker: {}", e)))?;
+            .map_err(|e| Error::Sandbox(format!("Failed to start firecracker: {e}")))?;
 
         // Wait for socket to be available
         for _ in 0..50 {

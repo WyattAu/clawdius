@@ -13,6 +13,7 @@ pub struct PluginLoader {
 
 impl PluginLoader {
     /// Create a new plugin loader
+    #[must_use]
     pub fn new() -> Self {
         Self {
             base_dir: PathBuf::from(super::host::PLUGINS_DIR),
@@ -31,7 +32,7 @@ impl PluginLoader {
         let manifest_path = dir.join(MANIFEST_FILE);
 
         if !manifest_path.exists() {
-            anyhow::bail!("Manifest not found: {:?}", manifest_path);
+            anyhow::bail!("Manifest not found: {manifest_path:?}");
         }
 
         let content =
@@ -63,21 +64,21 @@ impl PluginLoader {
                 result.manifest = Some(manifest);
             }
             Err(e) => {
-                result.add_error(format!("Manifest error: {}", e));
+                result.add_error(format!("Manifest error: {e}"));
             }
         }
 
         // Check WASM file
         if let Some(ref manifest) = result.manifest {
             let wasm_path = dir.join(&manifest.wasm);
-            if !wasm_path.exists() {
-                result.add_error(format!("WASM file not found: {:?}", wasm_path));
-            } else {
+            if wasm_path.exists() {
                 // Validate WASM file
                 match self.validate_wasm(&wasm_path) {
                     Ok(info) => result.wasm_info = Some(info),
-                    Err(e) => result.add_error(format!("WASM validation error: {}", e)),
+                    Err(e) => result.add_error(format!("WASM validation error: {e}")),
                 }
+            } else {
+                result.add_error(format!("WASM file not found: {wasm_path:?}"));
             }
         }
 
@@ -172,6 +173,7 @@ impl PluginLoader {
     }
 
     /// Get the base directory
+    #[must_use]
     pub fn base_dir(&self) -> &Path {
         &self.base_dir
     }
@@ -233,6 +235,7 @@ pub struct PluginPacker {
 }
 
 impl PluginPacker {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             loader: PluginLoader::new(),
@@ -281,7 +284,7 @@ impl PluginPacker {
     /// Unpack a .cpkg file (simple directory copy)
     pub fn unpack(&self, package: &Path, output_dir: &Path) -> Result<PluginManifest> {
         if !package.is_dir() {
-            anyhow::bail!("Package must be a directory: {:?}", package);
+            anyhow::bail!("Package must be a directory: {package:?}");
         }
 
         std::fs::create_dir_all(output_dir)?;

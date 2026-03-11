@@ -67,6 +67,7 @@ impl Default for OnboardingProgress {
 
 impl OnboardingProgress {
     /// Create new progress tracker
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
@@ -84,11 +85,13 @@ impl OnboardingProgress {
     }
 
     /// Get step data
+    #[must_use]
     pub fn get_data(&self, key: &str) -> Option<&String> {
         self.step_data.get(key)
     }
 
     /// Check if step is completed
+    #[must_use]
     pub fn is_step_completed(&self, step: &OnboardingStep) -> bool {
         self.completed_steps.contains(step)
     }
@@ -124,6 +127,7 @@ pub struct DefaultSettings {
 
 impl DefaultSettings {
     /// Balanced preset
+    #[must_use]
     pub fn balanced() -> Self {
         Self {
             sandbox_tier: 2,
@@ -134,6 +138,7 @@ impl DefaultSettings {
     }
 
     /// Security-focused preset
+    #[must_use]
     pub fn security() -> Self {
         Self {
             sandbox_tier: 3,
@@ -144,6 +149,7 @@ impl DefaultSettings {
     }
 
     /// Performance preset
+    #[must_use]
     pub fn performance() -> Self {
         Self {
             sandbox_tier: 1,
@@ -154,6 +160,7 @@ impl DefaultSettings {
     }
 
     /// Development preset
+    #[must_use]
     pub fn development() -> Self {
         Self {
             sandbox_tier: 0,
@@ -172,6 +179,7 @@ pub struct OnboardingWizard {
 
 impl OnboardingWizard {
     /// Create a new wizard
+    #[must_use]
     pub fn new(config_path: PathBuf) -> Self {
         Self {
             progress: OnboardingProgress::new(),
@@ -180,6 +188,7 @@ impl OnboardingWizard {
     }
 
     /// Get current progress
+    #[must_use]
     pub fn progress(&self) -> &OnboardingProgress {
         &self.progress
     }
@@ -190,8 +199,9 @@ impl OnboardingWizard {
     }
 
     /// Get welcome message
+    #[must_use]
     pub fn get_welcome_message() -> String {
-        r#"
+        r"
 ╔══════════════════════════════════════════════════════════════╗
 ║   ██████╗██╗      █████╗ ██╗   ██╗██████╗ ███████╗          ║
 ║  ██╔════╝██║     ██╔══██╗██║   ██║██╔══██╗██╔════╝          ║
@@ -212,11 +222,12 @@ Clawdius is a high-assurance AI coding assistant that:
   • Provides 4-tier sandboxing for security
   • Supports 11+ LLM providers
   • Includes formal verification with Lean4
-"#
+"
         .to_string()
     }
 
     /// Get provider options
+    #[must_use]
     pub fn get_provider_options() -> Vec<ProviderOption> {
         vec![
             ProviderOption {
@@ -257,6 +268,7 @@ Clawdius is a high-assurance AI coding assistant that:
     }
 
     /// Get settings presets
+    #[must_use]
     pub fn get_settings_presets() -> Vec<(&'static str, DefaultSettings)> {
         vec![
             ("Balanced", DefaultSettings::balanced()),
@@ -278,6 +290,7 @@ pub struct Onboarding {
 
 impl Onboarding {
     /// Create a new onboarding instance
+    #[must_use]
     pub fn new(config_path: PathBuf) -> Self {
         Self {
             config_path,
@@ -290,17 +303,20 @@ impl Onboarding {
     }
 
     /// Create onboarding instance with default config path
+    #[must_use]
     pub fn with_default_path() -> Self {
         Self::new(Config::default_path())
     }
 
     /// Check the current environment and return onboarding status
+    #[must_use]
     pub fn check_environment() -> OnboardingStatus {
         let onboarding = Self::with_default_path();
         onboarding.check()
     }
 
     /// Check the onboarding status
+    #[must_use]
     pub fn check(&self) -> OnboardingStatus {
         if !self.config_path.exists() {
             return OnboardingStatus::FirstRun;
@@ -400,7 +416,7 @@ impl Onboarding {
                     "anthropic" => &mut config.llm.anthropic,
                     "openai" => &mut config.llm.openai,
                     "zai" => &mut config.llm.zai,
-                    _ => return Err(Error::Config(format!("Unknown provider: {}", provider))),
+                    _ => return Err(Error::Config(format!("Unknown provider: {provider}"))),
                 };
 
                 *provider_config = Some(crate::config::ProviderConfig {
@@ -435,6 +451,7 @@ impl Onboarding {
     }
 
     /// Get the config path
+    #[must_use]
     pub fn config_path(&self) -> &Path {
         &self.config_path
     }
@@ -457,8 +474,8 @@ pub fn print_onboarding_status(status: &OnboardingStatus) {
             println!("✓ Clawdius is configured and ready!");
         }
         OnboardingStatus::MissingApiKey { provider } => {
-            println!("⚠ Missing API key for {}", provider);
-            println!("  Run: clawdius auth set-key {}", provider);
+            println!("⚠ Missing API key for {provider}");
+            println!("  Run: clawdius auth set-key {provider}");
             println!();
             println!(
                 "  Or set the environment variable: {}_API_KEY",

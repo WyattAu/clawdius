@@ -1,4 +1,4 @@
-//! Session persistence using SQLite
+//! Session persistence using `SQLite`
 
 use chrono::{DateTime, Utc};
 use rusqlite::{params, Connection, OptionalExtension, Row};
@@ -39,7 +39,7 @@ impl SessionStore {
     /// Initialize database schema
     fn initialize(&self) -> Result<()> {
         self.conn.execute_batch(
-            r#"
+            r"
             -- Sessions table
             CREATE TABLE IF NOT EXISTS sessions (
                 id TEXT PRIMARY KEY,
@@ -85,7 +85,7 @@ impl SessionStore {
             -- Index for checkpoint lookups
             CREATE INDEX IF NOT EXISTS idx_checkpoints_session 
             ON checkpoints(session_id, created_at DESC);
-            "#,
+            ",
         )?;
         Ok(())
     }
@@ -96,13 +96,13 @@ impl SessionStore {
         let extra_json = serde_json::to_string(&session.meta.extra)?;
 
         self.conn.execute(
-            r#"
+            r"
             INSERT INTO sessions (
                 id, title, provider, model, working_dir, tags, extra,
                 input_tokens, output_tokens, cached_tokens,
                 created_at, updated_at
             ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)
-            "#,
+            ",
             params![
                 session.id.to_string(),
                 session.title,
@@ -125,12 +125,12 @@ impl SessionStore {
     /// Load a session by ID
     pub fn load_session(&self, id: &SessionId) -> Result<Option<Session>> {
         let mut stmt = self.conn.prepare(
-            r#"
+            r"
             SELECT id, title, provider, model, working_dir, tags, extra,
                    input_tokens, output_tokens, cached_tokens,
                    created_at, updated_at
             FROM sessions WHERE id = ?1
-            "#,
+            ",
         )?;
 
         let session = stmt
@@ -148,11 +148,11 @@ impl SessionStore {
 
         // Load messages
         let mut stmt = self.conn.prepare(
-            r#"
+            r"
             SELECT id, session_id, role, content, tokens, tool_calls, metadata, created_at
             FROM messages WHERE session_id = ?1
             ORDER BY created_at ASC
-            "#,
+            ",
         )?;
 
         let messages = stmt.query_map(params![id.to_string()], |row| self.row_to_message(row))?;
@@ -180,11 +180,11 @@ impl SessionStore {
         };
 
         self.conn.execute(
-            r#"
+            r"
             INSERT INTO messages (
                 id, session_id, role, content, tokens, tool_calls, metadata, created_at
             ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)
-            "#,
+            ",
             params![
                 message.id.to_string(),
                 session_id.to_string(),
@@ -209,14 +209,14 @@ impl SessionStore {
     /// Update session token usage
     pub fn update_token_usage(&self, id: &SessionId, usage: &TokenUsage) -> Result<()> {
         self.conn.execute(
-            r#"
+            r"
             UPDATE sessions SET 
                 input_tokens = ?1,
                 output_tokens = ?2,
                 cached_tokens = ?3,
                 updated_at = ?4
             WHERE id = ?5
-            "#,
+            ",
             params![
                 usage.input as i64,
                 usage.output as i64,
@@ -232,13 +232,13 @@ impl SessionStore {
     /// List all sessions (without messages)
     pub fn list_sessions(&self) -> Result<Vec<Session>> {
         let mut stmt = self.conn.prepare(
-            r#"
+            r"
             SELECT id, title, provider, model, working_dir, tags, extra,
                    input_tokens, output_tokens, cached_tokens,
                    created_at, updated_at
             FROM sessions
             ORDER BY updated_at DESC
-            "#,
+            ",
         )?;
 
         let sessions = stmt
@@ -261,16 +261,16 @@ impl SessionStore {
     /// Search messages by content
     pub fn search_messages(&self, query: &str) -> Result<Vec<(SessionId, Message)>> {
         let mut stmt = self.conn.prepare(
-            r#"
+            r"
             SELECT m.id, m.session_id, m.role, m.content, m.tokens, m.tool_calls, m.metadata, m.created_at
             FROM messages m
             WHERE m.content LIKE ?1
             ORDER BY m.created_at DESC
             LIMIT 100
-            "#,
+            ",
         )?;
 
-        let pattern = format!("%{}%", query);
+        let pattern = format!("%{query}%");
         let results = stmt
             .query_map(params![pattern], |row| {
                 let message = self.row_to_message(row)?;
@@ -319,11 +319,9 @@ impl SessionStore {
                 cached: cached_tokens as usize,
             },
             created_at: DateTime::parse_from_rfc3339(&created_at_str)
-                .map(|dt| dt.with_timezone(&Utc))
-                .unwrap_or_else(|_| Utc::now()),
+                .map_or_else(|_| Utc::now(), |dt| dt.with_timezone(&Utc)),
             updated_at: DateTime::parse_from_rfc3339(&updated_at_str)
-                .map(|dt| dt.with_timezone(&Utc))
-                .unwrap_or_else(|_| Utc::now()),
+                .map_or_else(|_| Utc::now(), |dt| dt.with_timezone(&Utc)),
         })
     }
 
@@ -363,8 +361,7 @@ impl SessionStore {
             content,
             tokens: tokens.map(|t| t as usize),
             created_at: DateTime::parse_from_rfc3339(&created_at_str)
-                .map(|dt| dt.with_timezone(&Utc))
-                .unwrap_or_else(|_| Utc::now()),
+                .map_or_else(|_| Utc::now(), |dt| dt.with_timezone(&Utc)),
             tool_calls,
             metadata,
         })
@@ -373,6 +370,7 @@ impl SessionStore {
 
 impl MessageRole {
     /// Convert to string for database
+    #[must_use]
     pub fn as_str(&self) -> &'static str {
         match self {
             Self::System => "system",
@@ -383,6 +381,7 @@ impl MessageRole {
     }
 
     /// Parse from string
+    #[must_use]
     pub fn from_str(s: &str) -> Self {
         match s {
             "system" => Self::System,

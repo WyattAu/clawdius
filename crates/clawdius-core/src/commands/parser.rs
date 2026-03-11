@@ -14,8 +14,7 @@ impl CommandParser {
 
         let name = lines
             .first()
-            .map(|l| l.trim_start_matches('#').trim())
-            .unwrap_or("Untitled")
+            .map_or("Untitled", |l| l.trim_start_matches('#').trim())
             .to_string();
 
         Ok(CustomCommand {

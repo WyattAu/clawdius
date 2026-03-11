@@ -34,6 +34,7 @@ pub struct Histogram {
 }
 
 impl Histogram {
+    #[must_use]
     pub fn new(bounds: &[f64]) -> Self {
         let buckets = bounds
             .iter()
@@ -66,6 +67,7 @@ pub struct Counter {
 }
 
 impl Counter {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             value: AtomicU64::new(0),
@@ -95,7 +97,14 @@ pub struct Gauge {
     multiplier: f64,
 }
 
+impl Default for Gauge {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Gauge {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             value: std::sync::atomic::AtomicI64::new(0),
@@ -135,6 +144,7 @@ impl Timer {
         }
     }
 
+    #[must_use]
     pub fn stop(&self) -> Duration {
         let elapsed = self.start.elapsed();
         let millis = elapsed.as_secs_f64() * 1000.0;
@@ -145,7 +155,7 @@ impl Timer {
 
 impl Drop for Timer {
     fn drop(&mut self) {
-        self.stop();
+        let _ = self.stop();
     }
 }
 
@@ -159,6 +169,7 @@ pub struct MetricsRegistry {
 }
 
 impl MetricsRegistry {
+    #[must_use]
     pub fn new(config: &MetricsConfig) -> Self {
         Self {
             prefix: config.prefix.clone(),
@@ -183,6 +194,7 @@ impl MetricsRegistry {
         format!("{}_{}", self.prefix, name)
     }
 
+    #[must_use]
     pub fn counter(&self, name: &str) -> Arc<Counter> {
         let full_name = self.prefixed_name(name);
         let mut counters = self.counters.lock();
@@ -192,6 +204,7 @@ impl MetricsRegistry {
             .clone()
     }
 
+    #[must_use]
     pub fn gauge(&self, name: &str) -> Arc<Gauge> {
         let full_name = self.prefixed_name(name);
         let mut gauges = self.gauges.lock();
@@ -201,6 +214,7 @@ impl MetricsRegistry {
             .clone()
     }
 
+    #[must_use]
     pub fn histogram(&self, name: &str) -> Arc<parking_lot::Mutex<Histogram>> {
         let full_name = self.prefixed_name(name);
         let mut histograms = self.histograms.lock();
@@ -214,10 +228,12 @@ impl MetricsRegistry {
             .clone()
     }
 
+    #[must_use]
     pub fn timer(&self, name: &str) -> Timer {
         Timer::new(self.histogram(name))
     }
 
+    #[must_use]
     pub fn gather(&self) -> MetricsSnapshot {
         let counters: HashMap<String, u64> = self
             .counters
@@ -249,16 +265,17 @@ impl MetricsRegistry {
         }
     }
 
+    #[must_use]
     pub fn export_prometheus(&self) -> String {
         let snapshot = self.gather();
         let mut output = String::new();
 
         for (name, value) in &snapshot.counters {
-            output.push_str(&format!("{} {}\n", name, value));
+            output.push_str(&format!("{name} {value}\n"));
         }
 
         for (name, value) in &snapshot.gauges {
-            output.push_str(&format!("{} {:.3}\n", name, value));
+            output.push_str(&format!("{name} {value:.3}\n"));
         }
 
         for (name, hist) in &snapshot.histograms {
@@ -315,6 +332,7 @@ pub enum MetricType {
 }
 
 impl MetricType {
+    #[must_use]
     pub fn name(&self) -> &'static str {
         match self {
             MetricType::PhaseTransitionCount => "phase_transitions_total",
@@ -355,6 +373,7 @@ pub struct NexusMetrics {
 }
 
 impl NexusMetrics {
+    #[must_use]
     pub fn new(config: &MetricsConfig) -> Self {
         let registry = Arc::new(MetricsRegistry::new(config));
 
@@ -376,6 +395,7 @@ impl NexusMetrics {
         }
     }
 
+    #[must_use]
     pub fn registry(&self) -> &Arc<MetricsRegistry> {
         &self.registry
     }
@@ -415,14 +435,17 @@ impl NexusMetrics {
         self.circuit_trips.inc();
     }
 
+    #[must_use]
     pub fn snapshot(&self) -> MetricsSnapshot {
         self.registry.gather()
     }
 
+    #[must_use]
     pub fn prometheus_export(&self) -> String {
         self.registry.export_prometheus()
     }
 
+    #[must_use]
     pub fn cache_hit_rate(&self) -> f64 {
         let hits = self.cache_hits.get() as f64;
         let misses = self.cache_misses.get() as f64;

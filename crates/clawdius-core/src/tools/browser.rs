@@ -222,6 +222,7 @@ impl Default for BrowserTool {
 
 impl BrowserTool {
     /// Create a new browser tool with default configuration
+    #[must_use]
     pub fn new() -> Self {
         Self {
             browser: None,
@@ -232,6 +233,7 @@ impl BrowserTool {
     }
 
     /// Create a new browser tool with custom configuration
+    #[must_use]
     pub fn with_config(config: BrowserToolConfig) -> Self {
         Self {
             browser: None,
@@ -305,7 +307,7 @@ impl BrowserTool {
         let element = page
             .find_element(selector)
             .await
-            .map_err(|e| BrowserError::ElementNotFound(format!("{}: {}", selector, e)))?;
+            .map_err(|e| BrowserError::ElementNotFound(format!("{selector}: {e}")))?;
 
         element
             .click()
@@ -322,7 +324,7 @@ impl BrowserTool {
         let element = page
             .find_element(selector)
             .await
-            .map_err(|e| BrowserError::ElementNotFound(format!("{}: {}", selector, e)))?;
+            .map_err(|e| BrowserError::ElementNotFound(format!("{selector}: {e}")))?;
 
         element
             .click()
@@ -382,8 +384,8 @@ impl BrowserTool {
 
         tokio::time::timeout(timeout, find_future)
             .await
-            .map_err(|_| BrowserError::WaitTimeout(format!("selector: {}", selector)))?
-            .map_err(|e: BrowserError| BrowserError::WaitTimeout(format!("{}: {}", selector, e)))?;
+            .map_err(|_| BrowserError::WaitTimeout(format!("selector: {selector}")))?
+            .map_err(|e: BrowserError| BrowserError::WaitTimeout(format!("{selector}: {e}")))?;
 
         Ok(())
     }
@@ -395,7 +397,7 @@ impl BrowserTool {
         let element = page
             .find_element(selector)
             .await
-            .map_err(|e| BrowserError::ElementNotFound(format!("{}: {}", selector, e)))?;
+            .map_err(|e| BrowserError::ElementNotFound(format!("{selector}: {e}")))?;
 
         let text = element
             .inner_text()
@@ -451,7 +453,7 @@ impl BrowserTool {
         let start = std::time::Instant::now();
         loop {
             if start.elapsed() > timeout {
-                return Err(BrowserError::WaitTimeout(format!("function: {}", js_function)).into());
+                return Err(BrowserError::WaitTimeout(format!("function: {js_function}")).into());
             }
 
             let result = page
@@ -475,16 +477,15 @@ impl BrowserTool {
         let page = self.page()?;
 
         let js = format!(
-            r#"
-            const element = document.querySelector('{}');
+            r"
+            const element = document.querySelector('{selector}');
             if (element) {{
-                element.value = '{}';
+                element.value = '{value}';
                 element.dispatchEvent(new Event('input', {{ bubbles: true }}));
                 return true;
             }}
             return false;
-            "#,
-            selector, value
+            "
         );
 
         let result = page
@@ -509,16 +510,15 @@ impl BrowserTool {
         let page = self.page()?;
 
         let js = format!(
-            r#"
-            const select = document.querySelector('{}');
+            r"
+            const select = document.querySelector('{selector}');
             if (select) {{
-                select.value = '{}';
+                select.value = '{value}';
                 select.dispatchEvent(new Event('change', {{ bubbles: true }}));
                 return true;
             }}
             return false;
-            "#,
-            selector, value
+            "
         );
 
         let result = page
@@ -558,7 +558,7 @@ impl BrowserTool {
         let element = page
             .find_element(selector)
             .await
-            .map_err(|e| BrowserError::ElementNotFound(format!("{}: {}", selector, e)))?;
+            .map_err(|e| BrowserError::ElementNotFound(format!("{selector}: {e}")))?;
 
         let attr = element
             .attribute(attribute)
@@ -574,15 +574,14 @@ impl BrowserTool {
         let page = self.page()?;
 
         let js = format!(
-            r#"
-            const element = document.querySelector('{}');
+            r"
+            const element = document.querySelector('{selector}');
             if (element) {{
                 element.scrollIntoView({{ behavior: 'smooth', block: 'center' }});
                 return true;
             }}
             return false;
-            "#,
-            selector
+            "
         );
 
         let result = page
@@ -609,7 +608,7 @@ impl BrowserTool {
         let element = page
             .find_element(selector)
             .await
-            .map_err(|e| BrowserError::ElementNotFound(format!("{}: {}", selector, e)))?;
+            .map_err(|e| BrowserError::ElementNotFound(format!("{selector}: {e}")))?;
 
         element
             .hover()
@@ -625,11 +624,10 @@ impl BrowserTool {
         let page = self.page()?;
 
         let js = format!(
-            r#"
-            document.dispatchEvent(new KeyboardEvent('keydown', {{ key: '{}' }}));
-            document.dispatchEvent(new KeyboardEvent('keyup', {{ key: '{}' }}));
-            "#,
-            key, key
+            r"
+            document.dispatchEvent(new KeyboardEvent('keydown', {{ key: '{key}' }}));
+            document.dispatchEvent(new KeyboardEvent('keyup', {{ key: '{key}' }}));
+            "
         );
 
         page.evaluate(js.as_str())
@@ -703,6 +701,7 @@ pub struct BrowserActionResult {
 }
 
 impl BrowserActionResult {
+    #[must_use]
     pub fn success(data: Option<serde_json::Value>) -> Self {
         Self {
             success: true,

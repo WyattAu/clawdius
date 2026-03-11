@@ -101,7 +101,7 @@ impl CommandExecutor {
 
         // Replace {{variable}} with values from args
         for (key, value) in args {
-            let pattern = format!("{{{{{}}}}}", key);
+            let pattern = format!("{{{{{key}}}}}");
             result = result.replace(&pattern, value);
         }
 
@@ -160,16 +160,16 @@ impl CommandExecutor {
                     content,
                 };
                 match file_tool.write(params) {
-                    Ok(_) => Ok(CommandResult::success(
+                    Ok(()) => Ok(CommandResult::success(
                         step_name.to_string(),
-                        format!("Wrote {} bytes", content_len),
+                        format!("Wrote {content_len} bytes"),
                     )),
                     Err(e) => Ok(CommandResult::error(step_name.to_string(), e.to_string())),
                 }
             }
             _ => Ok(CommandResult::error(
                 step_name.to_string(),
-                format!("Unknown file action: {}", action),
+                format!("Unknown file action: {action}"),
             )),
         }
     }
@@ -206,13 +206,13 @@ impl CommandExecutor {
 
         let result = match action {
             "status" => {
-                let cwd = parts.get(1).map(|s| s.to_string());
+                let cwd = parts.get(1).map(std::string::ToString::to_string);
                 git_tool.status(cwd.as_deref())
             }
             "diff" => {
                 let params = GitDiffParams {
                     staged: false,
-                    path: parts.get(1).map(|s| s.to_string()),
+                    path: parts.get(1).map(std::string::ToString::to_string),
                 };
                 git_tool.diff(params, None)
             }
@@ -220,14 +220,14 @@ impl CommandExecutor {
                 let count = parts.get(1).and_then(|s| s.parse().ok()).unwrap_or(10);
                 let params = GitLogParams {
                     count,
-                    path: parts.get(2).map(|s| s.to_string()),
+                    path: parts.get(2).map(std::string::ToString::to_string),
                 };
                 git_tool.log(params, None)
             }
             _ => {
                 return Ok(CommandResult::error(
                     step_name.to_string(),
-                    format!("Unknown git action: {}", action),
+                    format!("Unknown git action: {action}"),
                 ));
             }
         };

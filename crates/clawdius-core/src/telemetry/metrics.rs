@@ -5,13 +5,13 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, Instant};
 
 use chrono::{DateTime, Utc};
-use once_cell::sync::Lazy;
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 use sysinfo::System;
 
-static METRICS: Lazy<Metrics> = Lazy::new(Metrics::new);
+static METRICS: std::sync::LazyLock<Metrics> = std::sync::LazyLock::new(Metrics::new);
 
+#[must_use]
 pub fn metrics() -> &'static Metrics {
     &METRICS
 }
@@ -113,7 +113,14 @@ pub struct Metrics {
     system: RwLock<System>,
 }
 
+impl Default for Metrics {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Metrics {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             requests_total: AtomicU64::new(0),
@@ -208,6 +215,7 @@ pub struct LegacyMetricsSnapshot {
 }
 
 impl LegacyMetricsSnapshot {
+    #[must_use]
     pub fn avg_latency_ms(&self) -> f64 {
         if self.requests_total == 0 {
             0.0
@@ -216,6 +224,7 @@ impl LegacyMetricsSnapshot {
         }
     }
 
+    #[must_use]
     pub fn error_rate(&self) -> f64 {
         if self.requests_total == 0 {
             0.0
@@ -231,6 +240,7 @@ pub struct MetricsDashboard {
 }
 
 impl MetricsDashboard {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             metrics: metrics(),
@@ -238,6 +248,7 @@ impl MetricsDashboard {
         }
     }
 
+    #[must_use]
     pub fn comprehensive_snapshot(&self) -> MetricsSnapshot {
         let mut sys = self.metrics.system.write();
         sys.refresh_all();
@@ -315,7 +326,7 @@ impl MetricsDashboard {
             },
             performance: PerformanceMetrics {
                 memory_usage_mb: memory_usage as f64 / 1_048_576.0,
-                cpu_usage_percent: cpu_usage as f64,
+                cpu_usage_percent: f64::from(cpu_usage),
                 disk_io_read_mb: 0.0,
                 disk_io_write_mb: 0.0,
                 network_rx_mb: 0.0,
@@ -331,6 +342,7 @@ impl MetricsDashboard {
         }
     }
 
+    #[must_use]
     pub fn format_terminal(&self) -> String {
         let snapshot = self.comprehensive_snapshot();
 
@@ -348,7 +360,7 @@ impl MetricsDashboard {
         };
 
         format!(
-            r#"
+            r"
 ╔══════════════════════════════════════════════════════════════╗
 ║                     CLAWDIUS METRICS                          ║
 ╚══════════════════════════════════════════════════════════════╝
@@ -386,7 +398,7 @@ impl MetricsDashboard {
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Generated: {}
-"#,
+",
             snapshot.uptime,
             snapshot.timestamp.format("%Y-%m-%d %H:%M:%S UTC"),
             snapshot.llm.total_requests,
@@ -412,9 +424,10 @@ Generated: {}
 
     pub fn format_json(&self) -> crate::Result<String> {
         let snapshot = self.comprehensive_snapshot();
-        serde_json::to_string_pretty(&snapshot).map_err(|e| crate::Error::Serialization(e))
+        serde_json::to_string_pretty(&snapshot).map_err(crate::Error::Serialization)
     }
 
+    #[must_use]
     pub fn format_html(&self) -> String {
         let snapshot = self.comprehensive_snapshot();
 

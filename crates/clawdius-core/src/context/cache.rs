@@ -20,6 +20,7 @@ pub struct CachedContext {
 
 impl CachedContext {
     /// Check if cache entry is expired
+    #[must_use]
     pub fn is_expired(&self, ttl: Duration) -> bool {
         self.cached_at.elapsed() > ttl
     }
@@ -34,6 +35,7 @@ pub struct ContextCache {
 
 impl ContextCache {
     /// Create a new context cache
+    #[must_use]
     pub fn new(ttl: Duration, max_entries: usize) -> Self {
         Self {
             entries: HashMap::new(),
@@ -43,6 +45,7 @@ impl ContextCache {
     }
 
     /// Get a cached item
+    #[must_use]
     pub fn get(&self, key: &str) -> Option<&ContextItem> {
         self.entries
             .get(key)
@@ -85,6 +88,7 @@ impl ContextCache {
     }
 
     /// Get cache statistics
+    #[must_use]
     pub fn stats(&self) -> CacheStats {
         let expired = self
             .entries

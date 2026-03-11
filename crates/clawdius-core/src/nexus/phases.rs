@@ -25,10 +25,12 @@ impl PhaseId {
         Ok(PhaseId(id))
     }
 
+    #[must_use]
     pub fn is_terminal(&self) -> bool {
         self.0 == 23
     }
 
+    #[must_use]
     pub fn next(&self) -> Option<PhaseId> {
         if self.0 < 23 {
             Some(PhaseId(self.0 + 1))
@@ -77,6 +79,7 @@ pub enum PhaseCategory {
 }
 
 impl PhaseCategory {
+    #[must_use]
     pub fn from_phase_number(n: u8) -> Self {
         match n {
             0..=2 => PhaseCategory::Discovery,
@@ -310,6 +313,7 @@ define_phase!(
     [ArtifactType::Compliance]
 );
 
+#[must_use]
 pub fn get_phase_by_id(id: PhaseId) -> &'static dyn PhaseState {
     match id.0 {
         0 => &Phase0ContextDiscovery,
@@ -340,6 +344,7 @@ pub fn get_phase_by_id(id: PhaseId) -> &'static dyn PhaseState {
     }
 }
 
+#[must_use]
 pub fn all_phases() -> Vec<&'static dyn PhaseState> {
     (0..=23).map(|i| get_phase_by_id(PhaseId(i))).collect()
 }

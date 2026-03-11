@@ -11,6 +11,7 @@ pub struct DirectBackend {
 }
 
 impl DirectBackend {
+    #[must_use]
     pub fn new(config: SandboxConfig) -> Self {
         Self { _config: config }
     }

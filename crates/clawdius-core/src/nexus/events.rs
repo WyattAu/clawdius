@@ -90,6 +90,7 @@ pub enum NexusEvent {
 }
 
 impl NexusEvent {
+    #[must_use]
     pub fn phase_started(phase: PhaseId) -> Self {
         NexusEvent::PhaseStarted {
             phase,
@@ -97,6 +98,7 @@ impl NexusEvent {
         }
     }
 
+    #[must_use]
     pub fn phase_completed(phase: PhaseId, duration_ms: u64) -> Self {
         NexusEvent::PhaseCompleted {
             phase,
@@ -105,6 +107,7 @@ impl NexusEvent {
         }
     }
 
+    #[must_use]
     pub fn phase_transitioned(from: PhaseId, to: PhaseId) -> Self {
         NexusEvent::PhaseTransitioned {
             from,
@@ -122,6 +125,7 @@ impl NexusEvent {
         }
     }
 
+    #[must_use]
     pub fn gates_completed(phase: PhaseId, all_passed: bool, failed_count: u32) -> Self {
         NexusEvent::GatesCompleted {
             phase,
@@ -144,6 +148,7 @@ impl NexusEvent {
         }
     }
 
+    #[must_use]
     pub fn artifact_modified(id: ArtifactId) -> Self {
         NexusEvent::ArtifactModified {
             id,
@@ -151,6 +156,7 @@ impl NexusEvent {
         }
     }
 
+    #[must_use]
     pub fn artifact_deleted(id: ArtifactId) -> Self {
         NexusEvent::ArtifactDeleted {
             id,
@@ -173,12 +179,14 @@ impl NexusEvent {
         }
     }
 
+    #[must_use]
     pub fn project_finalized() -> Self {
         NexusEvent::ProjectFinalized {
             timestamp: Utc::now(),
         }
     }
 
+    #[must_use]
     pub fn timestamp(&self) -> &DateTime<Utc> {
         match self {
             NexusEvent::PhaseStarted { timestamp, .. } => timestamp,
@@ -195,6 +203,7 @@ impl NexusEvent {
         }
     }
 
+    #[must_use]
     pub fn event_type(&self) -> EventType {
         match self {
             NexusEvent::PhaseStarted { .. } => EventType::PhaseStarted,
@@ -211,6 +220,7 @@ impl NexusEvent {
         }
     }
 
+    #[must_use]
     pub fn phase(&self) -> Option<PhaseId> {
         match self {
             NexusEvent::PhaseStarted { phase, .. } => Some(*phase),
@@ -247,7 +257,7 @@ pub enum EventHandlerError {
     DatabaseError(String),
 }
 
-const METRICS_SCHEMA_SQL: &str = r#"
+const METRICS_SCHEMA_SQL: &str = r"
 CREATE TABLE IF NOT EXISTS metrics (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     metric_type TEXT NOT NULL,
@@ -262,9 +272,9 @@ INSERT OR IGNORE INTO metrics (metric_type, value, updated_at) VALUES
     ('artifacts_created', 0, datetime('now')),
     ('gates_passed', 0, datetime('now')),
     ('gates_failed', 0, datetime('now'));
-"#;
+";
 
-const AUDIT_SCHEMA_SQL: &str = r#"
+const AUDIT_SCHEMA_SQL: &str = r"
 CREATE TABLE IF NOT EXISTS audit_log (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     event_type TEXT NOT NULL,
@@ -274,7 +284,7 @@ CREATE TABLE IF NOT EXISTS audit_log (
 
 CREATE INDEX IF NOT EXISTS idx_audit_event_type ON audit_log(event_type);
 CREATE INDEX IF NOT EXISTS idx_audit_timestamp ON audit_log(timestamp);
-"#;
+";
 
 #[derive(Debug)]
 pub struct MetricsStorage {
@@ -291,6 +301,7 @@ impl MetricsStorage {
         Ok(storage)
     }
 
+    #[must_use]
     pub fn in_memory() -> Self {
         let conn = Connection::open_in_memory().expect("Failed to create in-memory connection");
         let storage = Self {
@@ -321,7 +332,7 @@ impl MetricsStorage {
     ) -> std::result::Result<std::sync::MutexGuard<'_, Connection>, EventHandlerError> {
         self.conn
             .lock()
-            .map_err(|e| EventHandlerError::DatabaseError(format!("Lock error: {}", e)))
+            .map_err(|e| EventHandlerError::DatabaseError(format!("Lock error: {e}")))
     }
 
     fn initialize_schema(&self) -> std::result::Result<(), EventHandlerError> {
@@ -392,6 +403,7 @@ impl AuditStorage {
         Ok(storage)
     }
 
+    #[must_use]
     pub fn in_memory() -> Self {
         let conn = Connection::open_in_memory().expect("Failed to create in-memory connection");
         let storage = Self {
@@ -422,7 +434,7 @@ impl AuditStorage {
     ) -> std::result::Result<std::sync::MutexGuard<'_, Connection>, EventHandlerError> {
         self.conn
             .lock()
-            .map_err(|e| EventHandlerError::DatabaseError(format!("Lock error: {}", e)))
+            .map_err(|e| EventHandlerError::DatabaseError(format!("Lock error: {e}")))
     }
 
     fn initialize_schema(&self) -> std::result::Result<(), EventHandlerError> {
@@ -511,6 +523,7 @@ pub struct EventBus {
 }
 
 impl EventBus {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             subscribers: Arc::new(RwLock::new(Vec::new())),
@@ -519,6 +532,7 @@ impl EventBus {
         }
     }
 
+    #[must_use]
     pub fn with_max_history(max_history: usize) -> Self {
         Self {
             subscribers: Arc::new(RwLock::new(Vec::new())),
@@ -691,6 +705,7 @@ pub struct MetricsHandler {
 }
 
 impl MetricsHandler {
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
@@ -797,7 +812,14 @@ pub struct AuditHandler {
     storage: Option<Arc<Mutex<AuditStorage>>>,
 }
 
+impl Default for AuditHandler {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl AuditHandler {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             records: Arc::new(RwLock::new(Vec::new())),
@@ -823,7 +845,7 @@ impl AuditHandler {
         if let Some(ref storage) = self.storage {
             let storage = storage
                 .lock()
-                .map_err(|e| EventHandlerError::DatabaseError(format!("Lock error: {}", e)))?;
+                .map_err(|e| EventHandlerError::DatabaseError(format!("Lock error: {e}")))?;
             storage.get_records(limit)
         } else {
             Ok(vec![])
@@ -834,7 +856,7 @@ impl AuditHandler {
         if let Some(ref storage) = self.storage {
             let storage = storage
                 .lock()
-                .map_err(|e| EventHandlerError::DatabaseError(format!("Lock error: {}", e)))?;
+                .map_err(|e| EventHandlerError::DatabaseError(format!("Lock error: {e}")))?;
             storage.count()
         } else {
             Ok(0)
@@ -850,7 +872,7 @@ impl EventHandler for AuditHandler {
         if let Some(ref storage) = self.storage {
             let storage = storage
                 .lock()
-                .map_err(|e| EventHandlerError::DatabaseError(format!("Lock error: {}", e)))?;
+                .map_err(|e| EventHandlerError::DatabaseError(format!("Lock error: {e}")))?;
             storage.record(event)?;
         }
 

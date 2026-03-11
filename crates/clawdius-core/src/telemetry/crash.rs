@@ -15,6 +15,7 @@ pub struct CrashReporter {
 
 impl CrashReporter {
     /// Create a new crash reporter
+    #[must_use]
     pub fn new() -> Self {
         let dsn = std::env::var("SENTRY_DSN").ok().filter(|s| !s.is_empty());
         let enabled = dsn.is_some();
@@ -36,6 +37,7 @@ impl CrashReporter {
     }
 
     /// Create a crash reporter with explicit DSN
+    #[must_use]
     pub fn with_dsn(dsn: Option<String>) -> Self {
         let dsn = dsn.filter(|s| !s.is_empty());
         let enabled = dsn.is_some();
@@ -57,6 +59,7 @@ impl CrashReporter {
     }
 
     /// Check if crash reporting is enabled
+    #[must_use]
     pub fn is_enabled(&self) -> bool {
         self.enabled
     }

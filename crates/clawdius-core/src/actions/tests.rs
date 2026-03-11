@@ -119,8 +119,7 @@ Format your response as JSON:
             "python" => parse_python_function(selection)?,
             _ => {
                 return Err(crate::Error::UnsupportedLanguage(format!(
-                    "Test generation not supported for: {}",
-                    language
+                    "Test generation not supported for: {language}"
                 )))
             }
         };
@@ -136,11 +135,11 @@ Format your response as JSON:
 }
 
 impl CodeAction for GenerateTests {
-    fn id(&self) -> &str {
+    fn id(&self) -> &'static str {
         "source.generate.tests"
     }
 
-    fn title(&self) -> &str {
+    fn title(&self) -> &'static str {
         "Generate tests"
     }
 
@@ -171,8 +170,7 @@ impl CodeAction for GenerateTests {
             context
                 .symbol_at_position
                 .as_ref()
-                .map(|s| s.name.to_lowercase())
-                .unwrap_or_else(|| "generated".to_string()),
+                .map_or_else(|| "generated".to_string(), |s| s.name.to_lowercase()),
             get_file_extension(&context.language)
         );
 
@@ -182,9 +180,9 @@ impl CodeAction for GenerateTests {
                     start: super::Position { line: 0, column: 0 },
                     end: super::Position { line: 0, column: 0 },
                 },
-                new_text: format!("// Generated tests\n{}\n", test_code),
+                new_text: format!("// Generated tests\n{test_code}\n"),
             }],
-            title: format!("Generate tests (suggestion: save to {})", test_file_name),
+            title: format!("Generate tests (suggestion: save to {test_file_name})"),
             kind: ActionKind::Source,
         })
     }
@@ -201,9 +199,9 @@ fn parse_llm_test_response(response: &str, func_name: &str) -> Result<GeneratedT
     let json_str = &response[json_start..=json_end];
 
     let mut tests: GeneratedTests = serde_json::from_str(json_str)
-        .map_err(|e| crate::Error::ParseError(format!("Failed to parse test JSON: {}", e)))?;
+        .map_err(|e| crate::Error::ParseError(format!("Failed to parse test JSON: {e}")))?;
 
-    tests.test_file_path = format!("{}_test", func_name);
+    tests.test_file_path = format!("{func_name}_test");
 
     Ok(tests)
 }
@@ -211,7 +209,7 @@ fn parse_llm_test_response(response: &str, func_name: &str) -> Result<GeneratedT
 fn parse_rust_function(code: &str) -> Result<(String, String, Vec<Parameter>, Option<String>)> {
     let fn_pattern = r"fn\s+(\w+)\s*(?:<[^>]+>)?\s*\(([^)]*)\)(?:\s*->\s*([^{]+))?\s*\{";
     let re = regex::Regex::new(fn_pattern)
-        .map_err(|e| crate::Error::ParseError(format!("Failed to compile regex: {}", e)))?;
+        .map_err(|e| crate::Error::ParseError(format!("Failed to compile regex: {e}")))?;
 
     let caps = re
         .captures(code)
@@ -229,7 +227,7 @@ fn parse_rust_function(code: &str) -> Result<(String, String, Vec<Parameter>, Op
         params_str,
         return_type
             .as_ref()
-            .map(|t| format!(" -> {}", t))
+            .map(|t| format!(" -> {t}"))
             .unwrap_or_default()
     );
 
@@ -270,7 +268,7 @@ fn parse_typescript_function(
     let fn_pattern =
         r"(?:async\s+)?function\s+(\w+)\s*(?:<[^>]+>)?\s*\(([^)]*)\)(?:\s*:\s*([^{]+))?\s*\{";
     let re = regex::Regex::new(fn_pattern)
-        .map_err(|e| crate::Error::ParseError(format!("Failed to compile regex: {}", e)))?;
+        .map_err(|e| crate::Error::ParseError(format!("Failed to compile regex: {e}")))?;
 
     let caps = re
         .captures(code)
@@ -288,7 +286,7 @@ fn parse_typescript_function(
         params_str,
         return_type
             .as_ref()
-            .map(|t| format!(": {}", t))
+            .map(|t| format!(": {t}"))
             .unwrap_or_default()
     );
 
@@ -309,15 +307,15 @@ fn parse_typescript_parameters(params_str: &str) -> Result<Vec<Parameter>> {
             }
 
             let parts: Vec<&str> = param.split(':').collect();
-            if parts.len() >= 1 {
-                let name = parts[0].trim().replace("?", "");
+            if parts.is_empty() {
+                None
+            } else {
+                let name = parts[0].trim().replace('?', "");
                 let ty = parts
                     .get(1)
                     .map(|t| t.trim().to_string())
                     .unwrap_or_default();
                 Some(Parameter { name, ty })
-            } else {
-                None
             }
         })
         .collect();
@@ -328,7 +326,7 @@ fn parse_typescript_parameters(params_str: &str) -> Result<Vec<Parameter>> {
 fn parse_python_function(code: &str) -> Result<(String, String, Vec<Parameter>, Option<String>)> {
     let fn_pattern = r"def\s+(\w+)\s*\(([^)]*)\)(?:\s*->\s*([^\:]+))?\s*:";
     let re = regex::Regex::new(fn_pattern)
-        .map_err(|e| crate::Error::ParseError(format!("Failed to compile regex: {}", e)))?;
+        .map_err(|e| crate::Error::ParseError(format!("Failed to compile regex: {e}")))?;
 
     let caps = re
         .captures(code)
@@ -346,7 +344,7 @@ fn parse_python_function(code: &str) -> Result<(String, String, Vec<Parameter>, 
         params_str,
         return_type
             .as_ref()
-            .map(|t| format!(" -> {}", t))
+            .map(|t| format!(" -> {t}"))
             .unwrap_or_default()
     );
 
@@ -374,7 +372,9 @@ fn parse_python_parameters(params_str: &str) -> Result<Vec<Parameter>> {
                 vec![param]
             };
 
-            if !parts.is_empty() {
+            if parts.is_empty() {
+                None
+            } else {
                 Some(Parameter {
                     name: parts[0].trim().to_string(),
                     ty: parts
@@ -382,8 +382,6 @@ fn parse_python_parameters(params_str: &str) -> Result<Vec<Parameter>> {
                         .map(|t| t.trim().to_string())
                         .unwrap_or_default(),
                 })
-            } else {
-                None
             }
         })
         .collect();
@@ -393,44 +391,41 @@ fn parse_python_parameters(params_str: &str) -> Result<Vec<Parameter>> {
 
 fn generate_basic_test(_selection: &str, language: &str) -> String {
     match language {
-        "rust" => format!(
-            r#"#[cfg(test)]
-mod tests {{
+        "rust" => r"#[cfg(test)]
+mod tests {
     use super::*;
 
     #[test]
-    fn test_normal_case() {{
+    fn test_normal_case() {
         // TODO: Add test implementation
-    }}
+    }
 
     #[test]
-    fn test_edge_case() {{
+    fn test_edge_case() {
         // TODO: Test edge cases
-    }}
+    }
 
     #[test]
-    fn test_error_case() {{
+    fn test_error_case() {
         // TODO: Test error scenarios
-    }}
-}}"#
-        ),
-        "typescript" | "javascript" => format!(
-            r#"describe('function tests', () => {{
-    test('normal case', () => {{
+    }
+}"
+        .to_string(),
+        "typescript" | "javascript" => r"describe('function tests', () => {
+    test('normal case', () => {
         // TODO: Add test implementation
-    }});
+    });
 
-    test('edge case', () => {{
+    test('edge case', () => {
         // TODO: Test edge cases
-    }});
+    });
 
-    test('error case', () => {{
+    test('error case', () => {
         // TODO: Test error scenarios
-    }});
-}});"#
-        ),
-        "python" => format!(
-            r#"import unittest
+    });
+});"
+        .to_string(),
+        "python" => r"import unittest
 
 class TestFunction(unittest.TestCase):
     def test_normal_case(self):
@@ -446,8 +441,8 @@ class TestFunction(unittest.TestCase):
         pass
 
 if __name__ == '__main__':
-    unittest.main()"#
-        ),
+    unittest.main()"
+            .to_string(),
         _ => "// Test generation not supported for this language".to_string(),
     }
 }
