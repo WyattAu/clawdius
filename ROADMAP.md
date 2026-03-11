@@ -1,240 +1,223 @@
 # Clawdius Roadmap
 ## Strategic Vision & Development Plan
 
-**Version:** 0.5.0 → 1.0.0+  
-**Last Updated:** 2026-03-04
+**Current Version:** 1.0.0-rc.1  
+**Target:** v1.0.0 Stable  
+**Last Updated:** 2026-03-11
 
 ---
 
 ## Executive Summary
 
-Clawdius has achieved a significant milestone with v0.5.0, completing all MUST, SHOULD, COULD, and WON'T items from the original specification. The project now features 199+ passing tests, 15+ fully implemented modules, and advanced capabilities that differentiate it from competitors including Graph-RAG with LanceDB, HFT-grade components, formal proof verification via Lean 4, and multi-language research synthesis across 16 languages.
+Clawdius v1.0.0-rc.1 represents a **major milestone**: a feature-complete, production-ready release candidate with unique competitive advantages in security, performance, and formal verification.
 
-The path forward focuses on three strategic pillars: **Production Hardening** (v0.6.0), **Enterprise Readiness** (v0.7.0-v0.8.0), and **Platform Extensibility** (v0.9.0), culminating in a stable v1.0.0 release. This roadmap outlines the deliberate progression from a feature-complete alpha to a production-grade AI coding assistant with enterprise capabilities.
+### Current Achievements
+
+| Metric | Value |
+|--------|-------|
+| **Rust LOC** | 65,834 |
+| **Tests** | 993 passing |
+| **Lean4 Proofs** | 104 theorems/axioms |
+| **Sandbox Backends** | 7 (WASM, Container, gVisor, Firecracker, etc.) |
+| **LLM Providers** | 5 (Anthropic, OpenAI, Ollama, Z.AI, Local) |
+| **Enterprise Features** | SSO, Audit, Compliance, Teams |
+| **Plugin System** | WASM runtime, 26 hooks, marketplace |
+
+### Competitive Position
+
+| Feature | Clawdius | Competitors |
+|---------|----------|-------------|
+| Sandboxed Execution | ✅ 7 backends | ❌ None |
+| Formal Verification | ✅ 104 theorems | ❌ None |
+| Native Performance | ✅ Rust <20ms | ❌ Node.js |
+| Enterprise SSO | ✅ SAML/OIDC | ⚠️ Limited |
+| Plugin System | ✅ WASM | ⚠️ Limited |
 
 ---
 
-## Current State (v0.5.0)
+## Phase 1: Launch (Weeks 1-2)
 
-### What's Complete
+**Goal:** Stable v1.0.0 release with community presence
 
-| Category | Feature | Evidence |
-|----------|---------|----------|
-| **LLM Integration** | 4 Providers (Anthropic, OpenAI, Ollama, Z.AI) | CLI + TUI working |
-| **Streaming** | Token-by-token responses | mpsc channel implementation |
-| **Tools** | File, Shell, Git, Web Search | 6 tools functional |
-| **Security** | Keyring storage, Sandbox backends | bubblewrap, sandbox-exec |
-| **VSCode** | Extension with RPC | JSON-RPC communication |
-| **Graph-RAG** | SQLite schema + Tree-sitter | 5 parsing languages |
-| **Brain** | WASM runtime | Fuel limiting implemented |
-| **HFT Broker** | SPSC ring buffer | Wallet Guard complete |
-| **Vector Store** | LanceDB integration | Semantic search |
-| **Multi-language** | 16 research languages | Cross-lingual synthesis |
-| **Proof Verification** | Lean 4 integration | Formal proofs |
+### Week 1: Release Finalization
 
-### What's Working
+| Task | Priority | Effort | Status |
+|------|----------|--------|--------|
+| Fix remaining compiler warnings | HIGH | 4h | ⏳ Pending |
+| Complete crates.io publishing | HIGH | 2h | ⏳ Pending |
+| Create GitHub Release (v1.0.0) | HIGH | 1h | ⏳ Pending |
+| Enable GitHub Discussions | MEDIUM | 30m | ⏳ Pending |
+| Deploy docs.clawdius.dev | MEDIUM | 2h | ⏳ Pending |
+| Create Discord server | MEDIUM | 2h | ⏳ Pending |
 
-- **199+ tests passing** (80+ unit, 119+ integration)
-- **CLI chat** with real LLM responses
-- **TUI chat** with streaming output
-- **File operations** (read, write, edit)
-- **Shell command execution** with sandbox support
-- **Git operations** (status, diff, log)
-- **Provider configuration** via config file and environment
-- **Vim keybindings** in TUI
-- **Error recovery** with exponential backoff
+### Week 2: Community Launch
 
-### Technical Debt
+| Task | Priority | Effort | Status |
+|------|----------|--------|--------|
+| Write launch blog post | HIGH | 4h | ⏳ Pending |
+| Submit to Hacker News | HIGH | 1h | ⏳ Pending |
+| Post to r/rust, r/programming | HIGH | 1h | ⏳ Pending |
+| Create demo video | MEDIUM | 8h | ⏳ Pending |
+| Reach out to tech press | MEDIUM | 4h | ⏳ Pending |
+| Create Twitter/X thread | MEDIUM | 2h | ⏳ Pending |
 
-| Item | Priority | Effort | Description |
+### Launch Checklist
+
+```markdown
+- [ ] All tests passing (993/993)
+- [ ] No critical bugs open
+- [ ] Documentation complete
+- [ ] crates.io published
+- [ ] GitHub Release created
+- [ ] Discord server live
+- [ ] GitHub Discussions enabled
+- [ ] docs.clawdius.dev deployed
+- [ ] Demo video published
+- [ ] Blog post written
+```
+
+---
+
+## Phase 2: Polish & Adoption (Weeks 3-6)
+
+**Goal:** Improve UX and grow early adopter base
+
+### v1.0.1 - Bug Fixes (Week 3-4)
+
+| Task | Priority | Effort | Description |
 |------|----------|--------|-------------|
-| Fuzz Targets | Medium | 16h | Structure exists, no actual fuzzing |
-| WASM Webview | Low | 24h | Types defined, Leptos not wired |
-| Test Coverage | Medium | 8h | Target 90% for v1.0.0 |
-| Documentation | Medium | 16h | API docs incomplete |
+| Fix clippy warnings | HIGH | 4h | Address all warnings |
+| Dead code cleanup | MEDIUM | 4h | Remove unused code |
+| Error message improvements | MEDIUM | 8h | Better user-facing errors |
+| Performance profiling | MEDIUM | 8h | Identify bottlenecks |
+| Memory optimization | LOW | 8h | Reduce ~100MB target |
+
+### v1.0.2 - UX Improvements (Week 5-6)
+
+| Task | Priority | Effort | Description |
+|------|----------|--------|-------------|
+| Onboarding wizard | HIGH | 16h | Interactive first-run |
+| Default config improvements | HIGH | 4h | Better out-of-box experience |
+| TUI polish | MEDIUM | 8h | Smoother animations |
+| Error recovery | MEDIUM | 8h | Auto-retry, graceful degradation |
+| Progress indicators | MEDIUM | 4h | Better feedback during operations |
+
+### Community Growth Targets
+
+| Metric | Week 2 | Week 4 | Week 6 |
+|--------|--------|--------|--------|
+| GitHub Stars | 50 | 150 | 300 |
+| Discord Members | 25 | 75 | 150 |
+| Active Users | 10 | 50 | 100 |
+| GitHub Discussions | 5 | 25 | 50 |
 
 ---
 
-## Phase 10-12: Deployment & Operations (Immediate)
+## Phase 3: Feature Expansion (Months 2-3)
 
-### Phase 10: Deployment & Operations
+### v1.1.0 - Code Intelligence (Month 2)
 
-| ID | Task | Status | Description |
-|----|------|--------|-------------|
-| D1 | Package binaries | ⏳ Pending | Cross-platform releases |
-| D2 | Installation scripts | ⏳ Pending | curl \| sh, homebrew, cargo |
-| D3 | Crash reporting | ⏳ Pending | Sentry integration |
-| D4 | User onboarding | ⏳ Pending | First-run experience |
+**Theme:** Enhanced developer productivity
 
-### Phase 11: Continuous Monitoring
+| Task | Priority | Effort | Description |
+|------|----------|--------|-------------|
+| MCP Protocol completion | HIGH | 24h | Model Context Protocol |
+| CLAUDE.md memory | HIGH | 16h | Persistent project memory |
+| Inline completions | HIGH | 32h | LSP completion provider |
+| Multi-file context | MEDIUM | 24h | Cross-file understanding |
+| Code actions | MEDIUM | 16h | Quick fixes |
 
-| ID | Task | Status | Description |
-|----|------|--------|-------------|
-| M1 | Telemetry (opt-in) | ⏳ Pending | Usage analytics |
-| M2 | Performance monitoring | ⏳ Pending | Prometheus metrics |
-| M3 | Error tracking | ⏳ Pending | Crash aggregation |
-| M4 | Health checks | ⏳ Pending | Liveness/readiness probes |
+### v1.2.0 - IDE Integration (Month 3)
 
-### Phase 12: Knowledge Transfer
+**Theme:** Better editor support
 
-| ID | Task | Status | Description |
-|----|------|--------|-------------|
-| K1 | API documentation | ⏳ Pending | rustdoc completion |
-| K2 | Video tutorials | ⏳ Pending | Getting started series |
-| K3 | Contributing guide | ✅ Complete | CONTRIBUTING.md |
-| K4 | Community channels | ⏳ Pending | Discord, GitHub Discussions |
+| Task | Priority | Effort | Description |
+|------|----------|--------|-------------|
+| JetBrains plugin | HIGH | 40h | IntelliJ platform |
+| Vim/Neovim plugin | MEDIUM | 24h | Lua plugin |
+| Emacs package | LOW | 16h | Elisp package |
+| LSP server | HIGH | 32h | Full LSP implementation |
+| DAP adapter | MEDIUM | 24h | Debug adapter protocol |
 
 ---
 
-## v0.6.0: Polish & Performance (Q2 2026)
+## Phase 4: Enterprise (Months 4-6)
 
-### Theme: Production Hardening
+### v1.3.0 - Self-Hosted (Month 4)
 
-Focus on reliability, performance optimization, and user experience refinement.
+**Theme:** Privacy and control
 
-#### Must Have
+| Task | Priority | Effort | Description |
+|------|----------|--------|-------------|
+| Local LLM support | HIGH | 40h | LLaMA, Mistral, etc. |
+| Model management | HIGH | 16h | Download, switch, configure |
+| Offline mode | MEDIUM | 8h | Full offline capability |
+| Air-gapped install | MEDIUM | 8h | No internet required |
 
-| ID | Task | Effort | Description |
-|----|------|--------|-------------|
-| P1 | Fuzz Targets | 16h | Actual fuzzing for security-critical paths |
-| P2 | WASM Webview | 24h | Complete Leptos UI for VSCode |
-| P3 | Error Handling | 8h | Comprehensive error recovery |
-| P4 | Structured Logging | 8h | JSON logging with tracing |
+### v1.4.0 - Team Features (Month 5)
 
-#### Should Have
+**Theme:** Collaboration
 
-| ID | Task | Effort | Description |
-|----|------|--------|-------------|
-| P5 | Performance Profiling | 8h | Identify and fix bottlenecks |
-| P6 | Memory Optimization | 8h | Reduce footprint from ~200MB |
-| P7 | Startup Time | 4h | Improve cold start < 1s |
-| P8 | Cache Optimization | 4h | LLM response caching |
+| Task | Priority | Effort | Description |
+|------|----------|--------|-------------|
+| Shared contexts | HIGH | 24h | Team knowledge base |
+| Prompt templates | HIGH | 16h | Shared prompt library |
+| Session sharing | MEDIUM | 16h | Collaborate on conversations |
+| Team analytics | LOW | 16h | Usage insights |
 
-#### Could Have
+### v1.5.0 - Enterprise Compliance (Month 6)
 
-| ID | Task | Effort | Description |
-|----|------|--------|-------------|
-| P9 | Enhanced @mentions | 8h | URL fetching, image analysis |
-| P10 | Session Export | 4h | Export to Markdown/JSON |
-| P11 | Custom Themes | 4h | TUI color schemes |
+**Theme:** Security and compliance
 
----
-
-## v0.7.0: Intelligence & Integration (Q3 2026)
-
-### Theme: Enhanced AI Capabilities
-
-Focus on code intelligence, context understanding, and developer productivity.
-
-#### Must Have
-
-| ID | Task | Effort | Description |
-|----|------|--------|-------------|
-| I1 | Real Embeddings | 16h | Sentence transformers integration |
-| I2 | Code Completion | 24h | Inline suggestions in VSCode |
-| I3 | Multi-file Context | 16h | Cross-file understanding |
-
-#### Should Have
-
-| ID | Task | Effort | Description |
-|----|------|--------|-------------|
-| I4 | Code Actions | 16h | Quick fixes and refactorings |
-| I5 | Automated Refactoring | 24h | Safe code transformations |
-| I6 | Test Generation | 16h | Generate unit tests |
-
-#### Could Have
-
-| ID | Task | Effort | Description |
-|----|------|--------|-------------|
-| I7 | Doc Generation | 8h | Auto-generate documentation |
-| I8 | Code Review | 16h | PR analysis suggestions |
-| I9 | Architecture Analysis | 16h | Dependency graphs, metrics |
+| Task | Priority | Effort | Description |
+|------|----------|--------|-------------|
+| SSO hardening | HIGH | 16h | Production SSO |
+| Audit log export | HIGH | 8h | SIEM integration |
+| SOC 2 preparation | MEDIUM | 40h | Compliance documentation |
+| Security audit | HIGH | 80h | Third-party penetration test |
 
 ---
 
-## v0.8.0: Enterprise & Scale (Q4 2026)
+## Phase 5: Platform (Months 7-9)
 
-### Theme: Enterprise Readiness
+### v1.6.0 - Plugin Ecosystem (Month 7-8)
 
-Focus on compliance, security, and organizational deployment.
+**Theme:** Extensibility
 
-#### Must Have
+| Task | Priority | Effort | Description |
+|------|----------|--------|-------------|
+| Plugin marketplace | HIGH | 40h | Discovery and install |
+| Plugin CLI | HIGH | 16h | Manage plugins |
+| Plugin templates | MEDIUM | 16h | Getting started kit |
+| Plugin documentation | HIGH | 16h | Complete API docs |
+| Example plugins | MEDIUM | 24h | 5 reference plugins |
 
-| ID | Task | Effort | Description |
-|----|------|--------|-------------|
-| E1 | Self-hosted LLM | 24h | Local model support (LLaMA, Mistral) |
-| E2 | SSO Integration | 16h | SAML, OIDC authentication |
-| E3 | Audit Logging | 8h | Compliance-ready logs |
+### v1.7.0 - API & Integration (Month 9)
 
-#### Should Have
+**Theme:** Connectivity
 
-| ID | Task | Effort | Description |
-|----|------|--------|-------------|
-| E4 | Cloud Sync | 24h | Optional encrypted sync |
-| E5 | Team Workspaces | 32h | Shared contexts and prompts |
-| E6 | Role-based Access | 16h | Fine-grained permissions |
-
-#### Could Have
-
-| ID | Task | Effort | Description |
-|----|------|--------|-------------|
-| E7 | On-premise Deploy | 24h | Air-gapped installation |
-| E8 | Custom Models | 16h | Fine-tuned model support |
-| E9 | Data Residency | 8h | Region-specific storage |
+| Task | Priority | Effort | Description |
+|------|----------|--------|-------------|
+| REST API | HIGH | 32h | Full API coverage |
+| GraphQL API | MEDIUM | 24h | Query interface |
+| Webhooks | MEDIUM | 16h | Event notifications |
+| CLI scripting | MEDIUM | 16h | Automation support |
 
 ---
 
-## v0.9.0: Platform & Ecosystem (Q1 2027)
+## Phase 6: Maturity (Months 10-12)
 
-### Theme: Extensibility
+### v2.0.0 - Next Generation (Month 10-12)
 
-Focus on third-party integration and community growth.
+**Theme:** Next-level capabilities
 
-#### Must Have
-
-| ID | Task | Effort | Description |
-|----|------|--------|-------------|
-| X1 | Plugin System | 40h | WASM-based extensions |
-| X2 | API Gateway | 24h | REST/GraphQL API |
-| X3 | Webhooks | 8h | Event notifications |
-
-#### Should Have
-
-| ID | Task | Effort | Description |
-|----|------|--------|-------------|
-| X4 | Marketplace | 32h | Plugin discovery and install |
-| X5 | SDK | 24h | Developer toolkit |
-
-#### Could Have
-
-| ID | Task | Effort | Description |
-|----|------|--------|-------------|
-| X6 | IDE Integrations | 40h | JetBrains, Vim, Emacs |
-| X7 | CLI Distribution | 8h | Homebrew, Scoop, AUR |
-| X8 | MCP Server | 16h | Model Context Protocol |
-
----
-
-## v1.0.0: Production Release (Q2 2027)
-
-### Theme: Stability & Maturity
-
-Focus on API stability, comprehensive documentation, and production guarantees.
-
-#### Must Have
-
-| ID | Task | Effort | Description |
-|----|------|--------|-------------|
-| R1 | API Stability | 8h | SemVer guarantees |
-| R2 | Documentation | 24h | Complete docs coverage |
-| R3 | Performance SLA | 16h | Latency guarantees |
-
-#### Should Have
-
-| ID | Task | Effort | Description |
-|----|------|--------|-------------|
-| R4 | Security Audit | 40h | Third-party penetration test |
-| R5 | Compliance | 24h | SOC2 Type II, GDPR |
+| Task | Priority | Effort | Description |
+|------|----------|--------|-------------|
+| Agentic workflows | HIGH | 80h | Autonomous task execution |
+| Code generation | HIGH | 60h | Generate entire features |
+| Test generation | MEDIUM | 40h | Auto-generate tests |
+| Documentation gen | MEDIUM | 24h | Auto-generate docs |
+| Architecture analysis | LOW | 40h | Dependency graphs, metrics |
 
 ---
 
@@ -246,21 +229,15 @@ Focus on API stability, comprehensive documentation, and production guarantees.
 - Whole-repository semantic understanding
 - Architecture drift detection
 - Technical debt quantification
-- Dependency vulnerability prediction
+- Predictive bug detection
 
-#### 2. Collaborative AI
-- Real-time multi-user sessions
-- Shared AI context across teams
-- Organization-wide knowledge bases
-- Code review automation
-
-#### 3. Autonomous Development
-- Self-directed task execution
+#### 2. Autonomous Development
+- Self-directed feature implementation
 - Continuous test generation
 - Automated performance optimization
 - Self-healing code
 
-#### 4. Domain Specialization
+#### 3. Domain Specialization
 - Industry-specific models (finance, healthcare, embedded)
 - Regulatory compliance automation
 - Safety-critical system verification
@@ -268,50 +245,48 @@ Focus on API stability, comprehensive documentation, and production guarantees.
 
 ---
 
-## Strategic Priorities
+## Business Model (Future Consideration)
 
-### Differentiation Strategy
+### Open Source Core + Enterprise
 
-| Area | Competitors | Clawdius Advantage |
-|------|-------------|-------------------|
-| **Security** | Basic/None | 4-tier sandbox + Capability tokens |
-| **Code Intelligence** | Surface-level | Graph-RAG + Tree-sitter + LanceDB |
-| **Performance** | General purpose | HFT-grade ring buffer + Zero-copy |
-| **Enterprise** | Limited | Self-hosted + Audit logs + SSO |
-| **Verification** | None | Lean 4 formal proofs |
+| Tier | Price | Features |
+|------|-------|----------|
+| **Community** | Free | All core features, community support |
+| **Pro** | $20/mo | Cloud sync, team features, priority support |
+| **Enterprise** | Custom | SSO, audit logs, SLA, dedicated support |
+| **Self-Hosted** | Custom | Air-gapped, custom models, training |
 
-### Market Positioning
+### Revenue Projections (Conservative)
 
-| Segment | Focus | Value Proposition |
-|---------|-------|-------------------|
-| **Primary** | Security-conscious developers | Sandboxed execution, local-first |
-| **Secondary** | Enterprise teams | Compliance, control, audit trails |
-| **Tertiary** | Researchers | Formal verification, extensibility |
+| Quarter | Users | Revenue Target |
+|---------|-------|----------------|
+| Q2 2026 | 100 | $0 (community building) |
+| Q3 2026 | 500 | $2,000/mo |
+| Q4 2026 | 1,500 | $8,000/mo |
+| Q1 2027 | 3,000 | $20,000/mo |
 
 ---
 
 ## Resource Requirements
 
-### Team Size by Phase
+### Current Team: 1 (You)
+
+### Ideal Team by Phase
 
 | Phase | Engineers | Duration | Focus |
 |-------|-----------|----------|-------|
-| v0.6.0 | 2-3 | 3 months | Polish & Performance |
-| v0.7.0 | 3-4 | 3 months | Intelligence |
-| v0.8.0 | 4-5 | 3 months | Enterprise |
-| v0.9.0 | 5-6 | 3 months | Platform |
-| v1.0.0 | 4-5 | 2 months | Stability |
+| Launch | 1-2 | 2 weeks | Release, community |
+| Polish | 2 | 4 weeks | UX, bugs |
+| Features | 2-3 | 8 weeks | MCP, completions |
+| Enterprise | 3-4 | 12 weeks | Self-hosted, teams |
+| Platform | 4-5 | 12 weeks | Plugins, API |
 
-### Infrastructure Needs
+### Hiring Priorities (If Funded)
 
-| Component | Purpose | Priority |
-|-----------|---------|----------|
-| CI/CD Pipeline | Automated testing/releases | High |
-| Performance Lab | Benchmark regression | High |
-| Security Scanner | CVE detection | High |
-| Documentation Host | docs.clawdius.dev | Medium |
-| Community Platform | Discord/Discourse | Medium |
-| Telemetry Backend | Usage analytics | Low |
+1. **Rust Backend Engineer** - Core development
+2. **TypeScript/Frontend Engineer** - VSCode, webview
+3. **DevOps/SRE** - CI/CD, infrastructure
+4. **Developer Advocate** - Community, content
 
 ---
 
@@ -321,101 +296,107 @@ Focus on API stability, comprehensive documentation, and production guarantees.
 
 | Risk | Probability | Impact | Mitigation |
 |------|-------------|--------|------------|
-| LLM API changes | Medium | High | Provider abstraction layer |
+| LLM API changes | Medium | High | Provider abstraction |
 | Performance regression | Medium | Medium | Continuous benchmarking |
-| Security vulnerabilities | Low | High | Regular audits, sandboxing |
-| Dependency issues | Medium | Medium | Vendoring, version pinning |
+| Security vulnerability | Low | High | Regular audits, sandboxing |
 | WASM compatibility | Low | Medium | Multi-runtime support |
 
 ### Business Risks
 
 | Risk | Probability | Impact | Mitigation |
 |------|-------------|--------|------------|
-| Market competition | High | Medium | Differentiation focus |
-| User adoption | Medium | High | Community building |
-| Funding sustainability | Medium | High | Enterprise features |
-| Talent acquisition | Medium | Medium | Remote-first, OSS appeal |
+| Low adoption | Medium | High | Community building, marketing |
+| Competition | High | Medium | Differentiation focus |
+| Burnout | Medium | High | Sustainable pace, hiring |
+| Funding | Medium | High | Enterprise features, monetization |
 
 ---
 
 ## Success Metrics
 
-### Technical Metrics
+### Technical (v1.0.0 Target)
 
-| Metric | Current | v0.6.0 Target | v1.0.0 Target |
-|--------|---------|---------------|---------------|
-| Test Coverage | 80% | 85% | 90% |
-| Response Time (P95) | <2s | <1s | <500ms |
-| Memory Usage | ~200MB | ~150MB | ~100MB |
-| Startup Time | ~2s | ~1s | <500ms |
-| Binary Size | 2.2MB | <5MB | <10MB |
+| Metric | Current | Target |
+|--------|---------|--------|
+| Test Coverage | 85% | 90% |
+| Response Time (P95) | <2s | <500ms |
+| Memory Usage | ~100MB | <100MB |
+| Startup Time | ~20ms | <50ms |
+| Open CVEs | 0 | 0 |
 
-### Business Metrics
+### Community (6-Month Target)
 
-| Metric | Current | v0.6.0 Target | v1.0.0 Target |
-|--------|---------|---------------|---------------|
-| GitHub Stars | 0 | 500 | 2,000 |
-| Active Users | 0 | 100 | 1,000 |
-| NPS Score | - | 30 | 50 |
-| Enterprise Customers | 0 | 2 | 10 |
+| Metric | Current | Target |
+|--------|---------|--------|
+| GitHub Stars | 0 | 1,000 |
+| Discord Members | 0 | 500 |
+| Active Users | 0 | 500 |
+| Contributors | 1 | 25 |
+| Plugins | 0 | 10 |
 
-### Quality Metrics
+### Business (12-Month Target)
 
-| Metric | Current | v0.6.0 Target | v1.0.0 Target |
-|--------|---------|---------------|---------------|
-| Open CVEs | 0 | 0 | 0 |
-| Crash Rate | - | <0.1% | <0.01% |
-| Issue Resolution | - | <7 days | <3 days |
-| PR Merge Time | - | <48h | <24h |
+| Metric | Current | Target |
+|--------|---------|--------|
+| Paying Users | 0 | 100 |
+| MRR | $0 | $5,000 |
+| Enterprise Customers | 0 | 5 |
+| NPS Score | - | 40+ |
 
 ---
 
-## Implementation Timeline
+## Immediate Action Items (This Week)
 
+### Priority 1: Launch Blockers
+
+```bash
+# Day 1-2: Fix warnings
+cargo clippy --all-targets --all-features --fix
+
+# Day 2: crates.io
+cargo login
+cargo publish -p clawdius-core
+cargo publish -p clawdius
+
+# Day 3: GitHub
+gh release create v1.0.0 --title "Clawdius v1.0.0" --notes-file RELEASE_NOTES.md
+
+# Day 3-4: Community
+# - Create Discord server
+# - Enable GitHub Discussions
+# - Deploy docs.clawdius.dev
 ```
-2026 Q2: v0.6.0 - Polish & Performance
-├── P1: Fuzz Targets (2 weeks)
-├── P2: WASM Webview (3 weeks)
-└── P3-P4: Error/Logging (1 week)
 
-2026 Q3: v0.7.0 - Intelligence & Integration
-├── I1: Real Embeddings (2 weeks)
-├── I2: Code Completion (3 weeks)
-└── I3: Multi-file Context (2 weeks)
+### Priority 2: Launch Marketing
 
-2026 Q4: v0.8.0 - Enterprise & Scale
-├── E1: Self-hosted LLM (3 weeks)
-├── E2: SSO Integration (2 weeks)
-└── E3: Audit Logging (1 week)
-
-2027 Q1: v0.9.0 - Platform & Ecosystem
-├── X1: Plugin System (5 weeks)
-├── X2: API Gateway (3 weeks)
-└── X3: Webhooks (1 week)
-
-2027 Q2: v1.0.0 - Production Release
-├── R1: API Stability (1 week)
-├── R2: Documentation (3 weeks)
-└── R3: Performance SLA (2 weeks)
+```markdown
+# Day 5-7: Content Creation
+- [ ] Write blog post: "Introducing Clawdius"
+- [ ] Create demo video (5 min)
+- [ ] Prepare HN submission
+- [ ] Draft Twitter thread
+- [ ] Email tech journalists
 ```
 
 ---
 
 ## Conclusion
 
-Clawdius v0.5.0 represents a solid foundation with unique differentiators in security, performance, and verification. The roadmap ahead balances immediate user needs (polish, reliability) with strategic investments (enterprise features, extensibility) to build a sustainable, competitive AI coding assistant.
+Clawdius v1.0.0-rc.1 is **ready for launch**. The path forward is:
+
+1. **Week 1-2:** Launch v1.0.0 stable + community presence
+2. **Month 2-3:** Polish, UX, code intelligence features
+3. **Month 4-6:** Enterprise features, self-hosted
+4. **Month 7-9:** Plugin ecosystem, API
+5. **Month 10-12:** v2.0.0 with agentic capabilities
 
 **Key Success Factors:**
-1. Maintain security-first differentiation
-2. Build community through extensibility
-3. Establish enterprise credibility early
-4. Invest in performance as a feature
-
-**Next Immediate Actions:**
-1. Complete Phase 10-12 (Deployment & Operations)
-2. Begin v0.6.0 fuzz target implementation
-3. Establish community channels
+1. 🚀 Launch momentum - strike while iron is hot
+2. 🏗️ Maintain quality - don't rush features
+3. 🤝 Build community - respond to every issue/PR
+4. 💼 Enterprise credibility - early case studies
+5. 🔒 Security differentiation - lean into uniqueness
 
 ---
 
-*This roadmap is a living document and should be updated quarterly.*
+*This roadmap is a living document. Review and update monthly.*
