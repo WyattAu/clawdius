@@ -201,15 +201,15 @@ docker-run:
 
 vscode-extension:
 	@echo "🔌 Building VSCode extension..."
-	cd extensions/vscode && npm install && npm run compile
+	cd editors/vscode && pnpm install && pnpm run compile
 
 vscode-package:
 	@echo "📦 Packaging VSCode extension..."
-	cd extensions/vscode && npm install && npm run package
+	cd editors/vscode && pnpm install && pnpm run compile && pnpm exec vsce package --allow-missing-repository
 
 vscode-install: vscode-package
 	@echo "📦 Installing VSCode extension..."
-	@code --install-extension extensions/vscode/*.vsix
+	@code --install-extension editors/vscode/*.vsix
 
 # ==============================================================================
 # JetBrains Plugin

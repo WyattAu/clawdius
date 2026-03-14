@@ -363,10 +363,10 @@
     {
       "label": "vscode: install deps",
       "type": "shell",
-      "command": "npm",
+      "command": "pnpm",
       "args": ["install"],
       "options": {
-        "cwd": "${workspaceFolder}/extensions/vscode"
+        "cwd": "${workspaceFolder}/editors/vscode"
       },
       "group": "none",
       "presentation": {
@@ -377,10 +377,10 @@
     {
       "label": "vscode: compile",
       "type": "shell",
-      "command": "npm",
+      "command": "pnpm",
       "args": ["run", "compile"],
       "options": {
-        "cwd": "${workspaceFolder}/extensions/vscode"
+        "cwd": "${workspaceFolder}/editors/vscode"
       },
       "group": "none",
       "dependsOn": ["vscode: install deps"],
@@ -392,10 +392,10 @@
     {
       "label": "vscode: package",
       "type": "shell",
-      "command": "npm",
-      "args": ["run", "package"],
+      "command": "pnpm",
+      "args": ["exec", "vsce", "package", "--allow-missing-repository"],
       "options": {
-        "cwd": "${workspaceFolder}/extensions/vscode"
+        "cwd": "${workspaceFolder}/editors/vscode"
       },
       "group": "none",
       "dependsOn": ["vscode: compile"],
@@ -408,10 +408,7 @@
       "label": "vscode: install",
       "type": "shell",
       "command": "code",
-      "args": ["--install-extension", "clawdius-${input:version}.vsix"],
-      "options": {
-        "cwd": "${workspaceFolder}/extensions/vscode"
-      },
+      "args": ["--install-extension", "${workspaceFolder}/editors/vscode/clawdius-code-0.1.0.vsix"],
       "group": "none",
       "dependsOn": ["vscode: package"],
       "presentation": {

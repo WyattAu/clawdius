@@ -366,10 +366,10 @@
       "name": "Debug VSCode Extension",
       "runtimeExecutable": "${execPath}",
       "args": [
-        "--extensionDevelopmentPath=${workspaceFolder}/extensions/vscode",
-        "--extensionTestsPath=${workspaceFolder}/extensions/vscode/out/test/suite/index"
+        "--extensionDevelopmentPath=${workspaceFolder}/editors/vscode",
+        "--extensionTestsPath=${workspaceFolder}/editors/vscode/out/test/suite/index"
       ],
-      "outFiles": ["${workspaceFolder}/extensions/vscode/out/**/*.js"],
+      "outFiles": ["${workspaceFolder}/editors/vscode/out/**/*.js"],
       "preLaunchTask": "vscode: compile"
     },
 
