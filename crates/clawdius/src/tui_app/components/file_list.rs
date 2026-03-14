@@ -7,6 +7,8 @@ use ratatui::{
 };
 use std::path::PathBuf;
 
+use super::super::theme;
+
 #[derive(Clone)]
 pub struct FileEntry {
     pub path: PathBuf,
@@ -120,6 +122,8 @@ impl FileList {
     }
 
     pub fn render(&mut self, f: &mut Frame<'_>, area: Rect) {
+        let theme = theme::current();
+
         let items: Vec<ListItem<'_>> = self
             .entries
             .iter()
@@ -135,31 +139,30 @@ impl FileList {
                         .unwrap_or_default()
                 };
 
-                let icon = if entry.is_dir { "📁 " } else { "📄 " };
-                let check = if entry.selected { "✓ " } else { "  " };
+                let prefix = if entry.is_dir { "D " } else { "  " };
+                let check = if entry.selected { "* " } else { "  " };
 
                 let style = if entry.is_dir {
-                    Style::default().fg(Color::Blue)
+                    theme.file_dir()
                 } else if entry.selected {
-                    Style::default()
-                        .fg(Color::Green)
-                        .add_modifier(Modifier::BOLD)
+                    theme.file_selected()
                 } else {
-                    Style::default()
+                    theme.file_item()
                 };
 
-                ListItem::new(Line::styled(format!("{}{}{}", check, icon, name), style))
+                ListItem::new(Line::styled(format!("{}{}{}", check, prefix, name), style))
             })
             .collect();
 
-        let title = format!("Files: {}", self.current_dir.display());
+        let title = format!("FILES {}", self.current_dir.display());
         let list = List::new(items)
-            .block(Block::default().borders(Borders::ALL).title(title))
-            .highlight_style(
-                Style::default()
-                    .bg(Color::DarkGray)
-                    .add_modifier(Modifier::BOLD),
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .border_style(theme.border())
+                    .title(Line::styled(title, theme.title())),
             )
+            .highlight_style(Style::default().fg(theme.text).bg(theme.selection))
             .highlight_symbol("> ");
 
         f.render_stateful_widget(list, area, &mut self.state);

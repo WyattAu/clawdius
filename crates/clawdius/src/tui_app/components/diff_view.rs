@@ -7,6 +7,8 @@ use ratatui::{
     Frame,
 };
 
+use super::super::theme;
+
 #[derive(Clone)]
 pub struct DiffView {
     diff: Option<FileDiff>,
@@ -57,17 +59,19 @@ impl DiffView {
     }
 
     pub fn render(&mut self, f: &mut Frame<'_>, area: Rect) {
+        let theme = theme::current();
+
         if let Some(diff) = &self.diff {
             let mut lines: Vec<Line<'_>> = Vec::new();
 
             let path_str = diff.path.to_string_lossy();
             lines.push(Line::from(vec![
-                Span::styled("--- ", Style::default().fg(Color::Red)),
-                Span::styled(path_str.as_ref(), Style::default().fg(Color::Yellow)),
+                Span::styled("--- ", theme.diff_delete()),
+                Span::styled(path_str.as_ref(), theme.diff_header()),
             ]));
             lines.push(Line::from(vec![
-                Span::styled("+++ ", Style::default().fg(Color::Green)),
-                Span::styled(path_str.as_ref(), Style::default().fg(Color::Yellow)),
+                Span::styled("+++ ", theme.diff_add()),
+                Span::styled(path_str.as_ref(), theme.diff_header()),
             ]));
 
             for hunk in &diff.hunks {
@@ -76,19 +80,15 @@ impl DiffView {
                         "@@ -{},{} +{},{} @@",
                         hunk.old_start, hunk.old_lines, hunk.new_start, hunk.new_lines
                     ),
-                    Style::default().fg(Color::Cyan),
+                    theme.diff_header(),
                 )]));
 
                 for line in &hunk.lines {
                     let line_span = match line {
-                        DiffLine::Context(l) => {
-                            Span::styled(format!(" {}", l), Style::default().fg(Color::Gray))
-                        }
-                        DiffLine::Added(l) => {
-                            Span::styled(format!("+{}", l), Style::default().fg(Color::Green))
-                        }
+                        DiffLine::Context(l) => Span::styled(format!(" {}", l), theme.muted()),
+                        DiffLine::Added(l) => Span::styled(format!("+{}", l), theme.diff_add()),
                         DiffLine::Removed(l) => {
-                            Span::styled(format!("-{}", l), Style::default().fg(Color::Red))
+                            Span::styled(format!("-{}", l), theme.diff_delete())
                         }
                     };
                     lines.push(Line::from(line_span));
@@ -101,14 +101,19 @@ impl DiffView {
             let scroll_offset = self.scroll.min(total_lines.saturating_sub(visible_lines));
 
             let title = format!(
-                "Diff: {} (+{} -{})",
+                "DIFF {} (+{} -{})",
                 path_str,
                 diff.stats().additions,
                 diff.stats().deletions
             );
 
+            let block = Block::default()
+                .borders(Borders::ALL)
+                .border_style(theme.border())
+                .title(Line::styled(title, theme.title()));
+
             let paragraph = Paragraph::new(lines)
-                .block(Block::default().borders(Borders::ALL).title(title))
+                .block(block)
                 .scroll((scroll_offset as u16, 0));
 
             f.render_widget(paragraph, area);
@@ -133,8 +138,12 @@ impl DiffView {
                 f.render_stateful_widget(scrollbar, scrollbar_area, &mut self.scroll_state);
             }
         } else {
-            let paragraph = Paragraph::new("No diff to display")
-                .block(Block::default().borders(Borders::ALL).title("Diff"));
+            let block = Block::default()
+                .borders(Borders::ALL)
+                .border_style(theme.border())
+                .title(Line::styled("Diff", theme.title()));
+
+            let paragraph = Paragraph::new("No diff to display").block(block);
             f.render_widget(paragraph, area);
         }
     }
