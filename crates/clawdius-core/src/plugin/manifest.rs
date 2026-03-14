@@ -310,6 +310,7 @@ properties = { enabled = { type = "boolean", default = true } }
 /// Semver types (simplified for manifest validation)
 mod semver {
     #[derive(Debug, Clone)]
+    #[allow(dead_code)]
     pub struct Version {
         major: u64,
         minor: u64,
@@ -331,6 +332,7 @@ mod semver {
     }
 
     #[derive(Debug, Clone)]
+    #[allow(dead_code)]
     pub struct VersionReq(String);
 
     impl VersionReq {

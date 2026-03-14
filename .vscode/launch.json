@@ -1,6 +1,9 @@
 {
   "version": "0.2.0",
   "configurations": [
+    // ==============================================================================
+    // CLI Debug Configurations
+    // ==============================================================================
     {
       "type": "lldb",
       "request": "launch",
@@ -12,13 +15,22 @@
           "kind": "bin"
         }
       },
-      "args": ["chat", "hello"],
-      "cwd": "${workspaceFolder}"
+      "args": [],
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "RUST_LOG": "debug",
+        "RUST_BACKTRACE": "1"
+      },
+      "preLaunchTask": "build (workspace)",
+      "presentation": {
+        "hidden": false,
+        "group": "cli"
+      }
     },
     {
       "type": "lldb",
       "request": "launch",
-      "name": "Debug TUI",
+      "name": "Debug CLI (chat)",
       "cargo": {
         "args": ["build", "--bin=clawdius", "--package=clawdius"],
         "filter": {
@@ -26,15 +38,147 @@
           "kind": "bin"
         }
       },
-      "args": [],
-      "cwd": "${workspaceFolder}"
+      "args": ["chat", "hello"],
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "RUST_LOG": "debug"
+      },
+      "preLaunchTask": "build (workspace)"
     },
     {
       "type": "lldb",
       "request": "launch",
-      "name": "Debug Tests",
+      "name": "Debug CLI (watch)",
+      "cargo": {
+        "args": ["build", "--bin=clawdius", "--package=clawdius"],
+        "filter": {
+          "name": "clawdius",
+          "kind": "bin"
+        }
+      },
+      "args": ["watch", "."],
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "RUST_LOG": "debug"
+      },
+      "preLaunchTask": "build (workspace)"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug CLI (refactor)",
+      "cargo": {
+        "args": ["build", "--bin=clawdius", "--package=clawdius"],
+        "filter": {
+          "name": "clawdius",
+          "kind": "bin"
+        }
+      },
+      "args": ["refactor", "--from", "typescript", "--to", "rust", "--path", "."],
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "RUST_LOG": "debug"
+      },
+      "preLaunchTask": "build (workspace)"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug CLI (verify)",
+      "cargo": {
+        "args": ["build", "--bin=clawdius", "--package=clawdius"],
+        "filter": {
+          "name": "clawdius",
+          "kind": "bin"
+        }
+      },
+      "args": ["verify", "--proof", "${input:proofFile}"],
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "RUST_LOG": "debug"
+      },
+      "preLaunchTask": "build (workspace)"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug CLI (TUI)",
+      "cargo": {
+        "args": ["build", "--bin=clawdius", "--package=clawdius"],
+        "filter": {
+          "name": "clawdius",
+          "kind": "bin"
+        }
+      },
+      "args": ["--tui"],
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "RUST_LOG": "debug"
+      },
+      "preLaunchTask": "build (workspace)"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug CLI (MCP server)",
+      "cargo": {
+        "args": ["build", "--bin=clawdius", "--package=clawdius"],
+        "filter": {
+          "name": "clawdius",
+          "kind": "bin"
+        }
+      },
+      "args": ["mcp", "serve"],
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "RUST_LOG": "debug"
+      },
+      "preLaunchTask": "build (workspace)"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug CLI (auto)",
+      "cargo": {
+        "args": ["build", "--bin=clawdius", "--package=clawdius"],
+        "filter": {
+          "name": "clawdius",
+          "kind": "bin"
+        }
+      },
+      "args": ["auto", "fix failing tests"],
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "RUST_LOG": "debug"
+      },
+      "preLaunchTask": "build (workspace)"
+    },
+
+    // ==============================================================================
+    // Test Debug Configurations
+    // ==============================================================================
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug Unit Tests",
       "cargo": {
         "args": ["test", "--no-run", "--lib", "--package=clawdius-core"],
+        "filter": {
+          "kind": "lib"
+        }
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "RUST_LOG": "debug"
+      }
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug Unit Tests (clawdius)",
+      "cargo": {
+        "args": ["test", "--no-run", "--lib", "--package=clawdius"],
         "filter": {
           "kind": "lib"
         }
@@ -45,7 +189,52 @@
     {
       "type": "lldb",
       "request": "launch",
-      "name": "Debug VSCode Helper",
+      "name": "Debug Integration Tests",
+      "cargo": {
+        "args": ["test", "--no-run", "--test=integration_tests", "--package=clawdius"],
+        "filter": {
+          "name": "integration_tests",
+          "kind": "test"
+        }
+      },
+      "args": ["--test-threads=1"],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug Specific Test",
+      "cargo": {
+        "args": ["test", "--no-run", "--lib", "--package=clawdius-core"],
+        "filter": {
+          "kind": "lib"
+        }
+      },
+      "args": ["${input:testName}", "--nocapture"],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug Current Test",
+      "cargo": {
+        "args": ["test", "--no-run", "--lib", "--package=clawdius-core"],
+        "filter": {
+          "kind": "lib"
+        }
+      },
+      "args": ["${input:testName}", "--exact", "--nocapture"],
+      "cwd": "${workspaceFolder}",
+      "stopOnEntry": false
+    },
+
+    // ==============================================================================
+    // Core Library Debug
+    // ==============================================================================
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug clawdius-code",
       "cargo": {
         "args": ["build", "--bin=clawdius-code", "--package=clawdius-code"],
         "filter": {
@@ -55,6 +244,183 @@
       },
       "args": [],
       "cwd": "${workspaceFolder}"
+    },
+
+    // ==============================================================================
+    // Release Debug (for performance issues)
+    // ==============================================================================
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug CLI (Release)",
+      "cargo": {
+        "args": ["build", "--bin=clawdius", "--package=clawdius", "--release"],
+        "filter": {
+          "name": "clawdius",
+          "kind": "bin"
+        }
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "RUST_LOG": "debug"
+      }
+    },
+
+    // ==============================================================================
+    // HFT/Broker Mode Debug
+    // ==============================================================================
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug CLI (broker mode)",
+      "cargo": {
+        "args": ["build", "--bin=clawdius", "--package=clawdius", "--features", "broker-mode"],
+        "filter": {
+          "name": "clawdius",
+          "kind": "bin"
+        }
+      },
+      "args": ["broker", "--config", "${input:brokerConfig}"],
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "RUST_LOG": "debug"
+      },
+      "preLaunchTask": "build (workspace)"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug CLI (HFT mode)",
+      "cargo": {
+        "args": ["build", "--bin=clawdius", "--package=clawdius", "--features", "hft-mode"],
+        "filter": {
+          "name": "clawdius",
+          "kind": "bin"
+        }
+      },
+      "args": ["--hft"],
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "RUST_LOG": "debug"
+      }
+    },
+
+    // ==============================================================================
+    // Attach to Process
+    // ==============================================================================
+    {
+      "type": "lldb",
+      "request": "attach",
+      "name": "Attach to Process",
+      "pid": "${command:pickProcess}",
+      "stopOnEntry": false
+    },
+    {
+      "type": "lldb",
+      "request": "attach",
+      "name": "Attach to Clawdius",
+      "pid": "${command:pickProcess}",
+      "stopOnEntry": false,
+      "sourceLanguages": ["rust"]
+    },
+
+    // ==============================================================================
+    // Example Programs
+    // ==============================================================================
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug: browser_automation example",
+      "cargo": {
+        "args": ["build", "--example", "browser_automation"],
+        "filter": {
+          "name": "browser_automation",
+          "kind": "example"
+        }
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug: diff_demo example",
+      "cargo": {
+        "args": ["build", "--example", "diff_demo"],
+        "filter": {
+          "name": "diff_demo",
+          "kind": "example"
+        }
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}"
+    },
+
+    // ==============================================================================
+    // VSCode Extension Debug
+    // ==============================================================================
+    {
+      "type": "extensionHost",
+      "request": "launch",
+      "name": "Debug VSCode Extension",
+      "runtimeExecutable": "${execPath}",
+      "args": [
+        "--extensionDevelopmentPath=${workspaceFolder}/extensions/vscode",
+        "--extensionTestsPath=${workspaceFolder}/extensions/vscode/out/test/suite/index"
+      ],
+      "outFiles": ["${workspaceFolder}/extensions/vscode/out/**/*.js"],
+      "preLaunchTask": "vscode: compile"
+    },
+
+    // ==============================================================================
+    // Webview Debug (requires wasm target)
+    // ==============================================================================
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug webview server",
+      "cargo": {
+        "args": ["build", "--bin=clawdius-webview-server", "--package=clawdius-webview"],
+        "filter": {
+          "name": "clawdius-webview-server",
+          "kind": "bin"
+        }
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}"
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Debug CLI + MCP Server",
+      "configurations": ["Debug CLI (chat)", "Debug CLI (MCP server)"],
+      "stopAll": true
+    },
+    {
+      "name": "Full Debug Session",
+      "configurations": ["Debug CLI", "Debug Unit Tests"],
+      "stopAll": true
+    }
+  ],
+  "inputs": [
+    {
+      "id": "testName",
+      "type": "promptString",
+      "description": "Enter test name (partial match)",
+      "default": "test_"
+    },
+    {
+      "id": "proofFile",
+      "type": "promptString",
+      "description": "Enter proof file path",
+      "default": ".specs/02_architecture/proofs/proof.lean"
+    },
+    {
+      "id": "brokerConfig",
+      "type": "promptString",
+      "description": "Enter broker config path",
+      "default": ".clawdius/broker.toml"
     }
   ]
 }

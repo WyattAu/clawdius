@@ -109,6 +109,7 @@ chrono = { version = "0.4.39", features = ["serde"] }
 base64 = "0.22"
 regex = "1.11"
 glob = "0.3"
+glob-match = "0.2"
 ignore = "0.4"
 notify = "8.0"
 futures = "0.3"

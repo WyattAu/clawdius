@@ -148,6 +148,21 @@ impl ContextCache {
                 let joined = msgs.join("|");
                 blake3::hash(joined.as_bytes())
             }
+            ContextItem::Image { data, path, .. } => {
+                // Hash includes path and data for uniqueness
+                let combined = format!("{}:{}", path, data);
+                blake3::hash(combined.as_bytes())
+            }
+            ContextItem::Screenshot {
+                data,
+                source,
+                timestamp,
+                ..
+            } => {
+                // Hash includes source and timestamp for uniqueness
+                let combined = format!("{}:{}:{}", source, timestamp, data);
+                blake3::hash(combined.as_bytes())
+            }
         }
     }
 }

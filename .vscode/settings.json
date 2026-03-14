@@ -1,42 +1,233 @@
 {
   "editor.formatOnSave": true,
   "editor.defaultFormatter": "rust-lang.rust-analyzer",
+  "editor.codeActionsOnSave": {
+    "source.organizeImports": "source.organizeImports",
+    "source.fixAll": "source.fixAll"
+  },
+  "editor.rust.codeLensEnabled": true,
+  "editor.suggestOnPreviewKbd": true,
+  "editor.tabCompletionEnabled": true,
+  "editor.acceptSuggestionOnEnter": "on",
+  "editor.linkedEditing": true,
+  "editor.formatOnPaste": true,
+
+  // Rust Analyzer settings
   "rust-analyzer.cargo.features": "all",
+  "rust-analyzer.cargo.target": null,
   "rust-analyzer.checkOnSave.command": "clippy",
-  "rust-analyzer.checkOnSave.extraArgs": ["--", "-W", "clippy::all"],
+  "rust-analyzer.checkOnSave.extraArgs": [
+    "--workspace",
+    "--all-targets",
+    "--all-features",
+    "--",
+    "-D",
+    "warnings",
+    "-A",
+    "clippy::all"
+  ],
   "rust-analyzer.inlayHints.chainingHints.enable": true,
+  "rust-analyzer.inlayHints.closureReturnTypeHints.enable": true,
   "rust-analyzer.inlayHints.parameterHints.enable": true,
+  "rust-analyzer.inlayHints.lifetimeElisionHints.enable": true,
+  "rust-analyzer.inlayHints.typeHints.enable": true,
   "rust-analyzer.lens.enable": true,
   "rust-analyzer.lens.implementations.enable": true,
   "rust-analyzer.lens.references.enable": true,
-  "[rust]": {
-    "editor.defaultFormatter": "rust-lang.rust-analyzer",
-    "editor.formatOnSave": true
+  "rust-analyzer.runnables.cargoExtraArgs": ["--workspace"],
+  "rust-analyzer.runnables.extraArgs": ["--no-default-features", "--features", "default"],
+  "rust-analyzer.imports.granularity.enforce": true,
+  "rust-analyzer.imports.granularity.group": "crate",
+  "rust-analyzer.imports.prefix": "crate",
+  "rust-analyzer.lens.debug.enable": true,
+  "rust-analyzer.lens.location.enable": true,
+
+  // Rustfmt settings
+  "editor.formatOnSaveTimeout": 500,
+  "rustfmt.extraArgs": ["--config", "wrap_comments=true", "--config", "normalize_comments=true"],
+  "editor.formatOnPaste": true,
+  "editor.formatOnSave": true,
+
+  // File handling
+  "files.trimTrailingWhitespace": true,
+  "files.autoSave": "afterDelay",
+  "files.autoSaveDelay": 500,
+  "files.insertFinalNewline": true,
+  "files.trimFinalNewlines": true,
+  "files.associations": {
+    "*.rs": "rust",
+    "*.toml": "toml",
+    "*.json": "json",
+    "*.md": "markdown",
+    "*.rs.in": "rust",
+    ".clawdius/config.toml": "toml",
+    "Cargo.toml": "toml",
+    "Cargo.lock": "toml",
+    "**/Cargo.toml": "toml",
+    "*.md": "markdown"
   },
-  "[typescript]": {
-    "editor.defaultFormatter": "esbenp.prettier-vscode",
-    "editor.formatOnSave": true
-  },
-  "[javascript]": {
-    "editor.defaultFormatter": "esbenp.prettier-vscode",
-    "editor.formatOnSave": true
-  },
-  "files.exclude": {
-    "**/target": true,
-    "**/node_modules": true,
-    "**/.git": true
-  },
+
+  // Task and build settings
+  "task.quickOpen.showAll": true,
+  "task.saveBeforeRunning": true,
+  "task.autoDetect": "on",
+  "task.problemMatchers": [
+    {
+      "owner": "rust",
+      "fileLocation": 1,
+      "pattern": "(warning|error)(\\[.+\\])?: (.*)$",
+      "file": 2,
+      "line": 3,
+      "column": 4,
+      "message": 5
+    }
+  ],
+  "task.problemMatchers.rust.errorPattern": "(error\\[.+\\])?: (.*)$",
+  "task.problemMatchers.rust.warningPattern": "(warning\\[.+\\])?: (.*)$",
+
+  // Debug settings
+  "debug.node.autoAttach": "on",
+  "debug.node.stopOnEntry": false,
+  "debug.internalConsoleOptions": "openOnSessionStart",
+  "debug.openDebug": "openOnDebugBreak",
+  "debug.showInlineBreakpointCandidates": "debugSessionStarted",
+  "debug.toolBarLocation": "floating",
+  "debug.showInStatusBar": "on",
+  "debug.showInlineBreakpointStatus": "onFirstLineOrWhilePaused",
+
+  // Test explorer
+  "testExplorer.autoRun": "runInEditor",
+  "testExplorer.codeLens": true,
+  "testExplorer.showCodeLens": true,
+
+  // CodeLens settings
+  "codelens.enable": true,
+  "codelens.experimental.tokenData": true,
+  "codelens.experimental.renderTypes": true,
+
+  // Git settings
+  "git.enableSmartCommit": true,
+  "git.autofetch": true,
+  "git.autorefresh": true,
+  "git.autoStash": true,
+  "git.showInlineOpenFilePaths": true,
+  "git.showInlineOpenTimestamp": true,
+  "git.confirmSync": false,
+  "git.countBadge": "all",
+
+  // File watcher settings
   "files.watcherExclude": {
     "**/target/**": true,
-    "**/node_modules/**": true
+    "**/node_modules/**": true,
+    "**/.git/**": true,
+    "**/Cargo.lock": true,
+    "**/clawdius-core-*.crate/**": true,
+    "**/clawdius-*.crate/**": true,
+    "**/.clawdius/**": true,
+    "**/build/**": true,
+    "**/dist/**": true,
+    "**/.idea/**": true,
+    "**/.vscode-server/**": true,
+    "**/wasm-pack-log/**": true,
+    "**/pkg/**": true,
+    "**/*.wasm": true,
+    "**/lcov.info": true,
+    "**/lcov.info-*.json": true,
+    "**/coverage/**": true,
+    "**/.nix/**": true,
+    "**/result/**": true,
+    "**/result-lib/**": true,
+    "**/result-man/**": true,
+    "**/result-dev/**": true,
+    "**/results/**": true,
+    "**/target/**": true
   },
+
+  // Search settings
   "search.exclude": {
-    "**/target": true,
-    "**/node_modules": true,
-    "**/Cargo.lock": true
+    "**/target/**": true,
+    "**/node_modules/**": true,
+    "**/.git/**": true,
+    "**/Cargo.lock": true,
+    "**/flake.lock": true,
+    "**/package-lock.json": true,
+    "**/yarn.lock": true,
+    "**/pnpm-lock.yaml": true,
+    "**/.clawdius/graph/**": true,
+    "**/lcov.info": true,
+    "**/coverage/**": true,
+    "**/*.vsix": true,
+    "**/*.vsixmanifest": true
   },
-  "toml.sortOnSave.enable": true,
-  "yaml.schemas": {
-    ".clawdius/schemas/config.json": ".clawdius/config.toml"
+
+  // Terminal settings
+  "terminal.integrated.inheritEnv": true,
+  "terminal.integrated.persistentSessionReviveProcess": "quietly",
+  "terminal.integrated.shell.linux": "/bin/bash",
+  "terminal.integrated.profiles.linux": {
+    "bash": {
+      "path": "bash",
+      "args": ["-l"]
+    },
+    "zsh": {
+      "path": "zsh",
+      "args": ["-l"]
+    }
+  },
+  "terminal.integrated.defaultProfile.linux": "bash",
+  "terminal.integrated.scrollback": 10000,
+  "terminal.integrated.cursorBlinking": true,
+  "terminal.integrated.cursorStyle": "line",
+  "terminal.integrated.shellIntegration.enabled": "auto",
+  "terminal.integrated.gpuAcceleration": "auto",
+  "terminal.integrated.defaultIcon": "terminal",
+
+  // Language Server Protocol (LSP) settings
+  "rust-analyzer.lens.implementations.enable": true,
+  "rust-analyzer.lens.references.enable": true,
+  "rust-analyzer.lens.enumReferences.enable": true,
+  "rust-analyzer.lens.methodReferences.enable": true,
+  "rust-analyzer.lens.location.enable": true,
+  "rust-analyzer.lens.references.traitImplementations.enable": true,
+
+  // Clippy settings
+  "rust.clippy.enable": true,
+  "rust.clippy.extraArgs": ["--", "-D", "warnings", "-A", "clippy::all"],
+
+  // Run on Save (if cargo-watch is installed)
+  "cargo-watch.autoStart": false,
+  "cargo-watch.args": ["-x", "check", "--", "watch", "-x", "test", "--", "src/"],
+  "cargo-watch.command": "watch -x check"
+
+  // Semantic highlighting
+  "editor.semanticHighlighting.enabled": true,
+  "editor.semanticHighlighting.excludedLanguages": ["json"],
+  "editor.semanticTokenColorCustomizations": {
+    "enabled": true,
+    "rules": {
+      "function": {
+        "fontStyle": "bold"
+      },
+      "method": {
+        "fontStyle": "bold"
+      },
+      "macro": {
+        "fontStyle": "italic"
+      },
+      "lifetime": {
+        "foreground": "#d19a66",
+        "fontStyle": "italic"
+      },
+      "typeParameter": {
+        "foreground": "#56b6c2"
+      },
+      "keyword.unsafe": {
+        "foreground": "#f44783",
+        "fontStyle": "bold"
+      },
+      "variable.mutable": {
+        "fontStyle": "underline"
+      }
+    }
   }
 }

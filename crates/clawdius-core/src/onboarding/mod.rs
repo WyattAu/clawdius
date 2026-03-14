@@ -174,6 +174,7 @@ impl DefaultSettings {
 /// Interactive onboarding wizard
 pub struct OnboardingWizard {
     progress: OnboardingProgress,
+    #[allow(dead_code)]
     config_path: PathBuf,
 }
 

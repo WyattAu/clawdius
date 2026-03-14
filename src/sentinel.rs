@@ -11,7 +11,7 @@ use crate::component::{Component, ComponentId, ComponentInfo, ComponentState};
 use crate::error::{Result, SandboxError};
 use crate::sandbox::{
     select_sandbox_tier, validate_settings, CommandSpec, ExitStatus, GlobalPolicy, NativeSandbox,
-    PlatformSandbox, SandboxConfig, SandboxHandle, SandboxTier, Toolchain, TrustLevel,
+    PlatformSandbox, SandboxHandle, SandboxSpawnConfig, SandboxTier, Toolchain, TrustLevel,
 };
 
 /// Sentinel component version

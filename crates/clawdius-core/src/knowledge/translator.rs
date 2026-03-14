@@ -211,13 +211,13 @@ pub fn detect_language(text: &str) -> Option<Language> {
         "der", "die", "das", "ist", "sind", "und", "oder", "ein", "eine",
     ];
     let common_fr = ["le", "la", "les", "est", "sont", "et", "ou", "un", "une"];
-    let common_es = ["el", "la", "los", "es", "son", "y", "o", "un", "una"];
+    let common_spanish = ["el", "la", "los", "es", "son", "y", "o", "un", "una"];
     let common_it = ["il", "la", "lo", "è", "sono", "e", "o", "un", "una"];
-    let common_pt = ["o", "a", "os", "é", "são", "e", "ou", "um", "uma"];
+    let common_portuguese = ["o", "a", "os", "é", "são", "e", "ou", "um", "uma"];
     let common_nl = ["de", "het", "is", "zijn", "en", "of", "een"];
-    let common_pl = ["jest", "są", "i", "lub", "nie", "to", "na"];
+    let common_polish = ["jest", "są", "i", "lub", "nie", "to", "na"];
     let common_cs = ["je", "jsou", "a", "nebo", "na", "to"];
-    let common_tr = ["bir", "ve", "veya", "bu", "şu", "için"];
+    let common_turkish = ["bir", "ve", "veya", "bu", "şu", "için"];
 
     let words: Vec<&str> = lower.split_whitespace().collect();
 
@@ -227,13 +227,13 @@ pub fn detect_language(text: &str) -> Option<Language> {
         (Language::EN, count_common(&common_en)),
         (Language::DE, count_common(&common_de)),
         (Language::FR, count_common(&common_fr)),
-        (Language::ES, count_common(&common_es)),
+        (Language::ES, count_common(&common_spanish)),
         (Language::IT, count_common(&common_it)),
-        (Language::PT, count_common(&common_pt)),
+        (Language::PT, count_common(&common_portuguese)),
         (Language::NL, count_common(&common_nl)),
-        (Language::PL, count_common(&common_pl)),
+        (Language::PL, count_common(&common_polish)),
         (Language::CS, count_common(&common_cs)),
-        (Language::TR, count_common(&common_tr)),
+        (Language::TR, count_common(&common_turkish)),
     ];
 
     scores

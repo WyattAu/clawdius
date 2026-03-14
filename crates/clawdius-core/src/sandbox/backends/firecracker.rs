@@ -3,6 +3,10 @@
 //! Firecracker provides lightweight VM isolation using KVM.
 //! This backend requires firecracker and jailer to be installed.
 
+// Note: Several structures and methods in this module are prepared for future
+// Firecracker integration but not yet fully utilized. Suppress dead_code warnings.
+#![allow(dead_code)]
+
 use crate::error::{Error, Result};
 use std::path::{Path, PathBuf};
 use std::process::Output;

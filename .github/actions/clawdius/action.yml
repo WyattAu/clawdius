@@ -1,0 +1,211 @@
+name: 'Clawdius AI Coding Assistant'
+description: 'Run Clawdius AI coding assistant for automated code tasks'
+author: 'Clawdius Team'
+branding:
+  icon: 'code'
+  color: 'blue'
+
+inputs:
+  task:
+    description: 'Task description for Clawdius to execute'
+    required: true
+  provider:
+    description: 'LLM provider to use (anthropic, openai, deepseek, ollama, zai, openrouter)'
+    required: false
+    default: 'anthropic'
+  model:
+    description: 'Model to use (e.g., claude-3-5-sonnet-20241022, gpt-4)'
+    required: false
+  mode:
+    description: 'Agent mode (code, architect, debug, review, refactor, test)'
+    required: false
+    default: 'code'
+  max-iterations:
+    description: 'Maximum iterations for autonomous mode'
+    required: false
+    default: '50'
+  run-tests:
+    description: 'Run tests after changes'
+    required: false
+    default: 'false'
+  auto-commit:
+    description: 'Automatically commit changes'
+    required: false
+    default: 'false'
+  fail-on-test-failure:
+    description: 'Fail the action if tests fail'
+    required: false
+    default: 'true'
+  working-directory:
+    description: 'Working directory for Clawdius'
+    required: false
+    default: '.'
+  api-key:
+    description: 'API key for the LLM provider (use secrets)'
+    required: false
+  base-url:
+    description: 'Base URL for the API (for custom endpoints)'
+    required: false
+
+outputs:
+  result:
+    description: 'Result of the Clawdius task'
+    value: ${{ steps.clawdius.outputs.result }}
+  changes-made:
+    description: 'Number of changes made'
+    value: ${{ steps.clawdius.outputs.changes-made }}
+  tests-passed:
+    description: 'Whether tests passed'
+    value: ${{ steps.clawdius.outputs.tests-passed }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Install Clawdius
+      shell: bash
+      run: |
+        # Check if clawdius is already installed
+        if ! command -v clawdius &> /dev/null; then
+          echo "Installing Clawdius..."
+          
+          # Try to install from crates.io, or build from source
+          if command -v cargo &> /dev/null; then
+            cargo install clawdius --locked 2>/dev/null || {
+              echo "Building from source..."
+              git clone https://github.com/clawdius/clawdius.git /tmp/clawdius
+              cd /tmp/clawdius
+              cargo build --release
+              cp target/release/clawdius /usr/local/bin/
+            }
+          else
+            echo "Error: Cargo not found and Clawdius not installed"
+            exit 1
+          fi
+        fi
+        
+        echo "Clawdius version: $(clawdius --version)"
+    
+    - name: Configure API Key
+      shell: bash
+      env:
+        CLAWDIUS_API_KEY: ${{ inputs.api-key }}
+        CLAWDIUS_PROVIDER: ${{ inputs.provider }}
+        CLAWDIUS_BASE_URL: ${{ inputs.base-url }}
+      run: |
+        mkdir -p ~/.config/clawdius
+        
+        # Set environment variables based on provider
+        case "$CLAWDIUS_PROVIDER" in
+          anthropic)
+            export ANTHROPIC_API_KEY="$CLAWDIUS_API_KEY"
+            ;;
+          openai)
+            export OPENAI_API_KEY="$CLAWDIUS_API_KEY"
+            ;;
+          deepseek)
+            export DEEPSEEK_API_KEY="$CLAWDIUS_API_KEY"
+            ;;
+          zai)
+            export ZAI_API_KEY="$CLAWDIUS_API_KEY"
+            ;;
+          openrouter)
+            export OPENROUTER_API_KEY="$CLAWDIUS_API_KEY"
+            ;;
+        esac
+        
+        # Create config if base URL is provided
+        if [ -n "$CLAWDIUS_BASE_URL" ]; then
+          cat > ~/.config/clawdius/config.toml << EOF
+        [llm.$CLAWDIUS_PROVIDER]
+        base_url = "$CLAWDIUS_BASE_URL"
+        EOF
+        fi
+    
+    - name: Initialize Clawdius
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        if [ ! -d ".clawdius" ]; then
+          clawdius init .
+        fi
+    
+    - name: Run Clawdius Task
+      id: clawdius
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        ANTHROPIC_API_KEY: ${{ env.ANTHROPIC_API_KEY }}
+        OPENAI_API_KEY: ${{ env.OPENAI_API_KEY }}
+        DEEPSEEK_API_KEY: ${{ env.DEEPSEEK_API_KEY }}
+        ZAI_API_KEY: ${{ env.ZAI_API_KEY }}
+        OPENROUTER_API_KEY: ${{ env.OPENROUTER_API_KEY }}
+      run: |
+        set +e
+        
+        # Build command arguments
+        CMD_ARGS=(
+          --provider "${{ inputs.provider }}"
+          --mode "${{ inputs.mode }}"
+          --max-iterations "${{ inputs.max-iterations }}"
+        )
+        
+        if [ "${{ inputs.run-tests }}" = "true" ]; then
+          CMD_ARGS+=(--run-tests)
+        fi
+        
+        if [ "${{ inputs.auto-commit }}" = "true" ]; then
+          CMD_ARGS+=(--auto-commit)
+        fi
+        
+        if [ "${{ inputs.fail-on-test-failure }}" = "true" ]; then
+          CMD_ARGS+=(--fail-on-test-failure)
+        fi
+        
+        if [ -n "${{ inputs.model }}" ]; then
+          CMD_ARGS+=(--model "${{ inputs.model }}")
+        fi
+        
+        # Run Clawdius in auto mode
+        OUTPUT=$(clawdius auto "${{ inputs.task }}" "${CMD_ARGS[@]}" --output-format json 2>&1)
+        EXIT_CODE=$?
+        
+        echo "$OUTPUT"
+        
+        # Parse output for GitHub Actions
+        if [ $EXIT_CODE -eq 0 ]; then
+          echo "result=success" >> $GITHUB_OUTPUT
+          echo "tests-passed=true" >> $GITHUB_OUTPUT
+          
+          # Count changes from git diff
+          CHANGES=$(git diff --name-only HEAD~1 2>/dev/null | wc -l || echo "0")
+          echo "changes-made=$CHANGES" >> $GITHUB_OUTPUT
+        else
+          echo "result=failure" >> $GITHUB_OUTPUT
+          echo "tests-passed=false" >> $GITHUB_OUTPUT
+          echo "changes-made=0" >> $GITHUB_OUTPUT
+        fi
+        
+        exit $EXIT_CODE
+    
+    - name: Commit Changes
+      if: inputs.auto-commit == 'true'
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        if [ -n "$(git status --porcelain)" ]; then
+          git config user.name "Clawdius Bot"
+          git config user.email "bot@clawdius.dev"
+          git add -A
+          git commit -m "clawdius: ${{ inputs.task }}"
+          git push
+        fi
+    
+    - name: Upload Artifacts
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: clawdius-session
+        path: |
+          ${{ inputs.working-directory }}/.clawdius/sessions/
+          ${{ inputs.working-directory }}/.clawdius/logs/
+        retention-days: 7

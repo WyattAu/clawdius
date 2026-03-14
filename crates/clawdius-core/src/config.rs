@@ -413,7 +413,7 @@ fn default_max_tokens() -> usize {
 }
 
 /// Session configuration
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SessionConfig {
     /// Auto-compact when context reaches this percentage
     #[serde(default = "default_compact_threshold")]
@@ -427,6 +427,17 @@ pub struct SessionConfig {
     /// Auto-save sessions
     #[serde(default = "default_true")]
     pub auto_save: bool,
+}
+
+impl Default for SessionConfig {
+    fn default() -> Self {
+        Self {
+            compact_threshold: default_compact_threshold(),
+            keep_recent: default_keep_recent(),
+            min_messages: default_min_messages(),
+            auto_save: default_true(),
+        }
+    }
 }
 
 fn default_compact_threshold() -> f32 {

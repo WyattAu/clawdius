@@ -1,87 +1,559 @@
 {
   "version": "2.0.0",
   "tasks": [
+    // ==============================================================================
+    // Build Tasks
+    // ==============================================================================
     {
-      "label": "cargo build",
-      "type": "shell",
-      "command": "cargo",
-      "args": ["build", "--workspace"],
+      "label": "build (workspace)",
+      "type": "cargo",
+      "command": "build",
+      "args": ["--workspace"],
       "group": {
         "kind": "build",
         "isDefault": true
       },
-      "problemMatcher": ["$rustc"]
+      "problemMatcher": ["$rustc"],
+      "presentation": {
+        "clear": true,
+        "reveal": "silent"
+      },
+      "detail": "Build the entire workspace in debug mode"
     },
     {
-      "label": "cargo test",
+      "label": "build (release)",
+      "type": "cargo",
+      "command": "build",
+      "args": ["--workspace", "--release"],
+      "group": "build",
+      "problemMatcher": ["$rustc"],
+      "presentation": {
+        "clear": true,
+        "reveal": "silent"
+      },
+      "detail": "Build the entire workspace in release mode"
+    },
+    {
+      "label": "build (clawdius-core)",
+      "type": "cargo",
+      "command": "build",
+      "args": ["--package", "clawdius-core"],
+      "group": "build",
+      "problemMatcher": ["$rustc"],
+      "detail": "Build only the core library"
+    },
+    {
+      "label": "build (clawdius CLI)",
+      "type": "cargo",
+      "command": "build",
+      "args": ["--package", "clawdius"],
+      "group": "build",
+      "problemMatcher": ["$rustc"],
+      "detail": "Build only the CLI binary"
+    },
+    {
+      "label": "check (quick)",
+      "type": "cargo",
+      "command": "check",
+      "args": ["--workspace", "--all-targets"],
+      "group": "build",
+      "problemMatcher": ["$rustc"],
+      "presentation": {
+        "clear": true
+      },
+      "detail": "Quick check without building"
+    },
+    {
+      "label": "clean",
       "type": "shell",
-      "command": "cargo",
-      "args": ["test", "--workspace"],
+      "command": "cargo clean",
+      "group": "build",
+      "presentation": {
+        "clear": true
+      },
+      "detail": "Clean all build artifacts"
+    },
+
+    // ==============================================================================
+    // Test Tasks
+    // ==============================================================================
+    {
+      "label": "test (workspace)",
+      "type": "cargo",
+      "command": "test",
+      "args": ["--workspace"],
       "group": {
         "kind": "test",
         "isDefault": true
       },
-      "problemMatcher": ["$rustc"]
+      "problemMatcher": ["$rustc"],
+      "presentation": {
+        "clear": true
+      },
+      "detail": "Run all workspace tests"
     },
     {
-      "label": "cargo clippy",
-      "type": "shell",
-      "command": "cargo",
-      "args": ["clippy", "--workspace", "--", "-D", "warnings"],
+      "label": "test (clawdius-core)",
+      "type": "cargo",
+      "command": "test",
+      "args": ["--package", "clawdius-core"],
+      "group": "test",
+      "problemMatcher": ["$rustc"],
+      "detail": "Run core library tests only"
+    },
+    {
+      "label": "test (clawdius CLI)",
+      "type": "cargo",
+      "command": "test",
+      "args": ["--package", "clawdius"],
+      "group": "test",
+      "problemMatcher": ["$rustc"],
+      "detail": "Run CLI tests only"
+    },
+    {
+      "label": "test (integration)",
+      "type": "cargo",
+      "command": "test",
+      "args": ["--package", "clawdius", "--test", "integration_tests", "--", "--test-threads=1"],
+      "group": "test",
+      "problemMatcher": ["$rustc"],
+      "detail": "Run integration tests (single thread)"
+    },
+    {
+      "label": "test (ignored)",
+      "type": "cargo",
+      "command": "test",
+      "args": ["--workspace", "--ignored"],
+      "group": "test",
+      "problemMatcher": ["$rustc"],
+      "detail": "Run ignored/integration tests"
+    },
+    {
+      "label": "test (watch mode)",
+      "type": "cargo",
+      "command": "test",
+      "args": ["--package", "clawdius-core", "--lib", "--", "--nocapture"],
+      "group": "test",
+      "problemMatcher": ["$rustc"],
+      "isBackground": true,
+      "detail": "Run tests in watch mode with output"
+    },
+
+    // ==============================================================================
+    // Code Quality Tasks
+    // ==============================================================================
+    {
+      "label": "clippy (check)",
+      "type": "cargo",
+      "command": "clippy",
+      "args": ["--workspace", "--all-targets", "--all-features", "--", "-D", "warnings"],
       "group": "none",
-      "problemMatcher": ["$rustc"]
+      "problemMatcher": ["$rustc"],
+      "presentation": {
+        "clear": true
+      },
+      "detail": "Run clippy with warnings as errors"
     },
     {
-      "label": "cargo fmt",
-      "type": "shell",
-      "command": "cargo",
-      "args": ["fmt", "--all"],
-      "group": "none"
-    },
-    {
-      "label": "cargo doc",
-      "type": "shell",
-      "command": "cargo",
-      "args": ["doc", "--workspace", "--no-deps"],
-      "group": "none"
-    },
-    {
-      "label": "Run CLI",
-      "type": "shell",
-      "command": "cargo",
-      "args": ["run", "--package", "clawdius", "--", "chat", "hello"],
+      "label": "clippy (fix)",
+      "type": "cargo",
+      "command": "clippy",
+      "args": ["--workspace", "--all-targets", "--all-features", "--fix", "--allow-dirty"],
       "group": "none",
-      "dependsOn": ["cargo build"]
+      "problemMatcher": ["$rustc"],
+      "presentation": {
+        "clear": true
+      },
+      "detail": "Auto-fix clippy warnings"
     },
     {
-      "label": "Run TUI",
-      "type": "shell",
-      "command": "cargo",
-      "args": ["run", "--package", "clawdius"],
+      "label": "fmt (check)",
+      "type": "cargo",
+      "command": "fmt",
+      "args": ["--all", "--", "--check"],
       "group": "none",
-      "dependsOn": ["cargo build"]
+      "presentation": {
+        "clear": true
+      },
+      "detail": "Check code formatting"
     },
     {
-      "label": "Build WASM",
+      "label": "fmt (apply)",
+      "type": "cargo",
+      "command": "fmt",
+      "args": ["--all"],
+      "group": "none",
+      "presentation": {
+        "clear": true
+      },
+      "detail": "Apply code formatting"
+    },
+    {
+      "label": "pre-commit checks",
+      "dependsOn": ["check (quick)", "fmt (check)", "clippy (check)"],
+      "group": "none",
+      "dependsOrder": "sequence",
+      "detail": "Run all pre-commit checks"
+    },
+    {
+      "label": "security audit",
       "type": "shell",
-      "command": "cargo",
-      "args": ["build", "--target", "wasm32-unknown-unknown", "--package", "clawdius-webview"],
-      "group": "none"
+      "command": "cargo deny check && cargo audit",
+      "group": "none",
+      "presentation": {
+        "clear": true
+      },
+      "detail": "Run security audit on dependencies"
+    },
+
+    // ==============================================================================
+    // Run Tasks
+    // ==============================================================================
+    {
+      "label": "run (CLI debug)",
+      "type": "cargo",
+      "command": "run",
+      "args": ["--package", "clawdius"],
+      "group": "none",
+      "presentation": {
+        "clear": true
+      },
+      "detail": "Run the CLI in debug mode"
     },
     {
-      "label": "Build VSCode Extension",
+      "label": "run (CLI release)",
+      "type": "cargo",
+      "command": "run",
+      "args": ["--package", "clawdius", "--release"],
+      "group": "none",
+      "presentation": {
+        "clear": true
+      },
+      "detail": "Run the CLI in release mode"
+    },
+    {
+      "label": "run (TUI mode)",
+      "type": "cargo",
+      "command": "run",
+      "args": ["--package", "clawdius", "--", "--tui"],
+      "group": "none",
+      "presentation": {
+        "clear": true
+      },
+      "detail": "Run the CLI in TUI mode"
+    },
+    {
+      "label": "run (watch mode)",
+      "type": "cargo",
+      "command": "run",
+      "args": ["--package", "clawdius", "--", "watch", "."],
+      "group": "none",
+      "isBackground": true,
+      "presentation": {
+        "clear": true
+      },
+      "detail": "Run file watcher"
+    },
+    {
+      "label": "run (MCP server)",
+      "type": "cargo",
+      "command": "run",
+      "args": ["--package", "clawdius", "--", "mcp", "serve"],
+      "group": "none",
+      "isBackground": true,
+      "presentation": {
+        "clear": true
+      },
+      "detail": "Start the MCP server"
+    },
+    {
+      "label": "run (dev server)",
+      "type": "cargo",
+      "command": "run",
+      "args": ["--package", "clawdius", "--", "--serve"],
+      "group": "none",
+      "isBackground": true,
+      "presentation": {
+        "clear": true
+      },
+      "detail": "Start the development server"
+    },
+
+    // ==============================================================================
+    // Documentation Tasks
+    // ==============================================================================
+    {
+      "label": "docs (generate)",
+      "type": "cargo",
+      "command": "doc",
+      "args": ["--workspace", "--no-deps"],
+      "group": "none",
+      "presentation": {
+        "clear": true
+      },
+      "detail": "Generate documentation"
+    },
+    {
+      "label": "docs (open)",
+      "type": "cargo",
+      "command": "doc",
+      "args": ["--workspace", "--no-deps", "--open"],
+      "group": "none",
+      "presentation": {
+        "clear": true
+      },
+      "detail": "Generate and open documentation"
+    },
+
+    // ==============================================================================
+    // Coverage Tasks
+    // ==============================================================================
+    {
+      "label": "coverage (lcov)",
+      "type": "cargo",
+      "command": "llvm-cov",
+      "args": ["--all-features", "--workspace", "--lcov", "--output-path", "lcov.info"],
+      "group": "none",
+      "presentation": {
+        "clear": true
+      },
+      "detail": "Generate lcov coverage report"
+    },
+    {
+      "label": "coverage (html)",
+      "type": "cargo",
+      "command": "llvm-cov",
+      "args": ["--all-features", "--workspace", "--html"],
+      "group": "none",
+      "presentation": {
+        "clear": true
+      },
+      "detail": "Generate HTML coverage report"
+    },
+
+    // ==============================================================================
+    // Benchmark Tasks
+    // ==============================================================================
+    {
+      "label": "bench (all)",
+      "type": "cargo",
+      "command": "bench",
+      "args": ["--workspace"],
+      "group": "none",
+      "presentation": {
+        "clear": true
+      },
+      "detail": "Run all benchmarks"
+    },
+    {
+      "label": "bench (core)",
+      "type": "cargo",
+      "command": "bench",
+      "args": ["--package", "clawdius-core"],
+      "group": "none",
+      "presentation": {
+        "clear": true
+      },
+      "detail": "Run core library benchmarks"
+    },
+
+    // ==============================================================================
+    // VSCode Extension Tasks
+    // ==============================================================================
+    {
+      "label": "vscode: install deps",
+      "type": "shell",
+      "command": "npm",
+      "args": ["install"],
+      "options": {
+        "cwd": "${workspaceFolder}/extensions/vscode"
+      },
+      "group": "none",
+      "presentation": {
+        "clear": true
+      },
+      "detail": "Install VSCode extension dependencies"
+    },
+    {
+      "label": "vscode: compile",
       "type": "shell",
       "command": "npm",
       "args": ["run", "compile"],
       "options": {
-        "cwd": "${workspaceFolder}/editors/vscode"
+        "cwd": "${workspaceFolder}/extensions/vscode"
       },
-      "group": "none"
+      "group": "none",
+      "dependsOn": ["vscode: install deps"],
+      "presentation": {
+        "clear": true
+      },
+      "detail": "Compile VSCode extension"
     },
     {
-      "label": "Full CI",
-      "dependsOn": ["cargo fmt", "cargo clippy", "cargo test"],
-      "group": "none"
+      "label": "vscode: package",
+      "type": "shell",
+      "command": "npm",
+      "args": ["run", "package"],
+      "options": {
+        "cwd": "${workspaceFolder}/extensions/vscode"
+      },
+      "group": "none",
+      "dependsOn": ["vscode: compile"],
+      "presentation": {
+        "clear": true
+      },
+      "detail": "Package VSCode extension as .vsix"
+    },
+    {
+      "label": "vscode: install",
+      "type": "shell",
+      "command": "code",
+      "args": ["--install-extension", "clawdius-${input:version}.vsix"],
+      "options": {
+        "cwd": "${workspaceFolder}/extensions/vscode"
+      },
+      "group": "none",
+      "dependsOn": ["vscode: package"],
+      "presentation": {
+        "clear": true
+      },
+      "detail": "Install VSCode extension locally"
+    },
+
+    // ==============================================================================
+    // JetBrains Plugin Tasks
+    // ==============================================================================
+    {
+      "label": "jetbrains: build",
+      "type": "shell",
+      "command": "./gradlew",
+      "args": ["buildPlugin"],
+      "options": {
+        "cwd": "${workspaceFolder}/plugins/jetbrains/clawdius-plugin"
+      },
+      "group": "none",
+      "presentation": {
+        "clear": true
+      },
+      "detail": "Build JetBrains plugin"
+    },
+    {
+      "label": "jetbrains: test",
+      "type": "shell",
+      "command": "./gradlew",
+      "args": ["test"],
+      "options": {
+        "cwd": "${workspaceFolder}/plugins/jetbrains/clawdius-plugin"
+      },
+      "group": "none",
+      "presentation": {
+        "clear": true
+      },
+      "detail": "Test JetBrains plugin"
+    },
+    {
+      "label": "jetbrains: run IDE",
+      "type": "shell",
+      "command": "./gradlew",
+      "args": ["runIde"],
+      "options": {
+        "cwd": "${workspaceFolder}/plugins/jetbrains/clawdius-plugin"
+      },
+      "group": "none",
+      "isBackground": true,
+      "presentation": {
+        "clear": true
+      },
+      "detail": "Run IDE with plugin"
+    },
+
+    // ==============================================================================
+    // WASM Tasks
+    // ==============================================================================
+    {
+      "label": "wasm: build",
+      "type": "cargo",
+      "command": "build",
+      "args": ["--target", "wasm32-unknown-unknown"],
+      "options": {
+        "cwd": "${workspaceFolder}/crates/clawdius-webview"
+      },
+      "group": "none",
+      "presentation": {
+        "clear": true
+      },
+      "detail": "Build WASM target"
+    },
+    {
+      "label": "wasm: build (release)",
+      "type": "cargo",
+      "command": "build",
+      "args": ["--target", "wasm32-unknown-unknown", "--release"],
+      "options": {
+        "cwd": "${workspaceFolder}/crates/clawdius-webview"
+      },
+      "group": "none",
+      "presentation": {
+        "clear": true
+      },
+      "detail": "Build WASM target (release)"
+    },
+
+    // ==============================================================================
+    // Docker Tasks
+    // ==============================================================================
+    {
+      "label": "docker: build",
+      "type": "shell",
+      "command": "docker",
+      "args": ["build", "-t", "clawdius:latest", "."],
+      "group": "none",
+      "presentation": {
+        "clear": true
+      },
+      "detail": "Build Docker image"
+    },
+    {
+      "label": "docker: run",
+      "type": "shell",
+      "command": "docker",
+      "args": ["run", "-it", "--rm", "-v", "${workspaceFolder}:/workspace", "clawdius:latest"],
+      "group": "none",
+      "presentation": {
+        "clear": true
+      },
+      "detail": "Run Docker container"
+    },
+
+    // ==============================================================================
+    // Compound Tasks
+    // ==============================================================================
+    {
+      "label": "full CI",
+      "dependsOn": [
+        "build (workspace)",
+        "test (workspace)",
+        "clippy (check)",
+        "fmt (check)"
+      ],
+      "dependsOrder": "sequence",
+      "group": "none",
+      "detail": "Run full CI pipeline"
+    },
+    {
+      "label": "quick check",
+      "dependsOn": ["check (quick)", "fmt (check)"],
+      "dependsOrder": "sequence",
+      "group": "none",
+      "detail": "Quick sanity check"
+    }
+  ],
+  "inputs": [
+    {
+      "id": "version",
+      "type": "promptString",
+      "description": "Enter the extension version",
+      "default": "1.0.0"
     }
   ]
 }

@@ -1,7 +1,10 @@
 //! Crash reporting and error tracking
 
 use crate::error::Error;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::AtomicBool;
+
+#[cfg(feature = "crash-reporting")]
+use std::sync::atomic::Ordering;
 
 #[allow(dead_code)]
 static INITIALIZED: AtomicBool = AtomicBool::new(false);

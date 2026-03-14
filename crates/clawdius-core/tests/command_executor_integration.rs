@@ -16,7 +16,11 @@ fn create_test_command() -> CustomCommand {
         name: "test-command".to_string(),
         description: "Test command for integration tests".to_string(),
         arguments: vec![],
-        template: CommandTemplate { steps: vec![] },
+        template: CommandTemplate {
+            steps: vec![],
+            arguments: vec![],
+            allow_extra_args: false,
+        },
     }
 }
 
@@ -39,7 +43,11 @@ fn create_test_command_with_args() -> CustomCommand {
                 default: Some("default content".to_string()),
             },
         ],
-        template: CommandTemplate { steps: vec![] },
+        template: CommandTemplate {
+            steps: vec![],
+            arguments: vec![],
+            allow_extra_args: false,
+        },
     }
 }
 

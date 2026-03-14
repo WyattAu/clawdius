@@ -41,6 +41,7 @@ pub mod skills;
 pub mod telemetry;
 pub mod timeline;
 pub mod tools;
+pub mod watch;
 pub mod workspace;
 
 // Re-exports for convenience

@@ -65,10 +65,14 @@ fn test_mode_descriptions() {
 fn test_custom_mode() {
     let custom = CustomMode {
         name: "custom-test".to_string(),
-        description: Some("Test custom mode".to_string()),
         system_prompt: "You are a test assistant.".to_string(),
+        description: Some("Test custom mode".to_string()),
         temperature: Some(0.8),
         tools: vec!["file".to_string()],
+        max_tokens: None,
+        requires_approval: None,
+        enable_streaming: None,
+        model: None,
     };
 
     let mode = AgentMode::Custom(custom);

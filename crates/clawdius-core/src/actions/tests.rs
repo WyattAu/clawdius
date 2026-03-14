@@ -50,6 +50,11 @@ impl GenerateTests {
         Self { llm }
     }
 
+    /// Generate tests for a function.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the LLM request fails or the response cannot be parsed.
     pub async fn generate_for_function(&self, func: &Function) -> Result<GeneratedTests> {
         let prompt = format!(
             r#"Generate comprehensive unit tests for the following function:
@@ -94,6 +99,11 @@ Format your response as JSON:
         Ok(tests)
     }
 
+    /// Generate tests for all functions in a module.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if any LLM request fails or the response cannot be parsed.
     pub async fn generate_for_module(&self, module: &Module) -> Result<GeneratedTests> {
         let mut all_tests = GeneratedTests {
             test_file_path: format!("{}_test", module.name),
@@ -112,6 +122,11 @@ Format your response as JSON:
         Ok(all_tests)
     }
 
+    /// Parse a function from a code selection.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the language is not supported or the code cannot be parsed.
     pub fn parse_function_from_selection(selection: &str, language: &str) -> Result<Function> {
         let (name, signature, parameters, return_type) = match language {
             "rust" => parse_rust_function(selection)?,
@@ -219,7 +234,7 @@ fn parse_rust_function(code: &str) -> Result<(String, String, Vec<Parameter>, Op
     let params_str = &caps[2];
     let return_type = caps.get(3).map(|m| m.as_str().trim().to_string());
 
-    let parameters = parse_rust_parameters(params_str)?;
+    let parameters = parse_rust_parameters(params_str);
 
     let signature = format!(
         "fn {}({}){}",
@@ -234,12 +249,12 @@ fn parse_rust_function(code: &str) -> Result<(String, String, Vec<Parameter>, Op
     Ok((name, signature, parameters, return_type))
 }
 
-fn parse_rust_parameters(params_str: &str) -> Result<Vec<Parameter>> {
+fn parse_rust_parameters(params_str: &str) -> Vec<Parameter> {
     if params_str.trim().is_empty() {
-        return Ok(Vec::new());
+        return Vec::new();
     }
 
-    let params: Vec<Parameter> = params_str
+    params_str
         .split(',')
         .filter_map(|param| {
             let param = param.trim();
@@ -257,9 +272,7 @@ fn parse_rust_parameters(params_str: &str) -> Result<Vec<Parameter>> {
                 None
             }
         })
-        .collect();
-
-    Ok(params)
+        .collect()
 }
 
 fn parse_typescript_function(
@@ -278,7 +291,7 @@ fn parse_typescript_function(
     let params_str = &caps[2];
     let return_type = caps.get(3).map(|m| m.as_str().trim().to_string());
 
-    let parameters = parse_typescript_parameters(params_str)?;
+    let parameters = parse_typescript_parameters(params_str);
 
     let signature = format!(
         "function {}({}){}",
@@ -293,12 +306,12 @@ fn parse_typescript_function(
     Ok((name, signature, parameters, return_type))
 }
 
-fn parse_typescript_parameters(params_str: &str) -> Result<Vec<Parameter>> {
+fn parse_typescript_parameters(params_str: &str) -> Vec<Parameter> {
     if params_str.trim().is_empty() {
-        return Ok(Vec::new());
+        return Vec::new();
     }
 
-    let params: Vec<Parameter> = params_str
+    params_str
         .split(',')
         .filter_map(|param| {
             let param = param.trim();
@@ -318,9 +331,7 @@ fn parse_typescript_parameters(params_str: &str) -> Result<Vec<Parameter>> {
                 Some(Parameter { name, ty })
             }
         })
-        .collect();
-
-    Ok(params)
+        .collect()
 }
 
 fn parse_python_function(code: &str) -> Result<(String, String, Vec<Parameter>, Option<String>)> {
@@ -336,7 +347,7 @@ fn parse_python_function(code: &str) -> Result<(String, String, Vec<Parameter>, 
     let params_str = &caps[2];
     let return_type = caps.get(3).map(|m| m.as_str().trim().to_string());
 
-    let parameters = parse_python_parameters(params_str)?;
+    let parameters = parse_python_parameters(params_str);
 
     let signature = format!(
         "def {}({}){}",
@@ -351,12 +362,12 @@ fn parse_python_function(code: &str) -> Result<(String, String, Vec<Parameter>, 
     Ok((name, signature, parameters, return_type))
 }
 
-fn parse_python_parameters(params_str: &str) -> Result<Vec<Parameter>> {
+fn parse_python_parameters(params_str: &str) -> Vec<Parameter> {
     if params_str.trim().is_empty() {
-        return Ok(Vec::new());
+        return Vec::new();
     }
 
-    let params: Vec<Parameter> = params_str
+    params_str
         .split(',')
         .filter_map(|param| {
             let param = param.trim();
@@ -384,9 +395,7 @@ fn parse_python_parameters(params_str: &str) -> Result<Vec<Parameter>> {
                 })
             }
         })
-        .collect();
-
-    Ok(params)
+        .collect()
 }
 
 fn generate_basic_test(_selection: &str, language: &str) -> String {

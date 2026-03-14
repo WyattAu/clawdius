@@ -1,0 +1,150 @@
+<idea-plugin>
+    <id>com.clawdius.intellij</id>
+    <name>Clawdius</name>
+    <vendor email="support@clawdius.dev" url="https://clawdius.dev">Clawdius</vendor>
+    
+    <description><![CDATA[
+    Clawdius - High-Assurance AI Coding Assistant
+    
+    Features:
+    - AI-powered code completion with multi-provider support
+    - Multi-tier sandboxing (WASM, Container, gVisor, Firecracker)
+    - Formal verification with Lean4
+    - Multi-lingual support (13 languages)
+    - Code analysis and refactoring
+    - Test generation
+    - Git integration
+    - Browser automation
+    ]]></description>
+
+    <depends>com.intellij.modules.platform</depends>
+    <depends>com.intellij.modules.java</depends>
+    <depends>org.jetbrains.kotlin</depends>
+    <depends>Git4Idea</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <!-- Application Configurable -->
+        <applicationConfigurable 
+            parentId="tools" 
+            instance="com.clawdius.plugin.settings.ClawdiusConfigurable"
+            id="com.clawdius.plugin.settings.ClawdiusConfigurable"
+            displayName="Clawdius"/>
+        
+        <!-- Application Service -->
+        <applicationService 
+            serviceImplementation="com.clawdius.plugin.service.ClawdiusService"/>
+        
+        <!-- Completion Contributor -->
+        <completion.contributor 
+            language="any" 
+            implementationClass="com.clawdius.plugin.completion.ClawdiusCompletionContributor"
+            order="first"/>
+        
+        <!-- Editor Action Handler -->
+        <editorActionHandler 
+            action="EditorEnter" 
+            implementationClass="com.clawdius.plugin.editor.ClawdiusEnterHandler"/>
+        
+        <!-- Tool Window -->
+        <toolWindow 
+            id="Clawdius" 
+            secondary="true" 
+            icon="/META-INF/pluginIcon.svg" 
+            anchor="right"
+            factoryClass="com.clawdius.plugin.toolwindow.ClawdiusToolWindowFactory"/>
+        
+        <!-- Notification Group -->
+        <notificationGroup 
+            id="Clawdius Notifications" 
+            displayType="BALLOON"/>
+        
+        <!-- Status Bar Widget -->
+        <statusBarWidgetFactory 
+            id="com.clawdius.plugin.widget.ClawdiusStatusBarWidget" 
+            implementation="com.clawdius.plugin.widget.ClawdiusStatusBarWidgetFactory"/>
+        
+        <!-- Annotator -->
+        <annotator 
+            language="any" 
+            implementationClass="com.clawdius.plugin.annotator.ClawdiusAnnotator"/>
+        
+        <!-- Inspection -->
+        <localInspection 
+            shortName="ClawdiusInspection" 
+            displayName="Clawdius AI Inspection"
+            groupName="Clawdius" 
+            enabledByDefault="true"
+            implementationClass="com.clawdius.plugin.inspection.ClawdiusInspection"/>
+        
+        <!-- Intention Action -->
+        <intentionAction>
+            <className>com.clawdius.plugin.intention.ClawdiusIntentionAction</className>
+            <category>Clawdius</category>
+            <descriptionDirectoryName>ClawdiusIntention</descriptionDirectoryName>
+        </intentionAction>
+    </extensions>
+
+    <applicationListeners>
+        <listener 
+            class="com.clawdius.plugin.listener.ProjectListener" 
+            topic="com.intellij.openapi.project.ProjectManagerListener"/>
+    </applicationListeners>
+
+    <actions>
+        <!-- Action Group -->
+        <group id="Clawdius.Actions" text="Clawdius" popup="true">
+            <add-to-group group-id="EditorPopupMenu" anchor="first"/>
+            
+            <action 
+                id="Clawdius.Explain" 
+                class="com.clawdius.plugin.action.ExplainAction" 
+                text="Explain Code"
+                description="Ask Clawdius to explain the selected code">
+                <keyboard-shortcut keymap="$default" first-keystroke="alt shift E"/>
+            </action>
+            
+            <action 
+                id="Clawdius.Refactor" 
+                class="com.clawdius.plugin.action.RefactorAction" 
+                text="Refactor Code"
+                description="Ask Clawdius to refactor the selected code">
+                <keyboard-shortcut keymap="$default" first-keystroke="alt shift R"/>
+            </action>
+            
+            <action 
+                id="Clawdius.GenerateTests" 
+                class="com.clawdius.plugin.action.GenerateTestsAction" 
+                text="Generate Tests"
+                description="Ask Clawdius to generate tests for the selected code">
+                <keyboard-shortcut keymap="$default" first-keystroke="alt shift T"/>
+            </action>
+            
+            <action 
+                id="Clawdius.Fix" 
+                class="com.clawdius.plugin.action.FixAction" 
+                text="Fix Issues"
+                description="Ask Clawdius to fix issues in the selected code">
+                <keyboard-shortcut keymap="$default" first-keystroke="alt shift F"/>
+            </action>
+            
+            <separator/>
+            
+            <action 
+                id="Clawdius.Chat" 
+                class="com.clawdius.plugin.action.ChatAction" 
+                text="Open Chat"
+                description="Open the Clawdius chat window">
+                <keyboard-shortcut keymap="$default" first-keystroke="alt shift C"/>
+            </action>
+        </group>
+        
+        <!-- Main Menu Actions -->
+        <action 
+            id="Clawdius.Settings" 
+            class="com.clawdius.plugin.action.OpenSettingsAction" 
+            text="Clawdius Settings"
+            description="Open Clawdius settings">
+            <add-to-group group-id="ToolsMenu" anchor="first"/>
+        </action>
+    </actions>
+</idea-plugin>

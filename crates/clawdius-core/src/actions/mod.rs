@@ -16,6 +16,12 @@ pub trait CodeAction: Send + Sync {
     fn id(&self) -> &str;
     fn title(&self) -> &str;
     fn applicability(&self, context: &ActionContext) -> Applicability;
+
+    /// Execute the code action.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the action cannot be applied or the transformation fails.
     fn execute(&self, context: &ActionContext) -> crate::Result<ActionEdit>;
 }
 

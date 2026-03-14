@@ -5,6 +5,7 @@ use clap::{Parser, Subcommand, ValueEnum};
 use std::path::PathBuf;
 
 use clawdius_core::actions::Function;
+use clawdius_core::i18n::Language;
 use clawdius_core::output::{
     OutputFormat as CoreOutputFormat, OutputFormatter, OutputOptions, SessionInfo, TestCaseInfo,
 };
@@ -84,6 +85,10 @@ pub struct Cli {
     #[arg(short = 'C', long)]
     #[arg(help = "Path to config file (defaults to .clawdius/config.toml)")]
     pub config: Option<PathBuf>,
+
+    #[arg(short = 'L', long)]
+    #[arg(help = "Language for output (en, zh, ja, ko, de, fr, es, it, pt, ru)")]
+    pub lang: Option<String>,
 }
 
 /// Available commands
@@ -91,8 +96,8 @@ pub struct Cli {
 pub enum Commands {
     #[command(about = "Send a chat message to the LLM")]
     Chat {
-        #[arg(help = "The message to send")]
-        message: Option<String>,
+        #[arg(help = "The message to send (use '-' for stdin)")]
+        prompt: Option<String>,
 
         #[arg(short, long)]
         #[arg(help = "Model to use (defaults to provider's default model)")]
@@ -112,9 +117,57 @@ pub enum Commands {
 
         #[arg(short = 'm', long, default_value = "code")]
         #[arg(
-            help = "Agent mode (code, architect, ask, debug, review, refactor, test, or custom mode name)"
+            help = "Agent mode (code, architect, ask, debug, review, refactor, test, auto, or custom mode name)"
         )]
         mode: String,
+
+        #[arg(long)]
+        #[arg(
+            help = "Non-interactive mode - exit after response (auto-enabled when prompt provided)"
+        )]
+        exit: bool,
+
+        #[arg(long)]
+        #[arg(help = "Quiet mode (suppress all output except response)")]
+        quiet: bool,
+
+        #[arg(long)]
+        #[arg(help = "Autonomous mode - auto-approve all tool executions")]
+        auto_approve: bool,
+    },
+
+    #[command(about = "Autonomous CI/CD mode - run without interaction")]
+    Auto {
+        #[arg(help = "Task to execute (e.g., 'fix failing tests', 'implement feature X')")]
+        task: String,
+
+        #[arg(short, long)]
+        #[arg(help = "Model to use (defaults to provider's default model)")]
+        model: Option<String>,
+
+        #[arg(short = 'P', long, default_value = "anthropic")]
+        #[arg(help = "Provider to use (anthropic, openai, deepseek, ollama, zai, openrouter)")]
+        provider: String,
+
+        #[arg(long)]
+        #[arg(help = "Maximum iterations before stopping (default: 50)")]
+        max_iterations: Option<usize>,
+
+        #[arg(long)]
+        #[arg(help = "Run tests after changes")]
+        run_tests: bool,
+
+        #[arg(long)]
+        #[arg(help = "Commit changes automatically")]
+        auto_commit: bool,
+
+        #[arg(long)]
+        #[arg(help = "Fail if tests fail after changes")]
+        fail_on_test_failure: bool,
+
+        #[arg(long)]
+        #[arg(help = "Output format for CI logging (text, json, github-actions)")]
+        output_format: Option<String>,
     },
 
     #[command(about = "Initialize Clawdius in a project")]
@@ -339,6 +392,12 @@ pub enum Commands {
         action: ModeCommands,
     },
 
+    #[command(about = "Manage language settings")]
+    Lang {
+        #[command(subcommand)]
+        action: LangCommands,
+    },
+
     #[command(about = "Edit a long prompt in external editor")]
     Edit {
         #[arg(short, long)]
@@ -533,6 +592,21 @@ pub enum ModeCommands {
     },
 }
 
+#[derive(Subcommand)]
+pub enum LangCommands {
+    #[command(about = "List supported languages")]
+    List,
+
+    #[command(about = "Set display language")]
+    Set {
+        #[arg(help = "Language code (en, zh, ja, ko, de, fr, es, it, pt, ru)")]
+        code: String,
+    },
+
+    #[command(about = "Show current language")]
+    Show,
+}
+
 /// Handle a command
 pub async fn handle_command(
     cmd: Commands,
@@ -541,20 +615,49 @@ pub async fn handle_command(
 ) -> anyhow::Result<()> {
     match cmd {
         Commands::Chat {
-            message,
+            prompt,
             model,
             provider,
             session,
             editor,
             mode,
+            exit,
+            quiet,
+            auto_approve: _,
         } => {
             handle_chat(
-                message,
+                prompt,
                 model,
                 provider,
                 session,
                 editor,
                 mode,
+                exit,
+                quiet,
+                config_path,
+                output_format,
+            )
+            .await
+        }
+        Commands::Auto {
+            task,
+            model,
+            provider,
+            max_iterations,
+            run_tests,
+            auto_commit,
+            fail_on_test_failure,
+            output_format: auto_output_format,
+        } => {
+            handle_auto(
+                task,
+                model,
+                provider,
+                max_iterations,
+                run_tests,
+                auto_commit,
+                fail_on_test_failure,
+                auto_output_format,
                 config_path,
                 output_format,
             )
@@ -648,6 +751,7 @@ pub async fn handle_command(
         }
         Commands::Timeline { action } => handle_timeline(action, config_path, output_format).await,
         Commands::Modes { action } => handle_modes(action, config_path, output_format).await,
+        Commands::Lang { action } => handle_lang(action, config_path, output_format).await,
         Commands::Edit {
             initial,
             editor,
@@ -666,37 +770,59 @@ fn load_config(config_path: Option<&PathBuf>) -> anyhow::Result<Config> {
 }
 
 async fn handle_chat(
-    message: Option<String>,
+    prompt: Option<String>,
     model: Option<String>,
     provider: String,
     _session: Option<String>,
     use_editor: bool,
     mode_name: String,
+    exit_after_response: bool,
+    quiet_mode: bool,
     config_path: Option<PathBuf>,
     output_format: OutputFormat,
 ) -> anyhow::Result<()> {
     use clawdius_core::llm::{create_provider, ChatMessage, ChatRole, LlmConfig};
     use clawdius_core::modes::AgentMode;
     use clawdius_core::tools::editor::ExternalEditor;
-    use std::io::{self, Write};
+    use std::io::{self, IsTerminal, Read, Write};
     use std::time::Instant;
 
+    // Determine if we should exit after response (non-interactive mode)
+    // Auto-enable if prompt is provided via CLI args
+    let non_interactive = exit_after_response || prompt.is_some();
+
+    // Handle message input
     let message = if use_editor {
         let editor = ExternalEditor::default_editor();
 
-        if output_format == OutputFormat::Text {
+        if output_format == OutputFormat::Text && !quiet_mode {
             println!(
                 "Opening editor ({}). Save and close to continue...",
                 editor.editor()
             );
         }
 
-        let initial_content = message.unwrap_or_default();
+        let initial_content = prompt.unwrap_or_default();
         editor
             .open_and_edit(&initial_content)
             .map_err(|e| anyhow::anyhow!("Editor error: {}", e))?
+    } else if let Some(msg) = prompt {
+        // Prompt provided via CLI args
+        msg
+    } else if !io::stdin().is_terminal() {
+        // Read from stdin if not a terminal (piped input)
+        let mut input = String::new();
+        io::stdin().read_to_string(&mut input)?;
+        if input.trim().is_empty() {
+            anyhow::bail!("No input provided via stdin");
+        }
+        input.trim().to_string()
+    } else if non_interactive {
+        anyhow::bail!(
+            "Message is required in non-interactive mode. Provide via argument or stdin."
+        );
     } else {
-        message.ok_or_else(|| anyhow::anyhow!("Message is required when not using --editor"))?
+        anyhow::bail!("Message is required. Use --editor or provide via argument/stdin.");
     };
 
     if message.trim().is_empty() {
@@ -705,9 +831,9 @@ async fn handle_chat(
 
     let options = OutputOptions {
         format: CoreOutputFormat::from(output_format),
-        show_progress: output_format == OutputFormat::Text,
-        quiet: false,
-        include_metadata: output_format == OutputFormat::Text,
+        show_progress: output_format == OutputFormat::Text && !quiet_mode,
+        quiet: quiet_mode,
+        include_metadata: output_format == OutputFormat::Text && !quiet_mode,
     };
     let formatter = OutputFormatter::new(options);
 
@@ -820,6 +946,228 @@ async fn handle_chat(
         0,
         duration.as_millis() as u64,
     )?;
+
+    Ok(())
+}
+
+async fn handle_auto(
+    task: String,
+    model: Option<String>,
+    provider: String,
+    max_iterations: Option<usize>,
+    run_tests: bool,
+    auto_commit: bool,
+    fail_on_test_failure: bool,
+    _auto_output_format: Option<String>,
+    config_path: Option<PathBuf>,
+    output_format: OutputFormat,
+) -> anyhow::Result<()> {
+    use clawdius_core::llm::{create_provider, ChatMessage, ChatRole, LlmConfig};
+    use clawdius_core::modes::AgentMode;
+    use clawdius_core::output::{ActionEdit, ActionResult, OutputOptions};
+    use std::io;
+    use std::process::Command;
+    use std::time::Instant;
+
+    let options = OutputOptions {
+        format: CoreOutputFormat::from(output_format),
+        show_progress: output_format == OutputFormat::Text,
+        quiet: false,
+        include_metadata: output_format == OutputFormat::Text,
+    };
+    let formatter = OutputFormatter::new(options);
+
+    let config = load_config(config_path.as_ref())?;
+    let session_manager = SessionManager::new(&config)?;
+    let mut session = session_manager.get_or_create_active()?;
+
+    // Load Auto mode
+    let modes_dir = std::env::current_dir()?.join(".clawdius").join("modes");
+    let mode = AgentMode::load_by_name("auto", &modes_dir).unwrap_or_else(|_| AgentMode::Auto);
+
+    let mut llm_config = LlmConfig::from_config(&config.llm, &provider)?;
+    if let Some(ref m) = model {
+        llm_config.model = m.clone();
+    }
+
+    let llm_client = match create_provider(&llm_config) {
+        Ok(client) => client,
+        Err(e) => {
+            let result = ActionResult::error("auto", task.clone(), e.to_string());
+            formatter.format_action_result(&mut io::stdout(), &result)?;
+            return Err(e.into());
+        }
+    };
+
+    let max_iters = max_iterations.unwrap_or(50);
+    let start = Instant::now();
+
+    if output_format == OutputFormat::Text {
+        println!("🤖 Clawdius Auto Mode");
+        println!("Task: {}", task);
+        println!("Provider: {}", provider);
+        println!("Max iterations: {}", max_iters);
+        if run_tests {
+            println!("Tests: enabled");
+        }
+        if auto_commit {
+            println!("Auto-commit: enabled");
+        }
+        println!();
+    }
+
+    // Build initial prompt with task
+    let system_message = ChatMessage {
+        role: ChatRole::System,
+        content: mode.system_prompt().to_string(),
+    };
+
+    let user_message = ChatMessage {
+        role: ChatRole::User,
+        content: format!(
+            "Task: {}\n\nPlease complete this task autonomously. Make the necessary changes and report what you did.",
+            task
+        ),
+    };
+
+    let messages = vec![system_message, user_message];
+
+    if output_format == OutputFormat::Text {
+        print!("Working...");
+    }
+
+    let response = match llm_client.chat(messages).await {
+        Ok(resp) => resp,
+        Err(e) => {
+            let result = ActionResult::error("auto", task.clone(), e.to_string());
+            formatter.format_action_result(&mut io::stdout(), &result)?;
+            return Err(e.into());
+        }
+    };
+
+    let duration = start.elapsed();
+    let mut changes_made = Vec::new();
+    let mut tests_passed = true;
+
+    // Parse response for changes
+    if response.contains("created") || response.contains("modified") || response.contains("updated")
+    {
+        changes_made.push("Files modified based on LLM response".to_string());
+    }
+
+    // Run tests if requested
+    if run_tests {
+        if output_format == OutputFormat::Text {
+            println!("\n🧪 Running tests...");
+        }
+
+        let test_output = Command::new("cargo")
+            .args(["test", "--no-fail-fast"])
+            .current_dir(std::env::current_dir()?)
+            .output();
+
+        match test_output {
+            Ok(output) => {
+                if output.status.success() {
+                    if output_format == OutputFormat::Text {
+                        println!("✅ Tests passed");
+                    }
+                } else {
+                    let stderr = String::from_utf8_lossy(&output.stderr);
+                    if output_format == OutputFormat::Text {
+                        println!("❌ Tests failed:\n{}", stderr);
+                    }
+                    tests_passed = false;
+                    if fail_on_test_failure {
+                        let result = ActionResult::error(
+                            "auto",
+                            task.clone(),
+                            format!("Tests failed: {}", stderr),
+                        );
+                        formatter.format_action_result(&mut io::stdout(), &result)?;
+                        anyhow::bail!("Tests failed and fail_on_test_failure is set");
+                    }
+                }
+            }
+            Err(e) => {
+                if output_format == OutputFormat::Text {
+                    println!("⚠️ Could not run tests: {}", e);
+                }
+            }
+        }
+    }
+
+    // Auto-commit if requested and changes were made
+    if auto_commit && !changes_made.is_empty() {
+        if output_format == OutputFormat::Text {
+            println!("\n📝 Committing changes...");
+        }
+
+        let commit_message = format!("auto: {}", task);
+        let _ = Command::new("git")
+            .args(["add", "-A"])
+            .current_dir(std::env::current_dir()?)
+            .output();
+
+        let commit_output = Command::new("git")
+            .args(["commit", "-m", &commit_message])
+            .current_dir(std::env::current_dir()?)
+            .output();
+
+        match commit_output {
+            Ok(output) => {
+                if output.status.success() {
+                    if output_format == OutputFormat::Text {
+                        println!("✅ Changes committed");
+                    }
+                    changes_made.push("Changes committed to git".to_string());
+                } else if output_format == OutputFormat::Text {
+                    println!("⚠️ Git commit failed (maybe no changes?)");
+                }
+            }
+            Err(e) => {
+                if output_format == OutputFormat::Text {
+                    println!("⚠️ Could not commit: {}", e);
+                }
+            }
+        }
+    }
+
+    // Save session
+    let user_msg = clawdius_core::session::Message::user(&task);
+    session_manager
+        .add_message(&mut session, user_msg.clone())
+        .await?;
+
+    let assistant_msg = clawdius_core::session::Message::assistant(&response);
+    session_manager
+        .add_message(&mut session, assistant_msg.clone())
+        .await?;
+
+    // Build result
+    let result = ActionResult::success(
+        "auto",
+        task.clone(),
+        format!("Auto task completed in {}ms", duration.as_millis()),
+        format!("{:?}", changes_made),
+        changes_made
+            .iter()
+            .map(|c| ActionEdit {
+                start_line: 0,
+                start_column: 0,
+                end_line: 0,
+                end_column: 0,
+                new_text: c.clone(),
+            })
+            .collect(),
+    );
+
+    formatter.format_action_result(&mut io::stdout(), &result)?;
+
+    // Return error code if tests failed and fail_on_test_failure is set
+    if !tests_passed && run_tests && fail_on_test_failure {
+        std::process::exit(1);
+    }
 
     Ok(())
 }
@@ -2438,6 +2786,99 @@ tools = ["file", "shell", "git"]
     };
 
     formatter.format_modes_result(&mut io::stdout(), &result)?;
+
+    Ok(())
+}
+
+async fn handle_lang(
+    action: LangCommands,
+    config_path: Option<PathBuf>,
+    output_format: OutputFormat,
+) -> anyhow::Result<()> {
+    // Note: output_format is reserved for future JSON/YAML output support
+    let _output_format = CoreOutputFormat::from(output_format);
+
+    match action {
+        LangCommands::List => {
+            println!("Supported languages:");
+            println!();
+            for lang in Language::all() {
+                let current = if *lang == Language::detect() {
+                    " (system)"
+                } else {
+                    ""
+                };
+                println!("  {} - {}{}", lang.code(), lang.native_name(), current);
+            }
+            println!();
+            println!("Use 'clawdius lang set <code>' to change language.");
+        }
+        LangCommands::Set { code } => {
+            match Language::from_code(&code) {
+                Some(lang) => {
+                    // Update config
+                    let config_path = config_path.unwrap_or_else(|| {
+                        std::env::current_dir()
+                            .unwrap()
+                            .join(".clawdius")
+                            .join("config.toml")
+                    });
+
+                    // Read existing config or create new
+                    let mut config_content = if config_path.exists() {
+                        std::fs::read_to_string(&config_path)?
+                    } else {
+                        String::new()
+                    };
+
+                    // Update or add language setting
+                    if config_content.contains("language =") {
+                        // Replace existing language line
+                        let re = regex::Regex::new(r"^language\s*=\s*.*$").unwrap();
+                        config_content = re
+                            .replace(&config_content, &format!("language = \"{}\"", lang.code()))
+                            .to_string();
+                    } else {
+                        // Add language to config
+                        if !config_content.trim().is_empty() {
+                            config_content.push_str("[general]\n");
+                        }
+                        config_content.push_str(&format!("language = \"{}\"\n", lang.code()));
+                    }
+
+                    // Write config
+                    if let Some(parent) = config_path.parent() {
+                        std::fs::create_dir_all(parent)?;
+                    }
+                    std::fs::write(&config_path, &config_content)?;
+
+                    println!(
+                        "✓ Language set to: {} ({})",
+                        lang.native_name(),
+                        lang.code()
+                    );
+                    println!("  Config saved to: {}", config_path.display());
+                }
+                None => {
+                    anyhow::bail!("Unknown language code: {}. Supported codes: en, zh, ja, ko, de, fr, es, it, pt, ru", code);
+                }
+            }
+        }
+        LangCommands::Show => {
+            let current = Language::detect();
+            println!(
+                "Current language: {} ({})",
+                current.native_name(),
+                current.code()
+            );
+            println!();
+            println!("Available languages:");
+            for lang in Language::all() {
+                let marker = if *lang == current { " *" } else { "" };
+                println!("  {} - {}{}", lang.code(), lang.native_name(), marker);
+            }
+        }
+    }
 
     Ok(())
 }

@@ -104,6 +104,11 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Clawdius Chat</title>
+    <!-- Highlight.js for syntax highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/vs2015.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <!-- Marked.js for markdown rendering -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -142,6 +147,15 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
             margin-right: 20%;
         }
         
+        .message.system {
+            background-color: var(--vscode-editorInfo-foreground);
+            color: var(--vscode-editor-background);
+            opacity: 0.8;
+            font-size: 0.9em;
+            text-align: center;
+            margin: 5px 30%;
+        }
+        
         .message.error {
             background-color: var(--vscode-inputValidation-errorBackground);
             color: var(--vscode-inputValidation-errorForeground);
@@ -150,6 +164,74 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         .message.code-change {
             background-color: var(--vscode-editor-inactiveSelectionBackground);
             border-left: 3px solid var(--vscode-charts-green);
+        }
+        
+        /* Markdown content styles */
+        .message h1, .message h2, .message h3 {
+            margin-top: 0.5em;
+            margin-bottom: 0.5em;
+        }
+        
+        .message p {
+            margin-bottom: 0.5em;
+        }
+        
+        .message pre {
+            background-color: var(--vscode-textCodeBlock-background);
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+            margin: 10px 0;
+        }
+        
+        .message code {
+            font-family: var(--vscode-editor-font-family);
+            font-size: var(--vscode-editor-font-size);
+        }
+        
+        .message p code {
+            background-color: var(--vscode-textCodeBlock-background);
+            padding: 2px 5px;
+            border-radius: 3px;
+        }
+        
+        .message ul, .message ol {
+            margin-left: 1.5em;
+            margin-bottom: 0.5em;
+        }
+        
+        .message li {
+            margin-bottom: 0.25em;
+        }
+        
+        .message a {
+            color: var(--vscode-textLink-foreground);
+        }
+        
+        .message a:hover {
+            color: var(--vscode-textLink-activeForeground);
+        }
+        
+        .message blockquote {
+            border-left: 3px solid var(--vscode-panel-border);
+            margin-left: 0;
+            padding-left: 10px;
+            color: var(--vscode-descriptionForeground);
+        }
+        
+        .message table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 10px 0;
+        }
+        
+        .message th, .message td {
+            border: 1px solid var(--vscode-panel-border);
+            padding: 5px 10px;
+        }
+        
+        .message th {
+            background-color: var(--vscode-editor-inactiveSelectionBackground);
         }
         
         .message .diff-actions {
@@ -179,6 +261,34 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         .message .diff-actions .reject-btn {
             background-color: var(--vscode-charts-red);
             color: white;
+        }
+        
+        /* Copy button for code blocks */
+        .code-block-wrapper {
+            position: relative;
+        }
+        
+        .copy-btn {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            padding: 4px 8px;
+            background-color: var(--vscode-button-secondaryBackground);
+            color: var(--vscode-button-secondaryForeground);
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 11px;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        
+        .code-block-wrapper:hover .copy-btn {
+            opacity: 1;
+        }
+        
+        .copy-btn:hover {
+            background-color: var(--vscode-button-secondaryHoverBackground);
         }
         
         #input-area {
@@ -248,6 +358,45 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
             border-radius: 10px;
             font-size: 10px;
         }
+        
+        /* Thinking indicator */
+        .thinking {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 10px;
+            color: var(--vscode-descriptionForeground);
+            font-style: italic;
+        }
+        
+        .thinking::after {
+            content: '';
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: var(--vscode-charts-blue);
+            animation: pulse 1s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 1; }
+        }
+        
+        /* Streaming text */
+        .streaming {
+            position: relative;
+        }
+        
+        .streaming::after {
+            content: '▊';
+            animation: blink 1s infinite;
+        }
+        
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0; }
+        }
     </style>
 </head>
 <body>
@@ -276,6 +425,25 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         const showChangesBtn = document.getElementById('show-changes-btn');
         
         let pendingChanges = [];
+        let currentStreamingElement = null;
+        
+        // Configure marked
+        marked.setOptions({
+            highlight: function(code, lang) {
+                if (lang && hl.getLanguage(lang)) {
+                    try {
+                        return hl.highlight(code, { language: lang }).value;
+                    } catch (e) {}
+                }
+                return hl.highlightAuto(code).value;
+            },
+            breaks: true,
+            gfm: true
+        });
+        
+        function renderMarkdown(text) {
+            return marked.parse(text);
+        }
         
         function addMessage(role, content, change = null) {
             const msgDiv = document.createElement('div');
@@ -326,12 +494,78 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
                 actionsDiv.appendChild(rejectBtn);
                 
                 msgDiv.appendChild(actionsDiv);
+            } else if (role === 'assistant') {
+                // Render markdown for assistant messages
+                const contentDiv = document.createElement('div');
+                contentDiv.innerHTML = renderMarkdown(content);
+                
+                // Add copy buttons to code blocks
+                contentDiv.querySelectorAll('pre').forEach(pre => {
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'code-block-wrapper';
+                    pre.parentNode.insertBefore(wrapper, pre);
+                    wrapper.appendChild(pre);
+                    
+                    const copyBtn = document.createElement('button');
+                    copyBtn.className = 'copy-btn';
+                    copyBtn.textContent = 'Copy';
+                    copyBtn.onclick = () => {
+                        const code = pre.textContent;
+                        navigator.clipboard.writeText(code).then(() => {
+                            copyBtn.textContent = 'Copied!';
+                            setTimeout(() => copyBtn.textContent = 'Copy', 2000);
+                        });
+                    };
+                    wrapper.appendChild(copyBtn);
+                });
+                
+                msgDiv.appendChild(contentDiv);
             } else {
-                msgDiv.textContent = content;
+                msgDiv.innerHTML = renderMarkdown(content);
             }
             
             messagesDiv.appendChild(msgDiv);
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            return msgDiv;
+        }
+        
+        function showThinking() {
+            const thinkingDiv = document.createElement('div');
+            thinkingDiv.className = 'message assistant thinking';
+            thinkingDiv.id = 'thinking-indicator';
+            thinkingDiv.textContent = 'Thinking';
+            messagesDiv.appendChild(thinkingDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+        
+        function hideThinking() {
+            const thinkingDiv = document.getElementById('thinking-indicator');
+            if (thinkingDiv) {
+                thinkingDiv.remove();
+            }
+        }
+        
+        function startStreaming() {
+            hideThinking();
+            currentStreamingElement = addMessage('assistant', '');
+            currentStreamingElement.classList.add('streaming');
+        }
+        
+        function appendStream(text) {
+            if (currentStreamingElement) {
+                const contentDiv = currentStreamingElement.querySelector('div');
+                if (contentDiv) {
+                    contentDiv.innerHTML = renderMarkdown(text);
+                }
+                messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            }
+        }
+        
+        function endStreaming() {
+            if (currentStreamingElement) {
+                currentStreamingElement.classList.remove('streaming');
+                currentStreamingElement = null;
+            }
         }
         
         function escapeHtml(text) {
@@ -364,6 +598,8 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
             
             addMessage('user', text);
             input.value = '';
+            
+            showThinking();
             
             vscode.postMessage({
                 command: 'send',
@@ -424,7 +660,17 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
             
             switch (message.command) {
                 case 'response':
+                    hideThinking();
                     addMessage('assistant', message.text);
+                    break;
+                case 'streamStart':
+                    startStreaming();
+                    break;
+                case 'streamToken':
+                    appendStream(message.text);
+                    break;
+                case 'streamEnd':
+                    endStreaming();
                     break;
                 case 'codeChange':
                     const change = message.change;
@@ -432,6 +678,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
                     addMessage('assistant', '📝 Proposed change: ' + change.description + ' (' + change.filePath + ')', change);
                     break;
                 case 'error':
+                    hideThinking();
                     addMessage('error', message.message);
                     break;
                 case 'contextAdded':

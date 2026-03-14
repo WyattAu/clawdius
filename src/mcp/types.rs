@@ -7,6 +7,127 @@ use thiserror::Error;
 /// MCP protocol version
 pub const MCP_VERSION: &str = "2024.11";
 
+/// Cancellation token for long-running operations
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CancellationToken {
+    /// Unique token ID
+    pub id: String,
+    /// Reason for cancellation (optional)
+    pub reason: Option<String>,
+}
+
+/// Progress notification for long-running operations
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ProgressNotification {
+    /// Progress token (matches request token)
+    pub progress_token: String,
+    /// Current progress (0.0 to 1.0)
+    pub progress: f64,
+    /// Total units (optional)
+    pub total: Option<u64>,
+    /// Message describing current state
+    pub message: Option<String>,
+}
+
+/// Sampling request (LLM completion from server)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SamplingRequest {
+    /// Messages to include in the prompt
+    pub messages: Vec<SamplingMessage>,
+    /// System prompt (optional)
+    pub system_prompt: Option<String>,
+    /// Include context (none/thisServer/allServers)
+    #[serde(default)]
+    pub include_context: Option<String>,
+    /// Temperature (0.0 to 1.0)
+    #[serde(default)]
+    pub temperature: Option<f64>,
+    /// Maximum tokens
+    pub max_tokens: u32,
+    /// Stop sequences
+    #[serde(default)]
+    pub stop_sequences: Option<Vec<String>>,
+    /// Model preferences
+    #[serde(default)]
+    pub model_preferences: Option<ModelPreferences>,
+}
+
+/// Sampling message
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SamplingMessage {
+    /// Role (user or assistant)
+    pub role: String,
+    /// Message content
+    pub content: SamplingContent,
+}
+
+/// Sampling content
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "lowercase")]
+pub enum SamplingContent {
+    /// Text content
+    Text {
+        /// Text
+        text: String,
+    },
+    /// Image content
+    Image {
+        /// Base64 data
+        data: String,
+        /// MIME type
+        mime_type: String,
+    },
+}
+
+/// Model preferences for sampling
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ModelPreferences {
+    /// Hints for model selection
+    #[serde(default)]
+    pub hints: Option<Vec<ModelHint>>,
+    /// Cost priority (0.0 to 1.0)
+    #[serde(default)]
+    pub cost_priority: Option<f64>,
+    /// Speed priority (0.0 to 1.0)
+    #[serde(default)]
+    pub speed_priority: Option<f64>,
+    /// Intelligence priority (0.0 to 1.0)
+    #[serde(default)]
+    pub intelligence_priority: Option<f64>,
+}
+
+/// Model hint
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ModelHint {
+    /// Model name hint
+    pub name: Option<String>,
+}
+
+/// Sampling response
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SamplingResponse {
+    /// Model used
+    pub model: String,
+    /// Stop reason
+    pub stop_reason: Option<String>,
+    /// Generated content
+    pub content: SamplingContent,
+}
+
+/// Resource subscription
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ResourceSubscription {
+    /// Resource URI
+    pub uri: String,
+}
+
+/// Resource update notification
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ResourceUpdatedNotification {
+    /// Resource URI
+    pub uri: String,
+}
+
 /// Tool definition for MCP
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ToolDefinition {

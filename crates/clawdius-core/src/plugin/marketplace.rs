@@ -224,6 +224,10 @@ pub struct InstallResult {
     pub manifest: PluginManifest,
     /// Installation path
     pub path: String,
+    /// Download URL for the WASM module
+    pub download_url: Option<String>,
+    /// SHA-256 checksum for verification
+    pub checksum: Option<String>,
     /// Installed dependencies
     pub dependencies: Vec<String>,
     /// Whether this was an update
@@ -253,6 +257,7 @@ pub struct UpdateCheck {
 pub struct MarketplaceClient {
     config: MarketplaceConfig,
     http_client: reqwest::Client,
+    #[allow(dead_code)]
     cache: HashMap<String, (chrono::DateTime<chrono::Utc>, serde_json::Value)>,
 }
 
@@ -265,6 +270,12 @@ impl MarketplaceClient {
             http_client: reqwest::Client::new(),
             cache: HashMap::new(),
         }
+    }
+
+    /// Get a reference to the HTTP client for direct requests
+    #[must_use]
+    pub fn http_client(&self) -> &reqwest::Client {
+        &self.http_client
     }
 
     /// Search for plugins

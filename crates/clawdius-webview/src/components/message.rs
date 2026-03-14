@@ -36,12 +36,12 @@ pub fn render_markdown(content: &str) -> String {
     for line in lines.iter() {
         let trimmed = line.trim();
 
-        if trimmed.starts_with("```") {
+        if let Some(rest) = trimmed.strip_prefix("```") {
             if in_code_block {
                 result.push_str("</code></pre>\n");
                 in_code_block = false;
             } else {
-                code_lang = trimmed[3..].to_string();
+                code_lang = rest.to_string();
                 result.push_str(&format!(
                     "<pre class=\"code-block\" data-language=\"{}\"><code>",
                     code_lang
@@ -57,12 +57,15 @@ pub fn render_markdown(content: &str) -> String {
             continue;
         }
 
-        if trimmed.starts_with("- ") || trimmed.starts_with("* ") {
+        if let Some(rest) = trimmed
+            .strip_prefix("- ")
+            .or_else(|| trimmed.strip_prefix("* "))
+        {
             if !in_list {
                 result.push_str("<ul>\n");
                 in_list = true;
             }
-            let item = process_inline_markdown(&trimmed[2..]);
+            let item = process_inline_markdown(rest);
             result.push_str(&format!("<li>{}</li>\n", item));
             continue;
         } else if in_list {
@@ -70,14 +73,14 @@ pub fn render_markdown(content: &str) -> String {
             in_list = false;
         }
 
-        if trimmed.starts_with("# ") {
-            let text = process_inline_markdown(&trimmed[2..]);
+        if let Some(rest) = trimmed.strip_prefix("# ") {
+            let text = process_inline_markdown(rest);
             result.push_str(&format!("<h1>{}</h1>\n", text));
-        } else if trimmed.starts_with("## ") {
-            let text = process_inline_markdown(&trimmed[3..]);
+        } else if let Some(rest) = trimmed.strip_prefix("## ") {
+            let text = process_inline_markdown(rest);
             result.push_str(&format!("<h2>{}</h2>\n", text));
-        } else if trimmed.starts_with("### ") {
-            let text = process_inline_markdown(&trimmed[4..]);
+        } else if let Some(rest) = trimmed.strip_prefix("### ") {
+            let text = process_inline_markdown(rest);
             result.push_str(&format!("<h3>{}</h3>\n", text));
         } else if trimmed.is_empty() {
             result.push_str("<br/>\n");

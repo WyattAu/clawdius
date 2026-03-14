@@ -1,0 +1,78 @@
+plugins:
+  - name: Cache
+    uses: actions/cache@v3
+    with:
+      path: |
+        ~/.gradle/caches
+        ~/.konan
+        ~/.m2/repository
+      key: ${{ runner.os }}-gradle-${{ hashFiles('**/gradle-wrapper.properties', 'gradle/wrapper/gradle-wrapper.properties') }}
+        ${{ runner.os }}-kotlin-${{ hashFiles('**/*.kt', '**/*.kts') }}
+        ${{ runner.os }}-konan-${{ hashFiles('**/gradle/dependencies.gradle') }}
+      restore-keys: |
+        ${{ runner.os }}-gradle-${{ hashFiles('**/gradle-wrapper.properties', 'gradle/wrapper/gradle-wrapper.properties') }}
+        ${{ runner.os }}-kotlin-${{ hashFiles('**/*.kt', '**/*.kts') }}
+        ${{ runner.os }}-konan-${{ hashFiles('**/gradle/dependencies.gradle') }}
+
+  - name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'gradle'
+      
+      - name: Setup Gradle
+        uses: gradle/gradle-build-action@v2
+        with:
+          gradle-home: .gradle
+          cache-read-only: ${{ github.ref != github.ref_name }}
+      
+      - name: Build Plugin
+        run: ./gradlew buildPlugin
+        working-directory: plugins/jetbrains/clawdius-plugin
+      
+      - name: Run Tests
+        run: ./gradlew test
+        working-directory: plugins/jetbrains/clawdius-plugin
+      
+      - name: Verify Plugin
+        run: ./gradlew verifyPlugin
+        working-directory: plugins/jetbrains/clawdius-plugin
+      
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: plugin-artifacts
+          path: plugins/jetbrains/clawdius-plugin/build/distributions/*.zip
+          retention-days: 30
+
+  - name: Release
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'gradle'
+      
+      - name: Setup Gradle
+        uses: gradle/gradle-build-action@v2
+      
+      - name: Publish Plugin
+        run: ./gradlew publishPlugin
+        working-directory: plugins/jetbrains/clawdius-plugin
+        env:
+          PUBLISH_TOKEN: ${{ secrets.JETBRAINS_PUBLISH_TOKEN }}
+          CERTIFICATE_CHAIN: ${{ secrets.JETBRAINS_CERTIFICATE_CHAIN }}
+          PRIVATE_KEY: ${{ secrets.JETBRAINS_PRIVATE_KEY }}
+          PRIVATE_KEY_PASSWORD: ${{ secrets.JETBRAINS_PRIVATE_KEY_PASSWORD }}

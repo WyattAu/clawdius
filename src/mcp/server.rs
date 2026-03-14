@@ -9,9 +9,10 @@ use std::io::{self, BufRead, Write};
 use serde::{Deserialize, Serialize};
 
 use crate::mcp::types::{
-    ContentBlock, McpError, PromptsCapability, ResourceContent, ResourceDefinition,
-    ResourcesCapability, ServerCapabilities, ServerInfo, ToolDefinition, ToolRequest, ToolResponse,
-    MCP_VERSION,
+    ContentBlock, McpError, ProgressNotification, PromptsCapability, ResourceContent,
+    ResourceDefinition, ResourceSubscription, ResourcesCapability, SamplingContent,
+    SamplingMessage, SamplingRequest, SamplingResponse, ServerCapabilities, ServerInfo,
+    ToolDefinition, ToolRequest, ToolResponse, MCP_VERSION,
 };
 use crate::mcp::{McpHost, McpTool};
 
@@ -310,8 +311,14 @@ impl McpServer {
             "tools/call" => self.handle_tools_call(request.params),
             "resources/list" => self.handle_resources_list(),
             "resources/read" => self.handle_resources_read(request.params),
+            "resources/subscribe" => self.handle_resources_subscribe(request.params),
+            "resources/unsubscribe" => self.handle_resources_unsubscribe(request.params),
             "prompts/list" => self.handle_prompts_list(),
             "prompts/get" => self.handle_prompts_get(request.params),
+            "sampling/createMessage" => self.handle_sampling(request.params),
+            "notifications/progress" => self.handle_progress(request.params),
+            "notifications/cancelled" => self.handle_cancelled(request.params),
+            "notifications/resources/updated" => self.handle_resource_updated(request.params),
             _ => return JsonRpcResponse::error(request.id, -32601, "Method not found"),
         };
 
@@ -319,6 +326,110 @@ impl McpServer {
             Ok(value) => JsonRpcResponse::success(request.id, value),
             Err(e) => JsonRpcResponse::error(request.id, -32603, &e.to_string()),
         }
+    }
+
+    /// Handle resource subscription
+    fn handle_resources_subscribe(
+        &self,
+        params: Option<serde_json::Value>,
+    ) -> Result<serde_json::Value, McpError> {
+        let params = params.ok_or_else(|| McpError::InvalidArguments("Missing params".into()))?;
+        let uri = params["uri"]
+            .as_str()
+            .ok_or_else(|| McpError::InvalidArguments("Missing uri".into()))?;
+
+        // Check if resource exists
+        if !self.resources.contains_key(uri) {
+            return Err(McpError::ResourceNotFound(uri.into()));
+        }
+
+        // In a full implementation, we would track subscriptions per client
+        // For now, acknowledge the subscription
+        Ok(serde_json::json!({
+            "subscribed": true,
+            "uri": uri
+        }))
+    }
+
+    /// Handle resource unsubscription
+    fn handle_resources_unsubscribe(
+        &self,
+        params: Option<serde_json::Value>,
+    ) -> Result<serde_json::Value, McpError> {
+        let params = params.ok_or_else(|| McpError::InvalidArguments("Missing params".into()))?;
+        let uri = params["uri"]
+            .as_str()
+            .ok_or_else(|| McpError::InvalidArguments("Missing uri".into()))?;
+
+        Ok(serde_json::json!({
+            "unsubscribed": true,
+            "uri": uri
+        }))
+    }
+
+    /// Handle sampling request (LLM completion)
+    fn handle_sampling(
+        &self,
+        params: Option<serde_json::Value>,
+    ) -> Result<serde_json::Value, McpError> {
+        let _params = params.ok_or_else(|| McpError::InvalidArguments("Missing params".into()))?;
+
+        // Sampling is a request from the server to the client
+        // The server cannot fulfill this itself - it should be forwarded to the client
+        // Return a not-implemented response
+        Err(McpError::Internal(
+            "Sampling requests should be sent to the client, not handled by the server".into(),
+        ))
+    }
+
+    /// Handle progress notification
+    fn handle_progress(
+        &self,
+        params: Option<serde_json::Value>,
+    ) -> Result<serde_json::Value, McpError> {
+        let params = params.ok_or_else(|| McpError::InvalidArguments("Missing params".into()))?;
+
+        // Log progress for monitoring
+        tracing::info!(
+            progress_token = %params["progressToken"],
+            progress = %params["progress"],
+            "Progress notification received"
+        );
+
+        // Acknowledge the notification
+        Ok(serde_json::json!({ "received": true }))
+    }
+
+    /// Handle cancellation notification
+    fn handle_cancelled(
+        &self,
+        params: Option<serde_json::Value>,
+    ) -> Result<serde_json::Value, McpError> {
+        let params = params.ok_or_else(|| McpError::InvalidArguments("Missing params".into()))?;
+
+        tracing::info!(
+            request_id = %params["requestId"],
+            reason = %params["reason"].as_str().unwrap_or("no reason provided"),
+            "Cancellation notification received"
+        );
+
+        // In a full implementation, we would cancel the running operation
+        Ok(serde_json::json!({ "cancelled": true }))
+    }
+
+    /// Handle resource updated notification
+    fn handle_resource_updated(
+        &self,
+        params: Option<serde_json::Value>,
+    ) -> Result<serde_json::Value, McpError> {
+        let params = params.ok_or_else(|| McpError::InvalidArguments("Missing params".into()))?;
+
+        tracing::info!(
+            uri = %params["uri"].as_str().unwrap_or("unknown"),
+            "Resource updated notification received"
+        );
+
+        Ok(serde_json::json!({ "acknowledged": true }))
     }
 
     fn handle_initialize(

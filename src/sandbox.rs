@@ -162,7 +162,7 @@ impl MountPoint {
 
 /// Configuration for spawning a sandbox
 #[derive(Debug, Clone)]
-pub struct SandboxConfig {
+pub struct SandboxSpawnConfig {
     /// Working directory for sandbox execution
     pub working_directory: PathBuf,
     /// Mount points to create inside sandbox
@@ -177,7 +177,7 @@ pub struct SandboxConfig {
     pub environment: HashMap<String, String>,
 }
 
-impl SandboxConfig {
+impl SandboxSpawnConfig {
     /// Creates a new sandbox configuration with the given working directory
     #[must_use]
     pub fn new(working_directory: impl Into<PathBuf>) -> Self {
@@ -264,7 +264,7 @@ pub trait PlatformSandbox: Send + Sync + std::fmt::Debug {
     ///
     /// # Errors
     /// Returns an error if sandbox creation fails
-    fn spawn(&self, config: &SandboxConfig) -> Result<SandboxHandle, SandboxError>;
+    fn spawn(&self, config: &SandboxSpawnConfig) -> Result<SandboxHandle, SandboxError>;
     /// Executes a command in the sandbox
     ///
     /// # Errors
@@ -386,7 +386,7 @@ impl BubblewrapSandbox {
 
 #[cfg(target_os = "linux")]
 impl PlatformSandbox for BubblewrapSandbox {
-    fn spawn(&self, config: &SandboxConfig) -> Result<SandboxHandle, SandboxError> {
+    fn spawn(&self, config: &SandboxSpawnConfig) -> Result<SandboxHandle, SandboxError> {
         config.validate()?;
 
         let capabilities = vec![CapabilityToken::new(
@@ -447,7 +447,7 @@ impl SandboxExecSandbox {
 
 #[cfg(target_os = "macos")]
 impl PlatformSandbox for SandboxExecSandbox {
-    fn spawn(&self, config: &SandboxConfig) -> Result<SandboxHandle, SandboxError> {
+    fn spawn(&self, config: &SandboxSpawnConfig) -> Result<SandboxHandle, SandboxError> {
         config.validate()?;
 
         let capabilities = vec![CapabilityToken::new(
@@ -498,7 +498,7 @@ impl NativeSandbox {
 }
 
 impl PlatformSandbox for NativeSandbox {
-    fn spawn(&self, config: &SandboxConfig) -> Result<SandboxHandle, SandboxError> {
+    fn spawn(&self, config: &SandboxSpawnConfig) -> Result<SandboxHandle, SandboxError> {
         config.validate()?;
 
         let capabilities = vec![CapabilityToken::new(
@@ -690,7 +690,7 @@ mod tests {
 
     #[test]
     fn test_sandbox_config_validation() {
-        let config = SandboxConfig::new("/project")
+        let config = SandboxSpawnConfig::new("/project")
             .with_mount(MountPoint::new("/project/src", "/src"))
             .with_capability(Permission::FsRead);
 
@@ -699,7 +699,7 @@ mod tests {
 
     #[test]
     fn test_too_many_mounts() {
-        let mut config = SandboxConfig::new("/project");
+        let mut config = SandboxSpawnConfig::new("/project");
 
         for i in 0..15 {
             config = config.with_mount(MountPoint::new(format!("/src{i}"), format!("/mnt{i}")));
@@ -710,7 +710,7 @@ mod tests {
 
     #[test]
     fn test_unsafe_mount_rejected() {
-        let config = SandboxConfig::new("/project")
+        let config = SandboxSpawnConfig::new("/project")
             .with_mount(MountPoint::new("/etc/passwd", "/etc/passwd"));
 
         assert!(config.validate().is_err());
@@ -719,7 +719,7 @@ mod tests {
     #[test]
     fn test_native_sandbox_spawn() {
         let sandbox = NativeSandbox::new();
-        let config = SandboxConfig::new("/project");
+        let config = SandboxSpawnConfig::new("/project");
 
         let handle = sandbox.spawn(&config);
         assert!(handle.is_ok());

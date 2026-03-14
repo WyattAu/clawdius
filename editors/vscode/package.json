@@ -4,6 +4,10 @@
     "description": "AI-powered coding assistant",
     "version": "0.1.0",
     "publisher": "clawdius",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/clawdius/clawdius.git"
+    },
     "engines": {
         "vscode": "^1.85.0"
     },
@@ -16,14 +20,14 @@
         "onStartupFinished"
     ],
     "main": "./out/extension.js",
-    "icon": "media/icon.svg",
+    "icon": "media/icon.png",
     "contributes": {
         "viewsContainers": {
             "activitybar": [
                 {
                     "id": "clawdius-chatView",
                     "title": "Clawdius",
-                    "icon": "media/claw.svg"
+                    "icon": "media/claw.png"
                 }
             ]
         },
@@ -181,10 +185,11 @@
         }
     },
     "scripts": {
-        "vscode:prepublish": "npm run compile",
+        "vscode:prepublish": "pnpm run compile",
         "compile": "tsc -p ./",
         "watch": "tsc -watch -p ./",
-        "lint": "eslint src --ext ts"
+        "lint": "eslint src --ext ts",
+        "package": "vsce package --allow-missing-repository"
     },
     "devDependencies": {
         "@types/node": "^20.10.0",

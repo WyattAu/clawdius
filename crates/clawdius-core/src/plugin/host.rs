@@ -2,12 +2,12 @@
 //!
 //! The host is responsible for loading, initializing, and managing plugins.
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use super::api::{HookResult, Plugin, PluginConfig, PluginId, PluginStats};
+use super::api::{HookResult, PluginConfig, PluginId, PluginStats};
 use super::hooks::{HookContext, HookType};
 use super::manifest::PluginManifest;
 use super::marketplace::{MarketplaceClient, MarketplaceConfig};
@@ -196,7 +196,7 @@ impl PluginHost {
 
         let result = self.marketplace.install(request).await?;
 
-        // Download and extract the plugin
+        // Create plugin directory
         let plugin_dir = self.config.plugins_dir.join(&result.manifest.name);
         tokio::fs::create_dir_all(&plugin_dir).await?;
 
@@ -204,12 +204,80 @@ impl PluginHost {
         let manifest_path = plugin_dir.join(super::manifest::MANIFEST_FILE);
         tokio::fs::write(&manifest_path, result.manifest.to_toml()?).await?;
 
-        // Download WASM module
-        // TODO: Implement actual download from result.download_url
-        tracing::info!("Plugin {} installed to {:?}", plugin_name, plugin_dir);
+        // Download WASM module if URL is provided
+        if let Some(ref download_url) = result.download_url {
+            let wasm_path = plugin_dir.join(&result.manifest.wasm);
+            self.download_wasm_module(download_url, &wasm_path, result.checksum.as_deref())
+                .await?;
+            tracing::info!(
+                "Plugin {} downloaded and installed to {:?}",
+                plugin_name,
+                plugin_dir
+            );
+        } else {
+            tracing::warn!(
+                "Plugin {} installed without WASM module (no download URL provided)",
+                plugin_name
+            );
+        }
 
         // Load the plugin
         self.load_plugin_from_dir(&plugin_dir).await
+    }
+
+    /// Download a WASM module from a URL
+    async fn download_wasm_module(
+        &self,
+        url: &str,
+        dest_path: &std::path::Path,
+        expected_checksum: Option<&str>,
+    ) -> Result<()> {
+        use sha3::{Digest, Sha3_256};
+
+        tracing::info!("Downloading WASM module from {}", url);
+
+        // Create a new HTTP client for downloads
+        let http_client = reqwest::Client::new();
+
+        // Download the module
+        let response = http_client
+            .get(url)
+            .send()
+            .await
+            .context("Failed to download WASM module")?;
+
+        if !response.status().is_success() {
+            anyhow::bail!("Failed to download WASM module: HTTP {}", response.status());
+        }
+
+        let bytes = response
+            .bytes()
+            .await
+            .context("Failed to read WASM module bytes")?;
+
+        // Verify checksum if provided
+        if let Some(checksum) = expected_checksum {
+            let mut hasher = Sha3_256::new();
+            hasher.update(&bytes);
+            let calculated = format!("{:x}", hasher.finalize());
+
+            if calculated != checksum {
+                anyhow::bail!(
+                    "Checksum mismatch: expected {}, got {}",
+                    checksum,
+                    calculated
+                );
+            }
+            tracing::debug!("WASM module checksum verified");
+        }
+
+        // Write to destination
+        tokio::fs::write(dest_path, &bytes)
+            .await
+            .context("Failed to write WASM module")?;
+
+        tracing::info!("WASM module saved to {:?}", dest_path);
+        Ok(())
     }
 
     /// Uninstall a plugin
@@ -304,9 +372,8 @@ impl PluginHost {
     }
 
     /// Get plugin statistics
-    pub async fn get_stats(&self, _plugin_id: &PluginId) -> Option<PluginStats> {
-        // TODO: Get actual stats from runtime
-        None
+    pub async fn get_stats(&self, plugin_id: &PluginId) -> Option<PluginStats> {
+        self.runtime.get_plugin_stats(plugin_id.as_str()).await
     }
 }
 

@@ -1,167 +1,337 @@
 .PHONY: all build test run clean docs lint fmt fmt-check check release install dev help \
 	tui test-% wasm vscode bench fuzz audit update completions \
 	test-int test-integration test-llm coverage coverage-html \
-	docker-build docker-run run-release docs-open check-quick pre-commit
+	docker-build docker-run run-release docs-open check-quick pre-commit \
+	jetbrains vscode-extension vscode-package \
+	clippy clippy-fix watch benchmark \
+	install-local install-templates \
+	dev-server mcp-server \
+	test-core test-cli test-integration-single \
+	check-deps security-audit \
+	help
+
+# ==============================================================================
+# Configuration
+# ==============================================================================
 
 CARGO := cargo
 BINARY_NAME := clawdius
 INSTALL_DIR := $(HOME)/.local/bin
+VERSION := $(shell grep '^version =' Cargo.toml | head -1 | sed 's/.*= "//' | sed 's/"//')
+
+# ==============================================================================
+# Core Build Targets
+# ==============================================================================
 
 all: build
 
 build:
+	@echo "🔨 Building workspace..."
 	$(CARGO) build --workspace
 
 release:
+	@echo "🚀 Building release..."
 	$(CARGO) build --workspace --release
 
-test:
-	$(CARGO) test --workspace
-
-test-%:
-	$(CARGO) test --workspace $*
-
-test-int:
-	$(CARGO) test --workspace --ignored
-
-test-integration: test-int
-
-test-llm:
-	$(CARGO) test --workspace --test llm_integration -- --ignored
-
-run:
-	$(CARGO) run --package clawdius
-
-run-release:
-	$(CARGO) run --package clawdius --release
-
-tui:
-	$(CARGO) run --package clawdius -- --tui
-
-clean:
-	$(CARGO) clean
-	rm -rf target/
-	rm -rf .clawdius/graph/
-	rm -rf .clawdius/sessions/
-
-docs:
-	$(CARGO) doc --workspace --no-deps
-
-docs-open:
-	$(CARGO) doc --workspace --no-deps --open
-
-lint:
-	$(CARGO) clippy --workspace --all-targets --all-features -- -D warnings
-
-fmt:
-	$(CARGO) fmt --all
-
-fmt-check:
-	$(CARGO) fmt --all -- --check
-
-check: fmt-check lint test
-
 check-quick:
+	@echo "🔍 Quick check..."
 	$(CARGO) check --workspace --all-targets
 
 check-compile:
 	@echo "🔍 Checking compilation..."
 	$(CARGO) check --all-targets --all-features
 
-pre-commit: check-compile fmt-check lint
-	@echo "✅ All pre-commit checks passed"
+# ==============================================================================
+# Testing Targets
+# ==============================================================================
 
-install:
-	$(CARGO) install --path crates/clawdius
+test:
+	@echo "🧪 Running all tests..."
+	$(CARGO) test --workspace
 
-dev:
-	$(CARGO) build --workspace
-	./scripts/setup-dev.sh || true
+test-core:
+	@echo "🧪 Running core library tests..."
+	$(CARGO) test -p clawdius-core
 
-wasm:
-	cd crates/clawdius-webview && $(CARGO) build --target wasm32-unknown-unknown
+test-cli:
+	@echo "🧪 Running CLI tests..."
+	$(CARGO) test -p clawdius
 
-vscode:
-	cd editors/vscode && npm install && npm run compile
+test-%:
+	$(CARGO) test --workspace $*
 
-bench:
-	$(CARGO) bench
+test-int:
+	@echo "🧪 Running integration tests..."
+	$(CARGO) test --workspace --ignored
 
-fuzz:
-	$(CARGO) +nightly fuzz run fuzz_parser
+test-integration: test-int
+
+test-integration-single:
+	@echo "🧪 Running integration tests (single thread)..."
+	$(CARGO) test -p clawdius --test integration_tests -- --test-threads=1
+
+test-llm:
+	@echo "🧪 Running LLM integration tests..."
+	$(CARGO) test --workspace --test llm_integration -- --ignored
 
 coverage:
+	@echo "📊 Generating coverage report..."
 	$(CARGO) llvm-cov --all-features --workspace --lcov --output-path lcov.info
 
 coverage-html:
+	@echo "📊 Generating HTML coverage report..."
 	$(CARGO) llvm-cov --all-features --workspace --html
 
-audit:
+# ==============================================================================
+# Code Quality Targets
+# ==============================================================================
+
+lint:
+	@echo "🔎 Running clippy..."
+	$(CARGO) clippy --workspace --all-targets --all-features -- -D warnings
+
+clippy: lint
+
+clippy-fix:
+	@echo "🔧 Auto-fixing clippy warnings..."
+	$(CARGO) clippy --workspace --all-targets --all-features --fix --allow-dirty
+
+fmt:
+	@echo "🎨 Formatting code..."
+	$(CARGO) fmt --all
+
+fmt-check:
+	@echo "🎨 Checking formatting..."
+	$(CARGO) fmt --all -- --check
+
+check: fmt-check lint test
+
+pre-commit: check-compile fmt-check lint
+	@echo "✅ All pre-commit checks passed"
+
+security-audit:
+	@echo "🔒 Running security audit..."
 	cargo deny check
-	cargo audit
+	$(CARGO) audit
+
+check-deps:
+	@echo "📦 Checking dependencies..."
+	$(CARGO) tree --duplicates
+
+# ==============================================================================
+# Run Targets
+# ==============================================================================
+
+run:
+	@echo "🚀 Running CLI (debug)..."
+	$(CARGO) run --package clawdius
+
+run-release:
+	@echo "🚀 Running CLI (release)..."
+	$(CARGO) run --package clawdius --release
+
+tui:
+	@echo "🖥️ Running TUI mode..."
+	$(CARGO) run --package clawdius -- --tui
+
+watch:
+	@echo "👁️ Running in watch mode..."
+	$(CARGO) run --package clawdius -- watch .
+
+dev-server:
+	@echo "🌐 Starting development server..."
+	$(CARGO) run --package clawdius -- --serve
+
+mcp-server:
+	@echo "🔌 Starting MCP server..."
+	$(CARGO) run --package clawdius -- mcp serve
+
+# ==============================================================================
+# Benchmarking
+# ==============================================================================
+
+bench:
+	@echo "⚡ Running benchmarks..."
+	$(CARGO) bench --workspace
+
+benchmark: bench
+
+# ==============================================================================
+# Documentation
+# ==============================================================================
+
+docs:
+	@echo "📚 Generating documentation..."
+	$(CARGO) doc --workspace --no-deps
+
+docs-open:
+	@echo "📚 Opening documentation..."
+	$(CARGO) doc --workspace --no-deps --open
+
+# ==============================================================================
+# Installation
+# ==============================================================================
+
+install:
+	@echo "📦 Installing to $(INSTALL_DIR)..."
+	$(CARGO) install --path crates/clawdius
+
+install-local: install
+
+install-templates:
+	@echo "📋 Installing templates..."
+	@mkdir -p $(HOME)/.clawdius/templates
+	@cp -r templates/* $(HOME)/.clawdius/templates/
+
+# ==============================================================================
+# Docker Targets
+# ==============================================================================
+
+docker-build:
+	@echo "🐳 Building Docker image..."
+	docker build -t clawdius:$(VERSION) .
+
+docker-run:
+	@echo "🐳 Running Docker container..."
+	docker run -it --rm -v $(PWD):/workspace clawdius:$(VERSION)
+
+# ==============================================================================
+# VSCode Extension
+# ==============================================================================
+
+vscode-extension:
+	@echo "🔌 Building VSCode extension..."
+	cd extensions/vscode && npm install && npm run compile
+
+vscode-package:
+	@echo "📦 Packaging VSCode extension..."
+	cd extensions/vscode && npm install && npm run package
+
+vscode-install: vscode-package
+	@echo "📦 Installing VSCode extension..."
+	@code --install-extension extensions/vscode/*.vsix
+
+# ==============================================================================
+# JetBrains Plugin
+# ==============================================================================
+
+jetbrains:
+	@echo "🔌 Building JetBrains plugin..."
+	cd plugins/jetbrains/clawdius-plugin && ./gradlew buildPlugin
+
+jetbrains-test:
+	@echo "🧪 Testing JetBrains plugin..."
+	cd plugins/jetbrains/clawdius-plugin && ./gradlew test
+
+jetbrains-run:
+	@echo "🚀 Running JetBrains plugin in IDE..."
+	cd plugins/jetbrains/clawdius-plugin && ./gradlew runIde
+
+# ==============================================================================
+# WASM Target
+# ==============================================================================
+
+wasm:
+	@echo "🌐 Building WASM target..."
+	cd crates/clawdius-webview && $(CARGO) build --target wasm32-unknown-unknown
+
+wasm-release:
+	@echo "🌐 Building WASM (release)..."
+	cd crates/clawdius-webview && $(CARGO) build --target wasm32-unknown-unknown --release
+
+# ==============================================================================
+# Cleanup
+# ==============================================================================
+
+clean:
+	@echo "🧹 Cleaning build artifacts..."
+	$(CARGO) clean
+	rm -rf target/
+	rm -rf .clawdius/graph/
+	rm -rf .clawdius/sessions/
+	rm -rf lcov.info
+	rm -rf lcov.info-*.json
+
+clean-deep: clean
+	@echo "🧹 Deep clean..."
+	rm -rf ~/.cache/cargo/
+	rm -rf ~/.cargo/registry/cache/
+
+# ==============================================================================
+# Development Setup
+# ==============================================================================
+
+dev:
+	@echo "🔧 Setting up development environment..."
+	$(CARGO) build --workspace
+	./scripts/setup-dev.sh || true
 
 update:
+	@echo "📦 Updating dependencies..."
 	$(CARGO) update
 
 completions:
-	./scripts/generate-completions.sh || true
+	@echo "📝 Generating shell completions..."
+	$(CARGO) run --package clawdius -- completions bash > /tmp/clawdius.bash
+	$(CARGO) run --package clawdius -- completions zsh > /tmp/clawdius.zsh
+	$(CARGO) run --package clawdius -- completions fish > /tmp/clawdius.fish
+	@echo "✅ Completions generated in /tmp/"
 
-docker-build:
-	docker build -t $(BINARY_NAME):latest .
+# ==============================================================================
+# Fuzzing (requires nightly)
+# ==============================================================================
 
-docker-run:
-	docker run --rm -it $(BINARY_NAME):latest
+fuzz:
+	@echo "🎲 Running fuzzer..."
+	$(CARGO) +nightly fuzz run fuzz_parser
 
-mutations:
-	cargo mutants --in-place
+# ==============================================================================
+# Help
+# ==============================================================================
 
 help:
-	@echo "Clawdius Makefile"
+	@echo "Clawdius Build System"
+	@echo "====================="
 	@echo ""
-	@echo "Usage: make [target]"
+	@echo "Core Build Commands:"
+	@echo "  make build          - Build workspace (debug)"
+	@echo "  make release        - Build workspace (release)"
+	@echo "  make check-quick    - Quick compilation check"
+	@echo "  make clean          - Clean build artifacts"
 	@echo ""
-	@echo "Build targets:"
-	@echo "  build          Build all crates"
-	@echo "  release        Build release binaries"
-	@echo "  check-quick    Quick cargo check (faster than build)"
-	@echo "  clean          Clean build artifacts"
+	@echo "Testing Commands:"
+	@echo "  make test           - Run all tests"
+	@echo "  make test-core      - Run core library tests"
+	@echo "  make test-cli       - Run CLI tests"
+	@echo "  make test-int       - Run integration tests"
+	@echo "  make coverage       - Generate coverage report"
+	@echo "  make bench          - Run benchmarks"
 	@echo ""
-	@echo "Testing targets:"
-	@echo "  test           Run all tests"
-	@echo "  test-<name>    Run specific test (e.g., test-parser)"
-	@echo "  test-int       Run integration tests"
-	@echo "  test-llm       Run LLM integration tests"
-	@echo "  bench          Run benchmarks"
-	@echo "  coverage       Generate test coverage report"
-	@echo "  coverage-html  Generate HTML coverage report"
+	@echo "Code Quality:"
+	@echo "  make fmt            - Format code"
+	@echo "  make fmt-check      - Check formatting"
+	@echo "  make lint           - Run clippy"
+	@echo "  make check          - Full quality check"
+	@echo "  make pre-commit     - Pre-commit checks"
 	@echo ""
-	@echo "Code quality:"
-	@echo "  lint           Run clippy"
-	@echo "  fmt            Format code"
-	@echo "  fmt-check      Check formatting"
-	@echo "  check-compile  Check compilation only"
-	@echo "  check          Full CI check (fmt-check + lint + test)"
-	@echo "  pre-commit     Run all pre-commit checks"
-	@echo "  audit          Security audit"
-	@echo "  mutations      Run mutation tests"
+	@echo "Run Commands:"
+	@echo "  make run            - Run CLI (debug)"
+	@echo "  make run-release    - Run CLI (release)"
+	@echo "  make tui            - Run TUI mode"
+	@echo "  make watch          - Run watch mode"
+	@echo "  make dev-server     - Start dev server"
+	@echo "  make mcp-server     - Start MCP server"
 	@echo ""
-	@echo "Run targets:"
-	@echo "  run            Run the CLI"
-	@echo "  run-release    Run release binary"
-	@echo "  tui            Run TUI mode"
+	@echo "Plugin/Extension Commands:"
+	@echo "  make vscode-extension - Build VSCode extension"
+	@echo "  make vscode-package   - Package VSCode extension"
+	@echo "  make jetbrains        - Build JetBrains plugin"
+	@echo "  make jetbrains-test   - Test JetBrains plugin"
 	@echo ""
-	@echo "Install:"
-	@echo "  install        Install from source"
-	@echo "  dev            Development setup"
+	@echo "Installation:"
+	@echo "  make install        - Install to ~/.local/bin"
 	@echo ""
-	@echo "Additional:"
-	@echo "  wasm           Build WASM webview"
-	@echo "  vscode         Build VSCode extension"
-	@echo "  fuzz           Run fuzzing (requires nightly)"
-	@echo "  update         Update dependencies"
-	@echo "  completions    Generate shell completions"
-	@echo "  docker-build   Build Docker image"
-	@echo "  docker-run     Run Docker container"
-	@echo "  docs           Generate documentation"
-	@echo "  docs-open      Generate and open documentation"
-	@echo "  help           Show this help"
+	@echo "Other:"
+	@echo "  make docs           - Generate documentation"
+	@echo "  make docker-build   - Build Docker image"
+	@echo "  make help           - Show this help"

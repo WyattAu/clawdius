@@ -23,6 +23,8 @@ pub enum AgentMode {
     Refactor,
     /// Test generation
     Test,
+    /// Autonomous mode for CI/CD pipelines
+    Auto,
     /// Custom mode with user-defined behavior
     Custom(CustomMode),
 }
@@ -39,6 +41,7 @@ impl AgentMode {
             Self::Review => REVIEW_PROMPT,
             Self::Refactor => REFACTOR_PROMPT,
             Self::Test => TEST_PROMPT,
+            Self::Auto => AUTO_PROMPT,
             Self::Custom(custom) => &custom.system_prompt,
         }
     }
@@ -54,6 +57,7 @@ impl AgentMode {
             Self::Review => 0.5,
             Self::Refactor => 0.6,
             Self::Test => 0.7,
+            Self::Auto => 0.3, // Lower temperature for more deterministic CI/CD behavior
             Self::Custom(custom) => custom.temperature.unwrap_or(0.7),
         }
     }
@@ -69,6 +73,7 @@ impl AgentMode {
             Self::Review => vec!["file".to_string(), "git".to_string()],
             Self::Refactor => vec!["file".to_string(), "shell".to_string(), "git".to_string()],
             Self::Test => vec!["file".to_string(), "shell".to_string()],
+            Self::Auto => vec!["file".to_string(), "shell".to_string(), "git".to_string()],
             Self::Custom(custom) => custom.tools.clone(),
         }
     }
@@ -84,6 +89,7 @@ impl AgentMode {
             Self::Review => "review",
             Self::Refactor => "refactor",
             Self::Test => "test",
+            Self::Auto => "auto",
             Self::Custom(custom) => &custom.name,
         }
     }
@@ -99,7 +105,56 @@ impl AgentMode {
             Self::Review => "Code review and analysis",
             Self::Refactor => "Code improvement and refactoring",
             Self::Test => "Test generation",
+            Self::Auto => "Autonomous CI/CD mode",
             Self::Custom(custom) => custom.description.as_deref().unwrap_or("Custom mode"),
+        }
+    }
+
+    /// Check if this mode requires user approval for tool execution
+    #[must_use]
+    pub fn requires_approval(&self) -> bool {
+        match self {
+            Self::Code => true,
+            Self::Architect => true,
+            Self::Ask => false, // No tools to approve
+            Self::Debug => true,
+            Self::Review => true,
+            Self::Refactor => true,
+            Self::Test => true,
+            Self::Auto => false, // Autonomous mode - no approval needed
+            Self::Custom(custom) => custom.requires_approval.unwrap_or(true),
+        }
+    }
+
+    /// Get max tokens for this mode
+    #[must_use]
+    pub fn max_tokens(&self) -> Option<usize> {
+        match self {
+            Self::Code => Some(4096),
+            Self::Architect => Some(8192), // Architecture docs can be longer
+            Self::Ask => Some(2048),
+            Self::Debug => Some(4096),
+            Self::Review => Some(4096),
+            Self::Refactor => Some(4096),
+            Self::Test => Some(4096),
+            Self::Auto => Some(8192), // CI/CD may need longer responses
+            Self::Custom(custom) => custom.max_tokens,
+        }
+    }
+
+    /// Check if streaming should be enabled for this mode
+    #[must_use]
+    pub fn enable_streaming(&self) -> bool {
+        match self {
+            Self::Code => true,
+            Self::Architect => true,
+            Self::Ask => true,
+            Self::Debug => true,
+            Self::Review => true,
+            Self::Refactor => true,
+            Self::Test => true,
+            Self::Auto => false, // CI/CD often needs full response for parsing
+            Self::Custom(custom) => custom.enable_streaming.unwrap_or(true),
         }
     }
 
@@ -114,6 +169,7 @@ impl AgentMode {
             "review" => Some(Self::Review),
             "refactor" => Some(Self::Refactor),
             "test" => Some(Self::Test),
+            "auto" => Some(Self::Auto),
             _ => None,
         }
     }
@@ -132,6 +188,10 @@ impl AgentMode {
             system_prompt: config.system_prompt,
             temperature: config.temperature,
             tools: config.tools,
+            max_tokens: config.max_tokens,
+            requires_approval: config.requires_approval,
+            enable_streaming: config.enable_streaming,
+            model: config.model,
         }))
     }
 
@@ -180,6 +240,7 @@ impl AgentMode {
                 "Code improvement and refactoring".to_string(),
             ),
             ("test".to_string(), "Test generation".to_string()),
+            ("auto".to_string(), "Autonomous CI/CD mode".to_string()),
         ];
 
         // Add custom modes from directory
@@ -282,6 +343,24 @@ You are Clawdius, a test generation specialist. You help with:
 Focus on meaningful tests that verify behavior, not just coverage.
 ";
 
+const AUTO_PROMPT: &str = r"
+You are Clawdius, running in autonomous CI/CD mode. You help with:
+- Automated code fixes and improvements
+- Running tests and fixing failures
+- Implementing features from specifications
+- Refactoring and code quality improvements
+- Generating documentation
+
+You operate autonomously without user interaction. Always:
+1. Make safe, incremental changes
+2. Run tests to verify changes
+3. Commit changes with clear messages
+4. Report progress and results clearly
+5. Roll back changes if tests fail
+
+Be conservative and prioritize stability over speed.
+";
+
 /// Mode configuration from TOML
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ModeConfig {
@@ -298,6 +377,18 @@ pub struct ModeConfig {
     /// Available tools
     #[serde(default)]
     pub tools: Vec<String>,
+    /// Maximum tokens for response
+    #[serde(default)]
+    pub max_tokens: Option<usize>,
+    /// Whether tool execution requires approval
+    #[serde(default)]
+    pub requires_approval: Option<bool>,
+    /// Whether to enable streaming
+    #[serde(default)]
+    pub enable_streaming: Option<bool>,
+    /// Preferred model for this mode
+    #[serde(default)]
+    pub model: Option<String>,
 }
 
 /// Custom mode configuration
@@ -316,6 +407,18 @@ pub struct CustomMode {
     /// Available tools
     #[serde(default)]
     pub tools: Vec<String>,
+    /// Maximum tokens for response
+    #[serde(default)]
+    pub max_tokens: Option<usize>,
+    /// Whether tool execution requires approval
+    #[serde(default)]
+    pub requires_approval: Option<bool>,
+    /// Whether to enable streaming
+    #[serde(default)]
+    pub enable_streaming: Option<bool>,
+    /// Preferred model for this mode
+    #[serde(default)]
+    pub model: Option<String>,
 }
 
 impl std::fmt::Display for AgentMode {

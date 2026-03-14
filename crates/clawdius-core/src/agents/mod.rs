@@ -363,7 +363,11 @@ impl AgentTeam {
         }
     }
 
-    /// Add an agent to the team
+    /// Add an agent to the team.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the maximum number of agents has been reached.
     pub async fn add_agent(&self, role: AgentRole) -> Result<String> {
         let mut agents = self.agents.write().await;
 
@@ -386,7 +390,11 @@ impl AgentTeam {
         Ok(id)
     }
 
-    /// Add an agent with custom configuration
+    /// Add an agent with custom configuration.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the maximum number of agents has been reached.
     pub async fn add_agent_with_config(&self, config: AgentConfig) -> Result<String> {
         let mut agents = self.agents.write().await;
 
@@ -408,7 +416,11 @@ impl AgentTeam {
         Ok(config.id)
     }
 
-    /// Remove an agent from the team
+    /// Remove an agent from the team.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the agent with the given ID is not found.
     pub async fn remove_agent(&self, id: &str) -> Result<()> {
         let mut agents = self.agents.write().await;
         agents
@@ -423,7 +435,11 @@ impl AgentTeam {
         agents.values().cloned().collect()
     }
 
-    /// Send a message to the team
+    /// Send a message to the team.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the message cannot be sent (e.g., no receivers).
     pub fn broadcast(&self, message: AgentMessage) -> Result<()> {
         self.message_bus
             .send(message)
@@ -452,7 +468,11 @@ impl AgentTeam {
         ctx.clone()
     }
 
-    /// Execute a task with the team
+    /// Execute a task with the team.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the team cannot be initialized or the task execution fails.
     pub async fn execute(&self, task: impl Into<String>) -> Result<TeamResult> {
         let task = task.into();
         let start = std::time::Instant::now();

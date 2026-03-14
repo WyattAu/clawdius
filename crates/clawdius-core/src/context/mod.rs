@@ -79,6 +79,30 @@ pub enum ContextItem {
         /// Results
         results: Vec<SearchResult>,
     },
+    /// Image content (for multimodal LLMs)
+    Image {
+        /// Image path or identifier
+        path: String,
+        /// MIME type (e.g., "image/png", "image/jpeg")
+        mime_type: String,
+        /// Base64-encoded image data
+        data: String,
+        /// Optional description
+        description: Option<String>,
+    },
+    /// Screenshot (for Computer Use / browser automation)
+    Screenshot {
+        /// Source (e.g., "browser", "desktop")
+        source: String,
+        /// MIME type (e.g., "image/png")
+        mime_type: String,
+        /// Base64-encoded screenshot data
+        data: String,
+        /// URL when from browser
+        url: Option<String>,
+        /// Timestamp when captured
+        timestamp: String,
+    },
 }
 
 impl ContextItem {
@@ -136,6 +160,31 @@ impl ContextItem {
                     .map(|r| format!("  {}:{} - {}", r.file, r.line, r.content))
                     .collect();
                 format!("@search:\"{}\"\n{}", query, items.join("\n"))
+            }
+            ContextItem::Image {
+                path,
+                mime_type,
+                data,
+                description,
+            } => {
+                let desc = description.as_deref().unwrap_or("");
+                format!(
+                    "@image:{path}\n[type: {mime_type}, size: {} bytes, {desc}]",
+                    data.len()
+                )
+            }
+            ContextItem::Screenshot {
+                source,
+                mime_type,
+                data,
+                url,
+                timestamp,
+            } => {
+                let url_str = url.as_deref().unwrap_or("N/A");
+                format!(
+                    "@screenshot:{source}\n[url: {url_str}, type: {mime_type}, size: {} bytes, at: {timestamp}]",
+                    data.len()
+                )
             }
         }
     }

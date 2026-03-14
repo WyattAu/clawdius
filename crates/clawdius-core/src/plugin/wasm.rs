@@ -8,10 +8,7 @@ use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use wasmtime::{
-    anyhow, Caller, Config, Engine, Instance, IntoFunc, Linker, MaybeUninitExt, Module, Store, Val,
-    WasmResults, WasmTy, WasmTyList,
-};
+use wasmtime::{anyhow, Caller, Config, Engine, Instance, Linker, Module, Store, Val};
 
 use super::api::{
     HookResult, Plugin, PluginConfig, PluginId, PluginMetadata, PluginState, PluginStats,
@@ -177,6 +174,18 @@ impl WasmPlugin {
         // This is a simplified check - full implementation would need store access
         self.module.get_export(name).is_some()
     }
+
+    /// Get plugin stats
+    #[must_use]
+    pub fn stats(&self) -> &PluginStats {
+        &self.stats
+    }
+
+    /// Get plugin metadata
+    #[must_use]
+    pub fn metadata(&self) -> &PluginMetadata {
+        &self.metadata
+    }
 }
 
 #[async_trait]
@@ -337,6 +346,7 @@ pub struct WasmRuntime {
     /// Loaded plugins
     plugins: Arc<RwLock<Vec<Arc<RwLock<WasmPlugin>>>>>,
     /// Engine shared by all plugins
+    #[allow(dead_code)]
     engine: Engine,
 }
 
@@ -454,6 +464,20 @@ impl WasmRuntime {
         }
 
         Ok(())
+    }
+
+    /// Get statistics for a specific plugin
+    pub async fn get_plugin_stats(&self, plugin_id: &str) -> Option<PluginStats> {
+        let plugins = self.plugins.read().await;
+
+        for plugin_lock in plugins.iter() {
+            let plugin = plugin_lock.read().await;
+            if plugin.metadata().id.as_str() == plugin_id {
+                return Some(plugin.stats().clone());
+            }
+        }
+
+        None
     }
 }
 

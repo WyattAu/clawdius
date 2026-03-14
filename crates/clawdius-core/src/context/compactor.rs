@@ -302,6 +302,24 @@ impl ContextCompactor {
                 ContextItem::Problems { diagnostics } => {
                     summary_parts.push(format!("- Problems ({} diagnostics)", diagnostics.len()));
                 }
+                ContextItem::Image {
+                    path,
+                    mime_type,
+                    description,
+                    ..
+                } => {
+                    let desc = description.as_deref().unwrap_or("no description");
+                    summary_parts.push(format!("- Image: {path} ({mime_type}, {desc})"));
+                }
+                ContextItem::Screenshot {
+                    source,
+                    url,
+                    timestamp,
+                    ..
+                } => {
+                    let url_str = url.as_deref().unwrap_or("N/A");
+                    summary_parts.push(format!("- Screenshot: {source} ({url_str}, {timestamp})"));
+                }
             }
         }
 

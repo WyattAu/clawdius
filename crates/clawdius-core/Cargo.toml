@@ -113,6 +113,7 @@ sentry = { version = "0.32", optional = true }
 # File watching
 notify.workspace = true
 walkdir.workspace = true
+glob-match.workspace = true
 
 # URL encoding
 urlencoding = "2.1"
