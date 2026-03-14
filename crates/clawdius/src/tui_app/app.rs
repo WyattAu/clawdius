@@ -1,6 +1,7 @@
 //! TUI App state
 
 use super::components::{ChatView, DiffView, FileList, Spinner, SyntaxHighlighter};
+use super::theme;
 use super::types::{AppMode, InputMode, Message};
 use super::vim::VimKeymap;
 
@@ -468,41 +469,34 @@ impl App {
     }
 
     fn draw_header(&self, f: &mut Frame<'_>, area: Rect) {
+        let theme = theme::current();
+        
         let mode_text = match self.mode {
-            AppMode::Chat => "Chat",
-            AppMode::FileBrowser => "File Browser",
-            AppMode::Diff => "Diff View",
-            AppMode::Help => "Help",
+            AppMode::Chat => "CHAT",
+            AppMode::FileBrowser => "FILES",
+            AppMode::Diff => "DIFF",
+            AppMode::Help => "HELP",
         };
 
         let session_info = if let Some(session) = &self.session {
-            format!(
-                "Session: {} | Messages: {}",
-                session.id,
-                session.messages.len()
-            )
+            format!("{} msgs", session.messages.len())
         } else {
-            "No active session".to_string()
+            "no session".to_string()
         };
 
         let title = Line::from(vec![
-            Span::styled(
-                "Clawdius ",
-                Style::default()
-                    .fg(Color::Cyan)
-                    .add_modifier(Modifier::BOLD),
-            ),
-            Span::styled(
-                format!("[{}]", mode_text),
-                Style::default().fg(Color::Yellow),
-            ),
-            Span::raw(" | "),
-            Span::styled(session_info, Style::default().fg(Color::Gray)),
+            Span::styled("CLAWDIUS", theme.title()),
+            Span::raw("  "),
+            Span::styled(mode_text, Style::new().fg(theme.accent)),
+            Span::raw("  "),
+            Span::styled("|", theme.border()),
+            Span::raw("  "),
+            Span::styled(session_info, theme.muted()),
         ]);
 
         let block = Block::default()
             .borders(Borders::ALL)
-            .border_style(Style::default().fg(Color::Cyan));
+            .border_style(theme.border());
 
         let paragraph = Paragraph::new(title).block(block);
         f.render_widget(paragraph, area);
@@ -658,49 +652,38 @@ impl App {
     }
 
     fn draw_status(&self, f: &mut Frame<'_>, area: Rect) {
+        let theme = theme::current();
+        
         let mut status_parts = vec![
-            Span::styled(
-                "Clawdius",
-                Style::default()
-                    .fg(Color::Cyan)
-                    .add_modifier(Modifier::BOLD),
-            ),
-            Span::raw(" | "),
-            Span::styled(
-                format!("Mode: {}", self.agent_mode.name()),
-                Style::default().fg(Color::Magenta),
-            ),
-            Span::raw(" | "),
+            Span::styled(self.agent_mode.name(), theme.status_highlight()),
+            Span::styled(" │ ", theme.border()),
         ];
 
         if let Some(ref session) = self.session {
             status_parts.push(Span::styled(
                 format!(
-                    "{} / {}",
+                    "{}:{}",
                     session.meta.provider.as_deref().unwrap_or("unknown"),
                     session.meta.model.as_deref().unwrap_or("unknown")
                 ),
-                Style::default().fg(Color::Yellow),
+                theme.model_info(),
             ));
-            status_parts.push(Span::raw(" | "));
+            status_parts.push(Span::styled(" │ ", theme.border()));
             status_parts.push(Span::styled(
-                format!("Tokens: {}", session.total_tokens()),
-                Style::default().fg(Color::Green),
+                format!("{} tokens", session.total_tokens()),
+                theme.token_count(),
             ));
         } else {
-            status_parts.push(Span::styled("No session", Style::default().fg(Color::Red)));
+            status_parts.push(Span::styled("no session", theme.error()));
         }
 
         if self.is_loading {
-            status_parts.push(Span::raw(" | "));
+            status_parts.push(Span::styled(" │ ", theme.border()));
             status_parts.push(self.spinner.render());
         }
 
-        status_parts.push(Span::raw(" | "));
-        status_parts.push(Span::styled(
-            "Press ? for help",
-            Style::default().fg(Color::DarkGray),
-        ));
+        status_parts.push(Span::styled(" │ ", theme.border()));
+        status_parts.push(Span::styled("? help", theme.muted()));
 
         let status = Line::from(status_parts);
         let paragraph = Paragraph::new(status);

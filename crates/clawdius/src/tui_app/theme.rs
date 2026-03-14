@@ -39,6 +39,7 @@ pub struct Theme {
 }
 
 impl Theme {
+    #[allow(dead_code)]
     /// Create the default dark theme
     pub const fn dark() -> Self {
         Self {
