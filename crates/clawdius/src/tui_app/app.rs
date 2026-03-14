@@ -470,7 +470,7 @@ impl App {
 
     fn draw_header(&self, f: &mut Frame<'_>, area: Rect) {
         let theme = theme::current();
-        
+
         let mode_text = match self.mode {
             AppMode::Chat => "CHAT",
             AppMode::FileBrowser => "FILES",
@@ -653,7 +653,7 @@ impl App {
 
     fn draw_status(&self, f: &mut Frame<'_>, area: Rect) {
         let theme = theme::current();
-        
+
         let mut status_parts = vec![
             Span::styled(self.agent_mode.name(), theme.status_highlight()),
             Span::styled(" │ ", theme.border()),

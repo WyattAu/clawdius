@@ -1,7 +1,6 @@
 use clawdius_core::{diff::DiffLine, FileDiff};
 use ratatui::{
     layout::Rect,
-    style::{Color, Style},
     text::{Line, Span},
     widgets::{Block, Borders, Paragraph, Scrollbar, ScrollbarOrientation, ScrollbarState},
     Frame,

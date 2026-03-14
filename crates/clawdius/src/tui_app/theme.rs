@@ -228,6 +228,40 @@ impl Theme {
     pub const fn model_info(&self) -> Style {
         Style::new().fg(self.warning)
     }
+
+    // ===== Markdown Styles =====
+
+    /// Markdown code block style
+    #[inline]
+    pub const fn md_code_block(&self) -> Style {
+        Style::new().fg(self.accent_muted)
+    }
+
+    /// Markdown inline code style
+    #[inline]
+    pub const fn md_inline_code(&self) -> Style {
+        Style::new().fg(self.accent)
+    }
+
+    /// Markdown bold text style
+    #[inline]
+    pub const fn md_bold(&self) -> Style {
+        Style::new().fg(self.text).add_modifier(Modifier::BOLD)
+    }
+
+    /// Markdown header style
+    #[inline]
+    pub const fn md_header(&self) -> Style {
+        Style::new().fg(self.accent).add_modifier(Modifier::BOLD)
+    }
+
+    /// Markdown link style
+    #[inline]
+    pub const fn md_link(&self) -> Style {
+        Style::new()
+            .fg(self.accent)
+            .add_modifier(Modifier::UNDERLINED)
+    }
 }
 
 impl Default for Theme {
