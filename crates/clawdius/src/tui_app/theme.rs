@@ -10,6 +10,7 @@ use ratatui::style::{Color, Modifier, Style};
 
 /// Modern dark theme inspired by GitHub's dark mode
 #[derive(Clone, Copy, Debug)]
+#[allow(dead_code)]
 pub struct Theme {
     /// Background color for the main area
     pub bg: Color,

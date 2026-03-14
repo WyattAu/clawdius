@@ -10,7 +10,6 @@ mod ui;
 mod vim;
 
 pub use app::App;
-pub use theme::Theme;
 
 /// Run the TUI
 pub async fn run_tui() -> anyhow::Result<()> {
