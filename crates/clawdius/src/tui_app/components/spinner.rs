@@ -1,28 +1,53 @@
+//! Animated spinner for loading states
+
 use ratatui::{
-    style::{Color, Style},
+    style::{Modifier, Style},
     text::Span,
 };
+use std::time::Instant;
 
-const FRAMES: &[&str] = &["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+use crate::tui_app::theme;
 
+/// Modern spinner animation frames (Braille patterns)
+const SPINNER_FRAMES: &[&str] = &["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+
+/// Animated spinner component
+#[derive(Clone)]
 pub struct Spinner {
     frame: usize,
+    last_tick: Instant,
 }
 
 impl Spinner {
+    /// Create a new spinner
     pub fn new() -> Self {
-        Self { frame: 0 }
+        Self {
+            frame: 0,
+            last_tick: Instant::now(),
+        }
     }
 
+    /// Advance the spinner animation
     pub fn tick(&mut self) {
-        self.frame = (self.frame + 1) % FRAMES.len();
+        let elapsed = self.last_tick.elapsed().as_millis();
+        if elapsed >= 80 {
+            self.frame = (self.frame + 1) % SPINNER_FRAMES.len();
+            self.last_tick = Instant::now();
+        }
     }
 
+    /// Render the spinner as a styled span
     pub fn render(&self) -> Span<'static> {
+        let theme = theme::current();
         Span::styled(
-            FRAMES[self.frame].to_string(),
-            Style::default().fg(Color::Cyan),
+            SPINNER_FRAMES[self.frame].to_string(),
+            Style::new().fg(theme.accent).add_modifier(Modifier::BOLD),
         )
+    }
+
+    /// Get the current frame as a string
+    pub fn frame(&self) -> &'static str {
+        SPINNER_FRAMES[self.frame]
     }
 }
 

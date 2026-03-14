@@ -1,12 +1,16 @@
 //! TUI application for Clawdius
+//!
+//! A modern, assertive terminal interface with vim-inspired keybindings.
 
 mod app;
 mod components;
+mod theme;
 mod types;
 mod ui;
 mod vim;
 
 pub use app::App;
+pub use theme::Theme;
 
 /// Run the TUI
 pub async fn run_tui() -> anyhow::Result<()> {
