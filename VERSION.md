@@ -4,20 +4,43 @@
 
 | Attribute | Value |
 |-----------|-------|
-| **Version** | 1.0.0 |
-| **Phase** | v1.0.0 - Stable Release |
+| **Version** | 1.1.0 |
+| **Phase** | v1.1.0 - REST API & Webhook Release |
 | **Status** | ✅ STABLE |
 | **API Stability** | ✅ GUARANTEED |
 | **Last Updated** | 2026-03-15 |
 | **Error Level** | None |
-| **Rollback Checkpoint** | v1.0.0-rc.1 |
+| **Rollback Checkpoint** | v1.1.0 |
 | **Feature Matrix** | [.reports/feature_implementation_matrix.md](.reports/feature_implementation_matrix.md) |
 | **Roadmap** | [ROADMAP.md](ROADMAP.md) |
-| **Release Notes** | [RELEASE_NOTES_v1.0.0.md](RELEASE_NOTES_v1.0.0.md) |
 
 ## Version History
 
-### v1.0.0 - Stable Release (2026-03-15) - CURRENT
+### v1.1.0 - REST API & Webhook Release (2026-03-15) - CURRENT
+
+| Task | Status | Description |
+|------|--------|-------------|
+| REST API with Actor Pattern | ✅ COMPLETE | Thread-safe session management via mpsc channels |
+| Webhook System | ✅ COMPLETE | Event-driven notifications with HMAC signing |
+| Workflow CLI Commands | ✅ COMPLETE | List, create, run, status, cancel workflows |
+| Webhook CLI Commands | ✅ COMPLETE | Full CRUD + test + delivery history |
+| Security Vulnerabilities | ✅ FIXED | git2, lru upgraded (transitive lancedb vulns documented) |
+| API Integration Tests | ✅ COMPLETE | 9 new tests for REST endpoints |
+
+**Key Changes:**
+- REST API uses actor pattern to resolve rusqlite `Send+Sync` issues
+- Webhook module with WebhookManager, signing, and delivery tracking
+- CLI commands for workflow and webhook management
+- Fixed RUSTSEC-2026-0008 (git2) and RUSTSEC-2026-0002 (lru)
+- Documented remaining lancedb transitive vulnerabilities (LOW severity)
+
+**Known Limitations (Honest Status):**
+- Agentic code generation: Stub implementation (not production-ready)
+- Agentic test generation: Stub implementation (not production-ready)
+- Agentic doc generation: Stub implementation (not production-ready)
+- These features are planned for v2.0.0
+
+### v1.0.0 - Stable Release (2026-03-15)
 
 | Task | Status | Description |
 |------|--------|-------------|

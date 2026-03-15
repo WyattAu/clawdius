@@ -1,6 +1,61 @@
 # Changelog
 All notable changes to Clawdius will be documented in this file.
 
+## [1.1.0] - 2026-03-15
+
+### Added
+
+- **REST API with Actor Pattern** - Thread-safe session management
+  - DbActor using mpsc channels for database access
+  - Resolves rusqlite `Send + Sync` compatibility issues
+  - Full CRUD operations for sessions via REST endpoints
+  - Health and readiness endpoints for orchestration
+
+- **Webhook System** - Event-driven notifications
+  - `WebhookManager` for registration and delivery
+  - HMAC-SHA256 signature signing and verification
+  - Configurable retry logic with exponential backoff
+  - Delivery history and statistics tracking
+  - Support for session, message, tool, and workflow events
+
+- **CLI Commands**
+  - `clawdius workflow` - Manage agentic workflows (list, create, run, status, cancel)
+  - `clawdius webhook` - Manage webhooks (list, create, update, delete, test, deliveries, stats)
+
+- **Integration Tests** - 9 new API tests
+  - Health endpoint tests
+  - Session CRUD tests
+  - Tool and plugin listing tests
+  - Chat endpoint tests
+
+### Security
+
+- **Fixed Vulnerabilities:**
+  - RUSTSEC-2026-0008: Upgraded git2 0.19 → 0.20 (potential UB in Buf deref)
+  - RUSTSEC-2026-0002: Upgraded lru 0.12 → 0.16 (unsound IterMut)
+
+- **Documented Transitive Vulnerabilities (via lancedb):**
+  - RUSTSEC-2024-0358: object_store 0.9.1 (LOW 3.8 - AWS WebIdentityToken log exposure)
+  - RUSTSEC-2025-0009: ring 0.16.20 (AES panic with overflow checking)
+  - Mitigation: Avoid AWS S3 storage or configure logging to redact secrets
+  - Full fix requires lancedb 0.26.x upgrade (major API migration, planned for v2.0.0)
+
+### Known Limitations (Honest Feature Status)
+
+The following features are **stub implementations** and not production-ready:
+
+- **Agentic Code Generation** - CLI exists but generates placeholder content
+- **Agentic Test Generation** - CLI exists but generates placeholder content  
+- **Agentic Documentation Generation** - CLI exists but generates placeholder content
+
+These features require significant LLM integration work and are planned for v2.0.0.
+
+### Changed
+
+- REST API handlers rewritten with actor pattern for thread safety
+- Added `Serialize` derive to `CreateSessionRequest` for test support
+- Updated dependency versions in Cargo.toml with security annotations
+
 ## [0.2.1] - 2026-03-10
 ### Fixed
 - Fixed event_sourcing tests deadlock (tests now run in 0.03s instead of >60s)

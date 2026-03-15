@@ -16,7 +16,7 @@ members = [
 ]
 
 [workspace.package]
-version = "1.0.0"
+version = "1.1.0"
 edition = "2021"
 authors = ["Clawdius Team <team@clawdius.dev>"]
 license = "Apache-2.0"
@@ -75,7 +75,7 @@ keyring = "3.6"
 rpassword = "7.3"
 
 # === HTTP ===
-axum = "0.8"
+axum = { version = "0.8", features = ["macros"] }
 tower = "0.5"
 tower-http = { version = "0.6", features = ["cors", "fs"] }
 
@@ -118,7 +118,8 @@ pin-project = "1.1"
 bytes = "1.9"
 tokio-stream = "0.1"
 async-stream = "0.3"
-lru = "0.12"
+# Fix RUSTSEC-2026-0002 (unsound IterMut) - upgrade to 0.16+
+lru = "0.16"
 
 # === Token Counting ===
 tiktoken-rs = "0.5"
@@ -127,9 +128,14 @@ tiktoken-rs = "0.5"
 similar = "2.6"
 
 # === Git ===
-git2 = "0.19"
+# Fix RUSTSEC-2026-0008 (unsound) - upgrade to 0.20+
+git2 = "0.20"
 
 # === Vector Database ===
+# NOTE: lancedb 0.4.20 has transitive vuln RUSTSEC-2024-0358 (object_store 0.9.1)
+# Severity: LOW (3.8) - AWS WebIdentityToken exposure in logs
+# Mitigation: Avoid AWS S3 storage or configure logging to redact secrets
+# TODO: Upgrade to lancedb 0.26.x (requires API migration) for full fix
 lancedb = "0.4"
 arrow = "51"
 arrow-array = "51"

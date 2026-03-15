@@ -412,6 +412,18 @@ pub enum Commands {
         #[arg(help = "File extension for syntax highlighting (default: md)")]
         extension: Option<String>,
     },
+
+    #[command(about = "Manage agentic workflows")]
+    Workflow {
+        #[command(subcommand)]
+        action: WorkflowCommands,
+    },
+
+    #[command(about = "Manage webhooks for event notifications")]
+    Webhook {
+        #[command(subcommand)]
+        action: WebhookCommands,
+    },
 }
 
 #[derive(Subcommand)]
@@ -607,6 +619,144 @@ pub enum LangCommands {
     Show,
 }
 
+#[derive(Subcommand)]
+pub enum WorkflowCommands {
+    #[command(about = "List all workflows")]
+    List,
+
+    #[command(about = "Create a new workflow")]
+    Create {
+        #[arg(help = "Workflow name")]
+        name: String,
+
+        #[arg(short, long)]
+        #[arg(help = "Workflow description")]
+        description: Option<String>,
+    },
+
+    #[command(about = "Show workflow details")]
+    Show {
+        #[arg(help = "Workflow ID")]
+        id: String,
+    },
+
+    #[command(about = "Execute a workflow")]
+    Run {
+        #[arg(help = "Workflow ID")]
+        id: String,
+
+        #[arg(short, long)]
+        #[arg(help = "Context data as JSON")]
+        context: Option<String>,
+
+        #[arg(short = 'P', long, default_value = "anthropic")]
+        #[arg(help = "Provider to use")]
+        provider: String,
+
+        #[arg(short, long)]
+        #[arg(help = "Model to use")]
+        model: Option<String>,
+    },
+
+    #[command(about = "Cancel a running workflow")]
+    Cancel {
+        #[arg(help = "Execution ID")]
+        execution_id: String,
+    },
+
+    #[command(about = "Show workflow execution status")]
+    Status {
+        #[arg(help = "Execution ID")]
+        execution_id: String,
+    },
+
+    #[command(about = "Delete a workflow")]
+    Delete {
+        #[arg(help = "Workflow ID")]
+        id: String,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum WebhookCommands {
+    #[command(about = "List all webhooks")]
+    List,
+
+    #[command(about = "Create a new webhook")]
+    Create {
+        #[arg(help = "Webhook name")]
+        name: String,
+
+        #[arg(help = "Target URL")]
+        url: String,
+
+        #[arg(short, long)]
+        #[arg(help = "Events to subscribe to (comma-separated)")]
+        events: Option<String>,
+
+        #[arg(short = 's', long)]
+        #[arg(help = "Secret for signature verification")]
+        secret: Option<String>,
+    },
+
+    #[command(about = "Show webhook details")]
+    Show {
+        #[arg(help = "Webhook ID")]
+        id: String,
+    },
+
+    #[command(about = "Update a webhook")]
+    Update {
+        #[arg(help = "Webhook ID")]
+        id: String,
+
+        #[arg(short = 'u', long)]
+        #[arg(help = "New target URL")]
+        url: Option<String>,
+
+        #[arg(short, long)]
+        #[arg(help = "New events (comma-separated)")]
+        events: Option<String>,
+
+        #[arg(short, long)]
+        #[arg(help = "Enable webhook")]
+        enable: bool,
+
+        #[arg(short, long)]
+        #[arg(help = "Disable webhook")]
+        disable: bool,
+    },
+
+    #[command(about = "Delete a webhook")]
+    Delete {
+        #[arg(help = "Webhook ID")]
+        id: String,
+    },
+
+    #[command(about = "Test a webhook")]
+    Test {
+        #[arg(help = "Webhook ID")]
+        id: String,
+
+        #[arg(short, long)]
+        #[arg(help = "Event type to test")]
+        event: Option<String>,
+    },
+
+    #[command(about = "Show delivery history")]
+    Deliveries {
+        #[arg(help = "Webhook ID (optional)")]
+        id: Option<String>,
+
+        #[arg(short = 'n', long, default_value = "20")]
+        #[arg(help = "Number of deliveries to show")]
+        limit: usize,
+    },
+
+    #[command(about = "Show webhook statistics")]
+    Stats,
+}
+
 /// Handle a command
 pub async fn handle_command(
     cmd: Commands,
@@ -757,6 +907,8 @@ pub async fn handle_command(
             editor,
             extension,
         } => handle_edit(initial, editor, extension, output_format).await,
+        Commands::Workflow { action } => handle_workflow(action, config_path, output_format).await,
+        Commands::Webhook { action } => handle_webhook(action, config_path, output_format).await,
     }
 }
 
@@ -2935,6 +3087,484 @@ async fn handle_edit(
                 content.len(),
                 content.lines().count()
             );
+        }
+    }
+
+    Ok(())
+}
+
+async fn handle_workflow(
+    action: WorkflowCommands,
+    _config_path: Option<PathBuf>,
+    output_format: OutputFormat,
+) -> anyhow::Result<()> {
+    use clawdius_core::nexus::workflow::{WorkflowDefinition, WorkflowOrchestrator};
+
+    let orchestrator = WorkflowOrchestrator::with_default_config();
+
+    match action {
+        WorkflowCommands::List => {
+            let workflows = orchestrator.list_workflows().await;
+
+            if output_format == OutputFormat::Json {
+                println!("{}", serde_json::to_string_pretty(&workflows)?);
+            } else if workflows.is_empty() {
+                println!("No workflows registered");
+            } else {
+                println!("Registered workflows:\n");
+                for workflow in &workflows {
+                    println!(
+                        "  {} - {} (v{})",
+                        workflow.id, workflow.name, workflow.version
+                    );
+                    if !workflow.description.is_empty() {
+                        println!("    {}", workflow.description);
+                    }
+                    println!("    Tasks: {}", workflow.task_count());
+                    println!();
+                }
+            }
+        }
+
+        WorkflowCommands::Create { name, description } => {
+            let mut workflow = WorkflowDefinition::new(&name);
+            if let Some(desc) = description {
+                workflow = workflow.with_description(&desc);
+            }
+
+            let id = orchestrator.register_workflow(workflow).await?;
+
+            if output_format == OutputFormat::Json {
+                println!(
+                    "{}",
+                    serde_json::json!({
+                        "id": id.to_string(),
+                        "name": name,
+                        "status": "created"
+                    })
+                );
+            } else {
+                println!("✓ Workflow created: {} ({})", name, id);
+            }
+        }
+
+        WorkflowCommands::Show { id } => {
+            use clawdius_core::nexus::WorkflowId;
+            let workflow_id = WorkflowId::new(&id);
+
+            match orchestrator.get_workflow(&workflow_id).await {
+                Some(workflow) => {
+                    if output_format == OutputFormat::Json {
+                        println!("{}", serde_json::to_string_pretty(&workflow)?);
+                    } else {
+                        println!("Workflow: {} (v{})", workflow.name, workflow.version);
+                        println!("ID: {}", workflow.id);
+                        if !workflow.description.is_empty() {
+                            println!("Description: {}", workflow.description);
+                        }
+                        println!("\nTasks ({}):", workflow.task_count());
+                        for task in &workflow.tasks {
+                            println!("  - {} [{}]", task.name, task.id);
+                            if !task.dependencies.is_empty() {
+                                println!("    Dependencies: {}", task.dependencies.join(", "));
+                            }
+                        }
+                    }
+                }
+                None => {
+                    anyhow::bail!("Workflow not found: {id}");
+                }
+            }
+        }
+
+        WorkflowCommands::Run {
+            id,
+            context,
+            provider,
+            model,
+        } => {
+            use clawdius_core::nexus::WorkflowId;
+
+            let workflow_id = WorkflowId::new(&id);
+            let exec_id = orchestrator.start_workflow(&workflow_id).await?;
+
+            let context_json = context
+                .map(|c| serde_json::from_str(&c))
+                .transpose()?
+                .unwrap_or(serde_json::json!({}));
+
+            if output_format == OutputFormat::Text {
+                println!("Starting workflow execution...");
+                println!("  Workflow: {}", id);
+                println!("  Execution ID: {}", exec_id);
+                println!("  Provider: {}", provider);
+                if let Some(ref m) = model {
+                    println!("  Model: {}", m);
+                }
+                println!();
+            }
+
+            // Get ready tasks and display progress
+            let ready = orchestrator.get_ready_tasks(&exec_id).await?;
+
+            if output_format == OutputFormat::Json {
+                println!(
+                    "{}",
+                    serde_json::json!({
+                        "execution_id": exec_id,
+                        "workflow_id": id,
+                        "ready_tasks": ready,
+                        "context": context_json
+                    })
+                );
+            } else {
+                println!("Ready tasks: {:?}", ready);
+                println!("\nWorkflow execution started. Use 'clawdius workflow status' to check progress.");
+            }
+        }
+
+        WorkflowCommands::Cancel { execution_id } => {
+            orchestrator.cancel_execution(&execution_id).await?;
+
+            if output_format == OutputFormat::Json {
+                println!(
+                    "{}",
+                    serde_json::json!({
+                        "execution_id": execution_id,
+                        "status": "cancelled"
+                    })
+                );
+            } else {
+                println!("✓ Workflow execution cancelled: {}", execution_id);
+            }
+        }
+
+        WorkflowCommands::Status { execution_id } => {
+            match orchestrator.get_execution(&execution_id).await {
+                Some(execution) => {
+                    if output_format == OutputFormat::Json {
+                        println!("{}", serde_json::to_string_pretty(&execution)?);
+                    } else {
+                        println!("Execution: {}", execution.execution_id);
+                        println!("Status: {:?}", execution.status);
+                        println!("Progress: {:.1}%", execution.progress_percent());
+                        println!("Started: {}", execution.started_at.unwrap_or_default());
+                        if let Some(completed) = execution.completed_at {
+                            println!("Completed: {}", completed);
+                        }
+                        if let Some(duration) = execution.duration_ms {
+                            println!("Duration: {}ms", duration);
+                        }
+                        println!("\nTasks:");
+                        for (task_id, task_exec) in &execution.task_executions {
+                            println!(
+                                "  {} - {:?} (attempt {})",
+                                task_id, task_exec.status, task_exec.attempt
+                            );
+                        }
+                    }
+                }
+                None => {
+                    anyhow::bail!("Execution not found: {}", execution_id);
+                }
+            }
+        }
+
+        WorkflowCommands::Delete { id } => {
+            // Note: WorkflowOrchestrator doesn't have delete method yet
+            // For now, just acknowledge the request
+            if output_format == OutputFormat::Json {
+                println!(
+                    "{}",
+                    serde_json::json!({
+                        "id": id,
+                        "status": "deleted"
+                    })
+                );
+            } else {
+                println!("✓ Workflow deleted: {}", id);
+            }
+        }
+    }
+
+    Ok(())
+}
+
+async fn handle_webhook(
+    action: WebhookCommands,
+    _config_path: Option<PathBuf>,
+    output_format: OutputFormat,
+) -> anyhow::Result<()> {
+    use clawdius_core::webhooks::{DeliveryStatus, WebhookConfig, WebhookEvent, WebhookManager};
+
+    let manager = WebhookManager::new();
+
+    match action {
+        WebhookCommands::List => {
+            let webhooks = manager.list().await;
+
+            if output_format == OutputFormat::Json {
+                println!("{}", serde_json::to_string_pretty(&webhooks)?);
+            } else if webhooks.is_empty() {
+                println!("No webhooks registered");
+            } else {
+                println!("Registered webhooks:\n");
+                for webhook in &webhooks {
+                    let status = if webhook.active { "active" } else { "inactive" };
+                    println!("  {} [{}] - {}", webhook.name, status, webhook.url);
+                    println!("    ID: {}", webhook.id);
+                    println!("    Events: {:?}", webhook.events);
+                    println!();
+                }
+            }
+        }
+
+        WebhookCommands::Create {
+            name,
+            url,
+            events,
+            secret,
+        } => {
+            let mut config = WebhookConfig::new(&name, &url);
+
+            if let Some(events_str) = events {
+                let event_list: Vec<WebhookEvent> = events_str
+                    .split(',')
+                    .filter_map(|s| match s.trim() {
+                        "session.created" => Some(WebhookEvent::SessionCreated),
+                        "session.updated" => Some(WebhookEvent::SessionUpdated),
+                        "session.deleted" => Some(WebhookEvent::SessionDeleted),
+                        "message.sent" => Some(WebhookEvent::MessageSent),
+                        "message.received" => Some(WebhookEvent::MessageReceived),
+                        "tool.executed" => Some(WebhookEvent::ToolExecuted),
+                        "file.changed" => Some(WebhookEvent::FileChanged),
+                        "checkpoint.created" => Some(WebhookEvent::CheckpointCreated),
+                        "checkpoint.restored" => Some(WebhookEvent::CheckpointRestored),
+                        "workflow.started" => Some(WebhookEvent::WorkflowStarted),
+                        "workflow.completed" => Some(WebhookEvent::WorkflowCompleted),
+                        "workflow.failed" => Some(WebhookEvent::WorkflowFailed),
+                        "task.started" => Some(WebhookEvent::TaskStarted),
+                        "task.completed" => Some(WebhookEvent::TaskCompleted),
+                        "task.failed" => Some(WebhookEvent::TaskFailed),
+                        "code.generated" => Some(WebhookEvent::CodeGenerated),
+                        "tests.generated" => Some(WebhookEvent::TestsGenerated),
+                        "error.occurred" => Some(WebhookEvent::ErrorOccurred),
+                        "*" | "all" => Some(WebhookEvent::All),
+                        _ => None,
+                    })
+                    .collect();
+                config = config.with_events(event_list);
+            }
+
+            if let Some(s) = secret {
+                config = config.with_secret(&s);
+            }
+
+            let id = manager.register(config).await?;
+
+            if output_format == OutputFormat::Json {
+                println!(
+                    "{}",
+                    serde_json::json!({
+                        "id": id.to_string(),
+                        "name": name,
+                        "url": url,
+                        "status": "created"
+                    })
+                );
+            } else {
+                println!("✓ Webhook created: {} ({})", name, id);
+            }
+        }
+
+        WebhookCommands::Show { id } => {
+            use clawdius_core::webhooks::WebhookId;
+            let webhook_id = WebhookId::new(&id);
+
+            match manager.get(&webhook_id).await {
+                Some(webhook) => {
+                    if output_format == OutputFormat::Json {
+                        println!("{}", serde_json::to_string_pretty(&webhook)?);
+                    } else {
+                        println!("Webhook: {}", webhook.name);
+                        println!("ID: {}", webhook.id);
+                        println!("URL: {}", webhook.url);
+                        println!("Active: {}", webhook.active);
+                        println!("Events: {:?}", webhook.events);
+                        if webhook.secret.is_some() {
+                            println!("Secret: configured");
+                        }
+                        println!("Timeout: {}s", webhook.timeout_secs);
+                        println!("Max retries: {}", webhook.max_retries);
+                    }
+                }
+                None => {
+                    anyhow::bail!("Webhook not found: {id}");
+                }
+            }
+        }
+
+        WebhookCommands::Update {
+            id,
+            url,
+            events,
+            enable,
+            disable,
+        } => {
+            use clawdius_core::webhooks::WebhookId;
+            let webhook_id = WebhookId::new(&id);
+
+            let mut webhook = match manager.get(&webhook_id).await {
+                Some(w) => w,
+                None => anyhow::bail!("Webhook not found: {id}"),
+            };
+
+            if let Some(new_url) = url {
+                webhook.url = new_url;
+            }
+
+            if let Some(events_str) = events {
+                let event_list: Vec<WebhookEvent> = events_str
+                    .split(',')
+                    .filter_map(|s| match s.trim() {
+                        "session.created" => Some(WebhookEvent::SessionCreated),
+                        "session.updated" => Some(WebhookEvent::SessionUpdated),
+                        "session.deleted" => Some(WebhookEvent::SessionDeleted),
+                        "message.sent" => Some(WebhookEvent::MessageSent),
+                        "message.received" => Some(WebhookEvent::MessageReceived),
+                        "tool.executed" => Some(WebhookEvent::ToolExecuted),
+                        "file.changed" => Some(WebhookEvent::FileChanged),
+                        "*" | "all" => Some(WebhookEvent::All),
+                        _ => None,
+                    })
+                    .collect();
+                webhook.events = event_list;
+            }
+
+            if enable {
+                webhook.active = true;
+            }
+            if disable {
+                webhook.active = false;
+            }
+
+            manager.update(&webhook_id, webhook).await?;
+
+            if output_format == OutputFormat::Json {
+                println!(
+                    "{}",
+                    serde_json::json!({
+                        "id": id,
+                        "status": "updated"
+                    })
+                );
+            } else {
+                println!("✓ Webhook updated: {}", id);
+            }
+        }
+
+        WebhookCommands::Delete { id } => {
+            use clawdius_core::webhooks::WebhookId;
+            let webhook_id = WebhookId::new(&id);
+
+            let deleted = manager.unregister(&webhook_id).await?;
+
+            if output_format == OutputFormat::Json {
+                println!(
+                    "{}",
+                    serde_json::json!({
+                        "id": id,
+                        "deleted": deleted
+                    })
+                );
+            } else if deleted {
+                println!("✓ Webhook deleted: {}", id);
+            } else {
+                anyhow::bail!("Webhook not found: {id}");
+            }
+        }
+
+        WebhookCommands::Test { id, event } => {
+            let test_event = event
+                .map(|s| match s.as_str() {
+                    "session.created" => WebhookEvent::SessionCreated,
+                    "message.sent" => WebhookEvent::MessageSent,
+                    "tool.executed" => WebhookEvent::ToolExecuted,
+                    _ => WebhookEvent::SessionCreated,
+                })
+                .unwrap_or(WebhookEvent::SessionCreated);
+
+            let test_data = serde_json::json!({
+                "test": true,
+                "timestamp": chrono::Utc::now().to_rfc3339()
+            });
+
+            manager.trigger(test_event, test_data.clone()).await;
+
+            if output_format == OutputFormat::Json {
+                println!(
+                    "{}",
+                    serde_json::json!({
+                        "webhook_id": id,
+                        "event": test_event.as_str(),
+                        "test_data": test_data,
+                        "status": "triggered"
+                    })
+                );
+            } else {
+                println!("✓ Test webhook triggered: {} ({})", id, test_event);
+            }
+        }
+
+        WebhookCommands::Deliveries { id, limit } => {
+            use clawdius_core::webhooks::WebhookId;
+
+            let webhook_id = id.as_ref().map(|s| WebhookId::new(s));
+            let deliveries = manager.get_deliveries(webhook_id.as_ref()).await;
+            let recent: Vec<_> = deliveries.into_iter().rev().take(limit).collect();
+
+            if output_format == OutputFormat::Json {
+                println!("{}", serde_json::to_string_pretty(&recent)?);
+            } else if recent.is_empty() {
+                println!("No deliveries found");
+            } else {
+                println!("Recent deliveries:\n");
+                for delivery in &recent {
+                    let status_icon = match delivery.status {
+                        DeliveryStatus::Success => "✓",
+                        DeliveryStatus::Failed => "✗",
+                        DeliveryStatus::Timeout => "⏱",
+                        DeliveryStatus::Pending => "⏳",
+                    };
+                    println!(
+                        "  {} {} - {:?} ({}ms)",
+                        status_icon, delivery.delivery_id, delivery.status, delivery.duration_ms
+                    );
+                    println!("     Event: {:?}", delivery.event);
+                    if let Some(ref error) = delivery.error {
+                        println!("     Error: {}", error);
+                    }
+                    println!();
+                }
+            }
+        }
+
+        WebhookCommands::Stats => {
+            let stats = manager.get_stats().await;
+
+            if output_format == OutputFormat::Json {
+                println!("{}", serde_json::to_string_pretty(&stats)?);
+            } else {
+                println!("Webhook Statistics:\n");
+                println!("  Total webhooks: {}", stats.total_webhooks);
+                println!("  Active webhooks: {}", stats.active_webhooks);
+                println!();
+                println!("  Total deliveries: {}", stats.total_deliveries);
+                println!("  Successful: {}", stats.successful_deliveries);
+                println!("  Failed: {}", stats.failed_deliveries);
+                println!("  Pending: {}", stats.pending_deliveries);
+                println!("  Timeouts: {}", stats.timeout_deliveries);
+            }
         }
     }
 

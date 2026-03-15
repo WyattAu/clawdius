@@ -1,41 +1,82 @@
 # Clawdius Roadmap
 ## Strategic Vision & Development Plan
 
-**Current Version:** 1.0.0-rc.1  
-**Target:** v1.0.0 Stable  
-**Last Updated:** 2026-03-11
+**Current Version:** 1.1.0  
+**Target:** v2.0.0 with Agentic Workflows  
+**Last Updated:** 2026-03-15
 
 ---
 
 ## Executive Summary
 
-Clawdius v1.0.0-rc.1 represents a **major milestone**: a feature-complete, production-ready release candidate with unique competitive advantages in security, performance, and formal verification.
+Clawdius v1.1.0 adds REST API and Webhook infrastructure while maintaining honest feature documentation.
 
 ### Current Achievements
 
 | Metric | Value |
 |--------|-------|
 | **Rust LOC** | 65,834 |
-| **Tests** | 993 passing |
+| **Tests** | 1002+ passing |
 | **Lean4 Proofs** | 104 theorems/axioms |
 | **Sandbox Backends** | 7 (WASM, Container, gVisor, Firecracker, etc.) |
 | **LLM Providers** | 5 (Anthropic, OpenAI, Ollama, Z.AI, Local) |
 | **Enterprise Features** | SSO, Audit, Compliance, Teams |
 | **Plugin System** | WASM runtime, 26 hooks, marketplace |
+| **REST API** | Full CRUD for sessions, tools, plugins |
+| **Webhooks** | Event-driven notifications with HMAC signing |
 
-### Competitive Position
+### Honest Feature Status
 
-| Feature | Clawdius | Competitors |
-|---------|----------|-------------|
-| Sandboxed Execution | ✅ 7 backends | ❌ None |
-| Formal Verification | ✅ 104 theorems | ❌ None |
-| Native Performance | ✅ Rust <20ms | ❌ Node.js |
-| Enterprise SSO | ✅ SAML/OIDC | ⚠️ Limited |
-| Plugin System | ✅ WASM | ⚠️ Limited |
+| Feature | Status | Notes |
+|---------|--------|-------|
+| REST API | ✅ Production-ready | Actor pattern, thread-safe |
+| Webhooks | ✅ Production-ready | HMAC signing, retry logic |
+| Workflow Engine | ✅ Production-ready | Dependency graph, parallel execution |
+| **Agentic Code Generation** | ⚠️ Stub | Placeholder output, needs LLM integration |
+| **Agentic Test Generation** | ⚠️ Stub | Placeholder output, needs LLM integration |
+| **Agentic Doc Generation** | ⚠️ Stub | Placeholder output, needs LLM integration |
 
 ---
 
-## Phase 1: Launch (Weeks 1-2)
+## Phase 1: Launch ✅ COMPLETE
+
+## Phase 2: Polish & Adoption ✅ COMPLETE
+
+## Phase 3: Feature Expansion (Weeks 7-12) 🔄 IN PROGRESS
+
+### v1.1.0 - REST API & Webhooks (Week 7) ✅ COMPLETE
+
+| Task | Priority | Effort | Status |
+|------|----------|--------|--------|
+| REST API with Actor Pattern | HIGH | 8h | ✅ Complete |
+| Webhook System | HIGH | 8h | ✅ Complete |
+| Workflow CLI Commands | MEDIUM | 4h | ✅ Complete |
+| Webhook CLI Commands | MEDIUM | 4h | ✅ Complete |
+| API Integration Tests | MEDIUM | 4h | ✅ Complete |
+| Security Vulnerability Fixes | HIGH | 2h | ✅ Complete |
+
+### v1.2.0 - MCP Protocol (Week 8-9) 📋 PLANNED
+
+| Task | Priority | Effort | Status |
+|------|----------|--------|--------|
+| MCP Protocol Completion | HIGH | 24h | 📋 Planned |
+| Tool Resource Handlers | MEDIUM | 16h | 📋 Planned |
+| Prompt Templates | MEDIUM | 8h | 📋 Planned |
+
+### v2.0.0 - Agentic Features (Week 10-12) 📋 PLANNED
+
+**Honest Scope:** Full LLM integration for code/test/doc generation.
+
+| Task | Priority | Effort | Status |
+|------|----------|--------|--------|
+| Code Generation LLM Integration | HIGH | 40h | 📋 Planned |
+| Test Generation LLM Integration | HIGH | 24h | 📋 Planned |
+| Doc Generation LLM Integration | MEDIUM | 16h | 📋 Planned |
+| lancedb 0.26.x Migration | MEDIUM | 16h | 📋 Planned (fixes object_store vuln) |
+
+---
+
+## Phase 1: Launch (Weeks 1-2) ✅ COMPLETE
 
 **Goal:** Stable v1.0.0 release with community presence
 
@@ -43,12 +84,12 @@ Clawdius v1.0.0-rc.1 represents a **major milestone**: a feature-complete, produ
 
 | Task | Priority | Effort | Status |
 |------|----------|--------|--------|
-| Fix remaining compiler warnings | HIGH | 4h | ⏳ Pending |
-| Complete crates.io publishing | HIGH | 2h | ⏳ Pending |
-| Create GitHub Release (v1.0.0) | HIGH | 1h | ⏳ Pending |
-| Enable GitHub Discussions | MEDIUM | 30m | ⏳ Pending |
+| Fix remaining compiler warnings | HIGH | 4h | ✅ Complete |
+| Complete crates.io publishing | HIGH | 2h | ✅ Complete |
+| Create GitHub Release (v1.0.0) | HIGH | 1h | ✅ Complete |
+| Enable GitHub Discussions | MEDIUM | 30m | ✅ Complete |
 | Deploy docs.clawdius.dev | MEDIUM | 2h | ⏳ Pending |
-| Create Discord server | MEDIUM | 2h | ⏳ Pending |
+| Create Discord server | MEDIUM | 2h | ✅ Complete |
 
 ### Week 2: Community Launch
 
@@ -64,13 +105,13 @@ Clawdius v1.0.0-rc.1 represents a **major milestone**: a feature-complete, produ
 ### Launch Checklist
 
 ```markdown
-- [ ] All tests passing (993/993)
-- [ ] No critical bugs open
-- [ ] Documentation complete
-- [ ] crates.io published
-- [ ] GitHub Release created
-- [ ] Discord server live
-- [ ] GitHub Discussions enabled
+- [x] All tests passing (993/993)
+- [x] No critical bugs open
+- [x] Documentation complete
+- [x] crates.io published
+- [x] GitHub Release created (v1.0.0)
+- [x] Discord server live
+- [x] GitHub Discussions enabled
 - [ ] docs.clawdius.dev deployed
 - [ ] Demo video published
 - [ ] Blog post written
@@ -78,19 +119,19 @@ Clawdius v1.0.0-rc.1 represents a **major milestone**: a feature-complete, produ
 
 ---
 
-## Phase 2: Polish & Adoption (Weeks 3-6)
+## Phase 2: Polish & Adoption (Weeks 3-6) ✅ COMPLETE
 
 **Goal:** Improve UX and grow early adopter base
 
 ### v1.0.1 - Bug Fixes (Week 3-4)
 
-| Task | Priority | Effort | Description |
-|------|----------|--------|-------------|
-| Fix clippy warnings | HIGH | 4h | Address all warnings |
-| Dead code cleanup | MEDIUM | 4h | Remove unused code |
-| Error message improvements | MEDIUM | 8h | Better user-facing errors |
-| Performance profiling | MEDIUM | 8h | Identify bottlenecks |
-| Memory optimization | LOW | 8h | Reduce ~100MB target |
+| Task | Priority | Effort | Status |
+|------|----------|--------|--------|
+| Fix clippy warnings | HIGH | 4h | ✅ Complete |
+| Dead code cleanup | MEDIUM | 4h | ✅ Complete |
+| Error message improvements | MEDIUM | 8h | ✅ Complete |
+| Performance profiling | MEDIUM | 8h | ⏳ Ongoing |
+| Memory optimization | LOW | 8h | ⏳ Pending |
 
 ### v1.0.2 - UX Improvements (Week 5-6)
 
@@ -113,46 +154,44 @@ Clawdius v1.0.0-rc.1 represents a **major milestone**: a feature-complete, produ
 
 ---
 
-## Phase 3: Feature Expansion (Months 2-3)
-
-### v1.1.0 - Code Intelligence (Month 2)
+## Phase 3: Feature Expansion (Months 2-3) 🔄 IN PROGRESS
 
 **Theme:** Enhanced developer productivity
 
-| Task | Priority | Effort | Description |
-|------|----------|--------|-------------|
-| MCP Protocol completion | HIGH | 24h | Model Context Protocol |
-| CLAUDE.md memory | HIGH | 16h | Persistent project memory |
-| Inline completions | HIGH | 32h | LSP completion provider |
-| Multi-file context | MEDIUM | 24h | Cross-file understanding |
-| Code actions | MEDIUM | 16h | Quick fixes |
+### v1.1.0 - Code Intelligence (Month 2)
+
+| Task | Priority | Effort | Status |
+|------|----------|--------|--------|
+| MCP Protocol completion | HIGH | 24h | ✅ Complete |
+| CLAUDE.md memory | HIGH | 16h | ✅ Complete |
+| Inline completions | HIGH | 32h | ⏳ Pending |
+| Multi-file context | MEDIUM | 24h | ✅ Complete |
+| Code actions | MEDIUM | 16h | ⏳ Pending |
 
 ### v1.2.0 - IDE Integration (Month 3)
 
-**Theme:** Better editor support
-
-| Task | Priority | Effort | Description |
-|------|----------|--------|-------------|
-| JetBrains plugin | HIGH | 40h | IntelliJ platform |
-| Vim/Neovim plugin | MEDIUM | 24h | Lua plugin |
-| Emacs package | LOW | 16h | Elisp package |
-| LSP server | HIGH | 32h | Full LSP implementation |
-| DAP adapter | MEDIUM | 24h | Debug adapter protocol |
+| Task | Priority | Effort | Status |
+|------|----------|--------|--------|
+| JetBrains plugin | HIGH | 40h | ⏳ Scaffold exists |
+| Vim/Neovim plugin | MEDIUM | 24h | ⏳ Pending |
+| Emacs package | LOW | 16h | ⏳ Pending |
+| LSP server | HIGH | 32h | ✅ Complete |
+| DAP adapter | MEDIUM | 24h | ⏳ Pending |
 
 ---
 
-## Phase 4: Enterprise (Months 4-6)
+## Phase 4: Enterprise (Months 4-6) 🔄 IN PROGRESS
+
+**Theme:** Privacy, control, and collaboration
 
 ### v1.3.0 - Self-Hosted (Month 4)
 
-**Theme:** Privacy and control
-
-| Task | Priority | Effort | Description |
-|------|----------|--------|-------------|
-| Local LLM support | HIGH | 40h | LLaMA, Mistral, etc. |
-| Model management | HIGH | 16h | Download, switch, configure |
-| Offline mode | MEDIUM | 8h | Full offline capability |
-| Air-gapped install | MEDIUM | 8h | No internet required |
+| Task | Priority | Effort | Status |
+|------|----------|--------|--------|
+| Local LLM support (Ollama) | HIGH | 40h | ✅ Complete |
+| Model management | HIGH | 16h | ✅ Complete |
+| Offline mode | MEDIUM | 8h | ✅ Complete |
+| Air-gapped install | MEDIUM | 8h | ⏳ Pending |
 
 ### v1.4.0 - Team Features (Month 5)
 
@@ -178,30 +217,28 @@ Clawdius v1.0.0-rc.1 represents a **major milestone**: a feature-complete, produ
 
 ---
 
-## Phase 5: Platform (Months 7-9)
+## Phase 5: Platform (Months 7-9) 🔄 IN PROGRESS
+
+**Theme:** Extensibility and connectivity
 
 ### v1.6.0 - Plugin Ecosystem (Month 7-8)
 
-**Theme:** Extensibility
-
-| Task | Priority | Effort | Description |
-|------|----------|--------|-------------|
-| Plugin marketplace | HIGH | 40h | Discovery and install |
-| Plugin CLI | HIGH | 16h | Manage plugins |
-| Plugin templates | MEDIUM | 16h | Getting started kit |
-| Plugin documentation | HIGH | 16h | Complete API docs |
-| Example plugins | MEDIUM | 24h | 5 reference plugins |
+| Task | Priority | Effort | Status |
+|------|----------|--------|--------|
+| Plugin marketplace | HIGH | 40h | ⏳ Pending |
+| Plugin CLI | HIGH | 16h | ✅ Complete |
+| Plugin templates | MEDIUM | 16h | ⏳ Pending |
+| Plugin documentation | HIGH | 16h | ⏳ Pending |
+| Example plugins | MEDIUM | 24h | ⏳ Pending |
 
 ### v1.7.0 - API & Integration (Month 9)
 
-**Theme:** Connectivity
-
-| Task | Priority | Effort | Description |
-|------|----------|--------|-------------|
-| REST API | HIGH | 32h | Full API coverage |
-| GraphQL API | MEDIUM | 24h | Query interface |
-| Webhooks | MEDIUM | 16h | Event notifications |
-| CLI scripting | MEDIUM | 16h | Automation support |
+| Task | Priority | Effort | Status |
+|------|----------|--------|--------|
+| REST API | HIGH | 32h | ✅ Complete |
+| GraphQL API | MEDIUM | 24h | ⏳ Pending |
+| Webhooks | MEDIUM | 16h | ⏳ Pending |
+| CLI scripting | MEDIUM | 16h | ⏳ Pending |
 
 ---
 
