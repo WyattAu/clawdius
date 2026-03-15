@@ -3519,7 +3519,7 @@ async fn handle_webhook(
         WebhookCommands::Deliveries { id, limit } => {
             use clawdius_core::webhooks::WebhookId;
 
-            let webhook_id = id.as_ref().map(|s| WebhookId::new(s));
+            let webhook_id = id.as_ref().map(WebhookId::new);
             let deliveries = manager.get_deliveries(webhook_id.as_ref()).await;
             let recent: Vec<_> = deliveries.into_iter().rev().take(limit).collect();
 

@@ -1,6 +1,25 @@
 # Changelog
 All notable changes to Clawdius will be documented in this file.
 
+## [1.1.1] - 2026-03-15
+
+### Security
+
+- **Fixed Vulnerabilities:**
+  - RUSTSEC-2024-0358 (object_store 0.9.1): Fixed by upgrading lancedb 0.4.x → 0.26.x
+  - RUSTSEC-2025-0009 (ring 0.16.20): Fixed by upgrading lancedb 0.4.x → 0.26.x
+
+- **Remaining Transitive Warnings (not exploitable in our usage):**
+  - RUSTSEC-2026-0002 (lru 0.12.5): Transitive via tantivy → lance-index. Only affects `IterMut` which tantivy doesn't use.
+  - RUSTSEC-2025-0141 (bincode): Transitive via syntect (unmaintained, not a vulnerability)
+  - RUSTSEC-2023-0086 (lexical-core): Transitive via arrow (soundness issues, low risk)
+
+### Changed
+
+- Upgraded lancedb from 0.4.x to 0.26.x (major version jump)
+- Updated minimum Rust version to 1.88 (required by lancedb 0.26.x)
+- Updated Cargo.lock with new dependency resolution
+
 ## [1.1.0] - 2026-03-15
 
 ### Added

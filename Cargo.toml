@@ -16,14 +16,14 @@ members = [
 ]
 
 [workspace.package]
-version = "1.1.0"
+version = "1.1.1"
 edition = "2021"
 authors = ["Clawdius Team <team@clawdius.dev>"]
 license = "Apache-2.0"
 repository = "https://github.com/clawdius/clawdius"
 homepage = "https://clawdius.dev"
 documentation = "https://docs.clawdius.dev"
-rust-version = "1.75"
+rust-version = "1.88"
 keywords = ["ai", "llm", "coding-assistant", "agent", "sandbox"]
 categories = ["development-tools", "command-line-utilities", "api-bindings"]
 
@@ -132,11 +132,8 @@ similar = "2.6"
 git2 = "0.20"
 
 # === Vector Database ===
-# NOTE: lancedb 0.4.20 has transitive vuln RUSTSEC-2024-0358 (object_store 0.9.1)
-# Severity: LOW (3.8) - AWS WebIdentityToken exposure in logs
-# Mitigation: Avoid AWS S3 storage or configure logging to redact secrets
-# TODO: Upgrade to lancedb 0.26.x (requires API migration) for full fix
-lancedb = "0.4"
+# Upgraded to 0.26.x to fix RUSTSEC-2024-0358 (object_store) and RUSTSEC-2025-0009 (ring)
+lancedb = "0.26"
 arrow = "51"
 arrow-array = "51"
 arrow-schema = "51"

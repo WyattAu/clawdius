@@ -4,19 +4,39 @@
 
 | Attribute | Value |
 |-----------|-------|
-| **Version** | 1.1.0 |
-| **Phase** | v1.1.0 - REST API & Webhook Release |
+| **Version** | 1.1.1 |
+| **Phase** | v1.1.1 - Security Fix Release |
 | **Status** | ✅ STABLE |
 | **API Stability** | ✅ GUARANTEED |
 | **Last Updated** | 2026-03-15 |
 | **Error Level** | None |
-| **Rollback Checkpoint** | v1.1.0 |
+| **Rollback Checkpoint** | v1.1.1 |
 | **Feature Matrix** | [.reports/feature_implementation_matrix.md](.reports/feature_implementation_matrix.md) |
 | **Roadmap** | [ROADMAP.md](ROADMAP.md) |
 
 ## Version History
 
-### v1.1.0 - REST API & Webhook Release (2026-03-15) - CURRENT
+### v1.1.1 - Security Fix Release (2026-03-15) - CURRENT
+
+| Task | Status | Description |
+|------|--------|-------------|
+| lancedb Upgrade | ✅ COMPLETE | Upgraded 0.4.20 → 0.26.2 |
+| object_store Vulnerability | ✅ FIXED | RUSTSEC-2024-0358 resolved |
+| ring Vulnerability | ✅ FIXED | RUSTSEC-2025-0009 resolved |
+| rust-version Update | ✅ COMPLETE | Updated to 1.88 for lancedb compatibility |
+
+**Key Changes:**
+- Upgraded lancedb to 0.26.2 (major version jump)
+- Fixed RUSTSEC-2024-0358 (object_store AWS WebIdentityToken exposure)
+- Fixed RUSTSEC-2025-0009 (ring AES panic with overflow checking)
+- Updated MSRV to Rust 1.88
+
+**Remaining Transitive Warnings (not fixable without upstream changes):**
+- RUSTSEC-2026-0002 (lru 0.12.5 via tantivy) - Soundness issue in IterMut, not used by tantivy's search functionality
+- RUSTSEC-2023-0086 (lexical-core via arrow) - Soundness issues, affects parsing edge cases
+- Unmaintained crates: bincode, fxhash, number_prefix, paste, proc-macro-error, yaml-rust
+
+### v1.1.0 - REST API & Webhook Release (2026-03-15)
 
 | Task | Status | Description |
 |------|--------|-------------|
