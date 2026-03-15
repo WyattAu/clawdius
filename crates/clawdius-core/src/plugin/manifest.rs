@@ -229,7 +229,9 @@ impl PluginManifest {
 
         // Validate hooks
         for hook in &self.hooks {
-            if super::hooks::HookType::from_str(hook).is_none() && !hook.starts_with("custom:") {
+            if super::hooks::HookType::parse_hook_type(hook).is_none()
+                && !hook.starts_with("custom:")
+            {
                 return Err(ManifestValidationError::InvalidHook { hook: hook.clone() });
             }
         }

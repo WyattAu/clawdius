@@ -150,7 +150,7 @@ impl ContextCache {
             }
             ContextItem::Image { data, path, .. } => {
                 // Hash includes path and data for uniqueness
-                let combined = format!("{}:{}", path, data);
+                let combined = format!("{path}:{data}");
                 blake3::hash(combined.as_bytes())
             }
             ContextItem::Screenshot {
@@ -160,7 +160,7 @@ impl ContextCache {
                 ..
             } => {
                 // Hash includes source and timestamp for uniqueness
-                let combined = format!("{}:{}:{}", source, timestamp, data);
+                let combined = format!("{source}:{timestamp}:{data}");
                 blake3::hash(combined.as_bytes())
             }
         }

@@ -12,9 +12,8 @@ use clawdius_core::broker::{
     strategy::Strategy,
     wallet_guard::{Order, OrderSide, WalletGuard},
 };
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
+use criterion::{black_box, criterion_group, criterion_main, Criterion, Throughput};
 use rust_decimal::Decimal;
-use std::time::Instant;
 
 fn bench_ring_buffer(c: &mut Criterion) {
     let mut group = c.benchmark_group("ring_buffer");
@@ -56,7 +55,8 @@ fn bench_ring_buffer(c: &mut Criterion) {
             timestamp: 0,
         };
         b.iter(|| {
-            black_box(buffer.push(black_box(msg)).unwrap());
+            buffer.push(black_box(msg)).unwrap();
+            black_box(());
             black_box(buffer.pop())
         });
     });
@@ -148,7 +148,7 @@ fn bench_hft_pipeline(c: &mut Criterion) {
             }
         }
 
-        fn name(&self) -> &str {
+        fn name(&self) -> &'static str {
             "BenchStrategy"
         }
     }
@@ -252,7 +252,7 @@ fn bench_throughput(c: &mut Criterion) {
         b.iter(|| {
             black_box(buffer.push(msg).is_ok());
             count += 1;
-            if count % 1000 == 0 {
+            if count.is_multiple_of(1000) {
                 while buffer.pop().is_some() {}
             }
         });
@@ -261,7 +261,6 @@ fn bench_throughput(c: &mut Criterion) {
     group.finish();
 }
 
-#[allow(missing_docs)]
 criterion_group!(
     benches,
     bench_ring_buffer,

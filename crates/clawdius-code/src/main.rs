@@ -1,6 +1,6 @@
-//! Clawdius Code - VSCode Extension Helper
+//! Clawdius Code - `VSCode` Extension Helper
 //!
-//! This binary communicates with VSCode extension via JSON-RPC over stdio.
+//! This binary communicates with `VSCode` extension via JSON-RPC over stdio.
 
 #![deny(unsafe_code)]
 #![warn(missing_docs)]

@@ -43,7 +43,7 @@ impl LanguageKind {
     }
 
     #[must_use]
-    pub fn from_str(s: &str) -> Option<Self> {
+    pub fn parse_from_name(s: &str) -> Option<Self> {
         match s.to_lowercase().as_str() {
             "rs" | "rust" => Some(LanguageKind::Rust),
             "py" | "python" | "pyi" | "pyw" => Some(LanguageKind::Python),
@@ -90,7 +90,7 @@ impl std::fmt::Display for LanguageKind {
 #[must_use]
 pub fn detect_language(path: &Path) -> Option<LanguageKind> {
     let ext = path.extension()?.to_str()?.to_lowercase();
-    LanguageKind::from_str(&ext)
+    LanguageKind::parse_from_name(&ext)
 }
 
 #[must_use]

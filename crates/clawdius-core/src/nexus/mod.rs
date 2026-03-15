@@ -343,7 +343,7 @@ mod unit_tests {
 
         for t in &types {
             let s = t.to_string();
-            let parsed = ArtifactType::from_str(&s);
+            let parsed = ArtifactType::parse_artifact_type(&s);
             assert_eq!(parsed, Some(t.clone()));
         }
     }

@@ -1047,7 +1047,7 @@ mod tests {
             Ok(ctx
                 .metadata
                 .get("custom")
-                .and_then(|v| v.as_bool())
+                .and_then(serde_json::Value::as_bool)
                 .unwrap_or(false))
         }));
 

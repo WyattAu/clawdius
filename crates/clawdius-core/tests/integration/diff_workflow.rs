@@ -35,20 +35,20 @@ fn test_diff_compute_render_terminal() {
 
 #[test]
 fn test_diff_compute_render_html() {
-    let old = r#"<!DOCTYPE html>
+    let old = r"<!DOCTYPE html>
 <html>
 <body>
     <h1>Old Title</h1>
 </body>
-</html>"#;
+</html>";
 
-    let new = r#"<!DOCTYPE html>
+    let new = r"<!DOCTYPE html>
 <html>
 <body>
     <h1>New Title</h1>
     <p>Added paragraph</p>
 </body>
-</html>"#;
+</html>";
 
     let diff = FileDiff::compute(PathBuf::from("index.html"), Some(old), new);
 
@@ -136,21 +136,21 @@ fn test_diff_renderer_css() {
 
 #[test]
 fn test_diff_multiple_hunks() {
-    let old = r#"header
+    let old = r"header
 section1
 middle
 section2
-footer"#;
+footer";
 
-    let new = r#"header
+    let new = r"header
 modified_section1
 middle
 modified_section2
-footer"#;
+footer";
 
     let diff = FileDiff::compute(PathBuf::from("multi.txt"), Some(old), new);
 
-    assert!(diff.hunks.len() >= 1);
+    assert!(!diff.hunks.is_empty());
 
     let stats = diff.stats();
     assert!(stats.additions >= 2);
@@ -183,13 +183,13 @@ fn test_diff_line_types() {
 
 #[test]
 fn test_diff_large_file() {
-    let old: String = (0..1000).map(|i| format!("Line {}\n", i)).collect();
+    let old: String = (0..1000).map(|i| format!("Line {i}\n")).collect();
     let new: String = (0..1000)
         .map(|i| {
             if i == 500 {
-                format!("Modified Line {}\n", i)
+                format!("Modified Line {i}\n")
             } else {
-                format!("Line {}\n", i)
+                format!("Line {i}\n")
             }
         })
         .collect();

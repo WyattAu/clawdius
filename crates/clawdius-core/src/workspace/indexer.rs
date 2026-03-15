@@ -38,6 +38,7 @@ pub struct WorkspaceIndexer {
 }
 
 impl WorkspaceIndexer {
+    #[allow(clippy::arc_with_non_send_sync)]
     pub async fn new(graph_path: &Path, vector_path: &Path) -> Result<Self> {
         let graph_store = Arc::new(GraphStore::open(graph_path)?);
         let vector_store = VectorStore::open(vector_path, EMBEDDING_DIMENSION).await?;
@@ -67,18 +68,17 @@ impl WorkspaceIndexer {
             duration_ms: 0,
         };
 
-        let supported_extensions = vec!["rs", "py", "js", "ts", "tsx", "go"];
+        let supported_extensions = ["rs", "py", "js", "ts", "tsx", "go"];
 
         let files: Vec<PathBuf> = walkdir::WalkDir::new(root)
             .into_iter()
-            .filter_map(|e| e.ok())
+            .filter_map(std::result::Result::ok)
             .filter(|e| e.file_type().is_file())
             .filter(|e| {
                 e.path()
                     .extension()
                     .and_then(|ext| ext.to_str())
-                    .map(|ext| supported_extensions.contains(&ext))
-                    .unwrap_or(false)
+                    .is_some_and(|ext| supported_extensions.contains(&ext))
             })
             .filter(|e| {
                 e.metadata()
@@ -120,7 +120,7 @@ impl WorkspaceIndexer {
         let language = path
             .extension()
             .and_then(|ext| ext.to_str())
-            .and_then(|ext| LanguageKind::from_extension(ext));
+            .and_then(LanguageKind::from_extension);
 
         let file_info = FileInfo {
             path: path.to_string_lossy().to_string(),
@@ -168,7 +168,7 @@ impl WorkspaceIndexer {
             metadata.insert("symbol_id".to_string(), symbol_id.to_string());
 
             vector_entries.push(VectorEntry {
-                id: format!("symbol_{}", symbol_id),
+                id: format!("symbol_{symbol_id}"),
                 embedding,
                 metadata,
             });
@@ -266,14 +266,17 @@ impl WorkspaceIndexer {
         Ok(())
     }
 
+    #[must_use]
     pub fn graph_store(&self) -> &GraphStore {
         &self.graph_store
     }
 
+    #[must_use]
     pub fn graph_store_arc(&self) -> Arc<GraphStore> {
         self.graph_store.clone()
     }
 
+    #[must_use]
     pub fn vector_store_arc(&self) -> Arc<RwLock<VectorStore>> {
         self.vector_store.clone()
     }
@@ -305,7 +308,7 @@ impl FileIndexer {
         let language = path
             .extension()
             .and_then(|ext| ext.to_str())
-            .and_then(|ext| LanguageKind::from_extension(ext));
+            .and_then(LanguageKind::from_extension);
 
         let file_info = FileInfo {
             path: path.to_string_lossy().to_string(),
@@ -341,7 +344,7 @@ impl FileIndexer {
             metadata.insert("symbol_id".to_string(), symbol_id.to_string());
 
             vector_entries.push(VectorEntry {
-                id: format!("symbol_{}", symbol_id),
+                id: format!("symbol_{symbol_id}"),
                 embedding,
                 metadata,
             });

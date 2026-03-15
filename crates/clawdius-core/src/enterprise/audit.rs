@@ -5,7 +5,7 @@
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
@@ -405,8 +405,8 @@ impl AuditLogger {
         Ok(())
     }
 
-    async fn flush_to_sqlite(&self, path: &PathBuf, events: &[AuditEvent]) -> Result<()> {
-        let path = path.clone();
+    async fn flush_to_sqlite(&self, path: &Path, events: &[AuditEvent]) -> Result<()> {
+        let path = path.to_path_buf();
         let events = events.to_vec();
 
         // Run in blocking thread
@@ -512,8 +512,8 @@ impl AuditLogger {
         }
     }
 
-    async fn query_sqlite(&self, path: &PathBuf, query: AuditQuery) -> Result<Vec<AuditEvent>> {
-        let path = path.clone();
+    async fn query_sqlite(&self, path: &Path, query: AuditQuery) -> Result<Vec<AuditEvent>> {
+        let path = path.to_path_buf();
 
         let events = tokio::task::spawn_blocking(move || {
             let conn = rusqlite::Connection::open(&path)?;

@@ -84,11 +84,9 @@ impl DiffView {
 
                 for line in &hunk.lines {
                     let line_span = match line {
-                        DiffLine::Context(l) => Span::styled(format!(" {}", l), theme.muted()),
-                        DiffLine::Added(l) => Span::styled(format!("+{}", l), theme.diff_add()),
-                        DiffLine::Removed(l) => {
-                            Span::styled(format!("-{}", l), theme.diff_delete())
-                        }
+                        DiffLine::Context(l) => Span::styled(format!(" {l}"), theme.muted()),
+                        DiffLine::Added(l) => Span::styled(format!("+{l}"), theme.diff_add()),
+                        DiffLine::Removed(l) => Span::styled(format!("-{l}"), theme.diff_delete()),
                     };
                     lines.push(Line::from(line_span));
                 }

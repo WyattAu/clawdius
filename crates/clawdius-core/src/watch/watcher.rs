@@ -86,6 +86,7 @@ impl WatchConfig {
     }
 
     /// Check if a path should be watched
+    #[must_use]
     pub fn should_watch(&self, path: &Path) -> bool {
         let path_str = path.to_string_lossy();
 

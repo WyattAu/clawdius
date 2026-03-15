@@ -48,7 +48,7 @@ impl FileList {
 
         if let Ok(read_dir) = std::fs::read_dir(&self.current_dir) {
             let mut dirs: Vec<_> = read_dir
-                .filter_map(|e| e.ok())
+                .filter_map(std::result::Result::ok)
                 .map(|e| FileEntry {
                     path: e.path(),
                     is_dir: e.path().is_dir(),
@@ -93,9 +93,8 @@ impl FileList {
                     self.current_dir = entry.path.clone();
                     self.refresh();
                     return None;
-                } else {
-                    return Some(entry.path.clone());
                 }
+                return Some(entry.path.clone());
             }
         }
         None
@@ -150,7 +149,7 @@ impl FileList {
                     theme.file_item()
                 };
 
-                ListItem::new(Line::styled(format!("{}{}{}", check, prefix, name), style))
+                ListItem::new(Line::styled(format!("{check}{prefix}{name}"), style))
             })
             .collect();
 

@@ -204,7 +204,7 @@ async fn test_cleanup_old_checkpoints() {
 
     for i in 0..10 {
         manager
-            .create_checkpoint(&format!("checkpoint_{}", i))
+            .create_checkpoint(&format!("checkpoint_{i}"))
             .await
             .unwrap();
     }

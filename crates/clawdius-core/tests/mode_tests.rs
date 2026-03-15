@@ -1,7 +1,6 @@
 //! Tests for agent modes
 
 use clawdius_core::modes::{AgentMode, CustomMode};
-use std::path::PathBuf;
 use tempfile::TempDir;
 
 #[test]
@@ -17,7 +16,8 @@ fn test_builtin_modes() {
     ];
 
     for (name, _description) in modes {
-        let mode = AgentMode::from_str(name).expect(&format!("Failed to parse mode: {}", name));
+        let mode =
+            AgentMode::parse_mode(name).unwrap_or_else(|| panic!("Failed to parse mode: {name}"));
         assert_eq!(mode.name(), name);
         assert!(!mode.system_prompt().is_empty());
         assert!(mode.temperature() > 0.0);
@@ -176,10 +176,10 @@ system_prompt = "Custom prompt for my mode"
 #[test]
 fn test_mode_display() {
     let mode = AgentMode::Code;
-    assert_eq!(format!("{}", mode), "code");
+    assert_eq!(format!("{mode}"), "code");
 
     let mode = AgentMode::Architect;
-    assert_eq!(format!("{}", mode), "architect");
+    assert_eq!(format!("{mode}"), "architect");
 }
 
 #[test]
@@ -190,7 +190,7 @@ fn test_mode_default() {
 
 #[test]
 fn test_invalid_mode_from_str() {
-    let mode = AgentMode::from_str("invalid-mode");
+    let mode = AgentMode::parse_mode("invalid-mode");
     assert!(mode.is_none());
 }
 

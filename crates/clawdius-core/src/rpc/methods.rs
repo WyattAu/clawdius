@@ -102,7 +102,7 @@ pub enum Method {
 impl Method {
     /// Parse method from string
     #[must_use]
-    pub fn from_str(s: &str) -> Option<Self> {
+    pub fn parse_method(s: &str) -> Option<Self> {
         match s {
             // Session
             "session/create" | "sessionCreate" => Some(Self::SessionCreate),
@@ -218,6 +218,6 @@ impl std::str::FromStr for Method {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Self::from_str(s).ok_or_else(|| format!("Unknown method: {s}"))
+        Self::parse_method(s).ok_or_else(|| format!("Unknown method: {s}"))
     }
 }

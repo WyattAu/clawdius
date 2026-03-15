@@ -98,7 +98,7 @@ fn test_json_output_compact_serialization() {
 
     let json = output.to_json_compact().unwrap();
     assert!(json.contains("\"content\":\"Test\""));
-    assert!(!json.contains("\n"));
+    assert!(!json.contains('\n'));
 }
 
 #[test]
@@ -336,17 +336,17 @@ fn test_file_version_info() {
 
 #[test]
 fn test_output_format_from_str() {
-    assert_eq!(OutputFormat::from_str("text"), Some(OutputFormat::Text));
-    assert_eq!(OutputFormat::from_str("json"), Some(OutputFormat::Json));
+    assert_eq!(OutputFormat::parse_format("text"), Some(OutputFormat::Text));
+    assert_eq!(OutputFormat::parse_format("json"), Some(OutputFormat::Json));
     assert_eq!(
-        OutputFormat::from_str("stream-json"),
+        OutputFormat::parse_format("stream-json"),
         Some(OutputFormat::StreamJson)
     );
     assert_eq!(
-        OutputFormat::from_str("stream_json"),
+        OutputFormat::parse_format("stream_json"),
         Some(OutputFormat::StreamJson)
     );
-    assert_eq!(OutputFormat::from_str("invalid"), None);
+    assert_eq!(OutputFormat::parse_format("invalid"), None);
 }
 
 #[test]

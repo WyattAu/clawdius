@@ -590,7 +590,7 @@ mod error_handling_tests {
     #[test]
     fn test_retry_exhausted_error() {
         let error = Error::RetryExhausted(5);
-        assert!(error.to_string().contains("5"));
+        assert!(error.to_string().contains('5'));
         assert!(error.to_string().contains("Retry exhausted"));
     }
 
@@ -675,8 +675,7 @@ mod mock_llm_client_tests {
                     tokio::spawn(async move {
                         let _ = tx
                             .send(format!(
-                                "[Error: Rate limited, retry after {}ms]",
-                                retry_after_ms
+                                "[Error: Rate limited, retry after {retry_after_ms}ms]"
                             ))
                             .await;
                     });
@@ -684,13 +683,13 @@ mod mock_llm_client_tests {
                 MockResponse::Timeout(d) => {
                     let d = *d;
                     tokio::spawn(async move {
-                        let _ = tx.send(format!("[Error: Timeout after {:?}]", d)).await;
+                        let _ = tx.send(format!("[Error: Timeout after {d:?}]")).await;
                     });
                 }
                 MockResponse::ConfigError(msg) => {
                     let msg = msg.clone();
                     tokio::spawn(async move {
-                        let _ = tx.send(format!("[Error: {}]", msg)).await;
+                        let _ = tx.send(format!("[Error: {msg}]")).await;
                     });
                 }
             }

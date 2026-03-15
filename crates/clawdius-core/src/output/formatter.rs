@@ -25,6 +25,7 @@ impl OutputFormatter {
         self.options.format
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn format_chat_response<W: Write>(
         &self,
         writer: &mut W,

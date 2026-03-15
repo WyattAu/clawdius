@@ -552,19 +552,19 @@ pub enum TimelineCommands {
 #[cfg(feature = "keyring")]
 pub enum AuthCommands {
     #[command(about = "Store API key in keyring")]
-    SetKey {
+    Set {
         #[arg(help = "Provider name (anthropic, openai, zai)")]
         provider: String,
     },
 
     #[command(about = "Retrieve API key from keyring")]
-    GetKey {
+    Get {
         #[arg(help = "Provider name")]
         provider: String,
     },
 
     #[command(about = "Delete API key from keyring")]
-    DeleteKey {
+    Delete {
         #[arg(help = "Provider name")]
         provider: String,
     },
@@ -765,10 +765,11 @@ fn load_config(config_path: Option<&PathBuf>) -> anyhow::Result<Config> {
         Some(path) => Config::load(path)
             .map_err(|e| anyhow::anyhow!("Failed to load config from {}: {}", path.display(), e)),
         None => Config::load_default()
-            .map_err(|e| anyhow::anyhow!("Failed to load default config: {}", e)),
+            .map_err(|e| anyhow::anyhow!("Failed to load default config: {e}")),
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn handle_chat(
     prompt: Option<String>,
     model: Option<String>,
@@ -805,7 +806,7 @@ async fn handle_chat(
         let initial_content = prompt.unwrap_or_default();
         editor
             .open_and_edit(&initial_content)
-            .map_err(|e| anyhow::anyhow!("Editor error: {}", e))?
+            .map_err(|e| anyhow::anyhow!("Editor error: {e}"))?
     } else if let Some(msg) = prompt {
         // Prompt provided via CLI args
         msg
@@ -844,23 +845,23 @@ async fn handle_chat(
     // Load agent mode
     let modes_dir = std::env::current_dir()?.join(".clawdius").join("modes");
     let mode = AgentMode::load_by_name(&mode_name, &modes_dir)
-        .with_context(|| format!("Failed to load mode: {}", mode_name))?;
+        .with_context(|| format!("Failed to load mode: {mode_name}"))?;
 
     let resolver = MentionResolver::new(std::env::current_dir()?);
     let context_items = resolver.resolve_all(&message).await?;
 
-    let context_str = if !context_items.is_empty() {
+    let context_str = if context_items.is_empty() {
+        message.clone()
+    } else {
         let items: Vec<String> = context_items
             .iter()
-            .map(|item| item.to_formatted_string())
+            .map(clawdius_core::ContextItem::to_formatted_string)
             .collect();
         format!(
             "\n\n[Context]\n{}\n\n[User Message]\n{}",
             items.join("\n---\n"),
             message
         )
-    } else {
-        message.clone()
     };
 
     let mut llm_config = LlmConfig::from_config(&config.llm, &provider)?;
@@ -894,7 +895,7 @@ async fn handle_chat(
     let messages = vec![system_message, user_message];
 
     if output_format == OutputFormat::Text {
-        println!("Provider: {}", provider);
+        println!("Provider: {provider}");
         println!("Session: {}", session.id);
         println!("Mode: {} - {}", mode.name(), mode.description());
         println!();
@@ -950,6 +951,7 @@ async fn handle_chat(
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn handle_auto(
     task: String,
     model: Option<String>,
@@ -983,7 +985,7 @@ async fn handle_auto(
 
     // Load Auto mode
     let modes_dir = std::env::current_dir()?.join(".clawdius").join("modes");
-    let mode = AgentMode::load_by_name("auto", &modes_dir).unwrap_or_else(|_| AgentMode::Auto);
+    let mode = AgentMode::load_by_name("auto", &modes_dir).unwrap_or(AgentMode::Auto);
 
     let mut llm_config = LlmConfig::from_config(&config.llm, &provider)?;
     if let Some(ref m) = model {
@@ -1004,9 +1006,9 @@ async fn handle_auto(
 
     if output_format == OutputFormat::Text {
         println!("🤖 Clawdius Auto Mode");
-        println!("Task: {}", task);
-        println!("Provider: {}", provider);
-        println!("Max iterations: {}", max_iters);
+        println!("Task: {task}");
+        println!("Provider: {provider}");
+        println!("Max iterations: {max_iters}");
         if run_tests {
             println!("Tests: enabled");
         }
@@ -1025,8 +1027,7 @@ async fn handle_auto(
     let user_message = ChatMessage {
         role: ChatRole::User,
         content: format!(
-            "Task: {}\n\nPlease complete this task autonomously. Make the necessary changes and report what you did.",
-            task
+            "Task: {task}\n\nPlease complete this task autonomously. Make the necessary changes and report what you did."
         ),
     };
 
@@ -1075,14 +1076,14 @@ async fn handle_auto(
                 } else {
                     let stderr = String::from_utf8_lossy(&output.stderr);
                     if output_format == OutputFormat::Text {
-                        println!("❌ Tests failed:\n{}", stderr);
+                        println!("❌ Tests failed:\n{stderr}");
                     }
                     tests_passed = false;
                     if fail_on_test_failure {
                         let result = ActionResult::error(
                             "auto",
                             task.clone(),
-                            format!("Tests failed: {}", stderr),
+                            format!("Tests failed: {stderr}"),
                         );
                         formatter.format_action_result(&mut io::stdout(), &result)?;
                         anyhow::bail!("Tests failed and fail_on_test_failure is set");
@@ -1091,7 +1092,7 @@ async fn handle_auto(
             }
             Err(e) => {
                 if output_format == OutputFormat::Text {
-                    println!("⚠️ Could not run tests: {}", e);
+                    println!("⚠️ Could not run tests: {e}");
                 }
             }
         }
@@ -1103,7 +1104,7 @@ async fn handle_auto(
             println!("\n📝 Committing changes...");
         }
 
-        let commit_message = format!("auto: {}", task);
+        let commit_message = format!("auto: {task}");
         let _ = Command::new("git")
             .args(["add", "-A"])
             .current_dir(std::env::current_dir()?)
@@ -1127,7 +1128,7 @@ async fn handle_auto(
             }
             Err(e) => {
                 if output_format == OutputFormat::Text {
-                    println!("⚠️ Could not commit: {}", e);
+                    println!("⚠️ Could not commit: {e}");
                 }
             }
         }
@@ -1149,7 +1150,7 @@ async fn handle_auto(
         "auto",
         task.clone(),
         format!("Auto task completed in {}ms", duration.as_millis()),
-        format!("{:?}", changes_made),
+        format!("{changes_made:?}"),
         changes_made
             .iter()
             .map(|c| ActionEdit {
@@ -1223,13 +1224,13 @@ async fn handle_sessions(
         use std::str::FromStr;
         let id = clawdius_core::session::SessionId::from_str(&session_id)?;
         session_manager.delete_session(&id)?;
-        println!("✓ Deleted session: {}", session_id);
+        println!("✓ Deleted session: {session_id}");
         return Ok(());
     }
 
     if let Some(query) = search {
         let results = session_manager.search_messages(&query)?;
-        println!("Search results for '{}':", query);
+        println!("Search results for '{query}':");
         for (session_id, msg) in results {
             let preview = msg
                 .as_text()
@@ -1241,7 +1242,7 @@ async fn handle_sessions(
                     }
                 })
                 .unwrap_or_else(|| "[non-text]".to_string());
-            println!("  {} > {}", session_id, preview);
+            println!("  {session_id} > {preview}");
         }
         return Ok(());
     }
@@ -1403,7 +1404,7 @@ async fn handle_action(
             .find(|a| a.id() == "source.generate.tests")
             .ok_or_else(|| anyhow::anyhow!("Generate tests action not available"))?,
         _ => {
-            anyhow::bail!("Unknown action: {}", action);
+            anyhow::bail!("Unknown action: {action}");
         }
     };
 
@@ -1464,7 +1465,7 @@ async fn handle_test(
         .to_string();
 
     let result: TestResult = if let Some(func_name) = &function {
-        match (|| async {
+        match async {
             let test_generator =
                 GenerateTests::new(std::sync::Arc::new(clawdius_core::llm::create_provider(
                     &clawdius_core::llm::LlmConfig::from_env("anthropic")?,
@@ -1494,7 +1495,7 @@ async fn handle_test(
             }
 
             Ok::<_, anyhow::Error>((test_cases, output.map(|p| p.display().to_string())))
-        })()
+        }
         .await
         {
             Ok((test_cases, output_path)) => TestResult::success(
@@ -1551,7 +1552,7 @@ fn generate_default_tests(_language: &str) -> Vec<TestCaseInfo> {
 
 fn generate_test_code(language: &str) -> String {
     match language {
-        "rs" => r#"#[cfg(test)]
+        "rs" => r"#[cfg(test)]
 mod tests {
     use super::*;
 
@@ -1569,9 +1570,9 @@ mod tests {
     fn test_error_case() {
         // TODO: Test error scenarios
     }
-}"#
+}"
         .to_string(),
-        "ts" | "js" => r#"describe('function tests', () => {
+        "ts" | "js" => r"describe('function tests', () => {
     test('normal case', () => {
         // TODO: Add test implementation
     });
@@ -1583,9 +1584,9 @@ mod tests {
     test('error case', () => {
         // TODO: Test error scenarios
     });
-});"#
-            .to_string(),
-        "py" => r#"import unittest
+});"
+        .to_string(),
+        "py" => r"import unittest
 
 class TestFunction(unittest.TestCase):
     def test_normal_case(self):
@@ -1601,7 +1602,7 @@ class TestFunction(unittest.TestCase):
         pass
 
 if __name__ == '__main__':
-    unittest.main()"#
+    unittest.main()"
             .to_string(),
         _ => "// Test generation not supported for this language".to_string(),
     }
@@ -1615,19 +1616,19 @@ fn extract_function_from_code(
     use clawdius_core::actions::tests::GenerateTests;
 
     let pattern = match language {
-        "rs" => format!(r"fn\s+{}\s*[<\(]", func_name),
-        "ts" | "js" => format!(r"(?:async\s+)?function\s+{}\s*\(", func_name),
-        "py" => format!(r"def\s+{}\s*\(", func_name),
-        _ => anyhow::bail!("Unsupported language: {}", language),
+        "rs" => format!(r"fn\s+{func_name}\s*[<\(]"),
+        "ts" | "js" => format!(r"(?:async\s+)?function\s+{func_name}\s*\("),
+        "py" => format!(r"def\s+{func_name}\s*\("),
+        _ => anyhow::bail!("Unsupported language: {language}"),
     };
 
     let re = regex::Regex::new(&pattern)?;
     if let Some(_match) = re.find(code) {
         let selection = extract_function_body(code, _match.start(), language)?;
         GenerateTests::parse_function_from_selection(&selection, language)
-            .map_err(|e| anyhow::anyhow!("{}", e))
+            .map_err(|e| anyhow::anyhow!("{e}"))
     } else {
-        anyhow::bail!("Function '{}' not found", func_name);
+        anyhow::bail!("Function '{func_name}' not found");
     }
 }
 
@@ -1680,8 +1681,7 @@ async fn handle_verify(
         Some(path) => {
             let lake_path = path
                 .parent()
-                .map(|p| p.join("lake"))
-                .unwrap_or_else(|| path.clone());
+                .map_or_else(|| path.clone(), |p| p.join("lake"));
             LeanVerifier::with_paths(path, lake_path)?
         }
         None => LeanVerifier::new()?,
@@ -1812,7 +1812,7 @@ async fn handle_research(
             .split(',')
             .map(|s| Language::from_str(s.trim()))
             .collect::<Result<Vec<_>, _>>()
-            .map_err(|e| anyhow::anyhow!("Invalid language: {}", e))?,
+            .map_err(|e| anyhow::anyhow!("Invalid language: {e}"))?,
         None => vec![
             Language::EN,
             Language::ZH,
@@ -1832,7 +1832,7 @@ async fn handle_research(
             let languages_covered: Vec<String> = synth_result
                 .languages_covered()
                 .into_iter()
-                .map(|l| format!("{:?}", l))
+                .map(|l| format!("{l:?}"))
                 .collect();
 
             let concepts: Vec<ResearchConcept> = synth_result
@@ -1858,7 +1858,7 @@ async fn handle_research(
             ResearchResult::success(
                 &query,
                 languages_covered,
-                synth_result.confidence as f64,
+                f64::from(synth_result.confidence),
                 concepts,
                 relationships,
             )
@@ -1880,8 +1880,8 @@ async fn handle_auth(action: AuthCommands) -> anyhow::Result<()> {
     let storage = KeyringStorage::global();
 
     match action {
-        AuthCommands::SetKey { provider } => {
-            print!("Enter API key for {}: ", provider);
+        AuthCommands::Set { provider } => {
+            print!("Enter API key for {provider}: ");
             io::stdout().flush()?;
 
             let key = read_password()?;
@@ -1891,19 +1891,19 @@ async fn handle_auth(action: AuthCommands) -> anyhow::Result<()> {
             }
 
             storage.set_api_key(&provider, &key)?;
-            println!("✓ API key stored for {}", provider);
+            println!("✓ API key stored for {provider}");
         }
-        AuthCommands::GetKey { provider } => match storage.get_api_key(&provider)? {
+        AuthCommands::Get { provider } => match storage.get_api_key(&provider)? {
             Some(key) => {
                 println!("API key for {}: {}***", provider, &key[..8.min(key.len())]);
             }
             None => {
-                println!("No API key found for {}", provider);
+                println!("No API key found for {provider}");
             }
         },
-        AuthCommands::DeleteKey { provider } => {
+        AuthCommands::Delete { provider } => {
             storage.delete_api_key(&provider)?;
-            println!("✓ API key deleted for {}", provider);
+            println!("✓ API key deleted for {provider}");
         }
     }
 
@@ -1935,7 +1935,7 @@ pub async fn run_headless(config_path: Option<PathBuf>) -> anyhow::Result<()> {
         let _context_items = resolver.resolve_all(&line).await?;
 
         // LLM integration pending - see GitHub issue #2
-        println!("Echo: {}", line);
+        println!("Echo: {line}");
 
         // Save message
         let msg = clawdius_core::session::Message::user(&line);
@@ -1980,7 +1980,7 @@ async fn handle_metrics(
         tokio::fs::write(&path, &content).await?;
         println!("Metrics written to {}", path.display());
     } else {
-        println!("{}", content);
+        println!("{content}");
     }
 
     if reset {
@@ -2148,7 +2148,7 @@ fn print_index_stats(stats: &IndexStats) {
     if !stats.errors.is_empty() {
         println!("\nErrors ({}):", stats.errors.len());
         for error in &stats.errors {
-            println!("  - {}", error);
+            println!("  - {error}");
         }
     }
 }
@@ -2286,8 +2286,7 @@ async fn handle_checkpoint(
                                 .get_checkpoint(&cp.id)
                                 .ok()
                                 .flatten()
-                                .map(|c| c.files.len())
-                                .unwrap_or(0),
+                                .map_or(0, |c| c.files.len()),
                         })
                         .collect();
 
@@ -2310,7 +2309,7 @@ async fn handle_checkpoint(
                 },
                 None => CheckpointResult::error(
                     "restore",
-                    format!("Checkpoint not found: {}", checkpoint_id),
+                    format!("Checkpoint not found: {checkpoint_id}"),
                 ),
             }
         }
@@ -2320,7 +2319,7 @@ async fn handle_checkpoint(
             checkpoint_id2,
         } => match manager.compare_checkpoints(&checkpoint_id1, &checkpoint_id2) {
             Ok(diff) => CheckpointResult::success("compare")
-                .with_checkpoint_id(format!("{} vs {}", checkpoint_id1, checkpoint_id2))
+                .with_checkpoint_id(format!("{checkpoint_id1} vs {checkpoint_id2}"))
                 .with_file_count(diff.file_diffs.len()),
             Err(e) => CheckpointResult::error("compare", e.to_string()),
         },
@@ -2341,7 +2340,7 @@ async fn handle_checkpoint(
                     .with_file_count(checkpoint.files.len()),
                 None => CheckpointResult::error(
                     "show",
-                    format!("Checkpoint not found: {}", checkpoint_id),
+                    format!("Checkpoint not found: {checkpoint_id}"),
                 ),
             }
         }
@@ -2419,7 +2418,7 @@ async fn handle_timeline(
             } else {
                 println!("✓ Timeline checkpoint created");
                 println!("  ID: {}", checkpoint_id.0);
-                println!("  Name: {}", name);
+                println!("  Name: {name}");
             }
         }
 
@@ -2429,22 +2428,20 @@ async fn handle_timeline(
 
             if output_format == OutputFormat::Json {
                 println!("{}", serde_json::to_string_pretty(&checkpoints)?);
+            } else if checkpoints.is_empty() {
+                println!("No timeline checkpoints found");
             } else {
-                if checkpoints.is_empty() {
-                    println!("No timeline checkpoints found");
-                } else {
-                    println!("Timeline checkpoints:\n");
-                    for (i, checkpoint) in checkpoints.iter().enumerate() {
-                        println!("{}. {}", i + 1, checkpoint.name);
-                        println!("   ID: {}", checkpoint.id.0);
-                        if let Some(ref desc) = checkpoint.description {
-                            println!("   Description: {}", desc);
-                        }
-                        println!("   Created: {}", checkpoint.timestamp);
-                        println!("   Files: {}", checkpoint.files_count);
-                        println!("   Size: {} bytes", checkpoint.total_size);
-                        println!();
+                println!("Timeline checkpoints:\n");
+                for (i, checkpoint) in checkpoints.iter().enumerate() {
+                    println!("{}. {}", i + 1, checkpoint.name);
+                    println!("   ID: {}", checkpoint.id.0);
+                    if let Some(ref desc) = checkpoint.description {
+                        println!("   Description: {desc}");
                     }
+                    println!("   Created: {}", checkpoint.timestamp);
+                    println!("   Files: {}", checkpoint.files_count);
+                    println!("   Size: {} bytes", checkpoint.total_size);
+                    println!();
                 }
             }
         }
@@ -2471,8 +2468,8 @@ async fn handle_timeline(
 
             println!("Starting file watcher for timeline auto-checkpointing...");
             println!("  Workspace: {}", workspace_root.display());
-            println!("  Debounce: {}s", debounce_secs);
-            println!("  Max checkpoints/hour: {}", max_per_hour);
+            println!("  Debounce: {debounce_secs}s");
+            println!("  Max checkpoints/hour: {max_per_hour}");
             println!();
             println!("Press Ctrl+C to stop");
             println!();
@@ -2574,7 +2571,7 @@ async fn handle_timeline(
                         })
                     );
                 } else {
-                    println!("Rolling back to checkpoint: {}", checkpoint_id);
+                    println!("Rolling back to checkpoint: {checkpoint_id}");
                     println!("  Name: {}", checkpoint.name);
                     println!("  Created: {}", checkpoint.timestamp);
                     println!("  Files: {}", checkpoint.files_count);
@@ -2595,7 +2592,7 @@ async fn handle_timeline(
                     println!("✓ Checkpoint restored successfully");
                 }
             } else {
-                anyhow::bail!("Checkpoint not found: {}", checkpoint_id);
+                anyhow::bail!("Checkpoint not found: {checkpoint_id}");
             }
         }
 
@@ -2608,7 +2605,7 @@ async fn handle_timeline(
             if output_format == OutputFormat::Json {
                 println!("{}", serde_json::to_string_pretty(&diff)?);
             } else {
-                println!("Diff from {} to {}\n", from, to);
+                println!("Diff from {from} to {to}\n");
                 println!("Summary:");
                 println!("  Files changed: {}", diff.summary.total_files);
                 println!("  Additions: {}", diff.summary.total_additions);
@@ -2643,18 +2640,16 @@ async fn handle_timeline(
 
             if output_format == OutputFormat::Json {
                 println!("{}", serde_json::to_string_pretty(&history)?);
+            } else if history.is_empty() {
+                println!("No history found for file: {}", file.display());
             } else {
-                if history.is_empty() {
-                    println!("No history found for file: {}", file.display());
-                } else {
-                    println!("History for {}:\n", file.display());
-                    for version in &history {
-                        println!("  Version {} ({})", version.version, version.timestamp);
-                        println!("    Checkpoint: {}", version.checkpoint_id.0);
-                        println!("    Size: {} bytes", version.size);
-                        println!("    Hash: {}", version.checksum);
-                        println!();
-                    }
+                println!("History for {}:\n", file.display());
+                for version in &history {
+                    println!("  Version {} ({})", version.version, version.timestamp);
+                    println!("    Checkpoint: {}", version.checkpoint_id.0);
+                    println!("    Size: {} bytes", version.size);
+                    println!("    Hash: {}", version.checksum);
+                    println!();
                 }
             }
         }
@@ -2672,7 +2667,7 @@ async fn handle_timeline(
                     })
                 );
             } else {
-                println!("✓ Checkpoint deleted: {}", checkpoint_id);
+                println!("✓ Checkpoint deleted: {checkpoint_id}");
             }
         }
 
@@ -2689,10 +2684,7 @@ async fn handle_timeline(
                     })
                 );
             } else {
-                println!(
-                    "✓ Cleaned up {} old checkpoint(s), keeping {} most recent",
-                    deleted, keep
-                );
+                println!("✓ Cleaned up {deleted} old checkpoint(s), keeping {keep} most recent");
             }
         }
     }
@@ -2736,7 +2728,7 @@ async fn handle_modes(
         },
 
         ModeCommands::Create { name, output } => {
-            let output_path = output.unwrap_or_else(|| modes_dir.join(format!("{}.toml", name)));
+            let output_path = output.unwrap_or_else(|| modes_dir.join(format!("{name}.toml")));
 
             if output_path.exists() {
                 ModesResult::error(
@@ -2749,17 +2741,16 @@ async fn handle_modes(
                 }
 
                 let template = format!(
-                    r#"name = "{}"
-description = "Custom mode for {}"
+                    r#"name = "{name}"
+description = "Custom mode for {name}"
 system_prompt = """
-You are Clawdius, a custom assistant specialized in {}.
+You are Clawdius, a custom assistant specialized in {name}.
 
 Add your specific instructions here.
 """
 temperature = 0.7
 tools = ["file", "shell", "git"]
-"#,
-                    name, name, name
+"#
                 );
 
                 match tokio::fs::write(&output_path, template).await {
@@ -2779,7 +2770,7 @@ tools = ["file", "shell", "git"]
                     description: mode.description().to_string(),
                     system_prompt: mode.system_prompt().to_string(),
                     temperature: mode.temperature(),
-                    tools: mode.tools().iter().map(|t| t.to_string()).collect(),
+                    tools: mode.tools().clone(),
                 }),
             Err(e) => ModesResult::error("show", e.to_string()),
         },
@@ -2860,7 +2851,7 @@ async fn handle_lang(
                     println!("  Config saved to: {}", config_path.display());
                 }
                 None => {
-                    anyhow::bail!("Unknown language code: {}. Supported codes: en, zh, ja, ko, de, fr, es, it, pt, ru", code);
+                    anyhow::bail!("Unknown language code: {code}. Supported codes: en, zh, ja, ko, de, fr, es, it, pt, ru");
                 }
             }
         }
@@ -2937,7 +2928,7 @@ async fn handle_edit(
         }
         OutputFormat::Text | OutputFormat::StreamJson => {
             println!("Edited content:\n");
-            println!("{}", content);
+            println!("{content}");
             println!("\n---");
             println!(
                 "{} characters, {} lines",

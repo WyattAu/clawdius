@@ -389,8 +389,7 @@ mod tests {
 
     #[test]
     fn test_firecracker_backend_creation() {
-        let backend = FirecrackerBackend::with_defaults();
-        // Just ensure it doesn't panic
-        assert!(true);
+        let _backend = FirecrackerBackend::with_defaults();
+        // Test passes if creation succeeds without panic
     }
 }

@@ -54,6 +54,7 @@ pub struct ContextUpdateHandler {
 
 impl ContextUpdateHandler {
     /// Create a new context update handler
+    #[must_use]
     pub fn new(patterns: Vec<String>) -> Self {
         Self {
             tracked_paths: Arc::new(RwLock::new(Vec::new())),
@@ -106,7 +107,7 @@ impl WatchHandler for ContextUpdateHandler {
         Ok(())
     }
 
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "context_update"
     }
 
@@ -124,6 +125,7 @@ pub struct DiagnosticHandler {
 
 impl DiagnosticHandler {
     /// Create a new diagnostic handler
+    #[must_use]
     pub fn new() -> Self {
         Self {
             language_extensions: vec![
@@ -143,8 +145,7 @@ impl DiagnosticHandler {
     fn is_source_file(&self, path: &Path) -> bool {
         path.extension()
             .and_then(|ext| ext.to_str())
-            .map(|ext| self.language_extensions.contains(&ext.to_string()))
-            .unwrap_or(false)
+            .is_some_and(|ext| self.language_extensions.contains(&ext.to_string()))
     }
 }
 
@@ -174,7 +175,7 @@ impl WatchHandler for DiagnosticHandler {
         Ok(())
     }
 
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "diagnostic"
     }
 

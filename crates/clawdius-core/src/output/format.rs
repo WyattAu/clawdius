@@ -19,7 +19,7 @@ pub enum OutputFormat {
 impl OutputFormat {
     /// Parse from string
     #[must_use]
-    pub fn from_str(s: &str) -> Option<Self> {
+    pub fn parse_format(s: &str) -> Option<Self> {
         match s.to_lowercase().as_str() {
             "text" => Some(Self::Text),
             "json" => Some(Self::Json),

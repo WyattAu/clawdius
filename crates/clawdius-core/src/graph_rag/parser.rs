@@ -436,7 +436,7 @@ mod tests {
 
     #[test]
     fn test_parse_rust() {
-        let mut parser = get_parser();
+        let parser = get_parser();
         let source = r#"
 fn main() {
     println!("Hello, world!");
@@ -448,7 +448,7 @@ fn main() {
 
     #[test]
     fn test_parse_python() {
-        let mut parser = get_parser();
+        let parser = get_parser();
         let source = r#"
 def hello():
     print("Hello, world!")
@@ -459,7 +459,7 @@ def hello():
 
     #[test]
     fn test_parse_javascript() {
-        let mut parser = get_parser();
+        let parser = get_parser();
         let source = r#"
 function hello() {
     console.log("Hello, world!");
@@ -471,19 +471,19 @@ function hello() {
 
     #[test]
     fn test_parse_typescript() {
-        let mut parser = get_parser();
-        let source = r#"
+        let parser = get_parser();
+        let source = r"
 function hello(name: string): void {
     console.log(`Hello, ${name}!`);
 }
-"#;
+";
         let result = parser.parse(source, LanguageKind::TypeScript);
         assert!(result.is_ok());
     }
 
     #[test]
     fn test_parse_go() {
-        let mut parser = get_parser();
+        let parser = get_parser();
         let source = r#"
 package main
 
@@ -497,12 +497,12 @@ func main() {
 
     #[test]
     fn test_extract_rust_symbols() {
-        let mut parser = get_parser();
-        let source = r#"
+        let parser = get_parser();
+        let source = r"
 fn hello() {}
 struct Foo {}
 enum Bar { A, B }
-"#;
+";
         let tree = parser.parse(source, LanguageKind::Rust).unwrap();
         let symbols = parser.extract_symbols(&tree, source, 1, LanguageKind::Rust);
 
@@ -519,14 +519,14 @@ enum Bar { A, B }
 
     #[test]
     fn test_extract_python_symbols() {
-        let mut parser = get_parser();
-        let source = r#"
+        let parser = get_parser();
+        let source = r"
 def hello():
     pass
 
 class Foo:
     pass
-"#;
+";
         let tree = parser.parse(source, LanguageKind::Python).unwrap();
         let symbols = parser.extract_symbols(&tree, source, 1, LanguageKind::Python);
 
@@ -540,12 +540,12 @@ class Foo:
 
     #[test]
     fn test_extract_javascript_symbols() {
-        let mut parser = get_parser();
-        let source = r#"
+        let parser = get_parser();
+        let source = r"
 function hello() {}
 class Foo {}
 const bar = 42;
-"#;
+";
         let tree = parser.parse(source, LanguageKind::JavaScript).unwrap();
         let symbols = parser.extract_symbols(&tree, source, 1, LanguageKind::JavaScript);
 
@@ -559,13 +559,13 @@ const bar = 42;
 
     #[test]
     fn test_extract_go_symbols() {
-        let mut parser = get_parser();
-        let source = r#"
+        let parser = get_parser();
+        let source = r"
 package main
 
 func hello() {}
 type Foo struct {}
-"#;
+";
         let tree = parser.parse(source, LanguageKind::Go).unwrap();
         let symbols = parser.extract_symbols(&tree, source, 1, LanguageKind::Go);
 
@@ -576,11 +576,11 @@ type Foo struct {}
 
     #[test]
     fn test_extract_rust_imports() {
-        let mut parser = get_parser();
-        let source = r#"
+        let parser = get_parser();
+        let source = r"
 use std::collections::HashMap;
 use anyhow::Result;
-"#;
+";
         let tree = parser.parse(source, LanguageKind::Rust).unwrap();
         let imports = parser.extract_imports(&tree, source, LanguageKind::Rust);
 
@@ -589,11 +589,11 @@ use anyhow::Result;
 
     #[test]
     fn test_extract_python_imports() {
-        let mut parser = get_parser();
-        let source = r#"
+        let parser = get_parser();
+        let source = r"
 import os
 from typing import List
-"#;
+";
         let tree = parser.parse(source, LanguageKind::Python).unwrap();
         let imports = parser.extract_imports(&tree, source, LanguageKind::Python);
 
@@ -602,11 +602,11 @@ from typing import List
 
     #[test]
     fn test_extract_javascript_imports() {
-        let mut parser = get_parser();
-        let source = r#"
+        let parser = get_parser();
+        let source = r"
 import { foo } from 'bar';
 import * as baz from 'qux';
-"#;
+";
         let tree = parser.parse(source, LanguageKind::JavaScript).unwrap();
         let imports = parser.extract_imports(&tree, source, LanguageKind::JavaScript);
 

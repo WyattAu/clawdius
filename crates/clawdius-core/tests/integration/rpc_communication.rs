@@ -140,7 +140,7 @@ async fn test_rpc_error_with_data() {
 
 #[tokio::test]
 async fn test_rpc_multiple_requests() {
-    let requests = vec![
+    let requests = [
         Request::new(1, "session/list"),
         Request::new(2, "session/get").with_params(serde_json::json!({"id": "session-1"})),
         Request::new(3, "session/delete").with_params(serde_json::json!({"id": "session-1"})),

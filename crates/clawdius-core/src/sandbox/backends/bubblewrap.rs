@@ -94,7 +94,7 @@ mod tests {
     #[test]
     fn test_bubblewrap_available() {
         let available = BubblewrapBackend::is_available();
-        println!("Bubblewrap available: {}", available);
+        println!("Bubblewrap available: {available}");
     }
 
     #[test]
@@ -120,7 +120,7 @@ mod tests {
                 assert!(stdout.contains("hello"));
             }
             Err(e) => {
-                println!("Error (expected if no bwrap): {}", e);
+                println!("Error (expected if no bwrap): {e}");
             }
         }
     }

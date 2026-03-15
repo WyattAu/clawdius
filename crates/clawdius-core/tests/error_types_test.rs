@@ -1,4 +1,4 @@
-use clawdius_core::{Error, Result};
+use clawdius_core::Error;
 
 #[test]
 fn test_retryable_errors() {

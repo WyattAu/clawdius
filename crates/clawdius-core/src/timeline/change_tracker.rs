@@ -461,7 +461,7 @@ mod tests {
 
         for i in 0..5 {
             let record = FileChangeRecord::new(
-                PathBuf::from(format!("file{}.rs", i)),
+                PathBuf::from(format!("file{i}.rs")),
                 ChangeType::ContentModified,
                 ChangeSource::UserEdit,
             );

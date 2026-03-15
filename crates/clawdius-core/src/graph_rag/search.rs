@@ -43,6 +43,7 @@ impl HybridSearcher {
         }
     }
 
+    #[allow(clippy::arc_with_non_send_sync)]
     pub async fn open(
         vector_path: &Path,
         graph_path: &Path,
@@ -97,7 +98,7 @@ impl HybridSearcher {
         for (id, (score, metadata)) in vector_map {
             if let Some(file_path) = metadata.get("file") {
                 if let Some(file_id) = self.graph_store.get_file_id(file_path).ok().flatten() {
-                    if let Some(symbols) = self.graph_store.find_symbols_in_file(file_id).ok() {
+                    if let Ok(symbols) = self.graph_store.find_symbols_in_file(file_id) {
                         if let Some(symbol) = symbols
                             .into_iter()
                             .find(|s| s.id.map(|sid| sid.to_string()).unwrap_or_default() == id)
@@ -169,10 +170,12 @@ impl HybridSearcher {
         Ok(())
     }
 
+    #[must_use]
     pub fn vector_store(&self) -> &VectorStore {
         &self.vector_store
     }
 
+    #[must_use]
     pub fn graph_store(&self) -> &GraphStore {
         &self.graph_store
     }

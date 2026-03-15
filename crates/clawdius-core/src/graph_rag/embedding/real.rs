@@ -21,7 +21,7 @@ pub struct SentenceEmbedder {
 
 impl SentenceEmbedder {
     pub fn new(model_name: &str, model_path: Option<&Path>) -> Result<Self> {
-        let device = Device::cuda_if_available(0).unwrap_or_else(|_| Device::Cpu);
+        let device = Device::cuda_if_available(0).unwrap_or(Device::Cpu);
 
         info!("Initializing sentence embedder on device: {:?}", device);
 
@@ -29,18 +29,18 @@ impl SentenceEmbedder {
             Self::download_or_load_model(model_name, model_path)?;
 
         let config_content = std::fs::read_to_string(&config_path)
-            .map_err(|e| Error::Config(format!("Failed to read config: {}", e)))?;
+            .map_err(|e| Error::Config(format!("Failed to read config: {e}")))?;
         let config: Config = serde_json::from_str(&config_content)
-            .map_err(|e| Error::Config(format!("Failed to parse config: {}", e)))?;
+            .map_err(|e| Error::Config(format!("Failed to parse config: {e}")))?;
 
         let tokenizer = Tokenizer::from_file(&tokenizer_path)
-            .map_err(|e| Error::Config(format!("Failed to load tokenizer: {}", e)))?;
+            .map_err(|e| Error::Config(format!("Failed to load tokenizer: {e}")))?;
 
         let vb = VarBuilder::from_pth(&weights_path, DType::F32, &device)
-            .map_err(|e| Error::Model(format!("Failed to load weights: {}", e)))?;
+            .map_err(|e| Error::Model(format!("Failed to load weights: {e}")))?;
 
         let model = BertModel::load(vb, &config)
-            .map_err(|e| Error::Model(format!("Failed to create model: {}", e)))?;
+            .map_err(|e| Error::Model(format!("Failed to create model: {e}")))?;
 
         let dimension = 384;
 
@@ -78,26 +78,25 @@ impl SentenceEmbedder {
 
         info!("Downloading model '{}' from HuggingFace Hub...", model_name);
 
-        let api =
-            Api::new().map_err(|e| Error::Model(format!("Failed to create HF API: {}", e)))?;
+        let api = Api::new().map_err(|e| Error::Model(format!("Failed to create HF API: {e}")))?;
 
         let repo = Repo::model(model_name.to_string());
         let api_repo = api.repo(repo);
 
         let config = api_repo
             .get("config.json")
-            .map_err(|e| Error::Model(format!("Failed to download config: {}", e)))?;
+            .map_err(|e| Error::Model(format!("Failed to download config: {e}")))?;
 
         let tokenizer = api_repo
             .get("tokenizer.json")
-            .map_err(|e| Error::Model(format!("Failed to download tokenizer: {}", e)))?;
+            .map_err(|e| Error::Model(format!("Failed to download tokenizer: {e}")))?;
 
         let weights = if let Ok(weights) = api_repo.get("model.safetensors") {
             weights
         } else {
             api_repo
                 .get("pytorch_model.bin")
-                .map_err(|e| Error::Model(format!("Failed to download weights: {}", e)))?
+                .map_err(|e| Error::Model(format!("Failed to download weights: {e}")))?
         };
 
         info!("Model downloaded successfully");
@@ -110,20 +109,20 @@ impl SentenceEmbedder {
 
         let encoding = tokenizer
             .encode(text, true)
-            .map_err(|e| Error::Processing(format!("Tokenization failed: {}", e)))?;
+            .map_err(|e| Error::Processing(format!("Tokenization failed: {e}")))?;
 
         let tokens = encoding.get_ids();
         let attention_mask = encoding.get_attention_mask();
 
         let token_tensor = Tensor::new(tokens, &self.device)
-            .map_err(|e| Error::Processing(format!("Failed to create token tensor: {}", e)))?
+            .map_err(|e| Error::Processing(format!("Failed to create token tensor: {e}")))?
             .unsqueeze(0)
-            .map_err(|e| Error::Processing(format!("Failed to unsqueeze: {}", e)))?;
+            .map_err(|e| Error::Processing(format!("Failed to unsqueeze: {e}")))?;
 
         let attention_tensor = Tensor::new(attention_mask, &self.device)
-            .map_err(|e| Error::Processing(format!("Failed to create attention tensor: {}", e)))?
+            .map_err(|e| Error::Processing(format!("Failed to create attention tensor: {e}")))?
             .unsqueeze(0)
-            .map_err(|e| Error::Processing(format!("Failed to unsqueeze: {}", e)))?;
+            .map_err(|e| Error::Processing(format!("Failed to unsqueeze: {e}")))?;
 
         Ok((token_tensor, attention_tensor))
     }
@@ -135,42 +134,42 @@ impl SentenceEmbedder {
     ) -> Result<Vec<f32>> {
         let mask_expanded = attention_mask
             .to_dtype(DType::F32)
-            .map_err(|e| Error::Processing(format!("Failed to convert mask dtype: {}", e)))?
+            .map_err(|e| Error::Processing(format!("Failed to convert mask dtype: {e}")))?
             .unsqueeze(2)
-            .map_err(|e| Error::Processing(format!("Failed to unsqueeze mask: {}", e)))?
+            .map_err(|e| Error::Processing(format!("Failed to unsqueeze mask: {e}")))?
             .broadcast_as(embeddings.shape())
-            .map_err(|e| Error::Processing(format!("Failed to broadcast mask: {}", e)))?;
+            .map_err(|e| Error::Processing(format!("Failed to broadcast mask: {e}")))?;
 
         let masked_embeddings = (embeddings * &mask_expanded)
-            .map_err(|e| Error::Processing(format!("Failed to mask embeddings: {}", e)))?;
+            .map_err(|e| Error::Processing(format!("Failed to mask embeddings: {e}")))?;
 
         let sum_embeddings = masked_embeddings
             .sum(1)
-            .map_err(|e| Error::Processing(format!("Failed to sum embeddings: {}", e)))?;
+            .map_err(|e| Error::Processing(format!("Failed to sum embeddings: {e}")))?;
 
         let sum_mask = mask_expanded
             .sum(1)
-            .map_err(|e| Error::Processing(format!("Failed to sum mask: {}", e)))?
+            .map_err(|e| Error::Processing(format!("Failed to sum mask: {e}")))?
             .clamp(1e-9, f64::MAX)
-            .map_err(|e| Error::Processing(format!("Failed to clamp mask: {}", e)))?;
+            .map_err(|e| Error::Processing(format!("Failed to clamp mask: {e}")))?;
 
         let mean_pooled = (&sum_embeddings / &sum_mask)
-            .map_err(|e| Error::Processing(format!("Failed to compute mean: {}", e)))?;
+            .map_err(|e| Error::Processing(format!("Failed to compute mean: {e}")))?;
 
         let norm = mean_pooled
             .sqr()
-            .map_err(|e| Error::Processing(format!("Failed to square: {}", e)))?
+            .map_err(|e| Error::Processing(format!("Failed to square: {e}")))?
             .sum_all()
-            .map_err(|e| Error::Processing(format!("Failed to sum squares: {}", e)))?
+            .map_err(|e| Error::Processing(format!("Failed to sum squares: {e}")))?
             .sqrt()
-            .map_err(|e| Error::Processing(format!("Failed to compute sqrt: {}", e)))?;
+            .map_err(|e| Error::Processing(format!("Failed to compute sqrt: {e}")))?;
 
         let normalized = (&mean_pooled / &norm)
-            .map_err(|e| Error::Processing(format!("Failed to normalize: {}", e)))?;
+            .map_err(|e| Error::Processing(format!("Failed to normalize: {e}")))?;
 
         let vec = normalized
             .to_vec1()
-            .map_err(|e| Error::Processing(format!("Failed to convert to vec: {}", e)))?;
+            .map_err(|e| Error::Processing(format!("Failed to convert to vec: {e}")))?;
 
         Ok(vec)
     }
@@ -181,7 +180,7 @@ impl SentenceEmbedder {
         let embeddings = self
             .model
             .forward(&tokens, &attention_mask)
-            .map_err(|e| Error::Model(format!("Forward pass failed: {}", e)))?;
+            .map_err(|e| Error::Model(format!("Forward pass failed: {e}")))?;
 
         let pooled = self.mean_pool_and_normalize(&embeddings, &attention_mask)?;
 

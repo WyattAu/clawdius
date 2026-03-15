@@ -12,7 +12,7 @@ fn bench_session_create(c: &mut Criterion) {
             session.meta.provider = Some("anthropic".to_string());
             session.meta.model = Some("claude-3-5-sonnet".to_string());
             black_box(session)
-        })
+        });
     });
 
     group.bench_function("session_store_create", |b| {
@@ -60,19 +60,19 @@ fn bench_message_operations(c: &mut Criterion) {
     let mut group = c.benchmark_group("session_message_operations");
 
     group.bench_function("message_create_user", |b| {
-        b.iter(|| Message::user(black_box("Hello, world!")))
+        b.iter(|| Message::user(black_box("Hello, world!")));
     });
 
     group.bench_function("message_create_assistant", |b| {
-        b.iter(|| Message::assistant(black_box("Hello! How can I help you?")))
+        b.iter(|| Message::assistant(black_box("Hello! How can I help you?")));
     });
 
     group.bench_function("message_create_system", |b| {
-        b.iter(|| Message::system(black_box("You are a helpful assistant.")))
+        b.iter(|| Message::system(black_box("You are a helpful assistant.")));
     });
 
     let long_message: String = (0..100)
-        .map(|i| format!("Line {} of the message. ", i))
+        .map(|i| format!("Line {i} of the message. "))
         .collect();
     group.throughput(Throughput::Bytes(long_message.len() as u64));
     group.bench_with_input(
@@ -108,7 +108,7 @@ fn bench_session_with_messages(c: &mut Criterion) {
         store.create_session(&session).unwrap();
 
         for i in 0..10 {
-            let msg = Message::user(&format!("Message {}", i));
+            let msg = Message::user(format!("Message {i}"));
             store.save_message(&session.id, &msg).unwrap();
         }
 
@@ -123,7 +123,7 @@ fn bench_session_with_messages(c: &mut Criterion) {
         store.create_session(&session).unwrap();
 
         for i in 0..100 {
-            let msg = Message::user(&format!("Message {}", i));
+            let msg = Message::user(format!("Message {i}"));
             store.save_message(&session.id, &msg).unwrap();
         }
 
@@ -138,7 +138,7 @@ fn bench_session_with_messages(c: &mut Criterion) {
         store.create_session(&session).unwrap();
 
         for i in 0..1000 {
-            let msg = Message::user(&format!("Message {}", i));
+            let msg = Message::user(format!("Message {i}"));
             store.save_message(&session.id, &msg).unwrap();
         }
 
@@ -157,7 +157,7 @@ fn bench_session_list_operations(c: &mut Criterion) {
 
         for i in 0..10 {
             let mut session = Session::new();
-            session.title = Some(format!("Session {}", i));
+            session.title = Some(format!("Session {i}"));
             store.create_session(&session).unwrap();
         }
 
@@ -170,7 +170,7 @@ fn bench_session_list_operations(c: &mut Criterion) {
 
         for i in 0..100 {
             let mut session = Session::new();
-            session.title = Some(format!("Session {}", i));
+            session.title = Some(format!("Session {i}"));
             store.create_session(&session).unwrap();
         }
 

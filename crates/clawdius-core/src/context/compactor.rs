@@ -259,11 +259,10 @@ impl ContextCompactor {
 
     /// Determine if an item should be preserved (not compacted)
     fn should_preserve(&self, item: &ContextItem) -> bool {
-        match item {
-            ContextItem::GitDiff { .. } => true,
-            ContextItem::Problems { .. } => true,
-            _ => false,
-        }
+        matches!(
+            item,
+            ContextItem::GitDiff { .. } | ContextItem::Problems { .. }
+        )
     }
 
     /// Generate a summary of items to be compacted

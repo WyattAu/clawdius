@@ -10,7 +10,7 @@ use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::num::NonZeroUsize;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
 use super::{NexusError, PhaseId, Result};
@@ -64,7 +64,7 @@ impl std::fmt::Display for ArtifactType {
 
 impl ArtifactType {
     #[must_use]
-    pub fn from_str(s: &str) -> Option<Self> {
+    pub fn parse_artifact_type(s: &str) -> Option<Self> {
         match s {
             "YellowPaper" => Some(ArtifactType::YellowPaper),
             "BluePaper" => Some(ArtifactType::BluePaper),
@@ -220,12 +220,8 @@ impl ConnectionPool {
     fn new(db_path: PathBuf, pool_size: usize) -> Result<Self> {
         let mut connections = Vec::with_capacity(pool_size);
 
-        for i in 0..pool_size {
-            let conn = if i == 0 {
-                Self::create_connection(&db_path)?
-            } else {
-                Self::create_connection(&db_path)?
-            };
+        for _ in 0..pool_size {
+            let conn = Self::create_connection(&db_path)?;
             connections.push(conn);
         }
 
@@ -294,7 +290,7 @@ pub struct ArtifactTracker {
 }
 
 impl ArtifactTracker {
-    pub fn new(project_root: &PathBuf) -> Result<Self> {
+    pub fn new(project_root: &Path) -> Result<Self> {
         let db_path = project_root.join(".clawdius/nexus.db");
 
         if let Some(parent) = db_path.parent() {
@@ -492,8 +488,10 @@ impl ArtifactTracker {
             .lock()
             .map_err(|e| NexusError::IoError(std::io::Error::other(e.to_string())))?;
 
-        if store.artifacts.contains_key(&id) {
-            store.artifacts.insert(id, artifact);
+        if let std::collections::hash_map::Entry::Occupied(mut e) =
+            store.artifacts.entry(id.clone())
+        {
+            e.insert(artifact);
             Ok(())
         } else {
             Err(NexusError::ArtifactNotFound(id))
@@ -745,14 +743,14 @@ mod tests {
     #[test]
     fn test_artifact_type_from_str() {
         assert_eq!(
-            ArtifactType::from_str("YellowPaper"),
+            ArtifactType::parse_artifact_type("YellowPaper"),
             Some(ArtifactType::YellowPaper)
         );
         assert_eq!(
-            ArtifactType::from_str("BluePaper"),
+            ArtifactType::parse_artifact_type("BluePaper"),
             Some(ArtifactType::BluePaper)
         );
-        assert_eq!(ArtifactType::from_str("Invalid"), None);
+        assert_eq!(ArtifactType::parse_artifact_type("Invalid"), None);
     }
 
     #[test]

@@ -160,7 +160,7 @@ impl AgentMode {
 
     /// Parse from string
     #[must_use]
-    pub fn from_str(s: &str) -> Option<Self> {
+    pub fn parse_mode(s: &str) -> Option<Self> {
         match s.to_lowercase().as_str() {
             "code" => Some(Self::Code),
             "architect" => Some(Self::Architect),
@@ -198,7 +198,7 @@ impl AgentMode {
     /// Load mode by name from default modes directory
     pub fn load_by_name(name: &str, modes_dir: &Path) -> Result<Self> {
         // First check built-in modes
-        if let Some(mode) = Self::from_str(name) {
+        if let Some(mode) = Self::parse_mode(name) {
             return Ok(mode);
         }
 
@@ -249,13 +249,8 @@ impl AgentMode {
                 let entry = entry?;
                 let path = entry.path();
                 if path.extension().is_some_and(|e| e == "toml") {
-                    if let Ok(config) = Self::load_from_file(&path) {
-                        if let Self::Custom(custom) = config {
-                            modes.push((
-                                custom.name.clone(),
-                                custom.description.unwrap_or_default(),
-                            ));
-                        }
+                    if let Ok(Self::Custom(custom)) = Self::load_from_file(&path) {
+                        modes.push((custom.name.clone(), custom.description.unwrap_or_default()));
                     }
                 }
             }

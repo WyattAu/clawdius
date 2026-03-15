@@ -42,7 +42,7 @@ async fn test_full_checkpoint_workflow() {
     assert!(!diff.file_diffs.is_empty());
 
     let mut has_modifications = false;
-    for (_path, change) in &diff.file_diffs {
+    for change in diff.file_diffs.values() {
         if matches!(change, FileChange::Modified(_)) {
             has_modifications = true;
             break;
@@ -94,7 +94,7 @@ async fn test_checkpoint_with_multiple_files() {
     for (path, _) in &files {
         let full_path = workspace_root.join(path);
         let snapshot = checkpoint.files.iter().find(|f| f.path == full_path);
-        assert!(snapshot.is_some(), "File {} should be in checkpoint", path);
+        assert!(snapshot.is_some(), "File {path} should be in checkpoint");
     }
 }
 
@@ -230,7 +230,7 @@ async fn test_cleanup_old_checkpoints() {
 
     for i in 1..=5 {
         manager
-            .create_checkpoint("cleanup-session", format!("CP {}", i), None)
+            .create_checkpoint("cleanup-session", format!("CP {i}"), None)
             .await
             .unwrap();
     }

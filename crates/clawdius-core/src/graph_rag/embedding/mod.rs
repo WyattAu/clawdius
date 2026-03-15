@@ -77,10 +77,7 @@ pub fn create_embedder(config: &EmbedderConfig) -> Result<Box<dyn EmbeddingGener
                 .as_deref()
                 .unwrap_or("sentence-transformers/all-MiniLM-L6-v2");
 
-            let model_path = config
-                .model_path
-                .as_deref()
-                .map(|p| std::path::Path::new(p));
+            let model_path = config.model_path.as_deref().map(std::path::Path::new);
 
             Ok(Box::new(SentenceEmbedder::new(model_name, model_path)?))
         }

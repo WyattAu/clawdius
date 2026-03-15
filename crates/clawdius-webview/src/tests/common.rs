@@ -16,7 +16,7 @@ fn test_button_variant_equality() {
 #[test]
 fn test_toast_type_clone() {
     let toast_type = ToastType::Success;
-    let cloned = toast_type.clone();
+    let cloned = toast_type;
     assert_eq!(toast_type, cloned);
 }
 

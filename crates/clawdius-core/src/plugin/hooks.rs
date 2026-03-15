@@ -112,7 +112,7 @@ impl HookType {
 
     /// Parse a hook type from a string
     #[must_use]
-    pub fn from_str(s: &str) -> Option<Self> {
+    pub fn parse_hook_type(s: &str) -> Option<Self> {
         match s {
             "on_startup" => Some(HookType::OnStartup),
             "on_shutdown" => Some(HookType::OnShutdown),

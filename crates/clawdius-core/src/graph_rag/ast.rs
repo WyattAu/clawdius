@@ -96,7 +96,7 @@ impl SymbolKind {
     }
 
     #[must_use]
-    pub fn from_str(s: &str) -> Self {
+    pub fn parse_kind(s: &str) -> Self {
         match s {
             "function" => SymbolKind::Function,
             "class" => SymbolKind::Class,
@@ -187,7 +187,7 @@ impl RelationshipType {
     }
 
     #[must_use]
-    pub fn from_str(s: &str) -> Self {
+    pub fn parse_relationship(s: &str) -> Self {
         match s {
             "calls" => RelationshipType::Calls,
             "imports" => RelationshipType::Imports,

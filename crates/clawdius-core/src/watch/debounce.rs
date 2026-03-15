@@ -137,7 +137,7 @@ impl EventDebouncer {
 
     /// Merge two event kinds
     fn merge_kinds(a: DebouncedEventKind, b: DebouncedEventKind) -> DebouncedEventKind {
-        use DebouncedEventKind::*;
+        use DebouncedEventKind::{Any, Created, Deleted, Modified};
 
         match (a, b) {
             // Same kind stays same
@@ -167,7 +167,6 @@ impl Default for EventDebouncer {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::thread;
 
     #[test]
     fn test_debouncer_single_event() {

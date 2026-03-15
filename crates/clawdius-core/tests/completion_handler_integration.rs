@@ -7,9 +7,7 @@ use clawdius_core::rpc::handlers::completion::{
     CompletionHandler, CompletionRequest, CompletionResponse,
 };
 use clawdius_core::rpc::handlers::Handler;
-use clawdius_core::rpc::types::{Id, Request, Response};
-use std::time::Duration;
-use tokio::time::sleep;
+use clawdius_core::rpc::types::{Id, Request};
 
 fn create_test_request(prefix: &str, language: &str) -> Request {
     Request {
@@ -80,7 +78,7 @@ async fn test_rust_struct_completion() {
 
     assert!(response.result.is_some());
     let result: CompletionResponse = serde_json::from_value(response.result.unwrap()).unwrap();
-    assert!(result.text.contains("{") || result.text.contains("}"));
+    assert!(result.text.contains('{') || result.text.contains('}'));
 }
 
 #[tokio::test]
@@ -188,7 +186,7 @@ async fn test_go_struct_completion() {
 
     assert!(response.result.is_some());
     let result: CompletionResponse = serde_json::from_value(response.result.unwrap()).unwrap();
-    assert!(result.text.contains("{") || result.text.contains("}"));
+    assert!(result.text.contains('{') || result.text.contains('}'));
 }
 
 #[tokio::test]
@@ -292,10 +290,10 @@ async fn test_long_prefix() {
 async fn test_multiline_prefix() {
     let handler = CompletionHandler::new();
 
-    let multiline = r#"fn main() {
+    let multiline = r"fn main() {
     let x = 1;
     let y = 2;
-    "#;
+    ";
     let request = create_test_request(multiline, "rust");
     let response = handler.handle(request).await;
 

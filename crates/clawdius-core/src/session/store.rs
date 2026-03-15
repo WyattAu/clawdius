@@ -357,7 +357,7 @@ impl SessionStore {
 
         Ok(Message {
             id: Uuid::parse_str(&id_str).unwrap(),
-            role: MessageRole::from_str(&role_str),
+            role: MessageRole::parse_role(&role_str),
             content,
             tokens: tokens.map(|t| t as usize),
             created_at: DateTime::parse_from_rfc3339(&created_at_str)
@@ -382,7 +382,7 @@ impl MessageRole {
 
     /// Parse from string
     #[must_use]
-    pub fn from_str(s: &str) -> Self {
+    pub fn parse_role(s: &str) -> Self {
         match s {
             "system" => Self::System,
             "user" => Self::User,

@@ -247,7 +247,7 @@ impl GraphStore {
                     id: Some(row.get(0)?),
                     file_id: row.get(1)?,
                     name: row.get(2)?,
-                    kind: SymbolKind::from_str(&row.get::<_, String>(3)?),
+                    kind: SymbolKind::parse_kind(&row.get::<_, String>(3)?),
                     signature: row.get(4)?,
                     doc_comment: row.get(5)?,
                     start_line: row.get(6)?,
@@ -271,7 +271,7 @@ impl GraphStore {
                     id: Some(row.get(0)?),
                     file_id: row.get(1)?,
                     name: row.get(2)?,
-                    kind: SymbolKind::from_str(&row.get::<_, String>(3)?),
+                    kind: SymbolKind::parse_kind(&row.get::<_, String>(3)?),
                     signature: row.get(4)?,
                     doc_comment: row.get(5)?,
                     start_line: row.get(6)?,
@@ -323,7 +323,9 @@ impl GraphStore {
                     id: Some(row.get(0)?),
                     from_symbol: row.get(1)?,
                     to_symbol: row.get(2)?,
-                    relationship_type: RelationshipType::from_str(&row.get::<_, String>(3)?),
+                    relationship_type: RelationshipType::parse_relationship(
+                        &row.get::<_, String>(3)?,
+                    ),
                 })
             })?
             .collect::<std::result::Result<Vec<_>, _>>()?;
@@ -343,7 +345,9 @@ impl GraphStore {
                     id: Some(row.get(0)?),
                     from_symbol: row.get(1)?,
                     to_symbol: row.get(2)?,
-                    relationship_type: RelationshipType::from_str(&row.get::<_, String>(3)?),
+                    relationship_type: RelationshipType::parse_relationship(
+                        &row.get::<_, String>(3)?,
+                    ),
                 })
             })?
             .collect::<std::result::Result<Vec<_>, _>>()?;
@@ -363,7 +367,9 @@ impl GraphStore {
                     id: Some(row.get(0)?),
                     from_symbol: row.get(1)?,
                     to_symbol: row.get(2)?,
-                    relationship_type: RelationshipType::from_str(&row.get::<_, String>(3)?),
+                    relationship_type: RelationshipType::parse_relationship(
+                        &row.get::<_, String>(3)?,
+                    ),
                 })
             })?
             .collect::<std::result::Result<Vec<_>, _>>()?;
@@ -384,7 +390,7 @@ impl GraphStore {
                     id: Some(row.get(0)?),
                     file_id: row.get(1)?,
                     name: row.get(2)?,
-                    kind: SymbolKind::from_str(&row.get::<_, String>(3)?),
+                    kind: SymbolKind::parse_kind(&row.get::<_, String>(3)?),
                     signature: row.get(4)?,
                     doc_comment: row.get(5)?,
                     start_line: row.get(6)?,
@@ -410,7 +416,7 @@ impl GraphStore {
                     id: Some(row.get(0)?),
                     file_id: row.get(1)?,
                     name: row.get(2)?,
-                    kind: SymbolKind::from_str(&row.get::<_, String>(3)?),
+                    kind: SymbolKind::parse_kind(&row.get::<_, String>(3)?),
                     signature: row.get(4)?,
                     doc_comment: row.get(5)?,
                     start_line: row.get(6)?,
@@ -436,7 +442,7 @@ impl GraphStore {
                     id: Some(row.get(0)?),
                     file_id: row.get(1)?,
                     name: row.get(2)?,
-                    kind: SymbolKind::from_str(&row.get::<_, String>(3)?),
+                    kind: SymbolKind::parse_kind(&row.get::<_, String>(3)?),
                     signature: row.get(4)?,
                     doc_comment: row.get(5)?,
                     start_line: row.get(6)?,
@@ -894,15 +900,15 @@ mod tests {
     #[test]
     fn test_symbol_kind_roundtrip() {
         assert_eq!(
-            SymbolKind::from_str(SymbolKind::Function.as_str()),
+            SymbolKind::parse_kind(SymbolKind::Function.as_str()),
             SymbolKind::Function
         );
         assert_eq!(
-            SymbolKind::from_str(SymbolKind::Struct.as_str()),
+            SymbolKind::parse_kind(SymbolKind::Struct.as_str()),
             SymbolKind::Struct
         );
         assert_eq!(
-            SymbolKind::from_str("custom"),
+            SymbolKind::parse_kind("custom"),
             SymbolKind::Other("custom".to_string())
         );
     }
@@ -910,15 +916,15 @@ mod tests {
     #[test]
     fn test_relationship_type_roundtrip() {
         assert_eq!(
-            RelationshipType::from_str(RelationshipType::Calls.as_str()),
+            RelationshipType::parse_relationship(RelationshipType::Calls.as_str()),
             RelationshipType::Calls
         );
         assert_eq!(
-            RelationshipType::from_str(RelationshipType::Extends.as_str()),
+            RelationshipType::parse_relationship(RelationshipType::Extends.as_str()),
             RelationshipType::Extends
         );
         assert_eq!(
-            RelationshipType::from_str("custom"),
+            RelationshipType::parse_relationship("custom"),
             RelationshipType::Other("custom".to_string())
         );
     }

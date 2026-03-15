@@ -5,7 +5,7 @@
 //! # Design Notes
 //!
 //! Uses `std::sync::RwLock` instead of `tokio::sync::RwLock` because:
-//! - All underlying SQLite operations are blocking
+//! - All underlying `SQLite` operations are blocking
 //! - No benefit to async locks when I/O is blocking anyway
 //! - Avoids "Cannot block the current thread from within a runtime" panics
 
@@ -16,7 +16,7 @@ use super::{Compactor, SessionStore};
 use crate::config::Config;
 use crate::error::{ErrorHelpers, Result};
 
-/// Inner state for SessionManager
+/// Inner state for `SessionManager`
 struct SessionManagerInner {
     store: SessionStore,
     compactor: Compactor,
@@ -29,7 +29,7 @@ struct SessionManagerInner {
 ///
 /// # Thread Safety
 ///
-/// Uses `Arc<RwLock>` for the active session tracking. All SQLite operations
+/// Uses `Arc<RwLock>` for the active session tracking. All `SQLite` operations
 /// are inherently blocking, so async methods are provided for convenience
 /// but still perform blocking I/O internally.
 pub struct SessionManager {
@@ -50,6 +50,7 @@ impl SessionManager {
     /// # Errors
     ///
     /// Returns an error if the session store cannot be opened.
+    #[allow(clippy::arc_with_non_send_sync)]
     pub fn new(config: &Config) -> Result<Self> {
         let store = SessionStore::open(&config.storage.sessions_path)?;
         let compactor = Compactor::new(config.session.clone());
@@ -78,7 +79,7 @@ impl SessionManager {
             .active_session
             .write()
             .map_err(|e| crate::Error::Session(format!("Lock error: {e}")))?;
-        *active = Some(session.id.clone());
+        *active = Some(session.id);
 
         Ok(session)
     }
@@ -89,12 +90,11 @@ impl SessionManager {
     ///
     /// Returns an error if the session cannot be loaded or created.
     pub fn get_or_create_active(&self) -> Result<Session> {
-        let active_id = self
+        let active_id = *self
             .inner
             .active_session
             .read()
-            .map_err(|e| crate::Error::Session(format!("Lock error: {e}")))?
-            .clone();
+            .map_err(|e| crate::Error::Session(format!("Lock error: {e}")))?;
 
         if let Some(id) = active_id {
             if let Some(session) = self.inner.store.load_session_full(&id)? {
@@ -133,12 +133,9 @@ impl SessionManager {
                 .active_session
                 .read()
                 .map_err(|e| crate::Error::Session(format!("Lock error: {e}")))?;
-            active
-                .as_ref()
-                .ok_or_else(|| {
-                    crate::Error::Session(ErrorHelpers::session_not_found("active").to_string())
-                })?
-                .clone()
+            *active.as_ref().ok_or_else(|| {
+                crate::Error::Session(ErrorHelpers::session_not_found("active").to_string())
+            })?
         };
 
         self.inner.store.save_message(&active_id, message)
@@ -204,7 +201,7 @@ impl SessionManager {
             .active_session
             .read()
             .ok()
-            .and_then(|guard| guard.clone())
+            .and_then(|guard| *guard)
     }
 
     /// Search messages across all sessions

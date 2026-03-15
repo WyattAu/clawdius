@@ -1,4 +1,4 @@
-//! Vector storage for semantic search using LanceDB
+//! Vector storage for semantic search using `LanceDB`
 
 use crate::error::{Error, Result};
 use arrow_array::{
@@ -54,7 +54,7 @@ impl VectorStore {
         let db = connect(&uri)
             .execute()
             .await
-            .map_err(|e| Error::Generic(format!("Failed to connect to LanceDB: {}", e)))?;
+            .map_err(|e| Error::Generic(format!("Failed to connect to LanceDB: {e}")))?;
 
         let store = Self {
             db,
@@ -71,7 +71,7 @@ impl VectorStore {
             .table_names()
             .execute()
             .await
-            .map_err(|e| Error::Generic(format!("Failed to list tables: {}", e)))?;
+            .map_err(|e| Error::Generic(format!("Failed to list tables: {e}")))?;
 
         if !tables.contains(&self.table_name) {
             let schema = self.create_schema();
@@ -82,7 +82,7 @@ impl VectorStore {
                 .create_table(&self.table_name, Box::new(batches))
                 .execute()
                 .await
-                .map_err(|e| Error::Generic(format!("Failed to create table: {}", e)))?;
+                .map_err(|e| Error::Generic(format!("Failed to create table: {e}")))?;
         }
 
         Ok(())
@@ -112,7 +112,7 @@ impl VectorStore {
         let embedding_array: ArrayRef = Arc::new(
             FixedSizeListArray::try_new(field, self.dimension as i32, Arc::new(values), None)
                 .map_err(|e| {
-                    Error::Generic(format!("Failed to create empty embedding array: {}", e))
+                    Error::Generic(format!("Failed to create empty embedding array: {e}"))
                 })?,
         );
         let metadata_array: ArrayRef = Arc::new(StringArray::from(Vec::<String>::new()));
@@ -121,7 +121,7 @@ impl VectorStore {
             schema.clone(),
             vec![id_array, embedding_array, metadata_array],
         )
-        .map_err(|e| Error::Generic(format!("Failed to create empty batch: {}", e)))
+        .map_err(|e| Error::Generic(format!("Failed to create empty batch: {e}")))
     }
 
     pub async fn insert(&self, entries: Vec<VectorEntry>) -> Result<()> {
@@ -144,7 +144,7 @@ impl VectorStore {
         let field = Arc::new(Field::new("item", DataType::Float32, true));
         let embedding_array: ArrayRef = Arc::new(
             FixedSizeListArray::try_new(field, self.dimension as i32, Arc::new(values), None)
-                .map_err(|e| Error::Generic(format!("Failed to create embedding array: {}", e)))?,
+                .map_err(|e| Error::Generic(format!("Failed to create embedding array: {e}")))?,
         );
         let metadata_array: ArrayRef = Arc::new(StringArray::from(metadata));
 
@@ -152,14 +152,14 @@ impl VectorStore {
             schema.clone(),
             vec![id_array, embedding_array, metadata_array],
         )
-        .map_err(|e| Error::Generic(format!("Failed to create batch: {}", e)))?;
+        .map_err(|e| Error::Generic(format!("Failed to create batch: {e}")))?;
 
         let table = self
             .db
             .open_table(&self.table_name)
             .execute()
             .await
-            .map_err(|e| Error::Generic(format!("Failed to open table: {}", e)))?;
+            .map_err(|e| Error::Generic(format!("Failed to open table: {e}")))?;
 
         let batches = RecordBatchIterator::new(vec![Ok(batch)], schema);
 
@@ -167,7 +167,7 @@ impl VectorStore {
             .add(Box::new(batches))
             .execute()
             .await
-            .map_err(|e| Error::Generic(format!("Failed to insert entries: {}", e)))?;
+            .map_err(|e| Error::Generic(format!("Failed to insert entries: {e}")))?;
 
         Ok(())
     }
@@ -186,19 +186,19 @@ impl VectorStore {
             .open_table(&self.table_name)
             .execute()
             .await
-            .map_err(|e| Error::Generic(format!("Failed to open table: {}", e)))?;
+            .map_err(|e| Error::Generic(format!("Failed to open table: {e}")))?;
 
         let mut results = table
             .vector_search(query)
-            .map_err(|e| Error::Generic(format!("Failed to create vector search: {}", e)))?
+            .map_err(|e| Error::Generic(format!("Failed to create vector search: {e}")))?
             .limit(k)
             .execute()
             .await
-            .map_err(|e| Error::Generic(format!("Failed to execute search: {}", e)))?;
+            .map_err(|e| Error::Generic(format!("Failed to execute search: {e}")))?;
 
         let mut search_results = Vec::new();
         while let Some(batch) = results.next().await {
-            let batch = batch.map_err(|e| Error::Generic(format!("Failed to get batch: {}", e)))?;
+            let batch = batch.map_err(|e| Error::Generic(format!("Failed to get batch: {e}")))?;
 
             let id_column = batch
                 .column_by_name("id")
@@ -249,18 +249,18 @@ impl VectorStore {
             .open_table(&self.table_name)
             .execute()
             .await
-            .map_err(|e| Error::Generic(format!("Failed to open table: {}", e)))?;
+            .map_err(|e| Error::Generic(format!("Failed to open table: {e}")))?;
 
         let filter = ids
             .iter()
-            .map(|id| format!("id = \"{}\"", id))
+            .map(|id| format!("id = \"{id}\""))
             .collect::<Vec<_>>()
             .join(" OR ");
 
         table
             .delete(&filter)
             .await
-            .map_err(|e| Error::Generic(format!("Failed to delete entries: {}", e)))?;
+            .map_err(|e| Error::Generic(format!("Failed to delete entries: {e}")))?;
 
         Ok(())
     }
@@ -271,16 +271,17 @@ impl VectorStore {
             .open_table(&self.table_name)
             .execute()
             .await
-            .map_err(|e| Error::Generic(format!("Failed to open table: {}", e)))?;
+            .map_err(|e| Error::Generic(format!("Failed to open table: {e}")))?;
 
         let count = table
             .count_rows(None)
             .await
-            .map_err(|e| Error::Generic(format!("Failed to count rows: {}", e)))?;
+            .map_err(|e| Error::Generic(format!("Failed to count rows: {e}")))?;
 
         Ok(count)
     }
 
+    #[must_use]
     pub fn dimension(&self) -> usize {
         self.dimension
     }

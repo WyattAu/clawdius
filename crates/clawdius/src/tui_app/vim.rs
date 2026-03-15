@@ -287,7 +287,7 @@ impl VimKeymap {
             KeyCode::Char('w') => VimAction::Move(Motion::WordForward),
             KeyCode::Char('b') => VimAction::Move(Motion::WordBackward),
             KeyCode::Char('y') => VimAction::Yank(Motion::CharRight),
-            KeyCode::Char('d') | KeyCode::Char('x') => VimAction::Delete(Motion::CharRight),
+            KeyCode::Char('d' | 'x') => VimAction::Delete(Motion::CharRight),
             _ => VimAction::None,
         }
     }

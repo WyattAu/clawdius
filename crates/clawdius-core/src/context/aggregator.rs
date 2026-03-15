@@ -160,7 +160,7 @@ impl ContextAggregator {
 
         let content = tokio::fs::read_to_string(
             self.workspace_root
-                .join(file_info.as_ref().map(|f| f.path.as_str()).unwrap_or("")),
+                .join(file_info.as_ref().map_or("", |f| f.path.as_str())),
         )
         .await
         .unwrap_or_default();
@@ -231,7 +231,7 @@ impl ContextAggregator {
         let language = full_path
             .extension()
             .and_then(|ext| ext.to_str())
-            .map(|s| s.to_string());
+            .map(std::string::ToString::to_string);
 
         let file_id = match self.graph_store.get_file_id(file_path)? {
             Some(id) => id,
@@ -323,6 +323,7 @@ impl ContextAggregator {
         }
     }
 
+    #[must_use]
     pub fn to_context_items(&self, aggregated: &AggregatedContext) -> Vec<ContextItem> {
         let mut items = Vec::new();
 

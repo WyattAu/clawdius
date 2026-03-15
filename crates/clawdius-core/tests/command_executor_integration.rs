@@ -279,7 +279,7 @@ async fn test_stop_on_failure() {
 
     assert!(results.is_ok());
     let results = results.unwrap();
-    assert!(results.len() >= 1);
+    assert!(!results.is_empty());
     assert!(results.len() <= 2);
 }
 
@@ -315,7 +315,7 @@ async fn test_empty_file_command() {
 
     command.template.steps = vec![TemplateStep {
         tool: "file".to_string(),
-        template: "".to_string(),
+        template: String::new(),
         description: String::new(),
     }];
 

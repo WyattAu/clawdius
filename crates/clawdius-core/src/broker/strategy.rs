@@ -29,7 +29,7 @@ mod tests {
             None
         }
 
-        fn name(&self) -> &str {
+        fn name(&self) -> &'static str {
             "MovingAverageCrossover"
         }
     }

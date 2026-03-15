@@ -599,7 +599,7 @@ impl Default for Config {
 
 #[cfg(feature = "keyring")]
 pub mod keyring_storage {
-    use super::*;
+
     use std::sync::OnceLock;
 
     static KEYRING_SERVICE: &str = "clawdius";
@@ -611,6 +611,7 @@ pub mod keyring_storage {
     }
 
     impl KeyringStorage {
+        #[must_use]
         pub fn new() -> Self {
             Self {
                 service: KEYRING_SERVICE.to_string(),
@@ -618,44 +619,42 @@ pub mod keyring_storage {
         }
 
         pub fn global() -> &'static KeyringStorage {
-            KEYRING_STORAGE.get_or_init(|| Self::new())
+            KEYRING_STORAGE.get_or_init(Self::new)
         }
 
         pub fn get_api_key(&self, provider: &str) -> crate::Result<Option<String>> {
             let entry = keyring::Entry::new(&self.service, provider)
-                .map_err(|e| crate::Error::Config(format!("Failed to access keyring: {}", e)))?;
+                .map_err(|e| crate::Error::Config(format!("Failed to access keyring: {e}")))?;
 
             match entry.get_password() {
                 Ok(key) => Ok(Some(key)),
                 Err(keyring::Error::NoEntry) => Ok(None),
                 Err(e) => Err(crate::Error::Config(format!(
-                    "Failed to retrieve API key: {}",
-                    e
+                    "Failed to retrieve API key: {e}"
                 ))),
             }
         }
 
         pub fn set_api_key(&self, provider: &str, key: &str) -> crate::Result<()> {
             let entry = keyring::Entry::new(&self.service, provider)
-                .map_err(|e| crate::Error::Config(format!("Failed to access keyring: {}", e)))?;
+                .map_err(|e| crate::Error::Config(format!("Failed to access keyring: {e}")))?;
 
             entry
                 .set_password(key)
-                .map_err(|e| crate::Error::Config(format!("Failed to store API key: {}", e)))?;
+                .map_err(|e| crate::Error::Config(format!("Failed to store API key: {e}")))?;
 
             Ok(())
         }
 
         pub fn delete_api_key(&self, provider: &str) -> crate::Result<()> {
             let entry = keyring::Entry::new(&self.service, provider)
-                .map_err(|e| crate::Error::Config(format!("Failed to access keyring: {}", e)))?;
+                .map_err(|e| crate::Error::Config(format!("Failed to access keyring: {e}")))?;
 
             match entry.delete_credential() {
                 Ok(()) => Ok(()),
                 Err(keyring::Error::NoEntry) => Ok(()),
                 Err(e) => Err(crate::Error::Config(format!(
-                    "Failed to delete API key: {}",
-                    e
+                    "Failed to delete API key: {e}"
                 ))),
             }
         }

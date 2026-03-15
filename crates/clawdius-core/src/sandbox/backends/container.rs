@@ -223,6 +223,7 @@ impl ContainerBackend {
     }
 
     /// Build the docker/podman run command
+    #[allow(clippy::vec_init_then_push)]
     fn build_run_command(
         &self,
         name: &str,

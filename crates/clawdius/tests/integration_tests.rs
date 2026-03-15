@@ -10,8 +10,7 @@
 )]
 
 use clawdius_core::config::{
-    Config, LlmConfig as ConfigLlmConfig, OutputConfig, RetryCondition, RetryConfig,
-    ShellSandboxConfig,
+    Config, OutputConfig, RetryCondition, RetryConfig, ShellSandboxConfig,
 };
 use clawdius_core::llm::{create_provider, LlmConfig, LlmProvider};
 use clawdius_core::output::{
@@ -700,7 +699,7 @@ fn test_tool_result_serialization() {
     assert!(json.contains("File written successfully"));
 
     let deserialized: ToolResult = serde_json::from_str(&json).unwrap();
-    assert_eq!(deserialized.success, true);
+    assert!(deserialized.success);
     assert_eq!(deserialized.output, "File written successfully");
 }
 

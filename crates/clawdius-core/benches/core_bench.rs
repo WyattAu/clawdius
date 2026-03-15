@@ -56,7 +56,7 @@ fn bench_session_store(c: &mut Criterion) {
         store.create_session(&session).unwrap();
 
         for i in 0..100 {
-            let msg = Message::user(&format!("Message {}", i));
+            let msg = Message::user(format!("Message {i}"));
             store.save_message(&session.id, &msg).unwrap();
         }
 
@@ -92,24 +92,24 @@ fn bench_diff_computation(c: &mut Criterion) {
     let small_old = "line1\nline2\nline3\n";
     let small_new = "line1\nmodified\nline3\n";
 
-    let medium_old: String = (0..100).map(|i| format!("line{}\n", i)).collect();
+    let medium_old: String = (0..100).map(|i| format!("line{i}\n")).collect();
     let medium_new: String = (0..100)
         .map(|i| {
             if i == 50 {
-                format!("modified{}\n", i)
+                format!("modified{i}\n")
             } else {
-                format!("line{}\n", i)
+                format!("line{i}\n")
             }
         })
         .collect();
 
-    let large_old: String = (0..1000).map(|i| format!("line{}\n", i)).collect();
+    let large_old: String = (0..1000).map(|i| format!("line{i}\n")).collect();
     let large_new: String = (0..1000)
         .map(|i| {
             if i % 10 == 0 {
-                format!("modified{}\n", i)
+                format!("modified{i}\n")
             } else {
-                format!("line{}\n", i)
+                format!("line{i}\n")
             }
         })
         .collect();
@@ -119,8 +119,8 @@ fn bench_diff_computation(c: &mut Criterion) {
         b.iter(|| {
             black_box(FileDiff::compute(
                 PathBuf::from("test.txt"),
-                Some(&small_old),
-                &small_new,
+                Some(small_old),
+                small_new,
             ))
         });
     });
@@ -199,10 +199,10 @@ fn bench_token_counting(c: &mut Criterion) {
 
     let small_text = "Hello, world! This is a simple test message.";
     let medium_text: String = (0..50)
-        .map(|i| format!("This is line {} of the test message. ", i))
+        .map(|i| format!("This is line {i} of the test message. "))
         .collect();
     let large_text: String = (0..500)
-        .map(|i| format!("This is line {} of the test message. ", i))
+        .map(|i| format!("This is line {i} of the test message. "))
         .collect();
 
     group.throughput(Throughput::Bytes(small_text.len() as u64));

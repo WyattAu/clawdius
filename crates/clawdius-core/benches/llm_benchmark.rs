@@ -8,18 +8,18 @@ fn bench_chat_message_creation(c: &mut Criterion) {
         b.iter(|| ChatMessage {
             role: ChatRole::User,
             content: black_box("Hello, world!").to_string(),
-        })
+        });
     });
 
     group.bench_function("chat_message_create_system", |b| {
         b.iter(|| ChatMessage {
             role: ChatRole::System,
             content: black_box("You are a helpful assistant.").to_string(),
-        })
+        });
     });
 
     let long_message: String = (0..100)
-        .map(|i| format!("Line {} of the message. ", i))
+        .map(|i| format!("Line {i} of the message. "))
         .collect();
     group.throughput(Throughput::Bytes(long_message.len() as u64));
     group.bench_with_input(
@@ -29,7 +29,7 @@ fn bench_chat_message_creation(c: &mut Criterion) {
             b.iter(|| ChatMessage {
                 role: ChatRole::User,
                 content: black_box(msg.clone()),
-            })
+            });
         },
     );
 
@@ -45,12 +45,12 @@ fn bench_chat_message_serialization(c: &mut Criterion) {
     };
 
     group.bench_function("message_serialize", |b| {
-        b.iter(|| black_box(serde_json::to_string(&msg)))
+        b.iter(|| black_box(serde_json::to_string(&msg)));
     });
 
     let json = serde_json::to_string(&msg).unwrap();
     group.bench_function("message_deserialize", |b| {
-        b.iter(|| black_box(serde_json::from_str::<ChatMessage>(&json)))
+        b.iter(|| black_box(serde_json::from_str::<ChatMessage>(&json)));
     });
 
     group.finish();
@@ -69,11 +69,11 @@ fn bench_message_collections(c: &mut Criterion) {
                     } else {
                         ChatRole::Assistant
                     },
-                    content: black_box(format!("Message {}", i)),
+                    content: black_box(format!("Message {i}")),
                 });
             }
             black_box(messages)
-        })
+        });
     });
 
     group.bench_function("create_message_vec_100", |b| {
@@ -86,11 +86,11 @@ fn bench_message_collections(c: &mut Criterion) {
                     } else {
                         ChatRole::Assistant
                     },
-                    content: black_box(format!("Message {}", i)),
+                    content: black_box(format!("Message {i}")),
                 });
             }
             black_box(messages)
-        })
+        });
     });
 
     group.finish();

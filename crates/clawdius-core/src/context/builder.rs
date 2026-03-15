@@ -36,9 +36,9 @@ impl ContextBuilder {
         }
     }
 
-    /// Add a context item
+    /// Add a context item (builder pattern)
     #[must_use]
-    pub fn add(mut self, item: ContextItem) -> Self {
+    pub fn with_item(mut self, item: ContextItem) -> Self {
         self.items.push(item);
         self
     }

@@ -114,9 +114,9 @@ impl CrashReporter {
         if self.enabled {
             sentry::configure_scope(|scope| {
                 scope.set_user(Some(sentry::User {
-                    id: id.map(|s| s.into()),
-                    email: email.map(|s| s.into()),
-                    username: username.map(|s| s.into()),
+                    id: id.map(std::convert::Into::into),
+                    email: email.map(std::convert::Into::into),
+                    username: username.map(std::convert::Into::into),
                     ..Default::default()
                 }));
             });

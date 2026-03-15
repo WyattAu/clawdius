@@ -245,7 +245,7 @@ mod unit_tests {
     #[test]
     fn test_phase_display() {
         let phase = PhaseId(5);
-        assert_eq!(format!("{}", phase), "Phase5");
+        assert_eq!(format!("{phase}"), "Phase5");
     }
 
     #[test]

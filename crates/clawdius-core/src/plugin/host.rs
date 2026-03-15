@@ -4,7 +4,7 @@
 
 use anyhow::{Context, Result};
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use super::api::{HookResult, PluginConfig, PluginId, PluginStats};
@@ -149,7 +149,7 @@ impl PluginHost {
     }
 
     /// Load a plugin from a directory
-    async fn load_plugin_from_dir(&mut self, dir: &PathBuf) -> Result<PluginId> {
+    async fn load_plugin_from_dir(&mut self, dir: &Path) -> Result<PluginId> {
         // Read manifest
         let manifest_path = dir.join(super::manifest::MANIFEST_FILE);
         let manifest_content = tokio::fs::read_to_string(&manifest_path).await?;
@@ -173,7 +173,7 @@ impl PluginHost {
         // Register in registry
         self.registry.register(super::registry::Plugin {
             metadata: manifest.to_metadata(),
-            path: dir.clone(),
+            path: dir.to_path_buf(),
             enabled: true,
         })?;
 
@@ -262,11 +262,7 @@ impl PluginHost {
             let calculated = format!("{:x}", hasher.finalize());
 
             if calculated != checksum {
-                anyhow::bail!(
-                    "Checksum mismatch: expected {}, got {}",
-                    checksum,
-                    calculated
-                );
+                anyhow::bail!("Checksum mismatch: expected {checksum}, got {calculated}");
             }
             tracing::debug!("WASM module checksum verified");
         }

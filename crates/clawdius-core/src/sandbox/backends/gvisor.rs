@@ -104,6 +104,7 @@ impl GVisorBackend {
     }
 
     /// Build the runsc command
+    #[allow(clippy::vec_init_then_push)]
     fn build_run_command(
         &self,
         name: &str,
@@ -340,8 +341,7 @@ mod tests {
 
     #[test]
     fn test_gvisor_backend_creation() {
-        let backend = GVisorBackend::with_defaults();
-        // Just ensure it doesn't panic
-        assert!(true);
+        let _backend = GVisorBackend::with_defaults();
+        // Test passes if creation succeeds without panic
     }
 }

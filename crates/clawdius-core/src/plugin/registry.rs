@@ -280,7 +280,7 @@ use serde::{Deserialize, Serialize};
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::plugin::api::{PluginAuthor, PluginCapabilities, PluginDependency, PluginId};
+    use crate::plugin::api::{PluginAuthor, PluginCapabilities, PluginId};
 
     fn create_test_plugin(name: &str, version: &str) -> Plugin {
         Plugin {
@@ -288,7 +288,7 @@ mod tests {
                 id: PluginId::new(name, version),
                 name: name.to_string(),
                 version: version.to_string(),
-                description: format!("Test plugin {}", name),
+                description: format!("Test plugin {name}"),
                 author: PluginAuthor {
                     name: "Test Author".to_string(),
                     email: None,

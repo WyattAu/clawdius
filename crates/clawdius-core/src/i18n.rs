@@ -7,7 +7,6 @@
 //! - Fallback to English for missing translations
 
 use anyhow::{Context, Result};
-use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::Path;
@@ -183,7 +182,7 @@ pub struct TranslationFile {
 }
 
 /// Global localization state
-static LOCALIZATION: Lazy<RwLock<Localization>> = Lazy::new(|| {
+static LOCALIZATION: std::sync::LazyLock<RwLock<Localization>> = std::sync::LazyLock::new(|| {
     let lang = Language::detect();
     RwLock::new(Localization::new(lang))
 });
@@ -288,14 +287,14 @@ impl Localization {
             .translations
             .get(&self.current)
             .and_then(|t| t.translations.get(key))
-            .and_then(|e| e.get(count).map(|s| s.to_string()));
+            .and_then(|e| e.get(count).map(std::string::ToString::to_string));
 
         // Fall back to English
         let result = result.or_else(|| {
             self.translations
                 .get(&Language::English)
                 .and_then(|t| t.translations.get(key))
-                .and_then(|e| e.get(count).map(|s| s.to_string()))
+                .and_then(|e| e.get(count).map(std::string::ToString::to_string))
         });
 
         // Fall back to key
@@ -309,9 +308,9 @@ impl Localization {
     fn interpolate(&self, text: &str, vars: &HashMap<&str, &str>) -> String {
         let mut result = text.to_string();
         for (key, value) in vars {
-            result = result.replace(&format!("{{{}}}", key), value);
-            result = result.replace(&format!("{{{}:uppercase}}", key), &value.to_uppercase());
-            result = result.replace(&format!("{{{}:lowercase}}", key), &value.to_lowercase());
+            result = result.replace(&format!("{{{key}}}"), value);
+            result = result.replace(&format!("{{{key}:uppercase}}"), &value.to_uppercase());
+            result = result.replace(&format!("{{{key}:lowercase}}"), &value.to_lowercase());
         }
         result
     }
@@ -344,7 +343,7 @@ pub fn localization() -> &'static RwLock<Localization> {
 pub fn init() -> Result<()> {
     let mut loc = LOCALIZATION
         .write()
-        .map_err(|e| anyhow::anyhow!("Failed to acquire i18n lock: {}", e))?;
+        .map_err(|e| anyhow::anyhow!("Failed to acquire i18n lock: {e}"))?;
     loc.load_embedded()
 }
 

@@ -1168,7 +1168,7 @@ mod tests {
         let persistence = create_test_persistence();
 
         for i in 0..3 {
-            let state = FsmState::new(SessionId::new(format!("session-{}", i)), PhaseId(i));
+            let state = FsmState::new(SessionId::new(format!("session-{i}")), PhaseId(i));
             persistence.create_session(&state).unwrap();
         }
 

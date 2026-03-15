@@ -1,7 +1,7 @@
 #![allow(unsafe_code)]
 
 use clawdius_core::{
-    config::{Config, LlmConfig, RetryCondition, RetryConfig, ShellSandboxConfig},
+    config::{Config, RetryCondition, RetryConfig, ShellSandboxConfig},
     llm::{create_provider, ChatMessage, ChatRole, LlmConfig as LlmRuntimeConfig},
     output::{
         stream::{StreamEvent, StreamWriter},
@@ -11,8 +11,7 @@ use clawdius_core::{
     tools::git::GitTool,
     tools::shell::{ShellParams, ShellTool},
 };
-use std::path::PathBuf;
-use tempfile::{NamedTempFile, TempDir};
+use tempfile::TempDir;
 
 #[test]
 fn test_llm_config_from_env_anthropic() {
@@ -381,7 +380,7 @@ fn test_git_tool_status() {
         .output()
         .ok();
 
-    let result = tool.status(Some(&temp_dir.path().to_string_lossy().to_string()));
+    let result = tool.status(Some(temp_dir.path().to_string_lossy().as_ref()));
 
     if let Ok(status) = result {
         assert!(status.contains("On branch") || status.contains("No commits yet"));
@@ -432,7 +431,7 @@ fn test_git_tool_log() {
             count: 5,
             path: None,
         },
-        Some(&temp_dir.path().to_string_lossy().to_string()),
+        Some(temp_dir.path().to_string_lossy().as_ref()),
     );
 
     if let Ok(log) = result {

@@ -208,9 +208,8 @@ impl ProjectMemory {
     /// Parse instructions from CLAUDE.md content
     fn parse_instructions(content: &str) -> String {
         // Remove frontmatter if present
-        let content = if content.starts_with("---") {
-            let end = content[3..].find("---").map_or(0, |i| i + 6);
-            &content[end..]
+        let content = if let Some(stripped) = content.strip_prefix("---") {
+            stripped.trim()
         } else {
             content
         };
@@ -683,14 +682,14 @@ mod tests {
 
     #[test]
     fn test_frontmatter_parsing() {
-        let content = r#"---
+        let content = r"---
 project: my-project
 language: rust
 framework: axum
 ---
 # Instructions
 Use idiomatic Rust.
-"#;
+";
 
         let mut memory = ProjectMemory::new("/tmp/test");
         memory.extract_metadata(content);

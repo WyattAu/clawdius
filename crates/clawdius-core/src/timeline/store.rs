@@ -1191,8 +1191,8 @@ mod tests {
         let file_path = temp_dir.path().join("main.rs");
         std::fs::write(&file_path, "fn main() {}").unwrap();
 
-        let id1 = store.create_checkpoint("checkpoint-1", None).await.unwrap();
-        let id2 = store
+        let _id1 = store.create_checkpoint("checkpoint-1", None).await.unwrap();
+        let _id2 = store
             .create_checkpoint("checkpoint-2", Some("Second checkpoint"))
             .await
             .unwrap();
@@ -1288,13 +1288,13 @@ mod tests {
         let file_path = temp_dir.path().join("history.txt");
         std::fs::write(&file_path, "version 1").unwrap();
 
-        let cp1 = store.create_checkpoint("v1", None).await.unwrap();
+        let _cp1 = store.create_checkpoint("v1", None).await.unwrap();
 
         std::fs::write(&file_path, "version 2").unwrap();
         let _cp2 = store.create_checkpoint("v2", None).await.unwrap();
 
         let history = store.get_file_history(&file_path).unwrap();
-        assert!(history.len() >= 1);
+        assert!(!history.is_empty());
     }
 
     #[tokio::test]
@@ -1395,7 +1395,7 @@ mod tests {
         );
 
         store
-            .rollback_files(&cp, &[file_path.clone()])
+            .rollback_files(&cp, std::slice::from_ref(&file_path))
             .await
             .unwrap();
         assert_eq!(
@@ -1525,7 +1525,7 @@ mod tests {
         std::fs::write(&binary_file, &modified_binary).unwrap();
 
         store
-            .rollback_files(&cp, &[binary_file.clone()])
+            .rollback_files(&cp, std::slice::from_ref(&binary_file))
             .await
             .unwrap();
 

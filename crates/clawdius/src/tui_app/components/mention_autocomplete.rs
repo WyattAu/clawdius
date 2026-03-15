@@ -181,8 +181,8 @@ impl MentionAutocomplete {
                 .trim_start_matches("@folder:");
             if let Ok(entries) = std::fs::read_dir(working_dir) {
                 let mut matching_paths: Vec<String> = entries
-                    .filter_map(|e| e.ok())
-                    .filter_map(|e| e.file_name().to_str().map(|s| s.to_string()))
+                    .filter_map(std::result::Result::ok)
+                    .filter_map(|e| e.file_name().to_str().map(std::string::ToString::to_string))
                     .filter(|s| s.starts_with(path_partial) && !s.starts_with('.'))
                     .take(10)
                     .collect();
@@ -197,7 +197,7 @@ impl MentionAutocomplete {
                     };
                     suggestions.push(MentionSuggestion {
                         mention_type: mention_type.to_string(),
-                        value: format!("{}:{}", mention_type, path),
+                        value: format!("{mention_type}:{path}"),
                         description: if std::path::Path::new(&working_dir.join(&path)).is_dir() {
                             "Directory".to_string()
                         } else {
@@ -277,7 +277,7 @@ pub fn highlight_mentions(text: &str) -> Vec<Span<'_>> {
         r"@git:(?:diff|staged|log(?::\d+)?)",
         r"@symbol:[^\s]+",
         r#"@search:"[^"]+""#,
-        r###"@search:(?!")[^\s]+"###,
+        r#"@search:(?!")[^\s]+"#,
     ];
 
     let mut mentions: Vec<(usize, usize)> = Vec::new();

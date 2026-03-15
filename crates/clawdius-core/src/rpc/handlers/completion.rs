@@ -231,8 +231,6 @@ impl CompletionHandler {
             "\n    \"\"\"TODO: Add class docstring\"\"\"\n    pass\n".to_string()
         } else if line.starts_with("async def ") && line.contains(':') {
             "\n    \"\"\"TODO: Add async docstring\"\"\"\n    pass\n".to_string()
-        } else if line.starts_with('#') {
-            String::new()
         } else {
             String::new()
         }
@@ -247,8 +245,6 @@ impl CompletionHandler {
             "\n  // TODO: Implement\n".to_string()
         } else if line.starts_with("class ") && line.contains('{') {
             "\n  constructor() {\n    // TODO: Initialize\n  }\n".to_string()
-        } else if line.starts_with("//") {
-            String::new()
         } else {
             String::new()
         }
@@ -259,19 +255,13 @@ impl CompletionHandler {
             "\n\t// TODO: Implement\n".to_string()
         } else if line.starts_with("type ") && line.contains("struct") {
             " {\n\t// Fields\n}".to_string()
-        } else if line.starts_with("//") {
-            String::new()
         } else {
             String::new()
         }
     }
 
-    fn generic_completion(&self, line: &str, _lines: &[&str]) -> String {
-        if line.trim().is_empty() {
-            String::new()
-        } else {
-            String::new()
-        }
+    fn generic_completion(&self, _line: &str, _lines: &[&str]) -> String {
+        String::new()
     }
 
     fn build_messages(&self, req: &CompletionRequest) -> Vec<ChatMessage> {

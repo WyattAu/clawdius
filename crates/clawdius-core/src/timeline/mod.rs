@@ -551,7 +551,10 @@ mod tests {
         std::fs::write(&file1, "modified 1").unwrap();
         std::fs::write(&file2, "modified 2").unwrap();
 
-        manager.rollback_files(&cp, &[file1.clone()]).await.unwrap();
+        manager
+            .rollback_files(&cp, std::slice::from_ref(&file1))
+            .await
+            .unwrap();
 
         assert_eq!(std::fs::read_to_string(&file1).unwrap(), "original 1");
         assert_eq!(std::fs::read_to_string(&file2).unwrap(), "modified 2");

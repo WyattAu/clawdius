@@ -75,7 +75,7 @@ impl App {
         match self.mode {
             AppMode::Help => {
                 match key.code {
-                    KeyCode::Char('q') | KeyCode::Esc | KeyCode::Char('?') => {
+                    KeyCode::Char('q' | '?') | KeyCode::Esc => {
                         self.mode = AppMode::Chat;
                     }
                     _ => {}
@@ -312,14 +312,14 @@ impl App {
                     match AgentMode::load_by_name(mode_name, &modes_dir) {
                         Ok(mode) => {
                             self.agent_mode = mode;
-                            self.chat_view.add_message(Message::system(&format!(
+                            self.chat_view.add_message(Message::system(format!(
                                 "Switched to {} mode",
                                 self.agent_mode.name()
                             )));
                         }
                         Err(e) => {
                             self.error_message =
-                                Some(format!("Failed to load mode '{}': {}", mode_name, e));
+                                Some(format!("Failed to load mode '{mode_name}': {e}"));
                         }
                     }
                 } else {
@@ -335,7 +335,7 @@ impl App {
                 if let Ok(modes) = AgentMode::list_all(&modes_dir) {
                     let mode_list: Vec<String> = modes
                         .iter()
-                        .map(|(name, desc)| format!("  {} - {}", name, desc))
+                        .map(|(name, desc)| format!("  {name} - {desc}"))
                         .collect();
                     self.error_message =
                         Some(format!("Available modes:\n{}", mode_list.join("\n")));
@@ -344,7 +344,7 @@ impl App {
                 }
             }
             _ => {
-                self.error_message = Some(format!("Unknown command: {}", cmd));
+                self.error_message = Some(format!("Unknown command: {cmd}"));
             }
         }
     }
@@ -355,18 +355,18 @@ impl App {
         let resolver = clawdius_core::MentionResolver::new(std::env::current_dir()?);
         let context_items = resolver.resolve_all(&message).await?;
 
-        let context_str = if !context_items.is_empty() {
+        let context_str = if context_items.is_empty() {
+            message.clone()
+        } else {
             let items: Vec<String> = context_items
                 .iter()
-                .map(|item| item.to_formatted_string())
+                .map(clawdius_core::ContextItem::to_formatted_string)
                 .collect();
             format!(
                 "\n\n[Context]\n{}\n\n[User Message]\n{}",
                 items.join("\n---\n"),
                 message
             )
-        } else {
-            message.clone()
         };
 
         self.chat_view.add_message(Message::user(&message));
@@ -379,7 +379,7 @@ impl App {
 
         let response = match self.call_llm(&context_str).await {
             Ok(resp) => resp,
-            Err(e) => format!("Error: {}", e),
+            Err(e) => format!("Error: {e}"),
         };
 
         self.chat_view.add_message(Message::assistant(&response));
@@ -397,10 +397,10 @@ impl App {
             .unwrap_or("anthropic");
 
         let llm_config = llm::LlmConfig::from_config(&self.config.llm, provider_name)
-            .map_err(|e| anyhow::anyhow!("Failed to create LLM config: {}. Make sure the appropriate API key is set (e.g., ANTHROPIC_API_KEY, OPENAI_API_KEY, or OLLAMA_BASE_URL).", e))?;
+            .map_err(|e| anyhow::anyhow!("Failed to create LLM config: {e}. Make sure the appropriate API key is set (e.g., ANTHROPIC_API_KEY, OPENAI_API_KEY, or OLLAMA_BASE_URL)."))?;
 
         let provider = llm::create_provider(&llm_config)
-            .map_err(|e| anyhow::anyhow!("Failed to create provider: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("Failed to create provider: {e}"))?;
 
         let messages = vec![
             ChatMessage {
@@ -416,7 +416,7 @@ impl App {
         let response = provider
             .chat(messages)
             .await
-            .map_err(|e| anyhow::anyhow!("LLM API call failed: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("LLM API call failed: {e}"))?;
 
         Ok(response)
     }
@@ -429,7 +429,7 @@ impl App {
         let current_input = self.input.clone();
         let edited_content = editor
             .open_and_edit(&current_input)
-            .map_err(|e| anyhow::anyhow!("Editor error: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("Editor error: {e}"))?;
 
         self.input = edited_content;
 
@@ -622,7 +622,7 @@ impl App {
 
         let title = Line::from(vec![
             Span::styled(
-                format!("[{}]", mode_text),
+                format!("[{mode_text}]"),
                 Style::default().fg(mode_color).add_modifier(Modifier::BOLD),
             ),
             Span::raw(" "),

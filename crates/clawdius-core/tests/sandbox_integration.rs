@@ -94,7 +94,7 @@ mod sandbox_creation {
     fn test_sandbox_debug_format() {
         let config = create_test_config(SandboxTier::TrustedAudited);
         let executor = SandboxExecutor::new(SandboxTier::TrustedAudited, config).unwrap();
-        let debug_str = format!("{:?}", executor);
+        let debug_str = format!("{executor:?}");
         assert!(debug_str.contains("direct"));
         assert!(debug_str.contains("TrustedAudited"));
     }
@@ -451,7 +451,7 @@ mod concurrent_execution {
                 let exec = Arc::clone(&executor);
                 let cwd = cwd.clone();
                 std::thread::spawn(move || {
-                    let output = exec.execute("echo", &[&format!("thread-{}", i)], &cwd);
+                    let output = exec.execute("echo", &[&format!("thread-{i}")], &cwd);
                     output.map(|o| String::from_utf8_lossy(&o.stdout).to_string())
                 })
             })

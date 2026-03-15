@@ -162,12 +162,12 @@ impl CommandParser {
     }
 
     /// Extract variables from template content
-    /// Variables are in the format {{variable_name}}
+    /// Variables are in the format {{`variable_name`}}
     #[must_use]
     pub fn extract_variables(template: &str) -> Vec<String> {
         let re = Regex::new(r"\{\{(\w+)\}\}").unwrap();
         re.captures_iter(template)
-            .filter_map(|cap| Some(cap[1].to_string()))
+            .map(|cap| cap[1].to_string())
             .collect()
     }
 }
