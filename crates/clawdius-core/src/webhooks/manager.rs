@@ -46,6 +46,10 @@ impl WebhookManager {
     }
 
     /// Register a new webhook
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the webhook configuration is invalid.
     pub async fn register(&self, config: WebhookConfig) -> Result<WebhookId> {
         let id = config.id.clone();
         self.webhooks.write().await.insert(id.clone(), config);
@@ -53,6 +57,10 @@ impl WebhookManager {
     }
 
     /// Unregister a webhook
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the storage operation fails.
     pub async fn unregister(&self, id: &WebhookId) -> Result<bool> {
         Ok(self.webhooks.write().await.remove(id).is_some())
     }
@@ -68,6 +76,10 @@ impl WebhookManager {
     }
 
     /// Update a webhook
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the storage operation fails.
     pub async fn update(&self, id: &WebhookId, config: WebhookConfig) -> Result<bool> {
         let mut webhooks = self.webhooks.write().await;
         if webhooks.contains_key(id) {
@@ -79,6 +91,10 @@ impl WebhookManager {
     }
 
     /// Enable/disable a webhook
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the storage operation fails.
     pub async fn set_active(&self, id: &WebhookId, active: bool) -> Result<bool> {
         let mut webhooks = self.webhooks.write().await;
         if let Some(config) = webhooks.get_mut(id) {
@@ -161,7 +177,8 @@ impl WebhookManager {
                     let status = response.status().as_u16();
                     let is_success = response.status().is_success();
                     let body = response.text().await.unwrap_or_default();
-                    let duration_ms = start.elapsed().as_millis() as u64;
+                    // Safe cast: webhook durations won't exceed u64::MAX
+                    let duration_ms = start.elapsed().as_millis().try_into().unwrap_or(u64::MAX);
 
                     if is_success {
                         delivery.success(status, body, duration_ms);
@@ -169,7 +186,7 @@ impl WebhookManager {
                         return;
                     }
 
-                    delivery.fail(format!("HTTP {}: {}", status, body), duration_ms);
+                    delivery.fail(format!("HTTP {status}: {body}"), duration_ms);
                 }
                 Err(e) => {
                     let duration_ms = start.elapsed().as_millis() as u64;
