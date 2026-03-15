@@ -9,7 +9,7 @@ homepage.workspace = true
 documentation = "https://docs.rs/clawdius-core"
 description = "Core library for Clawdius - High-assurance AI coding assistant with multi-tier sandboxing"
 readme = "README.md"
-keywords = ["ai", "llm", "coding-assistant", "agent", "sandbox", "formal-verification"]
+keywords = ["ai", "llm", "coding-assistant", "sandbox", "formal-verification"]
 categories = ["development-tools", "api-bindings", "asynchronous"]
 exclude = [
     "/tests",

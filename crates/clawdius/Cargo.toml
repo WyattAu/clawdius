@@ -4,7 +4,13 @@ version.workspace = true
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+documentation = "https://docs.rs/clawdius"
 description = "Clawdius CLI - High-Assurance Rust-Native Engineering Engine"
+readme = "README.md"
+keywords = ["ai", "llm", "coding-assistant", "cli", "tui"]
+categories = ["command-line-utilities", "development-tools", "asynchronous"]
 
 [[bin]]
 name = "clawdius"
