@@ -1,6 +1,17 @@
 # Changelog
 All notable changes to Clawdius will be documented in this file.
 
+## [1.1.2] - 2026-03-15
+
+### Fixed
+
+- Added `# Errors` documentation to webhook manager functions
+- Fixed potential truncation in duration calculation (u128 → u64 cast)
+
+### Documentation
+
+- Improved webhook module documentation with proper error sections
+
 ## [1.1.1] - 2026-03-15
 
 ### Security

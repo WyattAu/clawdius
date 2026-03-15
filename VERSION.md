@@ -4,19 +4,30 @@
 
 | Attribute | Value |
 |-----------|-------|
-| **Version** | 1.1.1 |
-| **Phase** | v1.1.1 - Security Fix Release |
+| **Version** | 1.1.2 |
+| **Phase** | v1.1.2 - Documentation & Quality Release |
 | **Status** | ✅ STABLE |
 | **API Stability** | ✅ GUARANTEED |
 | **Last Updated** | 2026-03-15 |
 | **Error Level** | None |
-| **Rollback Checkpoint** | v1.1.1 |
+| **Rollback Checkpoint** | v1.1.2 |
 | **Feature Matrix** | [.reports/feature_implementation_matrix.md](.reports/feature_implementation_matrix.md) |
 | **Roadmap** | [ROADMAP.md](ROADMAP.md) |
 
 ## Version History
 
-### v1.1.1 - Security Fix Release (2026-03-15) - CURRENT
+### v1.1.2 - Documentation & Quality Release (2026-03-15) - CURRENT
+
+| Task | Status | Description |
+|------|--------|-------------|
+| Webhook Documentation | ✅ COMPLETE | Added # Errors sections |
+| Safe Casting | ✅ COMPLETE | Fixed u128→u64 with try_into |
+
+**Key Changes:**
+- Added `# Errors` documentation to webhook functions
+- Fixed potential truncation in duration calculation
+
+### v1.1.1 - Security Fix Release (2026-03-15)
 
 | Task | Status | Description |
 |------|--------|-------------|
