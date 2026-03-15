@@ -1426,7 +1426,7 @@ checksum = "3a822ea5bc7590f9d40f1ba12c0dc3c2760f3482c6984db1573ad11031420831"
 
 [[package]]
 name = "clawdius"
-version = "1.0.0-rc.1"
+version = "1.0.0"
 dependencies = [
  "anyhow",
  "chrono",
@@ -1455,7 +1455,7 @@ dependencies = [
 
 [[package]]
 name = "clawdius-code"
-version = "1.0.0-rc.1"
+version = "1.0.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -1472,7 +1472,7 @@ dependencies = [
 
 [[package]]
 name = "clawdius-core"
-version = "1.0.0-rc.1"
+version = "1.0.0"
 dependencies = [
  "anyhow",
  "arrow",
