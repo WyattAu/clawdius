@@ -2,6 +2,9 @@
 name = "clawdius-webview"
 version = "0.1.0"
 edition = "2021"
+license = "Apache-2.0"
+authors = ["Clawdius Team <team@clawdius.dev>"]
+description = "WASM webview UI for Clawdius"
 
 [lib]
 crate-type = ["cdylib", "rlib"]

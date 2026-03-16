@@ -4,30 +4,38 @@
 
 | Attribute | Value |
 |-----------|-------|
-| **Version** | 1.1.2 |
-| **Phase** | v1.1.2 - Documentation & Quality Release |
+| **Version** | 1.1.3 |
+| **Phase** | v1.1.3 - Dependency Cleanup Release |
 | **Status** | ✅ STABLE |
 | **API Stability** | ✅ GUARANTEED |
 | **Last Updated** | 2026-03-15 |
 | **Error Level** | None |
-| **Rollback Checkpoint** | v1.1.2 |
+| **Rollback Checkpoint** | v1.1.3 |
 | **Feature Matrix** | [.reports/feature_implementation_matrix.md](.reports/feature_implementation_matrix.md) |
 | **Roadmap** | [ROADMAP.md](ROADMAP.md) |
 
 ## Version History
 
-### v1.1.2 - Documentation & Quality Release (2026-03-15) - CURRENT
+### v1.1.3 - Dependency Cleanup Release (2026-03-15) - CURRENT
 
 | Task | Status | Description |
 |------|--------|-------------|
-| Webhook Documentation | ✅ COMPLETE | Added # Errors sections |
-| Safe Casting | ✅ COMPLETE | Fixed u128→u64 with try_into |
+| deny.toml Configuration | ✅ COMPLETE | Added ignore rules for unmaintained crates |
+| Dependency Documentation | ✅ COMPLETE | Documented known transitive warnings |
 
 **Key Changes:**
-- Added `# Errors` documentation to webhook functions
-- Fixed potential truncation in duration calculation
+- Added ignore rules for unmaintained crate warnings (not vulnerabilities)
+- Documented remaining transitive warnings in VERSION.md
+- Cleaned up advisory configuration
 
-### v1.1.1 - Security Fix Release (2026-03-15)
+**Remaining Transitive Warnings (not fixable without upstream changes):**
+- RUSTSEC-2026-0002 (lru 0.12.5 via tantivy) - Soundness issue in IterMut, not used by tantivy's search functionality
+- RUSTSEC-2023-0086 (lexical-core via arrow) - Soundness issues, affects parsing edge cases
+- Unmaintained crates: bincode (via syntect), fxhash (via monoio), number_prefix (via indicatif), paste (widespread), proc-macro-error (via leptos), yaml-rust (via syntect)
+
+**Note:** These are informational warnings about unmaintained crates, not security vulnerabilities. They are documented in `deny.toml` and `audit.toml`.
+
+### v1.1.2 - Documentation & Quality Release (2026-03-15)
 
 | Task | Status | Description |
 |------|--------|-------------|
@@ -45,7 +53,9 @@
 **Remaining Transitive Warnings (not fixable without upstream changes):**
 - RUSTSEC-2026-0002 (lru 0.12.5 via tantivy) - Soundness issue in IterMut, not used by tantivy's search functionality
 - RUSTSEC-2023-0086 (lexical-core via arrow) - Soundness issues, affects parsing edge cases
-- Unmaintained crates: bincode, fxhash, number_prefix, paste, proc-macro-error, yaml-rust
+- Unmaintained crates: bincode (via syntect), fxhash (via monoio), number_prefix (via indicatif), paste (widespread), proc-macro-error (via leptos), yaml-rust (via syntect)
+
+**Note:** These are informational warnings about unmaintained crates, not security vulnerabilities. They are documented in `deny.toml` and `audit.toml`.
 
 ### v1.1.0 - REST API & Webhook Release (2026-03-15)
 

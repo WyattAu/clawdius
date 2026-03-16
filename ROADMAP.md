@@ -1,9 +1,9 @@
 # Clawdius Roadmap
 ## Strategic Vision & Development Plan
 
-**Current Version:** 1.1.2  
+**Current Version:** 1.1.3  
 **Target:** v2.0.0 with Agentic Workflows  
-**Last Updated:** 2026-03-15
+**Last Updated** 2026-03-15
 
 ---
 

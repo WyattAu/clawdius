@@ -1,6 +1,18 @@
 # Changelog
 All notable changes to Clawdius will be documented in this file.
 
+## [1.1.3] - 2026-03-15
+
+### Changed
+
+- Added ignore rules in `deny.toml` for unmaintained crate warnings (not vulnerabilities)
+- Documented known transitive dependency warnings in VERSION.md
+
+### Documentation
+
+- Documented remaining transitive warnings (unmaintained crates, not vulnerabilities)
+- Added `audit.toml` configuration for future use
+
 ## [1.1.2] - 2026-03-15
 
 ### Fixed
