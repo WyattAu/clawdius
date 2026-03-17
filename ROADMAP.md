@@ -2,14 +2,18 @@
 ## Strategic Vision & Development Plan
 
 **Current Version:** 1.1.3  
-**Target:** v2.0.0 with Agentic Workflows  
-**Last Updated** 2026-03-15
+**Target:** v2.0.0 with Agentic Workflows & Multi-Profile Platform  
+**Last Updated** 2026-03-16
 
 ---
 
 ## Executive Summary
 
-Clawdius v1.1.0 adds REST API and Webhook infrastructure while maintaining honest feature documentation.
+Clawdius v2.0.0 will be a **multi-purpose platform** supporting:
+1. **Agentic Coding** - Code generation with multiple modes (single-pass, iterative, agent-based)
+2. **Remote LLM Proxy** - API server for LLM access
+3. **Personal/Company Assistant** - General AI assistant capabilities
+4. **HFT/Trading** - High-frequency trading using LLM for signal analysis
 
 ### Current Achievements
 
@@ -25,16 +29,16 @@ Clawdius v1.1.0 adds REST API and Webhook infrastructure while maintaining hones
 | **REST API** | Full CRUD for sessions, tools, plugins |
 | **Webhooks** | Event-driven notifications with HMAC signing |
 
-### Honest Feature Status
+### v2.0.0 Planning Progress (2026-03-16)
 
-| Feature | Status | Notes |
-|---------|--------|-------|
-| REST API | ✅ Production-ready | Actor pattern, thread-safe |
-| Webhooks | ✅ Production-ready | HMAC signing, retry logic |
-| Workflow Engine | ✅ Production-ready | Dependency graph, parallel execution |
-| **Agentic Code Generation** | ⚠️ Stub | Placeholder output, needs LLM integration |
-| **Agentic Test Generation** | ⚠️ Stub | Placeholder output, needs LLM integration |
-| **Agentic Doc Generation** | ⚠️ Stub | Placeholder output, needs LLM integration |
+| Task | Status | Description |
+|------|--------|-------------|
+| HFT Trading Profile | ✅ COMPLETE | [docs/HFT_TRADING_PROFILE.md](docs/HFT_TRADING_PROFILE.md) |
+| Competitor Comparison | ✅ COMPLETE | [docs/COMPETITOR_COMPARISON.md](docs/COMPETITOR_COMPARISON.md) |
+| Trading Profile Config | ✅ COMPLETE | [docs/PROFILES/trading.toml](docs/PROFILES/trading.toml) |
+| GenerationMode Enum | 📋 NEXT | Single-pass, iterative, agent-based modes |
+| Test/Apply Strategies | 📋 PLANNED | User choice for workflows |
+| Agent System | 📋 PLANNED | Planner, Executor, Verifier agents |
 
 ---
 

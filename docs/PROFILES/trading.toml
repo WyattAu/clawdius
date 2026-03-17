@@ -1,0 +1,305 @@
+# Trading Profile Configuration
+# Clawdius HFT with LLM-powered sentiment analysis
+
+[profile]
+name = "trading"
+description = "High-frequency trading with LLM sentiment analysis"
+version = "1.0.0"
+mode = "trading"
+
+# ============================================================
+# TRADING MODE CONFIGURATION
+# ============================================================
+
+[trading]
+# Trading mode: "paper" or "live"
+mode = "paper"
+
+# Maximum concurrent open positions
+max_open_positions = 10
+
+# Default order type: "market", "limit", "stop"
+default_order_type = "limit"
+
+# Order timeout in milliseconds
+order_timeout_ms = 5000
+
+# ============================================================
+# PAPER TRADING CONFIGURATION
+# ============================================================
+
+[paper_trading]
+# Starting virtual capital
+initial_capital = 1_000_000.00
+
+# Simulated slippage in basis points
+slippage_bps = 5
+
+# Simulated execution latency in milliseconds
+execution_latency_ms = 50
+
+# Commission rate (0.001 = 0.1%)
+commission_rate = 0.001
+
+# Save trades for analysis
+save_trades = true
+trades_file = "data/paper_trades.jsonl"
+
+# Calculate performance metrics
+calculate_metrics = true
+metrics_interval_secs = 60
+
+# ============================================================
+# STRATEGIES
+# ============================================================
+
+[strategies]
+# Enabled trading strategies
+enabled = [
+    "MovingAverageCrossover",
+    "RsiStrategy",
+    "LlmSentimentStrategy",
+    "VolumeProfileStrategy"
+]
+
+# Strategy-specific configurations
+[strategies.moving_average_crossover]
+short_period = 10
+long_period = 20
+signal_threshold = 0.6
+enabled = true
+
+[strategies.rsi]
+period = 14
+oversold_threshold = 30
+overbought_threshold = 70
+enabled = true
+
+[strategies.llm_sentiment]
+# LLM-powered sentiment analysis
+sentiment_threshold = 0.5          # Trigger signal above this
+min_sources = 5                     # Minimum sources required
+confidence_threshold = 0.7          # Minimum confidence
+refresh_interval_ms = 30000         # How often to re-analyze
+enabled = true
+
+[strategies.volume_profile]
+lookback_periods = 50
+volume_threshold_multiplier = 2.0
+enabled = true
+
+# ============================================================
+# LLM SENTIMENT SOURCES
+# ============================================================
+
+[sentiment_sources]
+
+[sentiment_sources.news]
+# News feed providers
+enabled = true
+providers = ["reuters", "bloomberg"]
+# Refresh interval for news
+refresh_interval_ms = 5000
+
+[sentiment_sources.social]
+# Social media sentiment
+enabled = true
+providers = ["twitter", "reddit"]
+# Track these symbols/cashtags
+track_symbols = true
+# Track these hashtags
+track_hashtags = ["#earnings", "#markets", "#trading"]
+
+[sentiment_sources.sec]
+# SEC filings analysis
+enabled = true
+form_types = ["10-K", "10-Q", "8-K", "4"]
+
+[sentiment_sources.llm]
+# LLM configuration for sentiment analysis
+provider = "openai"                # "openai", "anthropic", "local"
+model = "gpt-4-turbo"
+temperature = 0.3
+max_tokens = 1000
+
+# System prompt for financial analysis
+system_prompt = """
+You are a financial sentiment analyst. Analyze the provided text and extract:
+1. Overall sentiment (-1.0 bearish to 1.0 bullish)
+2. Confidence level (0.0 to 1.0)
+3. Key market events detected
+4. Risk factors mentioned
+
+Respond in JSON format with keys: sentiment, confidence, events, risk_factors
+"""
+
+# ============================================================
+# RISK MANAGEMENT (SEC 15c3-5)
+# ============================================================
+
+[risk]
+# Pre-trade risk controls
+
+# Maximum value per order
+max_order_value = 100_000.00
+
+# Maximum daily trading volume
+max_daily_volume = 1_000_000.00
+
+# Maximum position size per symbol (shares)
+max_position_size = 10_000
+
+# Kill switch: halt trading if daily loss exceeds this percentage
+max_daily_loss_pct = 5.0
+
+# Restricted symbols (cannot trade)
+restricted_symbols = ["PENN", "GME", "AMC", "BBBY"]
+
+# Circuit breaker settings
+[risk.circuit_breaker]
+# Pause trading after this many consecutive losses
+consecutive_losses = 5
+# Pause duration in minutes
+pause_duration_mins = 30
+# Pause after this percentage drawdown
+max_drawdown_pct = 10.0
+
+# ============================================================
+# SAFETY SETTINGS
+# ============================================================
+
+[safety]
+# Require manual confirmation for orders above this value
+confirmation_threshold = 50_000.00
+
+# Enable kill switch (emergency stop all trading)
+kill_switch_enabled = true
+
+# Auto-disable on critical errors
+disable_on_error = true
+
+# ============================================================
+# NOTIFICATIONS
+# ============================================================
+
+[notifications]
+# Notification channels
+channels = ["webhook", "matrix"]
+
+# Notify on order fill
+notify_on_fill = true
+
+# Notify on risk warnings
+notify_on_risk_warning = true
+
+# Notify on circuit breaker trigger
+notify_on_circuit_breaker = true
+
+# Notify on daily summary
+notify_on_daily_summary = true
+daily_summary_time = "16:00"  # Market close
+
+[notifications.webhook]
+enabled = true
+url = "${TRADING_WEBHOOK_URL}"
+# Include order details in webhook
+include_order_details = true
+
+[notifications.matrix]
+enabled = false
+homeserver = "https://matrix.org"
+room_id = "${MATRIX_ROOM_ID}"
+access_token = "${MATRIX_ACCESS_TOKEN}"
+
+# ============================================================
+# BROKER CONFIGURATION
+# ============================================================
+
+[broker]
+# Default broker provider
+provider = "alpaca"
+
+[broker.alpaca]
+enabled = true
+api_key = "${ALPACA_API_KEY}"
+api_secret = "${ALPACA_API_SECRET}"
+# "paper" or "live" endpoint
+endpoint = "paper"
+
+[broker.interactive_brokers]
+enabled = false
+# TWS or Gateway connection
+host = "127.0.0.1"
+port = 7497
+client_id = 1
+
+[broker.coinbase]
+enabled = false
+api_key = "${COINBASE_API_KEY}"
+api_secret = "${COINBASE_API_SECRET}"
+# For crypto trading
+sandbox = true
+
+# ============================================================
+# DATA FEEDS
+# ============================================================
+
+[feeds]
+# Market data providers
+
+[feeds.alpaca]
+enabled = true
+# Real-time quotes and trades
+stream_quotes = true
+stream_trades = true
+
+[feeds.iex]
+enabled = false
+api_key = "${IEX_API_KEY}"
+
+[feeds.symbols]
+# Default symbols to track
+watchlist = [
+    "AAPL", "MSFT", "GOOGL", "AMZN", "NVDA",
+    "META", "TSLA", "BRK.B", "JPM", "JNJ"
+]
+
+# ============================================================
+# PERFORMANCE TARGETS
+# ============================================================
+
+[performance]
+# Latency targets (milliseconds)
+signal_generation_max_ms = 1
+risk_check_max_ms = 0.1
+order_submission_max_ms = 10
+total_pipeline_max_ms = 15
+
+# Throughput targets
+signals_per_second_min = 1000
+orders_per_second_min = 100
+
+# ============================================================
+# LOGGING AND MONITORING
+# ============================================================
+
+[logging]
+# Log level: "trace", "debug", "info", "warn", "error"
+level = "info"
+
+# Log all signals generated
+log_signals = true
+
+# Log all orders submitted
+log_orders = true
+
+# Log risk check results
+log_risk_checks = true
+
+# Performance metrics
+[metrics]
+enabled = true
+# Export metrics endpoint
+endpoint = "127.0.0.1:9090"
+# Metrics collection interval
+interval_secs = 10

@@ -5,18 +5,40 @@
 | Attribute | Value |
 |-----------|-------|
 | **Version** | 1.1.3 |
-| **Phase** | v1.1.3 - Dependency Cleanup Release |
-| **Status** | ✅ STABLE |
+| **Phase** | v2.0.0 Planning - Documentation & Architecture |
+| **Status** | 🔄 IN PROGRESS |
 | **API Stability** | ✅ GUARANTEED |
-| **Last Updated** | 2026-03-15 |
+| **Last Updated** | 2026-03-16 |
 | **Error Level** | None |
 | **Rollback Checkpoint** | v1.1.3 |
 | **Feature Matrix** | [.reports/feature_implementation_matrix.md](.reports/feature_implementation_matrix.md) |
 | **Roadmap** | [ROADMAP.md](ROADMAP.md) |
+| **HFT Profile** | [docs/HFT_TRADING_PROFILE.md](docs/HFT_TRADING_PROFILE.md) |
+| **Competitor Analysis** | [docs/COMPETITOR_COMPARISON.md](docs/COMPETITOR_COMPARISON.md) |
 
 ## Version History
 
-### v1.1.3 - Dependency Cleanup Release (2026-03-15) - CURRENT
+### v2.0.0-pre - Documentation & Architecture (2026-03-16) - IN PROGRESS
+
+| Task | Status | Description |
+|------|--------|-------------|
+| HFT Trading Profile | ✅ COMPLETE | Comprehensive trading documentation |
+| Competitor Comparison | ✅ COMPLETE | Full competitive analysis |
+| Trading Profile Config | ✅ COMPLETE | TOML configuration for trading mode |
+| GenerationMode Enum | ✅ COMPLETE | Single-pass, iterative, agent modes |
+| Test/Apply Strategies | ✅ COMPLETE | User choice for workflows |
+| Agent System Types | ✅ COMPLETE | Planner, Executor, Verifier agents |
+| LLM Integration | ✅ COMPLETE | Real LLM code generation with LlmCodeGenerator |
+| File Operations | ✅ COMPLETE | Real file operations with backup/rollback |
+| MCP Protocol | ✅ COMPLETE | Model Context Protocol types |
+| LSP Integration | ✅ COMPLETE | Language Server Protocol |
+
+**Key Documents Created:**
+- `docs/HFT_TRADING_PROFILE.md` - Complete HFT architecture and LLM integration
+- `docs/COMPETITOR_COMPARISON.md` - Competitive analysis vs Claude Code, Cursor, Aider, etc.
+- `docs/PROFILES/trading.toml` - Trading profile configuration
+
+### v1.1.3 - Dependency Cleanup Release (2026-03-15)
 
 | Task | Status | Description |
 |------|--------|-------------|
