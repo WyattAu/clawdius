@@ -3805,25 +3805,7 @@ async fn handle_generate(
         .map(|f| f.split(',').map(|s| s.trim().to_string()).collect())
         .unwrap_or_default();
 
-    // Load config
-    let config = load_config(config_path.as_ref())?;
-
-    // Create LLM client
-    let mut llm_config = LlmConfig::from_config(&config.llm, &provider)?;
-    if let Some(ref m) = model {
-        llm_config.model = m.clone();
-    }
-
-    let llm_client = std::sync::Arc::new(create_provider(&llm_config)?);
-
-    // Create agentic system
-    let apply_workflow =
-        ApplyWorkflow::trust_based_with_level(trust_level, trust_level < TrustLevel::High);
-
-    let mut system =
-        AgenticSystem::new(generation_mode.clone(), test_exec_strategy, apply_workflow)
-            .with_llm_client(llm_client);
-
+    // Show starting info
     match output_format {
         OutputFormat::Json => {
             println!(
@@ -3876,6 +3858,7 @@ async fn handle_generate(
         trust_level,
     };
 
+    // Handle dry-run mode early (no LLM client needed)
     if dry_run {
         match output_format {
             OutputFormat::Json => {
@@ -3884,12 +3867,27 @@ async fn handle_generate(
                     serde_json::json!({
                         "status": "dry_run",
                         "message": "Would execute task",
-                        "task": request.description
+                        "task": request.description,
+                        "config": {
+                            "mode": mode,
+                            "trust": trust,
+                            "test_strategy": test_strategy,
+                            "max_iterations": max_iterations
+                        }
                     })
                 );
             }
             OutputFormat::Text => {
                 println!("[DRY RUN] Would execute task: {}", request.description);
+                println!();
+                println!("Configuration:");
+                println!("  Mode: {:?}", generation_mode);
+                println!("  Trust: {:?}", trust_level);
+                println!("  Test Strategy: {:?}", test_exec_strategy);
+                println!("  Apply Workflow: {:?}", request.apply_workflow);
+                if !request.target_files.is_empty() {
+                    println!("  Target Files: {:?}", request.target_files);
+                }
             }
             OutputFormat::StreamJson => {
                 println!(
@@ -3903,6 +3901,23 @@ async fn handle_generate(
         }
         return Ok(());
     }
+
+    // Load config and create LLM client (only when not in dry-run mode)
+    let config = load_config(config_path.as_ref())?;
+    let mut llm_config = LlmConfig::from_config(&config.llm, &provider)?;
+    if let Some(ref m) = model {
+        llm_config.model = m.clone();
+    }
+
+    let llm_client = std::sync::Arc::new(create_provider(&llm_config)?);
+
+    // Create agentic system
+    let apply_workflow =
+        ApplyWorkflow::trust_based_with_level(trust_level, trust_level < TrustLevel::High);
+
+    let mut system =
+        AgenticSystem::new(generation_mode.clone(), test_exec_strategy, apply_workflow)
+            .with_llm_client(llm_client);
 
     // Execute the task
     let task_result = system.execute(request).await?;

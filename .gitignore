@@ -239,3 +239,4 @@ logs/
 .cursor/
 .continue/
 .cody/
+.clawdius/config.toml
