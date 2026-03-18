@@ -759,3 +759,124 @@ fn test_llm_config_serialization() {
     let deserialized: LlmConfig = serde_json::from_str(&json).unwrap();
     assert_eq!(deserialized.provider, "anthropic");
 }
+
+// ============================================================================
+// Generate Command Tests
+// ============================================================================
+
+mod generate_tests {
+    use clawdius_core::agentic::{
+        apply_workflow::{ApplyWorkflow, TrustLevel},
+        generation_mode::GenerationMode,
+        test_execution::TestExecutionStrategy,
+        TaskContext, TaskRequest,
+    };
+
+    /// Test that TaskRequest can be created with all required fields
+    #[test]
+    fn test_task_request_creation() {
+        let request = TaskRequest {
+            id: "test-123".to_string(),
+            description: "Add a hello world function".to_string(),
+            target_files: vec!["src/main.rs".to_string()],
+            mode: GenerationMode::SinglePass,
+            test_strategy: TestExecutionStrategy::Skip,
+            apply_workflow: ApplyWorkflow::trust_based_with_level(TrustLevel::Medium, true),
+            context: TaskContext::default(),
+            trust_level: TrustLevel::Medium,
+        };
+
+        assert_eq!(request.id, "test-123");
+        assert_eq!(request.description, "Add a hello world function");
+        assert_eq!(request.target_files.len(), 1);
+    }
+
+    /// Test generation mode parsing
+    #[test]
+    fn test_generation_mode_single_pass() {
+        let mode = GenerationMode::SinglePass;
+        assert!(matches!(mode, GenerationMode::SinglePass));
+    }
+
+    #[test]
+    fn test_generation_mode_iterative() {
+        let mode = GenerationMode::Iterative { max_iterations: 5 };
+        if let GenerationMode::Iterative { max_iterations } = mode {
+            assert_eq!(max_iterations, 5);
+        } else {
+            panic!("Expected Iterative mode");
+        }
+    }
+
+    #[test]
+    fn test_generation_mode_agent() {
+        let mode = GenerationMode::AgentBased {
+            max_steps: 10,
+            autonomous: true,
+        };
+        if let GenerationMode::AgentBased {
+            max_steps,
+            autonomous,
+        } = mode
+        {
+            assert_eq!(max_steps, 10);
+            assert!(autonomous);
+        } else {
+            panic!("Expected AgentBased mode");
+        }
+    }
+
+    /// Test trust level parsing
+    #[test]
+    fn test_trust_level_high() {
+        let workflow = ApplyWorkflow::trust_based_with_level(TrustLevel::High, false);
+        if let ApplyWorkflow::TrustBased { level, .. } = workflow {
+            assert!(matches!(level, TrustLevel::High));
+        } else {
+            panic!("Expected TrustBased workflow");
+        }
+    }
+
+    #[test]
+    fn test_trust_level_medium() {
+        let workflow = ApplyWorkflow::trust_based_with_level(TrustLevel::Medium, true);
+        if let ApplyWorkflow::TrustBased { level, .. } = workflow {
+            assert!(matches!(level, TrustLevel::Medium));
+        } else {
+            panic!("Expected TrustBased workflow");
+        }
+    }
+
+    /// Test that low trust level has expected behavior
+    #[test]
+    fn test_low_trust_level() {
+        let workflow = ApplyWorkflow::trust_based_with_level(TrustLevel::Low, true);
+        if let ApplyWorkflow::TrustBased { level, .. } = workflow {
+            assert!(matches!(level, TrustLevel::Low));
+        } else {
+            panic!("Expected TrustBased workflow");
+        }
+    }
+
+    /// Test test execution strategies
+    #[test]
+    fn test_execution_strategy_skip() {
+        let strategy = TestExecutionStrategy::Skip;
+        assert!(matches!(strategy, TestExecutionStrategy::Skip));
+    }
+
+    #[test]
+    fn test_execution_strategy_sandboxed() {
+        let strategy = TestExecutionStrategy::sandboxed();
+        assert!(matches!(strategy, TestExecutionStrategy::Sandboxed { .. }));
+    }
+
+    #[test]
+    fn test_execution_strategy_direct() {
+        let strategy = TestExecutionStrategy::direct_with_rollback();
+        assert!(matches!(
+            strategy,
+            TestExecutionStrategy::DirectWithRollback { .. }
+        ));
+    }
+}
