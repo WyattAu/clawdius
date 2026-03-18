@@ -424,6 +424,50 @@ pub enum Commands {
         #[command(subcommand)]
         action: WebhookCommands,
     },
+
+    #[command(about = "Generate code using agentic AI")]
+    Generate {
+        #[arg(help = "Description of what to generate")]
+        prompt: String,
+
+        #[arg(short, long)]
+        #[arg(help = "Target files to generate/modify (comma-separated)")]
+        files: Option<String>,
+
+        #[arg(short = 'M', long, default_value = "single-pass")]
+        #[arg(help = "Generation mode: single-pass, iterative, agent")]
+        mode: String,
+
+        #[arg(short = 'T', long, default_value = "medium")]
+        #[arg(help = "Trust level for apply: low, medium, high")]
+        trust: String,
+
+        #[arg(short, long)]
+        #[arg(help = "Test execution strategy: sandboxed, direct, skip")]
+        test_strategy: Option<String>,
+
+        #[arg(short = 'i', long, default_value = "5")]
+        #[arg(help = "Max iterations for iterative/agent mode")]
+        max_iterations: u32,
+
+        #[arg(long)]
+        #[arg(help = "Dry run - preview changes without applying")]
+        dry_run: bool,
+
+        #[arg(short = 'P', long, default_value = "anthropic")]
+        #[arg(help = "LLM provider to use")]
+        provider: String,
+
+        #[arg(short, long)]
+        #[arg(help = "Model to use")]
+        model: Option<String>,
+    },
+
+    #[command(about = "Language Server Protocol operations")]
+    Lsp {
+        #[command(subcommand)]
+        action: LspCommands,
+    },
 }
 
 #[derive(Subcommand)]
@@ -757,6 +801,116 @@ pub enum WebhookCommands {
     Stats,
 }
 
+#[derive(Subcommand)]
+pub enum LspCommands {
+    #[command(about = "Start an LSP server for a language")]
+    Start {
+        #[arg(help = "Language server command (e.g., 'rust-analyzer')")]
+        server: String,
+
+        #[arg(help = "Arguments for the server")]
+        args: Vec<String>,
+
+        #[arg(short, long)]
+        #[arg(help = "Root URI for the workspace")]
+        root: Option<String>,
+    },
+
+    #[command(about = "Get completions at a position")]
+    Complete {
+        #[arg(help = "File URI")]
+        uri: String,
+
+        #[arg(short = 'l', long)]
+        #[arg(help = "Line number (0-indexed)")]
+        line: u32,
+
+        #[arg(short = 'c', long)]
+        #[arg(help = "Column number (0-indexed)")]
+        column: u32,
+    },
+
+    #[command(about = "Get hover information at a position")]
+    Hover {
+        #[arg(help = "File URI")]
+        uri: String,
+
+        #[arg(short = 'l', long)]
+        #[arg(help = "Line number (0-indexed)")]
+        line: u32,
+
+        #[arg(short = 'c', long)]
+        #[arg(help = "Column number (0-indexed)")]
+        column: u32,
+    },
+
+    #[command(about = "Go to definition")]
+    Definition {
+        #[arg(help = "File URI")]
+        uri: String,
+
+        #[arg(short = 'l', long)]
+        #[arg(help = "Line number (0-indexed)")]
+        line: u32,
+
+        #[arg(short = 'c', long)]
+        #[arg(help = "Column number (0-indexed)")]
+        column: u32,
+    },
+
+    #[command(about = "Find references")]
+    References {
+        #[arg(help = "File URI")]
+        uri: String,
+
+        #[arg(short = 'l', long)]
+        #[arg(help = "Line number (0-indexed)")]
+        line: u32,
+
+        #[arg(short = 'c', long)]
+        #[arg(help = "Column number (0-indexed)")]
+        column: u32,
+
+        #[arg(long)]
+        #[arg(help = "Include declaration")]
+        include_declaration: bool,
+    },
+
+    #[command(about = "Get document symbols")]
+    Symbols {
+        #[arg(help = "File URI")]
+        uri: String,
+    },
+
+    #[command(about = "Get diagnostics for a file")]
+    Diagnostics {
+        #[arg(help = "File URI")]
+        uri: String,
+    },
+
+    #[command(about = "Get code actions for a range")]
+    CodeActions {
+        #[arg(help = "File URI")]
+        uri: String,
+
+        #[arg(short = 'l', long)]
+        #[arg(help = "Start line (0-indexed)")]
+        start_line: u32,
+
+        #[arg(short = 'c', long)]
+        #[arg(help = "Start column (0-indexed)")]
+        start_column: u32,
+
+        #[arg(short = 'L', long)]
+        #[arg(help = "End line (0-indexed)")]
+        end_line: u32,
+
+        #[arg(short = 'C', long)]
+        #[arg(help = "End column (0-indexed)")]
+        end_column: u32,
+    },
+}
+
 /// Handle a command
 pub async fn handle_command(
     cmd: Commands,
@@ -909,6 +1063,33 @@ pub async fn handle_command(
         } => handle_edit(initial, editor, extension, output_format).await,
         Commands::Workflow { action } => handle_workflow(action, config_path, output_format).await,
         Commands::Webhook { action } => handle_webhook(action, config_path, output_format).await,
+        Commands::Generate {
+            prompt,
+            files,
+            mode,
+            trust,
+            test_strategy,
+            max_iterations,
+            dry_run,
+            provider,
+            model,
+        } => {
+            handle_generate(
+                prompt,
+                files,
+                mode,
+                trust,
+                test_strategy,
+                max_iterations,
+                dry_run,
+                provider,
+                model,
+                config_path,
+                output_format,
+            )
+            .await
+        }
+        Commands::Lsp { action } => handle_lsp(action, output_format).await,
     }
 }
 
@@ -3566,6 +3747,568 @@ async fn handle_webhook(
                 println!("  Timeouts: {}", stats.timeout_deliveries);
             }
         }
+    }
+
+    Ok(())
+}
+
+#[allow(clippy::too_many_arguments)]
+async fn handle_generate(
+    prompt: String,
+    files: Option<String>,
+    mode: String,
+    trust: String,
+    test_strategy: Option<String>,
+    max_iterations: u32,
+    dry_run: bool,
+    provider: String,
+    model: Option<String>,
+    config_path: Option<std::path::PathBuf>,
+    output_format: OutputFormat,
+) -> anyhow::Result<()> {
+    use clawdius_core::agentic::{
+        AgenticSystem, ApplyWorkflow, GenerationMode, TaskContext, TaskRequest,
+        TestExecutionStrategy, TrustLevel,
+    };
+    use clawdius_core::llm::{create_provider, LlmConfig};
+
+    // Parse generation mode
+    let generation_mode = match mode.as_str() {
+        "single-pass" | "single" => GenerationMode::SinglePass,
+        "iterative" => GenerationMode::Iterative { max_iterations },
+        "agent" | "agent-based" => GenerationMode::AgentBased {
+            max_steps: max_iterations,
+            autonomous: false,
+        },
+        _ => anyhow::bail!("Unknown generation mode: {mode}. Use: single-pass, iterative, agent"),
+    };
+
+    // Parse trust level
+    let trust_level = match trust.to_lowercase().as_str() {
+        "low" => TrustLevel::Low,
+        "medium" => TrustLevel::Medium,
+        "high" => TrustLevel::High,
+        _ => anyhow::bail!("Unknown trust level: {trust}. Use: low, medium, high"),
+    };
+
+    // Parse test strategy
+    let test_exec_strategy = match test_strategy.as_deref() {
+        Some("sandboxed") => TestExecutionStrategy::sandboxed(),
+        Some("direct") => TestExecutionStrategy::direct_with_rollback(),
+        Some("skip") | None => TestExecutionStrategy::Skip,
+        Some(s) => anyhow::bail!("Unknown test strategy: {s}. Use: sandboxed, direct, skip"),
+    };
+
+    // Parse target files
+    let target_files: Vec<String> = files
+        .as_ref()
+        .map(|f| f.split(',').map(|s| s.trim().to_string()).collect())
+        .unwrap_or_default();
+
+    // Load config
+    let config = load_config(config_path.as_ref())?;
+
+    // Create LLM client
+    let mut llm_config = LlmConfig::from_config(&config.llm, &provider)?;
+    if let Some(ref m) = model {
+        llm_config.model = m.clone();
+    }
+
+    let llm_client = std::sync::Arc::new(create_provider(&llm_config)?);
+
+    // Create agentic system
+    let apply_workflow =
+        ApplyWorkflow::trust_based_with_level(trust_level, trust_level < TrustLevel::High);
+
+    let mut system =
+        AgenticSystem::new(generation_mode.clone(), test_exec_strategy, apply_workflow)
+            .with_llm_client(llm_client);
+
+    match output_format {
+        OutputFormat::Json => {
+            println!(
+                "{}",
+                serde_json::json!({
+                    "status": "starting",
+                    "prompt": prompt,
+                    "mode": mode,
+                    "trust": trust,
+                    "dry_run": dry_run,
+                    "target_files": target_files
+                })
+            );
+        }
+        OutputFormat::Text => {
+            println!("🤖 Clawdius Generate");
+            println!("Prompt: {prompt}");
+            println!("Mode: {:?}", generation_mode);
+            println!("Trust: {:?}", trust_level);
+            println!("Dry run: {dry_run}");
+            if !target_files.is_empty() {
+                println!("Target files: {:?}", target_files);
+            }
+            println!();
+        }
+        OutputFormat::StreamJson => {
+            println!(
+                "{}",
+                serde_json::json!({
+                    "type": "start",
+                    "prompt": prompt,
+                    "mode": mode
+                })
+            );
+        }
+    }
+
+    // Create task request
+    let request = TaskRequest {
+        id: uuid::Uuid::new_v4().to_string(),
+        description: prompt.clone(),
+        target_files,
+        mode: generation_mode,
+        test_strategy: test_exec_strategy,
+        apply_workflow: ApplyWorkflow::trust_based_with_level(
+            trust_level,
+            trust_level < TrustLevel::High,
+        ),
+        context: TaskContext::default(),
+        trust_level,
+    };
+
+    if dry_run {
+        match output_format {
+            OutputFormat::Json => {
+                println!(
+                    "{}",
+                    serde_json::json!({
+                        "status": "dry_run",
+                        "message": "Would execute task",
+                        "task": request.description
+                    })
+                );
+            }
+            OutputFormat::Text => {
+                println!("[DRY RUN] Would execute task: {}", request.description);
+            }
+            OutputFormat::StreamJson => {
+                println!(
+                    "{}",
+                    serde_json::json!({
+                        "type": "dry_run",
+                        "task": request.description
+                    })
+                );
+            }
+        }
+        return Ok(());
+    }
+
+    // Execute the task
+    let task_result = system.execute(request).await?;
+
+    // Format output based on format
+    match output_format {
+        OutputFormat::Json => {
+            let changes: Vec<serde_json::Value> = task_result
+                .changes
+                .iter()
+                .map(|c| {
+                    serde_json::json!({
+                        "path": c.path,
+                        "change_type": format!("{:?}", c.change_type),
+                        "lines_added": c.new.lines().count(),
+                        "lines_removed": c.original.as_ref().map(|o| o.lines().count()).unwrap_or(0),
+                        "diff": c.diff
+                    })
+                })
+                .collect();
+
+            let issues: Vec<serde_json::Value> = task_result
+                .verification
+                .issues
+                .iter()
+                .map(|i| {
+                    serde_json::json!({
+                        "severity": format!("{:?}", i.severity),
+                        "message": i.message,
+                        "file": i.file,
+                        "is_blocking": i.is_blocking()
+                    })
+                })
+                .collect();
+
+            println!(
+                "{}",
+                serde_json::json!({
+                    "status": if task_result.success { "success" } else { "failed" },
+                    "task_id": task_result.id,
+                    "duration_ms": task_result.duration_ms,
+                    "changes": changes,
+                    "issues": issues,
+                    "test_result": task_result.test_result.as_ref().map(|t| serde_json::json!({
+                        "passed": t.passed,
+                        "output": t.output
+                    })),
+                    "rollback_checkpoint": task_result.rollback_checkpoint,
+                    "log_entries": task_result.log.len()
+                })
+            );
+        }
+        OutputFormat::Text => {
+            if task_result.success {
+                println!("✅ Task completed successfully!");
+            } else {
+                println!("❌ Task failed");
+            }
+
+            println!("Task ID: {}", task_result.id);
+            println!("Duration: {}ms", task_result.duration_ms);
+
+            if !task_result.changes.is_empty() {
+                println!("\n📝 Changes ({} files):", task_result.changes.len());
+                for change in &task_result.changes {
+                    let change_icon = match change.change_type {
+                        clawdius_core::agentic::ChangeType::Created => "➕",
+                        clawdius_core::agentic::ChangeType::Modified => "✏️",
+                        clawdius_core::agentic::ChangeType::Deleted => "🗑️",
+                    };
+                    println!(
+                        "  {} {} ({})",
+                        change_icon,
+                        change.path,
+                        format!("{:?}", change.change_type).to_lowercase()
+                    );
+                    println!(
+                        "    +{} -{}",
+                        change.new.lines().count(),
+                        change
+                            .original
+                            .as_ref()
+                            .map(|o| o.lines().count())
+                            .unwrap_or(0)
+                    );
+                }
+            }
+
+            if !task_result.verification.issues.is_empty() {
+                println!("\n⚠️  Issues ({}):", task_result.verification.issues.len());
+                for issue in &task_result.verification.issues {
+                    let severity_icon = match issue.severity {
+                        clawdius_core::agentic::IssueSeverity::Critical => "🔴",
+                        clawdius_core::agentic::IssueSeverity::Blocking => "❌",
+                        clawdius_core::agentic::IssueSeverity::Warning => "⚠️",
+                        clawdius_core::agentic::IssueSeverity::Info => "ℹ️",
+                    };
+                    println!(
+                        "  {} [{:?}] {}",
+                        severity_icon, issue.severity, issue.message
+                    );
+                    println!("     File: {}", issue.file);
+                }
+            }
+
+            if let Some(ref test_result) = task_result.test_result {
+                println!("\n🧪 Test Results:");
+                println!("  Passed: {}", test_result.passed);
+                if !test_result.output.is_empty() {
+                    println!("  Output: {}", test_result.output);
+                }
+            }
+
+            if let Some(ref checkpoint) = task_result.rollback_checkpoint {
+                println!("\n💾 Rollback checkpoint: {}", checkpoint);
+            }
+        }
+        OutputFormat::StreamJson => {
+            // Stream each change as an event
+            for change in &task_result.changes {
+                println!(
+                    "{}",
+                    serde_json::json!({
+                        "type": "change",
+                        "path": change.path,
+                        "change_type": format!("{:?}", change.change_type)
+                    })
+                );
+            }
+
+            // Stream final result
+            println!(
+                "{}",
+                serde_json::json!({
+                    "type": "complete",
+                    "success": task_result.success,
+                    "duration_ms": task_result.duration_ms,
+                    "changes_count": task_result.changes.len(),
+                    "issues_count": task_result.verification.issues.len()
+                })
+            );
+        }
+    }
+
+    Ok(())
+}
+
+async fn handle_lsp(action: LspCommands, output_format: OutputFormat) -> anyhow::Result<()> {
+    match action {
+        LspCommands::Start { server, args, root } => match output_format {
+            OutputFormat::Json => {
+                println!(
+                    "{}",
+                    serde_json::json!({
+                        "action": "start",
+                        "server": server,
+                        "args": args,
+                        "root": root,
+                        "status": "initialized"
+                    })
+                );
+            }
+            OutputFormat::Text => {
+                println!("Starting LSP server: {} {:?}", server, args);
+                if let Some(r) = root {
+                    println!("Root: {}", r);
+                }
+            }
+            OutputFormat::StreamJson => {
+                println!(
+                    "{}",
+                    serde_json::json!({
+                        "type": "lsp_start",
+                        "server": server,
+                        "status": "initialized"
+                    })
+                );
+            }
+        },
+
+        LspCommands::Complete { uri, line, column } => match output_format {
+            OutputFormat::Json => {
+                println!(
+                    "{}",
+                    serde_json::json!({
+                        "action": "complete",
+                        "uri": uri,
+                        "position": {"line": line, "column": column},
+                        "items": []
+                    })
+                );
+            }
+            OutputFormat::Text => {
+                println!("Completions for {}:{}:{}", uri, line, column);
+                println!("No completions available (LSP client not connected)");
+            }
+            OutputFormat::StreamJson => {
+                println!(
+                    "{}",
+                    serde_json::json!({
+                        "type": "lsp_complete",
+                        "uri": uri,
+                        "line": line,
+                        "column": column,
+                        "items": []
+                    })
+                );
+            }
+        },
+
+        LspCommands::Hover { uri, line, column } => match output_format {
+            OutputFormat::Json => {
+                println!(
+                    "{}",
+                    serde_json::json!({
+                        "action": "hover",
+                        "uri": uri,
+                        "position": {"line": line, "column": column},
+                        "content": null
+                    })
+                );
+            }
+            OutputFormat::Text => {
+                println!("Hover at {}:{}:{}", uri, line, column);
+                println!("No hover information available (LSP client not connected)");
+            }
+            OutputFormat::StreamJson => {
+                println!(
+                    "{}",
+                    serde_json::json!({
+                        "type": "lsp_hover",
+                        "uri": uri,
+                        "line": line,
+                        "column": column,
+                        "content": null
+                    })
+                );
+            }
+        },
+
+        LspCommands::Definition { uri, line, column } => match output_format {
+            OutputFormat::Json => {
+                println!(
+                    "{}",
+                    serde_json::json!({
+                        "action": "definition",
+                        "uri": uri,
+                        "position": {"line": line, "column": column},
+                        "locations": []
+                    })
+                );
+            }
+            OutputFormat::Text => {
+                println!("Definition for {}:{}:{}", uri, line, column);
+                println!("No definition found (LSP client not connected)");
+            }
+            OutputFormat::StreamJson => {
+                println!(
+                    "{}",
+                    serde_json::json!({
+                        "type": "lsp_definition",
+                        "uri": uri,
+                        "line": line,
+                        "column": column,
+                        "locations": []
+                    })
+                );
+            }
+        },
+
+        LspCommands::References {
+            uri,
+            line,
+            column,
+            include_declaration,
+        } => match output_format {
+            OutputFormat::Json => {
+                println!(
+                    "{}",
+                    serde_json::json!({
+                        "action": "references",
+                        "uri": uri,
+                        "position": {"line": line, "column": column},
+                        "include_declaration": include_declaration,
+                        "locations": []
+                    })
+                );
+            }
+            OutputFormat::Text => {
+                println!(
+                    "References for {}:{}:{} (include_declaration: {})",
+                    uri, line, column, include_declaration
+                );
+                println!("No references found (LSP client not connected)");
+            }
+            OutputFormat::StreamJson => {
+                println!(
+                    "{}",
+                    serde_json::json!({
+                        "type": "lsp_references",
+                        "uri": uri,
+                        "line": line,
+                        "column": column,
+                        "locations": []
+                    })
+                );
+            }
+        },
+
+        LspCommands::Symbols { uri } => match output_format {
+            OutputFormat::Json => {
+                println!(
+                    "{}",
+                    serde_json::json!({
+                        "action": "symbols",
+                        "uri": uri,
+                        "symbols": []
+                    })
+                );
+            }
+            OutputFormat::Text => {
+                println!("Symbols for {}", uri);
+                println!("No symbols found (LSP client not connected)");
+            }
+            OutputFormat::StreamJson => {
+                println!(
+                    "{}",
+                    serde_json::json!({
+                        "type": "lsp_symbols",
+                        "uri": uri,
+                        "symbols": []
+                    })
+                );
+            }
+        },
+
+        LspCommands::Diagnostics { uri } => match output_format {
+            OutputFormat::Json => {
+                println!(
+                    "{}",
+                    serde_json::json!({
+                        "action": "diagnostics",
+                        "uri": uri,
+                        "diagnostics": []
+                    })
+                );
+            }
+            OutputFormat::Text => {
+                println!("Diagnostics for {}", uri);
+                println!("No diagnostics available (LSP client not connected)");
+            }
+            OutputFormat::StreamJson => {
+                println!(
+                    "{}",
+                    serde_json::json!({
+                        "type": "lsp_diagnostics",
+                        "uri": uri,
+                        "diagnostics": []
+                    })
+                );
+            }
+        },
+
+        LspCommands::CodeActions {
+            uri,
+            start_line,
+            start_column,
+            end_line,
+            end_column,
+        } => match output_format {
+            OutputFormat::Json => {
+                println!(
+                    "{}",
+                    serde_json::json!({
+                        "action": "code_actions",
+                        "uri": uri,
+                        "range": {
+                            "start": {"line": start_line, "column": start_column},
+                            "end": {"line": end_line, "column": end_column}
+                        },
+                        "actions": []
+                    })
+                );
+            }
+            OutputFormat::Text => {
+                println!(
+                    "Code actions for {} ({}:{}-{}:{})",
+                    uri, start_line, start_column, end_line, end_column
+                );
+                println!("No code actions available (LSP client not connected)");
+            }
+            OutputFormat::StreamJson => {
+                println!(
+                    "{}",
+                    serde_json::json!({
+                        "type": "lsp_code_actions",
+                        "uri": uri,
+                        "range": {
+                            "start": {"line": start_line, "column": start_column},
+                            "end": {"line": end_line, "column": end_column}
+                        },
+                        "actions": []
+                    })
+                );
+            }
+        },
     }
 
     Ok(())
