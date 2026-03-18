@@ -37,7 +37,7 @@ impl Default for LspClientConfig {
             args: Vec::new(),
             env: HashMap::new(),
             cwd: None,
-            timeout_ms: 10_000,
+            timeout_ms: 30_000, // 30 seconds - rust-analyzer can be slow to initialize
         }
     }
 }
@@ -63,6 +63,13 @@ impl LspClientConfig {
     #[must_use]
     pub fn with_cwd(mut self, cwd: impl Into<PathBuf>) -> Self {
         self.cwd = Some(cwd.into());
+        self
+    }
+
+    /// Sets the timeout in milliseconds.
+    #[must_use]
+    pub fn with_timeout_ms(mut self, timeout_ms: u64) -> Self {
+        self.timeout_ms = timeout_ms;
         self
     }
 }
@@ -605,44 +612,59 @@ impl LspClient {
         let running = Arc::clone(&self.running);
 
         tokio::spawn(async move {
-            let reader = BufReader::new(stdout);
-            let mut lines = reader.lines();
-
-            let mut content_length: Option<usize> = None;
-            let mut headers_done = false;
+            use tokio::io::AsyncReadExt;
+            let mut reader = BufReader::new(stdout);
 
             while running.load(Ordering::SeqCst) {
-                match lines.next_line().await {
-                    Ok(Some(line)) => {
-                        if line.is_empty() {
-                            headers_done = true;
-                            continue;
-                        }
+                // Read headers
+                let mut content_length: Option<usize> = None;
 
-                        if !headers_done {
+                loop {
+                    let mut line = String::new();
+                    match reader.read_line(&mut line).await {
+                        Ok(0) => {
+                            // EOF
+                            return;
+                        }
+                        Ok(_) => {
+                            let line = line.trim();
+                            if line.is_empty() {
+                                // Empty line marks end of headers
+                                break;
+                            }
                             if let Some(stripped) = line.strip_prefix("Content-Length: ") {
                                 content_length = stripped.parse().ok();
                             }
-                        } else if let Some(len) = content_length.take() {
-                            // Read content (this simplified version uses line as content)
-                            headers_done = false;
-
-                            match serde_json::from_str::<LspResponse>(&line) {
-                                Ok(response) => {
-                                    if let Some(tx) = pending.write().await.remove(&response.id) {
-                                        let _ = tx.send(response);
-                                    }
-                                }
-                                Err(e) => {
-                                    tracing::debug!("Failed to parse LSP response: {}", e);
-                                }
-                            }
+                        }
+                        Err(e) => {
+                            tracing::error!("LSP reader error reading header: {}", e);
+                            return;
                         }
                     }
-                    Ok(None) => break,
-                    Err(e) => {
-                        tracing::error!("LSP reader error: {}", e);
-                        break;
+                }
+
+                // Read content
+                if let Some(len) = content_length {
+                    let mut buffer = vec![0u8; len];
+                    match reader.read_exact(&mut buffer).await {
+                        Ok(_) => match serde_json::from_slice::<LspResponse>(&buffer) {
+                            Ok(response) => {
+                                if let Some(tx) = pending.write().await.remove(&response.id) {
+                                    let _ = tx.send(response);
+                                }
+                            }
+                            Err(e) => {
+                                tracing::debug!(
+                                    "Failed to parse LSP response: {} - content: {}",
+                                    e,
+                                    String::from_utf8_lossy(&buffer)
+                                );
+                            }
+                        },
+                        Err(e) => {
+                            tracing::error!("LSP reader error reading content: {}", e);
+                            return;
+                        }
                     }
                 }
             }

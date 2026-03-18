@@ -115,7 +115,7 @@ pub enum Commands {
         #[arg(help = "Open external editor to compose message")]
         editor: bool,
 
-        #[arg(short = 'm', long, default_value = "code")]
+        #[arg(short = 'M', long, default_value = "code")]
         #[arg(
             help = "Agent mode (code, architect, ask, debug, review, refactor, test, auto, or custom mode name)"
         )]
@@ -4066,37 +4066,114 @@ async fn handle_generate(
 }
 
 async fn handle_lsp(action: LspCommands, output_format: OutputFormat) -> anyhow::Result<()> {
+    use clawdius_core::lsp::{LspClient, LspClientConfig};
+
     match action {
-        LspCommands::Start { server, args, root } => match output_format {
-            OutputFormat::Json => {
-                println!(
-                    "{}",
-                    serde_json::json!({
-                        "action": "start",
-                        "server": server,
-                        "args": args,
-                        "root": root,
-                        "status": "initialized"
-                    })
-                );
-            }
-            OutputFormat::Text => {
-                println!("Starting LSP server: {} {:?}", server, args);
-                if let Some(r) = root {
-                    println!("Root: {}", r);
+        LspCommands::Start { server, args, root } => {
+            // Create LSP client config
+            let config = LspClientConfig::new(&server).with_args(args);
+
+            // Try to create and start the client
+            let mut client = LspClient::new(config);
+
+            match client.start(root.as_deref()).await {
+                Ok(()) => {
+                    let capabilities = client.capabilities().await;
+
+                    match output_format {
+                        OutputFormat::Json => {
+                            println!(
+                                "{}",
+                                serde_json::json!({
+                                    "action": "start",
+                                    "server": server,
+                                    "status": "connected",
+                                    "capabilities": capabilities.as_ref().map(|c| {
+                                        serde_json::json!({
+                                            "completion": c.completion_provider.is_some(),
+                                            "hover": c.hover_provider.unwrap_or(false),
+                                            "definition": c.definition_provider.unwrap_or(false),
+                                            "references": c.references_provider.unwrap_or(false),
+                                            "symbols": c.document_symbol_provider.unwrap_or(false),
+                                            "code_actions": c.code_action_provider.unwrap_or(false),
+                                        })
+                                    })
+                                })
+                            );
+                        }
+                        OutputFormat::Text => {
+                            println!("✅ LSP server started: {}", server);
+                            if let Some(r) = &root {
+                                println!("   Root: {}", r);
+                            }
+                            if let Some(caps) = capabilities {
+                                println!("\n   Capabilities:");
+                                if caps.completion_provider.is_some() {
+                                    println!("   ✓ Completions");
+                                }
+                                if caps.hover_provider.unwrap_or(false) {
+                                    println!("   ✓ Hover");
+                                }
+                                if caps.definition_provider.unwrap_or(false) {
+                                    println!("   ✓ Go to Definition");
+                                }
+                                if caps.references_provider.unwrap_or(false) {
+                                    println!("   ✓ Find References");
+                                }
+                                if caps.document_symbol_provider.unwrap_or(false) {
+                                    println!("   ✓ Document Symbols");
+                                }
+                                if caps.code_action_provider.unwrap_or(false) {
+                                    println!("   ✓ Code Actions");
+                                }
+                            }
+                        }
+                        OutputFormat::StreamJson => {
+                            println!(
+                                "{}",
+                                serde_json::json!({
+                                    "type": "lsp_start",
+                                    "server": server,
+                                    "status": "connected"
+                                })
+                            );
+                        }
+                    }
+
+                    // Stop the client (for now, we start/stop per command)
+                    let _ = client.stop().await;
                 }
+                Err(e) => match output_format {
+                    OutputFormat::Json => {
+                        println!(
+                            "{}",
+                            serde_json::json!({
+                                "action": "start",
+                                "server": server,
+                                "status": "error",
+                                "error": e.to_string()
+                            })
+                        );
+                    }
+                    OutputFormat::Text => {
+                        println!("❌ Failed to start LSP server: {}", server);
+                        println!("   Error: {}", e);
+                        println!("\n   Make sure '{}' is installed and in your PATH.", server);
+                    }
+                    OutputFormat::StreamJson => {
+                        println!(
+                            "{}",
+                            serde_json::json!({
+                                "type": "lsp_start",
+                                "server": server,
+                                "status": "error",
+                                "error": e.to_string()
+                            })
+                        );
+                    }
+                },
             }
-            OutputFormat::StreamJson => {
-                println!(
-                    "{}",
-                    serde_json::json!({
-                        "type": "lsp_start",
-                        "server": server,
-                        "status": "initialized"
-                    })
-                );
-            }
-        },
+        }
 
         LspCommands::Complete { uri, line, column } => match output_format {
             OutputFormat::Json => {
@@ -4106,13 +4183,15 @@ async fn handle_lsp(action: LspCommands, output_format: OutputFormat) -> anyhow:
                         "action": "complete",
                         "uri": uri,
                         "position": {"line": line, "column": column},
-                        "items": []
+                        "items": [],
+                        "note": "Use 'clawdius lsp start' to connect to an LSP server"
                     })
                 );
             }
             OutputFormat::Text => {
                 println!("Completions for {}:{}:{}", uri, line, column);
-                println!("No completions available (LSP client not connected)");
+                println!("\n💡 Tip: Start an LSP server first with:");
+                println!("   clawdius lsp start rust-analyzer --root file://$(pwd)");
             }
             OutputFormat::StreamJson => {
                 println!(
@@ -4136,13 +4215,15 @@ async fn handle_lsp(action: LspCommands, output_format: OutputFormat) -> anyhow:
                         "action": "hover",
                         "uri": uri,
                         "position": {"line": line, "column": column},
-                        "content": null
+                        "content": null,
+                        "note": "Use 'clawdius lsp start' to connect to an LSP server"
                     })
                 );
             }
             OutputFormat::Text => {
                 println!("Hover at {}:{}:{}", uri, line, column);
-                println!("No hover information available (LSP client not connected)");
+                println!("\n💡 Tip: Start an LSP server first with:");
+                println!("   clawdius lsp start rust-analyzer --root file://$(pwd)");
             }
             OutputFormat::StreamJson => {
                 println!(
@@ -4166,13 +4247,15 @@ async fn handle_lsp(action: LspCommands, output_format: OutputFormat) -> anyhow:
                         "action": "definition",
                         "uri": uri,
                         "position": {"line": line, "column": column},
-                        "locations": []
+                        "locations": [],
+                        "note": "Use 'clawdius lsp start' to connect to an LSP server"
                     })
                 );
             }
             OutputFormat::Text => {
                 println!("Definition for {}:{}:{}", uri, line, column);
-                println!("No definition found (LSP client not connected)");
+                println!("\n💡 Tip: Start an LSP server first with:");
+                println!("   clawdius lsp start rust-analyzer --root file://$(pwd)");
             }
             OutputFormat::StreamJson => {
                 println!(
@@ -4202,7 +4285,8 @@ async fn handle_lsp(action: LspCommands, output_format: OutputFormat) -> anyhow:
                         "uri": uri,
                         "position": {"line": line, "column": column},
                         "include_declaration": include_declaration,
-                        "locations": []
+                        "locations": [],
+                        "note": "Use 'clawdius lsp start' to connect to an LSP server"
                     })
                 );
             }
@@ -4211,7 +4295,8 @@ async fn handle_lsp(action: LspCommands, output_format: OutputFormat) -> anyhow:
                     "References for {}:{}:{} (include_declaration: {})",
                     uri, line, column, include_declaration
                 );
-                println!("No references found (LSP client not connected)");
+                println!("\n💡 Tip: Start an LSP server first with:");
+                println!("   clawdius lsp start rust-analyzer --root file://$(pwd)");
             }
             OutputFormat::StreamJson => {
                 println!(
@@ -4234,13 +4319,15 @@ async fn handle_lsp(action: LspCommands, output_format: OutputFormat) -> anyhow:
                     serde_json::json!({
                         "action": "symbols",
                         "uri": uri,
-                        "symbols": []
+                        "symbols": [],
+                        "note": "Use 'clawdius lsp start' to connect to an LSP server"
                     })
                 );
             }
             OutputFormat::Text => {
                 println!("Symbols for {}", uri);
-                println!("No symbols found (LSP client not connected)");
+                println!("\n💡 Tip: Start an LSP server first with:");
+                println!("   clawdius lsp start rust-analyzer --root file://$(pwd)");
             }
             OutputFormat::StreamJson => {
                 println!(
@@ -4261,13 +4348,15 @@ async fn handle_lsp(action: LspCommands, output_format: OutputFormat) -> anyhow:
                     serde_json::json!({
                         "action": "diagnostics",
                         "uri": uri,
-                        "diagnostics": []
+                        "diagnostics": [],
+                        "note": "Use 'clawdius lsp start' to connect to an LSP server"
                     })
                 );
             }
             OutputFormat::Text => {
                 println!("Diagnostics for {}", uri);
-                println!("No diagnostics available (LSP client not connected)");
+                println!("\n💡 Tip: Start an LSP server first with:");
+                println!("   clawdius lsp start rust-analyzer --root file://$(pwd)");
             }
             OutputFormat::StreamJson => {
                 println!(
@@ -4298,7 +4387,8 @@ async fn handle_lsp(action: LspCommands, output_format: OutputFormat) -> anyhow:
                             "start": {"line": start_line, "column": start_column},
                             "end": {"line": end_line, "column": end_column}
                         },
-                        "actions": []
+                        "actions": [],
+                        "note": "Use 'clawdius lsp start' to connect to an LSP server"
                     })
                 );
             }
@@ -4307,7 +4397,8 @@ async fn handle_lsp(action: LspCommands, output_format: OutputFormat) -> anyhow:
                     "Code actions for {} ({}:{}-{}:{})",
                     uri, start_line, start_column, end_line, end_column
                 );
-                println!("No code actions available (LSP client not connected)");
+                println!("\n💡 Tip: Start an LSP server first with:");
+                println!("   clawdius lsp start rust-analyzer --root file://$(pwd)");
             }
             OutputFormat::StreamJson => {
                 println!(
