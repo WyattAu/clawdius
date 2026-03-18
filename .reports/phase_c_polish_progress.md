@@ -43,12 +43,15 @@ The LSP server now starts successfully and connects to rust-analyzer.
 
 ## Remaining Tasks
 
-### 1. Integration Tests for Generate Command
-- [ ] Create mock LLM client for testing
-- [ ] Add tests for single-pass mode
-- [ ] Add tests for iterative mode
-- [ ] Add tests for agent mode
-- [ ] Add tests for dry-run mode
+### 1. Integration Tests for Generate Command ✅
+- [x] Create mock LLM client for testing
+- [x] Add tests for single-pass mode
+- [x] Add tests for iterative mode
+- [x] Add tests for agent mode
+- [x] Add tests for dry-run configuration
+- [x] Add tests for trust levels (Low, Medium, High)
+- [x] Add tests for apply workflow variants
+- [x] Add tests for test execution strategies
 
 ### 2. Progress Indicators
 - [ ] Add spinner for LSP connection
@@ -67,6 +70,7 @@ The LSP server now starts successfully and connects to rust-analyzer.
 ## Commits
 
 1. `33b1ab0` - fix(v2.0.0): fix LSP reader and CLI conflicts
+2. `20bfc27` - test(v2.0.0): add integration tests for generate command
 
 ## Files Changed
 
