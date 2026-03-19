@@ -4073,11 +4073,25 @@ async fn handle_lsp(action: LspCommands, output_format: OutputFormat) -> anyhow:
             // Create LSP client config
             let config = LspClientConfig::new(&server).with_args(args);
 
+            // Show spinner for text output
+            let mut spinner = if output_format == OutputFormat::Text {
+                let mut s = crate::cli_progress::Spinner::new(format!("Connecting to {}...", server));
+                s.start();
+                Some(s)
+            } else {
+                None
+            };
+
             // Try to create and start the client
             let mut client = LspClient::new(config);
 
             match client.start(root.as_deref()).await {
                 Ok(()) => {
+                    // Stop spinner
+                    if let Some(spinner) = spinner {
+                        spinner.stop(Some(&format!("Connected to {}", server)));
+                    }
+
                     let capabilities = client.capabilities().await;
 
                     match output_format {

@@ -8,6 +8,7 @@
 use clap::Parser;
 
 mod cli;
+mod cli_progress;
 mod tui_app;
 
 pub use cli::{Cli, Commands};
