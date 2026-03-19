@@ -3903,7 +3903,16 @@ async fn handle_generate(
     }
 
     // Load config and create LLM client (only when not in dry-run mode)
+    let show_progress = output_format == OutputFormat::Text;
+
+    if show_progress {
+        crate::cli_progress::status("Loading configuration...");
+    }
     let config = load_config(config_path.as_ref())?;
+
+    if show_progress {
+        crate::cli_progress::status("Creating LLM client...");
+    }
     let mut llm_config = LlmConfig::from_config(&config.llm, &provider)?;
     if let Some(ref m) = model {
         llm_config.model = m.clone();
@@ -3920,6 +3929,9 @@ async fn handle_generate(
             .with_llm_client(llm_client);
 
     // Execute the task
+    if show_progress {
+        crate::cli_progress::status("Executing task...");
+    }
     let task_result = system.execute(request).await?;
 
     // Format output based on format
@@ -4075,7 +4087,8 @@ async fn handle_lsp(action: LspCommands, output_format: OutputFormat) -> anyhow:
 
             // Show spinner for text output
             let mut spinner = if output_format == OutputFormat::Text {
-                let mut s = crate::cli_progress::Spinner::new(format!("Connecting to {}...", server));
+                let mut s =
+                    crate::cli_progress::Spinner::new(format!("Connecting to {}...", server));
                 s.start();
                 Some(s)
             } else {
@@ -4116,30 +4129,58 @@ async fn handle_lsp(action: LspCommands, output_format: OutputFormat) -> anyhow:
                             );
                         }
                         OutputFormat::Text => {
-                            println!("✅ LSP server started: {}", server);
+                            crate::cli_progress::success(&format!(
+                                "LSP server started: {}",
+                                server
+                            ));
                             if let Some(r) = &root {
                                 println!("   Root: {}", r);
                             }
                             if let Some(caps) = capabilities {
                                 println!("\n   Capabilities:");
-                                if caps.completion_provider.is_some() {
-                                    println!("   ✓ Completions");
+                                // Text synchronization
+                                if caps.text_document_sync.is_some() {
+                                    println!("   ✓ Text Synchronization");
                                 }
+                                // Completions
+                                if caps.completion_provider.is_some() {
+                                    let triggers = caps
+                                        .completion_provider
+                                        .as_ref()
+                                        .map(|c| c.trigger_characters.join(", "))
+                                        .unwrap_or_default();
+                                    if triggers.is_empty() {
+                                        println!("   ✓ Completions");
+                                    } else {
+                                        println!("   ✓ Completions (triggers: {})", triggers);
+                                    }
+                                }
+                                // Hover
                                 if caps.hover_provider.unwrap_or(false) {
                                     println!("   ✓ Hover");
                                 }
+                                // Go to Definition
                                 if caps.definition_provider.unwrap_or(false) {
                                     println!("   ✓ Go to Definition");
                                 }
+                                // Find References
                                 if caps.references_provider.unwrap_or(false) {
                                     println!("   ✓ Find References");
                                 }
+                                // Document Symbols
                                 if caps.document_symbol_provider.unwrap_or(false) {
                                     println!("   ✓ Document Symbols");
                                 }
+                                // Workspace Symbols
+                                if caps.workspace_symbol_provider.unwrap_or(false) {
+                                    println!("   ✓ Workspace Symbols");
+                                }
+                                // Code Actions
                                 if caps.code_action_provider.unwrap_or(false) {
                                     println!("   ✓ Code Actions");
                                 }
+                            } else {
+                                println!("\n   ⚠ No capabilities reported");
                             }
                         }
                         OutputFormat::StreamJson => {
