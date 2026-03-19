@@ -1,6 +1,29 @@
 # Changelog
 All notable changes to Clawdius will be documented in this file.
 
+## [1.1.4] - 2026-03-19
+
+### Added
+- **Phase C - Polish** - Complete
+  - Improved LSP capabilities display:
+    - Added Text Synchronization indicator
+    - Added Workspace Symbols indicator
+    - Shows completion trigger characters
+    - Warning when no capabilities reported
+  - Progress indicators for generate command:
+    - Spinner for config loading
+    - Status messages for LLM client creation and task execution
+  - Improved error messages with cli_progress helpers
+
+### Fixed
+- LSP reader now correctly reads exact byte counts for content
+- Increased LSP timeout from 10s to 30s
+- Fixed CLI -m option conflict (mode now uses -M)
+
+### Documentation
+- Updated Phase C progress documentation with completion status
+- All 10 generate tests passing
+
 ## [1.1.3] - 2026-03-15
 
 ### Changed
