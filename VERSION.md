@@ -4,9 +4,9 @@
 
 | Attribute | Value |
 |-----------|-------|
-| **Version** | 1.1.6 |
-| **Phase** | v2.0.0 - Memory System Integration |
-| **Status** | ✅ COMPLETE |
+| **Version** | 1.1.7 |
+| **Phase** | v2.0.0 - Feature Expansion |
+| **Status** | 🔄 IN PROGRESS |
 | **API Stability** | ✅ GUARANTEED |
 | **Last Updated** | 2026-03-20 |
 | **Error Level** | None |
@@ -17,6 +17,19 @@
 | **Competitor Analysis** | [docs/COMPETITOR_COMPARISON.md](docs/COMPETITOR_COMPARISON.md) |
 
 ## Version History
+
+### v1.1.7 - Bug Fixes & Cleanup (2026-03-20) - ✅ COMPLETE
+
+| Task | Status | Description |
+|------|--------|-------------|
+| Frontmatter Parsing Fix | ✅ COMPLETE | Fixed extract_metadata() slice truncation bug |
+| Dead Code Cleanup | ✅ COMPLETE | Added #[allow(dead_code)] to test structs |
+| Unused Import Cleanup | ✅ COMPLETE | Removed std::io::Write from file_ops.rs tests |
+| Tool Execution Tests | ✅ COMPLETE | 12 integration tests for ToolExecutor flow |
+
+**Bug Fixes:**
+- `extract_metadata()` at line 236 was using `&content[3..end - 3]` which truncated "axum" to "ax"
+- Fixed by changing to `&content[3..end]`
 
 ### v2.0.0 - Memory System (2026-03-20) - ✅ COMPLETE
 
@@ -275,6 +288,9 @@
 - [x] ExecutorAgent tool execution
 - [x] Integration tests (12 tests)
 - [x] CLAUDE.md memory system
+- [x] Memory CLI commands (show, learn, list, clear, init)
+- [x] Webview crate (31 tests passing)
+- [ ] Local LLM support enhancement
 - [ ] JetBrains plugin
 - [ ] Inline completions
 
