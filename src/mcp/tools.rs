@@ -1,7 +1,18 @@
 //! MCP Tool implementations for Graph-RAG
+//!
+//! This module provides MCP tool implementations that integrate with the agentic system
+//! through the ToolExecutor trait.
 
 use crate::ast_store::{AstQuery, NodeType};
 use crate::mcp::types::{McpError, ToolDefinition, ToolRequest, ToolResponse};
+use async_trait::async_trait;
+use clawdius_core::agentic::tool_executor::{
+    ToolDefinition as CoreToolDefinition, ToolExecutor, ToolRequest as CoreToolRequest,
+    ToolResult as CoreToolResult,
+};
+use std::sync::Arc;
+
+use super::host::McpHost;
 
 /// Trait for MCP tools
 pub trait McpTool: Send + Sync {
@@ -341,6 +352,125 @@ pub fn builtin_tools() -> Vec<Box<dyn McpTool>> {
     ]
 }
 
+/// Adapter to use McpHost with ToolExecutor trait
+pub struct McpToolExecutor {
+    host: Arc<McpHost>,
+}
+
+impl McpToolExecutor {
+    /// Create a new MCP tool executor
+    #[must_use]
+    pub fn new(host: Arc<McpHost>) -> Self {
+        Self { host }
+    }
+}
+
+#[async_trait]
+impl ToolExecutor for McpToolExecutor {
+    async fn execute(&self, request: ToolRequest) -> clawdius_core::error::Result<ToolResult> {
+        // Convert from tool_executor::ToolRequest to MCP ToolRequest
+        let mcp_request = ToolRequest {
+            name: request.name,
+            arguments: request.arguments,
+        };
+
+        // Execute via MCP host
+        match self.host.call_tool(mcp_request) {
+            Ok(response) => {
+                // Extract text content from response
+                let content = response
+                    .content
+                    .iter()
+                    .filter_map(|block| {
+                        if let crate::mcp::types::ContentBlock::Text { text } = block {
+                            Some(text.clone())
+                        } else {
+                            None
+                        }
+                    })
+                    .collect::<String>()
+                    .join("\n");
+
+                Ok(ToolResult::success(content))
+            }
+            Err(e) => Ok(ToolResult::error(e.message)),
+        }
+    }
+
+    fn has_tool(&self, name: &str) -> bool {
+        self.host.has_tool(name)
+    }
+
+    fn list_tools(&self) -> Vec<ToolDefinition> {
+        self.host
+            .list_tools()
+            .into_iter()
+            .map(|td| ToolDefinition {
+                name: td.name,
+                description: td.description,
+                input_schema: td.input_schema,
+            })
+            .collect()
+    }
+}
+
+impl McpToolExecutor {
+    /// Create a new MCP tool executor
+    #[must_use]
+    pub fn new(host: Arc<McpHost>) -> Self {
+        Self { host }
+    }
+}
+
+#[async_trait]
+impl ToolExecutor for McpToolExecutor {
+    async fn execute(&self, request: CoreToolRequest) -> clawdius_core::error::Result<CoreToolResult> {
+        // Convert from CoreToolRequest to MCP ToolRequest
+        let mcp_request = ToolRequest {
+            name: request.name,
+            arguments: request.arguments,
+        };
+
+        // Execute via MCP host
+        match self.host.call_tool(mcp_request) {
+            Ok(response) => {
+                // Extract text content from response
+                let content = response
+                    .content
+                    .iter()
+                    .filter_map(|block| {
+                        if let crate::mcp::types::ContentBlock::Text { text } = block {
+                            Some(text.clone())
+                        } else {
+                            None
+                        }
+                    })
+                    .collect::<Vec<_>>()
+                    .join("\n");
+
+                Ok(CoreToolResult::success(content))
+            }
+            Err(e) => Ok(CoreToolResult::error(e.message)),
+        }
+    }
+
+    fn has_tool(&self, name: &str) -> bool {
+        self.host.has_tool(name)
+    }
+
+    fn list_tools(&self) -> Vec<CoreToolDefinition> {
+        self.host
+            .list_tools()
+            .into_iter()
+            .map(|td| CoreToolDefinition {
+                name: td.name,
+                description: td.description,
+                input_schema: td.input_schema,
+            })
+            .collect()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -384,5 +514,30 @@ mod tests {
     fn test_builtin_tools() {
         let tools = builtin_tools();
         assert_eq!(tools.len(), 4);
+    }
+
+    #[test]
+    fn test_mcp_tool_executor() {
+        let host = Arc::new(McpHost::new());
+        let executor = McpToolExecutor::new(host);
+
+        assert!(executor.has_tool("search_ast"));
+        assert!(!executor.has_tool("nonexistent"));
+
+        let tools = executor.list_tools();
+        assert!(!tools.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_execute_tool() {
+        let host = Arc::new(McpHost::new());
+        let executor = McpToolExecutor::new(host);
+
+        let request = CoreToolRequest::new("search_ast")
+            .with_arg("node_type", serde_json::json!("function"))
+            .with_arg("limit", serde_json::json!(10));
+
+        let result = executor.execute(request).await.unwrap();
+        assert!(result.success);
     }
 }
