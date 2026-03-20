@@ -18,6 +18,7 @@ pub mod brain;
 pub mod broker;
 pub mod checkpoint;
 pub mod commands;
+pub mod completions;
 pub mod config;
 pub mod context;
 pub mod diff;
