@@ -4,7 +4,7 @@
 
 | Attribute | Value |
 |-----------|-------|
-| **Version** | 1.1.9 |
+| **Version** | 1.1.10 |
 | **Phase** | v2.0.0 - Feature Expansion |
 | **Status** | 🔄 IN PROGRESS |
 | **API Stability** | ✅ GUARANTEED |
@@ -17,6 +17,22 @@
 | **Competitor Analysis** | [docs/COMPETITOR_COMPARISON.md](docs/COMPETITOR_COMPARISON.md) |
 
 ## Version History
+
+### v1.1.10 - Token Counting Enhancement (2026-03-20) - ✅ COMPLETE
+
+| Task | Status | Description |
+|------|--------|-------------|
+| Tokenize Module | ✅ COMPLETE | New tokenize module with TokenizerStrategy enum |
+| Code-Aware Counting | ✅ COMPLETE | ~4 chars/token with punctuation adjustment |
+| Whitespace Strategy | ✅ COMPLETE | Simple whitespace-based tokenization |
+| Approximate Strategy | ✅ COMPLETE | Fast estimation without full tokenization |
+| Provider Enhancement | ✅ COMPLETE | LocalLlmProvider and OllamaProvider enhanced |
+
+**Key Files:**
+- `clawdius-core/src/tokenize/mod.rs` - Module exports
+- `clawdius-core/src/tokenize/counter.rs` - TokenizerStrategy implementations
+- `clawdius-core/src/llm/providers/local.rs` - Enhanced count_tokens()
+- `clawdius-core/src/llm/providers/ollama.rs` - Enhanced count_tokens()
 
 ### v1.1.9 - Inline Completions (2026-03-20) - ✅ COMPLETE
 
@@ -340,7 +356,7 @@
 - [x] Local LLM model management (list, pull, health)
 - [x] Inline completions module
 - [x] CLI complete command
-- [ ] Local LLM token counting enhancement
+- [x] Local LLM token counting enhancement
 - [ ] JetBrains plugin
 - [ ] IDE extension integration
 
