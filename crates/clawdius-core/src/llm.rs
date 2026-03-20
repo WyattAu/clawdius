@@ -187,7 +187,7 @@
 //! [`Error`]: crate::Error
 
 mod messages;
-mod providers;
+pub mod providers;
 
 pub use messages::{ChatMessage, ChatRole};
 pub use providers::Provider;
