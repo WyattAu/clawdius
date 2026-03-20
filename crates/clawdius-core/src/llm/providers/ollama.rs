@@ -119,6 +119,22 @@ impl LlmClient for OllamaProvider {
     }
 
     fn count_tokens(&self, text: &str) -> usize {
-        text.split_whitespace().count()
+        // Detect if content looks like code
+        let is_code = text.contains("fn ")
+            || text.contains("function ")
+            || text.contains("class ")
+            || text.contains("def ")
+            || text.contains("import ")
+            || text.contains("export ");
+
+        if is_code {
+            let char_count = text.chars().count();
+            let punct_count = text.chars().filter(|c| c.is_ascii_punctuation()).count();
+            ((char_count as f64 / 4.0).ceil() as usize) + (punct_count / 3).max(1)
+        } else {
+            let words = text.split_whitespace().count();
+            let punct_count = text.chars().filter(|c| c.is_ascii_punctuation()).count();
+            words + (punct_count / 4)
+        }
     }
 }

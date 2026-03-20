@@ -44,6 +44,7 @@ pub mod session;
 pub mod skills;
 pub mod telemetry;
 pub mod timeline;
+pub mod tokenize;
 pub mod tools;
 pub mod watch;
 pub mod webhooks;

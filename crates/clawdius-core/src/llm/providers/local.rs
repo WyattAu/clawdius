@@ -275,6 +275,32 @@ impl LlmClient for LocalLlmProvider {
     }
 
     fn count_tokens(&self, text: &str) -> usize {
-        text.split_whitespace().count()
+        // Detect if content looks like code (has common code patterns)
+        let is_code = text.contains("fn ")
+            || text.contains("function ")
+            || text.contains("class ")
+            || text.contains("def ")
+            || text.contains("import ")
+            || text.contains("export ")
+            || text.contains("const ")
+            || text.contains("let ")
+            || text.contains("var ");
+
+        // For code, use character-based approximation (more tokens than whitespace)
+        // For natural language, use word-based with adjustment
+        if is_code {
+            // Code typically has ~3-4 chars per token
+            let char_count = text.chars().count();
+            let punct_count = text.chars().filter(|c| c.is_ascii_punctuation()).count();
+            
+            // Base: 4 chars per token, punctuation adds extra
+            ((char_count as f64 / 4.0).ceil() as usize) + (punct_count / 3).max(1)
+        } else {
+            // Natural language: ~4 chars per token + punctuation adjustment
+            let words = text.split_whitespace().count();
+            let punct_count = text.chars().filter(|c| c.is_ascii_punctuation()).count();
+            
+            words + (punct_count / 4)
+        }
     }
 }
