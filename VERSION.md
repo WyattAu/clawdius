@@ -4,7 +4,7 @@
 
 | Attribute | Value |
 |-----------|-------|
-| **Version** | 1.1.8 |
+| **Version** | 1.1.9 |
 | **Phase** | v2.0.0 - Feature Expansion |
 | **Status** | 🔄 IN PROGRESS |
 | **API Stability** | ✅ GUARANTEED |
@@ -17,6 +17,31 @@
 | **Competitor Analysis** | [docs/COMPETITOR_COMPARISON.md](docs/COMPETITOR_COMPARISON.md) |
 
 ## Version History
+
+### v1.1.9 - Inline Completions (2026-03-20) - ✅ COMPLETE
+
+| Task | Status | Description |
+|------|--------|-------------|
+| Completion Types | ✅ COMPLETE | CompletionRequest, CompletionResponse, FimTemplate |
+| Completion Cache | ✅ COMPLETE | TTL-based LRU cache for repeated patterns |
+| Completion Provider | ✅ COMPLETE | LLM-powered InlineCompletionProvider |
+| FIM Templates | ✅ COMPLETE | CodeLlama, DeepSeek, StarCoder formats |
+| CLI Complete Command | ✅ COMPLETE | 'clawdius complete' for inline suggestions |
+| Language Detection | ✅ COMPLETE | Auto-detect from file extension |
+| Post-Processing | ✅ COMPLETE | Artifact removal, stop sequences |
+
+**New CLI Command:**
+- `clawdius complete <file> <line> <char>` - Get inline code completion
+- `--language` - Override detected language
+- `--provider` - Choose LLM provider (default: ollama)
+- `--model` - Specify model name
+
+**Key Files:**
+- `clawdius-core/src/completions/mod.rs` - Module exports
+- `clawdius-core/src/completions/types.rs` - Request/Response types
+- `clawdius-core/src/completions/provider.rs` - LLM completion provider
+- `clawdius-core/src/completions/cache.rs` - Completion cache
+- `crates/clawdius/src/cli.rs` - Complete command handler
 
 ### v1.1.8 - Local LLM Enhancement (2026-03-20) - ✅ COMPLETE
 
@@ -313,9 +338,11 @@
 - [x] Webview crate (31 tests passing)
 - [x] Local LLM streaming support
 - [x] Local LLM model management (list, pull, health)
+- [x] Inline completions module
+- [x] CLI complete command
 - [ ] Local LLM token counting enhancement
 - [ ] JetBrains plugin
-- [ ] Inline completions
+- [ ] IDE extension integration
 
 ### Phase 4: Enterprise (Planned)
 - [ ] Local LLM support
