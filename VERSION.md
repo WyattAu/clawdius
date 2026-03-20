@@ -4,19 +4,64 @@
 
 | Attribute | Value |
 |-----------|-------|
-| **Version** | 1.1.4 |
-| **Phase** | v2.0.0 - MCP Integration |
+| **Version** | 1.1.6 |
+| **Phase** | v2.0.0 - Memory System Integration |
 | **Status** | ✅ COMPLETE |
 | **API Stability** | ✅ GUARANTEED |
-| **Last Updated** | 2026-03-16 |
+| **Last Updated** | 2026-03-20 |
 | **Error Level** | None |
-| **Rollback Checkpoint** | v1.1.3 |
+| **Rollback Checkpoint** | v1.1.5 |
 | **Feature Matrix** | [.reports/feature_implementation_matrix.md](.reports/feature_implementation_matrix.md) |
 | **Roadmap** | [ROADMAP.md](ROADMAP.md) |
 | **HFT Profile** | [docs/HFT_TRADING_PROFILE.md](docs/HFT_TRADING_PROFILE.md) |
 | **Competitor Analysis** | [docs/COMPETITOR_COMPARISON.md](docs/COMPETITOR_COMPARISON.md) |
 
 ## Version History
+
+### v2.0.0 - Memory System (2026-03-20) - ✅ COMPLETE
+
+| Task | Status | Description |
+|------|--------|-------------|
+| ProjectMemory Module | ✅ COMPLETE | CLAUDE.md memory system in clawdius-core |
+| MemoryEntry Types | ✅ COMPLETE | Build, test, debug, pattern, preference entries |
+| CLI Memory Commands | ✅ COMPLETE | show, learn, list, clear, init subcommands |
+| Auto-Learning | ✅ COMPLETE | Build commands, test commands, debug insights |
+| JSON Persistence | ✅ COMPLETE | Memory saved to .clawdius/memory.json |
+| LLM Instructions | ✅ COMPLETE | to_instructions() for LLM context injection |
+
+**CLI Commands:**
+- `clawdius memory show` - Display project memory
+- `clawdius memory learn <type> <content>` - Learn new entry
+- `clawdius memory instructions <content>` - Set instructions
+- `clawdius memory list [category]` - List by category
+- `clawdius memory clear [category]` - Clear entries
+- `clawdius memory init` - Initialize CLAUDE.md
+
+**Key Files:**
+- `clawdius-core/src/memory/mod.rs` - Memory system implementation
+- `crates/clawdius/src/cli.rs` - CLI commands for memory
+
+### v2.0.0-pre - MCP Tool Integration (2026-03-20) - ✅ COMPLETE
+
+| Task | Status | Description |
+|------|--------|-------------|
+| ToolExecutor Trait | ✅ COMPLETE | Trait-based tool execution interface in clawdius-core |
+| NoOpToolExecutor | ✅ COMPLETE | Default no-op implementation for testing |
+| McpToolExecutor | ✅ COMPLETE | MCP host adapter implementing ToolExecutor |
+| ExecutorAgent Integration | ✅ COMPLETE | Agent uses optional ToolExecutor for tool calls |
+| AgenticSystem Wiring | ✅ COMPLETE | with_tool_executor() method for system configuration |
+| CLI Integration | ✅ COMPLETE | Tool executor wired to generate command |
+| Integration Tests | ✅ COMPLETE | 12 new tests for tool execution flow |
+
+**Key Documents Created:**
+- `clawdius-core/src/agentic/tool_executor.rs` - ToolExecutor trait and types
+- `clawdius-core/tests/integration/tool_execution.rs` - 12 integration tests
+- `src/mcp/tools.rs` - McpToolExecutor adapter
+
+**Architecture Notes:**
+- ToolExecutor trait allows agentic system to call tools without MCP type dependencies
+- NoOpToolExecutor used as placeholder in CLI (MCP types in main binary not accessible from CLI crate)
+- Future: Move MCP types to clawdius-core for full cross-crate integration
 
 ### v2.0.0-pre - Documentation & Architecture (2026-03-16) - IN PROGRESS
 
@@ -223,9 +268,13 @@
 - [ ] Error message improvements
 - [ ] Onboarding wizard
 
-### Phase 3: Feature Expansion (Planned)
-- [ ] MCP Protocol completion
-- [ ] CLAUDE.md memory system
+### Phase 3: Feature Expansion (In Progress)
+- [x] MCP Protocol completion
+- [x] ToolExecutor trait implementation
+- [x] McpToolExecutor adapter
+- [x] ExecutorAgent tool execution
+- [x] Integration tests (12 tests)
+- [x] CLAUDE.md memory system
 - [ ] JetBrains plugin
 - [ ] Inline completions
 

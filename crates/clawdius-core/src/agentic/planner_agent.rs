@@ -10,6 +10,8 @@ use std::collections::HashMap;
 #[derive(Default)]
 pub struct PlannerAgent {
     /// Planning strategies registered
+    /// (Intended for future extensibility when custom strategies are implemented)
+    #[allow(dead_code)]
     strategies: HashMap<String, Box<dyn PlanningStrategy>>,
 }
 
@@ -661,6 +663,7 @@ pub enum TaskComplexity {
 
 /// Analysis result for a task.
 #[derive(Debug)]
+#[allow(dead_code)]
 struct TaskAnalysis {
     complexity: TaskComplexity,
     risk_assessment: RiskAssessment,
@@ -668,6 +671,7 @@ struct TaskAnalysis {
 }
 
 /// Trait for planning strategies.
+#[allow(dead_code)]
 trait PlanningStrategy: Send + Sync {
     fn name(&self) -> &str;
     fn can_handle(&self, request: &super::TaskRequest) -> bool;

@@ -247,7 +247,6 @@ impl Default for FileOperations {
 /// Returns an error if the diff cannot be applied.
 pub fn apply_diff(original: &str, diff: &str) -> Result<String> {
     // Simple unified diff parsing
-    let mut result = String::new();
     let mut in_hunk = false;
     let _old_lines: Vec<&str> = original.lines().collect();
     let mut new_lines: Vec<String> = Vec::new();
@@ -277,8 +276,7 @@ pub fn apply_diff(original: &str, diff: &str) -> Result<String> {
         return Ok(diff.to_string());
     }
 
-    result = new_lines.join("\n");
-    Ok(result)
+    Ok(new_lines.join("\n"))
 }
 
 /// Creates a unified diff between two strings.
@@ -331,7 +329,6 @@ fn current_timestamp() -> u64 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::io::Write;
     use tempfile::TempDir;
 
     #[test]

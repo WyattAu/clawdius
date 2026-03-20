@@ -5,11 +5,13 @@
 use crate::error::Result;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
+use std::fmt;
+use std::sync::Arc;
 
 use super::planner_agent::ReviewCriterion;
+use super::tool_executor::{ToolExecutor, ToolRequest};
 
 /// Agent responsible for executing the plan steps.
-#[derive(Debug, Default)]
 pub struct ExecutorAgent {
     /// Completed steps
     completed: HashSet<String>,
@@ -17,13 +19,62 @@ pub struct ExecutorAgent {
     failed: HashSet<String>,
     /// Step results
     results: HashMap<String, StepResult>,
+    /// Optional tool executor for calling external tools
+    tool_executor: Option<Arc<dyn ToolExecutor>>,
+}
+
+impl fmt::Debug for ExecutorAgent {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ExecutorAgent")
+            .field("completed", &self.completed)
+            .field("failed", &self.failed)
+            .field("results", &self.results)
+            .field(
+                "tool_executor",
+                &self.tool_executor.as_ref().map(|_| "ToolExecutor"),
+            )
+            .finish()
+    }
+}
+
+impl Default for ExecutorAgent {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl ExecutorAgent {
     /// Creates a new executor agent.
     #[must_use]
     pub fn new() -> Self {
-        Self::default()
+        Self {
+            completed: HashSet::new(),
+            failed: HashSet::new(),
+            results: HashMap::new(),
+            tool_executor: None,
+        }
+    }
+
+    /// Sets the tool executor for calling external tools.
+    #[must_use]
+    pub fn with_tool_executor(mut self, executor: Arc<dyn ToolExecutor>) -> Self {
+        self.tool_executor = Some(executor);
+        self
+    }
+
+    /// Returns whether a tool executor is configured.
+    #[must_use]
+    pub fn has_tool_executor(&self) -> bool {
+        self.tool_executor.is_some()
+    }
+
+    /// Returns the list of available tools if a tool executor is configured.
+    #[must_use]
+    pub fn available_tools(&self) -> Vec<super::ToolDefinition> {
+        self.tool_executor
+            .as_ref()
+            .map(|e| e.list_tools())
+            .unwrap_or_default()
     }
 
     /// Executes the entire plan.
@@ -290,18 +341,68 @@ impl ExecutorAgent {
         &self,
         command: &str,
         args: &[String],
-        _timeout_ms: u64,
+        timeout_ms: u64,
     ) -> Result<String> {
-        // In a real implementation, this would execute a shell command
+        // Try to use tool executor if available
+        if let Some(executor) = &self.tool_executor {
+            // Check if there's a matching shell tool
+            if executor.has_tool("shell") || executor.has_tool("run_command") {
+                let tool_name = if executor.has_tool("shell") {
+                    "shell"
+                } else {
+                    "run_command"
+                };
+
+                let mut request = ToolRequest::new(tool_name)
+                    .with_arg("command", serde_json::json!(command))
+                    .with_arg("timeout_ms", serde_json::json!(timeout_ms));
+
+                for (i, arg) in args.iter().enumerate() {
+                    request = request.with_arg(format!("arg{}", i), serde_json::json!(arg));
+                }
+
+                let result = executor.execute(request).await?;
+
+                if result.success {
+                    return Ok(result.content);
+                } else {
+                    return Ok(format!("Tool execution failed: {}", result.content));
+                }
+            }
+        }
+
+        // Fallback: In a real implementation, this would execute a shell command
         Ok(format!("Executed: {} {}", command, args.join(" ")))
     }
 
     async fn execute_custom(
         &self,
         action_type: &str,
-        _params: &HashMap<String, serde_json::Value>,
+        params: &HashMap<String, serde_json::Value>,
     ) -> Result<String> {
-        // In a real implementation, this would execute a custom action
+        // Try to use tool executor if available
+        if let Some(executor) = &self.tool_executor {
+            // Check if there's a tool matching the action type
+            if executor.has_tool(action_type) {
+                let mut request = ToolRequest::new(action_type);
+                for (key, value) in params {
+                    request = request.with_arg(key.clone(), value.clone());
+                }
+
+                let result = executor.execute(request).await?;
+
+                if result.success {
+                    return Ok(result.content);
+                } else {
+                    return Ok(format!(
+                        "Tool '{}' execution failed: {}",
+                        action_type, result.content
+                    ));
+                }
+            }
+        }
+
+        // Fallback: In a real implementation, this would execute a custom action
         Ok(format!("Custom action {} executed", action_type))
     }
 

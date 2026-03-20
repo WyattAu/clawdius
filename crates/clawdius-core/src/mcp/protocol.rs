@@ -3,7 +3,6 @@
 //! Defines the core types for the Model Context Protocol.
 
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 
 /// MCP Protocol version
 pub const MCP_VERSION: &str = "2024-11-05";

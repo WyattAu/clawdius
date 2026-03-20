@@ -60,9 +60,7 @@ pub use planner_agent::{
 pub use test_execution::{
     SandboxBackend, TestExecutionStrategy, TestFramework, TestResult, TestRunner,
 };
-pub use tool_executor::{
-    NoOpToolExecutor, ToolDefinition, ToolExecutor, ToolRequest, ToolResult,
-};
+pub use tool_executor::{NoOpToolExecutor, ToolDefinition, ToolExecutor, ToolRequest, ToolResult};
 pub use verifier_agent::{
     IssueSeverity, VerificationIssue, VerificationResult, VerificationRule, VerifierAgent,
 };
@@ -198,6 +196,8 @@ pub struct AgenticSystem {
     state: Arc<RwLock<AgenticState>>,
     /// Optional LLM client for real code generation
     llm_client: Option<Arc<dyn LlmClient>>,
+    /// Optional tool executor for calling external tools
+    tool_executor: Option<Arc<dyn ToolExecutor>>,
 }
 
 /// State of the agentic system.
@@ -231,6 +231,7 @@ impl AgenticSystem {
             test_runner: TestRunner::new(test_strategy),
             state: Arc::new(RwLock::new(AgenticState::default())),
             llm_client: None,
+            tool_executor: None,
         }
     }
 
@@ -245,6 +246,25 @@ impl AgenticSystem {
     #[must_use]
     pub fn llm_client(&self) -> Option<&Arc<dyn LlmClient>> {
         self.llm_client.as_ref()
+    }
+
+    /// Sets the tool executor for calling external tools (e.g., MCP tools).
+    #[must_use]
+    pub fn with_tool_executor(mut self, executor: Arc<dyn ToolExecutor>) -> Self {
+        self.tool_executor = Some(executor);
+        self
+    }
+
+    /// Returns a reference to the tool executor if configured.
+    #[must_use]
+    pub fn tool_executor(&self) -> Option<&Arc<dyn ToolExecutor>> {
+        self.tool_executor.as_ref()
+    }
+
+    /// Returns the generation mode.
+    #[must_use]
+    pub const fn mode(&self) -> &GenerationMode {
+        &self.mode
     }
 
     /// Creates an LLM code generator if a client is configured.

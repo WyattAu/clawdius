@@ -233,7 +233,7 @@ impl ProjectMemory {
             None => return,
         };
 
-        let frontmatter = &content[3..end - 3];
+        let frontmatter = &content[3..end];
 
         for line in frontmatter.lines() {
             let line = line.trim();

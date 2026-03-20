@@ -367,63 +367,6 @@ impl McpToolExecutor {
 
 #[async_trait]
 impl ToolExecutor for McpToolExecutor {
-    async fn execute(&self, request: ToolRequest) -> clawdius_core::error::Result<ToolResult> {
-        // Convert from tool_executor::ToolRequest to MCP ToolRequest
-        let mcp_request = ToolRequest {
-            name: request.name,
-            arguments: request.arguments,
-        };
-
-        // Execute via MCP host
-        match self.host.call_tool(mcp_request) {
-            Ok(response) => {
-                // Extract text content from response
-                let content = response
-                    .content
-                    .iter()
-                    .filter_map(|block| {
-                        if let crate::mcp::types::ContentBlock::Text { text } = block {
-                            Some(text.clone())
-                        } else {
-                            None
-                        }
-                    })
-                    .collect::<String>()
-                    .join("\n");
-
-                Ok(ToolResult::success(content))
-            }
-            Err(e) => Ok(ToolResult::error(e.message)),
-        }
-    }
-
-    fn has_tool(&self, name: &str) -> bool {
-        self.host.has_tool(name)
-    }
-
-    fn list_tools(&self) -> Vec<ToolDefinition> {
-        self.host
-            .list_tools()
-            .into_iter()
-            .map(|td| ToolDefinition {
-                name: td.name,
-                description: td.description,
-                input_schema: td.input_schema,
-            })
-            .collect()
-    }
-}
-
-impl McpToolExecutor {
-    /// Create a new MCP tool executor
-    #[must_use]
-    pub fn new(host: Arc<McpHost>) -> Self {
-        Self { host }
-    }
-}
-
-#[async_trait]
-impl ToolExecutor for McpToolExecutor {
     async fn execute(&self, request: CoreToolRequest) -> clawdius_core::error::Result<CoreToolResult> {
         // Convert from CoreToolRequest to MCP ToolRequest
         let mcp_request = ToolRequest {

@@ -85,10 +85,9 @@ impl ToolResult {
     ///
     /// Returns an error if the content is not valid JSON.
     pub fn parse_json<T: for<'de> Deserialize<'de>>(&self) -> Result<T> {
-        serde_json::from_str(&self.content)
-            .map_err(|e| crate::error::Error::ParseError(
-                format!("Failed to parse tool result as JSON: {}", e)
-            ))
+        serde_json::from_str(&self.content).map_err(|e| {
+            crate::error::Error::ParseError(format!("Failed to parse tool result as JSON: {}", e))
+        })
     }
 }
 

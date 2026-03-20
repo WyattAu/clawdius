@@ -152,6 +152,7 @@ struct LspResponse {
     jsonrpc: String,
     id: u64,
     result: Option<serde_json::Value>,
+    #[allow(dead_code)]
     error: Option<LspResponseError>,
 }
 

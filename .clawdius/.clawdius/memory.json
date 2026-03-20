@@ -1,0 +1,13 @@
+{
+  "learned": [
+    {
+      "type": "build_command",
+      "command": "cargo build --release",
+      "description": "Build in release mode",
+      "learned_at": "2026-03-20T19:22:21.851345508Z",
+      "success_count": 1,
+      "failure_count": 0
+    }
+  ],
+  "updated_at": "2026-03-20T19:22:41.146951060Z"
+}

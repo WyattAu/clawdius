@@ -19,6 +19,7 @@ pub trait Strategy: Send + Sync {
 mod tests {
     use super::*;
 
+    #[allow(dead_code)]
     struct MovingAverageCrossover {
         short_period: usize,
         long_period: usize,

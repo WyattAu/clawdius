@@ -1,8 +1,8 @@
 # Clawdius Project Summary
 
 > **Last Updated:** March 2026  
-> **Status:** Active Development - Monorepo Restructuring  
-> **Version:** 0.2.0
+> **Status:** Active Development - Phase 4: MCP Integration  
+> **Version:** 2.0.0-alpha
 
 ---
 
@@ -10,7 +10,40 @@
 
 **Clawdius** is a high-assurance Rust-native AI coding assistant being built to compete with tools like Cline, Roo Code, Claude Code, and Gemini CLI. It features unique security capabilities (Sentinel JIT sandboxing), formal verification support (Lean4), and a hybrid architecture with a TypeScript VSCode extension communicating to a Rust backend via JSON-RPC.
 
-The current focus is restructuring the project as a monorepo with four crates and getting the build to pass.
+The current focus is **Phase 4: Feature Expansion** - wiring MCP (Model Context Protocol) tool integration into the agentic system so the executor can call external tools during plan execution.
+
+---
+
+## Current Session Progress
+
+### Phase 4: MCP Integration with Agentic System
+
+**Goal:** Wire MCP tool integration into ExecutorAgent so the agentic system can call MCP tools during plan execution.
+
+#### ✅ Completed
+
+| Component | Status | Details |
+|-----------|--------|---------|
+| ToolExecutor trait | ✅ Complete | Trait-based interface in `clawdius-core/src/agentic/tool_executor.rs` |
+| ToolRequest/ToolResult | ✅ Complete | Core types for tool execution |
+| NoOpToolExecutor | ✅ Complete | Test implementation |
+| McpToolExecutor adapter | ✅ Complete | Bridges McpHost to ToolExecutor trait |
+| ExecutorAgent integration | ✅ Complete | Accepts optional ToolExecutor, uses in execute_command/execute_custom |
+| AgenticSystem integration | ✅ Complete | `with_tool_executor()` and `tool_executor()` methods |
+| Debug impl for ExecutorAgent | ✅ Complete | Manual impl to handle `dyn ToolExecutor` |
+| Compilation verified | ✅ Complete | All 40 agentic tests pass |
+
+#### 🔄 In Progress
+
+| Component | Status | Issue |
+|-----------|--------|-------|
+| Integration tests | ⚠️ Pending | Need tests for tool execution flow |
+| CLI integration | ⚠️ Pending | Wire McpToolExecutor to AgenticSystem in CLI |
+
+#### ❌ Not Started
+
+- End-to-end testing with real MCP tools
+- Documentation updates
 
 ---
 
@@ -70,7 +103,6 @@ clawdius/
 | Core Library Modules | ✅ Complete | 15+ modules implemented |
 | CLI Binary | ✅ Complete | Basic CLI with TUI scaffolding |
 | VSCode Helper Binary | ✅ Complete | JSON-RPC server skeleton |
-| VSCode Extension | ⚠️ Skeleton | TypeScript files exist, needs wiring |
 | Session System | ✅ Complete | SQLite-backed persistence |
 | Context/@Mentions | ✅ Complete | Mention parser and builder |
 | Output System | ✅ Complete | JSON/stream output |
@@ -83,6 +115,7 @@ clawdius/
 | Graph-RAG | ✅ Complete | AST and vector search |
 | i18n | ✅ Complete | Localization framework |
 | LLM Integration | ✅ Complete | Providers and message handling |
+| MCP Tool Integration | ✅ Complete | ToolExecutor trait wired to AgenticSystem |
 
 ### ⚠️ In Progress
 
@@ -106,6 +139,9 @@ clawdius/
 | `crates/clawdius-core/src/output/` | JSON/stream output |
 | `crates/clawdius-core/src/rpc/` | JSON-RPC protocol |
 | `crates/clawdius-core/src/tools/` | Tool definitions (file, shell, git, browser) |
+| `crates/clawdius-core/src/agentic/tool_executor.rs` | ToolExecutor trait for MCP integration |
+| `crates/clawdius-core/src/agentic/executor_agent.rs` | Executor agent with tool support |
+| `crates/clawdius-core/src/agentic/mod.rs` | AgenticSystem with tool_executor field |
 | `crates/clawdius-core/src/checkpoint/` | Checkpoint system |
 | `crates/clawdius-core/src/commands/` | Custom commands |
 | `crates/clawdius-core/src/modes.rs` | Agent modes |
@@ -116,8 +152,10 @@ clawdius/
 | `crates/clawdius/src/main.rs` | CLI entry point |
 | `crates/clawdius/src/cli.rs` | CLI commands |
 | `crates/clawdius/src/tui_app/` | Terminal UI |
+| `crates/clawdius/src/mcp/tools.rs` | McpToolExecutor adapter |
+| `crates/clawdius/src/mcp/host.rs` | McpHost - tool registry and execution |
 | `crates/clawdius-code/src/main.rs` | VSCode helper (JSON-RPC server) |
-| `crates/clawdius-webview/src/lib.rs` | Leptos WASM UI (has errors) |
+| `crates/clawdius-webview/src/lib.rs` | Leptos WASM UI |
 
 ### VSCode Extension
 
@@ -204,11 +242,11 @@ During setup, these dependency issues were fixed:
 
 ## Next Steps (For Continuation)
 
-### Immediate (Fix Build)
+### Immediate (Complete MCP Integration)
 
-1. **Fix Leptos Webview** - Update `crates/clawdius-webview/src/lib.rs` to use correct Leptos 0.7 CSR APIs
-2. **Run `cargo check --workspace`** - Verify all crates compile
-3. **Test CLI binary** - Ensure basic functionality works
+1. **Add Integration Tests** - Write tests that verify tool execution through the full flow
+2. **CLI Integration** - Wire `McpToolExecutor` to `AgenticSystem` in the CLI
+3. **End-to-End Testing** - Test with real MCP tools
 
 ### VSCode Integration
 
