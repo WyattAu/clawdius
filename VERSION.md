@@ -4,7 +4,7 @@
 
 | Attribute | Value |
 |-----------|-------|
-| **Version** | 1.1.7 |
+| **Version** | 1.1.8 |
 | **Phase** | v2.0.0 - Feature Expansion |
 | **Status** | 🔄 IN PROGRESS |
 | **API Stability** | ✅ GUARANTEED |
@@ -17,6 +17,27 @@
 | **Competitor Analysis** | [docs/COMPETITOR_COMPARISON.md](docs/COMPETITOR_COMPARISON.md) |
 
 ## Version History
+
+### v1.1.8 - Local LLM Enhancement (2026-03-20) - ✅ COMPLETE
+
+| Task | Status | Description |
+|------|--------|-------------|
+| Streaming Support | ✅ COMPLETE | Implement chat_stream() for LocalLlmProvider |
+| Model Listing | ✅ COMPLETE | list_models() to enumerate Ollama models |
+| Model Pulling | ✅ COMPLETE | pull_model() to download from registry |
+| Health Check | ✅ COMPLETE | health_check() to verify server status |
+| Model Shortcuts | ✅ COMPLETE | deepseek_coder, codellama, phi3, qwen |
+| CLI Models Command | ✅ COMPLETE | list, pull, health subcommands |
+
+**New CLI Commands:**
+- `clawdius models list` - List available local models
+- `clawdius models pull <model>` - Pull model from registry
+- `clawdius models health` - Check Ollama server health
+- `clawdius models current` - Show current model config
+
+**Key Files:**
+- `clawdius-core/src/llm/providers/local.rs` - Enhanced with streaming and management
+- `crates/clawdius/src/cli.rs` - New models subcommand
 
 ### v1.1.7 - Bug Fixes & Cleanup (2026-03-20) - ✅ COMPLETE
 
@@ -290,7 +311,9 @@
 - [x] CLAUDE.md memory system
 - [x] Memory CLI commands (show, learn, list, clear, init)
 - [x] Webview crate (31 tests passing)
-- [ ] Local LLM support enhancement
+- [x] Local LLM streaming support
+- [x] Local LLM model management (list, pull, health)
+- [ ] Local LLM token counting enhancement
 - [ ] JetBrains plugin
 - [ ] Inline completions
 
