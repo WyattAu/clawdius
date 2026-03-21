@@ -4,19 +4,42 @@
 
 | Attribute | Value |
 |-----------|-------|
-| **Version** | 1.1.10 |
+| **Version** | 1.1.11 |
 | **Phase** | v2.0.0 - Feature Expansion |
 | **Status** | 🔄 IN PROGRESS |
 | **API Stability** | ✅ GUARANTEED |
-| **Last Updated** | 2026-03-20 |
+| **Last Updated** | 2026-03-21 |
 | **Error Level** | None |
-| **Rollback Checkpoint** | v1.1.5 |
+| **Rollback Checkpoint** | v1.1.10 |
 | **Feature Matrix** | [.reports/feature_implementation_matrix.md](.reports/feature_implementation_matrix.md) |
 | **Roadmap** | [ROADMAP.md](ROADMAP.md) |
 | **HFT Profile** | [docs/HFT_TRADING_PROFILE.md](docs/HFT_TRADING_PROFILE.md) |
 | **Competitor Analysis** | [docs/COMPETITOR_COMPARISON.md](docs/COMPETITOR_COMPARISON.md) |
 
 ## Version History
+
+### v1.1.11 - JetBrains Plugin (2026-03-21) - ✅ COMPLETE
+
+| Task | Status | Description |
+|------|--------|-------------|
+| ClawdiusCompletionContributor | ✅ COMPLETE | Inline code completions via Clawdius server |
+| ClawdiusClient Enhancement | ✅ COMPLETE | getCompletion() method, getInstance() companion |
+| Settings Enhancement | ✅ COMPLETE | Completion settings (autoTrigger, minPrefix, maxTokens) |
+| SVG Icons | ✅ COMPLETE | 7 icons (clawdius, explain, refactor, test, fix, context, chat) |
+| Code Actions | ✅ COMPLETE | Explain, Refactor, Fix, Generate Tests, Add Context |
+| Tool Window | ✅ COMPLETE | Chat interface for code assistance |
+| Status Bar Widget | ✅ COMPLETE | Server status indicator |
+| Line Marker Provider | ✅ COMPLETE | Gutter icons for methods/classes |
+| Editor Notifications | ✅ COMPLETE | Server status notifications |
+
+**New Repository:**
+- `clawdius-jetbrains-plugin/` - Full IntelliJ platform plugin (2,453 lines)
+
+**Key Features:**
+- Inline completions powered by local LLMs
+- Chat tool window for code assistance
+- Context management (add files to context)
+- Configurable server URL, model, and feature toggles
 
 ### v1.1.10 - Token Counting Enhancement (2026-03-20) - ✅ COMPLETE
 
@@ -343,7 +366,7 @@
 - [ ] Error message improvements
 - [ ] Onboarding wizard
 
-### Phase 3: Feature Expansion (In Progress)
+### Phase 3: Feature Expansion ✅ COMPLETE
 - [x] MCP Protocol completion
 - [x] ToolExecutor trait implementation
 - [x] McpToolExecutor adapter
@@ -357,13 +380,14 @@
 - [x] Inline completions module
 - [x] CLI complete command
 - [x] Local LLM token counting enhancement
-- [ ] JetBrains plugin
-- [ ] IDE extension integration
+- [x] JetBrains plugin (2,453 LOC)
+- [ ] IDE extension integration (future)
 
-### Phase 4: Enterprise (Planned)
-- [ ] Local LLM support
-- [ ] Self-hosted deployment
-- [ ] Team features
+### Phase 4: Enterprise (In Progress)
+- [x] Local LLM support (v1.1.8+)
+- [ ] Self-hosted deployment improvements
+- [ ] Team features (shared contexts, prompt templates)
+- [ ] Enterprise compliance (SSO hardening, audit logs)
 
 ## Capability Matrix Status
 
