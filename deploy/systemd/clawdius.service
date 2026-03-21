@@ -1,0 +1,42 @@
+# Clawdius Systemd Service Unit
+# For deploying Clawdius as a system service on Linux
+
+[Unit]
+Description=Clawdius AI Coding Assistant Server
+Documentation=https://clawdius.dev
+After=network.target
+
+[Service]
+Type=simple
+User=clawdius
+Group=clawdius
+WorkingDirectory=/opt/clawdius
+
+# Environment variables
+Environment=CLAWDIUS_CONFIG
+Environment=CLAWDIUS_DATA_DIR
+Environment=CLAWDIUS_LOG_DIR
+Environment=RUST_LOG
+Environment=OLLAMA_HOST
+
+# ExecStartPre
+ExecStartPre=/bin/mkdir -p /opt/clawdius/data / /opt/clawdius/logs
+
+# Main executable
+ExecStart=/usr/local/bin/clawdius server --host 0.0.0.0 --port 3000
+
+# Restart on failure
+Restart=on-failure
+RestartSec=5
+
+# Resource limits
+LimitNOFILE=65535
+LimitNPROC=4096
+
+# Security hardening
+NoNewPrivileges=true
+ProtectSystem=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

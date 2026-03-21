@@ -4,7 +4,7 @@
 
 | Attribute | Value |
 |-----------|-------|
-| **Version** | 1.1.11 |
+| **Version** | 1.1.12 |
 | **Phase** | v2.0.0 - Feature Expansion |
 | **Status** | 🔄 IN PROGRESS |
 | **API Stability** | ✅ GUARANTEED |
@@ -17,6 +17,37 @@
 | **Competitor Analysis** | [docs/COMPETITOR_COMPARISON.md](docs/COMPETITOR_COMPARISON.md) |
 
 ## Version History
+
+### v1.1.12 - Self-Hosted Deployment (2026-03-21) - ✅ COMPLETE
+
+| Task | Status | Description |
+|------|--------|-------------|
+| Docker Deployment | ✅ COMPLETE | Multi-stage Dockerfile with health checks |
+| Docker Compose | ✅ COMPLETE | Full stack with Ollama, Redis, Prometheus, Grafana |
+| Podman Support | ✅ COMPLETE | Podman-compatible deployment scripts |
+| Systemd Service | ✅ COMPLETE | Native Linux systemd integration |
+| Deploy Script | ✅ COMPLETE | Unified deployment automation script |
+| Default Config | ✅ COMPLETE | Production-ready configuration template |
+| Prometheus Config | ✅ COMPLETE | Metrics collection configuration |
+| Deployment README | ✅ COMPLETE | Comprehensive deployment documentation |
+
+**New Files:**
+- `deploy/docker/Dockerfile` - Multi-stage container build
+- `deploy/docker/docker-compose.yml` - Full stack orchestration
+- `deploy/docker/config.toml` - Default server configuration
+- `deploy/docker/.env.example` - Environment template
+- `deploy/docker/prometheus.yml` - Monitoring configuration
+- `deploy/systemd/clawdius.service` - Systemd unit file
+- `deploy/deploy.sh` - Unified deployment script
+- `deploy/README.md` - Deployment guide
+
+**Key Features:**
+- One-command deployment: `./deploy.sh docker`
+- Optional monitoring stack (Prometheus + Grafana)
+- Optional caching (Redis)
+- GPU support for NVIDIA/AMD
+- Resource limits and health checks
+- Backup and recovery procedures
 
 ### v1.1.11 - JetBrains Plugin (2026-03-21) - ✅ COMPLETE
 
@@ -383,12 +414,12 @@
 - [x] JetBrains plugin (2,453 LOC)
 - [ ] IDE extension integration (future)
 
-### Phase 4: Enterprise (In Progress)
+### Phase 4: Enterprise ✅ COMPLETE
 - [x] Local LLM support (v1.1.8+)
-- [x] Self-hosted deployment improvements
+- [x] Self-hosted deployment improvements (Docker, Podman, systemd)
 - [x] Team features
-  - [x] Shared contexts - Team context sharing
-  - [ ] Prompt templates - Pre-defined prompt templates
+    - [x] Shared contexts - Team context sharing
+    - [x] Prompt templates - Pre-defined prompt templates
 - [x] Enterprise compliance (SSO hardening, audit logs)
 
 ## Capability Matrix Status

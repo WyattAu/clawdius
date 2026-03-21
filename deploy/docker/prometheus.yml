@@ -1,0 +1,27 @@
+# Prometheus configuration for Clawdius monitoring
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  # Clawdius server metrics
+  - job_name: 'clawdius'
+    static_configs:
+      - targets: ['clawdius-server:9091']
+    metrics_path: /metrics
+
+  # Ollama metrics (if available)
+  - job_name: 'ollama'
+    static_configs:
+      - targets: ['ollama:11434']
+
+  # Redis metrics (if using cache profile)
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis:6379']
+
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']

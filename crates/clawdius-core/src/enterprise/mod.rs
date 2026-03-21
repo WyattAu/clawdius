@@ -6,9 +6,11 @@
 //! - Compliance templates
 //! - Team management
 //! - Shared contexts (Phase 4)
+//! - Prompt templates (Phase 4)
 
 pub mod audit;
 pub mod compliance;
+pub mod prompt_templates;
 pub mod shared_context;
 pub mod sso;
 pub mod teams;
@@ -16,6 +18,9 @@ pub mod teams;
 pub use audit::{AuditEvent, AuditLogger, AuditQuery, AuditStorage};
 pub use compliance::{
     ComplianceControl, ComplianceFramework, ComplianceReport, ComplianceTemplate, ControlAssessment,
+};
+pub use prompt_templates::{
+    BuiltinTemplates, PromptTemplate, TemplateCategory, TemplateError, TemplateVariable,
 };
 pub use shared_context::{AccessLevel, ContextType, SharedContext};
 pub use sso::{OAuthProvider, SAMLConfig, SSOConfig, SSOManager, SSOProvider, SSOUser};

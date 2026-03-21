@@ -1,0 +1,141 @@
+# Clawdius Full Stack Deployment
+# Includes Clawdius server and optional Ollama for local LLM support
+
+version: "3.9"
+
+services:
+  clawdius-server:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile
+    image: clawdius/server:${CLAWDIUS_VERSION:-latest}
+    container_name: clawdius-server
+    restart: unless-stopped
+    ports:
+      - "${CLAWDIUS_PORT:-3000}:3000"
+    volumes:
+      - clawdius-data:/app/data
+      - clawdius-config:/app/config
+      - clawdius-logs:/app/logs
+      - ${HOST_PROJECTS:-./projects}:/projects:ro
+    environment:
+      - CLAWDIUS_CONFIG=/app/config/config.toml
+      - CLAWDIUS_DATA_DIR=/app/data
+      - CLAWDIUS_LOG_DIR=/app/logs
+      - RUST_LOG=${RUST_LOG:-info}
+      - OLLAMA_HOST=${OLLAMA_HOST:-http://ollama:11434}
+    depends_on:
+      ollama:
+        condition: service_healthy
+    networks:
+      - clawdius-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: "${CLAWDIUS_CPUS:-2}"
+          memory: ${CLAWDIUS_MEMORY:-2G}
+        reservations:
+          cpus: "0.5"
+          memory: 512M
+
+  ollama:
+    image: ollama/ollama:${OLLAMA_VERSION:-latest}
+    container_name: clawdius-ollama
+    restart: unless-stopped
+    ports:
+      - "${OLLAMA_PORT:-11434}:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    environment:
+      - OLLAMA_HOST=0.0.0.0
+    networks:
+      - clawdius-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/version"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+  # Optional: Redis for caching
+  redis:
+    image: redis:7-alpine
+    container_name: clawdius-redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - clawdius-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    profiles:
+      - cache
+
+  # Optional: Prometheus for metrics
+  prometheus:
+    image: prom/prometheus:${PROMETHEUS_VERSION:-latest}
+    container_name: clawdius-prometheus
+    restart: unless-stopped
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.enable-lifecycle'
+    networks:
+      - clawdius-network
+    profiles:
+      - monitoring
+
+  # Optional: Grafana for visualization
+  grafana:
+    image: grafana/grafana:${GRAFANA_VERSION:-latest}
+    container_name: clawdius-grafana
+    restart: unless-stopped
+    ports:
+      - "${GRAFANA_PORT:-3001}:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+    networks:
+      - clawdius-network
+    profiles:
+      - monitoring
+
+networks:
+  clawdius-network:
+    driver: bridge
+
+volumes:
+  clawdius-data:
+  clawdius-config:
+  clawdius-logs:
+  ollama-data:
+  redis-data:
+  prometheus-data:
+  grafana-data:
