@@ -74,6 +74,42 @@
 
 ### v1.1.10 - Token Counting Enhancement (2026-03-20) - ✅ COMPLETE
 
+ ###
+ !
+ ! | Task | Status | Description |
+ ! |------|--------|-------------|
+ ! | Tokenize Module | ✅ COMPLETE | New tokenize module with TokenizerStrategy enum |
+ ! | Code-Aware Counting | ✅ COMPLETE | ~4 chars/token with punctuation adjustment |
+ ! | Whitespace Strategy | ✅ COMPLETE | Simple whitespace-based tokenization
+ ! | Approximate Strategy | ✅ COMPLETE | Fast estimation without full tokenization
+ ! | Provider Enhancement | ✅ COMPLETE | LocalLlmProvider, OllamaProvider enhanced with count_tokens
+
+ !
+ ! **Key Files:**
+ ! - `clawdius-core/src/tokenize/mod.rs` - Module exports
+ ! - `clawdius-core/src/tokenize/counter.rs` - TokenizerStrategy implementations
+ ! - `clawdius-core/src/llm/providers/local.rs` - Enhanced with token counting
+ ! - `clawdius-core/src/llm/providers/ollama.rs` - Enhanced with token counting
+ !
+ ! ### v1.1.12 - Agentic LLM Integration (2026-03-21) - 🔄 IN PROGRESS
+ !
+ ! | Task | Status | Description |
+ ! |----------|-------------|-------------|
+ ! | LLM Client Fields | ✅ COMPLETE | llm_client, model_name fields in ExecutorAgent |
+ ! | Builder Method | ✅ COMPLETE | with_llm_client() method for configuration |
+ ! | Code Generation | ✅ COMPLETE | execute_generate_code() uses LLM when configured
+ ! | Code Analysis | ✅ COMPLETE | execute_analyze() uses LLM for code analysis
+ ! | Design Generation | ✅ COMPLETE | execute_design() uses LLM for design documents
+ ! | System Prompt | ✅ COMPLETE | CODE_GEN_SYSTEM_PROMPT for generation
+ ! | Integration Tests | ✅ COMPLETE | 3 tests for agentic LLM integration
+ ! | CLI Generate Command | ✅ COMPLETE | Full CLI command with LLM integration
+ !
+ ! **Key Files:**
+ ! - `clawdius-core/src/agentic/executor_agent.rs` - Enhanced with LLM integration
+ ! - `clawdius-core/tests/integration/agentic_llm.rs` - Integration tests
+ ! - `crates/clawdius/src/cli.rs` - Generate command with LLM integration
+ !
+
 | Task | Status | Description |
 |------|--------|-------------|
 | Tokenize Module | ✅ COMPLETE | New tokenize module with TokenizerStrategy enum |
