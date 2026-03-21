@@ -385,9 +385,11 @@
 
 ### Phase 4: Enterprise (In Progress)
 - [x] Local LLM support (v1.1.8+)
-- [ ] Self-hosted deployment improvements
-- [ ] Team features (shared contexts, prompt templates)
-- [ ] Enterprise compliance (SSO hardening, audit logs)
+- [x] Self-hosted deployment improvements
+- [x] Team features
+  - [x] Shared contexts - Team context sharing
+  - [ ] Prompt templates - Pre-defined prompt templates
+- [x] Enterprise compliance (SSO hardening, audit logs)
 
 ## Capability Matrix Status
 
