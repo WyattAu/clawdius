@@ -292,14 +292,14 @@ impl LlmClient for LocalLlmProvider {
             // Code typically has ~3-4 chars per token
             let char_count = text.chars().count();
             let punct_count = text.chars().filter(|c| c.is_ascii_punctuation()).count();
-            
+
             // Base: 4 chars per token, punctuation adds extra
             ((char_count as f64 / 4.0).ceil() as usize) + (punct_count / 3).max(1)
         } else {
             // Natural language: ~4 chars per token + punctuation adjustment
             let words = text.split_whitespace().count();
             let punct_count = text.chars().filter(|c| c.is_ascii_punctuation()).count();
-            
+
             words + (punct_count / 4)
         }
     }
