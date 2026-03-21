@@ -3,6 +3,7 @@
 //! Executes the plan created by the Planner Agent.
 
 use crate::error::Result;
+use crate::llm::{ChatMessage, ChatRole, LlmClient};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::fmt;
@@ -10,6 +11,26 @@ use std::sync::Arc;
 
 use super::planner_agent::ReviewCriterion;
 use super::tool_executor::{ToolExecutor, ToolRequest};
+
+/// System prompt for code generation.
+const CODE_GEN_SYSTEM_PROMPT: &str = r#"You are an expert software engineer. Generate clean, well-documented code based on the user's request.
+
+When generating code:
+1. Follow the language's best practices and idioms
+2. Include appropriate error handling
+3. Add comments for complex logic
+4. Use descriptive variable and function names
+5. Keep functions focused and single-purpose
+
+When editing existing code:
+1. Preserve the existing code style
+2. Make minimal changes to achieve the goal
+3. Ensure backward compatibility when possible
+
+Always respond with code in the appropriate format:
+- For new files: Provide the complete file content
+- For edits: Show the changes using diff-like format with context
+- Include the file path in your response"#;
 
 /// Agent responsible for executing the plan steps.
 pub struct ExecutorAgent {
@@ -21,6 +42,10 @@ pub struct ExecutorAgent {
     results: HashMap<String, StepResult>,
     /// Optional tool executor for calling external tools
     tool_executor: Option<Arc<dyn ToolExecutor>>,
+    /// Optional LLM client for code generation
+    llm_client: Option<Arc<dyn LlmClient>>,
+    /// Model name for LLM generation
+    model_name: Option<String>,
 }
 
 impl fmt::Debug for ExecutorAgent {
@@ -33,6 +58,11 @@ impl fmt::Debug for ExecutorAgent {
                 "tool_executor",
                 &self.tool_executor.as_ref().map(|_| "ToolExecutor"),
             )
+            .field(
+                "llm_client",
+                &self.llm_client.as_ref().map(|_| "LlmClient"),
+            )
+            .field("model_name", &self.model_name)
             .finish()
     }
 }
@@ -52,6 +82,8 @@ impl ExecutorAgent {
             failed: HashSet::new(),
             results: HashMap::new(),
             tool_executor: None,
+            llm_client: None,
+            model_name: None,
         }
     }
 
@@ -62,10 +94,24 @@ impl ExecutorAgent {
         self
     }
 
+    /// Sets the LLM client for code generation.
+    #[must_use]
+    pub fn with_llm_client(mut self, client: Arc<dyn LlmClient>, model_name: impl Into<String>) -> Self {
+        self.llm_client = Some(client);
+        self.model_name = Some(model_name.into());
+        self
+    }
+
     /// Returns whether a tool executor is configured.
     #[must_use]
     pub fn has_tool_executor(&self) -> bool {
         self.tool_executor.is_some()
+    }
+
+    /// Returns whether an LLM client is configured.
+    #[must_use]
+    pub fn has_llm_client(&self) -> bool {
+        self.llm_client.is_some()
     }
 
     /// Returns the list of available tools if a tool executor is configured.
@@ -256,29 +302,139 @@ impl ExecutorAgent {
 
     async fn execute_analyze(
         &self,
-        _scope: &super::AnalysisScope,
-        _depth: &super::AnalysisDepth,
+        scope: &super::AnalysisScope,
+        depth: &super::AnalysisDepth,
     ) -> Result<String> {
-        // In a real implementation, this would analyze the codebase
-        Ok("Analysis complete".to_string())
+        if let Some(client) = &self.llm_client {
+            let scope_desc = match scope {
+                super::AnalysisScope::SingleFile(_) => "single file",
+                super::AnalysisScope::Files(_) => "multiple files",
+                super::AnalysisScope::Directory(_) => "directory",
+                super::AnalysisScope::Workspace => "entire workspace",
+            };
+
+            let depth_desc = match depth {
+                super::AnalysisDepth::Surface => "quick surface analysis",
+                super::AnalysisDepth::Standard => "standard analysis",
+                super::AnalysisDepth::Comprehensive => "deep comprehensive analysis",
+            };
+
+            let prompt = format!(
+                "Analyze the code in a {} manner.\n\
+                 Scope: {}\n\n\
+                 Provide:\n\
+                 1. Key functions and their purposes\n\
+                 2. Dependencies and relationships\n\
+                 3. Potential issues or improvements\n\
+                 4. Code quality assessment",
+                depth_desc, scope_desc
+            );
+
+            let messages = vec![
+                ChatMessage {
+                    role: ChatRole::System,
+                    content: "You are a code analyst. Provide thorough, actionable analysis.".to_string(),
+                },
+                ChatMessage {
+                    role: ChatRole::User,
+                    content: prompt,
+                },
+            ];
+
+            let response = client.chat(messages).await?;
+            return Ok(response);
+        }
+
+        // Fallback without LLM
+        Ok("Analysis complete (no LLM configured)".to_string())
     }
 
     async fn execute_design(
         &self,
-        _requirements: &[String],
-        _constraints: &[String],
+        requirements: &[String],
+        constraints: &[String],
     ) -> Result<String> {
-        // In a real implementation, this would generate a design document
-        Ok("Design complete".to_string())
+        if let Some(client) = &self.llm_client {
+            let prompt = format!(
+                "Design a solution for the following requirements:\n\
+                 {}\n\n\
+                 Constraints:\n\
+                 {}\n\n\
+                 Provide:\n\
+                 1. Architecture overview\n\
+                 2. Component breakdown\n\
+                 3. API design\n\
+                 4. Data flow\n\
+                 5. Implementation recommendations",
+                requirements.join("\n- "),
+                constraints.join("\n- ")
+            );
+
+            let messages = vec![
+                ChatMessage {
+                    role: ChatRole::System,
+                    content: "You are a software architect. Create clear, practical design documents.".to_string(),
+                },
+                ChatMessage {
+                    role: ChatRole::User,
+                    content: prompt,
+                },
+            ];
+
+            let response = client.chat(messages).await?;
+            return Ok(response);
+        }
+
+        // Fallback without LLM
+        Ok("Design complete (no LLM configured)".to_string())
     }
 
     async fn execute_generate_code(
         &self,
-        _prompt: &str,
-        _target_files: &[String],
+        prompt: &str,
+        target_files: &[String],
     ) -> Result<String> {
-        // In a real implementation, this would call the LLM to generate code
-        Ok("// Generated code\nfn generated_function() {}".to_string())
+        // If LLM client is configured, use it for real code generation
+        if let Some(client) = &self.llm_client {
+            let model = self.model_name.as_deref().unwrap_or("default");
+            tracing::info!(
+                "Generating code with model {} for {} target file(s)",
+                model,
+                target_files.len()
+            );
+
+            let file_context = if target_files.len() == 1 {
+                format!("\nTarget file: {}", target_files[0])
+            } else if !target_files.is_empty() {
+                format!("\nTarget files: {}", target_files.join(", "))
+            } else {
+                String::new()
+            };
+
+            let full_prompt = format!(
+                "{}\n\nTask: {}\n\nGenerate clean, well-documented code that follows best practices. \
+                 Include appropriate error handling and use idiomatic patterns for the language.",
+                file_context, prompt
+            );
+
+            let messages = vec![
+                ChatMessage {
+                    role: ChatRole::System,
+                    content: CODE_GEN_SYSTEM_PROMPT.to_string(),
+                },
+                ChatMessage {
+                    role: ChatRole::User,
+                    content: full_prompt,
+                },
+            ];
+
+            let response = client.chat(messages).await?;
+            return Ok(response);
+        }
+
+        // Fallback: stub implementation when no LLM configured
+        tracing::debug!("No LLM configured, using stub code generator");
+        Ok("// Generated code (stub - no LLM configured)\nfn generated_function() {\n    // Stub implementation\n}".to_string())
     }
 
     async fn execute_write_file(&self, path: &str, content: &str) -> Result<String> {

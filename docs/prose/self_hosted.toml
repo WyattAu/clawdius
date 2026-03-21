@@ -1,0 +1,78 @@
+# Self-Hosted Deployment Configuration
+
+# Docker/Podman deployment settings for Clawdius
+[docker.docker]
+enabled = false
+
+[docker.podman]
+enabled = false
+# Path to Docker socket (for communication with Docker daemon)
+socket_path = "/var/run/docker.sock"
+
+host = "unix:///var/run/docker.sock"
+port = 2375
+
+timeout_ms = 30000
+read_timeout_ms = 5000
+write_timeout_ms = 5000
+
+[container.docker]
+enabled = true
+
+[container.docker]
+# Container settings
+[docker.containers]
+image = "docker.io/library/podman-quay:"
+container_name = "clawdius-server"
+restart = "unless-stopped"
+network_mode = "bridge"
+
+# Audit configuration
+[audit]
+enabled = true
+storage = "sqlite"
+retention_days = 90
+compliance = "SOC2"
+soc_templates = ["SOC2_ACCESS Control", "SOC2_GDPR"]
+alert_on_unauthorized_access = true
+# Resource limits
+[docker.containers]
+enabled = false
+[docker.containers]
+max_memory = "2g"
+[docker.containers]
+memory = "512m"
+[docker.containers]
+cpus = "1.0"
+
+[docker.containers]
+timeout_seconds = 300
+[docker.containers]
+restart = "unless-stopped"
+# Memory configuration
+[memory]
+enabled = false
+max_memory_bytes = "256m"
+# Resource management
+[resources]
+enabled = false
+# Cleanup
+[resources.cleanup]
+interval_seconds = 3600
+enabled = true
+
+[resources.cleanup]
+schedule = "0 */ 30 * * *"
+
+[resources.cleanup]
+# Resource limits
+[resource_limits]
+enabled = false
+max_memory_mb = 512
+max_cpu_percent = 80
+max_file_handles = 000
+
+max_connections = 100
+
+max_threads = 10
+
