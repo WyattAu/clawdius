@@ -1,14 +1,17 @@
 //! Code actions and automated refactoring capabilities.
 //!
 //! This module provides intelligent code actions that can analyze code and suggest
-//! or apply transformations such as refactoring, test generation, and quick fixes.
+//! or apply transformations such as refactoring, test generation, and documentation.
 
+pub mod docs;
 pub mod refactor;
 pub mod tests;
+pub mod traits;
 
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
+pub use docs::*;
 pub use refactor::*;
 pub use tests::*;
 
