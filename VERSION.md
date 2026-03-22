@@ -4,19 +4,47 @@
 
 | Attribute | Value |
 |-----------|-------|
-| **Version** | 1.1.13 |
+| **Version** | 1.1.14 |
 | **Phase** | v2.0.0 - Agentic Workflows |
-| **Status** | 🔄 IN PROGRESS |
+| **Status** | ✅ COMPLETE |
 | **API Stability** | ✅ GUARANTEED |
 | **Last Updated** | 2026-03-22 |
 | **Error Level** | None |
-| **Rollback Checkpoint** | v1.1.10 |
+| **Rollback Checkpoint** | v1.1.13 |
 | **Feature Matrix** | [.reports/feature_implementation_matrix.md](.reports/feature_implementation_matrix.md) |
 | **Roadmap** | [ROADMAP.md](ROADMAP.md) |
 | **HFT Profile** | [docs/HFT_TRADING_PROFILE.md](docs/HFT_TRADING_PROFILE.md) |
 | **Competitor Analysis** | [docs/COMPETITOR_COMPARISON.md](docs/COMPETITOR_COMPARISON.md) |
 
 ## Version History
+
+### v1.1.14 - Agentic LLM Integration (2026-03-22) - ✅ COMPLETE
+
+| Task | Status | Description |
+|------|--------|-------------|
+| LLM Client Fields | ✅ COMPLETE | llm_client, model_name fields in ExecutorAgent |
+| Builder Method | ✅ COMPLETE | with_llm_client() method for configuration |
+| Code Generation | ✅ COMPLETE | execute_generate_code() uses LLM when configured |
+| Code Analysis | ✅ COMPLETE | execute_analyze() uses LLM for code analysis |
+| Design Generation | ✅ COMPLETE | execute_design() uses LLM for design documents |
+| System Prompt | ✅ COMPLETE | CODE_GEN_SYSTEM_PROMPT for generation |
+| Integration Tests | ✅ COMPLETE | 17 tests for agentic LLM integration |
+| CLI Generate Command | ✅ COMPLETE | Full CLI command with LLM integration |
+| Doc Generation Module | ✅ COMPLETE | GenerateDocs action for documentation |
+| Multi-format Docs | ✅ COMPLETE | Rustdoc, JSDoc, Python docstrings, Markdown |
+| CLI Doc Command | ✅ COMPLETE | Full `clawdius doc` command with LLM |
+| Export Extraction | ✅ COMPLETE | Automatic export detection for modules |
+
+**New Files:**
+- `crates/clawdius-core/src/actions/docs.rs` - Documentation generation module
+- `crates/clawdius-core/tests/integration/agentic_llm.rs` - 17 LLM integration tests
+
+**Key Features:**
+- LLM-powered code generation in agentic workflows
+- LLM-powered code analysis and design generation
+- Multi-format documentation generation (Rustdoc, JSDoc, Python docstrings, Markdown)
+- CLI commands for `clawdius generate`, `clawdius doc`, `clawdius test`
+- 97+ integration tests passing
 
 ### v1.1.12 - Self-Hosted Deployment (2026-03-21) - ✅ COMPLETE
 
