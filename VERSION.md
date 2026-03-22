@@ -100,11 +100,14 @@
 | System Prompt | ✅ COMPLETE | CODE_GEN_SYSTEM_PROMPT for generation |
 | Integration Tests | ✅ COMPLETE | 17 tests for agentic LLM integration |
 | CLI Generate Command | ✅ COMPLETE | Full CLI command with LLM integration |
+| Doc Generation Module | ✅ COMPLETE | GenerateDocs action for documentation |
+| Multi-format Docs | ✅ COMPLETE | Rustdoc, JSDoc, Python docstrings, Markdown |
 
 **Key Files:**
 - `clawdius-core/src/agentic/executor_agent.rs` - Enhanced with LLM integration
 - `clawdius-core/tests/integration/agentic_llm.rs` - 17 integration tests
 - `crates/clawdius/src/cli.rs` - Generate command with LLM integration
+- `clawdius-core/src/actions/docs.rs` - Documentation generation module
 
 | Task | Status | Description |
 |------|--------|-------------|
