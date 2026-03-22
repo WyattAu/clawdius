@@ -9,6 +9,28 @@ use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tokio::sync::mpsc;
 
+use super::llm_generator::GeneratedCode;
+
+/// System prompt for code generation.
+const CODE_GEN_SYSTEM_PROMPT: &str = r#"You are an expert software engineer. Generate clean, well-documented code based on the user's request.
+
+When generating code:
+1. Follow the language's best practices and idioms
+2. Include appropriate error handling
+3. Add comments for complex logic
+4. Use descriptive variable and function names
+5. Keep functions focused and single-purpose
+
+When editing existing code:
+1. Preserve the existing code style
+2. Make minimal changes to achieve the goal
+3. Ensure backward compatibility when possible
+
+Always respond with code in the appropriate format:
+- For new files: Provide the complete file content
+- For edits: Show the changes using diff-like format with context
+- Include the file path in your response"#;
+
 /// Streaming code generator with real-time output.
 pub struct StreamingCodeGenerator {
     /// LLM client
@@ -54,10 +76,27 @@ impl StreamingCodeGenerator {
             content: user_content,
         });
 
-        // Get streaming receiver
-        let receiver = self.client.chat_stream(messages).await?;
+        // Get raw string streaming receiver from LLM
+        let mut raw_receiver = self.client.chat_stream(messages).await?;
+        
+        // Create a channel for StreamChunks
+        let (tx, rx) = mpsc::channel(32);
+        
+        // Spawn a task to convert strings to StreamChunks
+        tokio::spawn(async move {
+            let mut full_content = String::new();
+            while let Some(delta) = raw_receiver.recv().await {
+                full_content.push_str(&delta);
+                let chunk = StreamChunk::incomplete(delta);
+                if tx.send(chunk).await.is_err() {
+                    break;
+                }
+            }
+            // Send final complete chunk with full content
+            let _ = tx.send(StreamChunk::complete(full_content)).await;
+        });
 
-        Ok(receiver)
+        Ok(rx)
     }
 
 }
@@ -180,7 +219,7 @@ impl StreamProcessor {
 
     fn calculate_confidence(&self) -> f32 {
         // Base confidence on response length
-        let mut confidence = 0.5;
+        let mut confidence: f32 = 0.5;
         
         // Adjust based on code quality indicators
         if self.content.contains("TODO") || self.content.contains("FIXME") {
@@ -237,18 +276,13 @@ impl StreamProcessor {
 mod tests {
     use super::*;
     use crate::llm::providers::local::LocalLlmProvider;
-    use crate::llm::LlmConfig;
 
     #[test]
     fn test_streaming_generator_creation() {
-        let config = LlmConfig {
-            provider: "local".to_string(),
-            model: "test-model".to_string(),
-            api_key: None,
-            base_url: None,
-            max_tokens: 100,
-        };
-        let provider = LocalLlmProvider::new(config);
+        let provider = LocalLlmProvider::new(
+            "http://localhost:11434".to_string(),
+            "test-model".to_string(),
+        );
         let generator = StreamingCodeGenerator::new(
             Arc::new(provider),
             "test-model".to_string(),

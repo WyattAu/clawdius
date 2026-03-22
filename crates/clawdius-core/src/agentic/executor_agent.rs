@@ -8,8 +8,11 @@ use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::fmt;
 use std::sync::Arc;
+use tokio::sync::mpsc;
 
+use super::llm_generator::GeneratedCode;
 use super::planner_agent::ReviewCriterion;
+use super::streaming_generator::{StreamChunk, StreamProcessor, StreamingCodeGenerator};
 use super::tool_executor::{ToolExecutor, ToolRequest};
 
 /// System prompt for code generation.
@@ -46,6 +49,8 @@ pub struct ExecutorAgent {
     llm_client: Option<Arc<dyn LlmClient>>,
     /// Model name for LLM generation
     model_name: Option<String>,
+    /// Optional streaming code generator for real-time output
+    streaming_generator: Option<Arc<StreamingCodeGenerator>>,
 }
 
 impl fmt::Debug for ExecutorAgent {
@@ -60,6 +65,7 @@ impl fmt::Debug for ExecutorAgent {
             )
             .field("llm_client", &self.llm_client.as_ref().map(|_| "LlmClient"))
             .field("model_name", &self.model_name)
+            .field("streaming_generator", &self.streaming_generator.as_ref().map(|_| "StreamingCodeGenerator"))
             .finish()
     }
 }
@@ -81,6 +87,7 @@ impl ExecutorAgent {
             tool_executor: None,
             llm_client: None,
             model_name: None,
+            streaming_generator: None,
         }
     }
 
@@ -100,6 +107,25 @@ impl ExecutorAgent {
     ) -> Self {
         self.llm_client = Some(client);
         self.model_name = Some(model_name.into());
+        self
+    }
+
+    /// Sets the streaming code generator for real-time output.
+    #[must_use]
+    pub fn with_streaming_generator(mut self, generator: Arc<StreamingCodeGenerator>) -> Self {
+        self.streaming_generator = Some(generator);
+        self
+    }
+
+    /// Creates a streaming generator from the configured LLM client.
+    #[must_use]
+    pub fn with_streaming_from_llm(mut self) -> Self {
+        if let (Some(client), Some(model)) = (&self.llm_client, &self.model_name) {
+            self.streaming_generator = Some(Arc::new(StreamingCodeGenerator::new(
+                client.clone(),
+                model.clone(),
+            )));
+        }
         self
     }
 
@@ -435,6 +461,144 @@ impl ExecutorAgent {
         // Fallback: stub implementation when no LLM configured
         tracing::debug!("No LLM configured, using stub code generator");
         Ok("// Generated code (stub - no LLM configured)\nfn generated_function() {\n    // Stub implementation\n}".to_string())
+    }
+
+    /// Generates code with streaming output for real-time UX.
+    ///
+    /// Returns a receiver that yields `StreamChunk` objects as code is generated.
+    /// This provides better UX for longer generations by showing progress.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the LLM request fails.
+    pub async fn execute_generate_code_stream(
+        &self,
+        prompt: &str,
+        target_files: &[String],
+    ) -> Result<Option<mpsc::Receiver<StreamChunk>>> {
+        // If streaming generator is configured, use it
+        if let Some(generator) = &self.streaming_generator {
+            let file_context = if target_files.len() == 1 {
+                format!("\nTarget file: {}", target_files[0])
+            } else if !target_files.is_empty() {
+                format!("\nTarget files: {}", target_files.join(", "))
+            } else {
+                String::new()
+            };
+
+            let full_prompt = format!(
+                "{}\n\nTask: {}\n\nGenerate clean, well-documented code that follows best practices. \
+                 Include appropriate error handling and use idiomatic patterns for the language.",
+                file_context, prompt
+            );
+
+            tracing::info!("Starting streaming code generation");
+            let receiver = generator.generate_stream(&full_prompt, None).await?;
+            return Ok(Some(receiver));
+        }
+
+        // If we have an LLM client but no streaming generator, we can still stream
+        // by using the client's chat_stream method directly
+        if let Some(client) = &self.llm_client {
+            let model = self.model_name.as_deref().unwrap_or("default");
+            tracing::info!(
+                "Streaming code generation with model {} for {} target file(s)",
+                model,
+                target_files.len()
+            );
+
+            let file_context = if target_files.len() == 1 {
+                format!("\nTarget file: {}", target_files[0])
+            } else if !target_files.is_empty() {
+                format!("\nTarget files: {}", target_files.join(", "))
+            } else {
+                String::new()
+            };
+
+            let full_prompt = format!(
+                "{}\n\nTask: {}\n\nGenerate clean, well-documented code that follows best practices. \
+                 Include appropriate error handling and use idiomatic patterns for the language.",
+                file_context, prompt
+            );
+
+            let messages = vec![
+                ChatMessage {
+                    role: ChatRole::System,
+                    content: CODE_GEN_SYSTEM_PROMPT.to_string(),
+                },
+                ChatMessage {
+                    role: ChatRole::User,
+                    content: full_prompt,
+                },
+            ];
+
+            // Get the raw string stream from the LLM client
+            let mut raw_receiver = client.chat_stream(messages).await?;
+            
+            // Wrap the raw stream into StreamChunk format
+            let (tx, rx) = mpsc::channel(32);
+            
+            // Spawn a task to convert the raw stream to StreamChunks
+            let model_name = model.to_string();
+            tokio::spawn(async move {
+                let mut content = String::new();
+                while let Some(delta) = raw_receiver.recv().await {
+                    content.push_str(&delta);
+                    let chunk = StreamChunk::incomplete(delta);
+                    if tx.send(chunk).await.is_err() {
+                        break;
+                    }
+                }
+                // Send final complete chunk
+                let _ = tx.send(StreamChunk::complete(content)).await;
+                tracing::debug!("Streaming code generation complete for model {}", model_name);
+            });
+
+            return Ok(Some(rx));
+        }
+
+        // No streaming available
+        tracing::debug!("No streaming generator configured");
+        Ok(None)
+    }
+
+    /// Generates code with streaming output and a callback for each chunk.
+    ///
+    /// This is a convenience method that handles the stream processing internally
+    /// and calls the provided callback for each chunk received.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the LLM request fails.
+    pub async fn execute_generate_code_with_callback<F>(
+        &self,
+        prompt: &str,
+        target_files: &[String],
+        callback: F,
+    ) -> Result<GeneratedCode>
+    where
+        F: FnMut(&StreamChunk) + Send + 'static,
+    {
+        if let Some(receiver) = self.execute_generate_code_stream(prompt, target_files).await? {
+            let mut processor = StreamProcessor::new();
+            return processor.process_stream_with_callback(receiver, callback).await;
+        }
+
+        // Fallback to non-streaming generation
+        let content = self.execute_generate_code(prompt, target_files).await?;
+        Ok(GeneratedCode {
+            content,
+            file_path: target_files.first().cloned(),
+            language: None,
+            confidence: 0.5,
+            notes: vec!["Generated without streaming (no streaming generator configured)".to_string()],
+        })
+    }
+
+    /// Checks if streaming generation is available.
+    #[must_use]
+    pub const fn has_streaming(&self) -> bool {
+        self.streaming_generator.is_some() || self.llm_client.is_some()
     }
 
     async fn execute_write_file(&self, path: &str, content: &str) -> Result<String> {
