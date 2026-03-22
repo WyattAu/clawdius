@@ -5,6 +5,7 @@ use clap::{Parser, Subcommand, ValueEnum};
 use std::path::PathBuf;
 
 use clawdius_core::actions::Function;
+use clawdius_core::analysis::{DebtReport, DriftReport, DriftSeverity as CoreDriftSeverity};
 use clawdius_core::i18n::Language;
 use clawdius_core::output::{
     OutputFormat as CoreOutputFormat, OutputFormatter, OutputOptions, SessionInfo, TestCaseInfo,
@@ -533,6 +534,37 @@ pub enum Commands {
         #[arg(short = 'm', long)]
         #[arg(help = "Model name")]
         model: Option<String>,
+    },
+
+    /// Analyze codebase for architecture drift and technical debt
+    Analyze {
+        /// Path to analyze (file or directory)
+        #[arg(default_value = ".")]
+        path: PathBuf,
+
+        /// Analyze for architecture drift only
+        #[arg(long, conflicts_with = "debt")]
+        drift: bool,
+
+        /// Analyze for technical debt only
+        #[arg(long, conflicts_with = "drift")]
+        debt: bool,
+
+        /// Output format (text, json)
+        #[arg(short = 'f', long, value_enum, default_value = "text")]
+        format: OutputFormat,
+
+        /// Output file path (prints to stdout if not specified)
+        #[arg(short = 'o', long)]
+        output: Option<PathBuf>,
+
+        /// Minimum severity level to report (low, medium, high, critical)
+        #[arg(long, default_value = "low")]
+        severity: String,
+
+        /// Exclude patterns (comma-separated)
+        #[arg(long)]
+        exclude: Option<String>,
     },
 }
 
@@ -1266,6 +1298,17 @@ pub async fn handle_command(
                 output_format,
             )
             .await
+        }
+        Commands::Analyze {
+            path,
+            drift,
+            debt,
+            format: analyze_format,
+            output,
+            severity,
+            exclude,
+        } => {
+            handle_analyze(path, drift, debt, analyze_format, output, severity, exclude).await
         }
     }
 }
@@ -5577,4 +5620,245 @@ async fn handle_complete(
     }
 
     Ok(())
+}
+
+/// Handle analyze command for architecture drift and technical debt detection
+async fn handle_analyze(
+    path: PathBuf,
+    drift_only: bool,
+    debt_only: bool,
+    format: OutputFormat,
+    output_file: Option<PathBuf>,
+    min_severity: String,
+    exclude_patterns: Option<String>,
+) -> anyhow::Result<()> {
+    use clawdius_core::analysis::{DebtAnalyzer, DriftDetector};
+
+    // Parse minimum severity filter
+    let min_severity_level = match min_severity.to_lowercase().as_str() {
+        "low" => 1,
+        "medium" => 2,
+        "high" => 3,
+        "critical" => 4,
+        _ => 1,
+    };
+
+    // Parse exclude patterns
+    let excludes: Vec<String> = exclude_patterns
+        .map(|p| p.split(',').map(|s| s.trim().to_string()).collect())
+        .unwrap_or_default();
+
+    // Collect files to analyze
+    let mut files: Vec<(PathBuf, String)> = Vec::new();
+
+    if path.is_file() {
+        if let Ok(content) = std::fs::read_to_string(&path) {
+            files.push((path.clone(), content));
+        }
+    } else if path.is_dir() {
+        for entry in walkdir::WalkDir::new(&path)
+            .into_iter()
+            .filter_map(|e| e.ok())
+            .filter(|e| {
+                e.path()
+                    .extension()
+                    .map(|ext| ext == "rs")
+                    .unwrap_or(false)
+            })
+        {
+            let file_path = entry.path().to_path_buf();
+            let path_str = file_path.to_string_lossy();
+
+            if excludes.iter().any(|ex| path_str.contains(ex)) {
+                continue;
+            }
+            if path_str.contains("/target/") || path_str.contains("\\target\\") {
+                continue;
+            }
+            if let Ok(content) = std::fs::read_to_string(&file_path) {
+                files.push((file_path, content));
+            }
+        }
+    }
+
+    if files.is_empty() {
+        println!("⚠️  No files found to analyze");
+        return Ok(());
+    }
+
+    println!("📊 Analyzing {} files...", files.len());
+
+    // Run analysis
+    let drift_report = if !debt_only {
+        let detector = DriftDetector::new();
+        detector.analyze_files(files.iter().map(|(p, c)| (p.clone(), c.as_str())))
+    } else {
+        DriftReport::default()
+    };
+
+    let debt_report = if !drift_only {
+        let analyzer = DebtAnalyzer::new();
+        analyzer.analyze_files(files.iter().map(|(p, c)| (p.clone(), c.as_str())))
+    } else {
+        DebtReport::default()
+    };
+
+    // Generate output
+    let output = match format {
+        OutputFormat::Json => format_analyze_json(&drift_report, &debt_report, files.len(), min_severity_level)?,
+        _ => format_analyze_text(&drift_report, &debt_report, files.len(), min_severity_level),
+    };
+
+    // Write output
+    if let Some(output_path) = output_file {
+        std::fs::write(&output_path, &output)?;
+        println!("✅ Report written to {}", output_path.display());
+    } else {
+        println!("\n{output}");
+    }
+
+    Ok(())
+}
+
+// Helper functions for analyze command
+
+fn format_analyze_json(
+    drift_report: &DriftReport,
+    debt_report: &DebtReport,
+    files_analyzed: usize,
+    min_severity: u8,
+) -> anyhow::Result<String> {
+    let result = serde_json::json!({
+        "summary": {
+            "files_analyzed": files_analyzed,
+            "drift_count": drift_report.len(),
+            "debt_count": debt_report.len(),
+        },
+        "drift": filter_drift_by_severity(drift_report, min_severity),
+        "debt": filter_debt_by_priority(debt_report, min_severity),
+    });
+    Ok(serde_json::to_string_pretty(&result)?)
+}
+
+fn format_analyze_text(
+    drift_report: &DriftReport,
+    debt_report: &DebtReport,
+    files_analyzed: usize,
+    min_severity: u8,
+) -> String {
+    let mut output = String::new();
+
+    output.push_str("╔══════════════════════════════════════════════════════════════╗\n");
+    output.push_str("║                    📊 CLAWDIUS ANALYSIS                      ║\n");
+    output.push_str("╠══════════════════════════════════════════════════════════════╣\n");
+    output.push_str(&format!("║  Files Analyzed: {:<43}║\n", files_analyzed));
+    output.push_str("╚══════════════════════════════════════════════════════════════╝\n\n");
+
+    // Drift Summary
+    output.push_str("## 🏗️  Architecture Drift\n\n");
+    output.push_str(&format!("  Total Drifts: {}\n", drift_report.len()));
+    output.push_str(&format!("  Severity Score: {}\n", drift_report.total_severity_score()));
+    if drift_report.has_critical() {
+        output.push_str("  ⚠️  CRITICAL DRIFTS DETECTED!\n");
+    }
+    output.push('\n');
+
+    let filtered_drifts = filter_drift_by_severity(drift_report, min_severity);
+    if !filtered_drifts.is_empty() {
+        output.push_str("  Top Issues:\n");
+        for drift in filtered_drifts.iter().take(10) {
+            let severity = drift.get("severity").and_then(|v| v.as_str()).unwrap_or("Low");
+            let icon = match severity {
+                "Critical" => "🔴",
+                "High" => "🟠",
+                "Medium" => "🟡",
+                _ => "🔵",
+            };
+            let file = drift.get("file").and_then(|v| v.as_str()).unwrap_or("unknown");
+            let line = drift.get("line").and_then(|v| v.as_u64()).unwrap_or(0);
+            let msg = drift.get("message").and_then(|v| v.as_str()).unwrap_or("unknown");
+            output.push_str(&format!("    {} {}:{} - {}\n", icon, file, line, msg));
+        }
+    }
+    output.push('\n');
+
+    // Debt Summary
+    output.push_str("## 💰 Technical Debt\n\n");
+    output.push_str(&format!("  Total Debt Items: {}\n", debt_report.len()));
+    output.push_str(&format!("  Debt Score: {:.2}\n", debt_report.debt_score()));
+    output.push_str(&format!("  Total Effort: {:.1} hours\n", debt_report.total_effort_hours));
+    output.push_str(&format!("  Blocking Items: {}\n", debt_report.blocking_count));
+    output.push('\n');
+
+    let top_debts = debt_report.top_priorities(10);
+    if !top_debts.is_empty() {
+        output.push_str("  Top Priority Items:\n");
+        for debt in top_debts {
+            let icon = match debt.priority {
+                1..=3 => "🟢",
+                4..=6 => "🟡",
+                7..=8 => "🟠",
+                9..=10 => "🔴",
+                _ => "⚪",
+            };
+            output.push_str(&format!(
+                "    {} P{} | {} - {}\n",
+                icon,
+                debt.priority,
+                debt.file_path.to_string_lossy(),
+                debt.description
+            ));
+        }
+    }
+
+    output
+}
+
+fn filter_drift_by_severity(report: &DriftReport, min_level: u8) -> Vec<serde_json::Value> {
+    report.drifts.iter()
+        .filter(|d| {
+            let level = match d.severity {
+                CoreDriftSeverity::Low => 1,
+                CoreDriftSeverity::Medium => 2,
+                CoreDriftSeverity::High => 3,
+                CoreDriftSeverity::Critical => 4,
+            };
+            level >= min_level
+        })
+        .map(|d| serde_json::json!({
+            "file": d.file_path.to_string_lossy(),
+            "line": d.line_number,
+            "category": format!("{:?}", d.category),
+            "severity": format!("{:?}", d.severity),
+            "message": d.message,
+            "suggestion": d.suggestion,
+        }))
+        .collect()
+}
+
+fn filter_debt_by_priority(report: &DebtReport, min_level: u8) -> Vec<serde_json::Value> {
+    report.items.iter()
+        .filter(|d| {
+            let level = match d.priority {
+                1..=3 => 1,
+                4..=6 => 2,
+                7..=8 => 3,
+                9..=10 => 4,
+                _ => 1,
+            };
+            level >= min_level
+        })
+        .map(|d| serde_json::json!({
+            "id": d.id,
+            "file": d.file_path.to_string_lossy(),
+            "line": d.line_number,
+            "type": format!("{:?}", d.debt_type),
+            "description": d.description,
+            "priority": d.priority,
+            "impact": d.impact,
+            "effort_hours": d.estimated_effort_hours,
+            "blocking": d.is_blocking,
+            "resolution": d.resolution,
+        }))
+        .collect()
 }

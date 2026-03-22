@@ -48,6 +48,7 @@ chrono.workspace = true
 uuid.workspace = true
 rpassword.workspace = true
 regex.workspace = true
+walkdir.workspace = true
 
 # Allocator
 mimalloc = { workspace = true, optional = true }
