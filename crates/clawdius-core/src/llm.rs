@@ -188,9 +188,11 @@
 
 mod messages;
 pub mod providers;
+pub mod rate_limiter;
 
 pub use messages::{ChatMessage, ChatRole};
 pub use providers::Provider;
+pub use rate_limiter::{RateLimiter, RateLimiterConfig};
 
 pub use crate::config::{RetryCondition, RetryConfig};
 use crate::{Error, Result};

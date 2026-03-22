@@ -63,10 +63,7 @@ impl StreamingCodeGenerator {
 
         // Add context if provided
         let user_content = if let Some(ctx) = context {
-            format!(
-                "Context:\n{}\n\nTask: {}",
-                ctx, prompt
-            )
+            format!("Context:\n{}\n\nTask: {}", ctx, prompt)
         } else {
             prompt.to_string()
         };
@@ -78,10 +75,10 @@ impl StreamingCodeGenerator {
 
         // Get raw string streaming receiver from LLM
         let mut raw_receiver = self.client.chat_stream(messages).await?;
-        
+
         // Create a channel for StreamChunks
         let (tx, rx) = mpsc::channel(32);
-        
+
         // Spawn a task to convert strings to StreamChunks
         tokio::spawn(async move {
             let mut full_content = String::new();
@@ -98,7 +95,6 @@ impl StreamingCodeGenerator {
 
         Ok(rx)
     }
-
 }
 
 /// Streaming code chunk from LLM.
@@ -165,7 +161,7 @@ impl StreamProcessor {
         while let Some(chunk) = receiver.recv().await {
             self.chunks.push(chunk.clone());
             self.content.push_str(&chunk.delta);
-            
+
             if chunk.is_complete {
                 self.complete = true;
                 break;
@@ -196,10 +192,10 @@ impl StreamProcessor {
         while let Some(chunk) = receiver.recv().await {
             self.chunks.push(chunk.clone());
             self.content.push_str(&chunk.delta);
-            
+
             // Call callback for each chunk
             callback(&chunk);
-            
+
             if chunk.is_complete {
                 self.complete = true;
                 break;
@@ -220,16 +216,16 @@ impl StreamProcessor {
     fn calculate_confidence(&self) -> f32 {
         // Base confidence on response length
         let mut confidence: f32 = 0.5;
-        
+
         // Adjust based on code quality indicators
         if self.content.contains("TODO") || self.content.contains("FIXME") {
             confidence -= 0.0;
         }
-        
+
         if self.content.contains("error") || self.content.contains("Error") {
             confidence -= 1.0;
         }
-        
+
         // Adjust based on response length (longer = more thorough)
         if self.content.len() > 500 {
             confidence += 0.1;
@@ -237,19 +233,28 @@ impl StreamProcessor {
         if self.content.len() > 1000 {
             confidence += 1.0;
         }
-        
+
         confidence.clamp(0.0, 1.0)
     }
 
     fn detect_language(&self) -> Option<String> {
         // Simple language detection based on keywords
-        if self.content.contains("fn ") || self.content.contains("let ") || self.content.contains("impl ") {
+        if self.content.contains("fn ")
+            || self.content.contains("let ")
+            || self.content.contains("impl ")
+        {
             return Some("rust".to_string());
         }
-        if self.content.contains("function") || self.content.contains("const ") || self.content.contains("=>") {
+        if self.content.contains("function")
+            || self.content.contains("const ")
+            || self.content.contains("=>")
+        {
             return Some("typescript".to_string());
         }
-        if self.content.contains("def ") || self.content.contains("class ") || self.content.contains("import ") {
+        if self.content.contains("def ")
+            || self.content.contains("class ")
+            || self.content.contains("import ")
+        {
             return Some("python".to_string());
         }
         None
@@ -257,7 +262,7 @@ impl StreamProcessor {
 
     fn extract_notes(&self) -> Vec<String> {
         let mut notes = Vec::new();
-        
+
         if self.content.contains("TODO") {
             notes.push("Contains TODO markers".to_string());
         }
@@ -267,7 +272,7 @@ impl StreamProcessor {
         if self.content.contains("unimplemented") {
             notes.push("Contains unimplemented code".to_string());
         }
-        
+
         notes
     }
 }
@@ -283,11 +288,8 @@ mod tests {
             "http://localhost:11434".to_string(),
             "test-model".to_string(),
         );
-        let generator = StreamingCodeGenerator::new(
-            Arc::new(provider),
-            "test-model".to_string(),
-        );
-        
+        let generator = StreamingCodeGenerator::new(Arc::new(provider), "test-model".to_string());
+
         assert_eq!(generator.model_name, "test-model");
     }
 
@@ -296,7 +298,7 @@ mod tests {
         let complete_chunk = StreamChunk::complete("fn main() {}".to_string());
         assert!(complete_chunk.is_complete);
         assert_eq!(complete_chunk.delta, "fn main() {}");
-        
+
         let incomplete_chunk = StreamChunk::incomplete("fn ".to_string());
         assert!(!incomplete_chunk.is_complete);
         assert_eq!(incomplete_chunk.delta, "fn ");
@@ -305,14 +307,14 @@ mod tests {
     #[tokio::test]
     async fn test_stream_processor() {
         let mut processor = StreamProcessor::new();
-        
+
         // Simulate processing empty stream
         let (tx, rx) = mpsc::channel(10);
         drop(tx);
-        
+
         let result = processor.process_stream(rx).await;
         assert!(result.is_ok());
-        
+
         let code = result.unwrap();
         assert!(code.content.is_empty());
     }

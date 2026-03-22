@@ -1307,9 +1307,7 @@ pub async fn handle_command(
             output,
             severity,
             exclude,
-        } => {
-            handle_analyze(path, drift, debt, analyze_format, output, severity, exclude).await
-        }
+        } => handle_analyze(path, drift, debt, analyze_format, output, severity, exclude).await,
     }
 }
 
@@ -5659,12 +5657,7 @@ async fn handle_analyze(
         for entry in walkdir::WalkDir::new(&path)
             .into_iter()
             .filter_map(|e| e.ok())
-            .filter(|e| {
-                e.path()
-                    .extension()
-                    .map(|ext| ext == "rs")
-                    .unwrap_or(false)
-            })
+            .filter(|e| e.path().extension().map(|ext| ext == "rs").unwrap_or(false))
         {
             let file_path = entry.path().to_path_buf();
             let path_str = file_path.to_string_lossy();
@@ -5705,7 +5698,9 @@ async fn handle_analyze(
 
     // Generate output
     let output = match format {
-        OutputFormat::Json => format_analyze_json(&drift_report, &debt_report, files.len(), min_severity_level)?,
+        OutputFormat::Json => {
+            format_analyze_json(&drift_report, &debt_report, files.len(), min_severity_level)?
+        }
         _ => format_analyze_text(&drift_report, &debt_report, files.len(), min_severity_level),
     };
 
@@ -5757,7 +5752,10 @@ fn format_analyze_text(
     // Drift Summary
     output.push_str("## 🏗️  Architecture Drift\n\n");
     output.push_str(&format!("  Total Drifts: {}\n", drift_report.len()));
-    output.push_str(&format!("  Severity Score: {}\n", drift_report.total_severity_score()));
+    output.push_str(&format!(
+        "  Severity Score: {}\n",
+        drift_report.total_severity_score()
+    ));
     if drift_report.has_critical() {
         output.push_str("  ⚠️  CRITICAL DRIFTS DETECTED!\n");
     }
@@ -5767,16 +5765,25 @@ fn format_analyze_text(
     if !filtered_drifts.is_empty() {
         output.push_str("  Top Issues:\n");
         for drift in filtered_drifts.iter().take(10) {
-            let severity = drift.get("severity").and_then(|v| v.as_str()).unwrap_or("Low");
+            let severity = drift
+                .get("severity")
+                .and_then(|v| v.as_str())
+                .unwrap_or("Low");
             let icon = match severity {
                 "Critical" => "🔴",
                 "High" => "🟠",
                 "Medium" => "🟡",
                 _ => "🔵",
             };
-            let file = drift.get("file").and_then(|v| v.as_str()).unwrap_or("unknown");
+            let file = drift
+                .get("file")
+                .and_then(|v| v.as_str())
+                .unwrap_or("unknown");
             let line = drift.get("line").and_then(|v| v.as_u64()).unwrap_or(0);
-            let msg = drift.get("message").and_then(|v| v.as_str()).unwrap_or("unknown");
+            let msg = drift
+                .get("message")
+                .and_then(|v| v.as_str())
+                .unwrap_or("unknown");
             output.push_str(&format!("    {} {}:{} - {}\n", icon, file, line, msg));
         }
     }
@@ -5786,8 +5793,14 @@ fn format_analyze_text(
     output.push_str("## 💰 Technical Debt\n\n");
     output.push_str(&format!("  Total Debt Items: {}\n", debt_report.len()));
     output.push_str(&format!("  Debt Score: {:.2}\n", debt_report.debt_score()));
-    output.push_str(&format!("  Total Effort: {:.1} hours\n", debt_report.total_effort_hours));
-    output.push_str(&format!("  Blocking Items: {}\n", debt_report.blocking_count));
+    output.push_str(&format!(
+        "  Total Effort: {:.1} hours\n",
+        debt_report.total_effort_hours
+    ));
+    output.push_str(&format!(
+        "  Blocking Items: {}\n",
+        debt_report.blocking_count
+    ));
     output.push('\n');
 
     let top_debts = debt_report.top_priorities(10);
@@ -5815,7 +5828,9 @@ fn format_analyze_text(
 }
 
 fn filter_drift_by_severity(report: &DriftReport, min_level: u8) -> Vec<serde_json::Value> {
-    report.drifts.iter()
+    report
+        .drifts
+        .iter()
         .filter(|d| {
             let level = match d.severity {
                 CoreDriftSeverity::Low => 1,
@@ -5825,19 +5840,23 @@ fn filter_drift_by_severity(report: &DriftReport, min_level: u8) -> Vec<serde_js
             };
             level >= min_level
         })
-        .map(|d| serde_json::json!({
-            "file": d.file_path.to_string_lossy(),
-            "line": d.line_number,
-            "category": format!("{:?}", d.category),
-            "severity": format!("{:?}", d.severity),
-            "message": d.message,
-            "suggestion": d.suggestion,
-        }))
+        .map(|d| {
+            serde_json::json!({
+                "file": d.file_path.to_string_lossy(),
+                "line": d.line_number,
+                "category": format!("{:?}", d.category),
+                "severity": format!("{:?}", d.severity),
+                "message": d.message,
+                "suggestion": d.suggestion,
+            })
+        })
         .collect()
 }
 
 fn filter_debt_by_priority(report: &DebtReport, min_level: u8) -> Vec<serde_json::Value> {
-    report.items.iter()
+    report
+        .items
+        .iter()
         .filter(|d| {
             let level = match d.priority {
                 1..=3 => 1,
@@ -5848,17 +5867,19 @@ fn filter_debt_by_priority(report: &DebtReport, min_level: u8) -> Vec<serde_json
             };
             level >= min_level
         })
-        .map(|d| serde_json::json!({
-            "id": d.id,
-            "file": d.file_path.to_string_lossy(),
-            "line": d.line_number,
-            "type": format!("{:?}", d.debt_type),
-            "description": d.description,
-            "priority": d.priority,
-            "impact": d.impact,
-            "effort_hours": d.estimated_effort_hours,
-            "blocking": d.is_blocking,
-            "resolution": d.resolution,
-        }))
+        .map(|d| {
+            serde_json::json!({
+                "id": d.id,
+                "file": d.file_path.to_string_lossy(),
+                "line": d.line_number,
+                "type": format!("{:?}", d.debt_type),
+                "description": d.description,
+                "priority": d.priority,
+                "impact": d.impact,
+                "effort_hours": d.estimated_effort_hours,
+                "blocking": d.is_blocking,
+                "resolution": d.resolution,
+            })
+        })
         .collect()
 }

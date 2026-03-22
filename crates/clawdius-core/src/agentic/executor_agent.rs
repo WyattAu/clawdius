@@ -65,7 +65,13 @@ impl fmt::Debug for ExecutorAgent {
             )
             .field("llm_client", &self.llm_client.as_ref().map(|_| "LlmClient"))
             .field("model_name", &self.model_name)
-            .field("streaming_generator", &self.streaming_generator.as_ref().map(|_| "StreamingCodeGenerator"))
+            .field(
+                "streaming_generator",
+                &self
+                    .streaming_generator
+                    .as_ref()
+                    .map(|_| "StreamingCodeGenerator"),
+            )
             .finish()
     }
 }
@@ -534,10 +540,10 @@ impl ExecutorAgent {
 
             // Get the raw string stream from the LLM client
             let mut raw_receiver = client.chat_stream(messages).await?;
-            
+
             // Wrap the raw stream into StreamChunk format
             let (tx, rx) = mpsc::channel(32);
-            
+
             // Spawn a task to convert the raw stream to StreamChunks
             let model_name = model.to_string();
             tokio::spawn(async move {
@@ -551,7 +557,10 @@ impl ExecutorAgent {
                 }
                 // Send final complete chunk
                 let _ = tx.send(StreamChunk::complete(content)).await;
-                tracing::debug!("Streaming code generation complete for model {}", model_name);
+                tracing::debug!(
+                    "Streaming code generation complete for model {}",
+                    model_name
+                );
             });
 
             return Ok(Some(rx));
@@ -579,9 +588,14 @@ impl ExecutorAgent {
     where
         F: FnMut(&StreamChunk) + Send + 'static,
     {
-        if let Some(receiver) = self.execute_generate_code_stream(prompt, target_files).await? {
+        if let Some(receiver) = self
+            .execute_generate_code_stream(prompt, target_files)
+            .await?
+        {
             let mut processor = StreamProcessor::new();
-            return processor.process_stream_with_callback(receiver, callback).await;
+            return processor
+                .process_stream_with_callback(receiver, callback)
+                .await;
         }
 
         // Fallback to non-streaming generation
@@ -591,7 +605,9 @@ impl ExecutorAgent {
             file_path: target_files.first().cloned(),
             language: None,
             confidence: 0.5,
-            notes: vec!["Generated without streaming (no streaming generator configured)".to_string()],
+            notes: vec![
+                "Generated without streaming (no streaming generator configured)".to_string(),
+            ],
         })
     }
 
