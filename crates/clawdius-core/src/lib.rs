@@ -11,6 +11,7 @@
 pub mod actions;
 pub mod agentic;
 pub mod agents;
+pub mod analysis;
 pub mod api;
 pub mod audit;
 pub mod auth;
@@ -102,6 +103,12 @@ pub use agentic::{
     VerifierAgent,
 };
 pub use agentic::{PlannerAgent, RiskAssessment, StepAction, TaskPlan, TaskStep};
+
+// Analysis module re-exports
+pub use analysis::{
+    AnalysisError, AnalysisResult, ArchitectureDrift, DebtAnalyzer, DebtItem, DebtReport, DebtRule,
+    DebtType, DriftCategory, DriftDetector, DriftReport, DriftRule, DriftSeverity,
+};
 
 /// Current version
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");

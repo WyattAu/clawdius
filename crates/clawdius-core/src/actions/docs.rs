@@ -311,7 +311,9 @@ impl CodeAction for GenerateDocs {
 
     fn execute(&self, context: &ActionContext) -> Result<ActionEdit> {
         let selection = context.selection.as_ref().ok_or_else(|| {
-            crate::Error::InvalidInput("Selection required for documentation generation".to_string())
+            crate::Error::InvalidInput(
+                "Selection required for documentation generation".to_string(),
+            )
         })?;
 
         let doc_comment = generate_basic_doc(selection, &context.language);

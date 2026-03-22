@@ -6,8 +6,8 @@
 use async_trait::async_trait;
 use clawdius_core::agentic::tool_executor::NoOpToolExecutor;
 use clawdius_core::agentic::{
-    AgenticSystem, ApplyWorkflow, GenerationMode, TaskContext, TaskRequest,
-    TestExecutionStrategy, TrustLevel,
+    AgenticSystem, ApplyWorkflow, GenerationMode, TaskContext, TaskRequest, TestExecutionStrategy,
+    TrustLevel,
 };
 use clawdius_core::error::Result;
 use clawdius_core::llm::{ChatMessage, LlmClient};
@@ -97,7 +97,7 @@ async fn test_executor_agent_with_llm() {
     use clawdius_core::agentic::ExecutorAgent;
 
     let llm_client = Arc::new(MockLlmClient::single(
-        "fn generated_function() -> i32 { 42 }"
+        "fn generated_function() -> i32 { 42 }",
     ));
 
     let executor = ExecutorAgent::new().with_llm_client(llm_client, "test-model");
@@ -295,9 +295,7 @@ async fn test_llm_client_call_tracking() {
     )
     .with_llm_client(Arc::clone(&llm_client) as Arc<dyn LlmClient>);
 
-    let _ = system
-        .generate_code("test prompt", None, None)
-        .await;
+    let _ = system.generate_code("test prompt", None, None).await;
 
     assert_eq!(llm_client.call_count(), 1);
 }
@@ -313,18 +311,14 @@ async fn test_agentic_system_handles_empty_llm_response() {
     )
     .with_llm_client(llm_client);
 
-    let result = system
-        .generate_code("test", Some("src/lib.rs"), None)
-        .await;
+    let result = system.generate_code("test", Some("src/lib.rs"), None).await;
 
     assert!(result.is_ok());
 }
 
 #[tokio::test]
 async fn test_agentic_system_with_context() {
-    let llm_client = Arc::new(MockLlmClient::single(
-        "// Context-aware code generation",
-    ));
+    let llm_client = Arc::new(MockLlmClient::single("// Context-aware code generation"));
 
     let mut system = AgenticSystem::new(
         GenerationMode::single_pass(),
@@ -360,18 +354,11 @@ async fn test_agentic_system_with_context() {
 async fn test_different_trust_levels() {
     let llm_client = Arc::new(MockLlmClient::single("fn test() {}"));
 
-    for trust_level in [
-        TrustLevel::Low,
-        TrustLevel::Medium,
-        TrustLevel::High,
-    ] {
+    for trust_level in [TrustLevel::Low, TrustLevel::Medium, TrustLevel::High] {
         let mut system = AgenticSystem::new(
             GenerationMode::single_pass(),
             TestExecutionStrategy::skip(),
-            ApplyWorkflow::trust_based_with_level(
-                trust_level,
-                trust_level != TrustLevel::High,
-            ),
+            ApplyWorkflow::trust_based_with_level(trust_level, trust_level != TrustLevel::High),
         )
         .with_llm_client(Arc::clone(&llm_client) as Arc<dyn LlmClient>);
 

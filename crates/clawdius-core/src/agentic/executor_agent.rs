@@ -58,10 +58,7 @@ impl fmt::Debug for ExecutorAgent {
                 "tool_executor",
                 &self.tool_executor.as_ref().map(|_| "ToolExecutor"),
             )
-            .field(
-                "llm_client",
-                &self.llm_client.as_ref().map(|_| "LlmClient"),
-            )
+            .field("llm_client", &self.llm_client.as_ref().map(|_| "LlmClient"))
             .field("model_name", &self.model_name)
             .finish()
     }
@@ -96,7 +93,11 @@ impl ExecutorAgent {
 
     /// Sets the LLM client for code generation.
     #[must_use]
-    pub fn with_llm_client(mut self, client: Arc<dyn LlmClient>, model_name: impl Into<String>) -> Self {
+    pub fn with_llm_client(
+        mut self,
+        client: Arc<dyn LlmClient>,
+        model_name: impl Into<String>,
+    ) -> Self {
         self.llm_client = Some(client);
         self.model_name = Some(model_name.into());
         self
@@ -333,7 +334,8 @@ impl ExecutorAgent {
             let messages = vec![
                 ChatMessage {
                     role: ChatRole::System,
-                    content: "You are a code analyst. Provide thorough, actionable analysis.".to_string(),
+                    content: "You are a code analyst. Provide thorough, actionable analysis."
+                        .to_string(),
                 },
                 ChatMessage {
                     role: ChatRole::User,
@@ -373,7 +375,9 @@ impl ExecutorAgent {
             let messages = vec![
                 ChatMessage {
                     role: ChatRole::System,
-                    content: "You are a software architect. Create clear, practical design documents.".to_string(),
+                    content:
+                        "You are a software architect. Create clear, practical design documents."
+                            .to_string(),
                 },
                 ChatMessage {
                     role: ChatRole::User,
@@ -389,11 +393,7 @@ impl ExecutorAgent {
         Ok("Design complete (no LLM configured)".to_string())
     }
 
-    async fn execute_generate_code(
-        &self,
-        prompt: &str,
-        target_files: &[String],
-    ) -> Result<String> {
+    async fn execute_generate_code(&self, prompt: &str, target_files: &[String]) -> Result<String> {
         // If LLM client is configured, use it for real code generation
         if let Some(client) = &self.llm_client {
             let model = self.model_name.as_deref().unwrap_or("default");

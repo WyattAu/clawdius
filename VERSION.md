@@ -4,19 +4,40 @@
 
 | Attribute | Value |
 |-----------|-------|
-| **Version** | 1.1.14 |
+| **Version** | 1.1.15 |
 | **Phase** | v2.0.0 - Agentic Workflows |
 | **Status** | ✅ COMPLETE |
 | **API Stability** | ✅ GUARANTEED |
 | **Last Updated** | 2026-03-22 |
 | **Error Level** | None |
-| **Rollback Checkpoint** | v1.1.13 |
+| **Rollback Checkpoint** | v1.1.14 |
 | **Feature Matrix** | [.reports/feature_implementation_matrix.md](.reports/feature_implementation_matrix.md) |
 | **Roadmap** | [ROADMAP.md](ROADMAP.md) |
 | **HFT Profile** | [docs/HFT_TRADING_PROFILE.md](docs/HFT_TRADING_PROFILE.md) |
 | **Competitor Analysis** | [docs/COMPETITOR_COMPARISON.md](docs/COMPETITOR_COMPARISON.md) |
 
 ## Version History
+
+### v1.1.15 - Analysis Module (2026-03-22) - ✅ COMPLETE
+
+| Task | Status | Description |
+|------|--------|-------------|
+| Architecture Drift Detection | ✅ COMPLETE | DriftDetector with 10 default rules |
+| Technical Debt Quantification | ✅ COMPLETE | DebtAnalyzer with 9 detection rules |
+| Drift Categories | ✅ COMPLETE | Structural, Pattern, Dependency, Style, API, Performance |
+| Debt Types | ✅ COMPLETE | CodeComplexity, CodeDuplication, DocumentationDebt, TestingDebt, DependencyDebt, ArchitectureDebt, PerformanceDebt, SecurityDebt, Maintainability |
+| Streaming Generator Fixes | ✅ COMPLETE | Fixed incomplete() method and callback signature |
+| Module Exports | ✅ COMPLETE | Analysis module properly exported in lib.rs |
+
+**New Files:**
+- `crates/clawdius-core/src/analysis/mod.rs` - Analysis module root
+- `crates/clawdius-core/src/analysis/drift.rs` - Architecture drift detection (935 lines)
+- `crates/clawdius-core/src/analysis/debt.rs` - Technical debt quantification (929 lines)
+
+**Key Features:**
+- DriftDetector: Detects TODO/FIXME, unwrap(), expect(), unsafe blocks, expensive clones, magic numbers, long functions, deep nesting
+- DebtAnalyzer: Quantifies technical debt with priority, impact, and effort estimates
+- Comprehensive test coverage for both modules
 
 ### v1.1.14 - Agentic LLM Integration (2026-03-22) - ✅ COMPLETE
 
