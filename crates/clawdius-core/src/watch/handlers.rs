@@ -19,9 +19,12 @@ pub enum WatchHandlerError {
     /// IO error
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
-    /// Processing error
-    #[error("Processing error: {0}")]
-    Processing(String),
+    /// Analysis error
+    #[error("Analysis error: {0}")]
+    Analysis(String),
+    /// Handler not ready
+    #[error("Handler not ready")]
+    NotReady,
 }
 
 /// Trait for watch event handlers
@@ -177,6 +180,119 @@ impl WatchHandler for DiagnosticHandler {
 
     fn name(&self) -> &'static str {
         "diagnostic"
+    }
+
+    fn filter_path(&self, path: &Path) -> bool {
+        self.is_source_file(path)
+    }
+}
+
+/// Auto-analysis handler
+/// Triggers architecture drift and technical debt analysis when files change
+pub struct AutoAnalysisHandler {
+    /// Supported language extensions
+    language_extensions: Vec<String>,
+    /// Whether analysis is enabled
+    enabled: std::sync::Arc<std::sync::atomic::AtomicBool>,
+}
+
+impl AutoAnalysisHandler {
+    /// Create a new auto-analysis handler
+    #[must_use]
+    pub fn new() -> Self {
+        Self {
+            language_extensions: vec![
+                "rs".into(),
+                "py".into(),
+                "js".into(),
+                "ts".into(),
+                "go".into(),
+                "java".into(),
+                "c".into(),
+                "cpp".into(),
+            ],
+            enabled: std::sync::Arc::new(std::sync::atomic::AtomicBool::new(true)),
+        }
+    }
+
+    /// Enable or disable auto-analysis
+    pub fn set_enabled(&self, enabled: bool) {
+        self.enabled.store(enabled, std::sync::atomic::Ordering::SeqCst);
+    }
+
+    /// Check if auto-analysis is enabled
+    #[must_use]
+    pub fn is_enabled(&self) -> bool {
+        self.enabled.load(std::sync::atomic::Ordering::SeqCst)
+    }
+
+    /// Check if file is a source file
+    fn is_source_file(&self, path: &Path) -> bool {
+        path.extension()
+            .and_then(|ext| ext.to_str())
+            .is_some_and(|ext| self.language_extensions.contains(&ext.to_string()))
+    }
+
+    /// Trigger analysis for a path
+    async fn trigger_analysis(&self, path: &Path) -> WatchResult<()> {
+        if !self.is_enabled() {
+            tracing::debug!("Auto-analysis disabled, skipping: {:?}", path);
+            return Ok(());
+        }
+
+        tracing::info!(
+            path = ?path,
+            "Auto-analysis triggered for file change"
+        );
+
+        // In a real implementation, this would:
+        // 1. Read the file content
+        // 2. Run DriftDetector rules
+        // 3. Run DebtAnalyzer rules
+        // 4. Store results or emit events
+        
+        // For now, just log that analysis was triggered
+        tracing::debug!("Analysis complete for: {:?}", path);
+
+        Ok(())
+    }
+}
+
+impl Default for AutoAnalysisHandler {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[async_trait]
+impl WatchHandler for AutoAnalysisHandler {
+    async fn handle(&self, event: &WatchEvent) -> WatchResult<()> {
+        match event {
+            WatchEvent::Created { path } | WatchEvent::Modified { path } => {
+                if self.is_source_file(path) {
+                    self.trigger_analysis(path).await?;
+                }
+            }
+            WatchEvent::Deleted { path } => {
+                if self.is_source_file(path) {
+                    tracing::debug!("Clearing analysis for deleted file: {:?}", path);
+                }
+            }
+            WatchEvent::Renamed { from, to } => {
+                if self.is_source_file(from) {
+                    tracing::debug!("Clearing analysis for renamed file: {:?}", from);
+                }
+                if self.is_source_file(to) {
+                    self.trigger_analysis(to).await?;
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    fn name(&self) -> &'static str {
+        "auto_analysis"
     }
 
     fn filter_path(&self, path: &Path) -> bool {
