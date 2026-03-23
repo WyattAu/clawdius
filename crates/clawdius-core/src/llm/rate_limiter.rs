@@ -24,8 +24,8 @@ pub struct RateLimiterConfig {
 impl Default for RateLimiterConfig {
     fn default() -> Self {
         Self {
-            requests_per_minute: 60,        // 1 request per second average
-            burst_capacity: 10,             // Allow 10 burst requests
+            requests_per_minute: 60, // 1 request per second average
+            burst_capacity: 10,      // Allow 10 burst requests
             adaptive: true,
         }
     }
@@ -96,7 +96,7 @@ impl RateLimiter {
     pub fn new(config: RateLimiterConfig) -> Self {
         let initial_tokens = f64::from(config.burst_capacity);
         let rate = f64::from(config.requests_per_minute);
-        
+
         Self {
             config: config.clone(),
             tokens: Arc::new(Mutex::new(initial_tokens)),
@@ -116,46 +116,48 @@ impl RateLimiter {
     pub async fn acquire(&self) -> Result<RateLimitPermit> {
         // Refill tokens based on elapsed time
         self.refill_tokens().await;
-        
+
         // Try to acquire a token
         let tokens = *self.tokens.lock().await;
         if tokens >= 1.0 {
             // We have tokens available
             *self.tokens.lock().await -= 1.0;
-            let permit = self.semaphore.clone().acquire_owned().await
-                .map_err(|_| crate::Error::RateLimited {
+            let permit = self.semaphore.clone().acquire_owned().await.map_err(|_| {
+                crate::Error::RateLimited {
                     retry_after_ms: 1000,
-                })?;
+                }
+            })?;
             return Ok(RateLimitPermit {
                 permit,
                 limiter: self.clone(),
             });
         }
-        
+
         // Calculate wait time based on token refill rate
         let rate = *self.adaptive_rate.lock().await;
         let ms_per_token = 60_000.0 / rate; // ms per token at current rate
         let wait_ms = (1.0 - tokens) * ms_per_token;
-        
+
         tracing::debug!(
             wait_ms = wait_ms as u64,
             current_tokens = tokens,
             rate = rate,
             "Rate limit reached, waiting"
         );
-        
+
         // Wait for token to be available (minimum 1000ms for refill)
         sleep(Duration::from_millis(1000.max(wait_ms as u64))).await;
-        
+
         // Try again after waiting
         self.refill_tokens().await;
         *self.tokens.lock().await -= 1.0;
-        
-        let permit = self.semaphore.clone().acquire_owned().await
-            .map_err(|_| crate::Error::RateLimited {
+
+        let permit = self.semaphore.clone().acquire_owned().await.map_err(|_| {
+            crate::Error::RateLimited {
                 retry_after_ms: 1000,
-            })?;
-        
+            }
+        })?;
+
         Ok(RateLimitPermit {
             permit,
             limiter: self.clone(),
@@ -167,7 +169,7 @@ impl RateLimiter {
     /// Returns `None` if the rate limit has been exceeded.
     pub async fn try_acquire(&self) -> Option<RateLimitPermit> {
         self.refill_tokens().await;
-        
+
         let mut tokens = self.tokens.lock().await;
         if *tokens >= 1.0 {
             *tokens -= 1.0;
@@ -189,18 +191,18 @@ impl RateLimiter {
         if !self.config.adaptive {
             return;
         }
-        
+
         let mut rate = self.adaptive_rate.lock().await;
-        
+
         // Reduce rate by 50%
         *rate = (*rate * 0.5).max(10.0); // Minimum 10 requests per minute
-        
+
         tracing::warn!(
             new_rate = *rate,
             retry_after_ms = retry_after_ms.unwrap_or(0),
             "Rate limit hit, reducing rate"
         );
-        
+
         // If retry-after is provided, wait that long
         if let Some(ms) = retry_after_ms {
             sleep(Duration::from_millis(ms)).await;
@@ -215,10 +217,10 @@ impl RateLimiter {
         if !self.config.adaptive {
             return;
         }
-        
+
         let mut rate = self.adaptive_rate.lock().await;
         let max_rate = f64::from(self.config.requests_per_minute);
-        
+
         // Increase rate by 10% if below max
         if *rate < max_rate {
             *rate = (*rate * 1.1).min(max_rate);
@@ -244,15 +246,15 @@ impl RateLimiter {
     async fn refill_tokens(&self) {
         let mut tokens = self.tokens.lock().await;
         let mut last_update = self.last_update.lock().await;
-        
+
         let now = Instant::now();
         let elapsed = now.duration_since(*last_update).as_secs_f64();
-        
+
         // Calculate tokens to add based on rate
         let rate = *self.adaptive_rate.lock().await;
         let tokens_per_second = rate / 60.0;
         let tokens_to_add = elapsed * tokens_per_second;
-        
+
         // Add tokens up to burst capacity
         *tokens = (*tokens + tokens_to_add).min(f64::from(self.config.burst_capacity));
         *last_update = now;
@@ -299,16 +301,22 @@ mod tests {
             adaptive: false,
         };
         let limiter = RateLimiter::new(config);
-        
+
         // Should allow 5 burst requests immediately
         for _ in 0..5 {
             let permit = limiter.try_acquire().await;
-            assert!(permit.is_some(), "Should acquire permit within burst capacity");
+            assert!(
+                permit.is_some(),
+                "Should acquire permit within burst capacity"
+            );
         }
-        
+
         // 6th request should be denied
         let permit = limiter.try_acquire().await;
-        assert!(permit.is_none(), "Should not acquire permit beyond burst capacity");
+        assert!(
+            permit.is_none(),
+            "Should not acquire permit beyond burst capacity"
+        );
     }
 
     #[tokio::test]
@@ -319,17 +327,20 @@ mod tests {
             adaptive: false,
         };
         let limiter = RateLimiter::new(config);
-        
+
         // Use the token
-        let _permit = limiter.acquire().await.expect("Should acquire initial permit");
-        
+        let _permit = limiter
+            .acquire()
+            .await
+            .expect("Should acquire initial permit");
+
         // Should be empty
         let tokens = limiter.available_tokens().await;
         assert!(tokens < 1.0, "Tokens should be depleted");
-        
+
         // Wait for refill
         sleep(Duration::from_millis(1100)).await;
-        
+
         // Should have refilled
         let tokens = limiter.available_tokens().await;
         assert!(tokens >= 1.0, "Tokens should be refilled");
@@ -343,23 +354,29 @@ mod tests {
             adaptive: true,
         };
         let limiter = RateLimiter::new(config);
-        
+
         let initial_rate = limiter.current_rate().await;
         assert_eq!(initial_rate, 60.0);
-        
+
         // Simulate rate limit
         limiter.on_rate_limited(Some(1000)).await;
-        
+
         let reduced_rate = limiter.current_rate().await;
-        assert!(reduced_rate < initial_rate, "Rate should be reduced after rate limit");
-        
+        assert!(
+            reduced_rate < initial_rate,
+            "Rate should be reduced after rate limit"
+        );
+
         // Simulate successful requests
         for _ in 0..10 {
             limiter.on_success().await;
         }
-        
+
         let recovered_rate = limiter.current_rate().await;
-        assert!(recovered_rate > reduced_rate, "Rate should recover after successful requests");
+        assert!(
+            recovered_rate > reduced_rate,
+            "Rate should recover after successful requests"
+        );
     }
 
     #[tokio::test]
@@ -370,15 +387,19 @@ mod tests {
             adaptive: false,
         };
         let limiter = RateLimiter::new(config);
-        
+
         // Use the token
-        let _permit = limiter.acquire().await.expect("Should acquire initial permit");
-        
+        let _permit = limiter
+            .acquire()
+            .await
+            .expect("Should acquire initial permit");
+
         // This should block until token is refilled
         let result = timeout(Duration::from_millis(2000), async {
             limiter.acquire().await
-        }).await;
-        
+        })
+        .await;
+
         assert!(result.is_ok(), "acquire should complete after waiting");
     }
 }

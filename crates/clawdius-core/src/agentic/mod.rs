@@ -39,6 +39,7 @@ pub mod apply_workflow;
 pub mod executor_agent;
 pub mod file_ops;
 pub mod generation_mode;
+pub mod incremental;
 pub mod llm_generator;
 pub mod planner_agent;
 pub mod streaming_generator;

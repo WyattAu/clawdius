@@ -217,7 +217,8 @@ impl AutoAnalysisHandler {
 
     /// Enable or disable auto-analysis
     pub fn set_enabled(&self, enabled: bool) {
-        self.enabled.store(enabled, std::sync::atomic::Ordering::SeqCst);
+        self.enabled
+            .store(enabled, std::sync::atomic::Ordering::SeqCst);
     }
 
     /// Check if auto-analysis is enabled
@@ -250,7 +251,7 @@ impl AutoAnalysisHandler {
         // 2. Run DriftDetector rules
         // 3. Run DebtAnalyzer rules
         // 4. Store results or emit events
-        
+
         // For now, just log that analysis was triggered
         tracing::debug!("Analysis complete for: {:?}", path);
 

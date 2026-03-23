@@ -89,7 +89,10 @@ impl TimeoutConfig {
 /// ).await;
 /// # }
 /// ```
-pub async fn with_timeout<T>(duration: Duration, future: impl Future<Output = Result<T>>) -> Result<T> {
+pub async fn with_timeout<T>(
+    duration: Duration,
+    future: impl Future<Output = Result<T>>,
+) -> Result<T> {
     match timeout(duration, future).await {
         Ok(result) => result,
         Err(_) => Err(Error::Timeout(duration)),
@@ -97,11 +100,7 @@ pub async fn with_timeout<T>(duration: Duration, future: impl Future<Output = Re
 }
 
 /// Execute a future with a timeout and a label for better error messages.
-pub async fn with_timeout_labelled<T, F>(
-    duration: Duration,
-    label: &str,
-    future: F,
-) -> Result<T>
+pub async fn with_timeout_labelled<T, F>(duration: Duration, label: &str, future: F) -> Result<T>
 where
     F: Future<Output = Result<T>>,
 {
@@ -199,12 +198,12 @@ pub async fn race_with_timeout<T>(
     futures: Vec<impl Future<Output = Result<T>>>,
 ) -> Result<T> {
     let deadline = Instant::now() + duration;
-    
+
     for future in futures {
         if Instant::now() >= deadline {
             return Err(Error::Timeout(duration));
         }
-        
+
         let remaining = deadline.saturating_duration_since(Instant::now());
         match timeout(remaining, future).await {
             Ok(Ok(result)) => return Ok(result),
@@ -215,7 +214,7 @@ pub async fn race_with_timeout<T>(
             Err(_) => continue,
         }
     }
-    
+
     Err(Error::Timeout(duration))
 }
 
@@ -227,10 +226,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_with_timeout_success() {
-        let result = with_timeout(Duration::from_secs(1), async {
-            Ok::<_, Error>(42)
-        })
-        .await;
+        let result = with_timeout(Duration::from_secs(1), async { Ok::<_, Error>(42) }).await;
 
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), 42);
@@ -252,7 +248,7 @@ mod tests {
     async fn test_timeout_guard_remaining() {
         let guard = TimeoutGuard::new(Duration::from_secs(10));
         let remaining = guard.remaining();
-        
+
         assert!(remaining <= Duration::from_secs(10));
         assert!(remaining > Duration::from_secs(9));
     }
@@ -261,7 +257,7 @@ mod tests {
     async fn test_timeout_guard_elapsed() {
         let guard = TimeoutGuard::new(Duration::from_millis(1));
         sleep(Duration::from_millis(10)).await;
-        
+
         assert!(guard.is_elapsed());
         assert!(guard.check().is_err());
     }
@@ -270,7 +266,7 @@ mod tests {
     async fn test_timeout_guard_wrap() {
         let guard = TimeoutGuard::new(Duration::from_secs(1));
         let result = guard.wrap(async { Ok::<_, Error>(42) }).await;
-        
+
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), 42);
     }
