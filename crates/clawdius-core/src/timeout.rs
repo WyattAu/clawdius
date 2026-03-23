@@ -133,6 +133,7 @@ pub async fn with_deadline<T>(
 #[derive(Debug)]
 pub struct TimeoutGuard {
     deadline: Instant,
+    #[allow(dead_code)] // Will be used for better error messages in future
     label: String,
 }
 

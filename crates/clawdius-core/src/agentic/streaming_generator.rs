@@ -36,6 +36,7 @@ pub struct StreamingCodeGenerator {
     /// LLM client
     client: Arc<dyn LlmClient>,
     /// Model name for logging
+    #[allow(dead_code)] // Used in tests, will be used for logging in future
     model_name: String,
 }
 

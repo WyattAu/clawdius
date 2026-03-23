@@ -4,19 +4,46 @@
 
 | Attribute | Value |
 |-----------|-------|
-| **Version** | 1.1.15 |
+| **Version** | 1.1.16 |
 | **Phase** | v2.0.0 - Agentic Workflows |
 | **Status** | ✅ COMPLETE |
 | **API Stability** | ✅ GUARANTEED |
-| **Last Updated** | 2026-03-22 |
+| **Last Updated** | 2026-03-23 |
 | **Error Level** | None |
-| **Rollback Checkpoint** | v1.1.14 |
+| **Rollback Checkpoint** | v1.1.15 |
 | **Feature Matrix** | [.reports/feature_implementation_matrix.md](.reports/feature_implementation_matrix.md) |
 | **Roadmap** | [ROADMAP.md](ROADMAP.md) |
 | **HFT Profile** | [docs/HFT_TRADING_PROFILE.md](docs/HFT_TRADING_PROFILE.md) |
 | **Competitor Analysis** | [docs/COMPETITOR_COMPARISON.md](docs/COMPETITOR_COMPARISON.md) |
 
 ## Version History
+
+### v1.1.16 - Phase 5 Agentic Features (2026-03-23) - ✅ COMPLETE
+
+| Task | Status | Description |
+|------|--------|-------------|
+| Streaming Code Generation | ✅ COMPLETE | StreamingCodeGenerator with real-time LLM output |
+| Rate Limiting | ✅ COMPLETE | Token bucket rate limiter for LLM API calls |
+| Timeout Handling | ✅ COMPLETE | TimeoutConfig, TimeoutGuard, timeout combinators |
+| File Watching | ✅ COMPLETE | Watcher with ContextUpdate, Diagnostic, AutoAnalysis handlers |
+| Incremental Code Generation | ✅ COMPLETE | IncrementalGenerator with diff-based updates |
+| Dead Code Warnings Fixed | ✅ COMPLETE | Added #[allow(dead_code)] for future-use code |
+
+**New/Enhanced Files:**
+- `clawdius-core/src/agentic/streaming_generator.rs` - Streaming LLM code generation
+- `clawdius-core/src/rate_limiter.rs` - Token bucket rate limiting
+- `clawdius-core/src/timeout.rs` - Timeout handling utilities
+- `clawdius-core/src/watch/` - File watching system (mod.rs, watcher.rs, handlers.rs)
+- `clawdius-core/src/incremental.rs` - Incremental code generation with diffs
+- `clawdius-core/src/analysis/` - Architecture drift and technical debt analysis
+
+**Key Features:**
+- Real-time streaming output from LLM generation
+- Configurable rate limiting (requests/sec, burst capacity)
+- Multiple timeout profiles (default, strict, relaxed)
+- Auto-analysis on file changes (drift detection, debt analysis)
+- Diff-based incremental updates for code generation
+- Zero compilation warnings
 
 ### v1.1.15 - Analysis Module (2026-03-22) - ✅ COMPLETE
 

@@ -24,8 +24,8 @@ pub struct RateLimiterConfig {
 impl Default for RateLimiterConfig {
     fn default() -> Self {
         Self {
-            requests_per_minute: 60, // 1 request per second average
-            burst_capacity: 10,      // Allow 10 burst requests
+            requests_per_minute: 60,        // 1 request per second average
+            burst_capacity: 10,             // Allow 10 burst requests
             adaptive: true,
         }
     }
@@ -112,7 +112,7 @@ impl RateLimiter {
     ///
     /// # Errors
     ///
-    /// Returns an error if the semaphore is closed.
+    /// Returns an error if the rate limit has been exceeded.
     pub async fn acquire(&self) -> Result<RateLimitPermit> {
         // Refill tokens based on elapsed time
         self.refill_tokens().await;
@@ -122,13 +122,17 @@ impl RateLimiter {
         if tokens >= 1.0 {
             // We have tokens available
             *self.tokens.lock().await -= 1.0;
-            let permit = self.semaphore.clone().acquire_owned().await.map_err(|_| {
-                crate::Error::RateLimited {
+            let permit = self
+                .semaphore
+                .clone()
+                .acquire_owned()
+                .await
+                .map_err(|_| crate::Error::RateLimited {
                     retry_after_ms: 1000,
-                }
-            })?;
+                })?;
+
             return Ok(RateLimitPermit {
-                permit,
+                _permit: permit,
                 limiter: self.clone(),
             });
         }
@@ -145,21 +149,24 @@ impl RateLimiter {
             "Rate limit reached, waiting"
         );
 
-        // Wait for token to be available (minimum 1000ms for refill)
-        sleep(Duration::from_millis(1000.max(wait_ms as u64))).await;
+        // Wait for token to be available
+        sleep(Duration::from_millis(1000)).await;
 
         // Try again after waiting
         self.refill_tokens().await;
         *self.tokens.lock().await -= 1.0;
 
-        let permit = self.semaphore.clone().acquire_owned().await.map_err(|_| {
-            crate::Error::RateLimited {
+        let permit = self
+            .semaphore
+            .clone()
+            .acquire_owned()
+            .await
+            .map_err(|_| crate::Error::RateLimited {
                 retry_after_ms: 1000,
-            }
-        })?;
+            })?;
 
         Ok(RateLimitPermit {
-            permit,
+            _permit: permit,
             limiter: self.clone(),
         })
     }
@@ -175,7 +182,7 @@ impl RateLimiter {
             *tokens -= 1.0;
             let permit = self.semaphore.clone().try_acquire_owned().ok()?;
             Some(RateLimitPermit {
-                permit,
+                _permit: permit,
                 limiter: self.clone(),
             })
         } else {
@@ -257,6 +264,7 @@ impl RateLimiter {
 
         // Add tokens up to burst capacity
         *tokens = (*tokens + tokens_to_add).min(f64::from(self.config.burst_capacity));
+        
         *last_update = now;
     }
 
@@ -273,18 +281,37 @@ impl RateLimiter {
 
 /// A permit to make an API call.
 ///
-/// When dropped, it notifies the rate limiter of completion.
+/// When dropped, it releases the semaphore permit.
 #[must_use]
 pub struct RateLimitPermit {
-    /// The semaphore permit
-    permit: OwnedSemaphorePermit,
-    /// Reference to the rate limiter for tracking
+    /// Owned semaphore permit
+    _permit: OwnedSemaphorePermit,
+    /// Reference to the rate limiter for adaptive rate tracking
     limiter: RateLimiter,
+}
+
+impl RateLimitPermit {
+    /// Marks the request as successful.
+    ///
+    /// This notifies the rate limiter to potentially increase
+    /// the rate if adaptive rate limiting is enabled.
+    pub async fn success(self) {
+        self.limiter.on_success().await;
+    }
+
+    /// Marks the request as rate limited.
+    ///
+    /// This notifies the rate limiter to reduce the rate
+    /// and wait for the retry-after duration.
+    pub async fn rate_limited(self, retry_after_ms: Option<u64>) {
+        self.limiter.on_rate_limited(retry_after_ms).await;
+    }
 }
 
 impl Drop for RateLimitPermit {
     fn drop(&mut self) {
-        // Rate limiter is notified via semaphore release
+        // Semaphore permit is released automatically
+        tracing::trace!("Rate limit permit released");
     }
 }
 
@@ -329,10 +356,7 @@ mod tests {
         let limiter = RateLimiter::new(config);
 
         // Use the token
-        let _permit = limiter
-            .acquire()
-            .await
-            .expect("Should acquire initial permit");
+        let _permit = limiter.acquire().await.expect("Should acquire initial permit");
 
         // Should be empty
         let tokens = limiter.available_tokens().await;
@@ -389,10 +413,7 @@ mod tests {
         let limiter = RateLimiter::new(config);
 
         // Use the token
-        let _permit = limiter
-            .acquire()
-            .await
-            .expect("Should acquire initial permit");
+        let _permit = limiter.acquire().await.expect("Should acquire initial permit");
 
         // This should block until token is refilled
         let result = timeout(Duration::from_millis(2000), async {

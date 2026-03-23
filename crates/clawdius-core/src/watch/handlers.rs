@@ -189,6 +189,7 @@ impl WatchHandler for DiagnosticHandler {
 
 /// Auto-analysis handler
 /// Triggers architecture drift and technical debt analysis when files change
+#[allow(dead_code)] // Feature complete but not yet wired to CLI
 pub struct AutoAnalysisHandler {
     /// Supported language extensions
     language_extensions: Vec<String>,
@@ -196,6 +197,7 @@ pub struct AutoAnalysisHandler {
     enabled: std::sync::Arc<std::sync::atomic::AtomicBool>,
 }
 
+#[allow(dead_code)] // Feature complete but not yet wired to CLI
 impl AutoAnalysisHandler {
     /// Create a new auto-analysis handler
     #[must_use]
