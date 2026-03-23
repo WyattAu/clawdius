@@ -44,6 +44,7 @@ pub mod sandbox;
 pub mod session;
 pub mod skills;
 pub mod telemetry;
+pub mod timeout;
 pub mod timeline;
 pub mod tokenize;
 pub mod tools;

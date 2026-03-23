@@ -98,10 +98,10 @@ impl RateLimiter {
         let rate = f64::from(config.requests_per_minute);
         
         Self {
-            config,
+            config: config.clone(),
             tokens: Arc::new(Mutex::new(initial_tokens)),
             last_update: Arc::new(Mutex::new(Instant::now())),
-            semaphore: Arc::new(Semaphore::new(config.burst_capacity)),
+            semaphore: Arc::new(Semaphore::new(config.burst_capacity as usize)),
             adaptive_rate: Arc::new(Mutex::new(rate)),
         }
     }
