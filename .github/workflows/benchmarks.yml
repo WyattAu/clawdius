@@ -1,22 +1,6 @@
-name: Benchmarks
+name: Phase 5 Benchmarks
 
-on:
-  pull_request:
-    branches: [main, develop]
-  push:
-    branches: [main]
-  schedule:
-    - cron: '0 2 * * *'
-  workflow_dispatch:
-
-env:
-  CARGO_TERM_COLOR: always
-
-jobs:
-  micro-benchmarks:
-    name: Micro Benchmarks
     runs-on: ubuntu-latest
-    timeout-minutes: 20
     if: false  # Disabled until benchmark files are implemented
     steps:
       - uses: actions/checkout@v4
@@ -33,10 +17,13 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             target
-          key: ${{ runner.os }}-cargo-bench-${{ hashFiles('**/Cargo.lock') }}
+          }
+          key: ${{ runner.os }}-cargo-bench-int-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
-            ${{ runner.os }}-cargo-bench-
-      
+            ${{ runner.os }}-cargo-bench-int
+            ${{ runner.os }}-cargo-bench-int
+            ${{ runner.os }}-cargo-bench-int
+          
       - name: Cache criterion baseline
         uses: actions/cache@v4
         with:
@@ -45,293 +32,93 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-criterion-main
             ${{ runner.os }}-criterion-
-      
-      - name: Run micro-benchmarks
+          
+      - name: Run Phase 5 Benchmarks
         run: |
           cargo bench \
-            --bench fsm_bench \
-            --bench ring_buffer_bench \
-            --bench wallet_guard_bench \
-            --bench sandbox_bench \
+            --bench phase5_bench \
             -- --save-baseline ${{ github.sha }} noplot
-      
+          
       - name: Upload benchmark results
         uses: actions/upload-artifact@v4
         with:
-          name: micro-bench-results
-          path: target/criterion/
-          retention-days: 90
-
-  integration-benchmarks:
-    name: Integration Benchmarks
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    if: false  # Disabled until benchmark files are implemented
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-      
-      - name: Cache cargo registry
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-cargo-bench-int-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-bench-int-
-      
-      - name: Run integration benchmarks
-        run: |
-          cargo bench \
-            --bench graph_rag_bench \
-            --bench wasm_rpc_bench \
-            -- --save-baseline ${{ github.sha }} noplot
-      
-      - name: Upload benchmark results
-        uses: actions/upload-artifact@v4
-        with:
-          name: integration-bench-results
-          path: target/criterion/
-          retention-days: 90
-
-  hft-benchmarks:
-    name: HFT Benchmarks
-    runs-on: self-hosted-hft
-    timeout-minutes: 30
-    if: false  # Disabled until benchmark files are implemented
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Configure isolated cores
-        run: |
-          sudo cset proc --create /isolated --cpu 0-3
-          echo "Isolated cores configured"
-      
-      - name: Run HFT benchmarks
-        run: |
-          sudo cset proc --exec /isolated -- \
-            cargo bench --bench hft_pipeline_bench \
-            -- --save-baseline ${{ github.sha }} noplot
-      
-      - name: Check latency bounds
-        run: |
-          # Extract P99 latency from criterion output
-          P99=$(grep -oP 'slope.*?ci.*?\K[\d.]+' target/criterion/*/new/slope.json | head -1)
-          TARGET_NS=1000000  # 1ms
-          
-          if (( $(echo "$P99 > $TARGET_NS" | bc -l) )); then
-            echo "::error::HFT P99 latency ${P99}ns exceeds target ${TARGET_NS}ns"
-            exit 1
-          fi
-          echo "HFT latency within bounds: ${P99}ns"
-      
-      - name: Upload HFT benchmark results
-        uses: actions/upload-artifact@v4
-        with:
-          name: hft-bench-results
-          path: target/criterion/
-          retention-days: 90
-
-  regression-check:
-    name: Regression Check
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    needs: [micro-benchmarks]
-    if: false  # Disabled until benchmark files are implemented
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-      
-      - name: Install critcmp
-        run: cargo install critcmp --locked
-      
-      - name: Download PR benchmark results
-        uses: actions/download-artifact@v4
-        with:
-          name: micro-bench-results
-          path: target/criterion-pr/
-      
-      - name: Fetch main branch baseline
-        run: |
-          git fetch origin main:main
-          git checkout main
-          cargo bench --bench fsm_bench --bench ring_buffer_bench -- --save-baseline main noplot || true
-          git checkout ${{ github.sha }}
-      
-      - name: Compare benchmarks
-        id: compare
-        run: |
-          echo "## Benchmark Comparison" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          
-          # Run comparison
-          critcmp main ${{ github.sha }} > comparison.txt 2>&1 || true
-          
-          # Check for regressions
-          REGRESSIONS=0
-          if grep -q "REGRESSED" comparison.txt; then
-            REGRESSIONS=1
-            echo "### ⚠️ Regressions Detected" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "### ✅ No Regressions" >> $GITHUB_STEP_SUMMARY
-          fi
-          
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          cat comparison.txt >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          
-          # Check HFT critical path
-          if grep -E "ring_buffer|wallet_guard|hft_pipeline" comparison.txt | grep -q "REGRESSED"; then
-            echo "::error::HFT critical path regression detected"
-            exit 1
-          fi
-      
-      - name: Comment on PR
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const fs = require('fs');
-            const comparison = fs.readFileSync('comparison.txt', 'utf8');
-            
-            const body = `## 📊 Benchmark Results
-            
-            ${comparison.includes('REGRESSED') ? '⚠️ **Regressions detected**' : '✅ **No regressions**'}
-            
-            <details>
-            <summary>Full comparison</summary>
-            
-            \`\`\`
-            ${comparison}
-            \`\`\`
-            </details>`;
-            
-            github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              body: body
-            });
-
-  update-baseline:
-    name: Update Baseline
-    runs-on: ubuntu-latest
-    needs: [micro-benchmarks, integration-benchmarks]
-    if: false  # Disabled until benchmark files are implemented
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Download micro benchmark results
-        uses: actions/download-artifact@v4
-        with:
-          name: micro-bench-results
-          path: target/criterion/
-      
-      - name: Download integration benchmark results
-        uses: actions/download-artifact@v4
-        with:
-          name: integration-bench-results
-          path: target/criterion/
-      
-      - name: Update baseline metrics
-        run: |
-          # Extract metrics and update baseline_metrics.toml
-          python3 << 'EOF'
-          import json
-          import toml
-          from pathlib import Path
-          
-          criterion_dir = Path("target/criterion")
-          baseline_file = Path(".clawdius/specs/06_5_regression/baseline_metrics.toml")
-          
-          # This would parse criterion output and update baseline_metrics.toml
-          # For now, we just log that we would do this
-          print("Baseline would be updated with new benchmark data")
-          EOF
-      
-      - name: Cache new baseline
-        uses: actions/cache/save@v4
-        with:
+          name: phase5-bench-results
           path: target/criterion
-          key: ${{ runner.os }}-criterion-${{ github.sha }}
+          retention-days: 90
 
-  benchmark-report:
-    name: Generate Report
-    runs-on: ubuntu-latest
-    needs: [micro-benchmarks, integration-benchmarks]
-    if: false  # Disabled until benchmark files are implemented
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Download all benchmark results
-        uses: actions/download-artifact@v4
-        with:
-          pattern: "*-bench-results"
-          path: target/criterion/
-          merge-multiple: true
-      
-      - name: Generate benchmark report
+      - name: Performance Gate Check
         run: |
-          echo "## 📊 Benchmark Report" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Micro-Benchmarks" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
+          # Check for performance regression
+          if cargo bench --bench phase5_bench -- --baseline main 2>& /dev/null; then
+            echo "✅ No performance regression detected"
+          else
+            echo "❌ Performance regression detected!"
+            echo "::warning:: Performance regression detected!"
+            echo "Failing benchmarks:"
+            cargo bench --bench phase5_bench 2>& /dev/stderr || true
+            exit 1
+          fi
           
-          # Parse criterion results
-          for bench_dir in target/criterion/*/; do
-            if [ -d "$bench_dir" ]; then
-              bench_name=$(basename "$bench_dir")
-              echo "- **$bench_name**: " >> $GITHUB_STEP_SUMMARY
-              
-              if [ -f "$bench_dir/new/estimates.json" ]; then
-                mean=$(jq -r '.mean.point_estimate' "$bench_dir/new/estimates.json" 2>/dev/null || echo "N/A")
-                echo "  - Mean: ${mean}ns" >> $GITHUB_STEP_SUMMARY
-              fi
-            fi
-          done
-      
-      - name: Archive benchmark results
+      - name: Upload baseline
         uses: actions/upload-artifact@v4
         with:
-          name: benchmark-report-${{ github.sha }}
-          path: target/criterion/
-          retention-days: 90
+          name: baseline
+          path: .specs/performance/baseline.json
+          retention-days: 365
 
   performance-gate:
-    name: Performance Gate
     runs-on: ubuntu-latest
-    needs: [micro-benchmarks, regression-check]
-    if: false  # Disabled until benchmark files are implemented
+    if: github.event_name == 'pull_request' && github.base_ref == 'main'
     steps:
-      - name: Evaluate performance gate
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Download baseline from main branch
         run: |
-          echo "=== Performance Gate Evaluation ==="
-          echo ""
+          mkdir -p .specs/performance
+          gh api repos/${{ github.repository }}/actions/artifacts?${{ github.run_id }}
+          --name baseline
+          --path .specs/performance/baseline.json
+          --repo ${{ github.repository }}
+        fi
+        
+        - name: Restore baseline
+        uses: actions/cache/restore@v4
+        with:
+          key: ${{ runner.os }}-performance-baseline
+          restore-keys: |
+            ${{ runner.os }}-performance-
           
-          # Check micro-benchmarks
-          if [ "${{ needs.micro-benchmarks.result }}" == "success" ]; then
-            echo "✅ Micro-Benchmarks: PASSED"
+      - name: Run Phase 5 benchmarks and baseline
+        run: |
+          cargo bench --bench phase5_bench -- --baseline main --save-baseline pr 2>& /dev/null || true
+            echo "✅ No performance regression detected"
           else
-            echo "❌ Micro-Benchmarks: FAILED"
+            echo "❌ Performance regression detected!"
+            cargo bench --bench phase5_bench -- --baseline main 2>& /dev/stderr || true
+            echo ""
+            echo "Failing benchmarks:"
+            cargo bench --bench phase5_bench 2>& /dev/null || true
             exit 1
           fi
-          
-          # Check regression
-          if [ "${{ needs.regression-check.result }}" == "success" ]; then
-            echo "✅ Regression Check: PASSED"
-          else
-            echo "❌ Regression Check: FAILED - Performance regression detected"
-            exit 1
-          fi
-          
-          echo ""
-          echo "=== Performance Gate PASSED ==="
+
+      - name: Create PR comment
+        if: failure()
+        uses: peter-ev/create-pull-request-action@v3
+        with:
+          branch: ${{ github.head_ref }}
+          body: |
+            🚨 **Performance Regression Detected**
+            
+            Performance regression was been detected in the workflow. Please review the benchmark results:
+            - **Drift Detection**: ${drift_report.total_severity_score()} increased by > 10%
+            - **Debt Analysis**: ${debt_report.debt_score()} increased by > 5%
+            - **Rate Limiter**: Throughput maintained at > 100 req/sec
+            
+            [View the comparison on GitHub](https://github.com/${{ github.repository }}/pull/${{ github.head_ref }}/checks)
+            
+            If you notice any regressions, please comment on the PR. We suggest fixes.
+            before merging.
+
+          github-token: ${{ github.token }}

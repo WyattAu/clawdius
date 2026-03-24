@@ -153,6 +153,10 @@ harness = false
 name = "hft_bench"
 harness = false
 
+[[bench]]
+name = "phase5_bench"
+harness = false
+
 [features]
 default = []
 hft-mode = []

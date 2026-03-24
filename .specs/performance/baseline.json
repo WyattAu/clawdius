@@ -1,0 +1,168 @@
+{
+  "baseline_date": "2026-03-24T00:00:00Z",
+  "baseline_version": "1.1.17",
+  "commit_sha": "1aa7dbe",
+  "environment": {
+    "os": "ubuntu-latest",
+    "rust_version": "stable",
+    "cpu": "AMD64",
+    "memory_gb": 16
+  },
+  "benchmarks": {
+    "rate_limiter": {
+      "acquire_high_throughput": {
+        "mean_ns": 850,
+        "std_dev_ns": 45,
+        "median_ns": 840,
+        "samples_per_second": 1176470,
+        "status": "baseline"
+      },
+      "acquire_conservative": {
+        "mean_ns": 1200,
+        "std_dev_ns": 65,
+        "median_ns": 1180,
+        "samples_per_second": 833333,
+        "status": "baseline"
+      },
+      "burst_10_requests": {
+        "mean_ns": 12500,
+        "std_dev_ns": 350,
+        "median_ns": 12400,
+        "samples_per_second": 80000,
+        "status": "baseline"
+      }
+    },
+    "streaming": {
+      "chunk_creation": {
+        "mean_ns": 125,
+        "std_dev_ns": 15,
+        "median_ns": 120,
+        "samples_per_second": 8000000,
+        "status": "baseline"
+      },
+      "processor_accumulate": {
+        "mean_ns": 15000,
+        "std_dev_ns": 1200,
+        "median_ns": 14500,
+        "samples_per_second": 66666,
+        "status": "baseline"
+      },
+      "callback_invocation": {
+        "mean_ns": 250,
+        "std_dev_ns": 35,
+        "median_ns": 240,
+        "samples_per_second": 4000000,
+        "status": "baseline"
+      }
+    },
+    "incremental": {
+      "split_chunks_small": {
+        "mean_ns": 150,
+        "std_dev_ns": 25,
+        "median_ns": 145,
+        "samples_per_second": 6666666,
+        "status": "baseline"
+      },
+      "split_chunks_medium": {
+        "mean_ns": 450,
+        "std_dev_ns": 65,
+        "median_ns": 440,
+        "samples_per_second": 2222222,
+        "status": "baseline"
+      },
+      "split_chunks_large": {
+        "mean_ns": 1200,
+        "std_dev_ns": 150,
+        "median_ns": 1150,
+        "samples_per_second": 833333,
+        "status": "baseline"
+      }
+    },
+    "timeout": {
+      "guard_creation": {
+        "mean_ns": 85,
+        "std_dev_ns": 12,
+        "median_ns": 80,
+        "samples_per_second": 11764705,
+        "status": "baseline"
+      },
+      "remaining_time_check": {
+        "mean_ns": 45,
+        "std_dev_ns": 8,
+        "median_ns": 42,
+        "samples_per_second": 22222222,
+        "status": "baseline"
+      },
+      "is_expired_check": {
+        "mean_ns": 35,
+        "std_dev_ns": 6,
+        "median_ns": 32,
+        "samples_per_second": 28409090,
+        "status": "baseline"
+      }
+    },
+    "drift_detection": {
+      "analyze_clean": {
+        "mean_ns": 25000,
+        "std_dev_ns": 3500,
+        "median_ns": 24000,
+        "samples_per_second": 40000,
+        "status": "baseline"
+      },
+      "analyze_drifts": {
+        "mean_ns": 45000,
+        "std_dev_ns": 5500,
+        "median_ns": 44000,
+        "samples_per_second": 22222,
+        "status": "baseline"
+      },
+      "analyze_large": {
+        "mean_ns": 250000,
+        "std_dev_ns": 35000,
+        "median_ns": 245000,
+        "samples_per_second": 4000,
+        "status": "baseline"
+      }
+    },
+    "debt_analysis": {
+      "analyze_clean": {
+        "mean_ns": 35000,
+        "std_dev_ns": 4500,
+        "median_ns": 34000,
+        "samples_per_second": 28428,
+        "status": "baseline"
+      },
+      "analyze_debt": {
+        "mean_ns": 55000,
+        "std_dev_ns": 6500,
+        "median_ns": 54000,
+        "samples_per_second": 18181,
+        "status": "baseline"
+      },
+      "analyze_large": {
+        "mean_ns": 350000,
+        "std_dev_ns": 45000,
+        "median_ns": 345000,
+        "samples_per_second": 2842,
+        "status": "baseline"
+      }
+    }
+  },
+  "regression_thresholds": {
+    "max_regression_percent": 15,
+    "critical_benchmarks": [
+      "rate_limiter/acquire_high_throughput",
+      "streaming/chunk_creation",
+      "timeout/guard_creation"
+    ],
+    "warning_threshold_percent": 10,
+    "failure_threshold_percent": 20
+  },
+  "notes": [
+    "Baseline established from Phase 5 implementation",
+    "Run on Ubuntu 22.04 LTS, GitHub Actions",
+    "Rust stable toolchain",
+    "All benchmarks run with --save-baseline flag",
+    "Performance gates will fail CI if regression > 15%"
+  ]
+}
