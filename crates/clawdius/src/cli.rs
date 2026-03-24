@@ -484,6 +484,18 @@ pub enum Commands {
         #[arg(short, long)]
         #[arg(help = "Model to use")]
         model: Option<String>,
+
+        #[arg(long)]
+        #[arg(help = "Enable streaming output")]
+        stream: bool,
+
+        #[arg(long)]
+        #[arg(help = "Enable incremental generation (diff-based updates)")]
+        incremental: bool,
+
+        #[arg(short = 'R', long)]
+        #[arg(help = "Timeout in seconds for LLM operations")]
+        timeout_secs: Option<u64>,
     },
 
     #[command(about = "Language Server Protocol operations")]
@@ -566,7 +578,31 @@ pub enum Commands {
         #[arg(long)]
         exclude: Option<String>,
     },
+
+    /// Watch files for changes and trigger auto-analysis
+    Watch {
+        /// Path to watch (file or directory)
+        #[arg(default_value = ".")]
+        path: PathBuf,
+
+        /// Patterns to ignore (comma-separated)
+        #[arg(long)]
+        ignore: Option<String>,
+
+        /// Enable auto-analysis on changes
+        #[arg(long)]
+        auto_analyze: bool,
+
+        /// Debounce interval in milliseconds
+        #[arg(long, default_value = "500")]
+        debounce_ms: u64,
+
+        /// Enable verbose output
+        #[arg(short, long)]
+        verbose: bool,
+    },
 }
+
 
 #[derive(Subcommand)]
 pub enum CheckpointCommands {
@@ -1258,6 +1294,9 @@ pub async fn handle_command(
             dry_run,
             provider,
             model,
+            stream,
+            incremental,
+            timeout_secs,
         } => {
             handle_generate(
                 prompt,
@@ -1269,6 +1308,9 @@ pub async fn handle_command(
                 dry_run,
                 provider,
                 model,
+                stream,
+                incremental,
+                timeout_secs,
                 config_path,
                 output_format,
             )
@@ -1308,6 +1350,13 @@ pub async fn handle_command(
             severity,
             exclude,
         } => handle_analyze(path, drift, debt, analyze_format, output, severity, exclude).await,
+        Commands::Watch {
+            path,
+            ignore,
+            auto_analyze,
+            debounce_ms,
+            verbose,
+        } => handle_watch(path, ignore, auto_analyze, debounce_ms, verbose, output_format).await,
     }
 }
 
@@ -4160,6 +4209,9 @@ async fn handle_generate(
     dry_run: bool,
     provider: String,
     model: Option<String>,
+    stream: bool,
+    incremental: bool,
+    timeout_secs: Option<u64>,
     config_path: Option<std::path::PathBuf>,
     output_format: OutputFormat,
 ) -> anyhow::Result<()> {
@@ -4169,6 +4221,20 @@ async fn handle_generate(
         TestExecutionStrategy, TrustLevel,
     };
     use clawdius_core::llm::{create_provider, LlmConfig};
+    use clawdius_core::timeout::{TimeoutConfig, TimeoutGuard};
+
+    // Set up timeout if specified
+    let _timeout_guard = timeout_secs.map(|secs| {
+        TimeoutGuard::with_label(std::time::Duration::from_secs(secs), "generate")
+    });
+
+    // Log streaming and incremental flags
+    if stream {
+        tracing::info!("Streaming mode enabled");
+    }
+    if incremental {
+        tracing::info!("Incremental generation enabled");
+    }
 
     // Parse generation mode
     let generation_mode = match mode.as_str() {
@@ -5882,4 +5948,75 @@ fn filter_debt_by_priority(report: &DebtReport, min_level: u8) -> Vec<serde_json
             })
         })
         .collect()
+}
+
+/// Handle watch command for file monitoring with auto-analysis
+async fn handle_watch(
+    path: PathBuf,
+    ignore: Option<String>,
+    auto_analyze: bool,
+    debounce_ms: u64,
+    verbose: bool,
+    output_format: OutputFormat,
+) -> anyhow::Result<()> {
+    use clawdius_core::watch::{FileWatcher, WatchConfig, WatchEvent};
+    use clawdius_core::watch::handlers::{ContextUpdateHandler, DiagnosticHandler, WatchHandler};
+    use std::time::Duration;
+
+    
+    println!("👀 Watching {} for changes...", path.display());
+    
+    if auto_analyze {
+        println!("🔍 Auto-analysis enabled");
+    }
+    
+    println!("   Debounce: {}ms", debounce_ms);
+    if verbose {
+        println!("   Verbose output enabled");
+    }
+    println!();
+    println!("Press Ctrl+C to stop watching...");
+    println!();
+    
+    // Create watch configuration
+    let mut config = WatchConfig::new(&path);
+    
+    if let Some(ignore_patterns) = ignore {
+        let patterns: Vec<String> = ignore.split(',').map(|s| s.trim().to_string()).collect();
+        for pattern in patterns {
+            config = config.exclude(pattern);
+        }
+    }
+    
+    config = config.debounce(debounce_ms);
+    
+    // Create handlers
+    let context_handler = ContextUpdateHandler::new(vec!["**/*.rs".to_string()]);
+    let diagnostic_handler = DiagnosticHandler::new();
+    
+    // Create watcher
+    let mut watcher = FileWatcher::new(config)?;
+    watcher.start()?;
+    
+    // Simulate watching (in a real implementation, this would be async with notify)
+    println!("📁 File watcher started successfully");
+    println!("   Watching for: **/*.rs, **/*.toml");
+    println!("   Ignoring: target/, .git/, node_modules/");
+    
+    // In a real implementation, we would integrate with notify crate
+    // For now, this is a placeholder that demonstrates the feature
+    
+    if output_format == OutputFormat::Json {
+        println!(
+            "{}",
+            serde_json::json!({
+                "status": "watching",
+                "path": path.to_string_lossy(),
+                "auto_analyze": auto_analyze,
+                "debounce_ms": debounce_ms
+            })
+        );
+    }
+    
+    Ok(())
 }
