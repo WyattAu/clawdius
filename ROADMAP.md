@@ -76,7 +76,7 @@ Clawdius v2.0.0 will be a **multi-purpose platform** supporting:
 | Code Generation LLM Integration | HIGH | 40h | 📋 Planned |
 | Test Generation LLM Integration | HIGH | 24h | 📋 Planned |
 | Doc Generation LLM Integration | MEDIUM | 16h | 📋 Planned |
-| lancedb 0.26.x Migration | MEDIUM | 16h | 📋 Planned (fixes object_store vuln) |
+| lancedb 0.27.x Migration | MEDIUM | 2h | ✅ Complete (security fixes) |
 
 ---
 
