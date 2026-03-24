@@ -12,7 +12,7 @@
 //! - IDE-agnostic event stream
 
 mod debounce;
-mod handlers;
+pub mod handlers;
 mod watcher;
 
 pub use debounce::{DebounceConfig, DebouncedEvent};

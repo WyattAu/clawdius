@@ -171,6 +171,7 @@ impl Drop for Spinner {
 }
 
 /// Progress bar for tracking multi-step operations.
+#[allow(dead_code)]
 pub struct ProgressBar {
     current: usize,
     total: usize,

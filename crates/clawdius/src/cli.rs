@@ -268,7 +268,7 @@ pub enum Commands {
 
         #[arg(long)]
         #[arg(help = "Include inline comments")]
-        inline: bool,
+    _inline: bool,
     },
 
     #[command(about = "Run Lean4 proof verification")]
@@ -2266,7 +2266,7 @@ async fn handle_doc(
     element: Option<String>,
     format: String,
     output: Option<PathBuf>,
-    inline: bool,
+    _inline: bool,
     output_format: OutputFormat,
 ) -> anyhow::Result<()> {
     use clawdius_core::actions::docs::{DocFormat, GenerateDocs};
@@ -4221,7 +4221,7 @@ async fn handle_generate(
         TestExecutionStrategy, TrustLevel,
     };
     use clawdius_core::llm::{create_provider, LlmConfig};
-    use clawdius_core::timeout::{TimeoutConfig, TimeoutGuard};
+    use clawdius_core::timeout::TimeoutGuard;
 
     // Set up timeout if specified
     let _timeout_guard = timeout_secs.map(|secs| {
@@ -5959,9 +5959,8 @@ async fn handle_watch(
     verbose: bool,
     output_format: OutputFormat,
 ) -> anyhow::Result<()> {
-    use clawdius_core::watch::{FileWatcher, WatchConfig, WatchEvent};
+    use clawdius_core::watch::{FileWatcher, WatchConfig};
     use clawdius_core::watch::handlers::{ContextUpdateHandler, DiagnosticHandler, WatchHandler};
-    use std::time::Duration;
 
     
     println!("👀 Watching {} for changes...", path.display());
@@ -5982,7 +5981,7 @@ async fn handle_watch(
     let mut config = WatchConfig::new(&path);
     
     if let Some(ignore_patterns) = ignore {
-        let patterns: Vec<String> = ignore.split(',').map(|s| s.trim().to_string()).collect();
+        let patterns: Vec<String> = ignore_patterns.split(',').map(|s| s.trim().to_string()).collect();
         for pattern in patterns {
             config = config.exclude(pattern);
         }
@@ -5990,9 +5989,9 @@ async fn handle_watch(
     
     config = config.debounce(debounce_ms);
     
-    // Create handlers
-    let context_handler = ContextUpdateHandler::new(vec!["**/*.rs".to_string()]);
-    let diagnostic_handler = DiagnosticHandler::new();
+    // Create handlers (placeholder for future async integration)
+    let _context_handler = ContextUpdateHandler::new(vec!["**/*.rs".to_string()]);
+    let _diagnostic_handler = DiagnosticHandler::new();
     
     // Create watcher
     let mut watcher = FileWatcher::new(config)?;
