@@ -18,7 +18,29 @@
 
 ## Version History
 
-### v1.1.17 - Phase 6: CI/CD & Docs (2026-03-23) - ✅ COMPLETE
+### v1.1.18 - Phase 6: Benchmarking & CI/CD (2026-03-24) - ✅ COMPLETE
+
+| Task | Status | Description |
+|------|--------|-------------|
+| Benchmark Suite | ✅ COMPLETE | Phase 5 benchmark suite |
+| Performance Regression Detection | ✅ COMPLETE | CI/CD workflow for benchmark regression |
+| Baseline Metrics | ✅ COMPLETE | Baseline JSON for performance tracking |
+
+**New/Enhanced Files:**
+- `clawdius-core/benches/phase5_bench.rs` - Phase 5 benchmarks
+- `.github/workflows/benchmarks.yml` - Updated CI/CD workflow
+- `.specs/performance/baseline.json` - Baseline metrics
+
+**Key Features:**
+- Rate limiter throughput benchmarks (100+ req/sec)
+- Streaming generation latency benchmarks (< 1ms)
+- Incremental generation speedup benchmarks (diff-based)
+- Drift detection performance benchmarks (clean/drift/large)
+- Debt analysis performance benchmarks (clean/debt/large)
+- Performance regression detection on CI/CD pipeline
+- Baseline comparison for every PR to main branch
+
+**Commit:** 1aa7dbe
 | **Phase** | v2.0.0 - CI/CD & docs |
 | **Features Completed** |
 | - Automated release pipeline with quality gates
