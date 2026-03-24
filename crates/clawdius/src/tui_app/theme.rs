@@ -86,9 +86,7 @@ impl Theme {
     #[inline]
     #[allow(dead_code)]
     pub const fn user_message(&self) -> Style {
-                self.border_focus
-            }
-        }
+        Style::new().fg(self.success).add_modifier(Modifier::BOLD)
     }
 
     /// Assistant message style

@@ -268,7 +268,7 @@ pub enum Commands {
 
         #[arg(long)]
         #[arg(help = "Include inline comments")]
-    _inline: bool,
+        inline: bool,
     },
 
     #[command(about = "Run Lean4 proof verification")]
@@ -1415,15 +1415,15 @@ async fn handle_chat(
         let mut input = String::new();
         io::stdin().read_to_string(&mut input)?;
         if input.trim().is_empty() {
-            anyhow::bail!("No input provided via stdin");
+            anyhow::bail!("No input provided via stdin. Please pipe content or provide a message argument.\nExample: echo 'Hello' | clawdius chat");
         }
         input.trim().to_string()
     } else if non_interactive {
         anyhow::bail!(
-            "Message is required in non-interactive mode. Provide via argument or stdin."
+            "Message is required in non-interactive mode.\n\nProvide a message via:\n  - Argument: clawdius chat \"Your message\"\n  - Stdin: echo \"Your message\" | clawdius chat"
         );
     } else {
-        anyhow::bail!("Message is required. Use --editor or provide via argument/stdin.");
+        anyhow::bail!("Message is required.\n\nOptions:\n  - Use --editor to open your $EDITOR\n  - Provide via argument: clawdius chat \"Your message\"\n  - Pipe via stdin: echo \"Your message\" | clawdius chat");
     };
 
     if message.trim().is_empty() {
@@ -4244,7 +4244,7 @@ async fn handle_generate(
             max_steps: max_iterations,
             autonomous: false,
         },
-        _ => anyhow::bail!("Unknown generation mode: {mode}. Use: single-pass, iterative, agent"),
+        _ => anyhow::bail!("Unknown generation mode: '{mode}'.\n\nAvailable modes:\n  - single-pass: Generate code in one LLM call\n  - iterative: Refine code through multiple iterations\n  - agent: Use autonomous agent-based generation"),
     };
 
     // Parse trust level
