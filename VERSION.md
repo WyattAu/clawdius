@@ -18,17 +18,26 @@
 
 ## Version History
 
-### v1.1.16 - Phase 5 Agentic Features (2026-03-23) - ✅ COMPLETE
+### v1.1.17 - Phase 6: CI/CD & Docs (2026-03-23) - ✅ COMPLETE
+| **Phase** | v2.0.0 - CI/CD & docs |
+| **Features Completed** |
+| - Automated release pipeline with quality gates
+    - Performance regression detection
+    - Multi-stage builds (dev, test, security, deploy)
+    - Automated documentation generation
+    - Pre-commit hooks automated
+    - Rollbacks atomic and safe
+- - Dependency vulnerability scanning
+- - Security alerts
+    - - Updated documentation generation
+    - - Code coverage reporting
+    - - Performance metrics dashboard
 
-| Task | Status | Description |
-|------|--------|-------------|
-| Streaming Code Generation | ✅ COMPLETE | StreamingCodeGenerator with real-time LLM output |
-| Rate Limiting | ✅ COMPLETE | Token bucket rate limiter for LLM API calls |
-| Timeout Handling | ✅ COMPLETE | TimeoutConfig, TimeoutGuard, timeout combinators |
-| File Watching | ✅ COMPLETE | Watcher with ContextUpdate, Diagnostic, AutoAnalysis handlers |
-| Incremental Code Generation | ✅ COMPLETE | IncrementalGenerator with diff-based updates |
-| Dead Code Warnings Fixed | ✅ COMPLETE | Added #[allow(dead_code)] for future-use code |
-
+    - - Commit standards automated
+    - - push notifications
+    - - Changelog automation
+    - - Project metrics tracking
+    - - Automated backups (sqlite backups)
 **New/Enhanced Files:**
 - `clawdius-core/src/agentic/streaming_generator.rs` - Streaming LLM code generation
 - `clawdius-core/src/rate_limiter.rs` - Token bucket rate limiting
