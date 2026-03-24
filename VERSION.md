@@ -4,7 +4,7 @@
 
 | Attribute | Value |
 |-----------|-------|
-| **Version** | 1.1.19 |
+| **Version** | 1.1.20 |
 | **Phase** | v2.0.0 - Polish & Quality |
 | **Status** | ✅ COMPLETE |
 | **API Stability** | ✅ GUARANTEED |
@@ -17,6 +17,34 @@
 | **Competitor Analysis** | [docs/COMPETITOR_COMPARISON.md](docs/COMPETITOR_COMPARISON.md) |
 
 ## Version History
+
+### v1.1.20 - Phase 2 Polish: Onboarding & Security (2026-03-24) - ✅ COMPLETE
+
+| Task | Status | Description |
+|------|--------|-------------|
+| Onboarding Wizard | ✅ COMPLETE | Interactive `clawdius setup` command |
+| lancedb 0.27.x Migration | ✅ COMPLETE | Security vulnerability fixes |
+| Security Audit Clean | ✅ COMPLETE | Zero vulnerabilities |
+
+**New CLI Command:**
+- `clawdius setup` - Interactive setup wizard for first-time users
+- `clawdius setup --quick` - Skip welcome screen
+- `clawdius setup --provider <name>` - Pre-select provider
+
+**Security Fixes:**
+- RUSTSEC-2026-0044: AWS-LC X.509 Name Constraints Bypass
+- RUSTSEC-2026-0048: CRL Distribution Point Scope Check Logic Error
+- RUSTSEC-2026-0049: CRLs not authoritative by Distribution Point
+- RUSTSEC-2026-0041: lz4_flex memory leak (via tantivy update)
+
+**Key Features:**
+- Provider selection (Anthropic, OpenAI, Ollama, Zhipu AI)
+- API key configuration with keyring support
+- Settings presets (Balanced, Security, Performance, Development)
+- Ollama connectivity check using TCP
+- Quick start examples displayed after setup
+
+**Commits:** ff6c6b0, 5575109
 
 ### v1.1.18 - Phase 6: Benchmarking & CI/CD (2026-03-24) - ✅ COMPLETE
 
@@ -533,11 +561,12 @@
 - [x] Create GitHub Release v1.0.0
 - [x] Set up mdBook documentation
 
-### Phase 2: Polish & Adoption (In Progress)
+### Phase 2: Polish & Adoption ✅ COMPLETE
 - [x] Fix all clippy warnings
-- [ ] Dead code cleanup
-- [ ] Error message improvements
-- [ ] Onboarding wizard
+- [x] Dead code cleanup
+- [x] Error message improvements
+- [x] Onboarding wizard
+- [x] lancedb 0.27.x migration (security fixes)
 
 ### Phase 3: Feature Expansion ✅ COMPLETE
 - [x] MCP Protocol completion
