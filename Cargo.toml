@@ -132,8 +132,8 @@ similar = "2.6"
 git2 = "0.20"
 
 # === Vector Database ===
-# Upgraded to 0.26.x to fix RUSTSEC-2024-0358 (object_store) and RUSTSEC-2025-0009 (ring)
-lancedb = "0.26"
+# Upgraded to 0.27.x to fix RUSTSEC-2026-0044, RUSTSEC-2026-0048, RUSTSEC-2026-0049
+lancedb = "0.27"
 arrow = "51"
 arrow-array = "51"
 arrow-schema = "51"
