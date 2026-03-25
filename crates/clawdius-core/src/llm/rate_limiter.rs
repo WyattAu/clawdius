@@ -90,6 +90,18 @@ pub struct RateLimiter {
     adaptive_rate: Arc<Mutex<f64>>,
 }
 
+impl Clone for RateLimiter {
+    fn clone(&self) -> Self {
+        Self {
+            config: self.config.clone(),
+            tokens: Arc::clone(&self.tokens),
+            last_update: Arc::clone(&self.last_update),
+            semaphore: Arc::clone(&self.semaphore),
+            adaptive_rate: Arc::clone(&self.adaptive_rate),
+        }
+    }
+}
+
 impl RateLimiter {
     /// Creates a new rate limiter with the given configuration.
     #[must_use]

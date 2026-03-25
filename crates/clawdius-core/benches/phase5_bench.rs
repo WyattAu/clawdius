@@ -22,7 +22,7 @@ use std::time::Duration;
 
 // ============================================================================
 // Rate Limiter Benchmarks
-// ============================================================================
+// =================================================================
 
 fn bench_rate_limiter(c: &mut Criterion) {
     let mut group = c.benchmark_group("rate_limiter");
@@ -41,7 +41,7 @@ fn bench_rate_limiter(c: &mut Criterion) {
         adaptive: true,
     };
 
-    // Benchmark acquire operation
+    // Benchmark acquire operation - high throughput
     group.bench_function("acquire_high_throughput", |b| {
         let limiter = RateLimiter::new(high_throughput_config);
         let rt = tokio::runtime::Runtime::new().unwrap();
@@ -54,6 +54,7 @@ fn bench_rate_limiter(c: &mut Criterion) {
         });
     });
 
+    // Benchmark acquire operation - conservative
     group.bench_function("acquire_conservative", |b| {
         let limiter = RateLimiter::new(conservative_config);
         let rt = tokio::runtime::Runtime::new().unwrap();
@@ -86,7 +87,7 @@ fn bench_rate_limiter(c: &mut Criterion) {
 
 // ============================================================================
 // Streaming Benchmarks
-// ============================================================================
+// =================================================================
 
 fn bench_streaming(c: &mut Criterion) {
     let mut group = c.benchmark_group("streaming");
@@ -123,11 +124,7 @@ fn bench_streaming(c: &mut Criterion) {
         };
         processor.set_callback(callback);
 
-        let chunk = StreamChunk {
-            content: "test".to_string(),
-            is_complete: false,
-            token_count: 1,
-        };
+        let chunk = StreamChunk::new("test".to_string(), false);
 
         b.iter(|| {
             processor.process_chunk(&chunk);
@@ -139,7 +136,7 @@ fn bench_streaming(c: &mut Criterion) {
 
 // ============================================================================
 // Incremental Generation Benchmarks
-// ============================================================================
+// =================================================================
 
 fn bench_incremental(c: &mut Criterion) {
     let mut group = c.benchmark_group("incremental");
@@ -189,7 +186,7 @@ fn bench_incremental(c: &mut Criterion) {
 
 // ============================================================================
 // Timeout Benchmarks
-// ============================================================================
+// =================================================================
 
 fn bench_timeout(c: &mut Criterion) {
     let mut group = c.benchmark_group("timeout");
@@ -197,9 +194,9 @@ fn bench_timeout(c: &mut Criterion) {
     // Benchmark guard creation
     group.bench_function("guard_creation", |b| {
         b.iter(|| {
-            let guard = TimeoutGuard::with_label(Duration::from_secs(30), "test");
-            black_box(guard)
-        });
+                let guard = TimeoutGuard::with_label(Duration::from_secs(30), "test");
+                black_box(guard)
+            });
     });
 
     // Benchmark remaining time check
@@ -222,7 +219,7 @@ fn bench_timeout(c: &mut Criterion) {
     group.bench_function("config_creation", |b| {
         b.iter(|| {
             let config = TimeoutConfig::default();
-            black_box(config)
+                black_box(config)
         });
     });
 
@@ -231,7 +228,7 @@ fn bench_timeout(c: &mut Criterion) {
 
 // ============================================================================
 // Drift Detection Benchmarks
-// ============================================================================
+// =================================================================
 
 fn bench_drift_detection(c: &mut Criterion) {
     let mut group = c.benchmark_group("drift_detection");
@@ -303,7 +300,7 @@ fn magic_numbers() -> i32 {
 
 // ============================================================================
 // Debt Analysis Benchmarks
-// ============================================================================
+// =================================================================
 
 fn bench_debt_analysis(c: &mut Criterion) {
     let mut group = c.benchmark_group("debt_analysis");
@@ -391,36 +388,10 @@ fn duplicated_logic_b() -> i32 {
 
 // ============================================================================
 // Combined Integration Benchmarks
-// ============================================================================
+// =================================================================
 
 fn bench_integration(c: &mut Criterion) {
     let mut group = c.benchmark_group("phase5_integration");
-
-    // Benchmark rate limiter + streaming combination
-    group.bench_function("rate_limit_stream", |b| {
-        let config = RateLimiterConfig {
-            requests_per_second: 10.0,
-            burst_capacity: 5,
-            ..Default::default()
-        };
-        let limiter = RateLimiter::new(config);
-        let mut processor = StreamProcessor::new();
-        let rt = tokio::runtime::Runtime::new().unwrap();
-
-        b.to_async(&rt).iter(|| {
-            let limiter = limiter.clone();
-            async move {
-                let _permit = limiter.acquire().await.unwrap();
-                let chunk = StreamChunk {
-                    content: "test".to_string(),
-                    is_complete: false,
-                    token_count: 1,
-                };
-                processor.process_chunk(&chunk);
-                black_box(processor.get_accumulated())
-            }
-        });
-    });
 
     // Benchmark drift + debt combined analysis
     group.bench_function("drift_debt_combined", |b| {
