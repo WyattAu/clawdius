@@ -48,14 +48,31 @@ Built in Rust for maximum performance:
 # Install from crates.io
 cargo install clawdius
 
-# Or download pre-built binary
-curl -fsSL https://clawdius.dev/install.sh | sh
+# Run the interactive setup wizard (new in v1.2.0!)
+clawdius setup
 
-# Set your API key
+# Or manually set your API key
 clawdius config set api_key YOUR_ANTHROPIC_API_KEY
 
 # Start chatting
 clawdius chat
+```
+
+### New: Interactive Setup Wizard
+
+Version 1.2.0 introduces an interactive setup wizard that guides you through:
+
+- **Provider Selection**: Choose from Anthropic, OpenAI, Ollama (local), or Zhipu AI
+- **API Key Configuration**: Secure storage using your system keyring
+- **Settings Presets**: Balanced, Security-focused, Performance-optimized, or Development mode
+- **Ollama Connectivity Check**: Automatic TCP verification for local LLMs
+
+```bash
+# First-time setup
+clawdius setup
+
+# Quick setup with pre-selected provider
+clawdius setup --quick --provider anthropic
 ```
 
 ## Architecture Overview

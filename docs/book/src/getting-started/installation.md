@@ -160,11 +160,42 @@ After installation, verify everything works:
 # Check version
 clawdius --version
 
-# Run diagnostics
+# Run the interactive setup wizard (recommended for first-time users)
+clawdius setup
+
+# Or run diagnostics
 clawdius doctor
 
 # Quick test (requires API key)
 clawdius chat --message "Hello, Clawdius!"
+```
+
+## First-Time Setup
+
+New in v1.2.0: Use the interactive setup wizard to configure Clawdius:
+
+```bash
+clawdius setup
+```
+
+The wizard will guide you through:
+1. **Provider Selection** - Choose your LLM provider (Anthropic, OpenAI, Ollama, Zhipu AI)
+2. **API Key Configuration** - Enter and securely store your API key
+3. **Settings Preset** - Choose a configuration preset:
+   - **Balanced**: Good defaults for most users
+   - **Security**: Maximum sandboxing and audit logging
+   - **Performance**: Optimized for speed
+   - **Development**: Verbose logging and debugging features
+
+### Quick Setup Options
+
+```bash
+# Skip welcome screen
+clawdius setup --quick
+
+# Pre-select provider
+clawdius setup --provider anthropic
+clawdius setup --provider ollama  # For local LLMs
 ```
 
 ## Shell Completion

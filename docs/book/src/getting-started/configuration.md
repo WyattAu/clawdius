@@ -2,25 +2,47 @@
 
 Clawdius is highly configurable. This guide covers the essential configuration options.
 
+## Interactive Setup (Recommended)
+
+New in v1.2.0: Use the interactive setup wizard for first-time configuration:
+
+```bash
+clawdius setup
+```
+
+The wizard provides:
+- **Guided provider selection** with descriptions
+- **Secure API key storage** using your system keyring
+- **Preset configurations** for common use cases
+- **Connectivity verification** for local LLMs (Ollama)
+- **Quick start examples** after setup completes
+
+### Setup Presets
+
+| Preset | Use Case | Key Settings |
+|--------|----------|--------------|
+| **Balanced** | General development | Standard sandboxing, moderate caching |
+| **Security** | Production/sensitive code | Maximum sandboxing, full audit logging |
+| **Performance** | Speed-critical workflows | Aggressive caching, streaming enabled |
+| **Development** | Plugin/core development | Verbose logging, debug features |
+
 ## Configuration File Location
-
 Clawdius looks for configuration in the following locations (in order):
-
 1. `CLAWDIUS_CONFIG` environment variable (if set)
 2. `./.clawdius/config.toml` (project-local)
 3. `~/.config/clawdius/config.toml` (user-level)
 4. `/etc/clawdius/config.toml` (system-wide)
-
 ## Quick Setup
-
 ### Set API Key
-
 ```bash
 # Using CLI
 clawdius config set api_key sk-ant-xxxxx
-
 # Or set environment variable
 export ANTHROPIC_API_KEY=sk-ant-xxxxx
+```
+### Set Default Provider
+```bash
+clawdius config set provider anthropic
 ```
 
 ### Set Default Provider
