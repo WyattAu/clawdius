@@ -3,9 +3,9 @@
 **The High-Assurance Engineering Engine.**  
 *Powered by Rust. Governed by SOPs. Verified by Nexus.*
 
-[![Version](https://img.shields.io/badge/version-1.0.0--rc.1-blue.svg)](https://github.com/clawdius/clawdius/releases/tag/v1.0.0-rc.1)
+[![Version](https://img.shields.io/badge/version-1.2.0-blue.svg)](https://github.com/WyattAu/clawdius/releases/tag/v1.2.0)
 [![Rust](https://img.shields.io/badge/language-Rust-orange.svg)](https://www.rust-lang.org)
-[![Security: Sentinel](https://img.shields.io/badge/Security-Sentinel_JIT-blue.svg)](#-the-sentinel-jit-sandboxing)
+[![Security](https://img.shields.io/badge/Security-Zero_Vulnerabilities-brightgreen.svg)](#-security)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-yellow.svg)](LICENSE)
 
 **Clawdius** is a next-generation AI agentic engine built for developers who can't afford hallucinations and traders who can't afford latency. While other "claws" run on bloated Node.js runtimes with raw shell access, Clawdius is a native Rust binary that enforces a formal R&D lifecycle and executes code in strictly isolated, just-in-time sandboxes.
@@ -184,49 +184,32 @@ cargo build --release --features "embeddings,vector-db"
 
 ## Quick Start
 
-### 1. Set Up API Keys
-
+### 1. Set Up (New in v1.2.0!)
 ```bash
-# Option A: Environment variables (recommended)
-export ANTHROPIC_API_KEY="sk-ant-..."
-export OPENAI_API_KEY="sk-..."
+# Interactive setup wizard (recommended)
+clawdius setup
 
-# Option B: System keyring (secure)
-clawd auth set-key anthropic
-clawd auth set-key openai
+# Or quick setup with pre-selected provider
+clawdius setup --quick --provider anthropic
 ```
 
-### 2. Initialize a Project
+The will:
+- Guide you through provider selection (Anthropic, OpenAI, Ollama, Zhipu AI)
+- Securely store your API key using system keyring
+- Apply a settings preset (Balanced, Security, Performance, Development)
+- Verify connectivity for local LLMs (Ollama)
+
+### 2. Start Chatting
 
 ```bash
-clawdius init
+clawdius chat
 ```
 
-This creates the `.clawdius/` directory:
-- `config.toml` - Main configuration
-- `sops/` - Standard Operating Procedures
-- `specs/` - Specifications and papers
-- `graph/` - AST and vector stores
-- `sessions.db` - Conversation storage
+### 3. Generate Code
 
-### 3. Configure Providers (Optional)
-
-Edit `.clawdius/config.toml`:
-
-```toml
-[llm]
-default_provider = "anthropic"
-max_tokens = 4096
-
-[llm.anthropic]
-model = "claude-3-5-sonnet-20241022"
-
-[llm.openai]
-model = "gpt-4o"
-
-[llm.ollama]
-model = "llama3.2"
-base_url = "http://localhost:11434"
+```bash
+clawdius generate --mode agent "Create a REST API endpoint"
+```
 
 [llm.retry]
 max_retries = 3
