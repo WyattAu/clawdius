@@ -4,7 +4,7 @@
 
 | Attribute | Value |
 |-----------|-------|
-| **Version** | 1.1.20 |
+| **Version** | 1.2.0 |
 | **Phase** | v2.0.0 - Polish & Quality |
 | **Status** | ✅ COMPLETE |
 | **API Stability** | ✅ GUARANTEED |
@@ -18,13 +18,15 @@
 
 ## Version History
 
-### v1.1.20 - Phase 2 Polish: Onboarding & Security (2026-03-24) - ✅ COMPLETE
+### v1.2.0 - Phase 2 Polish Release (2026-03-24) - ✅ COMPLETE
 
 | Task | Status | Description |
 |------|--------|-------------|
 | Onboarding Wizard | ✅ COMPLETE | Interactive `clawdius setup` command |
 | lancedb 0.27.x Migration | ✅ COMPLETE | Security vulnerability fixes |
 | Security Audit Clean | ✅ COMPLETE | Zero vulnerabilities |
+| Error Message Improvements | ✅ COMPLETE | User-facing errors with helpful suggestions |
+| Dead Code Cleanup | ✅ COMPLETE | Removed unused code and imports |
 
 **New CLI Command:**
 - `clawdius setup` - Interactive setup wizard for first-time users
@@ -44,9 +46,9 @@
 - Ollama connectivity check using TCP
 - Quick start examples displayed after setup
 
-**Commits:** ff6c6b0, 5575109
+**Commits:** ff6c6b0, 5575109, 5efc854, 9f11deb
 
-### v1.1.18 - Phase 6: Benchmarking & CI/CD (2026-03-24) - ✅ COMPLETE
+### v1.1.19 - Phase 2 Polish: Onboarding & Security (2026-03-24) - ✅ COMPLETE
 
 | Task | Status | Description |
 |------|--------|-------------|

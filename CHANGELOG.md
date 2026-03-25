@@ -1,6 +1,49 @@
 # Changelog
 All notable changes to Clawdius will be documented in this file.
 
+## [1.2.0] - 2026-03-25
+
+### Added
+
+- **Onboarding Wizard**: New `clawdius setup` command for first-time users
+  - Interactive provider selection (Anthropic, OpenAI, Ollama, Zhipu AI)
+  - API key configuration with keyring support
+  - Settings presets (Balanced, Security, Performance, Development)
+  - Ollama connectivity check using TCP
+  - Quick start examples displayed after setup
+  - `--quick` flag to skip welcome screen
+  - `--provider` flag to pre-select provider
+
+### Changed
+
+- **Improved Error Messages**: User-facing errors now include helpful suggestions
+  - stdin input error shows usage example
+  - non-interactive mode error lists all input options
+  - generation mode error shows all available modes with descriptions
+
+### Security
+
+- **Fixed Vulnerabilities**:
+  - RUSTSEC-2026-0044: AWS-LC X.509 Name Constraints Bypass (aws-lc-sys 0.38 → 0.39)
+  - RUSTSEC-2026-0048: CRL Distribution Point Scope Check Logic Error
+  - RUSTSEC-2026-0049: CRLs not authoritative by Distribution Point (rustls-webpki 0.103.9 → 0.103.10)
+  - RUSTSEC-2026-0041: lz4_flex memory leak (0.11.5 → 0.11.6/0.12.1)
+
+### Dependencies
+
+- Upgraded `lancedb` from 0.26.2 to 0.27.1
+- Upgraded `lance-*` crates from 2.0.0 to 3.0.1
+- Upgraded `aws-lc-sys` from 0.38.0 to 0.39.0
+- Upgraded `rustls-webpki` from 0.103.9 to 0.103.10
+- Upgraded `lz4_flex` from 0.11.5 to 0.11.6/0.12.1
+
+### Removed
+
+- **Dead Code Cleanup**: Removed unused code and imports
+  - Added `#[allow(dead_code)]` to `ProgressBar` struct in `cli_progress.rs`
+  - Added `#[allow(dead_code)]` to unused Theme methods in `tui_app/theme.rs`
+  - Removed unused imports: `TimeoutConfig`, `WatchEvent`, `Duration`, `WatchHandler`
+
 ## [1.1.4] - 2026-03-19
 
 ### Added
