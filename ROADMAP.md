@@ -1,9 +1,9 @@
 # Clawdius Roadmap
 ## Strategic Vision & Development Plan
 
-**Current Version:** 1.1.3  
+**Current Version:** 1.2.0  
 **Target:** v2.0.0 with Agentic Workflows & Multi-Profile Platform  
-**Last Updated** 2026-03-16
+**Last Updated** 2026-03-25
 
 ---
 
@@ -59,13 +59,16 @@ Clawdius v2.0.0 will be a **multi-purpose platform** supporting:
 | API Integration Tests | MEDIUM | 4h | ✅ Complete |
 | Security Vulnerability Fixes | HIGH | 2h | ✅ Complete |
 
-### v1.2.0 - MCP Protocol (Week 8-9) 📋 PLANNED
+### v1.2.0 - MCP Protocol (Week 8-9) ✅ COMPLETE
 
 | Task | Priority | Effort | Status |
 |------|----------|--------|--------|
-| MCP Protocol Completion | HIGH | 24h | 📋 Planned |
-| Tool Resource Handlers | MEDIUM | 16h | 📋 Planned |
-| Prompt Templates | MEDIUM | 8h | 📋 Planned |
+| MCP Protocol Completion | HIGH | 24h | ✅ Complete |
+| Tool Resource Handlers | MEDIUM | 16h | ✅ Complete |
+| Prompt Templates | MEDIUM | 8h | ✅ Complete |
+| Onboarding Wizard | HIGH | 8h | ✅ Complete |
+| lancedb 0.27.x Migration | MEDIUM | 2h | ✅ Complete |
+| Security Vulnerability Fixes | HIGH | 2h | ✅ Complete |
 
 ### v2.0.0 - Agentic Features (Week 10-12) 📋 PLANNED
 
@@ -76,7 +79,6 @@ Clawdius v2.0.0 will be a **multi-purpose platform** supporting:
 | Code Generation LLM Integration | HIGH | 40h | 📋 Planned |
 | Test Generation LLM Integration | HIGH | 24h | 📋 Planned |
 | Doc Generation LLM Integration | MEDIUM | 16h | 📋 Planned |
-| lancedb 0.27.x Migration | MEDIUM | 2h | ✅ Complete (security fixes) |
 
 ---
 
