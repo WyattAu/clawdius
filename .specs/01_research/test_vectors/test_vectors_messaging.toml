@@ -1,0 +1,25 @@
+# Test Vectors: Messaging Gateway
+## Document Header
+| Attribute | Value |
+|-----------|-------|
+| **Document ID** | TV-MSG-001 |
+| **Algorithm ID** | ALg-msg-001 (Token bucket) |
+| **Generation Date** | 2026-03-25 |
+| **Verification status** | verified |
+
+| **Confidence** | 1.0 |
+
+| **Source** | Mathematical derivation |
+
+---
+
+## Test Vector Categories
+| Category | Description | Coverage Target |
+|----------|-------------|---------------|
+| Nominal | Standard message routing | 40% |
+| Boundary | Edge cases, limits | 20% |
+| Adversarial | Malformed input, injection | 10% |
+| Regression | Known failure cases | 10% |
+| Random | Property-based testing | 15% |
+| Performance | Latency benchmarks | 20% |
+

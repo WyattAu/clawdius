@@ -32,6 +32,7 @@ pub mod llm;
 pub mod lsp;
 pub mod mcp;
 pub mod memory;
+pub mod messaging;
 pub mod modes;
 pub mod nexus;
 pub mod onboarding;

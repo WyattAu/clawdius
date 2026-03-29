@@ -24,8 +24,8 @@ pub struct RateLimiterConfig {
 impl Default for RateLimiterConfig {
     fn default() -> Self {
         Self {
-            requests_per_minute: 60,        // 1 request per second average
-            burst_capacity: 10,             // Allow 10 burst requests
+            requests_per_minute: 60, // 1 request per second average
+            burst_capacity: 10,      // Allow 10 burst requests
             adaptive: true,
         }
     }
@@ -134,14 +134,11 @@ impl RateLimiter {
         if tokens >= 1.0 {
             // We have tokens available
             *self.tokens.lock().await -= 1.0;
-            let permit = self
-                .semaphore
-                .clone()
-                .acquire_owned()
-                .await
-                .map_err(|_| crate::Error::RateLimited {
+            let permit = self.semaphore.clone().acquire_owned().await.map_err(|_| {
+                crate::Error::RateLimited {
                     retry_after_ms: 1000,
-                })?;
+                }
+            })?;
 
             return Ok(RateLimitPermit {
                 _permit: permit,
@@ -168,14 +165,11 @@ impl RateLimiter {
         self.refill_tokens().await;
         *self.tokens.lock().await -= 1.0;
 
-        let permit = self
-            .semaphore
-            .clone()
-            .acquire_owned()
-            .await
-            .map_err(|_| crate::Error::RateLimited {
+        let permit = self.semaphore.clone().acquire_owned().await.map_err(|_| {
+            crate::Error::RateLimited {
                 retry_after_ms: 1000,
-            })?;
+            }
+        })?;
 
         Ok(RateLimitPermit {
             _permit: permit,
@@ -276,7 +270,7 @@ impl RateLimiter {
 
         // Add tokens up to burst capacity
         *tokens = (*tokens + tokens_to_add).min(f64::from(self.config.burst_capacity));
-        
+
         *last_update = now;
     }
 
@@ -368,7 +362,10 @@ mod tests {
         let limiter = RateLimiter::new(config);
 
         // Use the token
-        let _permit = limiter.acquire().await.expect("Should acquire initial permit");
+        let _permit = limiter
+            .acquire()
+            .await
+            .expect("Should acquire initial permit");
 
         // Should be empty
         let tokens = limiter.available_tokens().await;
@@ -425,7 +422,10 @@ mod tests {
         let limiter = RateLimiter::new(config);
 
         // Use the token
-        let _permit = limiter.acquire().await.expect("Should acquire initial permit");
+        let _permit = limiter
+            .acquire()
+            .await
+            .expect("Should acquire initial permit");
 
         // This should block until token is refilled
         let result = timeout(Duration::from_millis(2000), async {

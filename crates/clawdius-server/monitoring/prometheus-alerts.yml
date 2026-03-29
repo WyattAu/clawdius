@@ -1,0 +1,168 @@
+# Clawdius Messaging Gateway — Prometheus Alerting Rules
+#
+# Usage:
+#   prometheus --config.file=prometheus.yml
+#
+# These rules complement the Grafana dashboard (grafana-dashboard.json).
+# Severity levels: info, warning, critical
+#
+# Alert routing is typically configured in Alertmanager to map these
+# to Slack channels, PagerDuty, email, etc.
+
+groups:
+  - name: clawdius_messaging_availability
+    rules:
+      - alert: ClawdiusHighErrorRate
+        expr: |
+          sum(rate(clawdius_http_requests_total{status=~"5.."}[5m]))
+          / sum(rate(clawdius_http_requests_total[5m]))
+          > 0.05
+        for: 2m
+        labels:
+          severity: critical
+          team: platform
+        annotations:
+          summary: "Clawdius gateway 5xx error rate above 5%"
+          description: >
+            The messaging gateway is returning 5xx errors at
+            {{ $value | humanizePercentage }} of total requests
+            (threshold: 5%) for the past 2 minutes.
+          runbook_url: "https://docs.clawdius.dev/runbooks/high-error-rate"
+
+      - alert: ClawdiusWebhookTimeout
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(clawdius_http_request_duration_ms_bucket{route=~"/webhook/.*"}[5m])) by (le, route)
+          ) > 5000
+        for: 5m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "Webhook P95 latency above 5 seconds"
+          description: >
+            Webhook endpoint {{ $labels.route }} has a P95 latency of
+            {{ $value | humanize }}ms (threshold: 5000ms).
+          runbook_url: "https://docs.clawdius.dev/runbooks/webhook-timeout"
+
+      - alert: ClawdiusNoMetrics
+        expr: up{job="clawdius"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          team: platform
+        annotations:
+          summary: "Clawdius instance is down"
+          description: >
+            Prometheus cannot scrape metrics from instance {{ $labels.instance }}.
+            The process may have crashed or the network is unreachable.
+          runbook_url: "https://docs.clawdius.dev/runbooks/instance-down"
+
+  - name: clawdius_messaging_reliability
+    rules:
+      - alert: ClawdiusRetryQueueBacklog
+        expr: clawdius_messaging_retry_queue_pending > 500
+        for: 10m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "Retry queue has {{ $value }} pending messages"
+          description: >
+            The retry queue depth has exceeded 500 for 10 minutes.
+            Messages are being queued for retry but may not be delivered
+            in a timely manner.
+          runbook_url: "https://docs.clawdius.dev/runbooks/retry-backlog"
+
+      - alert: ClawdiusDeadLetterGrowth
+        expr: |
+          increase(clawdius_messaging_retry_dead_letter_total[1h]) > 50
+        for: 5m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "Dead letter queue growing rapidly"
+          description: >
+            {{ $value }} messages were moved to the dead letter queue in the
+            last hour. This indicates persistent delivery failures.
+          runbook_url: "https://docs.clawdius.dev/runbooks/dead-letter-growth"
+
+      - alert: ClawdiusSessionCountHigh
+        expr: clawdius_messaging_active_sessions > 800
+        for: 5m
+        labels:
+          severity: info
+          team: platform
+        annotations:
+          summary: "Active sessions approaching limit"
+          description: >
+            {{ $value }} active sessions (threshold: 800).
+            Consider scaling or reviewing session TTL.
+          runbook_url: "https://docs.clawdius.dev/runbooks/high-sessions"
+
+  - name: clawdius_messaging_security
+    rules:
+      - alert: ClawdiusAuthFailures
+        expr: |
+          sum(rate(clawdius_http_requests_total{status="401"}[5m]))
+          / sum(rate(clawdius_http_requests_total[5m]))
+          > 0.20
+        for: 3m
+        labels:
+          severity: warning
+          team: security
+        annotations:
+          summary: "Authentication failure rate above 20%"
+          description: >
+            {{ $value | humanizePercentage }} of requests are returning 401.
+            This may indicate a configuration issue or brute-force attack.
+          runbook_url: "https://docs.clawdius.dev/runbooks/auth-failures"
+
+      - alert: ClawdiusRateLimitSaturation
+        expr: |
+          sum(rate(clawdius_usage_messages_total{outcome="rate_limited"}[5m]))
+          / sum(rate(clawdius_usage_messages_total[5m]))
+          > 0.10
+        for: 5m
+        labels:
+          severity: info
+          team: platform
+        annotations:
+          summary: "Rate limiting affecting >10% of requests"
+          description: >
+            {{ $value | humanizePercentage }} of messages are being rate-limited.
+            Consider increasing rate limits or investigating abnormal traffic.
+          runbook_url: "https://docs.clawdius.dev/runbooks/rate-limit-saturation"
+
+  - name: clawdius_messaging_tenant
+    rules:
+      - alert: ClawdiusTenantErrorSpike
+        expr: |
+          sum by (tenant) (rate(clawdius_usage_messages_total{outcome="error"}[5m]))
+          / sum by (tenant) (rate(clawdius_usage_messages_total[5m]))
+          > 0.50
+        for: 5m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "Tenant {{ $labels.tenant }} error rate above 50%"
+          description: >
+            Tenant {{ $labels.tenant }} has an error rate of
+            {{ $value | humanizePercentage }}. Investigate tenant-specific issues.
+          runbook_url: "https://docs.clawdius.dev/runbooks/tenant-error-spike"
+
+      - alert: ClawdiusTenantLowUsage
+        expr: |
+          sum by (tenant) (increase(clawdius_usage_messages_total[24h])) < 10
+        for: 1h
+        labels:
+          severity: info
+          team: sales
+        annotations:
+          summary: "Tenant {{ $labels.tenant }} has low usage"
+          description: >
+            Tenant {{ $labels.tenant }} processed fewer than 10 messages
+            in the last 24 hours.
+          runbook_url: ""

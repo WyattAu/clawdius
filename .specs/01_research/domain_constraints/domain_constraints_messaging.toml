@@ -1,0 +1,101 @@
+# Domain Constraints: Messaging Gateway
+## Document Header
+| Attribute | Value |
+|-----------|-------|
+| **Document ID** | DC-MSG-001 |
+| **Domain** | Messaging Systems |
+| **Derivation date** | 2026-03-25 |
+| **Confidence** | 0.95 |
+| **Sources** | YP-MSG-GATEWAY-001 |
+
+---
+
+## Timing Constraints
+### TC-001: Routing Latency p99
+| Constraint | Value | Type | Source |
+|------------|-------|------|------------------|
+| P99 Latency | < 1ms | Hard | REQ-MSG-040 |
+| P99.9 Latency | < 5ms | Load test 10000 msg/s |
+| Cold Start Latency | < 10ms | First message measurement |
+
+### TC-002: Memory per connection
+| Constraint | Value | Type | Source |
+|------------|-------|------|------------------|
+| Per connection | < 1KB | Architecture analysis |
+| Total for 10K connections | < 10MB | Memory profiling |
+| Message buffer size | 64KB | Platform message limits |
+
+### TC-003: Platform Rate Limits
+| Platform | Limit | Unit | Source |
+|----------|-------|------|------------------|
+| Telegram | 30 | msg/s | API docs |
+| Discord | 50 | req/s | API docs |
+| Matrix | 100 | msg/s | Server config |
+| WhatsApp | 80 | msg/s | Business API |
+| Signal | 10 | msg/s | Protocol limit |
+
+### NC-004: Message Size Limits
+| Platform | Max Size | Unit | Chunking Strategy |
+|----------|----------|------|-------------------|
+| Telegram | 4096 | chars | Split on newline |
+| Discord | 2000 | chars | Split on 2000 char chunks |
+| Matrix | 65536 | chars | No chunking needed |
+| WhatsApp | 65536 | chars | No chunking needed |
+
+---
+
+## Memory Constraints
+### MC-001: Per-connection Memory
+| Constraint | Value | Type | Source |
+|------------|-------|------|------------------|
+| Per connection | < 1KB | REQ-MSG-042 |
+| Session cache size | < 10MB | config |
+            | type | uint32 |
+            allocation_type | static | |
+            scope | Global |
+        }
+        Err! {
+            unreachable!()
+        }
+    }
+}
+
+### MC-002: Rate Limiter Memory
+| Constraint | Value | Type | Source |
+|------------|-------|------|------------------|
+| Rate limiter memory | < 100 bytes | System |
+| Token bucket state | < 10 bytes | impl estimate |
+            | type | uint64 |
+            allocation_type | Static | |
+            scope | Global |
+        }
+        Err! {
+            unreachable!()
+        }
+    }
+}
+
+### MC-003: Session cache size
+| Constraint | Value | Type | Source |
+|------------|-------|------|------------------|
+| Session cache size | < 10MB | config |
+            | type | usize |
+            allocation_type | Static | Global |
+            | max_entries | usize::MAX(10) |
+
+---
+
+## Hardware constraints
+### HC-001: Target Architecture
+| Constraint | Value | Source |
+|------------|-------|------------------|
+| Target | x86_64 (Rust), ARM64) | Platform-specific optimization |
+| Message queue | Arc<Vec:: new(64) | Ring buffer | Implementation |
+
+---
+
+## Conflict Resolution
+
+| ID | Constraint 1 | Constraint 2 | Impact | Resolution | ADR_reference |
+| CONF-001 | NC-001 | NC-002 | Memory per connection | Per-connection memory exceeded | session cache size | Configuration limit | architecture redesign |
+| CONF-002 | NC-003 | NC-004 | Message size | Platform message limits | Chunking required |

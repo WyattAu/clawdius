@@ -88,6 +88,7 @@ similar.workspace = true
 
 # Encoding
 base64 = "0.22"
+hex = { workspace = true }
 
 # Vector Database (optional)
 lancedb = { workspace = true, optional = true }
@@ -108,6 +109,13 @@ rust_decimal.workspace = true
 
 # Keyring (optional)
 keyring = { workspace = true, optional = true }
+
+# Encryption at rest
+aes-gcm = { workspace = true, optional = true }
+rand_core = { workspace = true, optional = true }
+
+# JWT authentication (optional)
+jsonwebtoken = { workspace = true, optional = true }
 
 # Browser Automation
 chromiumoxide.workspace = true
@@ -132,6 +140,7 @@ once_cell.workspace = true
 tempfile.workspace = true
 criterion = { workspace = true }
 mockall.workspace = true
+httpmock = { workspace = true }
 
 [[bench]]
 name = "core_bench"
@@ -150,11 +159,7 @@ name = "session_benchmark"
 harness = false
 
 [[bench]]
-name = "hft_bench"
-harness = false
-
-[[bench]]
-name = "phase5_bench"
+name = "messaging_bench"
 harness = false
 
 [features]
@@ -163,6 +168,8 @@ hft-mode = []
 broker-mode = []
 keyring = ["dep:keyring"]
 crash-reporting = ["dep:sentry"]
+encryption = ["dep:aes-gcm", "dep:rand_core"]
+jwt = ["dep:jsonwebtoken"]
 embeddings = ["dep:candle-core", "dep:candle-nn", "dep:candle-transformers", "dep:tokenizers", "dep:hf-hub"]
 vector-db = ["dep:lancedb", "dep:arrow", "dep:arrow-array", "dep:arrow-schema"]
 

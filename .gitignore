@@ -157,7 +157,33 @@ node_modules/
 # -----------------------------------------------------------------------------
 /result
 /result-*
-/.direnv/
+# .gitignore for fuzzing
+
+**/.direnv/
+**/*.fingerprint/
+**/*.rlib
+**/*.rmeta
+**/*.dSYM
+**/*.elf
+**/*.hex
+**/*.map
+**/*.log
+**/*.sqlite
+**/*.db
+ logs/
+*.sublime-*
+ignore
+*.tar
+ *.tgz
+ *.xz
+ *.zip
+ *.7z
+ *.bz2
+ *.xz
+vendor/
+target/
+*.fuzz/target/
+Cargo.lock
 /.devenv/
 devenv.local.nix
 .pre-commit-config.yaml

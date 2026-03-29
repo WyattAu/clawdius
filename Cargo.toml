@@ -12,6 +12,7 @@ members = [
     "crates/clawdius",
     "crates/clawdius-core",
     "crates/clawdius-code",
+    "crates/clawdius-server",
     "crates/clawdius-webview",
 ]
 
@@ -36,6 +37,8 @@ tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros", "sync", 
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 toml = "1.0"
+jsonweb = "0.18"
+jsonwebtoken = "9"
 rkyv = { version = "0.8", features = ["std"] }
 
 # === CLI ===
@@ -73,6 +76,8 @@ jsonrpsee = { version = "0.24", features = ["server", "client", "ws-client"] }
 # === Security ===
 keyring = "3.6"
 rpassword = "7.3"
+aes-gcm = "0.10"
+rand_core = "0.6"
 
 # === HTTP ===
 axum = { version = "0.8", features = ["macros"] }
@@ -107,6 +112,7 @@ dotenvy = "0.15"
 walkdir = "2.5"
 chrono = { version = "0.4.39", features = ["serde"] }
 base64 = "0.22"
+hex = "0.4"
 regex = "1.11"
 glob = "0.3"
 glob-match = "0.2"
@@ -163,6 +169,7 @@ rstest = "0.25"
 criterion = "0.5"
 tempfile = "3.17"
 mockall = "0.13"
+httpmock = "0.7"
 
 # === System Information ===
 sysinfo = "0.33"

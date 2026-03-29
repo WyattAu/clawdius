@@ -614,7 +614,6 @@ pub enum Commands {
     },
 }
 
-
 #[derive(Subcommand)]
 pub enum CheckpointCommands {
     #[command(about = "Create a checkpoint")]
@@ -1193,9 +1192,7 @@ pub async fn handle_command(
             .await
         }
         Commands::Init { path } => handle_init(path, output_format).await,
-        Commands::Setup { quick, provider } => {
-            handle_setup(quick, provider, output_format).await
-        }
+        Commands::Setup { quick, provider } => handle_setup(quick, provider, output_format).await,
         Commands::Sessions { delete, search } => {
             handle_sessions(delete, search, config_path, output_format).await
         }
@@ -1370,7 +1367,17 @@ pub async fn handle_command(
             auto_analyze,
             debounce_ms,
             verbose,
-        } => handle_watch(path, ignore, auto_analyze, debounce_ms, verbose, output_format).await,
+        } => {
+            handle_watch(
+                path,
+                ignore,
+                auto_analyze,
+                debounce_ms,
+                verbose,
+                output_format,
+            )
+            .await
+        }
     }
 }
 
@@ -1835,7 +1842,8 @@ async fn handle_setup(
 
     // Welcome screen
     if !quick {
-        println!(r"
+        println!(
+            r"
 ╔══════════════════════════════════════════════════════════════╗
 ║   ██████╗██╗      █████╗ ██╗   ██╗██████╗ ███████╗          ║
 ║  ██╔════╝██║     ██╔══██╗██║   ██║██╔══██╗██╔════╝          ║
@@ -1846,8 +1854,11 @@ async fn handle_setup(
 ║                                                              ║
 ║   High-Assurance AI Coding Assistant                        ║
 ╚══════════════════════════════════════════════════════════════╝
-");
-        println!("Welcome to Clawdius Setup! This wizard will help you configure your AI assistant.\n");
+"
+        );
+        println!(
+            "Welcome to Clawdius Setup! This wizard will help you configure your AI assistant.\n"
+        );
     }
 
     // Provider selection
@@ -1907,9 +1918,13 @@ async fn handle_setup(
                 #[cfg(feature = "keyring")]
                 {
                     use clawdius_core::config::KeyringStorage;
-                    if let Err(e) = KeyringStorage::global().set_api_key(&selected_provider, api_key) {
+                    if let Err(e) =
+                        KeyringStorage::global().set_api_key(&selected_provider, api_key)
+                    {
                         eprintln!("  ⚠ Could not store in keyring: {e}");
-                        eprintln!("  Set the environment variable instead: export {env_var}=<your-key>");
+                        eprintln!(
+                            "  Set the environment variable instead: export {env_var}=<your-key>"
+                        );
                     } else {
                         println!("  ✓ API key stored securely in keyring");
                     }
@@ -1932,16 +1947,19 @@ async fn handle_setup(
 
         // Check if Ollama is running using a simple TCP check
         use std::net::TcpStream;
-        let ollama_addr = std::env::var("OLLAMA_HOST")
-            .unwrap_or_else(|_| "127.0.0.1:11434".to_string());
+        let ollama_addr =
+            std::env::var("OLLAMA_HOST").unwrap_or_else(|_| "127.0.0.1:11434".to_string());
 
         // Remove http:// prefix if present
-        let ollama_addr = ollama_addr.trim_start_matches("http://")
+        let ollama_addr = ollama_addr
+            .trim_start_matches("http://")
             .trim_start_matches("https://")
             .to_string();
 
         match TcpStream::connect_timeout(
-            &ollama_addr.parse().unwrap_or_else(|_| "127.0.0.1:11434".parse().unwrap()),
+            &ollama_addr
+                .parse()
+                .unwrap_or_else(|_| "127.0.0.1:11434".parse().unwrap()),
             std::time::Duration::from_secs(2),
         ) {
             Ok(_) => {
@@ -4442,9 +4460,8 @@ async fn handle_generate(
     use clawdius_core::timeout::TimeoutGuard;
 
     // Set up timeout if specified
-    let _timeout_guard = timeout_secs.map(|secs| {
-        TimeoutGuard::with_label(std::time::Duration::from_secs(secs), "generate")
-    });
+    let _timeout_guard = timeout_secs
+        .map(|secs| TimeoutGuard::with_label(std::time::Duration::from_secs(secs), "generate"));
 
     // Log streaming and incremental flags
     if stream {
@@ -6177,16 +6194,15 @@ async fn handle_watch(
     verbose: bool,
     output_format: OutputFormat,
 ) -> anyhow::Result<()> {
-    use clawdius_core::watch::{FileWatcher, WatchConfig};
     use clawdius_core::watch::handlers::{ContextUpdateHandler, DiagnosticHandler, WatchHandler};
+    use clawdius_core::watch::{FileWatcher, WatchConfig};
 
-    
     println!("👀 Watching {} for changes...", path.display());
-    
+
     if auto_analyze {
         println!("🔍 Auto-analysis enabled");
     }
-    
+
     println!("   Debounce: {}ms", debounce_ms);
     if verbose {
         println!("   Verbose output enabled");
@@ -6194,35 +6210,38 @@ async fn handle_watch(
     println!();
     println!("Press Ctrl+C to stop watching...");
     println!();
-    
+
     // Create watch configuration
     let mut config = WatchConfig::new(&path);
-    
+
     if let Some(ignore_patterns) = ignore {
-        let patterns: Vec<String> = ignore_patterns.split(',').map(|s| s.trim().to_string()).collect();
+        let patterns: Vec<String> = ignore_patterns
+            .split(',')
+            .map(|s| s.trim().to_string())
+            .collect();
         for pattern in patterns {
             config = config.exclude(pattern);
         }
     }
-    
+
     config = config.debounce(debounce_ms);
-    
+
     // Create handlers (placeholder for future async integration)
     let _context_handler = ContextUpdateHandler::new(vec!["**/*.rs".to_string()]);
     let _diagnostic_handler = DiagnosticHandler::new();
-    
+
     // Create watcher
     let mut watcher = FileWatcher::new(config)?;
     watcher.start()?;
-    
+
     // Simulate watching (in a real implementation, this would be async with notify)
     println!("📁 File watcher started successfully");
     println!("   Watching for: **/*.rs, **/*.toml");
     println!("   Ignoring: target/, .git/, node_modules/");
-    
+
     // In a real implementation, we would integrate with notify crate
     // For now, this is a placeholder that demonstrates the feature
-    
+
     if output_format == OutputFormat::Json {
         println!(
             "{}",
@@ -6234,6 +6253,6 @@ async fn handle_watch(
             })
         );
     }
-    
+
     Ok(())
 }

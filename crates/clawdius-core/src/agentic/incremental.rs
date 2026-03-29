@@ -166,7 +166,7 @@ impl IncrementalGenerator {
             total_chunks: estimated_chunks,
             file_path,
         };
-        
+
         // Clear previous chunks
         self.chunks.write().await.clear();
         self.assembled.write().await.clear();
@@ -181,19 +181,19 @@ impl IncrementalGenerator {
                 *current_chunk = chunk.index + 1;
             }
         }
-        
+
         // Append to assembled content
         {
             let mut assembled = self.assembled.write().await;
             assembled.push_str(&chunk.content);
         }
-        
+
         // Store chunk
         {
             let mut chunks = self.chunks.write().await;
             chunks.push(chunk);
         }
-        
+
         Ok(())
     }
 
@@ -202,17 +202,14 @@ impl IncrementalGenerator {
         let mut state = self.state.write().await;
         let chunks = self.chunks.read().await;
         let assembled = self.assembled.read().await.clone();
-        
-        let files: Vec<PathBuf> = chunks
-            .iter()
-            .map(|c| c.file_path.clone())
-            .collect();
-        
+
+        let files: Vec<PathBuf> = chunks.iter().map(|c| c.file_path.clone()).collect();
+
         *state = GenerationState::Complete {
             total_chunks: chunks.len(),
             files,
         };
-        
+
         Ok(assembled)
     }
 
@@ -240,7 +237,7 @@ impl IncrementalGenerator {
     pub fn split_into_chunks(&self, content: &str, file_path: PathBuf) -> Vec<CodeChunk> {
         let lines: Vec<&str> = content.lines().collect();
         let total_chars: usize = lines.iter().map(|l| l.len() + 1).sum();
-        
+
         if total_chars <= self.config.max_chunk_size {
             // Content fits in a single chunk
             return vec![CodeChunk::new(
@@ -252,14 +249,16 @@ impl IncrementalGenerator {
                 lines.len(),
             )];
         }
-        
+
         let mut chunks = Vec::new();
         let mut current_chunk = String::new();
         let mut chunk_start_line = 1;
         let mut current_line = 1;
-        
+
         for line in &lines {
-            if current_chunk.len() + line.len() + 1 > self.config.max_chunk_size && !current_chunk.is_empty() {
+            if current_chunk.len() + line.len() + 1 > self.config.max_chunk_size
+                && !current_chunk.is_empty()
+            {
                 // Save current chunk
                 let chunk_end_line = current_line - 1;
                 chunks.push(CodeChunk::new(
@@ -270,11 +269,11 @@ impl IncrementalGenerator {
                     chunk_start_line,
                     chunk_end_line,
                 ));
-                
+
                 // Start new chunk with context
                 current_chunk.clear();
                 chunk_start_line = current_line;
-                
+
                 // Add context from previous chunk
                 if self.config.include_context && chunks.len() > 0 {
                     let prev_lines: Vec<&str> = lines
@@ -283,19 +282,19 @@ impl IncrementalGenerator {
                         .take(self.config.context_lines)
                         .copied()
                         .collect();
-                    
+
                     for prev_line in prev_lines {
                         current_chunk.push_str(prev_line);
                         current_chunk.push('\n');
                     }
                 }
             }
-            
+
             current_chunk.push_str(line);
             current_chunk.push('\n');
             current_line += 1;
         }
-        
+
         // Add final chunk
         if !current_chunk.is_empty() {
             chunks.push(CodeChunk::new(
@@ -307,14 +306,14 @@ impl IncrementalGenerator {
                 lines.len(),
             ));
         }
-        
+
         // Update total count in all chunks
         let total = chunks.len();
         for chunk in &mut chunks {
             chunk.total = total;
             chunk.is_final = chunk.index == total - 1;
         }
-        
+
         chunks
     }
 }
@@ -322,7 +321,11 @@ impl IncrementalGenerator {
 /// Chunk validator trait
 pub trait ChunkValidator: Send + Sync {
     /// Validate a code chunk
-    fn validate(&self, chunk: &CodeChunk, previous_chunks: &[CodeChunk]) -> Result<ValidationResult>;
+    fn validate(
+        &self,
+        chunk: &CodeChunk,
+        previous_chunks: &[CodeChunk],
+    ) -> Result<ValidationResult>;
 }
 
 /// Result of chunk validation
@@ -379,7 +382,7 @@ mod tests {
             1,
             1,
         );
-        
+
         assert_eq!(chunk.index, 0);
         assert_eq!(chunk.total, 3);
         assert!(!chunk.is_final);
@@ -388,15 +391,8 @@ mod tests {
 
     #[test]
     fn test_code_chunk_final() {
-        let chunk = CodeChunk::new(
-            2,
-            3,
-            PathBuf::from("test.rs"),
-            "}".to_string(),
-            10,
-            10,
-        );
-        
+        let chunk = CodeChunk::new(2, 3, PathBuf::from("test.rs"), "}".to_string(), 10, 10);
+
         assert!(chunk.is_final);
         assert_eq!(chunk.progress_percent(), 100);
     }
@@ -405,28 +401,35 @@ mod tests {
     async fn test_incremental_generator() {
         let config = IncrementalConfig::default();
         let generator = IncrementalGenerator::new(config);
-        
+
         // Check initial state
         assert!(matches!(generator.state().await, GenerationState::Idle));
-        
+
         // Start generation
         generator.start(PathBuf::from("test.rs"), 2).await;
-        
+
         // Check state
         let state = generator.state().await;
         assert!(matches!(state, GenerationState::InProgress { .. }));
-        
+
         // Add chunks
-        let chunk1 = CodeChunk::new(0, 2, PathBuf::from("test.rs"), "fn main() {\n".to_string(), 1, 1);
+        let chunk1 = CodeChunk::new(
+            0,
+            2,
+            PathBuf::from("test.rs"),
+            "fn main() {\n".to_string(),
+            1,
+            1,
+        );
         let chunk2 = CodeChunk::new(1, 2, PathBuf::from("test.rs"), "}\n".to_string(), 2, 2);
-        
+
         generator.add_chunk(chunk1).await.unwrap();
         generator.add_chunk(chunk2).await.unwrap();
-        
+
         // Complete
         let result = generator.complete().await.unwrap();
         assert!(result.contains("fn main()"));
-        
+
         // Check final state
         let state = generator.state().await;
         assert!(matches!(state, GenerationState::Complete { .. }));
@@ -439,10 +442,10 @@ mod tests {
             ..Default::default()
         };
         let generator = IncrementalGenerator::new(config);
-        
+
         let content = "fn main() {}\n";
         let chunks = generator.split_into_chunks(content, PathBuf::from("test.rs"));
-        
+
         assert_eq!(chunks.len(), 1);
         assert!(chunks[0].is_final);
     }
@@ -456,10 +459,10 @@ mod tests {
             validate_chunks: false,
         };
         let generator = IncrementalGenerator::new(config);
-        
+
         let content = "line1\nline2\nline3\nline4\nline5\n";
         let chunks = generator.split_into_chunks(content, PathBuf::from("test.rs"));
-        
+
         assert!(chunks.len() > 1);
         assert!(chunks.last().unwrap().is_final);
     }
@@ -468,7 +471,7 @@ mod tests {
     fn test_validation_result() {
         let valid = ValidationResult::valid();
         assert!(valid.is_valid);
-        
+
         let invalid = ValidationResult::invalid(vec!["Error".to_string()]);
         assert!(!invalid.is_valid);
         assert_eq!(invalid.messages.len(), 1);

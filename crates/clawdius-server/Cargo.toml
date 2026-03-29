@@ -1,0 +1,35 @@
+[package]
+name = "clawdius-server"
+version.workspace = true
+edition.workspace = true
+description = "HTTP server for Clawdius REST API and messaging webhooks"
+license.workspace = true
+
+[dependencies]
+clawdius-core = { path = "../clawdius-core" }
+axum.workspace = true
+tower.workspace = true
+tower-http = { workspace = true, features = ["cors", "trace", "limit"] }
+tokio = { version = "1", features = ["full"] }
+clap = { version = "4", features = ["derive", "env"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+anyhow = "1"
+
+# OpenTelemetry (optional)
+opentelemetry = { version = "0.27", optional = true }
+opentelemetry_sdk = { version = "0.27", features = ["rt-tokio"], optional = true }
+opentelemetry-otlp = { version = "0.27", features = ["grpc-tonic"], optional = true }
+opentelemetry-semantic-conventions = { version = "0.27", optional = true }
+tracing-opentelemetry = { version = "0.28", optional = true }
+
+[features]
+default = ["jwt"]
+jwt = ["clawdius-core/jwt"]
+otel = ["dep:opentelemetry", "dep:opentelemetry_sdk", "dep:opentelemetry-otlp", "dep:opentelemetry-semantic-conventions", "dep:tracing-opentelemetry"]
+
+[dev-dependencies]
+reqwest.workspace = true
+async-trait = "0.1"

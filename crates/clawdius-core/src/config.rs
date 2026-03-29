@@ -234,6 +234,9 @@ pub struct Config {
     /// Shell sandbox configuration
     #[serde(default)]
     pub shell_sandbox: ShellSandboxConfig,
+    /// Messaging/webhook server configuration
+    #[serde(default)]
+    pub messaging: MessagingConfig,
     /// Telemetry configuration
     #[serde(default)]
     pub telemetry: crate::telemetry::TelemetryConfig,
@@ -529,6 +532,474 @@ impl Default for ShellSandboxConfig {
     }
 }
 
+// ---------------------------------------------------------------------------
+// Messaging / webhook gateway configuration
+// ---------------------------------------------------------------------------
+
+/// Top-level `[messaging]` section in `clawdius.toml`.
+///
+/// All fields default to sensible values so an empty `[messaging]` table is
+/// valid and enables the webhook server with mock channels.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MessagingConfig {
+    /// Server bind address (default: `"0.0.0.0"`)
+    #[serde(default = "default_msg_host")]
+    pub host: String,
+    /// Server bind port (default: `8080`)
+    #[serde(default = "default_msg_port")]
+    pub port: u16,
+    /// CORS allowed origins. `["*"]` means permissive.
+    #[serde(default)]
+    pub cors_origins: Vec<String>,
+    /// Per-platform rate limit (requests / minute).
+    #[serde(default = "default_msg_rate_limit")]
+    pub rate_limit_per_minute: u32,
+    /// Maximum webhook request body size in bytes.
+    #[serde(default = "default_msg_max_body")]
+    pub max_request_size_bytes: usize,
+    /// API keys accepted by all platforms.
+    #[serde(default)]
+    pub global_api_keys: Vec<String>,
+    /// Per-platform API keys: `{ platform = ["key1", "key2"] }`.
+    #[serde(default)]
+    pub api_keys: std::collections::HashMap<String, Vec<String>>,
+    /// Per-platform webhook credentials.
+    #[serde(default)]
+    pub platforms: std::collections::HashMap<String, WebhookPlatformConfig>,
+    /// Audit logging configuration
+    #[serde(default)]
+    pub audit: AuditConfig,
+    /// PII redaction configuration
+    #[serde(default)]
+    pub pii_redaction: PiiRedactionConfig,
+    /// Retry queue configuration
+    #[serde(default)]
+    pub retry: RetryQueueConfig,
+    /// State store backend selection
+    #[serde(default)]
+    pub state_store: StateStoreConfig,
+    /// Multi-tenant configuration
+    #[serde(default)]
+    pub tenants: TenantSectionConfig,
+    /// IP allowlist for webhook requests (CIDR notation).
+    /// If empty, all source IPs are accepted.
+    #[serde(default)]
+    pub ip_allowlist: Vec<String>,
+    /// API key rotation: seconds before a newly added key expires.
+    /// Default: 0 (no expiry).
+    #[serde(default)]
+    pub key_default_expiry_secs: u64,
+    /// API key rotation: grace period in seconds after expiry.
+    /// Default: 0 (no grace period).
+    #[serde(default)]
+    pub key_grace_period_secs: u64,
+    /// HMAC secret for JWT token signing. Empty string (default) disables
+    /// JWT auth; API keys are still accepted as a fallback.
+    ///
+    /// **WARNING:** For production use, set this via the environment variable
+    /// `CLAWDIUS_JWT_SECRET` rather than in the config file, to avoid
+    /// leaking the secret in version control.
+    #[serde(default)]
+    pub jwt_secret: String,
+}
+
+fn default_msg_host() -> String {
+    "0.0.0.0".to_string()
+}
+fn default_msg_port() -> u16 {
+    8080
+}
+fn default_msg_rate_limit() -> u32 {
+    60
+}
+fn default_msg_max_body() -> usize {
+    1_000_000
+}
+
+/// Platform-specific webhook credentials.
+///
+/// Only the fields relevant to a given platform are read; extras are ignored
+/// by serde (using `#[serde(default)]`).
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct WebhookPlatformConfig {
+    // Telegram
+    #[serde(default)]
+    pub secret_token: Option<String>,
+    /// Telegram bot token for sending messages (from @BotFather)
+    #[serde(default)]
+    pub bot_token: Option<String>,
+    // Discord
+    #[serde(default)]
+    pub public_key_pem: Option<String>,
+    /// Discord bot token for sending messages
+    #[serde(default)]
+    pub discord_bot_token: Option<String>,
+    // Matrix
+    #[serde(default)]
+    pub access_token: Option<String>,
+    #[serde(default)]
+    pub homeserver_base_url: Option<String>,
+    // Slack
+    #[serde(default)]
+    pub signing_secret: Option<String>,
+    /// Slack bot token for sending messages (xoxb-...)
+    #[serde(default)]
+    pub slack_bot_token: Option<String>,
+    // Rocket.Chat
+    #[serde(default)]
+    pub token: Option<String>,
+    #[serde(default)]
+    pub user_id: Option<String>,
+    /// Rocket.Chat server URL (e.g., "https://chat.example.com")
+    #[serde(default)]
+    pub server_url: Option<String>,
+    // Signal
+    #[serde(default)]
+    pub verification_token: Option<String>,
+    /// signal-cli-rest-api endpoint URL
+    #[serde(default)]
+    pub signal_api_url: Option<String>,
+    /// Signal phone number
+    #[serde(default)]
+    pub signal_number: Option<String>,
+    // WhatsApp
+    #[serde(default)]
+    pub verify_token: Option<String>,
+    #[serde(default)]
+    pub app_secret: Option<String>,
+    /// WhatsApp phone number ID
+    #[serde(default)]
+    pub phone_number_id: Option<String>,
+    /// WhatsApp access token
+    #[serde(default)]
+    pub whatsapp_access_token: Option<String>,
+}
+
+impl Default for MessagingConfig {
+    fn default() -> Self {
+        Self {
+            host: default_msg_host(),
+            port: default_msg_port(),
+            cors_origins: Vec::new(),
+            rate_limit_per_minute: default_msg_rate_limit(),
+            max_request_size_bytes: default_msg_max_body(),
+            global_api_keys: Vec::new(),
+            api_keys: std::collections::HashMap::new(),
+            platforms: std::collections::HashMap::new(),
+            audit: AuditConfig::default(),
+            pii_redaction: PiiRedactionConfig::default(),
+            retry: RetryQueueConfig::default(),
+            state_store: StateStoreConfig::default(),
+            tenants: TenantSectionConfig::default(),
+            ip_allowlist: Vec::new(),
+            key_default_expiry_secs: 0,
+            key_grace_period_secs: 0,
+            jwt_secret: String::new(),
+        }
+    }
+}
+
+impl MessagingConfig {
+    /// Whether any platform credentials or API keys are configured.
+    pub fn is_configured(&self) -> bool {
+        !self.global_api_keys.is_empty() || !self.api_keys.is_empty() || !self.platforms.is_empty()
+    }
+
+    pub fn validate(&self) -> Vec<String> {
+        let mut errors = Vec::new();
+
+        if self.port == 0 {
+            errors.push("messaging.port must not be 0".to_string());
+        }
+
+        if self.max_request_size_bytes == 0 {
+            errors.push("messaging.max_request_size_bytes must not be 0".to_string());
+        } else if self.max_request_size_bytes > 100 * 1024 * 1024 {
+            errors.push("messaging.max_request_size_bytes exceeds 100 MB".to_string());
+        }
+
+        if self.rate_limit_per_minute == 0 {
+            errors.push("messaging.rate_limit_per_minute must be > 0".to_string());
+        }
+
+        if self.audit.retention_days == 0 {
+            errors.push("messaging.audit.retention_days must be > 0".to_string());
+        }
+
+        if self.audit.flush_interval_secs == 0 {
+            errors.push("messaging.audit.flush_interval_secs must be > 0".to_string());
+        } else if self.audit.flush_interval_secs > 3600 {
+            errors.push("messaging.audit.flush_interval_secs exceeds 1 hour".to_string());
+        }
+
+        if self.retry.max_retries == 0 {
+            errors.push("messaging.retry.max_retries must be > 0".to_string());
+        }
+        if self.retry.initial_delay_ms == 0 {
+            errors.push("messaging.retry.initial_delay_ms must be > 0".to_string());
+        }
+        if self.retry.max_delay_ms < self.retry.initial_delay_ms {
+            errors.push("messaging.retry.max_delay_ms must be >= initial_delay_ms".to_string());
+        }
+        if self.retry.exponential_base < 1.0 {
+            errors.push("messaging.retry.exponential_base must be >= 1.0".to_string());
+        }
+        if self.retry.jitter_factor < 0.0 || self.retry.jitter_factor > 1.0 {
+            errors.push("messaging.retry.jitter_factor must be between 0.0 and 1.0".to_string());
+        }
+
+        if self.state_store.backend == "sqlite" && self.state_store.sqlite_path.trim().is_empty() {
+            errors.push(
+                "messaging.state_store.sqlite_path must not be empty when backend is \"sqlite\""
+                    .to_string(),
+            );
+        }
+
+        if !self.state_store.encryption_key.is_empty() {
+            let hex = self.state_store.encryption_key.trim();
+            if hex.len() != 64 {
+                errors.push(
+                    "messaging.state_store.encryption_key must be 64 hex characters (32 bytes) if provided"
+                        .to_string(),
+                );
+            } else if !hex.chars().all(|c| c.is_ascii_hexdigit()) {
+                errors.push(
+                    "messaging.state_store.encryption_key must contain only hex characters"
+                        .to_string(),
+                );
+            }
+        }
+
+        if self.tenants.enabled && self.tenants.db_path.trim().is_empty() {
+            errors.push(
+                "messaging.tenants.db_path must not be empty when tenants are enabled".to_string(),
+            );
+        }
+
+        if self.pii_redaction.replacement.trim().is_empty() {
+            errors.push("messaging.pii_redaction.replacement must not be empty".to_string());
+        }
+
+        errors
+    }
+}
+
+/// Audit logging configuration.
+///
+/// Controls where audit events are persisted and how long they are retained.
+/// Used by [`crate::messaging::audit::MessagingAuditLogger`] construction in the
+/// server binary.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AuditConfig {
+    /// Storage backend: `"file"`, `"sqlite"`, `"elasticsearch"`, `"webhook"`, or `"memory"`.
+    #[serde(default = "default_audit_backend")]
+    pub backend: String,
+    /// File-system directory for file-based audit logs (default: `"audit"`).
+    #[serde(default = "default_audit_path")]
+    pub path: String,
+    /// SQLite database path for sqlite-based audit logs (default: `"audit.db"`).
+    #[serde(default = "default_audit_sqlite_path")]
+    pub sqlite_path: String,
+    /// How often to flush buffered audit events, in seconds (default: `5`).
+    #[serde(default = "default_audit_flush_secs")]
+    pub flush_interval_secs: u64,
+    /// Number of days to retain audit records (default: `90`).
+    #[serde(default = "default_audit_retention")]
+    pub retention_days: u32,
+}
+
+impl Default for AuditConfig {
+    fn default() -> Self {
+        Self {
+            backend: default_audit_backend(),
+            path: default_audit_path(),
+            sqlite_path: default_audit_sqlite_path(),
+            flush_interval_secs: default_audit_flush_secs(),
+            retention_days: default_audit_retention(),
+        }
+    }
+}
+
+fn default_audit_backend() -> String {
+    "file".to_string()
+}
+fn default_audit_path() -> String {
+    "audit".to_string()
+}
+fn default_audit_sqlite_path() -> String {
+    "audit.db".to_string()
+}
+fn default_audit_flush_secs() -> u64 {
+    5
+}
+fn default_audit_retention() -> u32 {
+    90
+}
+
+/// PII redaction configuration for log output.
+///
+/// This is the TOML-deserialisable counterpart of
+/// [`crate::messaging::pii_redaction::PiiRedactionConfig`].  The server binary
+/// converts this into the runtime type when constructing the tracing layer.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PiiRedactionConfig {
+    /// Whether to redact known sensitive field names (default: `true`).
+    #[serde(default = "default_true")]
+    pub redact_field_names: bool,
+    /// Whether to redact credential-like value patterns (default: `true`).
+    #[serde(default = "default_true")]
+    pub redact_value_patterns: bool,
+    /// Additional field names to treat as sensitive.
+    #[serde(default)]
+    pub extra_sensitive_fields: Vec<String>,
+    /// Field names that are explicitly allowed (never redacted).
+    #[serde(default)]
+    pub allowed_fields: Vec<String>,
+    /// Replacement string used in place of redacted values.
+    #[serde(default = "default_redaction_replacement")]
+    pub replacement: String,
+}
+
+impl Default for PiiRedactionConfig {
+    fn default() -> Self {
+        Self {
+            redact_field_names: true,
+            redact_value_patterns: true,
+            extra_sensitive_fields: Vec::new(),
+            allowed_fields: Vec::new(),
+            replacement: default_redaction_replacement(),
+        }
+    }
+}
+
+fn default_redaction_replacement() -> String {
+    "[REDACTED]".to_string()
+}
+
+/// Retry queue configuration.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RetryQueueConfig {
+    /// Maximum number of retry attempts (default: 5)
+    #[serde(default = "default_retry_queue_max")]
+    pub max_retries: u32,
+    /// Initial delay between retries in milliseconds (default: 1000)
+    #[serde(default = "default_retry_queue_initial_delay")]
+    pub initial_delay_ms: u64,
+    /// Maximum delay between retries in milliseconds (default: 300000 = 5 min)
+    #[serde(default = "default_retry_queue_max_delay")]
+    pub max_delay_ms: u64,
+    /// Exponential backoff base (default: 2.0)
+    #[serde(default = "default_retry_queue_base")]
+    pub exponential_base: f64,
+    /// Jitter factor as fraction (default: 0.1 = ±10%)
+    #[serde(default = "default_retry_queue_jitter")]
+    pub jitter_factor: f64,
+    /// Maximum number of tasks in the queue (default: 10000)
+    #[serde(default = "default_retry_queue_max_size")]
+    pub max_queue_size: usize,
+    /// Whether to enable dead letter queue for exhausted tasks (default: true)
+    #[serde(default = "default_true")]
+    pub dead_letter_enabled: bool,
+}
+
+impl Default for RetryQueueConfig {
+    fn default() -> Self {
+        Self {
+            max_retries: default_retry_queue_max(),
+            initial_delay_ms: default_retry_queue_initial_delay(),
+            max_delay_ms: default_retry_queue_max_delay(),
+            exponential_base: default_retry_queue_base(),
+            jitter_factor: default_retry_queue_jitter(),
+            max_queue_size: default_retry_queue_max_size(),
+            dead_letter_enabled: default_true(),
+        }
+    }
+}
+
+fn default_retry_queue_max() -> u32 {
+    5
+}
+fn default_retry_queue_initial_delay() -> u64 {
+    1000
+}
+fn default_retry_queue_max_delay() -> u64 {
+    300_000
+}
+fn default_retry_queue_base() -> f64 {
+    2.0
+}
+fn default_retry_queue_jitter() -> f64 {
+    0.1
+}
+fn default_retry_queue_max_size() -> usize {
+    10_000
+}
+
+/// State store backend configuration.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StateStoreConfig {
+    /// Backend type: "memory" or "sqlite" (default: "sqlite")
+    #[serde(default = "default_state_backend")]
+    pub backend: String,
+    /// SQLite database path (default: "messaging_state.db")
+    #[serde(default = "default_state_path")]
+    pub sqlite_path: String,
+    /// Optional 32-byte hex-encoded AES-256 key for encryption at rest.
+    /// When set, all values stored in the state store are encrypted with
+    /// AES-256-GCM. If empty or missing, data is stored in plaintext.
+    /// Generate with: `openssl rand -hex 32`
+    #[serde(default)]
+    pub encryption_key: String,
+}
+
+impl Default for StateStoreConfig {
+    fn default() -> Self {
+        Self {
+            backend: default_state_backend(),
+            sqlite_path: default_state_path(),
+            encryption_key: String::new(),
+        }
+    }
+}
+
+fn default_state_backend() -> String {
+    "sqlite".to_string()
+}
+fn default_state_path() -> String {
+    "messaging_state.db".to_string()
+}
+
+/// Multi-tenant configuration.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TenantSectionConfig {
+    /// Whether multi-tenancy is enabled (default: false)
+    #[serde(default)]
+    pub enabled: bool,
+    /// Default maximum sessions per user (default: 100)
+    #[serde(default = "default_tenant_max_sessions")]
+    pub default_max_sessions_per_user: u32,
+    /// SQLite database path for tenant data (default: "tenants.db")
+    #[serde(default = "default_tenant_path")]
+    pub db_path: String,
+}
+
+impl Default for TenantSectionConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            default_max_sessions_per_user: default_tenant_max_sessions(),
+            db_path: default_tenant_path(),
+        }
+    }
+}
+
+fn default_tenant_max_sessions() -> u32 {
+    100
+}
+fn default_tenant_path() -> String {
+    "tenants.db".to_string()
+}
+
 impl Config {
     /// Load configuration from file
     pub fn load(path: &std::path::Path) -> crate::Result<Self> {
@@ -573,6 +1044,16 @@ impl Config {
         std::fs::write(path, content)?;
         Ok(())
     }
+
+    pub fn validate(&self) -> Vec<String> {
+        let mut errors = self.messaging.validate();
+
+        if self.project.name.trim().is_empty() {
+            errors.push("project.name must not be empty".to_string());
+        }
+
+        errors
+    }
 }
 
 impl Default for Config {
@@ -592,6 +1073,7 @@ impl Default for Config {
             session: SessionConfig::default(),
             output: OutputConfig::default(),
             shell_sandbox: ShellSandboxConfig::default(),
+            messaging: MessagingConfig::default(),
             telemetry: crate::telemetry::TelemetryConfig::default(),
         }
     }
@@ -669,3 +1151,139 @@ pub mod keyring_storage {
 
 #[cfg(feature = "keyring")]
 pub use keyring_storage::KeyringStorage;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn default_msg_config() -> MessagingConfig {
+        MessagingConfig::default()
+    }
+
+    #[test]
+    fn default_config_is_valid() {
+        let config = default_msg_config();
+        let errors = config.validate();
+        assert!(errors.is_empty(), "Default config has errors: {:?}", errors);
+    }
+
+    #[test]
+    fn port_zero_is_invalid() {
+        let mut config = default_msg_config();
+        config.port = 0;
+        let errors = config.validate();
+        assert!(errors.iter().any(|e| e.contains("port")));
+    }
+
+    #[test]
+    fn max_request_size_zero_is_invalid() {
+        let mut config = default_msg_config();
+        config.max_request_size_bytes = 0;
+        let errors = config.validate();
+        assert!(errors.iter().any(|e| e.contains("max_request_size_bytes")));
+    }
+
+    #[test]
+    fn rate_limit_zero_is_invalid() {
+        let mut config = default_msg_config();
+        config.rate_limit_per_minute = 0;
+        let errors = config.validate();
+        assert!(errors.iter().any(|e| e.contains("rate_limit")));
+    }
+
+    #[test]
+    fn audit_retention_zero_is_invalid() {
+        let mut config = default_msg_config();
+        config.audit.retention_days = 0;
+        let errors = config.validate();
+        assert!(errors.iter().any(|e| e.contains("retention")));
+    }
+
+    #[test]
+    fn retry_max_delay_less_than_initial_is_invalid() {
+        let mut config = default_msg_config();
+        config.retry.initial_delay_ms = 5000;
+        config.retry.max_delay_ms = 1000;
+        let errors = config.validate();
+        assert!(errors.iter().any(|e| e.contains("max_delay_ms")));
+    }
+
+    #[test]
+    fn state_store_empty_path_with_sqlite_is_invalid() {
+        let mut config = default_msg_config();
+        config.state_store.backend = "sqlite".to_string();
+        config.state_store.sqlite_path = "".to_string();
+        let errors = config.validate();
+        assert!(errors.iter().any(|e| e.contains("sqlite_path")));
+    }
+
+    #[test]
+    fn encryption_key_wrong_length_is_invalid() {
+        let mut config = default_msg_config();
+        config.state_store.encryption_key = "deadbeef".to_string();
+        let errors = config.validate();
+        assert!(errors.iter().any(|e| e.contains("encryption_key")));
+    }
+
+    #[test]
+    fn encryption_key_invalid_hex_is_invalid() {
+        let mut config = default_msg_config();
+        config.state_store.encryption_key = "g".repeat(64);
+        let errors = config.validate();
+        assert!(errors.iter().any(|e| e.contains("encryption_key")));
+    }
+
+    #[test]
+    fn encryption_key_valid_64_hex_passes() {
+        let mut config = default_msg_config();
+        config.state_store.encryption_key = "a".repeat(64);
+        let errors = config.validate();
+        assert!(!errors.iter().any(|e| e.contains("encryption_key")));
+    }
+
+    #[test]
+    fn tenant_enabled_empty_db_path_is_invalid() {
+        let mut config = default_msg_config();
+        config.tenants.enabled = true;
+        config.tenants.db_path = "".to_string();
+        let errors = config.validate();
+        assert!(errors.iter().any(|e| e.contains("tenants")));
+    }
+
+    #[test]
+    fn root_config_validate_includes_messaging() {
+        let mut config = Config::default();
+        config.messaging.port = 0;
+        let errors = config.validate();
+        assert!(errors.iter().any(|e| e.contains("port")));
+    }
+
+    #[test]
+    fn empty_project_name_is_invalid() {
+        let mut config = Config::default();
+        config.project.name = "  ".to_string();
+        let errors = config.validate();
+        assert!(errors.iter().any(|e| e.contains("project.name")));
+    }
+
+    #[test]
+    fn valid_custom_config_passes() {
+        let config = MessagingConfig {
+            port: 8080,
+            max_request_size_bytes: 1_000_000,
+            rate_limit_per_minute: 60,
+            audit: AuditConfig {
+                retention_days: 30,
+                flush_interval_secs: 5,
+                ..AuditConfig::default()
+            },
+            state_store: StateStoreConfig {
+                backend: "memory".to_string(),
+                ..StateStoreConfig::default()
+            },
+            ..default_msg_config()
+        };
+        let errors = config.validate();
+        assert!(errors.is_empty(), "Custom config has errors: {:?}", errors);
+    }
+}

@@ -43,6 +43,8 @@ clawdius/
 │   │   └── src/lib.rs         # JSON-RPC server for VSCode
 │   └── clawdius-webview/      # Leptos WASM webview UI
 │       └── src/lib.rs         # Browser-based interface
+│   ├── clawdius-server/       # Messaging gateway server
+│   │   └── src/main.rs        # Multi-platform bot entry point
 ├── editors/
 │   └── vscode/                # VSCode extension
 │       ├── src/extension.ts   # TypeScript extension
@@ -62,6 +64,7 @@ clawdius/
 | **clawdius-core** | Core library (LLM, sessions, tools) | Library |
 | **clawdius-code** | VSCode extension helper | Binary |
 | **clawdius-webview** | Web-based UI | WASM Library |
+| **clawdius-server** | Messaging gateway server | Binary |
 
 ---
 
@@ -435,6 +438,87 @@ Clawdius is built with a modular architecture:
 - **Protocols:** MCP (Model Context Protocol), Matrix, LSP
 
 For detailed architecture information, see the [Architecture Overview](.docs/architecture_overview.md).
+
+---
+
+## Messaging Gateway
+
+The Clawdius Messaging Gateway enables remote control of agentic coding sessions across multiple repositories via popular messaging platforms. Deploy as a standalone server and interact with Clawdius from Telegram, Discord, Slack, Matrix, and more — no local CLI required.
+
+### Supported Platforms
+
+| Platform | Send | Edit | Auth | Notes |
+|----------|------|------|------|-------|
+| Telegram | ✅ | ✅ | Bot API token | Full support |
+| Discord | ✅ | ✅ | Bot token + public key | Full support |
+| Matrix | ✅ | ✅ | Access token | Self-hosted |
+| Slack | ✅ | ✅ | Signing secret | Enterprise |
+| Rocket.Chat | ✅ | ✅ | Token + user ID | Self-hosted |
+| Signal | ✅ | ❌ | Verification token | Via signal-cli |
+| WhatsApp | ✅ | ✅ | Verify token + app secret | Cloud API |
+
+### Quick Start
+
+```bash
+# Start the server
+clawdius-server --config ~/.clawdius/config.toml
+
+# Or with CLI flags
+clawdius-server --host 0.0.0.0 --port 8080
+```
+
+### Configuration
+
+```toml
+[messaging]
+host = "0.0.0.0"
+port = 8080
+global_api_keys = ["your-api-key"]
+
+[messaging.api_keys]
+telegram = ["tg-bot-key"]
+
+[messaging.platforms.telegram]
+secret_token = "webhook-secret"
+```
+
+### Commands
+
+| Command | Description |
+|---------|-------------|
+| `/clawd status` | Show gateway and session status |
+| `/clawd help` | List all available commands |
+| `/clawd session` | Manage or switch coding sessions |
+| `/clawd generate` | Trigger code generation from a prompt |
+| `/clawd analyze` | Run analysis on a repository or file |
+| `/clawd config` | View or update gateway configuration |
+| `/clawd admin` | Administrative operations (requires auth) |
+
+### Docker
+
+```bash
+docker build -t clawdius-server .
+docker run -p 8080:8080 -v ~/.clawdius:/root/.clawdius clawdius-server
+```
+
+### Architecture
+
+The gateway follows a **reverse-proxy pattern**: each messaging platform registers a webhook handler that normalizes inbound messages into a unified `GatewayRequest`, dispatches them through a session-bound executor, and streams LLM responses back to the originating platform. Key design elements include:
+
+- **Session binding** — each conversation thread maps to a persistent Clawdius session tied to a specific repository
+- **Rate limiting** — per-user and per-platform token-bucket rate limiters prevent abuse
+- **Streaming LLM responses** — partial results are streamed as message edits where supported
+- **Multi-tenant isolation** — each platform and user operates in an isolated context with separate key scopes
+- **Horizontal scaling** — stateless request layer supports running multiple gateway instances behind a load balancer
+
+### Enterprise Features
+
+- **OAuth 2.0 integration** — native Slack and Discord OAuth flows for workspace-level authorization
+- **Multi-tenant isolation** — strict separation of sessions, API keys, and file access per tenant
+- **Structured audit logging** — every inbound command and outbound response is logged in JSON for SIEM ingestion
+- **PII redaction** — automatic detection and masking of secrets, tokens, and personal identifiers in logs
+- **Webhook retry with exponential backoff** — reliable delivery with configurable retry policy
+- **State store abstraction** — pluggable backend supporting SQLite (single-node) and Redis (distributed)
 
 ---
 
