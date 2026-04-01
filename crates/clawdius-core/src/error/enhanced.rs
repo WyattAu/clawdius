@@ -313,34 +313,34 @@ impl From<crate::Error> for EnhancedError {
                         .with_context("Configuration")
                         .with_error_code("CONFIG_ERROR")
                 }
-            }
+            },
             crate::Error::Llm(msg) | crate::Error::LlmProvider { message: msg, .. } => {
                 EnhancedError::new(msg.clone())
                     .with_context("LLM operation")
                     .with_suggestion("Check the error message for details")
                     .with_error_code("LLM_ERROR")
-            }
+            },
             crate::Error::RateLimited { retry_after_ms } => {
                 ErrorHelpers::rate_limited(*retry_after_ms)
-            }
+            },
             crate::Error::ContextLimit { current, limit } => {
                 EnhancedError::new(format!("Context limit exceeded: {current}/{limit} tokens"))
                     .with_context("Processing conversation")
                     .with_suggestion("Use session compaction to reduce context size")
                     .with_suggestion("Start a new session")
                     .with_error_code("CONTEXT_LIMIT")
-            }
+            },
             crate::Error::ToolExecution { tool, reason } => {
                 ErrorHelpers::tool_execution_failed(tool, reason)
-            }
+            },
             crate::Error::SessionNotFound { id } => ErrorHelpers::session_not_found(id),
             crate::Error::Sandbox(msg) => ErrorHelpers::sandbox_violation(msg),
             crate::Error::Timeout(duration) => {
                 ErrorHelpers::timeout_error("Operation", duration.as_secs())
-            }
+            },
             crate::Error::RetryExhausted(attempts) => {
                 ErrorHelpers::retry_exhausted(*attempts, "Multiple failures")
-            }
+            },
             _ => EnhancedError::new(error.to_string()).with_error_code("GENERAL_ERROR"),
         }
     }

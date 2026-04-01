@@ -7,6 +7,9 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use super::event_sourcing::nexus_event_to_envelope;
+use super::event_sourcing::EventStore;
+use super::persistence::{Checkpoint, FsmState, SessionId, StatePersistence};
 use super::phases::{
     Phase0ContextDiscovery, Phase10PerformanceEngineering, Phase11CrossPlatformCompatibility,
     Phase12AdversarialLoop, Phase13CICDEngineering, Phase14Documentation, Phase15KnowledgeBase,
@@ -31,6 +34,9 @@ pub struct NexusEngine<S: PhaseState> {
     transition_engine: Arc<TransitionEngine>,
     project_root: PathBuf,
     start_time: chrono::DateTime<chrono::Utc>,
+    persistence: Option<Arc<StatePersistence>>,
+    event_store: Option<Arc<EventStore>>,
+    session_id: Option<SessionId>,
 }
 
 impl<S: PhaseState> NexusEngine<S> {
@@ -118,7 +124,7 @@ impl<S: PhaseState> NexusEngine<S> {
 
         let record = self
             .transition_engine
-            .execute_transition_sync(from, to, metadata)
+            .execute_transition_sync(from, to, metadata.clone())
             .map_err(NexusError::TransitionFailed)?;
 
         self.events
@@ -126,6 +132,26 @@ impl<S: PhaseState> NexusEngine<S> {
                 from,
                 record.duration_ms,
             ));
+
+        let transition_event = super::events::NexusEvent::phase_transitioned(from, to);
+
+        if let Some(ref persistence) = self.persistence {
+            if let Some(ref session_id) = self.session_id {
+                let mut fsm_state = FsmState::new(session_id.clone(), to);
+                fsm_state.touch();
+                let _ = persistence.update_session(&fsm_state);
+
+                let checkpoint = Checkpoint::new(session_id.clone(), to);
+                let _ = persistence.create_checkpoint(&checkpoint);
+            }
+        }
+
+        if let Some(ref event_store) = self.event_store {
+            if let Some(ref session_id) = self.session_id {
+                let envelope = nexus_event_to_envelope(&session_id.0, &transition_event);
+                let _ = event_store.append(envelope);
+            }
+        }
 
         Ok(NexusEngine {
             state: P::default(),
@@ -135,6 +161,9 @@ impl<S: PhaseState> NexusEngine<S> {
             transition_engine: self.transition_engine,
             project_root: self.project_root,
             start_time: chrono::Utc::now(),
+            persistence: self.persistence,
+            event_store: self.event_store,
+            session_id: self.session_id,
         })
     }
 
@@ -181,7 +210,29 @@ impl NexusEngine<Phase0ContextDiscovery> {
             transition_engine,
             project_root,
             start_time: chrono::Utc::now(),
+            persistence: None,
+            event_store: None,
+            session_id: None,
         })
+    }
+
+    pub fn with_persistence(mut self, persistence: Arc<StatePersistence>) -> Self {
+        let session_id = SessionId::generate();
+        let fsm_state = FsmState::new(session_id.clone(), PhaseId(0));
+        persistence
+            .create_session(&fsm_state)
+            .expect("Failed to create persistence session");
+        self.session_id = Some(session_id);
+        self.persistence = Some(persistence);
+        self
+    }
+
+    pub fn with_event_sourcing(mut self, store: Arc<EventStore>) -> Self {
+        if self.session_id.is_none() {
+            self.session_id = Some(SessionId::generate());
+        }
+        self.event_store = Some(store);
+        self
     }
 
     pub fn transition_to_environment(
@@ -843,5 +894,51 @@ mod tests {
         };
 
         assert_eq!(iface.name, "TestInterface");
+    }
+
+    #[test]
+    fn test_persistence_checkpoints_on_transition() {
+        let temp_dir = TempDir::new().unwrap();
+        let persistence = Arc::new(StatePersistence::in_memory());
+        let event_store = Arc::new(EventStore::in_memory());
+
+        let engine = NexusEngine::new(temp_dir.path().to_path_buf())
+            .unwrap()
+            .with_persistence(persistence.clone())
+            .with_event_sourcing(event_store.clone());
+
+        let session_id = engine.session_id.as_ref().unwrap().clone();
+
+        let engine = engine
+            .transition_to_environment("test_domain", vec!["ISO9001".to_string()])
+            .unwrap()
+            .transition_to_requirements("cargo", vec!["serde".to_string()], true)
+            .unwrap()
+            .transition_to_research(vec![RequirementData {
+                id: "REQ-001".to_string(),
+                description: "Test".to_string(),
+                priority: "High".to_string(),
+                testable: true,
+            }])
+            .unwrap();
+
+        assert_eq!(engine.current_phase(), PhaseId(3));
+
+        let checkpoints = persistence.list_checkpoints(&session_id).unwrap();
+        assert_eq!(checkpoints.len(), 3);
+        assert_eq!(checkpoints[0].phase, PhaseId(3));
+        assert_eq!(checkpoints[1].phase, PhaseId(2));
+        assert_eq!(checkpoints[2].phase, PhaseId(1));
+
+        let events = event_store
+            .get_events_for_aggregate(&session_id.0, None, None)
+            .unwrap();
+        assert_eq!(events.len(), 3);
+        assert_eq!(events[0].event_type, "PhaseTransitioned");
+        assert_eq!(events[2].event_type, "PhaseTransitioned");
+
+        let loaded_state = persistence.load_session(&session_id).unwrap();
+        assert!(loaded_state.is_some());
+        assert_eq!(loaded_state.unwrap().current_phase, PhaseId(3));
     }
 }

@@ -366,16 +366,16 @@ impl AuditLogger {
         match &self.storage {
             AuditStorage::File { path } => {
                 self.flush_to_file(path, &events).await?;
-            }
+            },
             AuditStorage::SQLite { path } => {
                 self.flush_to_sqlite(path, &events).await?;
-            }
+            },
             AuditStorage::Elasticsearch { url, index } => {
                 self.flush_to_elasticsearch(url, index, &events).await?;
-            }
+            },
             AuditStorage::Webhook { url, headers } => {
                 self.flush_to_webhook(url, headers, &events).await?;
-            }
+            },
         }
 
         Ok(())
@@ -606,7 +606,7 @@ impl AuditLogger {
                 })
                 .await??;
                 Ok(deleted)
-            }
+            },
             _ => Ok(0),
         }
     }

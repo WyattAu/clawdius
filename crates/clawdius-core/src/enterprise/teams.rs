@@ -196,11 +196,11 @@ impl Permission {
             | Self::SessionShare => "Session Management",
             Self::CodeRead | Self::CodeWrite | Self::CodeDelete | Self::CodeExecute => {
                 "Code Access"
-            }
+            },
             Self::LlmUse | Self::LlmViewUsage | Self::LlmManageSettings => "LLM Access",
             Self::PluginInstall | Self::PluginUninstall | Self::PluginConfigure => {
                 "Plugin Management"
-            }
+            },
             Self::AuditView | Self::AuditExport => "Audit",
             Self::Admin | Self::BillingManage => "Administration",
         }

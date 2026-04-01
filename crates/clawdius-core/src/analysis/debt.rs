@@ -328,32 +328,32 @@ impl DebtAnalyzer {
         match rule.id.as_str() {
             "todo-fixer" => {
                 debts.extend(self.detect_todo_fixme(file_path, content));
-            }
+            },
             "unimplemented" => {
                 debts.extend(self.detect_unimplemented(file_path, content));
-            }
+            },
             "hardcoded-values" => {
                 debts.extend(self.detect_hardcoded_values(file_path, content));
-            }
+            },
             "magic-numbers" => {
                 debts.extend(self.detect_magic_numbers(file_path, content));
-            }
+            },
             "complex-functions" => {
                 debts.extend(self.detect_complex_functions(file_path, content));
-            }
+            },
             "deep-nesting" => {
                 debts.extend(self.detect_deep_nesting(file_path, content));
-            }
+            },
             "missing-docs" => {
                 debts.extend(self.detect_missing_docs(file_path, content));
-            }
+            },
             "missing-tests" => {
                 debts.extend(self.detect_missing_tests(file_path, content));
-            }
+            },
             "large-files" => {
                 debts.extend(self.detect_large_files(file_path, content));
-            }
-            _ => {}
+            },
+            _ => {},
         }
         debts
     }

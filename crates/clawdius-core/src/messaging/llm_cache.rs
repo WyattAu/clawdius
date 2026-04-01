@@ -22,7 +22,7 @@
 #![deny(unsafe_code)]
 
 use std::collections::hash_map::DefaultHasher;
-use std::hash::{Hash, Hasher};
+use std::hash::Hasher;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 

@@ -50,7 +50,7 @@ impl OutputFormatter {
                 };
 
                 writeln!(writer, "{json}")?;
-            }
+            },
             OutputFormat::StreamJson => {
                 let mut stream_writer = StreamWriter::new(writer, OutputFormat::StreamJson);
 
@@ -69,7 +69,7 @@ impl OutputFormatter {
                     duration_ms,
                 ))?;
                 stream_writer.flush()?;
-            }
+            },
             OutputFormat::Text => {
                 if self.options.include_metadata {
                     if let Some(m) = model {
@@ -95,7 +95,7 @@ impl OutputFormatter {
                     )?;
                     writeln!(writer, "Duration: {duration_ms}ms")?;
                 }
-            }
+            },
         }
 
         Ok(())
@@ -118,15 +118,15 @@ impl OutputFormatter {
                 };
 
                 writeln!(writer, "{json}")?;
-            }
+            },
             OutputFormat::StreamJson => {
                 let mut stream_writer = StreamWriter::new(writer, OutputFormat::StreamJson);
                 stream_writer.write_event(&StreamEvent::error(error, "error"))?;
                 stream_writer.flush()?;
-            }
+            },
             OutputFormat::Text => {
                 writeln!(writer, "Error: {error}")?;
-            }
+            },
         }
 
         Ok(())
@@ -141,7 +141,7 @@ impl OutputFormatter {
             OutputFormat::Json => {
                 let json = serde_json::to_string_pretty(&sessions)?;
                 writeln!(writer, "{json}")?;
-            }
+            },
             OutputFormat::StreamJson => {
                 let mut stream_writer =
                     StreamWriter::new(writer.by_ref(), OutputFormat::StreamJson);
@@ -158,7 +158,7 @@ impl OutputFormatter {
                     stream_writer.write_event(&event)?;
                 }
                 stream_writer.flush()?;
-            }
+            },
             OutputFormat::Text => {
                 if sessions.is_empty() {
                     writeln!(writer, "No sessions found.")?;
@@ -174,7 +174,7 @@ impl OutputFormatter {
                         session.id, title, session.message_count, session.tokens
                     )?;
                 }
-            }
+            },
         }
 
         Ok(())
@@ -197,7 +197,7 @@ impl OutputFormatter {
                     "timestamp": Utc::now().to_rfc3339(),
                 });
                 writeln!(writer, "{}", serde_json::to_string_pretty(&output)?)?;
-            }
+            },
             OutputFormat::StreamJson => {
                 let event = if success {
                     StreamEvent::tool_result(
@@ -210,11 +210,11 @@ impl OutputFormatter {
                 };
                 let mut stream_writer = StreamWriter::new(writer, OutputFormat::StreamJson);
                 stream_writer.write_event(&event)?;
-            }
+            },
             OutputFormat::Text => {
                 let status = if success { "✓" } else { "✗" };
                 writeln!(writer, "{status} {tool_name}: {result}")?;
-            }
+            },
         }
 
         Ok(())
@@ -229,14 +229,14 @@ impl OutputFormatter {
             OutputFormat::Json => {
                 let json = serde_json::to_string_pretty(result)?;
                 writeln!(writer, "{json}")?;
-            }
+            },
             OutputFormat::StreamJson => {
                 let mut stream_writer =
                     StreamWriter::new(writer.by_ref(), OutputFormat::StreamJson);
                 let event = StreamEvent::progress(format!("Initialized in {}", result.path), 1, 1);
                 stream_writer.write_event(&event)?;
                 stream_writer.flush()?;
-            }
+            },
             OutputFormat::Text => {
                 if result.success {
                     writeln!(writer, "✓ Initialized Clawdius in {}", result.path)?;
@@ -249,7 +249,7 @@ impl OutputFormatter {
                 } else if let Some(error) = &result.error {
                     writeln!(writer, "✗ Initialization failed: {error}")?;
                 }
-            }
+            },
         }
 
         Ok(())
@@ -264,14 +264,14 @@ impl OutputFormatter {
             OutputFormat::Json => {
                 let json = serde_json::to_string_pretty(result)?;
                 writeln!(writer, "{json}")?;
-            }
+            },
             OutputFormat::StreamJson => {
                 let mut stream_writer =
                     StreamWriter::new(writer.by_ref(), OutputFormat::StreamJson);
                 let event = StreamEvent::progress("Configuration loaded".to_string(), 1, 1);
                 stream_writer.write_event(&event)?;
                 stream_writer.flush()?;
-            }
+            },
             OutputFormat::Text => {
                 if result.success {
                     writeln!(writer, "Configuration from: {}", result.config_path)?;
@@ -279,7 +279,7 @@ impl OutputFormatter {
                 } else if let Some(error) = &result.error {
                     writeln!(writer, "✗ Failed to load configuration: {error}")?;
                 }
-            }
+            },
         }
 
         Ok(())
@@ -295,7 +295,7 @@ impl OutputFormatter {
             OutputFormat::Json => {
                 let json = serde_json::to_string_pretty(result)?;
                 writeln!(writer, "{json}")?;
-            }
+            },
             OutputFormat::StreamJson => {
                 let mut stream_writer =
                     StreamWriter::new(writer.by_ref(), OutputFormat::StreamJson);
@@ -306,7 +306,7 @@ impl OutputFormatter {
                 );
                 stream_writer.write_event(&event)?;
                 stream_writer.flush()?;
-            }
+            },
             OutputFormat::Text => {
                 writeln!(writer, "Clawdius Metrics:")?;
                 writeln!(writer, "  Requests: {}", result.requests_total)?;
@@ -317,7 +317,7 @@ impl OutputFormatter {
                 if reset {
                     writeln!(writer, "Metrics reset.")?;
                 }
-            }
+            },
         }
 
         Ok(())
@@ -332,7 +332,7 @@ impl OutputFormatter {
             OutputFormat::Json => {
                 let json = serde_json::to_string_pretty(result)?;
                 writeln!(writer, "{json}")?;
-            }
+            },
             OutputFormat::StreamJson => {
                 let mut stream_writer =
                     StreamWriter::new(writer.by_ref(), OutputFormat::StreamJson);
@@ -346,7 +346,7 @@ impl OutputFormatter {
                 );
                 stream_writer.write_event(&event)?;
                 stream_writer.flush()?;
-            }
+            },
             OutputFormat::Text => {
                 writeln!(writer, "Lean 4 Proof Verification")?;
                 writeln!(writer, "=========================")?;
@@ -381,7 +381,7 @@ impl OutputFormatter {
                         }
                     }
                 }
-            }
+            },
         }
 
         Ok(())
@@ -396,7 +396,7 @@ impl OutputFormatter {
             OutputFormat::Json => {
                 let json = serde_json::to_string_pretty(result)?;
                 writeln!(writer, "{json}")?;
-            }
+            },
             OutputFormat::StreamJson => {
                 let mut stream_writer =
                     StreamWriter::new(writer.by_ref(), OutputFormat::StreamJson);
@@ -407,7 +407,7 @@ impl OutputFormatter {
                 );
                 stream_writer.write_event(&event)?;
                 stream_writer.flush()?;
-            }
+            },
             OutputFormat::Text => {
                 if result.success {
                     if result.dry_run {
@@ -444,7 +444,7 @@ impl OutputFormatter {
                 } else if let Some(error) = &result.error {
                     writeln!(writer, "✗ Refactor failed: {error}")?;
                 }
-            }
+            },
         }
 
         Ok(())
@@ -459,14 +459,14 @@ impl OutputFormatter {
             OutputFormat::Json => {
                 let json = serde_json::to_string_pretty(result)?;
                 writeln!(writer, "{json}")?;
-            }
+            },
             OutputFormat::StreamJson => {
                 let mut stream_writer =
                     StreamWriter::new(writer.by_ref(), OutputFormat::StreamJson);
                 let event = StreamEvent::progress(format!("Broker: {}", result.status), 1, 1);
                 stream_writer.write_event(&event)?;
                 stream_writer.flush()?;
-            }
+            },
             OutputFormat::Text => {
                 if result.success {
                     writeln!(writer, "Broker Mode Activated")?;
@@ -492,7 +492,7 @@ impl OutputFormatter {
                 } else if let Some(error) = &result.error {
                     writeln!(writer, "✗ Broker failed: {error}")?;
                 }
-            }
+            },
         }
 
         Ok(())
@@ -507,7 +507,7 @@ impl OutputFormatter {
             OutputFormat::Json => {
                 let json = serde_json::to_string_pretty(result)?;
                 writeln!(writer, "{json}")?;
-            }
+            },
             OutputFormat::StreamJson => {
                 let mut stream_writer =
                     StreamWriter::new(writer.by_ref(), OutputFormat::StreamJson);
@@ -518,7 +518,7 @@ impl OutputFormatter {
                 );
                 stream_writer.write_event(&event)?;
                 stream_writer.flush()?;
-            }
+            },
             OutputFormat::Text => {
                 if result.success {
                     writeln!(writer, "Compliance Matrix Generated")?;
@@ -535,7 +535,7 @@ impl OutputFormatter {
                 } else if let Some(error) = &result.error {
                     writeln!(writer, "✗ Compliance generation failed: {error}")?;
                 }
-            }
+            },
         }
 
         Ok(())
@@ -550,7 +550,7 @@ impl OutputFormatter {
             OutputFormat::Json => {
                 let json = serde_json::to_string_pretty(result)?;
                 writeln!(writer, "{json}")?;
-            }
+            },
             OutputFormat::StreamJson => {
                 let mut stream_writer =
                     StreamWriter::new(writer.by_ref(), OutputFormat::StreamJson);
@@ -561,7 +561,7 @@ impl OutputFormatter {
                 );
                 stream_writer.write_event(&event)?;
                 stream_writer.flush()?;
-            }
+            },
             OutputFormat::Text => {
                 if result.success {
                     writeln!(writer, "Research Results for: {}", result.query)?;
@@ -604,7 +604,7 @@ impl OutputFormatter {
                 } else if let Some(error) = &result.error {
                     writeln!(writer, "✗ Research failed: {error}")?;
                 }
-            }
+            },
         }
 
         Ok(())
@@ -619,14 +619,14 @@ impl OutputFormatter {
             OutputFormat::Json => {
                 let json = serde_json::to_string_pretty(result)?;
                 writeln!(writer, "{json}")?;
-            }
+            },
             OutputFormat::StreamJson => {
                 let mut stream_writer =
                     StreamWriter::new(writer.by_ref(), OutputFormat::StreamJson);
                 let event = StreamEvent::progress(format!("Action: {}", result.action), 1, 1);
                 stream_writer.write_event(&event)?;
                 stream_writer.flush()?;
-            }
+            },
             OutputFormat::Text => {
                 if result.success {
                     writeln!(writer, "Action: {}", result.title)?;
@@ -659,7 +659,7 @@ impl OutputFormatter {
                 } else if let Some(error) = &result.error {
                     writeln!(writer, "✗ Action failed: {error}")?;
                 }
-            }
+            },
         }
 
         Ok(())
@@ -674,7 +674,7 @@ impl OutputFormatter {
             OutputFormat::Json => {
                 let json = serde_json::to_string_pretty(result)?;
                 writeln!(writer, "{json}")?;
-            }
+            },
             OutputFormat::StreamJson => {
                 let mut stream_writer =
                     StreamWriter::new(writer.by_ref(), OutputFormat::StreamJson);
@@ -685,7 +685,7 @@ impl OutputFormatter {
                 );
                 stream_writer.write_event(&event)?;
                 stream_writer.flush()?;
-            }
+            },
             OutputFormat::Text => {
                 if result.success {
                     if let Some(func) = &result.function {
@@ -716,7 +716,7 @@ impl OutputFormatter {
                 } else if let Some(error) = &result.error {
                     writeln!(writer, "✗ Test generation failed: {error}")?;
                 }
-            }
+            },
         }
 
         Ok(())
@@ -731,7 +731,7 @@ impl OutputFormatter {
             OutputFormat::Json => {
                 let json = serde_json::to_string_pretty(result)?;
                 writeln!(writer, "{json}")?;
-            }
+            },
             OutputFormat::StreamJson => {
                 let mut stream_writer =
                     StreamWriter::new(writer.by_ref(), OutputFormat::StreamJson);
@@ -739,7 +739,7 @@ impl OutputFormatter {
                     StreamEvent::progress(format!("Indexed {} files", result.files_indexed), 1, 1);
                 stream_writer.write_event(&event)?;
                 stream_writer.flush()?;
-            }
+            },
             OutputFormat::Text => {
                 if result.success {
                     writeln!(writer, "Indexing Complete:")?;
@@ -762,7 +762,7 @@ impl OutputFormatter {
                 } else if let Some(error) = &result.error {
                     writeln!(writer, "✗ Indexing failed: {error}")?;
                 }
-            }
+            },
         }
 
         Ok(())
@@ -777,7 +777,7 @@ impl OutputFormatter {
             OutputFormat::Json => {
                 let json = serde_json::to_string_pretty(result)?;
                 writeln!(writer, "{json}")?;
-            }
+            },
             OutputFormat::StreamJson => {
                 let mut stream_writer =
                     StreamWriter::new(writer.by_ref(), OutputFormat::StreamJson);
@@ -785,7 +785,7 @@ impl OutputFormatter {
                     StreamEvent::progress(format!("Gathered {} tokens", result.total_tokens), 1, 1);
                 stream_writer.write_event(&event)?;
                 stream_writer.flush()?;
-            }
+            },
             OutputFormat::Text => {
                 if result.success {
                     writeln!(writer, "Context gathered for: \"{}\"", result.query)?;
@@ -818,7 +818,7 @@ impl OutputFormatter {
                 } else if let Some(error) = &result.error {
                     writeln!(writer, "✗ Context gathering failed: {error}")?;
                 }
-            }
+            },
         }
 
         Ok(())
@@ -833,7 +833,7 @@ impl OutputFormatter {
             OutputFormat::Json => {
                 let json = serde_json::to_string_pretty(result)?;
                 writeln!(writer, "{json}")?;
-            }
+            },
             OutputFormat::StreamJson => {
                 let mut stream_writer =
                     StreamWriter::new(writer.by_ref(), OutputFormat::StreamJson);
@@ -841,7 +841,7 @@ impl OutputFormatter {
                     StreamEvent::progress(format!("Checkpoint: {}", result.operation), 1, 1);
                 stream_writer.write_event(&event)?;
                 stream_writer.flush()?;
-            }
+            },
             OutputFormat::Text => {
                 if result.success {
                     match result.operation.as_str() {
@@ -856,7 +856,7 @@ impl OutputFormatter {
                             if let Some(count) = result.file_count {
                                 writeln!(writer, "  Files: {count}")?;
                             }
-                        }
+                        },
                         "list" => {
                             if result.checkpoints.is_empty() {
                                 writeln!(writer, "No checkpoints found")?;
@@ -868,36 +868,36 @@ impl OutputFormatter {
                                     writeln!(writer, "   Files: {}", cp.file_count)?;
                                 }
                             }
-                        }
+                        },
                         "restore" => {
                             writeln!(writer, "✓ Checkpoint restored")?;
                             if let Some(id) = &result.checkpoint_id {
                                 writeln!(writer, "  ID: {id}")?;
                             }
-                        }
+                        },
                         "delete" => {
                             writeln!(writer, "✓ Checkpoint deleted")?;
                             if let Some(id) = &result.checkpoint_id {
                                 writeln!(writer, "  ID: {id}")?;
                             }
-                        }
+                        },
                         "cleanup" => {
                             if let Some(count) = result.file_count {
                                 writeln!(writer, "✓ Cleaned up {count} old checkpoint(s)")?;
                             }
-                        }
+                        },
                         _ => {
                             writeln!(
                                 writer,
                                 "✓ Checkpoint operation completed: {}",
                                 result.operation
                             )?;
-                        }
+                        },
                     }
                 } else if let Some(error) = &result.error {
                     writeln!(writer, "✗ Checkpoint operation failed: {error}")?;
                 }
-            }
+            },
         }
 
         Ok(())
@@ -912,14 +912,14 @@ impl OutputFormatter {
             OutputFormat::Json => {
                 let json = serde_json::to_string_pretty(result)?;
                 writeln!(writer, "{json}")?;
-            }
+            },
             OutputFormat::StreamJson => {
                 let mut stream_writer =
                     StreamWriter::new(writer.by_ref(), OutputFormat::StreamJson);
                 let event = StreamEvent::progress(format!("Modes: {}", result.operation), 1, 1);
                 stream_writer.write_event(&event)?;
                 stream_writer.flush()?;
-            }
+            },
             OutputFormat::Text => {
                 if result.success {
                     match result.operation.as_str() {
@@ -934,7 +934,7 @@ impl OutputFormatter {
                                 "Use 'clawdius chat --mode <name>' to use a specific mode."
                             )?;
                             writeln!(writer, "Custom modes can be created in .clawdius/modes/")?;
-                        }
+                        },
                         "create" => {
                             writeln!(writer, "✓ Created mode configuration")?;
                             if let Some(path) = &result.created_path {
@@ -945,7 +945,7 @@ impl OutputFormatter {
                             }
                             writeln!(writer)?;
                             writeln!(writer, "Edit the file to customize the mode's behavior.")?;
-                        }
+                        },
                         "show" => {
                             if let Some(details) = &result.mode_details {
                                 writeln!(writer, "Mode: {}", details.name)?;
@@ -957,15 +957,15 @@ impl OutputFormatter {
                                 writeln!(writer, "Temperature: {}", details.temperature)?;
                                 writeln!(writer, "Tools: {:?}", details.tools)?;
                             }
-                        }
+                        },
                         _ => {
                             writeln!(writer, "✓ Modes operation completed: {}", result.operation)?;
-                        }
+                        },
                     }
                 } else if let Some(error) = &result.error {
                     writeln!(writer, "✗ Modes operation failed: {error}")?;
                 }
-            }
+            },
         }
 
         Ok(())
@@ -980,14 +980,14 @@ impl OutputFormatter {
             OutputFormat::Json => {
                 let json = serde_json::to_string_pretty(result)?;
                 writeln!(writer, "{json}")?;
-            }
+            },
             OutputFormat::StreamJson => {
                 let mut stream_writer =
                     StreamWriter::new(writer.by_ref(), OutputFormat::StreamJson);
                 let event = StreamEvent::progress("Telemetry configuration updated", 1, 1);
                 stream_writer.write_event(&event)?;
                 stream_writer.flush()?;
-            }
+            },
             OutputFormat::Text => {
                 if result.success {
                     writeln!(writer, "Telemetry configuration updated:")?;
@@ -1021,7 +1021,7 @@ impl OutputFormatter {
                 } else if let Some(error) = &result.error {
                     writeln!(writer, "✗ Telemetry configuration failed: {error}")?;
                 }
-            }
+            },
         }
 
         Ok(())

@@ -660,7 +660,7 @@ impl TimelineStore {
             match change.tag() {
                 ChangeTag::Insert => additions += 1,
                 ChangeTag::Delete => deletions += 1,
-                ChangeTag::Equal => {}
+                ChangeTag::Equal => {},
             }
         }
 

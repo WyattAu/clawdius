@@ -2,7 +2,7 @@
 # Multi-stage build for optimized production image
 
 # Build stage
-FROM rust:1.85-slim AS builder
+FROM rust:1.88-slim AS builder
 
 WORKDIR /build
 
@@ -16,8 +16,10 @@ RUN apt-get update && apt-get install -y \
 COPY Cargo.toml Cargo.lock ./
 COPY crates/clawdius-core ./crates/clawdius-core
 COPY crates/clawdius ./crates/clawdius
-COPY crates/clawdius-lsp ./crates/clawdius-lsp
-COPY crates/clawdius-vscode ./crates/clawdius-vscode
+COPY crates/clawdius-code ./crates/clawdius-code
+COPY crates/clawdius-server ./crates/clawdius-server
+COPY crates/clawdius-webview ./crates/clawdius-webview
+COPY src ./src
 
 # Build release binary
 RUN cargo build --release -p clawdius --bin clawdius

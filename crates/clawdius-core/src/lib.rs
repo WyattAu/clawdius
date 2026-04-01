@@ -17,6 +17,7 @@ pub mod audit;
 pub mod auth;
 pub mod brain;
 pub mod broker;
+pub mod capability;
 pub mod checkpoint;
 pub mod commands;
 pub mod completions;

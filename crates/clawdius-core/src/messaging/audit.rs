@@ -126,11 +126,11 @@ impl MessagingAuditEvent {
         match self {
             Self::WebhookAuthFailed { .. } | Self::WebhookSignatureFailed { .. } => {
                 AuditCategory::Authentication
-            }
+            },
             Self::PermissionDenied { .. } => AuditCategory::Authorization,
             Self::LlmCallInitiated { .. } | Self::LlmCallCompleted { .. } => {
                 AuditCategory::DataAccess
-            }
+            },
             Self::RateLimitHit { .. } => AuditCategory::Security,
             Self::WebhookParseFailed { .. }
             | Self::ChannelError { .. }
@@ -166,7 +166,7 @@ impl MessagingAuditEvent {
                 } else {
                     AuditOutcome::Failure
                 }
-            }
+            },
             _ => AuditOutcome::Success,
         }
     }
@@ -237,7 +237,7 @@ impl MessagingAuditEvent {
                     "message_length".to_string(),
                     serde_json::json!(message_length),
                 );
-            }
+            },
             Self::CommandExecuted {
                 command,
                 category,
@@ -249,13 +249,13 @@ impl MessagingAuditEvent {
                 d.insert("category".to_string(), serde_json::json!(category));
                 d.insert("success".to_string(), serde_json::json!(success));
                 d.insert("latency_ms".to_string(), serde_json::json!(latency_ms));
-            }
+            },
             Self::RateLimitHit {
                 limit, remaining, ..
             } => {
                 d.insert("limit".to_string(), serde_json::json!(limit));
                 d.insert("remaining".to_string(), serde_json::json!(remaining));
-            }
+            },
             Self::PermissionDenied {
                 command,
                 required_permission,
@@ -266,13 +266,13 @@ impl MessagingAuditEvent {
                     "required_permission".to_string(),
                     serde_json::json!(required_permission),
                 );
-            }
+            },
             Self::SessionBound { is_new, .. } => {
                 d.insert("is_new".to_string(), serde_json::json!(is_new));
-            }
+            },
             Self::SessionClosed { reason, .. } => {
                 d.insert("reason".to_string(), serde_json::json!(reason));
-            }
+            },
             Self::LlmCallInitiated {
                 model,
                 prompt_length,
@@ -283,7 +283,7 @@ impl MessagingAuditEvent {
                     "prompt_length".to_string(),
                     serde_json::json!(prompt_length),
                 );
-            }
+            },
             Self::LlmCallCompleted {
                 model,
                 latency_ms,
@@ -295,7 +295,7 @@ impl MessagingAuditEvent {
                 d.insert("latency_ms".to_string(), serde_json::json!(latency_ms));
                 d.insert("tokens_used".to_string(), serde_json::json!(tokens_used));
                 d.insert("success".to_string(), serde_json::json!(success));
-            }
+            },
             Self::ResponseSent {
                 chat_id,
                 message_ids,
@@ -310,19 +310,19 @@ impl MessagingAuditEvent {
                     serde_json::json!(was_streaming),
                 );
                 d.insert("total_chunks".to_string(), serde_json::json!(total_chunks));
-            }
+            },
             Self::WebhookAuthFailed { reason, .. }
             | Self::WebhookSignatureFailed { reason, .. }
             | Self::WebhookParseFailed { reason, .. } => {
                 d.insert("reason".to_string(), serde_json::json!(reason));
-            }
-            Self::ChannelRegistered { .. } => {}
+            },
+            Self::ChannelRegistered { .. } => {},
             Self::ChannelError {
                 operation, error, ..
             } => {
                 d.insert("operation".to_string(), serde_json::json!(operation));
                 d.insert("error".to_string(), serde_json::json!(error));
-            }
+            },
         }
         d
     }
@@ -353,7 +353,7 @@ impl MessagingAuditEvent {
                     name: None,
                     path: None,
                 })
-            }
+            },
             Self::ChannelRegistered { platform } | Self::ChannelError { platform, .. } => {
                 Some(Resource {
                     resource_type: "channel".to_string(),
@@ -361,7 +361,7 @@ impl MessagingAuditEvent {
                     name: None,
                     path: None,
                 })
-            }
+            },
             _ => None,
         };
 
@@ -400,16 +400,16 @@ impl MessagingAuditLogger {
         match event.severity() {
             AuditSeverity::Critical => {
                 error!(event = %event.action_name(), "audit: critical messaging event")
-            }
+            },
             AuditSeverity::Error => {
                 error!(event = %event.action_name(), "audit: error messaging event")
-            }
+            },
             AuditSeverity::Warning => {
                 warn!(event = %event.action_name(), "audit: warning messaging event")
-            }
+            },
             AuditSeverity::Info => {
                 debug!(event = %event.action_name(), "audit: info messaging event")
-            }
+            },
         }
 
         let guard = self.inner.write().await;

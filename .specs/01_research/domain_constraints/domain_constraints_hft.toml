@@ -1,0 +1,116 @@
+# Domain Constraints: HFT Broker Pipeline
+# Schema v1.0.0
+
+[metadata]
+domain = "HFT Broker"
+derivation_date = "2026-03-31T00:00:00Z"
+confidence = 0.95
+sources = [
+    "YP-HFT-BROKER-001 (internal)",
+    "FINRA Rule 5310 (market access)",
+    "SEC Rule 15c3-5 (risk management)",
+    "MiFID II Article 17 (best execution)"
+]
+
+[constraints.timing]
+[[constraints.timing.item]]
+id = "TC-HFT-001"
+name = "Ring buffer operation latency"
+description = "Each ring buffer write/read must complete within this bound"
+value = 100
+unit = "nanoseconds"
+type = "hard"
+source = "YP-HFT-BROKER-001 Section 4.2"
+derivation = "Target: <100ns per operation for 10M msgs/sec throughput"
+margin_percent = 50
+validation_method = "criterion benchmark: cargo bench --bench wcet_bench"
+
+[[constraints.timing.item]]
+id = "TC-HFT-002"
+name = "Wallet guard risk check latency"
+description = "Pre-trade risk validation must complete within this bound"
+value = 100
+unit = "microseconds"
+type = "hard"
+source = "SEC Rule 15c3-5, YP-HFT-BROKER-001 Section 4.3"
+derivation = "Must not add >100μs to order routing latency"
+margin_percent = 50
+validation_method = "criterion benchmark: cargo bench --bench wcet_bench"
+
+[[constraints.timing.item]]
+id = "TC-HFT-003"
+name = "Signal-to-dispatch end-to-end latency"
+description = "Full pipeline from market data ingestion to order dispatch"
+value = 1000
+unit = "microseconds"
+type = "hard"
+source = "YP-HFT-BROKER-001 Section 4.1"
+derivation = "Sub-millisecond target for competitive HFT"
+margin_percent = 100
+validation_method = "criterion benchmark: cargo bench --bench wcet_bench"
+
+[[constraints.timing.item]]
+id = "TC-HFT-004"
+name = "Notification dispatch latency"
+description = "Per-channel notification dispatch"
+value = 100
+unit = "milliseconds"
+type = "soft"
+source = "Signal dispatch architecture design"
+derivation = "User-facing notifications tolerate up to 100ms"
+margin_percent = 50
+validation_method = "criterion benchmark"
+
+[constraints.memory]
+[[constraints.memory.item]]
+id = "MC-HFT-001"
+name = "Ring buffer maximum size"
+description = "Maximum memory allocation for ring buffer"
+value = 16777216
+unit = "bytes"
+allocation_type = "static"
+source = "HFT broker configuration"
+derivation = "2^20 entries × 24 bytes per message = 16MB"
+validation_method = "RingBuffer::new() enforces capacity parameter"
+
+[[constraints.memory.item]]
+id = "MC-HFT-002"
+name = "Zero GC pauses"
+description = "No garbage collection pauses allowed in HFT path"
+value = 0
+unit = "microseconds"
+allocation_type = "static"
+source = "YP-HFT-BROKER-001 Section 3.1"
+derivation = "Rust + arena allocation eliminates GC"
+validation_method = "No GC runtime; verified by language choice"
+
+[constraints.numerical]
+[[constraints.numerical.item]]
+id = "NC-HFT-001"
+name = "Price precision"
+description = "All price calculations use integer arithmetic"
+value = 0
+unit = "dimensionless"
+source = "wallet_guard.rs"
+derivation = "Prices stored as i64 cents/pips; no floating-point in risk checks"
+validation_method = "Code review: no f32/f64 in wallet_guard.rs"
+
+[[constraints.numerical.item]]
+id = "NC-HFT-002"
+name = "Position size maximum"
+description = "Maximum allowed position per symbol"
+value = 10000
+unit = "contracts"
+source = "RiskParams::default() in wallet_guard.rs"
+derivation = "Configurable, default 10,000"
+validation_method = "WalletGuard::check() enforces at runtime"
+
+[conflicts]
+[[conflicts.item]]
+id = "CONF-HFT-001"
+constraint_1 = "TC-HFT-003"
+constraint_2 = "MC-HFT-002"
+description = "Faster latency may require larger buffers"
+impact = "Memory usage increases with lower latency requirements"
+resolution = "Tune buffer capacity to match latency target; power-of-2 sizes"
+adr_reference = "ADR-001"

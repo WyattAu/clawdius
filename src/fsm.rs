@@ -142,12 +142,18 @@ impl Phase {
 
     /// Get the next phase in sequence
     #[must_use]
+    // VERIFY: PROP-FSM-002 — Monotonic progress: next phase index > current phase index
+    // Proof: proof_fsm.lean::fsm_monotonic_progress
+    // Status: VERIFIED
     pub fn next(&self) -> Option<Self> {
         Self::from_index(self.index() + 1)
     }
 
     /// Check if this is a terminal phase
     #[must_use]
+    // VERIFY: PROP-FSM-003 — Terminal phase is unique (only KnowledgeTransfer)
+    // Proof: proof_fsm.lean::knowledge_transfer_is_terminal
+    // Status: VERIFIED
     pub fn is_terminal(&self) -> bool {
         matches!(self, Self::KnowledgeTransfer)
     }
@@ -166,10 +172,10 @@ impl Phase {
             | Self::TechnologySelection => "Architecture",
             Self::ImplementationPlanning | Self::ResourceAllocation | Self::RiskAssessment => {
                 "Planning"
-            }
+            },
             Self::CoreImplementation | Self::FeatureDevelopment | Self::Integration => {
                 "Implementation"
-            }
+            },
             Self::UnitTesting
             | Self::IntegrationTesting
             | Self::SystemTesting
@@ -747,6 +753,9 @@ impl StateMachine {
     ///
     /// # Errors
     /// Returns an error if the transition is invalid.
+    // VERIFY: PROP-FSM-001 — Transition validity: only sequential forward transitions allowed
+    // Proof: proof_fsm.lean::fsm_transition_valid
+    // Status: VERIFIED
     pub fn try_transition(&mut self, event: Event) -> Result<Phase> {
         let expected_event = Event::for_transition(
             self.phase,
@@ -823,18 +832,18 @@ impl StateMachine {
             ],
             Phase::RequirementsElicitation => {
                 vec![QualityGate::new("RE-1", "Requirements gathered")]
-            }
+            },
             Phase::RequirementsAnalysis => vec![QualityGate::new("RA-1", "Requirements analyzed")],
             Phase::RequirementsValidation => {
                 vec![QualityGate::new("RV-1", "Requirements validated")]
-            }
+            },
             Phase::ArchitectureDesign => vec![QualityGate::new("AD-1", "Architecture defined")],
             Phase::InterfaceSpecification => vec![QualityGate::new("IS-1", "Interfaces specified")],
             Phase::SecurityModeling => vec![QualityGate::new("SEC-1", "Security model created")],
             Phase::TechnologySelection => vec![QualityGate::new("TS-1", "Technologies selected")],
             Phase::ImplementationPlanning => {
                 vec![QualityGate::new("IP-1", "Implementation planned")]
-            }
+            },
             Phase::ResourceAllocation => vec![QualityGate::new("RA-1", "Resources allocated")],
             Phase::RiskAssessment => vec![QualityGate::new("RIS-1", "Risks assessed")],
             Phase::CoreImplementation => vec![QualityGate::new("CI-1", "Core implemented")],
@@ -843,7 +852,7 @@ impl StateMachine {
             Phase::UnitTesting => vec![QualityGate::new("UT-1", "Unit tests passing")],
             Phase::IntegrationTesting => {
                 vec![QualityGate::new("IT-1", "Integration tests passing")]
-            }
+            },
             Phase::SystemTesting => vec![QualityGate::new("ST-1", "System tests passing")],
             Phase::SecurityAudit => vec![QualityGate::new("SA-1", "Security audit complete")],
             Phase::PerformanceValidation => vec![QualityGate::new("PV-1", "Performance validated")],

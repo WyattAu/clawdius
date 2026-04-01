@@ -612,6 +612,12 @@ pub enum Commands {
         #[arg(short, long)]
         verbose: bool,
     },
+
+    #[command(about = "Nexus FSM engine")]
+    Nexus {
+        #[command(subcommand)]
+        action: NexusAction,
+    },
 }
 
 #[derive(Subcommand)]
@@ -1135,6 +1141,16 @@ pub enum ModelsCommands {
     Current,
 }
 
+#[derive(Subcommand)]
+pub enum NexusAction {
+    #[command(about = "Run the Nexus 24-phase FSM engine")]
+    Start {
+        #[arg(short, long, default_value = ".")]
+        #[arg(help = "Project root path")]
+        path: PathBuf,
+    },
+}
+
 /// Handle a command
 pub async fn handle_command(
     cmd: Commands,
@@ -1166,7 +1182,7 @@ pub async fn handle_command(
                 output_format,
             )
             .await
-        }
+        },
         Commands::Auto {
             task,
             model,
@@ -1190,12 +1206,12 @@ pub async fn handle_command(
                 output_format,
             )
             .await
-        }
+        },
         Commands::Init { path } => handle_init(path, output_format).await,
         Commands::Setup { quick, provider } => handle_setup(quick, provider, output_format).await,
         Commands::Sessions { delete, search } => {
             handle_sessions(delete, search, config_path, output_format).await
-        }
+        },
         Commands::Refactor {
             from,
             to,
@@ -1220,7 +1236,7 @@ pub async fn handle_command(
                 output_format,
             )
             .await
-        }
+        },
         Commands::Test {
             file,
             function,
@@ -1235,7 +1251,7 @@ pub async fn handle_command(
         } => handle_doc(file, element, format, output, inline, output_format).await,
         Commands::Verify { proof, lean_path } => {
             handle_verify(proof, lean_path, output_format).await
-        }
+        },
         Commands::Broker {
             config,
             paper_trade,
@@ -1275,16 +1291,16 @@ pub async fn handle_command(
                 output_format,
             )
             .await
-        }
+        },
         #[cfg(feature = "vector-db")]
         Commands::Index { path, watch } => handle_index(path, watch, output_format).await,
         #[cfg(feature = "vector-db")]
         Commands::Context { query, max_tokens } => {
             handle_context(query, max_tokens, output_format).await
-        }
+        },
         Commands::Checkpoint { action } => {
             handle_checkpoint(action, config_path, output_format).await
-        }
+        },
         Commands::Timeline { action } => handle_timeline(action, config_path, output_format).await,
         Commands::Modes { action } => handle_modes(action, config_path, output_format).await,
         Commands::Lang { action } => handle_lang(action, config_path, output_format).await,
@@ -1326,12 +1342,12 @@ pub async fn handle_command(
                 output_format,
             )
             .await
-        }
+        },
         Commands::Lsp { action } => handle_lsp(action, output_format).await,
         Commands::Memory { action } => handle_memory(action, config_path, output_format).await,
         Commands::Models { action, host, port } => {
             handle_models(action, &host, port, output_format).await
-        }
+        },
         Commands::Complete {
             file,
             line,
@@ -1351,7 +1367,7 @@ pub async fn handle_command(
                 output_format,
             )
             .await
-        }
+        },
         Commands::Analyze {
             path,
             drift,
@@ -1377,8 +1393,162 @@ pub async fn handle_command(
                 output_format,
             )
             .await
-        }
+        },
+        Commands::Nexus { action } => handle_nexus(action).await,
     }
+}
+
+async fn handle_nexus(action: NexusAction) -> anyhow::Result<()> {
+    match action {
+        NexusAction::Start { path } => {
+            let path = path.clone();
+            tokio::task::spawn_blocking(move || run_nexus_engine(&path)).await?
+        },
+    }
+}
+
+fn run_nexus_engine(project_root: &PathBuf) -> anyhow::Result<()> {
+    use clawdius_core::nexus::{NexusEngine, RequirementData};
+
+    println!("Nexus FSM Engine");
+    println!("================");
+    println!("Project root: {}", project_root.display());
+    println!();
+    println!("[Phase 00/23] Context Discovery");
+
+    let engine = NexusEngine::new(project_root.clone())
+        .map_err(|e| anyhow::anyhow!("Failed to create NexusEngine: {e}"))?;
+
+    let engine = engine
+        .transition_to_environment("demo", vec![])
+        .map_err(|e| anyhow::anyhow!("Phase 0->1: {e}"))?;
+    println!("[Phase 01/23] Environment Materialization");
+
+    let engine = engine
+        .transition_to_requirements("cargo", vec![], true)
+        .map_err(|e| anyhow::anyhow!("Phase 1->2: {e}"))?;
+    println!("[Phase 02/23] Requirements Engineering");
+
+    let engine = engine
+        .transition_to_research(vec![RequirementData {
+            id: "REQ-001".into(),
+            description: "Demo requirement".into(),
+            priority: "High".into(),
+            testable: true,
+        }])
+        .map_err(|e| anyhow::anyhow!("Phase 2->3: {e}"))?;
+    println!("[Phase 03/23] Epistemological Discovery");
+
+    let engine = engine
+        .transition_to_cross_lingual("YP-001", vec![])
+        .map_err(|e| anyhow::anyhow!("Phase 3->4: {e}"))?;
+    println!("[Phase 04/23] Cross-Lingual Integration");
+
+    let engine = engine
+        .transition_to_supply_chain()
+        .map_err(|e| anyhow::anyhow!("Phase 4->5: {e}"))?;
+    println!("[Phase 05/23] Supply Chain Hardening");
+
+    let engine = engine
+        .transition_to_architecture(serde_json::json!({}))
+        .map_err(|e| anyhow::anyhow!("Phase 5->6: {e}"))?;
+    println!("[Phase 06/23] Architectural Specification");
+
+    let engine = engine
+        .transition_to_concurrency("BP-001", vec![])
+        .map_err(|e| anyhow::anyhow!("Phase 6->7: {e}"))?;
+    println!("[Phase 07/23] Concurrency Analysis");
+
+    let engine = engine
+        .transition_to_security(serde_json::json!({}))
+        .map_err(|e| anyhow::anyhow!("Phase 7->8: {e}"))?;
+    println!("[Phase 08/23] Security Engineering");
+
+    let engine = engine
+        .transition_to_resources(serde_json::json!({}))
+        .map_err(|e| anyhow::anyhow!("Phase 8->9: {e}"))?;
+    println!("[Phase 09/23] Resource Management");
+
+    let engine = engine
+        .transition_to_performance()
+        .map_err(|e| anyhow::anyhow!("Phase 9->10: {e}"))?;
+    println!("[Phase 10/23] Performance Engineering");
+
+    let engine = engine
+        .transition_to_cross_platform(serde_json::json!({}))
+        .map_err(|e| anyhow::anyhow!("Phase 10->11: {e}"))?;
+    println!("[Phase 11/23] Cross-Platform Compatibility");
+
+    let engine = engine
+        .transition_to_adversarial()
+        .map_err(|e| anyhow::anyhow!("Phase 11->12: {e}"))?;
+    println!("[Phase 12/23] Adversarial Loop");
+
+    let engine = engine
+        .transition_to_cicd(serde_json::json!({}))
+        .map_err(|e| anyhow::anyhow!("Phase 12->13: {e}"))?;
+    println!("[Phase 13/23] CI/CD Engineering");
+
+    let engine = engine
+        .transition_to_documentation(serde_json::json!({}))
+        .map_err(|e| anyhow::anyhow!("Phase 13->14: {e}"))?;
+    println!("[Phase 14/23] Documentation Verification");
+
+    let engine = engine
+        .transition_to_knowledge_base(serde_json::json!({}))
+        .map_err(|e| anyhow::anyhow!("Phase 14->15: {e}"))?;
+    println!("[Phase 15/23] Knowledge Base Update");
+
+    let engine = engine
+        .transition_to_execution_graph()
+        .map_err(|e| anyhow::anyhow!("Phase 15->16: {e}"))?;
+    println!("[Phase 16/23] Execution Graph Generation");
+
+    let engine = engine
+        .transition_to_supply_monitoring(serde_json::json!({}))
+        .map_err(|e| anyhow::anyhow!("Phase 16->17: {e}"))?;
+    println!("[Phase 17/23] Supply Chain Monitoring");
+
+    let engine = engine
+        .transition_to_deployment()
+        .map_err(|e| anyhow::anyhow!("Phase 17->18: {e}"))?;
+    println!("[Phase 18/23] Deployment & Operations");
+
+    let engine = engine
+        .transition_to_operations(serde_json::json!({}))
+        .map_err(|e| anyhow::anyhow!("Phase 18->19: {e}"))?;
+    println!("[Phase 19/23] Operations");
+
+    let engine = engine
+        .transition_to_closure()
+        .map_err(|e| anyhow::anyhow!("Phase 19->20: {e}"))?;
+    println!("[Phase 20/23] Project Closure");
+
+    let engine = engine
+        .transition_to_continuous_monitoring()
+        .map_err(|e| anyhow::anyhow!("Phase 20->21: {e}"))?;
+    println!("[Phase 21/23] Continuous Monitoring");
+
+    let engine = engine
+        .transition_to_knowledge_transfer()
+        .map_err(|e| anyhow::anyhow!("Phase 21->22: {e}"))?;
+    println!("[Phase 22/23] Knowledge Transfer");
+
+    let engine = engine
+        .transition_to_archive(serde_json::json!({}))
+        .map_err(|e| anyhow::anyhow!("Phase 22->23: {e}"))?;
+    println!("[Phase 23/23] Archive");
+
+    let finalized = engine
+        .finalize()
+        .map_err(|e| anyhow::anyhow!("Finalization: {e}"))?;
+
+    println!();
+    println!("Nexus FSM complete.");
+    println!("  Total artifacts: {}", finalized.total_artifacts);
+    println!("  Duration: {}ms", finalized.duration.num_milliseconds());
+
+    Ok(())
 }
 
 fn load_config(config_path: Option<&PathBuf>) -> anyhow::Result<Config> {
@@ -1499,7 +1669,7 @@ async fn handle_chat(
                 Some(session.id.to_string().as_str()),
             )?;
             return Err(e.into());
-        }
+        },
     };
 
     // Build messages with mode-specific system prompt
@@ -1540,7 +1710,7 @@ async fn handle_chat(
                 Some(session.id.to_string().as_str()),
             )?;
             return Err(e.into());
-        }
+        },
     };
     let duration = start.elapsed();
 
@@ -1619,7 +1789,7 @@ async fn handle_auto(
             let result = ActionResult::error("auto", task.clone(), e.to_string());
             formatter.format_action_result(&mut io::stdout(), &result)?;
             return Err(e.into());
-        }
+        },
     };
 
     let max_iters = max_iterations.unwrap_or(50);
@@ -1664,7 +1834,7 @@ async fn handle_auto(
             let result = ActionResult::error("auto", task.clone(), e.to_string());
             formatter.format_action_result(&mut io::stdout(), &result)?;
             return Err(e.into());
-        }
+        },
     };
 
     let duration = start.elapsed();
@@ -1710,12 +1880,12 @@ async fn handle_auto(
                         anyhow::bail!("Tests failed and fail_on_test_failure is set");
                     }
                 }
-            }
+            },
             Err(e) => {
                 if output_format == OutputFormat::Text {
                     println!("⚠️ Could not run tests: {e}");
                 }
-            }
+            },
         }
     }
 
@@ -1746,12 +1916,12 @@ async fn handle_auto(
                 } else if output_format == OutputFormat::Text {
                     println!("⚠️ Git commit failed (maybe no changes?)");
                 }
-            }
+            },
             Err(e) => {
                 if output_format == OutputFormat::Text {
                     println!("⚠️ Could not commit: {e}");
                 }
-            }
+            },
         }
     }
 
@@ -1964,11 +2134,11 @@ async fn handle_setup(
         ) {
             Ok(_) => {
                 println!("  ✓ Ollama server is running at {ollama_addr}");
-            }
+            },
             Err(_) => {
                 println!("  ⚠ Could not connect to Ollama at {ollama_addr}");
                 println!("    Make sure Ollama is installed and running");
-            }
+            },
         }
     }
 
@@ -2022,17 +2192,17 @@ async fn handle_setup(
     match &status {
         clawdius_core::onboarding::OnboardingStatus::Complete => {
             println!("✅ Setup complete! Clawdius is ready to use.\n");
-        }
+        },
         clawdius_core::onboarding::OnboardingStatus::MissingApiKey { provider } => {
             println!("⚠️  Setup incomplete: Missing API key for {provider}");
             println!("   Run: clawdius auth set-key {provider}\n");
-        }
+        },
         clawdius_core::onboarding::OnboardingStatus::MissingConfig => {
             println!("⚠️  Setup incomplete: Run 'clawdius init' to create a project\n");
-        }
+        },
         clawdius_core::onboarding::OnboardingStatus::FirstRun => {
             println!("⚠️  Setup incomplete: Run 'clawdius init' to create a project\n");
-        }
+        },
     }
 
     if output_format == OutputFormat::Json {
@@ -2241,7 +2411,7 @@ async fn handle_action(
             .ok_or_else(|| anyhow::anyhow!("Generate tests action not available"))?,
         _ => {
             anyhow::bail!("Unknown action: {action}");
-        }
+        },
     };
 
     let result = match action_impl.execute(&context) {
@@ -2265,7 +2435,7 @@ async fn handle_action(
                 format!("{:?}", action_result.kind),
                 edits,
             )
-        }
+        },
         Err(e) => ActionResult::error(&action, file.display().to_string(), e.to_string()),
     };
 
@@ -2478,15 +2648,15 @@ fn extract_function_body(code: &str, start: usize, _language: &str) -> anyhow::R
             '{' => {
                 depth += 1;
                 in_function = true;
-            }
+            },
             '}' => {
                 depth -= 1;
                 if in_function && depth == 0 {
                     function_end = start + i + 1;
                     break;
                 }
-            }
-            _ => {}
+            },
+            _ => {},
         }
     }
 
@@ -2577,7 +2747,7 @@ async fn handle_doc(
                     println!("   Falling back to basic documentation template");
                 }
                 return Err(e);
-            }
+            },
         }
     } else {
         // Generate module-level documentation
@@ -2592,7 +2762,7 @@ async fn handle_doc(
                     println!("⚠️  Could not generate module docs: {}", e);
                 }
                 return Err(e.into());
-            }
+            },
         }
     };
 
@@ -2637,7 +2807,7 @@ fn extract_exports(code: &str, language: &str) -> Vec<String> {
                     exports.push(format!("enum {}", &cap[1]));
                 }
             }
-        }
+        },
         "ts" | "js" => {
             // Look for export function, export class
             let fn_re = regex::Regex::new(r"export\s+(?:async\s+)?function\s+(\w+)").ok();
@@ -2653,7 +2823,7 @@ fn extract_exports(code: &str, language: &str) -> Vec<String> {
                     exports.push(format!("class {}", &cap[1]));
                 }
             }
-        }
+        },
         "py" => {
             // Look for def and class
             let def_re = regex::Regex::new(r"^def\s+(\w+)").ok();
@@ -2669,8 +2839,8 @@ fn extract_exports(code: &str, language: &str) -> Vec<String> {
                     exports.push(format!("class {}", &cap[1]));
                 }
             }
-        }
-        _ => {}
+        },
+        _ => {},
     }
 
     exports
@@ -2698,7 +2868,7 @@ async fn handle_verify(
                 .parent()
                 .map_or_else(|| path.clone(), |p| p.join("lake"));
             LeanVerifier::with_paths(path, lake_path)?
-        }
+        },
         None => LeanVerifier::new()?,
     };
 
@@ -2877,7 +3047,7 @@ async fn handle_research(
                 concepts,
                 relationships,
             )
-        }
+        },
         Err(e) => ResearchResult::error(e.to_string()),
     };
 
@@ -2907,19 +3077,19 @@ async fn handle_auth(action: AuthCommands) -> anyhow::Result<()> {
 
             storage.set_api_key(&provider, &key)?;
             println!("✓ API key stored for {provider}");
-        }
+        },
         AuthCommands::Get { provider } => match storage.get_api_key(&provider)? {
             Some(key) => {
                 println!("API key for {}: {}***", provider, &key[..8.min(key.len())]);
-            }
+            },
             None => {
                 println!("No API key found for {provider}");
-            }
+            },
         },
         AuthCommands::Delete { provider } => {
             storage.delete_api_key(&provider)?;
             println!("✓ API key deleted for {provider}");
-        }
+        },
     }
 
     Ok(())
@@ -3232,7 +3402,7 @@ async fn handle_context(
                 .collect();
 
             ContextResult::success(&query, max_tokens, context.total_tokens, files, symbols)
-        }
+        },
         Err(e) => ContextResult::error(&query, e.to_string()),
     };
 
@@ -3281,7 +3451,7 @@ async fn handle_checkpoint(
                     .with_file_count(checkpoint.files.len()),
                 Err(e) => CheckpointResult::error("create", e.to_string()),
             }
-        }
+        },
 
         CheckpointCommands::List {
             session,
@@ -3308,10 +3478,10 @@ async fn handle_checkpoint(
                     CheckpointResult::success("list")
                         .with_session_id(session_id)
                         .with_checkpoints(cp_infos)
-                }
+                },
                 Err(e) => CheckpointResult::error("list", e.to_string()),
             }
-        }
+        },
 
         CheckpointCommands::Restore { checkpoint_id } => {
             match manager.get_checkpoint(&checkpoint_id)? {
@@ -3327,7 +3497,7 @@ async fn handle_checkpoint(
                     format!("Checkpoint not found: {checkpoint_id}"),
                 ),
             }
-        }
+        },
 
         CheckpointCommands::Compare {
             checkpoint_id1,
@@ -3344,7 +3514,7 @@ async fn handle_checkpoint(
                 Ok(()) => CheckpointResult::success("delete").with_checkpoint_id(checkpoint_id),
                 Err(e) => CheckpointResult::error("delete", e.to_string()),
             }
-        }
+        },
 
         CheckpointCommands::Show { checkpoint_id } => {
             match manager.get_checkpoint(&checkpoint_id)? {
@@ -3358,7 +3528,7 @@ async fn handle_checkpoint(
                     format!("Checkpoint not found: {checkpoint_id}"),
                 ),
             }
-        }
+        },
 
         CheckpointCommands::Cleanup { session, keep } => {
             let session_id = session.unwrap_or_else(|| "default".to_string());
@@ -3368,7 +3538,7 @@ async fn handle_checkpoint(
                     .with_file_count(deleted),
                 Err(e) => CheckpointResult::error("cleanup", e.to_string()),
             }
-        }
+        },
 
         CheckpointCommands::Timeline { session } => {
             let session_id = session.unwrap_or_else(|| "default".to_string());
@@ -3388,10 +3558,10 @@ async fn handle_checkpoint(
                     CheckpointResult::success("timeline")
                         .with_session_id(session_id)
                         .with_checkpoints(cp_infos)
-                }
+                },
                 Err(e) => CheckpointResult::error("timeline", e.to_string()),
             }
-        }
+        },
     };
 
     formatter.format_checkpoint_result(&mut io::stdout(), &result)?;
@@ -3435,7 +3605,7 @@ async fn handle_timeline(
                 println!("  ID: {}", checkpoint_id.0);
                 println!("  Name: {name}");
             }
-        }
+        },
 
         TimelineCommands::List => {
             let checkpoints: Vec<clawdius_core::timeline::CheckpointInfo> =
@@ -3459,7 +3629,7 @@ async fn handle_timeline(
                     println!();
                 }
             }
-        }
+        },
 
         TimelineCommands::Watch {
             debounce_secs,
@@ -3540,23 +3710,23 @@ async fn handle_timeline(
                                                 name,
                                                 paths.len()
                                             );
-                                        }
+                                        },
                                         Err(e) => {
                                             eprintln!(
                                                 "[{}] Failed to create checkpoint: {}",
                                                 chrono::Local::now().format("%H:%M:%S"),
                                                 e
                                             );
-                                        }
+                                        },
                                     }
-                                }
+                                },
                                 Err(e) => {
                                     eprintln!(
                                         "[{}] Failed to create timeline manager: {}",
                                         chrono::Local::now().format("%H:%M:%S"),
                                         e
                                     );
-                                }
+                                },
                             }
                         });
                     })
@@ -3569,7 +3739,7 @@ async fn handle_timeline(
             println!("\nStopping file watcher...");
             watcher.stop().await;
             watch_handle.abort();
-        }
+        },
 
         TimelineCommands::Rollback { checkpoint_id } => {
             let id = CheckpointId::from_string(checkpoint_id.clone());
@@ -3609,7 +3779,7 @@ async fn handle_timeline(
             } else {
                 anyhow::bail!("Checkpoint not found: {checkpoint_id}");
             }
-        }
+        },
 
         TimelineCommands::Diff { from, to } => {
             let from_id = CheckpointId::from_string(from.clone());
@@ -3647,7 +3817,7 @@ async fn handle_timeline(
                     }
                 }
             }
-        }
+        },
 
         TimelineCommands::History { file } => {
             let history: Vec<clawdius_core::timeline::FileVersion> =
@@ -3667,7 +3837,7 @@ async fn handle_timeline(
                     println!();
                 }
             }
-        }
+        },
 
         TimelineCommands::Delete { checkpoint_id } => {
             let id = CheckpointId::from_string(checkpoint_id.clone());
@@ -3684,7 +3854,7 @@ async fn handle_timeline(
             } else {
                 println!("✓ Checkpoint deleted: {checkpoint_id}");
             }
-        }
+        },
 
         TimelineCommands::Cleanup { keep } => {
             let deleted = manager.cleanup_old_checkpoints(keep)?;
@@ -3701,7 +3871,7 @@ async fn handle_timeline(
             } else {
                 println!("✓ Cleaned up {deleted} old checkpoint(s), keeping {keep} most recent");
             }
-        }
+        },
     }
 
     Ok(())
@@ -3738,7 +3908,7 @@ async fn handle_modes(
                     .collect();
 
                 ModesResult::success("list").with_modes(mode_infos)
-            }
+            },
             Err(e) => ModesResult::error("list", e.to_string()),
         },
 
@@ -3775,7 +3945,7 @@ tools = ["file", "shell", "git"]
                     Err(e) => ModesResult::error("create", e.to_string()),
                 }
             }
-        }
+        },
 
         ModeCommands::Show { name } => match AgentMode::load_by_name(&name, &modes_dir) {
             Ok(mode) => ModesResult::success("show")
@@ -3818,7 +3988,7 @@ async fn handle_lang(
             }
             println!();
             println!("Use 'clawdius lang set <code>' to change language.");
-        }
+        },
         LangCommands::Set { code } => {
             match Language::from_code(&code) {
                 Some(lang) => {
@@ -3864,12 +4034,12 @@ async fn handle_lang(
                         lang.code()
                     );
                     println!("  Config saved to: {}", config_path.display());
-                }
+                },
                 None => {
                     anyhow::bail!("Unknown language code: {code}. Supported codes: en, zh, ja, ko, de, fr, es, it, pt, ru");
-                }
+                },
             }
-        }
+        },
         LangCommands::Show => {
             let current = Language::detect();
             println!(
@@ -3883,7 +4053,7 @@ async fn handle_lang(
                 let marker = if *lang == current { " *" } else { "" };
                 println!("  {} - {}{}", lang.code(), lang.native_name(), marker);
             }
-        }
+        },
     }
 
     Ok(())
@@ -3919,7 +4089,7 @@ async fn handle_edit(
             external_editor
                 .edit_with_extension(&initial_content, &ext)
                 .await?
-        }
+        },
         None => external_editor.edit_prompt(initial.as_deref()).await?,
     };
 
@@ -3940,7 +4110,7 @@ async fn handle_edit(
                     "lines": content.lines().count()
                 })
             );
-        }
+        },
         OutputFormat::Text | OutputFormat::StreamJson => {
             println!("Edited content:\n");
             println!("{content}");
@@ -3950,7 +4120,7 @@ async fn handle_edit(
                 content.len(),
                 content.lines().count()
             );
-        }
+        },
     }
 
     Ok(())
@@ -3987,7 +4157,7 @@ async fn handle_workflow(
                     println!();
                 }
             }
-        }
+        },
 
         WorkflowCommands::Create { name, description } => {
             let mut workflow = WorkflowDefinition::new(&name);
@@ -4009,7 +4179,7 @@ async fn handle_workflow(
             } else {
                 println!("✓ Workflow created: {} ({})", name, id);
             }
-        }
+        },
 
         WorkflowCommands::Show { id } => {
             use clawdius_core::nexus::WorkflowId;
@@ -4033,12 +4203,12 @@ async fn handle_workflow(
                             }
                         }
                     }
-                }
+                },
                 None => {
                     anyhow::bail!("Workflow not found: {id}");
-                }
+                },
             }
-        }
+        },
 
         WorkflowCommands::Run {
             id,
@@ -4084,7 +4254,7 @@ async fn handle_workflow(
                 println!("Ready tasks: {:?}", ready);
                 println!("\nWorkflow execution started. Use 'clawdius workflow status' to check progress.");
             }
-        }
+        },
 
         WorkflowCommands::Cancel { execution_id } => {
             orchestrator.cancel_execution(&execution_id).await?;
@@ -4100,7 +4270,7 @@ async fn handle_workflow(
             } else {
                 println!("✓ Workflow execution cancelled: {}", execution_id);
             }
-        }
+        },
 
         WorkflowCommands::Status { execution_id } => {
             match orchestrator.get_execution(&execution_id).await {
@@ -4126,12 +4296,12 @@ async fn handle_workflow(
                             );
                         }
                     }
-                }
+                },
                 None => {
                     anyhow::bail!("Execution not found: {}", execution_id);
-                }
+                },
             }
-        }
+        },
 
         WorkflowCommands::Delete { id } => {
             // Note: WorkflowOrchestrator doesn't have delete method yet
@@ -4147,7 +4317,7 @@ async fn handle_workflow(
             } else {
                 println!("✓ Workflow deleted: {}", id);
             }
-        }
+        },
     }
 
     Ok(())
@@ -4180,7 +4350,7 @@ async fn handle_webhook(
                     println!();
                 }
             }
-        }
+        },
 
         WebhookCommands::Create {
             name,
@@ -4238,7 +4408,7 @@ async fn handle_webhook(
             } else {
                 println!("✓ Webhook created: {} ({})", name, id);
             }
-        }
+        },
 
         WebhookCommands::Show { id } => {
             use clawdius_core::webhooks::WebhookId;
@@ -4260,12 +4430,12 @@ async fn handle_webhook(
                         println!("Timeout: {}s", webhook.timeout_secs);
                         println!("Max retries: {}", webhook.max_retries);
                     }
-                }
+                },
                 None => {
                     anyhow::bail!("Webhook not found: {id}");
-                }
+                },
             }
-        }
+        },
 
         WebhookCommands::Update {
             id,
@@ -4324,7 +4494,7 @@ async fn handle_webhook(
             } else {
                 println!("✓ Webhook updated: {}", id);
             }
-        }
+        },
 
         WebhookCommands::Delete { id } => {
             use clawdius_core::webhooks::WebhookId;
@@ -4345,7 +4515,7 @@ async fn handle_webhook(
             } else {
                 anyhow::bail!("Webhook not found: {id}");
             }
-        }
+        },
 
         WebhookCommands::Test { id, event } => {
             let test_event = event
@@ -4377,7 +4547,7 @@ async fn handle_webhook(
             } else {
                 println!("✓ Test webhook triggered: {} ({})", id, test_event);
             }
-        }
+        },
 
         WebhookCommands::Deliveries { id, limit } => {
             use clawdius_core::webhooks::WebhookId;
@@ -4410,7 +4580,7 @@ async fn handle_webhook(
                     println!();
                 }
             }
-        }
+        },
 
         WebhookCommands::Stats => {
             let stats = manager.get_stats().await;
@@ -4428,7 +4598,7 @@ async fn handle_webhook(
                 println!("  Pending: {}", stats.pending_deliveries);
                 println!("  Timeouts: {}", stats.timeout_deliveries);
             }
-        }
+        },
     }
 
     Ok(())
@@ -4518,7 +4688,7 @@ async fn handle_generate(
                     "target_files": target_files
                 })
             );
-        }
+        },
         OutputFormat::Text => {
             println!("🤖 Clawdius Generate");
             println!("Prompt: {prompt}");
@@ -4529,7 +4699,7 @@ async fn handle_generate(
                 println!("Target files: {:?}", target_files);
             }
             println!();
-        }
+        },
         OutputFormat::StreamJson => {
             println!(
                 "{}",
@@ -4539,7 +4709,7 @@ async fn handle_generate(
                     "mode": mode
                 })
             );
-        }
+        },
     }
 
     // Create task request
@@ -4575,7 +4745,7 @@ async fn handle_generate(
                         }
                     })
                 );
-            }
+            },
             OutputFormat::Text => {
                 println!("[DRY RUN] Would execute task: {}", request.description);
                 println!();
@@ -4587,7 +4757,7 @@ async fn handle_generate(
                 if !request.target_files.is_empty() {
                     println!("  Target Files: {:?}", request.target_files);
                 }
-            }
+            },
             OutputFormat::StreamJson => {
                 println!(
                     "{}",
@@ -4596,7 +4766,7 @@ async fn handle_generate(
                         "task": request.description
                     })
                 );
-            }
+            },
         }
         return Ok(());
     }
@@ -4685,7 +4855,7 @@ async fn handle_generate(
                     "log_entries": task_result.log.len()
                 })
             );
-        }
+        },
         OutputFormat::Text => {
             if task_result.success {
                 println!("✅ Task completed successfully!");
@@ -4750,7 +4920,7 @@ async fn handle_generate(
             if let Some(ref checkpoint) = task_result.rollback_checkpoint {
                 println!("\n💾 Rollback checkpoint: {}", checkpoint);
             }
-        }
+        },
         OutputFormat::StreamJson => {
             // Stream each change as an event
             for change in &task_result.changes {
@@ -4775,7 +4945,7 @@ async fn handle_generate(
                     "issues_count": task_result.verification.issues.len()
                 })
             );
-        }
+        },
     }
 
     Ok(())
@@ -4831,7 +5001,7 @@ async fn handle_lsp(action: LspCommands, output_format: OutputFormat) -> anyhow:
                                     })
                                 })
                             );
-                        }
+                        },
                         OutputFormat::Text => {
                             crate::cli_progress::success(&format!(
                                 "LSP server started: {}",
@@ -4886,7 +5056,7 @@ async fn handle_lsp(action: LspCommands, output_format: OutputFormat) -> anyhow:
                             } else {
                                 println!("\n   ⚠ No capabilities reported");
                             }
-                        }
+                        },
                         OutputFormat::StreamJson => {
                             println!(
                                 "{}",
@@ -4896,12 +5066,12 @@ async fn handle_lsp(action: LspCommands, output_format: OutputFormat) -> anyhow:
                                     "status": "connected"
                                 })
                             );
-                        }
+                        },
                     }
 
                     // Stop the client (for now, we start/stop per command)
                     let _ = client.stop().await;
-                }
+                },
                 Err(e) => match output_format {
                     OutputFormat::Json => {
                         println!(
@@ -4913,12 +5083,12 @@ async fn handle_lsp(action: LspCommands, output_format: OutputFormat) -> anyhow:
                                 "error": e.to_string()
                             })
                         );
-                    }
+                    },
                     OutputFormat::Text => {
                         println!("❌ Failed to start LSP server: {}", server);
                         println!("   Error: {}", e);
                         println!("\n   Make sure '{}' is installed and in your PATH.", server);
-                    }
+                    },
                     OutputFormat::StreamJson => {
                         println!(
                             "{}",
@@ -4929,10 +5099,10 @@ async fn handle_lsp(action: LspCommands, output_format: OutputFormat) -> anyhow:
                                 "error": e.to_string()
                             })
                         );
-                    }
+                    },
                 },
             }
-        }
+        },
 
         LspCommands::Complete { uri, line, column } => match output_format {
             OutputFormat::Json => {
@@ -4946,12 +5116,12 @@ async fn handle_lsp(action: LspCommands, output_format: OutputFormat) -> anyhow:
                         "note": "Use 'clawdius lsp start' to connect to an LSP server"
                     })
                 );
-            }
+            },
             OutputFormat::Text => {
                 println!("Completions for {}:{}:{}", uri, line, column);
                 println!("\n💡 Tip: Start an LSP server first with:");
                 println!("   clawdius lsp start rust-analyzer --root file://$(pwd)");
-            }
+            },
             OutputFormat::StreamJson => {
                 println!(
                     "{}",
@@ -4963,7 +5133,7 @@ async fn handle_lsp(action: LspCommands, output_format: OutputFormat) -> anyhow:
                         "items": []
                     })
                 );
-            }
+            },
         },
 
         LspCommands::Hover { uri, line, column } => match output_format {
@@ -4978,12 +5148,12 @@ async fn handle_lsp(action: LspCommands, output_format: OutputFormat) -> anyhow:
                         "note": "Use 'clawdius lsp start' to connect to an LSP server"
                     })
                 );
-            }
+            },
             OutputFormat::Text => {
                 println!("Hover at {}:{}:{}", uri, line, column);
                 println!("\n💡 Tip: Start an LSP server first with:");
                 println!("   clawdius lsp start rust-analyzer --root file://$(pwd)");
-            }
+            },
             OutputFormat::StreamJson => {
                 println!(
                     "{}",
@@ -4995,7 +5165,7 @@ async fn handle_lsp(action: LspCommands, output_format: OutputFormat) -> anyhow:
                         "content": null
                     })
                 );
-            }
+            },
         },
 
         LspCommands::Definition { uri, line, column } => match output_format {
@@ -5010,12 +5180,12 @@ async fn handle_lsp(action: LspCommands, output_format: OutputFormat) -> anyhow:
                         "note": "Use 'clawdius lsp start' to connect to an LSP server"
                     })
                 );
-            }
+            },
             OutputFormat::Text => {
                 println!("Definition for {}:{}:{}", uri, line, column);
                 println!("\n💡 Tip: Start an LSP server first with:");
                 println!("   clawdius lsp start rust-analyzer --root file://$(pwd)");
-            }
+            },
             OutputFormat::StreamJson => {
                 println!(
                     "{}",
@@ -5027,7 +5197,7 @@ async fn handle_lsp(action: LspCommands, output_format: OutputFormat) -> anyhow:
                         "locations": []
                     })
                 );
-            }
+            },
         },
 
         LspCommands::References {
@@ -5048,7 +5218,7 @@ async fn handle_lsp(action: LspCommands, output_format: OutputFormat) -> anyhow:
                         "note": "Use 'clawdius lsp start' to connect to an LSP server"
                     })
                 );
-            }
+            },
             OutputFormat::Text => {
                 println!(
                     "References for {}:{}:{} (include_declaration: {})",
@@ -5056,7 +5226,7 @@ async fn handle_lsp(action: LspCommands, output_format: OutputFormat) -> anyhow:
                 );
                 println!("\n💡 Tip: Start an LSP server first with:");
                 println!("   clawdius lsp start rust-analyzer --root file://$(pwd)");
-            }
+            },
             OutputFormat::StreamJson => {
                 println!(
                     "{}",
@@ -5068,7 +5238,7 @@ async fn handle_lsp(action: LspCommands, output_format: OutputFormat) -> anyhow:
                         "locations": []
                     })
                 );
-            }
+            },
         },
 
         LspCommands::Symbols { uri } => match output_format {
@@ -5082,12 +5252,12 @@ async fn handle_lsp(action: LspCommands, output_format: OutputFormat) -> anyhow:
                         "note": "Use 'clawdius lsp start' to connect to an LSP server"
                     })
                 );
-            }
+            },
             OutputFormat::Text => {
                 println!("Symbols for {}", uri);
                 println!("\n💡 Tip: Start an LSP server first with:");
                 println!("   clawdius lsp start rust-analyzer --root file://$(pwd)");
-            }
+            },
             OutputFormat::StreamJson => {
                 println!(
                     "{}",
@@ -5097,7 +5267,7 @@ async fn handle_lsp(action: LspCommands, output_format: OutputFormat) -> anyhow:
                         "symbols": []
                     })
                 );
-            }
+            },
         },
 
         LspCommands::Diagnostics { uri } => match output_format {
@@ -5111,12 +5281,12 @@ async fn handle_lsp(action: LspCommands, output_format: OutputFormat) -> anyhow:
                         "note": "Use 'clawdius lsp start' to connect to an LSP server"
                     })
                 );
-            }
+            },
             OutputFormat::Text => {
                 println!("Diagnostics for {}", uri);
                 println!("\n💡 Tip: Start an LSP server first with:");
                 println!("   clawdius lsp start rust-analyzer --root file://$(pwd)");
-            }
+            },
             OutputFormat::StreamJson => {
                 println!(
                     "{}",
@@ -5126,7 +5296,7 @@ async fn handle_lsp(action: LspCommands, output_format: OutputFormat) -> anyhow:
                         "diagnostics": []
                     })
                 );
-            }
+            },
         },
 
         LspCommands::CodeActions {
@@ -5150,7 +5320,7 @@ async fn handle_lsp(action: LspCommands, output_format: OutputFormat) -> anyhow:
                         "note": "Use 'clawdius lsp start' to connect to an LSP server"
                     })
                 );
-            }
+            },
             OutputFormat::Text => {
                 println!(
                     "Code actions for {} ({}:{}-{}:{})",
@@ -5158,7 +5328,7 @@ async fn handle_lsp(action: LspCommands, output_format: OutputFormat) -> anyhow:
                 );
                 println!("\n💡 Tip: Start an LSP server first with:");
                 println!("   clawdius lsp start rust-analyzer --root file://$(pwd)");
-            }
+            },
             OutputFormat::StreamJson => {
                 println!(
                     "{}",
@@ -5172,7 +5342,7 @@ async fn handle_lsp(action: LspCommands, output_format: OutputFormat) -> anyhow:
                         "actions": []
                     })
                 );
-            }
+            },
         },
     }
 
@@ -5252,7 +5422,7 @@ async fn handle_memory(
                                 "learned_count": memory.learned().len()
                             })
                         );
-                    }
+                    },
                     OutputFormat::Text => {
                         println!("📝 Project Memory\n");
 
@@ -5305,7 +5475,7 @@ async fn handle_memory(
                         }
 
                         println!("\n📊 {} learned entries", memory.learned().len());
-                    }
+                    },
                     OutputFormat::StreamJson => {
                         println!(
                             "{}",
@@ -5315,10 +5485,10 @@ async fn handle_memory(
                                 "learned_count": memory.learned().len()
                             })
                         );
-                    }
+                    },
                 }
             }
-        }
+        },
 
         MemoryCommands::Learn {
             entry_type,
@@ -5333,10 +5503,10 @@ async fn handle_memory(
             match entry_type.to_lowercase().as_str() {
                 "build" => {
                     memory.learn_build_command(&content, description);
-                }
+                },
                 "test" => {
                     memory.learn_test_command(&content, description);
-                }
+                },
                 "debug" => {
                     let parts: Vec<&str> = content.splitn(2, '=').collect();
                     if parts.len() == 2 {
@@ -5344,7 +5514,7 @@ async fn handle_memory(
                     } else {
                         anyhow::bail!("Debug format: issue=solution");
                     }
-                }
+                },
                 "pattern" => {
                     let parts: Vec<&str> = content.splitn(2, '=').collect();
                     if parts.len() == 2 {
@@ -5356,7 +5526,7 @@ async fn handle_memory(
                     } else {
                         anyhow::bail!("Pattern format: name=pattern");
                     }
-                }
+                },
                 "preference" => {
                     let parts: Vec<&str> = content.splitn(2, '=').collect();
                     if parts.len() == 2 {
@@ -5364,13 +5534,13 @@ async fn handle_memory(
                     } else {
                         anyhow::bail!("Preference format: key=value");
                     }
-                }
+                },
                 _ => {
                     anyhow::bail!(
                         "Unknown entry type: {}. Use: build, test, debug, pattern, preference",
                         entry_type
                     );
-                }
+                },
             }
 
             memory.save()?;
@@ -5385,10 +5555,10 @@ async fn handle_memory(
                             "content": content
                         })
                     );
-                }
+                },
                 OutputFormat::Text => {
                     println!("✅ Learned {} entry", entry_type);
-                }
+                },
                 OutputFormat::StreamJson => {
                     println!(
                         "{}",
@@ -5398,9 +5568,9 @@ async fn handle_memory(
                             "content": content
                         })
                     );
-                }
+                },
             }
-        }
+        },
 
         MemoryCommands::Instructions { content } => {
             let mut memory = match ProjectMemory::load(&project_root) {
@@ -5429,10 +5599,10 @@ async fn handle_memory(
                             "instructions_length": instructions.len()
                         })
                     );
-                }
+                },
                 OutputFormat::Text => {
                     println!("✅ Project instructions updated");
-                }
+                },
                 OutputFormat::StreamJson => {
                     println!(
                         "{}",
@@ -5441,9 +5611,9 @@ async fn handle_memory(
                             "length": instructions.len()
                         })
                     );
-                }
+                },
             }
-        }
+        },
 
         MemoryCommands::List { category } => {
             let memory = match ProjectMemory::load(&project_root) {
@@ -5477,14 +5647,14 @@ async fn handle_memory(
                             "entries": items
                         })
                     );
-                }
+                },
                 OutputFormat::Text => {
                     println!("📋 {} entries in category: {}\n", entries.len(), category);
 
                     for entry in &entries {
                         println!("• [{}] {:?}", entry.category(), entry);
                     }
-                }
+                },
                 OutputFormat::StreamJson => {
                     println!(
                         "{}",
@@ -5494,9 +5664,9 @@ async fn handle_memory(
                             "count": entries.len()
                         })
                     );
-                }
+                },
             }
-        }
+        },
 
         MemoryCommands::Clear { category, yes } => {
             if !yes {
@@ -5528,14 +5698,14 @@ async fn handle_memory(
                             "removed_count": count - memory.learned().len()
                         })
                     );
-                }
+                },
                 OutputFormat::Text => {
                     println!(
                         "✅ Cleared {} entries from category: {}",
                         count - memory.learned().len(),
                         category
                     );
-                }
+                },
                 OutputFormat::StreamJson => {
                     println!(
                         "{}",
@@ -5544,9 +5714,9 @@ async fn handle_memory(
                             "category": category
                         })
                     );
-                }
+                },
             }
-        }
+        },
 
         MemoryCommands::Init {
             name,
@@ -5609,7 +5779,7 @@ async fn handle_memory(
                             "metadata": memory.metadata()
                         })
                     );
-                }
+                },
                 OutputFormat::Text => {
                     println!("✅ Memory initialized");
                     if claude_md_path.exists() {
@@ -5619,7 +5789,7 @@ async fn handle_memory(
                         "   Storage: {}/.clawdius/memory.json",
                         project_root.display()
                     );
-                }
+                },
                 OutputFormat::StreamJson => {
                     println!(
                         "{}",
@@ -5628,9 +5798,9 @@ async fn handle_memory(
                             "metadata": memory.metadata()
                         })
                     );
-                }
+                },
             }
-        }
+        },
     }
 
     Ok(())
@@ -5655,17 +5825,17 @@ async fn handle_models(
                     match output_format {
                         OutputFormat::Json => {
                             println!("[]");
-                        }
+                        },
                         _ => {
                             println!("No models found. Pull a model with:");
                             println!("  clawdius models pull llama3.2");
-                        }
+                        },
                     }
                 } else {
                     match output_format {
                         OutputFormat::Json => {
                             println!("{}", serde_json::to_string_pretty(&models)?);
-                        }
+                        },
                         _ => {
                             println!("Available models:\n");
                             for model in &models {
@@ -5676,10 +5846,10 @@ async fn handle_models(
                                 println!("  🦙 {} {}", model.name, size);
                             }
                             println!("\nTotal: {} model(s)", models.len());
-                        }
+                        },
                     }
                 }
-            }
+            },
             Err(e) => {
                 match output_format {
                     OutputFormat::Json => {
@@ -5690,15 +5860,15 @@ async fn handle_models(
                                 "hint": "Ensure Ollama is running"
                             })
                         );
-                    }
+                    },
                     _ => {
                         eprintln!("❌ Error: {e}");
                         eprintln!("\n💡 Ensure Ollama is running:");
                         eprintln!("   ollama serve");
-                    }
+                    },
                 }
                 return Err(anyhow::anyhow!("{e}"));
-            }
+            },
         },
 
         ModelsCommands::Pull { model } => {
@@ -5711,11 +5881,11 @@ async fn handle_models(
                             "model": model
                         })
                     );
-                }
+                },
                 _ => {
                     println!("📦 Pulling model: {model}");
                     println!("   This may take a while...\n");
-                }
+                },
             }
 
             match provider.pull_model(&model).await {
@@ -5728,12 +5898,12 @@ async fn handle_models(
                                 "model": model
                             })
                         );
-                    }
+                    },
                     _ => {
                         println!("✅ Model pulled successfully: {model}");
                         println!("\nUse it with:");
                         println!("  clawdius chat -P ollama --model {}", model);
-                    }
+                    },
                 },
                 Err(e) => {
                     match output_format {
@@ -5745,15 +5915,15 @@ async fn handle_models(
                                     "model": model
                                 })
                             );
-                        }
+                        },
                         _ => {
                             eprintln!("❌ Failed to pull model: {e}");
-                        }
+                        },
                     }
                     return Err(anyhow::anyhow!("{e}"));
-                }
+                },
             }
-        }
+        },
 
         ModelsCommands::Health => match provider.health_check().await {
             Ok(true) => match output_format {
@@ -5766,11 +5936,11 @@ async fn handle_models(
                             "port": port
                         })
                     );
-                }
+                },
                 _ => {
                     println!("✅ Ollama server is healthy");
                     println!("   Host: {host}:{port}");
-                }
+                },
             },
             Ok(false) | Err(_) => {
                 match output_format {
@@ -5783,15 +5953,15 @@ async fn handle_models(
                                 "port": port
                             })
                         );
-                    }
+                    },
                     _ => {
                         eprintln!("❌ Ollama server is not responding");
                         eprintln!("\n💡 Start Ollama with:");
                         eprintln!("   ollama serve");
-                    }
+                    },
                 }
                 return Err(anyhow::anyhow!("Ollama server not responding"));
-            }
+            },
         },
 
         ModelsCommands::Current => {
@@ -5806,7 +5976,7 @@ async fn handle_models(
                             "note": "Configure in clawdius.toml"
                         })
                     );
-                }
+                },
                 _ => {
                     println!("Current model configuration:");
                     println!("  Provider: ollama (default)");
@@ -5815,9 +5985,9 @@ async fn handle_models(
                     println!("   [llm.ollama]");
                     println!("   model = \"mistral\"");
                     println!("   base_url = \"http://localhost:11434\"");
-                }
+                },
             }
-        }
+        },
     }
 
     Ok(())
@@ -5875,7 +6045,7 @@ async fn handle_complete(
         OutputFormat::Json => match completion_provider.complete(&request).await {
             Ok(response) => {
                 println!("{}", serde_json::to_string_pretty(&response)?);
-            }
+            },
             Err(e) => {
                 println!(
                     "{}",
@@ -5883,7 +6053,7 @@ async fn handle_complete(
                         "error": e.to_string()
                     })
                 );
-            }
+            },
         },
         _ => {
             println!("🔍 Requesting completion from {}...", provider);
@@ -5909,13 +6079,13 @@ async fn handle_complete(
                             }
                         }
                     }
-                }
+                },
                 Err(e) => {
                     eprintln!("❌ Completion failed: {}", e);
                     eprintln!("\n💡 Ensure your LLM provider is configured and accessible");
-                }
+                },
             }
-        }
+        },
     }
 
     Ok(())
@@ -6001,7 +6171,7 @@ async fn handle_analyze(
     let output = match format {
         OutputFormat::Json => {
             format_analyze_json(&drift_report, &debt_report, files.len(), min_severity_level)?
-        }
+        },
         _ => format_analyze_text(&drift_report, &debt_report, files.len(), min_severity_level),
     };
 

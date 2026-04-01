@@ -1,0 +1,114 @@
+# Domain Constraints: Performance
+# Schema v1.0.0
+
+[metadata]
+domain = "Performance"
+derivation_date = "2026-03-31T00:00:00Z"
+confidence = 0.90
+sources = [
+    "basic_spec.md",
+    "BENCHMARKS.md",
+    "CI benchmarks.yml"
+]
+
+[constraints.timing]
+[[constraints.timing.item]]
+id = "TC-PERF-001"
+name = "TUI frame time"
+description = "Maximum time per TUI render frame"
+value = 16
+unit = "milliseconds"
+type = "soft"
+source = "ratatui + 60fps target"
+derivation = "1000ms / 60fps = 16.666ms"
+margin_percent = 20
+validation_method = "criterion benchmark on TUI render"
+
+[[constraints.timing.item]]
+id = "TC-PERF-002"
+name = "LLM streaming chunk latency"
+description = "Maximum latency per streaming chunk delivery"
+value = 50
+unit = "milliseconds"
+type = "soft"
+source = "User experience requirement"
+derivation = "Chunks must appear within 50ms for real-time feel"
+margin_percent = 100
+validation_method = "Streaming benchmark in core_bench.rs"
+
+[[constraints.timing.item]]
+id = "TC-PERF-003"
+name = "Session query latency"
+description = "Maximum latency for session lookup with 1K sessions"
+value = 10
+unit = "milliseconds"
+type = "soft"
+source = "SQLite performance requirements"
+derivation = "SQLite indexed query on 1K rows should be <10ms"
+margin_percent = 100
+validation_method = "session_benchmark.rs"
+
+[[constraints.timing.item]]
+id = "TC-PERF-004"
+name = "CI build time"
+description = "Maximum CI build time"
+value = 600
+unit = "seconds"
+type = "soft"
+source = "CI workflow timeout"
+derivation = "10 minute CI timeout allows 600s for build"
+margin_percent = 50
+validation_method = "CI workflow timing"
+
+[constraints.memory]
+[[constraints.memory.item]]
+id = "MC-PERF-001"
+name = "Maximum RSS during benchmarks"
+description = "Peak memory usage during benchmark runs"
+value = 2147483648
+unit = "bytes"
+allocation_type = "dynamic"
+source = "CI runner constraints"
+derivation = "2GB RSS limit on GitHub Actions"
+validation_method = "/usr/bin/time -v cargo bench"
+
+[constraints.numerical]
+[[constraints.numerical.item]]
+id = "NC-PERF-001"
+name = "Code coverage threshold"
+description = "Minimum code coverage percentage"
+value = 85
+unit = "percent"
+source = "ci.yml coverage job"
+derivation = "Industry standard for critical infrastructure"
+validation_method = "cargo llvm-cov --summary-only"
+
+[[constraints.numerical.item]]
+id = "NC-PERF-002"
+name = "Mutation testing threshold"
+description = "Minimum mutation score"
+value = 85
+unit = "percent"
+source = "ci.yml mutation job"
+derivation = "High mutation score ensures test quality"
+validation_method = "cargo mutants --minimum-test-coverage 85"
+
+[[constraints.numerical.item]]
+id = "NC-PERF-003"
+name = "Performance regression threshold"
+description = "Maximum allowed performance regression"
+value = 15
+unit = "percent"
+source = "benchmarks.yml"
+derivation = "15% regression triggers CI failure; 10% warning"
+validation_method = "criterion baseline comparison"
+
+[conflicts]
+[[conflicts.item]]
+id = "CONF-PERF-001"
+constraint_1 = "NC-PERF-001"
+constraint_2 = "TC-PERF-004"
+description = "Higher coverage may increase build time"
+impact = "Additional test compilation and execution time"
+resolution = "Parallel test execution via nextest mitigates this"
+adr_reference = "ADR-003"

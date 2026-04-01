@@ -1,0 +1,171 @@
+# Test Vector Specification for HFT Broker
+# Schema v1.0.0
+
+[metadata]
+algorithm_id = "ALG-HFT-001"
+algorithm_version = "1.0.0"
+generation_date = "2026-03-31T00:00:00Z"
+generator = "derived"
+verification_status = "verified"
+
+[precision_requirements]
+floating_point_type = "f64"
+absolute_tolerance = 1e-10
+relative_tolerance = 1e-8
+
+# --- Wallet Guard Test Vectors ---
+
+[[test_vector]]
+id = "TV-HFT-001"
+name = "Valid buy order within limits"
+category = "nominal"
+priority = "critical"
+description = "Standard buy order with sufficient cash and within position limits"
+
+[test_vector.input]
+cash = { type = "u64", value = 1000000 }
+position = { type = "i64", value = 0 }
+symbol = { type = "u32", value = 1 }
+side = { type = "string", value = "buy" }
+quantity = { type = "u64", value = 100 }
+price = { type = "i64", value = 10000 }
+
+[test_vector.expected_output]
+decision = { type = "string", value = "approved" }
+
+[test_vector.verification]
+source = "Mathematical derivation"
+method = "Analytical"
+confidence = 0.99
+verifier = "wallet_guard.rs"
+verification_date = "2026-03-31"
+
+[[test_vector]]
+id = "TV-HFT-002"
+name = "Position limit exceeded"
+category = "boundary"
+priority = "critical"
+description = "Buy order that would exceed maximum position size"
+
+[test_vector.input]
+cash = { type = "u64", value = 100000000 }
+position = { type = "i64", value = 10000 }
+symbol = { type = "u32", value = 1 }
+side = { type = "string", value = "buy" }
+quantity = { type = "u64", value = 1 }
+price = { type = "i64", value = 100 }
+
+[test_vector.expected_output]
+decision = { type = "string", value = "rejected" }
+reason = { type = "string", value = "position_limit_exceeded" }
+
+[test_vector.verification]
+source = "SEC Rule 15c3-5"
+method = "Analytical"
+confidence = 0.99
+
+[[test_vector]]
+id = "TV-HFT-003"
+name = "Integer overflow protection"
+category = "boundary"
+priority = "critical"
+description = "Order with i64::MAX price does not cause panic"
+
+[test_vector.input]
+cash = { type = "u64", value = 18446744073709551615 }
+position = { type = "i64", value = 0 }
+symbol = { type = "u32", value = 1 }
+side = { type = "string", value = "buy" }
+quantity = { type = "u64", value = 1 }
+price = { type = "i64", value = 9223372036854775807 }
+
+[test_vector.expected_output]
+decision = { type = "string", value = "rejected" }
+reason = { type = "string", value = "order_size_exceeded" }
+
+[[test_vector]]
+id = "TV-HFT-004"
+name = "Negative price rejection"
+category = "adversarial"
+priority = "high"
+description = "Order with negative price should be rejected"
+
+[test_vector.input]
+cash = { type = "u64", value = 1000000 }
+position = { type = "i64", value = 0 }
+symbol = { type = "u32", value = 1 }
+side = { type = "string", value = "buy" }
+quantity = { type = "u64", value = 100 }
+price = { type = "i64", value = -1 }
+
+[test_vector.expected_output]
+decision = { type = "string", value = "rejected" }
+
+[[test_vector]]
+id = "TV-HFT-005"
+name = "Sell reduces position"
+category = "nominal"
+priority = "high"
+description = "Selling reduces existing long position"
+
+[test_vector.input]
+cash = { type = "u64", value = 1000000 }
+position = { type = "i64", value = 500 }
+symbol = { type = "u32", value = 1 }
+side = { type = "string", value = "sell" }
+quantity = { type = "u64", value = 200 }
+price = { type = "i64", value = 10000 }
+
+[test_vector.expected_output]
+decision = { type = "string", value = "approved" }
+resulting_position = { type = "i64", value = 300 }
+
+[[test_vector]]
+id = "TV-HFT-006"
+name = "Short sell approved"
+category = "nominal"
+priority = "high"
+description = "Selling more than current position creates short"
+
+[test_vector.input]
+cash = { type = "u64", value = 10000000 }
+position = { type = "i64", value = 100 }
+symbol = { type = "u32", value = 1 }
+side = { type = "string", value = "sell" }
+quantity = { type = "u64", value = 200 }
+price = { type = "i64", value = 5000 }
+
+[test_vector.expected_output]
+decision = { type = "string", value = "approved" }
+resulting_position = { type = "i64", value = -100 }
+
+[[test_vector]]
+id = "TV-HFT-007"
+name = "Zero quantity rejection"
+category = "adversarial"
+priority = "medium"
+description = "Order with zero quantity should be rejected"
+
+[test_vector.input]
+quantity = { type = "u64", value = 0 }
+
+[test_vector.expected_output]
+decision = { type = "string", value = "rejected" }
+reason = { type = "string", value = "order_size_exceeded" }
+
+[[test_vector]]
+id = "TV-HFT-008"
+name = "Daily drawdown exceeded"
+category = "boundary"
+priority = "critical"
+description = "Order rejected when daily drawdown limit exceeded"
+
+[test_vector.input]
+cash = { type = "u64", value = 1000000 }
+session_start_pnl = { type = "i64", value = 100000 }
+realized_pnl = { type = "i64", value = -5000000 }
+max_daily_drawdown = { type = "i64", value = 10000000 }
+
+[test_vector.expected_output]
+decision = { type = "string", value = "rejected" }
+reason = { type = "string", value = "daily_drawdown_exceeded" }

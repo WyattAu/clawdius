@@ -347,11 +347,11 @@ impl AgenticSystem {
             GenerationMode::Iterative { max_iterations } => {
                 self.execute_iterative(&request, max_iterations, &mut log)
                     .await?
-            }
+            },
             GenerationMode::AgentBased { max_steps, .. } => {
                 self.execute_agent_based(&request, max_steps, &mut log)
                     .await?
-            }
+            },
         };
 
         // Run tests if changes were made
@@ -463,7 +463,7 @@ impl AgenticSystem {
                                 file_path, file_path, generated.content
                             ),
                         });
-                    }
+                    },
                     Err(e) => {
                         log.push(LogEntry {
                             timestamp: current_timestamp(),
@@ -471,7 +471,7 @@ impl AgenticSystem {
                             component: "AgenticSystem".to_string(),
                             message: format!("LLM generation failed for {}: {}", file_path, e),
                         });
-                    }
+                    },
                 }
             }
 
@@ -492,7 +492,7 @@ impl AgenticSystem {
                             new: generated.content.clone(),
                             diff: format!("+++ {}\n{}", file_path, generated.content),
                         });
-                    }
+                    },
                     Err(e) => {
                         log.push(LogEntry {
                             timestamp: current_timestamp(),
@@ -500,7 +500,7 @@ impl AgenticSystem {
                             component: "AgenticSystem".to_string(),
                             message: format!("LLM generation failed: {}", e),
                         });
-                    }
+                    },
                 }
             }
 

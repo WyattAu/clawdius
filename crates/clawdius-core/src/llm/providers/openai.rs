@@ -77,17 +77,17 @@ impl LlmClient for OpenAIProvider {
                                         break;
                                     }
                                 }
-                            }
+                            },
                             Err(e) => {
                                 let _ = tx.send(format!("[Error: {e}]")).await;
                                 break;
-                            }
+                            },
                         }
                     }
-                }
+                },
                 Err(e) => {
                     let _ = tx.send(format!("[Error: {e}]")).await;
-                }
+                },
             }
         });
 

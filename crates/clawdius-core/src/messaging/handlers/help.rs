@@ -17,7 +17,7 @@ impl HelpHandler {
     }
 
     fn get_help_text() -> String {
-        r#"
+        "
 🤖 **Clawdius Remote Control**
 ==============================
 
@@ -71,7 +71,7 @@ impl HelpHandler {
 /clawd analyze why is this slow?
 !clawd help
 ```
-"#
+ "
         .trim()
         .to_string()
     }

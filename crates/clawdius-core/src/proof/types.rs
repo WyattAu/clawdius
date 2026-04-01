@@ -141,17 +141,17 @@ fn extract_placeholders(template: &str) -> Vec<String> {
             '{' => {
                 in_placeholder = true;
                 current.clear();
-            }
+            },
             '}' if in_placeholder => {
                 in_placeholder = false;
                 if !current.is_empty() && !placeholders.contains(&current) {
                     placeholders.push(current.clone());
                 }
-            }
+            },
             _ if in_placeholder => {
                 current.push(ch);
-            }
-            _ => {}
+            },
+            _ => {},
         }
     }
 

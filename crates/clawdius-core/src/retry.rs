@@ -90,7 +90,7 @@ impl CircuitBreaker {
                         last_error: self.last_error.read().await.clone(),
                     })
                 }
-            }
+            },
             CircuitState::HalfOpen => Ok(()),
         }
     }
@@ -168,7 +168,7 @@ where
                     cb.record_success().await;
                 }
                 return Ok(result);
-            }
+            },
             Err(e) => {
                 if let Some(cb) = &circuit_breaker {
                     cb.record_failure(&e).await;
@@ -190,7 +190,7 @@ where
                 tokio::time::sleep(Duration::from_millis(retry_delay)).await;
 
                 delay = ((delay as f64) * exponential_base).min(max_delay_ms as f64) as u64;
-            }
+            },
         }
     }
 }

@@ -156,7 +156,7 @@ impl TenantManager {
                 map.insert(key.clone(), config.clone());
                 debug!(tenant_id = %key, "tenant created (memory)");
                 Ok(config)
-            }
+            },
             TenantStore::Sqlite { conn, cache } => {
                 let conn = conn
                     .lock()
@@ -188,7 +188,7 @@ impl TenantManager {
                 cache.insert(key.clone(), config.clone());
                 debug!(tenant_id = %key, "tenant created (sqlite)");
                 Ok(config)
-            }
+            },
         }
     }
 
@@ -201,7 +201,7 @@ impl TenantManager {
                     .read()
                     .map_err(|e| anyhow::anyhow!("lock poisoned: {e}"))?;
                 Ok(map.get(key).cloned())
-            }
+            },
             TenantStore::Sqlite { conn, cache } => {
                 let cache = cache
                     .read()
@@ -243,11 +243,11 @@ impl TenantManager {
                         let mut cache = cache_cache(&self.store)?;
                         cache.insert(key.clone(), cfg.clone());
                         Ok(Some(cfg))
-                    }
+                    },
                     Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
                     Err(e) => Err(anyhow::anyhow!("db error: {e}")),
                 }
-            }
+            },
         }
     }
 
@@ -273,7 +273,7 @@ impl TenantManager {
                 map.insert(key.clone(), config.clone());
                 debug!(tenant_id = %key, "tenant updated (memory)");
                 Ok(config)
-            }
+            },
             TenantStore::Sqlite { conn, cache } => {
                 let conn = conn
                     .lock()
@@ -308,7 +308,7 @@ impl TenantManager {
                 cache.insert(key.clone(), config.clone());
                 debug!(tenant_id = %key, "tenant updated (sqlite)");
                 Ok(config)
-            }
+            },
         }
     }
 
@@ -325,7 +325,7 @@ impl TenantManager {
                 }
                 debug!(tenant_id = %key, "tenant deleted (memory)");
                 Ok(())
-            }
+            },
             TenantStore::Sqlite { conn, cache } => {
                 let conn = conn
                     .lock()
@@ -348,7 +348,7 @@ impl TenantManager {
                 cache.remove(key);
                 debug!(tenant_id = %key, "tenant deleted (sqlite)");
                 Ok(())
-            }
+            },
         }
     }
 
@@ -398,7 +398,7 @@ impl TenantManager {
                         Err(_) => return Vec::new(),
                     };
                     rows.filter_map(|r| r.ok()).collect()
-                }
+                },
                 Err(_) => Vec::new(),
             },
         }
@@ -615,7 +615,7 @@ impl TenantResolver {
                     warn!(api_key = api_key, tenant_id = %tid, "resolved tenant is disabled");
                     Ok(None)
                 }
-            }
+            },
             None => Ok(None),
         }
     }

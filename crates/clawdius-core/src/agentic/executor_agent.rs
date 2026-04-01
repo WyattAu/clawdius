@@ -16,7 +16,7 @@ use super::streaming_generator::{StreamChunk, StreamProcessor, StreamingCodeGene
 use super::tool_executor::{ToolExecutor, ToolRequest};
 
 /// System prompt for code generation.
-const CODE_GEN_SYSTEM_PROMPT: &str = r#"You are an expert software engineer. Generate clean, well-documented code based on the user's request.
+const CODE_GEN_SYSTEM_PROMPT: &str = "You are an expert software engineer. Generate clean, well-documented code based on the user's request.
 
 When generating code:
 1. Follow the language's best practices and idioms
@@ -33,7 +33,7 @@ When editing existing code:
 Always respond with code in the appropriate format:
 - For new files: Provide the complete file content
 - For edits: Show the changes using diff-like format with context
-- Include the file path in your response"#;
+- Include the file path in your response";
 
 /// Agent responsible for executing the plan steps.
 pub struct ExecutorAgent {
@@ -229,7 +229,7 @@ impl ExecutorAgent {
                                 step.id, step_result.duration_ms
                             ),
                         });
-                    }
+                    },
                     Err(e) => {
                         self.failed.insert(step.id.clone());
 
@@ -246,7 +246,7 @@ impl ExecutorAgent {
                         // For now, continue with other steps
                         // In a real implementation, we might want to stop or retry
                         completed_steps.insert(step.id.clone());
-                    }
+                    },
                 }
             }
         }
@@ -274,14 +274,14 @@ impl ExecutorAgent {
             } => self.execute_generate_code(prompt, target_files).await,
             super::StepAction::WriteFile { path, content } => {
                 self.execute_write_file(path, content).await
-            }
+            },
             super::StepAction::EditFile { path, edits } => {
                 self.execute_edit_file(path, edits).await
-            }
+            },
             super::StepAction::DeleteFile { path } => self.execute_delete_file(path).await,
             super::StepAction::RunTests { coverage_threshold } => {
                 self.execute_run_tests(*coverage_threshold).await
-            }
+            },
             super::StepAction::Verify {
                 check_tests,
                 check_lint,
@@ -289,7 +289,7 @@ impl ExecutorAgent {
             } => {
                 self.execute_verify(*check_tests, *check_lint, *check_types)
                     .await
-            }
+            },
             super::StepAction::Refine {
                 max_iterations,
                 focus_areas,
@@ -701,9 +701,8 @@ impl ExecutorAgent {
 
                 if result.success {
                     return Ok(result.content);
-                } else {
-                    return Ok(format!("Tool execution failed: {}", result.content));
                 }
+                return Ok(format!("Tool execution failed: {}", result.content));
             }
         }
 
@@ -729,12 +728,11 @@ impl ExecutorAgent {
 
                 if result.success {
                     return Ok(result.content);
-                } else {
-                    return Ok(format!(
-                        "Tool '{}' execution failed: {}",
-                        action_type, result.content
-                    ));
                 }
+                return Ok(format!(
+                    "Tool '{}' execution failed: {}",
+                    action_type, result.content
+                ));
             }
         }
 

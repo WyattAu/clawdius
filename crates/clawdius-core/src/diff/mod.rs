@@ -77,21 +77,21 @@ impl FileDiff {
                 match change.tag() {
                     ChangeTag::Equal => {
                         hunk_lines.push(DiffLine::Context(line));
-                    }
+                    },
                     ChangeTag::Delete => {
                         if old_start.is_none() {
                             old_start = Some(change.old_index().unwrap_or(0) + 1);
                         }
                         old_count += 1;
                         hunk_lines.push(DiffLine::Removed(line));
-                    }
+                    },
                     ChangeTag::Insert => {
                         if new_start.is_none() {
                             new_start = Some(change.new_index().unwrap_or(0) + 1);
                         }
                         new_count += 1;
                         hunk_lines.push(DiffLine::Added(line));
-                    }
+                    },
                 }
             }
 
@@ -157,7 +157,7 @@ impl FileDiff {
                 match line {
                     DiffLine::Added(_) => additions += 1,
                     DiffLine::Removed(_) => deletions += 1,
-                    DiffLine::Context(_) => {}
+                    DiffLine::Context(_) => {},
                 }
             }
         }

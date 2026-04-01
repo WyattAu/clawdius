@@ -117,10 +117,10 @@ impl ContextItem {
             } => {
                 let lang = language.as_deref().unwrap_or("text");
                 format!("@file:{path}\n```{lang}\n{content}\n```")
-            }
+            },
             ContextItem::Folder { path, files } => {
                 format!("@folder:{}\n{}", path, files.join("\n"))
-            }
+            },
             ContextItem::Url {
                 url,
                 content,
@@ -128,39 +128,39 @@ impl ContextItem {
             } => {
                 let title_str = title.as_deref().unwrap_or("Untitled");
                 format!("@url:{url}\n# {title_str}\n{content}")
-            }
+            },
             ContextItem::Problems { diagnostics } => {
                 let items: Vec<String> = diagnostics
                     .iter()
                     .map(|d| format!("  {}:{}: {}: {}", d.file, d.line, d.severity, d.message))
                     .collect();
                 format!("@problems\n{}", items.join("\n"))
-            }
+            },
             ContextItem::GitDiff { diff, staged } => {
                 let label = if *staged { "staged" } else { "unstaged" };
                 format!("@git:diff ({label})\n{diff}")
-            }
+            },
             ContextItem::GitLog { commits } => {
                 let items: Vec<String> = commits
                     .iter()
                     .map(|c| format!("  {} {} - {}", &c.hash[..7], c.author, c.message))
                     .collect();
                 format!("@git:log\n{}", items.join("\n"))
-            }
+            },
             ContextItem::Symbol {
                 name,
                 location,
                 content,
             } => {
                 format!("@symbol:{name} @ {location}\n{content}")
-            }
+            },
             ContextItem::Search { query, results } => {
                 let items: Vec<String> = results
                     .iter()
                     .map(|r| format!("  {}:{} - {}", r.file, r.line, r.content))
                     .collect();
                 format!("@search:\"{}\"\n{}", query, items.join("\n"))
-            }
+            },
             ContextItem::Image {
                 path,
                 mime_type,
@@ -172,7 +172,7 @@ impl ContextItem {
                     "@image:{path}\n[type: {mime_type}, size: {} bytes, {desc}]",
                     data.len()
                 )
-            }
+            },
             ContextItem::Screenshot {
                 source,
                 mime_type,
@@ -185,7 +185,7 @@ impl ContextItem {
                     "@screenshot:{source}\n[url: {url_str}, type: {mime_type}, size: {} bytes, at: {timestamp}]",
                     data.len()
                 )
-            }
+            },
         }
     }
 }

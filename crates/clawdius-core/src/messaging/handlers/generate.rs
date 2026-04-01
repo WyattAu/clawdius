@@ -44,7 +44,7 @@ impl MessageHandler for GenerateHandler {
         // Check for prompt
         if command.args.is_empty() {
             return Ok(MessageHandlerResult {
-                response: r#"❌ **Missing Prompt**
+                response: "❌ **Missing Prompt**
 
 **Usage:**
 • `/clawd generate <prompt>` - Generate code
@@ -53,7 +53,7 @@ impl MessageHandler for GenerateHandler {
 
 **Examples:**
 • `/clawd generate a function that validates email addresses`
-• `/clawd gen function add_auth_check --lang rust`"#
+• `/clawd gen function add_auth_check --lang rust\""
                     .to_string(),
                 should_chunk: false,
                 stream: None,

@@ -374,7 +374,7 @@ mod tests {
     #[test]
     fn test_completion_request() {
         let doc = "fn main() {\n    println!\n}";
-        let request = CompletionRequest::new(doc, Position::new(1, 13), "rust");
+        let request = CompletionRequest::new(doc, Position::new(1, 12), "rust");
 
         assert_eq!(request.language, "rust");
         assert!(request.prefix().contains("fn main"));

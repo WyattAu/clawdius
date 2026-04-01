@@ -120,7 +120,7 @@ impl ContextCache {
             ContextItem::Folder { files, .. } => {
                 let joined = files.join(",");
                 blake3::hash(joined.as_bytes())
-            }
+            },
             ContextItem::Url { content, .. } => blake3::hash(content.as_bytes()),
             ContextItem::Problems { diagnostics } => {
                 let msgs: Vec<String> = diagnostics
@@ -129,7 +129,7 @@ impl ContextCache {
                     .collect();
                 let joined = msgs.join("|");
                 blake3::hash(joined.as_bytes())
-            }
+            },
             ContextItem::GitDiff { diff, .. } => blake3::hash(diff.as_bytes()),
             ContextItem::GitLog { commits } => {
                 let msgs: Vec<String> = commits
@@ -138,7 +138,7 @@ impl ContextCache {
                     .collect();
                 let joined = msgs.join("|");
                 blake3::hash(joined.as_bytes())
-            }
+            },
             ContextItem::Symbol { content, .. } => blake3::hash(content.as_bytes()),
             ContextItem::Search { results, .. } => {
                 let msgs: Vec<String> = results
@@ -147,12 +147,12 @@ impl ContextCache {
                     .collect();
                 let joined = msgs.join("|");
                 blake3::hash(joined.as_bytes())
-            }
+            },
             ContextItem::Image { data, path, .. } => {
                 // Hash includes path and data for uniqueness
                 let combined = format!("{path}:{data}");
                 blake3::hash(combined.as_bytes())
-            }
+            },
             ContextItem::Screenshot {
                 data,
                 source,
@@ -162,7 +162,7 @@ impl ContextCache {
                 // Hash includes source and timestamp for uniqueness
                 let combined = format!("{source}:{timestamp}:{data}");
                 blake3::hash(combined.as_bytes())
-            }
+            },
         }
     }
 }

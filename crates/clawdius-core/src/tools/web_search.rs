@@ -85,7 +85,7 @@ impl WebSearchTool {
             SearchProvider::DuckDuckGo => self.search_duckduckgo(query, limit).await,
             SearchProvider::Google { api_key, cse_id } => {
                 self.search_google(query, limit, api_key, cse_id).await
-            }
+            },
             SearchProvider::Bing { api_key } => self.search_bing(query, limit, api_key).await,
         }
     }

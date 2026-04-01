@@ -287,31 +287,31 @@ impl Error {
                 } else {
                     msg.clone()
                 }
-            }
+            },
             Error::RateLimited { retry_after_ms } => {
                 format!(
                     "Rate limited. Wait {} seconds before retrying.",
                     retry_after_ms / 1000
                 )
-            }
+            },
             Error::ContextLimit { current, limit } => {
                 format!(
                     "Context limit exceeded ({current} of {limit} tokens used).\n\nSuggestions:\n\
                      - Use 'clawdius compact' to reduce context size\n\
                      - Start a new session for a fresh context"
                 )
-            }
+            },
             Error::SessionNotFound { id } => {
                 format!(
                     "Session '{id}' not found.\n\nList available sessions:\n  clawdius sessions"
                 )
-            }
+            },
             Error::Sandbox(msg) => {
                 format!(
                     "Sandbox violation: {msg}\n\nThis command was blocked for security.\n\
                      Check .clawdius/config.toml for allowed commands."
                 )
-            }
+            },
             _ => self.to_string(),
         }
     }

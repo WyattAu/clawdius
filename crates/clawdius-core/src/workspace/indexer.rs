@@ -95,10 +95,10 @@ impl WorkspaceIndexer {
                     stats.symbols_found += symbols;
                     stats.references_found += refs;
                     stats.embeddings_created += embeddings;
-                }
+                },
                 Err(e) => {
                     stats.errors.push(format!("{}: {}", file_path.display(), e));
-                }
+                },
             }
         }
 

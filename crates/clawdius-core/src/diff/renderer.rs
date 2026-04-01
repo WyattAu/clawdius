@@ -179,19 +179,19 @@ impl DiffRenderer {
                             "      <div class=\"diff-line context\"><span class=\"prefix\"> </span>{}</div>\n",
                             html_escape(l)
                         ));
-                    }
+                    },
                     DiffLine::Added(l) => {
                         html.push_str(&format!(
                             "      <div class=\"diff-line added\"><span class=\"prefix\">+</span>{}</div>\n",
                             html_escape(l)
                         ));
-                    }
+                    },
                     DiffLine::Removed(l) => {
                         html.push_str(&format!(
                             "      <div class=\"diff-line removed\"><span class=\"prefix\">-</span>{}</div>\n",
                             html_escape(l)
                         ));
-                    }
+                    },
                 }
             }
 

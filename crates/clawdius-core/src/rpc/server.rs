@@ -56,7 +56,7 @@ impl RpcServer {
                 } else {
                     Response::method_not_found(request.id, &request.method)
                 }
-            }
+            },
             None => Response::method_not_found(request.id, &request.method),
         }
     }
@@ -101,7 +101,7 @@ impl RpcServer {
                     writer.write_all(b"\n").await?;
                     writer.flush().await?;
                     continue;
-                }
+                },
             };
 
             // Handle request

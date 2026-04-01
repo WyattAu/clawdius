@@ -249,7 +249,7 @@ impl ProjectMemory {
                         self.metadata
                             .custom
                             .insert(key.to_string(), value.to_string());
-                    }
+                    },
                 }
             }
         }
@@ -320,15 +320,15 @@ impl ProjectMemory {
                     }
                     return;
                 }
-            }
+            },
             MemoryEntry::TestCommand { command, .. } => {
                 if self.learned.iter().any(
                     |e| matches!(e, MemoryEntry::TestCommand { command: c, .. } if c == command),
                 ) {
                     return;
                 }
-            }
-            _ => {}
+            },
+            _ => {},
         }
 
         self.learned.push(entry);

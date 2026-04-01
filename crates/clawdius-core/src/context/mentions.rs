@@ -138,24 +138,24 @@ impl Mention {
                 Some(Self::File {
                     path: PathBuf::from(path),
                 })
-            }
+            },
             MentionType::Folder => {
                 let path = cap.get(1)?.as_str();
                 Some(Self::Folder {
                     path: PathBuf::from(path),
                     recursive: false,
                 })
-            }
+            },
             MentionType::Url => {
                 let url = cap.get(1)?.as_str();
                 Some(Self::Url {
                     url: url.to_string(),
                 })
-            }
+            },
             MentionType::Problems => {
                 let severity = cap.get(1).map(|m| m.as_str().to_string());
                 Some(Self::Problems { severity })
-            }
+            },
             MentionType::Git => {
                 let git_type = cap.get(1)?.as_str();
                 match git_type {
@@ -167,30 +167,30 @@ impl Mention {
                             .and_then(|m| m.as_str().parse().ok())
                             .unwrap_or(10);
                         Some(Self::GitLog { count })
-                    }
+                    },
                     _ => None,
                 }
-            }
+            },
             MentionType::Symbol => {
                 let name = cap.get(1)?.as_str();
                 Some(Self::Symbol {
                     name: name.to_string(),
                 })
-            }
+            },
             MentionType::Search => {
                 let query = cap.get(1)?.as_str();
                 Some(Self::Search {
                     query: query.to_string(),
                     limit: 10,
                 })
-            }
+            },
             MentionType::SearchQuoted => {
                 let query = cap.get(1)?.as_str();
                 Some(Self::Search {
                     query: query.to_string(),
                     limit: 10,
                 })
-            }
+            },
         }
     }
 }
@@ -259,7 +259,7 @@ impl MentionResolver {
                 Ok(item) => items.push(item),
                 Err(e) => {
                     tracing::warn!("Failed to resolve mention {:?}: {}", mention, e);
-                }
+                },
             }
         }
 
@@ -442,7 +442,7 @@ impl MentionResolver {
                         score: 1.0,
                     })
                     .collect()
-            }
+            },
             Err(_) => vec![],
         };
 

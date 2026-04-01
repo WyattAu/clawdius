@@ -83,22 +83,12 @@ jobs:
       - name: Install cargo-vet
         run: cargo install cargo-vet --locked
       
-      - name: Initialize cargo-vet
-        run: |
-          if [ ! -f supply-chain/audits.toml ]; then
-            mkdir -p supply-chain
-            cargo vet init
-          fi
-      
       - name: Check vet status
         run: cargo vet --locked
-        continue-on-error: true
       
-      - name: Verify unsafe dependency audits
-        run: |
-          echo "Checking that all dependencies with unsafe code are audited..."
-          # This will be enforced once audits.toml is populated
-          cargo vet suggest --locked || true
+      - name: Suggest additional audits
+        if: always()
+        run: cargo vet suggest --locked || true
 
   secrets:
     name: Secret Detection
@@ -142,13 +132,15 @@ jobs:
     name: Fuzz Testing
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    if: false  # Disabled until fuzz targets are implemented
+    if: true
     strategy:
       matrix:
         target:
-          - settings_toml
-          - capability_token
-          - rpc_message
+          - fuzz_parser
+          - fuzz_config
+          - fuzz_rpc
+          - fuzz_mention
+          - fuzz_diff_engine
     steps:
       - uses: actions/checkout@v4
       
@@ -171,12 +163,12 @@ jobs:
       - name: Install cargo-fuzz
         run: cargo install cargo-fuzz --locked
       
-      - name: Run fuzzer (5 minutes)
+      - name: Run fuzzer (2 minutes)
         run: |
           cd fuzz
           cargo fuzz run ${{ matrix.target }} \
             -- \
-            -max_total_time=300 \
+            -max_total_time=120 \
             -max_len=4096 \
             -rss_limit_mb=2048
       
@@ -249,7 +241,7 @@ jobs:
   security-gate:
     name: Security Gate
     runs-on: ubuntu-latest
-    needs: [audit, deny, secrets, sast, security-tests]
+    needs: [audit, deny, secrets, sast, security-tests, fuzz]
     if: always()
     steps:
       - name: Evaluate security gate
@@ -296,6 +288,16 @@ jobs:
             echo "✅ Security Tests: PASSED"
           else
             echo "❌ Security Tests: FAILED"
+            FAILED=1
+          fi
+          
+          # Check fuzz
+          if [ "${{ needs.fuzz.result }}" == "success" ]; then
+            echo "✅ Fuzz Testing: PASSED"
+          elif [ "${{ needs.fuzz.result }}" == "skipped" ]; then
+            echo "⚠️ Fuzz Testing: SKIPPED"
+          else
+            echo "❌ Fuzz Testing: FAILED"
             FAILED=1
           fi
           

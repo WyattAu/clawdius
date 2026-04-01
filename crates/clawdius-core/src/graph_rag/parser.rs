@@ -148,7 +148,7 @@ impl CodeParser {
                     "export_statement" => None,
                     _ => None,
                 }
-            }
+            },
             LanguageKind::Go => match kind {
                 "function_declaration" => Some(SymbolKind::Function),
                 "method_declaration" => Some(SymbolKind::Method),
@@ -176,7 +176,7 @@ impl CodeParser {
                 "decorated_definition" => {
                     let child = node.child(0)?;
                     return self.extract_name(&child, source, lang);
-                }
+                },
                 _ => None,
             },
             LanguageKind::JavaScript | LanguageKind::TypeScript | LanguageKind::TypeScriptJsx => {
@@ -190,18 +190,18 @@ impl CodeParser {
                         let declarator = node.child_by_field_name("declarator")?;
                         let name_node = declarator.child_by_field_name("name")?;
                         return Some(self.node_text(&name_node, source));
-                    }
+                    },
                     "function_expression" | "arrow_function" => None,
                     "method_definition" => Some("name"),
                     _ => None,
                 }
-            }
+            },
             LanguageKind::Go => match kind {
                 "function_declaration" | "method_declaration" => Some("name"),
                 "type_declaration" => {
                     let spec = node.child_by_field_name("type")?;
                     return self.extract_name(&spec, source, lang);
-                }
+                },
                 "type_spec" => Some("name"),
                 "const_declaration" | "var_declaration" => {
                     let spec = node.child(0)?;
@@ -210,7 +210,7 @@ impl CodeParser {
                         return Some(self.node_text(&name_node, source));
                     }
                     return None;
-                }
+                },
                 _ => None,
             },
         };
@@ -240,7 +240,7 @@ impl CodeParser {
                 } else {
                     None
                 }
-            }
+            },
             LanguageKind::Python => {
                 if kind == "function_definition" {
                     let params = node.child_by_field_name("parameters")?;
@@ -248,7 +248,7 @@ impl CodeParser {
                 } else {
                     None
                 }
-            }
+            },
             LanguageKind::JavaScript | LanguageKind::TypeScript | LanguageKind::TypeScriptJsx => {
                 if matches!(
                     kind,
@@ -262,7 +262,7 @@ impl CodeParser {
                 } else {
                     None
                 }
-            }
+            },
             LanguageKind::Go => {
                 if matches!(kind, "function_declaration" | "method_declaration") {
                     let params = node.child_by_field_name("parameters")?;
@@ -270,7 +270,7 @@ impl CodeParser {
                 } else {
                     None
                 }
-            }
+            },
         }
     }
 
@@ -292,7 +292,7 @@ impl CodeParser {
                     }
                 }
                 None
-            }
+            },
             LanguageKind::Python => {
                 if kind == "expression_statement" {
                     if let Some(string) = prev.child(0) {
@@ -302,19 +302,19 @@ impl CodeParser {
                     }
                 }
                 None
-            }
+            },
             LanguageKind::JavaScript | LanguageKind::TypeScript | LanguageKind::TypeScriptJsx => {
                 if kind == "comment" {
                     return Some(self.node_text(&prev, source));
                 }
                 None
-            }
+            },
             LanguageKind::Go => {
                 if kind == "comment" {
                     return Some(self.node_text(&prev, source));
                 }
                 None
-            }
+            },
         }
     }
 
@@ -404,7 +404,7 @@ impl CodeParser {
             LanguageKind::Python => matches!(kind, "import_statement" | "import_from_statement"),
             LanguageKind::JavaScript | LanguageKind::TypeScript | LanguageKind::TypeScriptJsx => {
                 matches!(kind, "import_statement" | "export_statement")
-            }
+            },
             LanguageKind::Go => matches!(kind, "import_declaration"),
         };
 

@@ -136,7 +136,7 @@ Format your response as JSON:
                 return Err(crate::Error::UnsupportedLanguage(format!(
                     "Test generation not supported for: {language}"
                 )))
-            }
+            },
         };
 
         Ok(Function {

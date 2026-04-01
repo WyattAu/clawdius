@@ -246,16 +246,16 @@ impl<W: Write> StreamWriter<W> {
                 let line = event.to_json_line()?;
                 self.writer.write_all(line.as_bytes())?;
                 self.writer.flush()?;
-            }
+            },
             OutputFormat::Json => {
                 // For single JSON, accumulate and write at end
-            }
+            },
             OutputFormat::Text => {
                 // For text, format nicely
                 let text = self.format_event_text(event);
                 self.writer.write_all(text.as_bytes())?;
                 self.writer.flush()?;
-            }
+            },
         }
         Ok(())
     }
@@ -264,18 +264,18 @@ impl<W: Write> StreamWriter<W> {
         match event {
             StreamEvent::Start { session_id, .. } => {
                 format!("Session: {session_id}\n")
-            }
+            },
             StreamEvent::Token { content } => content.clone(),
             StreamEvent::Thinking { content } => {
                 format!("[thinking] {content}\n")
-            }
+            },
             StreamEvent::ToolCall { name, arguments } => {
                 format!("\n🔧 Tool: {name} ({arguments})\n")
-            }
+            },
             StreamEvent::ToolResult { name, success, .. } => {
                 let status = if *success { "✓" } else { "✗" };
                 format!("{status} Tool result: {name}\n")
-            }
+            },
             StreamEvent::FileChange { path, change_type } => {
                 let action = match change_type {
                     ChangeType::Created => "created",
@@ -284,34 +284,34 @@ impl<W: Write> StreamWriter<W> {
                     ChangeType::Renamed => "renamed",
                 };
                 format!("📄 File {action}: {path}\n")
-            }
+            },
             StreamEvent::Progress {
                 message,
                 current,
                 total,
             } => {
                 format!("[{current}/{total}] {message}\n")
-            }
+            },
             StreamEvent::Complete { usage, duration_ms } => {
                 format!(
                     "\n✓ Complete: {} tokens in {}ms\n",
                     usage.total, duration_ms
                 )
-            }
+            },
             StreamEvent::Error { message, code, .. } => {
                 format!("✗ Error ({code}): {message}\n")
-            }
+            },
             StreamEvent::Checkpoint { id, description } => {
                 let desc = description.as_deref().unwrap_or("no description");
                 format!("📍 Checkpoint: {id} - {desc}\n")
-            }
+            },
             StreamEvent::ContextAdded {
                 context_type,
                 source,
                 tokens,
             } => {
                 format!("📎 Added {context_type} from {source} ({tokens} tokens)\n")
-            }
+            },
         }
     }
 

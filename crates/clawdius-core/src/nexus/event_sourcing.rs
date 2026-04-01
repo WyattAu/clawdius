@@ -941,11 +941,11 @@ impl EventProjection for PhaseStatisticsProjection {
                         self.total_duration_ms += ms;
                     }
                 }
-            }
+            },
             "ErrorOccurred" => {
                 self.failures += 1;
-            }
-            _ => {}
+            },
+            _ => {},
         }
         Ok(())
     }

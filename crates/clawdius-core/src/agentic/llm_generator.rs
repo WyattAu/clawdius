@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
 /// System prompt for code generation.
-const CODE_GEN_SYSTEM_PROMPT: &str = r#"You are an expert software engineer. Generate clean, well-documented code based on the user's request.
+const CODE_GEN_SYSTEM_PROMPT: &str = "You are an expert software engineer. Generate clean, well-documented code based on the user's request.
 
 When generating code:
 1. Follow the language's best practices and idioms
@@ -25,7 +25,7 @@ When editing existing code:
 Always respond with code in the appropriate format:
 - For new files: Provide the complete file content
 - For edits: Show the changes using diff-like format with context
-- Include the file path in your response"#;
+- Include the file path in your response";
 
 /// Response from LLM code generation.
 #[derive(Debug, Clone, Serialize, Deserialize)]

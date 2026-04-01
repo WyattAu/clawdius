@@ -552,10 +552,10 @@ impl EventBus {
                 handle.block_on(async {
                     self.subscribers.write().await.push(handler);
                 });
-            }
+            },
             Err(_) => {
                 tracing::warn!("No Tokio runtime available for event subscription");
-            }
+            },
         }
     }
 
@@ -590,10 +590,10 @@ impl EventBus {
                 handle.block_on(async {
                     self.publish(event).await;
                 });
-            }
+            },
             Err(_) => {
                 tracing::warn!("No Tokio runtime available for event publishing");
-            }
+            },
         }
     }
 
@@ -642,7 +642,7 @@ impl EventHandler for LoggingHandler {
         match event {
             NexusEvent::PhaseTransitioned { from, to, .. } => {
                 tracing::info!("[Nexus] Phase transition: {} -> {}", from.0, to.0);
-            }
+            },
             NexusEvent::ArtifactCreated {
                 id, artifact_type, ..
             } => {
@@ -651,10 +651,10 @@ impl EventHandler for LoggingHandler {
                     id.0,
                     artifact_type
                 );
-            }
+            },
             NexusEvent::ErrorOccurred { error, phase, .. } => {
                 tracing::error!("[Nexus] Error: {} (phase: {:?})", error, phase);
-            }
+            },
             NexusEvent::GateEvaluated {
                 gate_id,
                 passed,
@@ -667,8 +667,8 @@ impl EventHandler for LoggingHandler {
                     phase.0,
                     if *passed { "PASSED" } else { "FAILED" }
                 );
-            }
-            _ => {}
+            },
+            _ => {},
         }
         Ok(())
     }
@@ -778,11 +778,11 @@ impl EventHandler for MetricsHandler {
             NexusEvent::PhaseTransitioned { .. } => {
                 self.phase_transitions
                     .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-            }
+            },
             NexusEvent::ArtifactCreated { .. } => {
                 self.artifacts_created
                     .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-            }
+            },
             NexusEvent::GateEvaluated { passed, .. } => {
                 if *passed {
                     self.gates_passed
@@ -791,8 +791,8 @@ impl EventHandler for MetricsHandler {
                     self.gates_failed
                         .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
                 }
-            }
-            _ => {}
+            },
+            _ => {},
         }
         Ok(())
     }

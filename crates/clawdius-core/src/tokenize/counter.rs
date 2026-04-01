@@ -122,10 +122,10 @@ fn count_code(text: &str) -> usize {
                         if let Some(escaped) = chars.next() {
                             string_content.push(escaped);
                         }
-                    }
+                    },
                     Some(q) if q == quote => {
                         break;
-                    }
+                    },
                     Some(q) => string_content.push(q),
                     None => break,
                 }

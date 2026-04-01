@@ -17,19 +17,18 @@
 #![deny(unsafe_code)]
 #![warn(
     clippy::all,
+    clippy::pedantic,
     clippy::todo,
-    clippy::dbg_macro
+    clippy::dbg_macro,
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic
 )]
 #![allow(
     missing_docs,
     dead_code,
-    clippy::pedantic,
-    clippy::expect_used,
-    clippy::unwrap_used,
-    clippy::panic_in_result_fn,
     clippy::float_cmp,
     clippy::uninlined_format_args,
-    clippy::unnecessary_unwrap,
     clippy::len_zero,
     clippy::redundant_closure,
     clippy::cast_precision_loss,
@@ -48,7 +47,9 @@
     clippy::too_many_arguments,
     clippy::type_complexity,
     clippy::inconsistent_digit_grouping,
-    clippy::derivable_impls
+    clippy::derivable_impls,
+    clippy::unnecessary_unwrap,
+    clippy::panic_in_result_fn
 )]
 
 use std::process::ExitCode;

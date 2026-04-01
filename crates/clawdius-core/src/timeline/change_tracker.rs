@@ -352,7 +352,7 @@ impl DiffCalculator {
                         change_type: LineChangeType::Removed,
                     });
                     old_line += 1;
-                }
+                },
                 ChangeTag::Insert => {
                     changes.push(LineChange {
                         line_number: new_line,
@@ -361,11 +361,11 @@ impl DiffCalculator {
                         change_type: LineChangeType::Added,
                     });
                     new_line += 1;
-                }
+                },
                 ChangeTag::Equal => {
                     old_line += 1;
                     new_line += 1;
-                }
+                },
             }
         }
 

@@ -69,7 +69,7 @@ pub fn create_embedder(config: &EmbedderConfig) -> Result<Box<dyn EmbeddingGener
         EmbedderType::Simple => {
             let dimension = 384;
             Ok(Box::new(SimpleEmbedder::new(dimension)))
-        }
+        },
         #[cfg(feature = "embeddings")]
         EmbedderType::SentenceTransformers => {
             let model_name = config
@@ -80,7 +80,7 @@ pub fn create_embedder(config: &EmbedderConfig) -> Result<Box<dyn EmbeddingGener
             let model_path = config.model_path.as_deref().map(std::path::Path::new);
 
             Ok(Box::new(SentenceEmbedder::new(model_name, model_path)?))
-        }
+        },
     }
 }
 

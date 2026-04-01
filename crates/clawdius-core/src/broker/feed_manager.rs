@@ -3,7 +3,7 @@
 //! Manages multiple market data feeds and distributes updates to subscribers.
 
 use super::feeds::{FeedError, FeedStatus, MarketFeed, MarketUpdate, Symbol};
-use super::wallet_guard::{Order, RiskCheck, WalletGuard};
+use super::wallet_guard::{Order, RiskDecision, Wallet, WalletGuard};
 use async_trait::async_trait;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -84,12 +84,12 @@ impl FeedManager {
         }
     }
 
-    pub async fn validate_with_wallet_guard(&self, order: &Order) -> Result<(), Vec<RiskCheck>> {
+    pub async fn validate_with_wallet_guard(&self, wallet: &Wallet, order: &Order) -> RiskDecision {
         if let Some(guard) = &self.wallet_guard {
             let guard = guard.read().await;
-            guard.check_order(order)
+            guard.check(wallet, order)
         } else {
-            Ok(())
+            RiskDecision::Approve
         }
     }
 }
@@ -216,21 +216,16 @@ mod tests {
 
     #[tokio::test]
     async fn test_wallet_guard_integration() {
-        use crate::broker::wallet_guard::OrderSide;
-        use rust_decimal::Decimal;
+        use crate::broker::wallet_guard::{OrderSide, RiskDecision};
 
         let mut manager = FeedManager::new();
-        let guard = Arc::new(RwLock::new(WalletGuard::default()));
+        let guard = Arc::new(RwLock::new(WalletGuard::with_defaults()));
         manager.set_wallet_guard(guard);
 
-        let order = Order {
-            symbol: "AAPL".to_string(),
-            quantity: Decimal::from(10),
-            price: Decimal::from(100),
-            side: OrderSide::Buy,
-        };
+        let order = Order::new(1, OrderSide::Buy, 10, 100);
+        let wallet = Wallet::new(1_000_000); // Sufficient cash for margin
 
-        let result = manager.validate_with_wallet_guard(&order).await;
-        assert!(result.is_ok());
+        let result = manager.validate_with_wallet_guard(&wallet, &order).await;
+        assert_eq!(result, RiskDecision::Approve);
     }
 }

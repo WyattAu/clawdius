@@ -106,7 +106,7 @@ impl ApiAuthenticator {
                     }
                 }
                 result
-            }
+            },
         }
     }
 }

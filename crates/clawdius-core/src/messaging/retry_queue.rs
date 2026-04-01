@@ -432,11 +432,11 @@ impl RetryQueue {
                     "Loaded retry tasks from DB"
                 );
                 total
-            }
+            },
             Err(e) => {
                 tracing::warn!(error = %e, "Failed to load retry queue from DB");
                 0
-            }
+            },
         }
     }
 
@@ -446,7 +446,7 @@ impl RetryQueue {
             Err(e) => {
                 tracing::error!(error = %e, "Failed to open retry queue database");
                 return;
-            }
+            },
         };
         if let Err(e) = conn.execute(
             "CREATE TABLE IF NOT EXISTS retry_queue (
@@ -530,7 +530,7 @@ impl RetryQueue {
         })
         .await
         {
-            Ok(Ok(())) => {}
+            Ok(Ok(())) => {},
             Ok(Err(e)) => tracing::warn!(error = %e, "Failed to delete retry task from DB"),
             Err(e) => tracing::warn!(error = %e, "spawn_blocking failed for retry task delete"),
         }

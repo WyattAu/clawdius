@@ -32,20 +32,20 @@ impl std::fmt::Display for MessagingError {
             Self::InvalidConfig(msg) => write!(f, "Invalid config: {msg}"),
             Self::InvalidCommandFormat { command, expected } => {
                 write!(f, "Invalid command '{command}' (expected: {expected})")
-            }
+            },
             Self::Unauthorized { user_id, action } => {
                 write!(f, "User '{user_id}' not authorized for '{action}'")
-            }
+            },
             Self::RateLimited { retry_after_secs } => {
                 write!(f, "Rate limited, retry after {retry_after_secs}s")
-            }
+            },
             Self::SessionNotFound(id) => write!(f, "Session not found: {id}"),
             Self::ParseError(msg) => write!(f, "Parse error: {msg}"),
             Self::AuthenticationFailed(msg) => write!(f, "Authentication failed: {msg}"),
             Self::ChannelNotSupported(platform) => write!(f, "Channel not supported: {platform}"),
             Self::MessageTooLong { length, max } => {
                 write!(f, "Message too long ({length} > {max})")
-            }
+            },
         }
     }
 }

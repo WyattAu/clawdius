@@ -390,7 +390,7 @@ impl LspClient {
                 } else {
                     Ok(CompletionList::empty())
                 }
-            }
+            },
             None => Ok(CompletionList::empty()),
         }
     }
@@ -429,7 +429,7 @@ impl LspClient {
                 } else {
                     Ok(Vec::new())
                 }
-            }
+            },
             None => Ok(Vec::new()),
         }
     }
@@ -626,7 +626,7 @@ impl LspClient {
                         Ok(0) => {
                             // EOF
                             return;
-                        }
+                        },
                         Ok(_) => {
                             let line = line.trim();
                             if line.is_empty() {
@@ -636,11 +636,11 @@ impl LspClient {
                             if let Some(stripped) = line.strip_prefix("Content-Length: ") {
                                 content_length = stripped.parse().ok();
                             }
-                        }
+                        },
                         Err(e) => {
                             tracing::error!("LSP reader error reading header: {}", e);
                             return;
-                        }
+                        },
                     }
                 }
 
@@ -653,19 +653,19 @@ impl LspClient {
                                 if let Some(tx) = pending.write().await.remove(&response.id) {
                                     let _ = tx.send(response);
                                 }
-                            }
+                            },
                             Err(e) => {
                                 tracing::debug!(
                                     "Failed to parse LSP response: {} - content: {}",
                                     e,
                                     String::from_utf8_lossy(&buffer)
                                 );
-                            }
+                            },
                         },
                         Err(e) => {
                             tracing::error!("LSP reader error reading content: {}", e);
                             return;
-                        }
+                        },
                     }
                 }
             }

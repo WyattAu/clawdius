@@ -109,7 +109,7 @@ impl LeanVerifier {
                     ))],
                     start.elapsed(),
                 ));
-            }
+            },
         };
 
         let result = self.parse_output(&output, start.elapsed());
@@ -167,7 +167,7 @@ lean_lib Proof where
                     ))],
                     start.elapsed(),
                 ));
-            }
+            },
         };
 
         let result = self.parse_output(&output, start.elapsed());
@@ -192,7 +192,7 @@ lean_lib Proof where
                 match error.severity {
                     LeanErrorSeverity::Error => errors.push(error),
                     LeanErrorSeverity::Warning => warnings.push(error.message),
-                    LeanErrorSeverity::Info => {}
+                    LeanErrorSeverity::Info => {},
                 }
             }
         }

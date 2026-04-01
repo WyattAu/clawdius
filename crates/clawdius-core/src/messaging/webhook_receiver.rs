@@ -233,22 +233,22 @@ impl WebhookReceiver {
 
     pub fn parse_webhook_body(&self, request: &WebhookRequest) -> Result<NormalizedMessage> {
         match self.verify_signature(request) {
-            VerificationResult::Verified => {}
+            VerificationResult::Verified => {},
             VerificationResult::InvalidSignature => {
                 return Err(MessagingError::AuthenticationFailed(
                     "Invalid webhook signature".into(),
                 ));
-            }
+            },
             VerificationResult::MissingCredentials => {
                 return Err(MessagingError::AuthenticationFailed(
                     "Missing webhook credentials".into(),
                 ));
-            }
+            },
             VerificationResult::UnsupportedPlatform => {
                 return Err(MessagingError::ChannelNotSupported(
                     request.platform.to_string(),
                 ));
-            }
+            },
         }
 
         match request.platform {
@@ -298,7 +298,7 @@ fn verify_discord(request: &WebhookRequest, _cfg: &DiscordWebhookConfig) -> Veri
                 return VerificationResult::MissingCredentials;
             }
             VerificationResult::InvalidSignature
-        }
+        },
         _ => VerificationResult::MissingCredentials,
     }
 }
@@ -334,7 +334,7 @@ fn verify_slack(request: &WebhookRequest, cfg: &SlackWebhookConfig) -> Verificat
             } else {
                 VerificationResult::InvalidSignature
             }
-        }
+        },
         _ => VerificationResult::MissingCredentials,
     }
 }
@@ -372,7 +372,7 @@ fn verify_whatsapp(request: &WebhookRequest, cfg: &WhatsAppWebhookConfig) -> Ver
     match (mode, token) {
         (Some(m), Some(t)) if m == "subscribe" && t == cfg.verify_token => {
             VerificationResult::Verified
-        }
+        },
         (Some(_), Some(_)) => VerificationResult::InvalidSignature,
         _ => VerificationResult::MissingCredentials,
     }
@@ -502,7 +502,7 @@ fn parse_discord_body(request: &WebhookRequest) -> Result<NormalizedMessage> {
             return Err(MessagingError::ParseError(
                 "No user in Discord interaction".into(),
             ));
-        }
+        },
     };
 
     let mut auth_user = AuthenticatedUser::new(&user_data.id)

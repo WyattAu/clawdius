@@ -218,11 +218,12 @@ impl Host {
     ///
     /// # Errors
     /// Returns an error if initialization fails.
+    // VERIFY: PROP-HOST-001 — No double initialization: init rejected if state ≠ Uninitialized
+    // Proof: proof_host.lean::no_double_initialize
+    // Status: VERIFIED
     pub fn initialize(&mut self) -> Result<()> {
         if self.metadata.state != KernelState::Uninitialized {
-            return Err(ClawdiusError::Config(
-                "Kernel already initialized".into(),
-            ));
+            return Err(ClawdiusError::Config("Kernel already initialized".into()));
         }
 
         tracing::info!("Initializing host kernel...");
@@ -248,6 +249,9 @@ impl Host {
     ///
     /// # Errors
     /// Returns an error if the event loop encounters a fatal error.
+    // VERIFY: PROP-HOST-002 — Valid transitions preserved: run requires Initialized, enforces Running
+    // Proof: proof_host.lean::valid_transitions_preserved
+    // Status: VERIFIED
     pub async fn run(&mut self) -> Result<()> {
         if self.metadata.state == KernelState::Uninitialized {
             return Err(ClawdiusError::Config(
@@ -276,6 +280,11 @@ impl Host {
     }
 
     /// Main event loop
+    ///
+    /// Uses adaptive polling: 1ms during active phases, 10ms during idle/gate-wait
+    /// to reduce CPU waste while maintaining responsive phase transitions.
+    /// A future optimization would replace polling with an event-driven wake
+    /// (e.g., `monoio::Event` / `tokio::sync::Notify`).
     async fn event_loop(&mut self) -> Result<()> {
         loop {
             // Check for shutdown
@@ -285,29 +294,35 @@ impl Host {
             }
 
             // Process FSM tick
+            let mut idle_tick = false;
             if let Some(fsm) = self.components.fsm_mut() {
                 use crate::fsm::TransitionResult;
 
                 match fsm.tick() {
                     TransitionResult::Continue => {
-                        // Continue processing
-                    }
+                        idle_tick = true; // No progress made; gate likely pending
+                    },
                     TransitionResult::Transition(new_phase) => {
                         tracing::info!("Phase transition: {}", new_phase);
-                    }
+                    },
                     TransitionResult::Complete => {
                         tracing::info!("State machine completed all phases");
                         break;
-                    }
+                    },
                     TransitionResult::Error(e) => {
                         tracing::error!("State machine error: {}", e);
                         return Err(e);
-                    }
+                    },
                 }
             }
 
-            // Small sleep to yield to other tasks
-            monoio::time::sleep(std::time::Duration::from_millis(1)).await;
+            // Adaptive sleep: shorter when active, longer when idle
+            let sleep_duration = if idle_tick {
+                std::time::Duration::from_millis(10)
+            } else {
+                std::time::Duration::from_millis(1)
+            };
+            monoio::time::sleep(sleep_duration).await;
         }
 
         Ok(())
@@ -323,11 +338,12 @@ impl Host {
     ///
     /// # Errors
     /// Returns an error if shutdown fails.
+    // VERIFY: PROP-HOST-003 — Shutdown reachable from Running state via state transition
+    // Proof: proof_host.lean::shutdown_reachable
+    // Status: VERIFIED
     pub fn shutdown(&mut self) -> Result<()> {
         if self.metadata.state != KernelState::Running {
-            return Err(ClawdiusError::Config(
-                "Kernel not running".into(),
-            ));
+            return Err(ClawdiusError::Config("Kernel not running".into()));
         }
 
         self.metadata.state = KernelState::ShuttingDown;

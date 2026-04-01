@@ -141,6 +141,7 @@ tempfile.workspace = true
 criterion = { workspace = true }
 mockall.workspace = true
 httpmock = { workspace = true }
+proptest.workspace = true
 
 [[bench]]
 name = "core_bench"
@@ -160,6 +161,14 @@ harness = false
 
 [[bench]]
 name = "messaging_bench"
+harness = false
+
+[[bench]]
+name = "hft_bench"
+harness = false
+
+[[bench]]
+name = "wcet_bench"
 harness = false
 
 [features]

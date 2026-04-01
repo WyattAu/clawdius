@@ -1,0 +1,105 @@
+# Test Vector Specification for Lock-Free SPSC Ring Buffer
+
+[metadata]
+algorithm_id = "ALG-RB-001"
+algorithm_version = "1.0.0"
+generation_date = "2026-03-31T00:00:00Z"
+generator = "manual"
+verification_status = "verified"
+
+[precision_requirements]
+# Ring buffer uses integer indices, no floating point
+absolute_tolerance = 0
+relative_tolerance = 0
+
+[[test_vector]]
+id = "TV-RB-001"
+name = "Single write-read cycle"
+category = "nominal"
+priority = "critical"
+description = "Write one message, read one message, verify FIFO"
+
+[test_vector.input]
+capacity = { type = "usize", value = 1024 }
+write_symbol = { type = "u32", value = 42 }
+write_price = { type = "i64", value = 100500 }
+write_quantity = { type = "u32", value = 100 }
+write_timestamp = { type = "u64", value = 1234567890 }
+
+[test_vector.expected_output]
+read_symbol = { type = "u32", value = 42 }
+read_price = { type = "i64", value = 100500 }
+read_quantity = { type = "u32", value = 100 }
+read_timestamp = { type = "u64", value = 1234567890 }
+buffer_len_after = { type = "usize", value = 0 }
+
+[[test_vector]]
+id = "TV-RB-002"
+name = "Buffer full rejection"
+category = "boundary"
+priority = "critical"
+description = "Writing to full buffer returns error"
+
+[test_vector.input]
+capacity = { type = "usize", value = 16 }
+fill_count = { type = "usize", value = 15 }
+
+[test_vector.expected_output]
+error = { type = "string", value = "buffer_full" }
+
+[[test_vector]]
+id = "TV-RB-003"
+name = "Buffer empty rejection"
+category = "boundary"
+priority = "critical"
+description = "Reading from empty buffer returns error"
+
+[test_vector.input]
+capacity = { type = "usize", value = 1024 }
+initial_state = { type = "string", value = "empty" }
+
+[test_vector.expected_output]
+error = { type = "string", value = "buffer_empty" }
+
+[[test_vector]]
+id = "TV-RB-004"
+name = "Wraparound correctness"
+category = "nominal"
+priority = "critical"
+description = "Write capacity-1 messages, read 1, write 1, read all — verify FIFO order"
+
+[test_vector.input]
+capacity = { type = "usize", value = 8 }
+operations = { type = "string", value = "write_7,read_1,write_1,read_7" }
+
+[test_vector.expected_output]
+total_read = { type = "usize", value = 8 }
+fifo_order = { type = "boolean", value = true }
+
+[[test_vector]]
+id = "TV-RB-005"
+name = "Invalid capacity rejection"
+category = "adversarial"
+priority = "high"
+description = "Non-power-of-2 capacity rejected"
+
+[test_vector.input]
+capacity = { type = "usize", value = 100 }
+
+[test_vector.expected_output]
+error = { type = "string", value = "invalid_capacity" }
+
+[[test_vector]]
+id = "TV-RB-006"
+name = "Burst write and drain"
+category = "nominal"
+priority = "high"
+description = "Write 10000 messages rapidly, drain all, verify no loss"
+
+[test_vector.input]
+capacity = { type = "usize", value = 1048576 }
+burst_count = { type = "usize", value = 10000 }
+
+[test_vector.expected_output]
+total_read = { type = "usize", value = 10000 }
+data_corrupted = { type = "boolean", value = false }

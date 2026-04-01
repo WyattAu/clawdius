@@ -53,7 +53,7 @@ impl MessageHandler for ConfigHandler {
                  • `requests_per_minute`: 20\n\
                  • `burst_capacity`: 10\n\n\
                  _Use `/clawd set <key> <value>` to modify_"
-            }
+            },
             "set" => {
                 if command.args.len() < 3 {
                     "❌ **Missing Arguments**\n\n\
@@ -73,7 +73,7 @@ impl MessageHandler for ConfigHandler {
                         key, value
                     )
                 }
-            }
+            },
             _ => &format!(
                 "❓ **Unknown Config Action**\n\n\
                      Unknown action: `{}`\n\n\

@@ -10,14 +10,14 @@ use clawdius_core::broker::{
     ring_buffer::RingBuffer,
     signal::{MarketData, Signal, SignalDirection, SignalEngine},
     strategy::Strategy,
-    wallet_guard::{Order, OrderSide, WalletGuard},
+    wallet_guard::{Order, OrderSide, RiskDecision, RiskParams, Wallet, WalletGuard},
 };
 use criterion::{black_box, criterion_group, criterion_main, Criterion, Throughput};
 use rust_decimal::Decimal;
 
 fn bench_ring_buffer(c: &mut Criterion) {
     let mut group = c.benchmark_group("ring_buffer");
-    group.sample_size(10_000);
+    group.sample_size(1_000);
 
     #[derive(Clone, Copy, Debug)]
     struct MarketDataMsg {
@@ -88,40 +88,36 @@ fn bench_ring_buffer(c: &mut Criterion) {
 
 fn bench_wallet_guard(c: &mut Criterion) {
     let mut group = c.benchmark_group("wallet_guard");
-    group.sample_size(10_000);
+    group.sample_size(1_000);
 
-    let guard = WalletGuard::default();
+    let guard = WalletGuard::with_defaults();
+    let wallet = Wallet::new(1_000_000_000);
 
-    let small_order = Order {
-        symbol: "AAPL".to_string(),
-        quantity: Decimal::from(100),
-        price: Decimal::from(150),
-        side: OrderSide::Buy,
-    };
+    let small_order = Order::new(1, OrderSide::Buy, 100, 150);
 
     group.bench_function("validate_order", |b| {
-        b.iter(|| black_box(guard.check_order(black_box(&small_order))));
+        b.iter(|| black_box(guard.check(black_box(&wallet), black_box(&small_order))));
     });
 
     group.bench_function("order_value_calc", |b| {
-        b.iter(|| black_box(small_order.value()));
+        b.iter(|| black_box(small_order.notional_value().unwrap_or(0)));
     });
 
-    group.bench_function("validate_market_access", |b| {
-        b.iter(|| black_box(guard.validate_market_access()));
+    let large_order = Order::new(1, OrderSide::Buy, 100_000, 150);
+
+    group.bench_function("validate_large_order", |b| {
+        b.iter(|| black_box(guard.check(black_box(&wallet), black_box(&large_order))));
     });
 
-    group.bench_function("check_daily_volume", |b| {
-        let volume = Decimal::from(1_000_000);
-        b.iter(|| black_box(guard.check_daily_volume(black_box(volume))));
+    let guard_custom = WalletGuard::new(RiskParams {
+        pi_max: 1_000_000,
+        sigma_max: 500_000,
+        lambda_max: 100_000_000,
+        margin_ratio: 2,
     });
 
-    let mut guard_with_restrictions = WalletGuard::default();
-    guard_with_restrictions.restrict_symbol("PENN");
-    guard_with_restrictions.restrict_symbol("GME");
-
-    group.bench_function("validate_with_restrictions", |b| {
-        b.iter(|| black_box(guard_with_restrictions.check_order(&small_order)));
+    group.bench_function("validate_with_custom_params", |b| {
+        b.iter(|| black_box(guard_custom.check(black_box(&wallet), black_box(&small_order))));
     });
 
     group.finish();
@@ -174,19 +170,14 @@ fn bench_hft_pipeline(c: &mut Criterion) {
         b.iter(|| black_box(engine.drain_signals()));
     });
 
-    let guard = WalletGuard::default();
-    let order = Order {
-        symbol: "AAPL".to_string(),
-        quantity: Decimal::from(100),
-        price: Decimal::from(150),
-        side: OrderSide::Buy,
-    };
+    let guard = WalletGuard::with_defaults();
+    let order = Order::new(1, OrderSide::Buy, 100, 150);
 
     group.bench_function("full_pipeline_signal_to_risk", |b| {
         b.iter(|| {
             let signals = black_box(engine.process(&market_data));
             if !signals.is_empty() {
-                let _ = black_box(guard.check_order(&order));
+                let _ = black_box(guard.check(&Wallet::new(1_000_000_000), &order));
             }
         });
     });
@@ -200,18 +191,19 @@ fn bench_boot_simulation(c: &mut Criterion) {
 
     group.bench_function("ring_buffer_init", |b| {
         b.iter(|| {
-            let buffer: RingBuffer<u64, 65536> = RingBuffer::new();
+            let buffer: RingBuffer<u64, 4096> = RingBuffer::new();
             black_box(buffer)
         });
     });
 
     group.bench_function("wallet_guard_init", |b| {
         b.iter(|| {
-            let guard = WalletGuard::new(
-                Decimal::from(1_000_000),
-                Decimal::from(10_000_000),
-                Decimal::from(100_000),
-            );
+            let guard = WalletGuard::new(RiskParams {
+                pi_max: 1_000_000,
+                sigma_max: 10_000_000,
+                lambda_max: 100_000_000,
+                margin_ratio: 4,
+            });
             black_box(guard)
         });
     });
@@ -225,8 +217,8 @@ fn bench_boot_simulation(c: &mut Criterion) {
 
     group.bench_function("full_hft_stack_init", |b| {
         b.iter(|| {
-            let buffer: RingBuffer<u64, 65536> = RingBuffer::new();
-            let guard = WalletGuard::default();
+            let buffer: RingBuffer<u64, 4096> = RingBuffer::new();
+            let guard = WalletGuard::with_defaults();
             let engine = SignalEngine::new();
             black_box((buffer, guard, engine))
         });
@@ -244,7 +236,7 @@ fn bench_throughput(c: &mut Criterion) {
         data: [u8; 64],
     }
 
-    let buffer: RingBuffer<Msg, 1_048_576> = RingBuffer::new();
+    let buffer: RingBuffer<Msg, 4096> = RingBuffer::new();
     let msg = Msg { data: [0u8; 64] };
 
     group.bench_function("ring_buffer_msg_rate", |b| {

@@ -118,10 +118,10 @@ mod tests {
             Ok(output) => {
                 let stdout = String::from_utf8_lossy(&output.stdout);
                 assert!(stdout.contains("hello"));
-            }
+            },
             Err(e) => {
                 println!("Error (expected if no bwrap): {e}");
-            }
+            },
         }
     }
 }

@@ -226,7 +226,7 @@ pub async fn create_tenant(
                 updated_at: created.updated_at,
             };
             (StatusCode::CREATED, Json(response)).into_response()
-        }
+        },
         Err(e) => json_error(
             StatusCode::INTERNAL_SERVER_ERROR,
             "TENANT_CREATE_FAILED",
@@ -268,7 +268,7 @@ pub async fn get_tenant(
                 updated_at: t.updated_at,
             };
             (StatusCode::OK, Json(response)).into_response()
-        }
+        },
         Ok(None) => json_error(
             StatusCode::NOT_FOUND,
             "TENANT_NOT_FOUND",
@@ -298,14 +298,14 @@ pub async fn update_tenant(
                 "TENANT_NOT_FOUND",
                 "Tenant not found",
             );
-        }
+        },
         Err(e) => {
             return json_error(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "INTERNAL_ERROR",
                 &e.to_string(),
             );
-        }
+        },
     };
 
     if let Some(enabled) = req.enabled {
@@ -385,7 +385,7 @@ pub async fn update_tenant(
                 updated_at: t.updated_at,
             };
             (StatusCode::OK, Json(response)).into_response()
-        }
+        },
         Err(e) => json_error(
             StatusCode::INTERNAL_SERVER_ERROR,
             "TENANT_UPDATE_FAILED",
@@ -424,7 +424,7 @@ pub async fn tenant_usage(
                 "USAGE_TRACKING_DISABLED",
                 "Usage tracking is not enabled on this instance",
             );
-        }
+        },
     };
 
     let summary = tracker.tenant_summary(&id).await;
@@ -449,7 +449,7 @@ pub async fn global_usage(State(state): State<TenantApiState>) -> impl IntoRespo
                 "USAGE_TRACKING_DISABLED",
                 "Usage tracking is not enabled on this instance",
             );
-        }
+        },
     };
 
     let tenant_ids: Vec<String> = state

@@ -280,7 +280,7 @@ impl TestRunner {
             } => self.run_direct_tests(git_stash, timeout_ms).await,
             TestExecutionStrategy::Skip => {
                 Ok(TestResult::success(0, start.elapsed().as_millis() as u64))
-            }
+            },
         }
     }
 

@@ -44,34 +44,31 @@
           pkg-config
           gnumake
           cmake
-        ] ++ cargoTools;
+        ] ++ cargoTools ++ formalTools;
 
         # Runtime libraries and tools required by Clawdius
         buildInputs = with pkgs; [
           openssl
           sqlite
           libiconv
-          liburing               # io_uring support for monoio
           protobuf               # Protocol Buffers compiler (protoc) for lancedb
-          
-          # Sentinel Sandboxing Tools
-          bubblewrap
-          podman
-          
-          # Formal Verification Engine
-          lean4
-          
+
           # Tree-sitter for AST Indexing
           tree-sitter
-          
-          # Performance Analysis
-          perf-tools
-          valgrind
+        ] ++ pkgs.lib.optionals pkgs.stdenv.isLinux [
+          liburing               # io_uring support for monoio (Linux-only)
+          bubblewrap             # Sentinel sandboxing (Linux-only)
+          podman                 # Container sandboxing (Linux-only)
+          perf-tools             # Performance analysis (Linux-only)
+          valgrind               # Memory debugging (Linux-only)
         ] ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [
           pkgs.darwin.apple_sdk.frameworks.Security
           pkgs.darwin.apple_sdk.frameworks.SystemConfiguration
           pkgs.darwin.apple_sdk.frameworks.CoreFoundation
         ];
+
+        # Formal verification is Linux-only and optional
+        formalTools = pkgs.lib.optionals pkgs.stdenv.isLinux [ pkgs.lean4 ];
 
       in
       {
@@ -81,9 +78,10 @@
           # Set environment variables for Rust builds
           shellHook = ''
             export RUST_BACKTRACE=1
-            export RUSTFLAGS="-D warnings"
-            export LD_LIBRARY_PATH="${pkgs.lib.makeLibraryPath buildInputs}:$LD_LIBRARY_PATH"
-            
+            export RUSTFLAGS="-D warnings -C target-cpu=native"
+            export LD_LIBRARY_PATH="${pkgs.lib.makeLibraryPath buildInputs}''${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+            export PROTOC="${pkgs.protobuf}/bin/protoc"
+
             echo "🦀 Clawdius Environment Materialized"
             echo "   ═══════════════════════════════════"
             echo "   Phase: -0.5 (Environment Materialization)"
@@ -96,28 +94,42 @@
             echo "   - cargo-vet: $(cargo vet --version 2>/dev/null || echo 'available')"
             echo "   - cargo-mutants: $(cargo mutants --version 2>/dev/null || echo 'available')"
             echo "   ═══════════════════════════════════"
+            ${pkgs.lib.optionalString pkgs.stdenv.isLinux ''
             echo "   Sentinel: $(bwrap --version | head -n 1)"
-            echo "   Formal: $(lean --version | head -n 1)"
+            ''}
+            ${pkgs.lib.optionalString pkgs.stdenv.isLinux ''
+            echo "   Formal: $(lean --version 2>/dev/null | head -n 1 || echo 'not available')"
+            ''}
             echo ""
             echo "   Ready for high-assurance development!"
           '';
 
           # Integration for crates like openssl-sys
           PKG_CONFIG_PATH = "${pkgs.openssl.dev}/lib/pkgconfig";
-          
-          # Enable io_uring on Linux
-          CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUSTFLAGS = "-C target-cpu=native";
         };
 
         # Package definition for building the binary
         packages.default = pkgs.rustPlatform.buildRustPackage {
           pname = "clawdius";
-          version = "0.1.0";
+          version = "1.2.0";
           src = ./.;
           cargoLock.lockFile = ./Cargo.lock;
           
-          nativeBuildInputs = [ pkgs.pkg-config pkgs.cmake ];
-          buildInputs = [ pkgs.openssl pkgs.sqlite pkgs.libiconv ];
+          nativeBuildInputs = [ pkgs.pkg-config pkgs.cmake pkgs.protobuf ];
+          buildInputs = with pkgs; [
+            openssl
+            sqlite
+            libiconv
+            protobuf
+          ] ++ pkgs.lib.optionals pkgs.stdenv.isLinux [
+            liburing
+          ] ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [
+            pkgs.darwin.apple_sdk.frameworks.Security
+            pkgs.darwin.apple_sdk.frameworks.SystemConfiguration
+            pkgs.darwin.apple_sdk.frameworks.CoreFoundation
+          ];
+
+          PROTOC = "${pkgs.protobuf}/bin/protoc";
         };
       }
     );

@@ -47,7 +47,7 @@ impl MessageHandler for SessionHandler {
                      **Session ID**: `{}`",
                     session.state, session.message_count, session.id
                 )
-            }
+            },
             "list" | "sessions" => "📋 **Active Sessions**\n\n\
                  Session listing is not yet implemented.\n\
                  Use `/clawd status` to check your current session."
@@ -62,7 +62,7 @@ impl MessageHandler for SessionHandler {
                      • `status` - Check session status",
                     command.action
                 )
-            }
+            },
         };
 
         Ok(MessageHandlerResult {

@@ -29,7 +29,7 @@ const SLACK_DEFAULT_SCOPES: &[&str] = &[
 
 const DISCORD_DEFAULT_SCOPES: &[&str] = &["bot", "messages.read"];
 
-const DISCORD_DEFAULT_PERMISSIONS: u64 = 274877975552;
+const DISCORD_DEFAULT_PERMISSIONS: u64 = 274_877_975_552;
 
 // ---------------------------------------------------------------------------
 // Platform-specific OAuth configurations
@@ -328,7 +328,7 @@ impl OAuthToken {
                     .map(|d| d.as_secs())
                     .unwrap_or(0);
                 now_secs + buffer_secs >= expires
-            }
+            },
         }
     }
 }
@@ -400,7 +400,7 @@ impl OAuthTokenStore {
         match &self.backend {
             StoreBackend::Memory(map) => {
                 map.write().insert(key, token);
-            }
+            },
             StoreBackend::Sqlite { conn } => {
                 let scopes_json = serde_json::to_string(&token.scopes).unwrap_or_default();
                 let extra_json = serde_json::to_string(&token.extra).unwrap_or_default();
@@ -433,7 +433,7 @@ impl OAuthTokenStore {
                     error!("{msg}");
                     crate::messaging::types::MessagingError::InvalidConfig(msg)
                 })?;
-            }
+            },
         }
         Ok(())
     }
@@ -477,9 +477,9 @@ impl OAuthTokenStore {
                         let msg = format!("SQLite query failed: {e}");
                         error!("{msg}");
                         Err(crate::messaging::types::MessagingError::InvalidConfig(msg))
-                    }
+                    },
                 }
-            }
+            },
         }
     }
 
@@ -511,7 +511,7 @@ impl OAuthTokenStore {
         match &self.backend {
             StoreBackend::Memory(map) => {
                 map.write().remove(&key);
-            }
+            },
             StoreBackend::Sqlite { conn } => {
                 let conn = conn.lock();
                 conn.execute("DELETE FROM oauth_tokens WHERE platform = ?1", params![key])
@@ -520,7 +520,7 @@ impl OAuthTokenStore {
                         error!("{msg}");
                         crate::messaging::types::MessagingError::InvalidConfig(msg)
                     })?;
-            }
+            },
         }
         debug!("Revoked token for platform: {key}");
         Ok(())
@@ -630,7 +630,7 @@ impl PlatformOAuthClient {
                     url.push_str(&format!("&team={}", urlencoding::encode(team)));
                 }
                 url
-            }
+            },
             PlatformOAuthConfig::Discord(c) => {
                 let mut url = format!(
                     "{}?client_id={}&scope={}&redirect_uri={}&response_type=code&state={}&permissions={}",
@@ -645,7 +645,7 @@ impl PlatformOAuthClient {
                     url.push_str(&format!("&guild_id={}", urlencoding::encode(guild)));
                 }
                 url
-            }
+            },
         }
     }
 

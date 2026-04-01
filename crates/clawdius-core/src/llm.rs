@@ -211,12 +211,12 @@ fn should_retry(error: &Error, conditions: &[RetryCondition]) -> bool {
                 error_str.contains("429")
                     || error_str.contains("rate limit")
                     || error_str.contains("too many requests")
-            }
+            },
             RetryCondition::Timeout => {
                 matches!(error, Error::Timeout(_))
                     || error_str.contains("timeout")
                     || error_str.contains("timed out")
-            }
+            },
             RetryCondition::ServerError => {
                 error_str.contains("500")
                     || error_str.contains("502")
@@ -226,7 +226,7 @@ fn should_retry(error: &Error, conditions: &[RetryCondition]) -> bool {
                     || error_str.contains("bad gateway")
                     || error_str.contains("service unavailable")
                     || error_str.contains("gateway timeout")
-            }
+            },
             RetryCondition::NetworkError => {
                 error_str.contains("network")
                     || error_str.contains("connection")
@@ -234,7 +234,7 @@ fn should_retry(error: &Error, conditions: &[RetryCondition]) -> bool {
                     || error_str.contains("socket")
                     || error_str.contains("refused")
                     || error_str.contains("reset")
-            }
+            },
         };
 
         if should_retry {
@@ -263,7 +263,7 @@ where
                     tracing::info!("LLM call succeeded on attempt {}", attempts);
                 }
                 return Ok(result);
-            }
+            },
             Err(e) => {
                 let is_auth_error = matches!(e, Error::Auth(_))
                     || e.to_string().to_lowercase().contains("401")
@@ -293,7 +293,7 @@ where
                 } else {
                     return Err(e);
                 }
-            }
+            },
         }
     }
 }
@@ -332,7 +332,7 @@ impl LlmConfig {
                     )
                 })?;
                 (Some(key), None, "claude-3-5-sonnet-20241022".to_string())
-            }
+            },
             "openai" => {
                 let key = std::env::var("OPENAI_API_KEY").map_err(|_| {
                     Error::Config(
@@ -340,28 +340,28 @@ impl LlmConfig {
                     )
                 })?;
                 (Some(key), None, "gpt-4o".to_string())
-            }
+            },
             "ollama" => {
                 let url = std::env::var("OLLAMA_BASE_URL")
                     .unwrap_or_else(|_| "http://localhost:11434".into());
                 (None, Some(url), "llama3.2".to_string())
-            }
+            },
             "local" | "llama" => {
                 let url = std::env::var("LOCAL_LLM_BASE_URL")
                     .unwrap_or_else(|_| "http://localhost:11434".into());
                 (None, Some(url), "llama3.2".to_string())
-            }
+            },
             "mistral" => {
                 let url = std::env::var("LOCAL_LLM_BASE_URL")
                     .unwrap_or_else(|_| "http://localhost:11434".into());
                 (None, Some(url), "mistral".to_string())
-            }
+            },
             "zai" => {
                 let key = std::env::var("ZAI_API_KEY").map_err(|_| {
                     Error::Config(ErrorHelpers::api_key_missing("Z.AI", "ZAI_API_KEY").to_string())
                 })?;
                 (Some(key), None, "zai-default".to_string())
-            }
+            },
             _ => {
                 return Err(Error::Config(
                     ErrorHelpers::unknown_provider(
@@ -370,7 +370,7 @@ impl LlmConfig {
                     )
                     .to_string(),
                 ))
-            }
+            },
         };
 
         Ok(Self {
@@ -442,7 +442,7 @@ impl LlmConfig {
                 })?;
 
                 (model, Some(api_key), None)
-            }
+            },
             "openai" => {
                 let cfg = config.openai.as_ref();
                 let model = cfg
@@ -463,7 +463,7 @@ impl LlmConfig {
                 })?;
 
                 (model, Some(api_key), None)
-            }
+            },
             "ollama" => {
                 let cfg = config.ollama.as_ref();
                 let model = cfg
@@ -473,7 +473,7 @@ impl LlmConfig {
                     .ok()
                     .or_else(|| cfg.map(|c| c.base_url.clone()));
                 (model, None, base_url)
-            }
+            },
             "local" | "llama" | "mistral" => {
                 let model = if provider_lower == "mistral" {
                     "mistral".to_string()
@@ -484,7 +484,7 @@ impl LlmConfig {
                     .ok()
                     .or_else(|| config.ollama.as_ref().map(|c| c.base_url.clone()));
                 (model, None, base_url)
-            }
+            },
             "zai" => {
                 let cfg = config.zai.as_ref();
                 let model = cfg
@@ -503,7 +503,7 @@ impl LlmConfig {
                 })?;
 
                 (model, Some(api_key), None)
-            }
+            },
             _ => {
                 return Err(Error::Config(
                     ErrorHelpers::unknown_provider(
@@ -512,7 +512,7 @@ impl LlmConfig {
                     )
                     .to_string(),
                 ))
-            }
+            },
         };
 
         Ok(Self {
@@ -664,7 +664,7 @@ pub fn create_provider(config: &LlmConfig) -> Result<LlmProvider> {
             Ok(LlmProvider::Anthropic(
                 providers::anthropic::AnthropicProvider::new(api_key, Some(&config.model))?,
             ))
-        }
+        },
         "openai" => {
             let api_key = config.api_key.as_ref().ok_or_else(|| {
                 Error::Config(ErrorHelpers::api_key_missing("OpenAI", "OPENAI_API_KEY").to_string())
@@ -673,7 +673,7 @@ pub fn create_provider(config: &LlmConfig) -> Result<LlmProvider> {
                 api_key,
                 Some(&config.model),
             )?))
-        }
+        },
         "ollama" => {
             let base_url = config
                 .base_url
@@ -683,7 +683,7 @@ pub fn create_provider(config: &LlmConfig) -> Result<LlmProvider> {
                 base_url,
                 Some(&config.model),
             )?))
-        }
+        },
         "local" | "llama" | "mistral" => {
             let base_url = config
                 .base_url
@@ -693,7 +693,7 @@ pub fn create_provider(config: &LlmConfig) -> Result<LlmProvider> {
                 base_url.to_string(),
                 config.model.clone(),
             )))
-        }
+        },
         "zai" => {
             let api_key = config.api_key.as_ref().ok_or_else(|| {
                 Error::Config(ErrorHelpers::api_key_missing("Z.AI", "ZAI_API_KEY").to_string())
@@ -702,7 +702,7 @@ pub fn create_provider(config: &LlmConfig) -> Result<LlmProvider> {
                 api_key,
                 Some(&config.model),
             )?))
-        }
+        },
         _ => Err(Error::Config(
             ErrorHelpers::unknown_provider(
                 &config.provider,

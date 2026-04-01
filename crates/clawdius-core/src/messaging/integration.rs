@@ -79,7 +79,7 @@ impl ClawdiusLlmHandler {
                     sm.load_session(&sid)
                         .map_err(|e| MessagingError::SessionNotFound(e.to_string()))?
                         .ok_or_else(|| MessagingError::SessionNotFound(sid.to_string()))?
-                }
+                },
                 None => sm
                     .create_session()
                     .map_err(|e| MessagingError::SessionNotFound(e.to_string()))?,
@@ -135,10 +135,10 @@ impl ClawdiusLlmHandler {
                         Some::<()>(())
                     })
                     .await;
-                }
+                },
                 Err(e) => {
                     let _ = tx.send(format!("Error: {}", e)).await;
-                }
+                },
             }
             // Drop tx to signal stream completion
             drop(tx);

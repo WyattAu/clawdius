@@ -153,7 +153,7 @@ fn cidr_contains_ip(cidr: &str, ip: &str) -> bool {
         Err(_) => {
             tracing::warn!(cidr = %cidr, "Invalid CIDR prefix, skipping");
             return false;
-        }
+        },
     };
 
     let network_parts: Vec<u8> = network_ip
@@ -252,7 +252,7 @@ impl WebhookServer {
                 })
                 .to_string();
                 WebhookResponse::ok(body)
-            }
+            },
         }
     }
 
@@ -277,19 +277,19 @@ impl WebhookServer {
             .api_authenticator
             .validate(request.platform, api_key)
         {
-            AuthResult::Authenticated { .. } => {}
+            AuthResult::Authenticated { .. } => {},
             AuthResult::MissingKey => {
                 return WebhookResult::Rejected(WebhookResponse::error(
                     401,
                     r#"{"error":"Missing API key"}"#,
                 ));
-            }
+            },
             AuthResult::InvalidKey => {
                 return WebhookResult::Rejected(WebhookResponse::error(
                     403,
                     r#"{"error":"Invalid API key"}"#,
                 ));
-            }
+            },
         }
 
         // 2. Platform registration check
@@ -316,25 +316,25 @@ impl WebhookServer {
 
         // 3. Signature verification
         match self.receiver.verify_signature(request) {
-            VerificationResult::Verified => {}
+            VerificationResult::Verified => {},
             VerificationResult::InvalidSignature => {
                 return WebhookResult::Rejected(WebhookResponse::error(
                     401,
                     r#"{"error":"Invalid webhook signature"}"#,
                 ));
-            }
+            },
             VerificationResult::MissingCredentials => {
                 return WebhookResult::Rejected(WebhookResponse::error(
                     401,
                     r#"{"error":"Missing webhook credentials"}"#,
                 ));
-            }
+            },
             VerificationResult::UnsupportedPlatform => {
                 return WebhookResult::Rejected(WebhookResponse::error(
                     400,
                     r#"{"error":"Unsupported platform"}"#,
                 ));
-            }
+            },
         }
 
         // 4. Body parsing
@@ -349,12 +349,12 @@ impl WebhookServer {
                 let response = match e {
                     MessagingError::AuthenticationFailed(_) => {
                         WebhookResponse::error(401, error_body)
-                    }
+                    },
                     MessagingError::ParseError(_) => WebhookResponse::error(400, error_body),
                     _ => WebhookResponse::error(500, error_body),
                 };
                 WebhookResult::Rejected(response)
-            }
+            },
         }
     }
 }

@@ -174,7 +174,7 @@ impl RateLimiter {
                 Err(e) => {
                     tracing::warn!(error = %e, "Failed to open rate limiter DB");
                     return Vec::new();
-                }
+                },
             };
 
             let mut stmt = match conn
@@ -231,11 +231,11 @@ impl RateLimiter {
                     buckets.entry(key).or_insert(bucket);
                 }
                 count
-            }
+            },
             Err(e) => {
                 tracing::warn!(error = %e, "Failed to load rate limits from DB");
                 0
-            }
+            },
         }
     }
 
@@ -310,7 +310,7 @@ impl RateLimiter {
         })
         .await
         {
-            Ok(Ok(())) => {}
+            Ok(Ok(())) => {},
             Ok(Err(e)) => tracing::warn!(error = %e, "Failed to delete rate limit bucket from DB"),
             Err(e) => tracing::warn!(error = %e, "spawn_blocking failed for rate limit delete"),
         }

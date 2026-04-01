@@ -61,7 +61,7 @@ impl MessageHandler for AdminHandler {
                  • `/clawd admin status` - System status\n\
                  • `/clawd admin reload` - Reload configuration\n\
                  • `/clawd admin shutdown` - Shutdown bot (dangerous)"
-            }
+            },
             "status" => {
                 "📊 **System Status**\n\n\
                  **Services:**\n\
@@ -73,17 +73,17 @@ impl MessageHandler for AdminHandler {
                  • Messages Today: [N/A]\n\
                  • Uptime: [N/A]\n\n\
                  _Detailed metrics coming soon_"
-            }
+            },
             "users" => {
                 "👥 **User List**\n\n\
                  User listing is not yet implemented.\n\n\
                  _Coming soon_"
-            }
+            },
             "sessions" => {
                 "📋 **Session List**\n\n\
                  Session listing is not yet implemented.\n\n\
                  _Coming soon_"
-            }
+            },
             _ => &format!(
                 "❓ **Unknown Admin Command**\n\n\
                      Unknown action: `{}`\n\n\

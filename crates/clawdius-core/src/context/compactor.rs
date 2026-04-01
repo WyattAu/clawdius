@@ -273,34 +273,34 @@ impl ContextCompactor {
             match item {
                 ContextItem::File { path, .. } => {
                     summary_parts.push(format!("- File: {path}"));
-                }
+                },
                 ContextItem::Folder { path, files } => {
                     summary_parts.push(format!("- Folder: {} ({} files)", path, files.len()));
-                }
+                },
                 ContextItem::Url { url, title, .. } => {
                     let title_str = title.as_deref().unwrap_or("Untitled");
                     summary_parts.push(format!("- URL: {url} ({title_str})"));
-                }
+                },
                 ContextItem::Symbol { name, location, .. } => {
                     summary_parts.push(format!("- Symbol: {name} @ {location}"));
-                }
+                },
                 ContextItem::Search { query, results } => {
                     summary_parts.push(format!(
                         "- Search: \"{}\" ({} results)",
                         query,
                         results.len()
                     ));
-                }
+                },
                 ContextItem::GitDiff { staged, .. } => {
                     let label = if *staged { "staged" } else { "unstaged" };
                     summary_parts.push(format!("- Git diff ({label})"));
-                }
+                },
                 ContextItem::GitLog { commits } => {
                     summary_parts.push(format!("- Git log ({} commits)", commits.len()));
-                }
+                },
                 ContextItem::Problems { diagnostics } => {
                     summary_parts.push(format!("- Problems ({} diagnostics)", diagnostics.len()));
-                }
+                },
                 ContextItem::Image {
                     path,
                     mime_type,
@@ -309,7 +309,7 @@ impl ContextCompactor {
                 } => {
                     let desc = description.as_deref().unwrap_or("no description");
                     summary_parts.push(format!("- Image: {path} ({mime_type}, {desc})"));
-                }
+                },
                 ContextItem::Screenshot {
                     source,
                     url,
@@ -318,7 +318,7 @@ impl ContextCompactor {
                 } => {
                     let url_str = url.as_deref().unwrap_or("N/A");
                     summary_parts.push(format!("- Screenshot: {source} ({url_str}, {timestamp})"));
-                }
+                },
             }
         }
 

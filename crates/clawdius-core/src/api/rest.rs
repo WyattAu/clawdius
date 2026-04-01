@@ -59,19 +59,19 @@ impl DbActor {
                     DbCommand::ListSessions { reply } => {
                         let sessions = store.list_sessions().unwrap_or_default();
                         let _ = reply.send(sessions);
-                    }
+                    },
                     DbCommand::CreateSession { session, reply } => {
                         let _ = store.create_session(&session);
                         let _ = reply.send(*session);
-                    }
+                    },
                     DbCommand::GetSession { id, reply } => {
                         let session = store.load_session(&id).unwrap_or_default();
                         let _ = reply.send(session);
-                    }
+                    },
                     DbCommand::DeleteSession { id, reply } => {
                         let result = store.delete_session(&id).is_ok();
                         let _ = reply.send(result);
-                    }
+                    },
                 }
             }
         });
@@ -269,7 +269,7 @@ pub async fn get_session(
                     message: format!("Invalid session ID: {e}"),
                 }),
             ))
-        }
+        },
     };
 
     match state.db.get_session(session_id).await {
@@ -304,7 +304,7 @@ pub async fn delete_session(
                     message: format!("Invalid session ID: {e}"),
                 }),
             ))
-        }
+        },
     };
 
     if state.db.delete_session(session_id).await {

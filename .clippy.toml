@@ -1,0 +1,19 @@
+# Clawdius Clippy Configuration
+# Mirrors CI: cargo clippy --all-targets --all-features -- -D warnings -D clippy::all ...
+#
+# Note: -D warnings and -D clippy::all are passed via CLI in CI
+# This file captures the pedantic/nursery/cargo configurations
+
+[lints.clippy]
+# Pedantic lints (deny)
+pedantic = { level = "warn", priority = -1 }
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+todo = "deny"
+
+# Nursery lints (warn — these may have false positives)
+nursery = { level = "warn", priority = -1 }
+
+# Cargo lints (warn)
+multiple_crate_versions = "warn"

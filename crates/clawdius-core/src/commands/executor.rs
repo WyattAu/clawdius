@@ -145,7 +145,7 @@ impl CommandExecutor {
                     Ok(content) => Ok(CommandResult::success(step_name.to_string(), content)),
                     Err(e) => Ok(CommandResult::error(step_name.to_string(), e.to_string())),
                 }
-            }
+            },
             "write" => {
                 if parts.len() < 3 {
                     return Ok(CommandResult::error(
@@ -166,7 +166,7 @@ impl CommandExecutor {
                     )),
                     Err(e) => Ok(CommandResult::error(step_name.to_string(), e.to_string())),
                 }
-            }
+            },
             _ => Ok(CommandResult::error(
                 step_name.to_string(),
                 format!("Unknown file action: {action}"),
@@ -185,7 +185,7 @@ impl CommandExecutor {
         match shell_tool.execute(params) {
             Ok(result) if result.exit_code == 0 => {
                 Ok(CommandResult::success(step_name.to_string(), result.stdout))
-            }
+            },
             Ok(result) => Ok(CommandResult::error(step_name.to_string(), result.stderr)),
             Err(e) => Ok(CommandResult::error(step_name.to_string(), e.to_string())),
         }
@@ -208,14 +208,14 @@ impl CommandExecutor {
             "status" => {
                 let cwd = parts.get(1).map(std::string::ToString::to_string);
                 git_tool.status(cwd.as_deref())
-            }
+            },
             "diff" => {
                 let params = GitDiffParams {
                     staged: false,
                     path: parts.get(1).map(std::string::ToString::to_string),
                 };
                 git_tool.diff(params, None)
-            }
+            },
             "log" => {
                 let count = parts.get(1).and_then(|s| s.parse().ok()).unwrap_or(10);
                 let params = GitLogParams {
@@ -223,13 +223,13 @@ impl CommandExecutor {
                     path: parts.get(2).map(std::string::ToString::to_string),
                 };
                 git_tool.log(params, None)
-            }
+            },
             _ => {
                 return Ok(CommandResult::error(
                     step_name.to_string(),
                     format!("Unknown git action: {action}"),
                 ));
-            }
+            },
         };
 
         match result {

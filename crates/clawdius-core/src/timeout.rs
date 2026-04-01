@@ -113,7 +113,7 @@ where
                 "Operation timed out"
             );
             Err(Error::Timeout(duration))
-        }
+        },
     }
 }
 
@@ -211,7 +211,7 @@ pub async fn race_with_timeout<T>(
             Ok(Err(e)) => {
                 tracing::debug!("Future failed in race: {}", e);
                 continue;
-            }
+            },
             Err(_) => continue,
         }
     }

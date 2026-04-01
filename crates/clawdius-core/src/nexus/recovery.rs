@@ -56,7 +56,7 @@ impl CircuitBreaker {
                 } else {
                     true
                 }
-            }
+            },
             CircuitState::HalfOpen => true,
         }
     }
@@ -153,7 +153,7 @@ impl RetryExecutor {
                         ),
                         self.config.max_delay,
                     );
-                }
+                },
             }
         }
     }
@@ -178,7 +178,7 @@ impl RetryExecutor {
                         ),
                         self.config.max_delay,
                     );
-                }
+                },
             }
         }
     }
@@ -226,10 +226,10 @@ impl RecoveryManager {
         match &result {
             Ok(_) => {
                 self.circuit_breaker.record_success();
-            }
+            },
             Err(_) => {
                 self.circuit_breaker.record_failure();
-            }
+            },
         }
 
         result.map_err(|e| RecoveryError::OperationFailed(format!("{e:?}")))
@@ -256,10 +256,10 @@ impl RecoveryManager {
         match &result {
             Ok(_) => {
                 self.circuit_breaker.record_success();
-            }
+            },
             Err(_) => {
                 self.circuit_breaker.record_failure();
-            }
+            },
         }
 
         result.map_err(|e| RecoveryError::OperationFailed(format!("{e:?}")))
@@ -350,7 +350,7 @@ impl GracefulDegradation {
                     operation_type,
                     OperationType::Critical | OperationType::Read
                 )
-            }
+            },
             DegradationLevel::Minimal => matches!(operation_type, OperationType::Critical),
         }
     }

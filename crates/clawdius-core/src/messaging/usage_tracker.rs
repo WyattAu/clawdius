@@ -21,7 +21,7 @@
 //! | `clawdius_usage_message_duration_ms` | histogram | `tenant`, `platform`, `category` |
 //! | `clawdius_usage_active_tenants` | gauge | — |
 
-use std::collections::{HashMap, VecDeque};
+use std::collections::VecDeque;
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -262,9 +262,9 @@ impl UsageTracker {
                 Outcome::Success => {
                     success += 1;
                     total_latency_ms += event.latency_ms;
-                }
+                },
                 Outcome::Error => errors += 1,
-                _ => {}
+                _ => {},
             }
         }
 
@@ -345,6 +345,7 @@ fn now_unix() -> u64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::collections::HashMap;
 
     struct MockMetricsSink {
         counters: std::sync::Mutex<HashMap<String, u64>>,

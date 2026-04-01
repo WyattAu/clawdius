@@ -421,11 +421,13 @@ mod tests {
         };
         let limiter = RateLimiter::new(config);
 
-        // Use the token
-        let _permit = limiter
-            .acquire()
-            .await
-            .expect("Should acquire initial permit");
+        // Use the token (drop permit to release semaphore, tokens remain consumed)
+        {
+            let _permit = limiter
+                .acquire()
+                .await
+                .expect("Should acquire initial permit");
+        }
 
         // This should block until token is refilled
         let result = timeout(Duration::from_millis(2000), async {

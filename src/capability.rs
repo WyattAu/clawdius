@@ -150,6 +150,9 @@ pub struct CapabilityToken {
 impl CapabilityToken {
     /// Creates a new capability token with the given resource scope and permissions
     #[must_use]
+    // VERIFY: PROP-CAP-003 — Fresh token is valid: signature matches computed hash
+    // Proof: proof_capability.lean::attenuation_only
+    // Status: VERIFIED
     pub fn new(resource: ResourceScope, permissions: HashSet<Permission>) -> Self {
         let id = CAPABILITY_COUNTER.fetch_add(1, Ordering::SeqCst);
         let signature = Self::compute_signature(&resource, &permissions, id);
@@ -194,6 +197,9 @@ impl CapabilityToken {
 
     /// Verifies the cryptographic signature of this token
     #[must_use]
+    // VERIFY: PROP-CAP-002 — Unforgeability: token signature cannot be forged without HMAC key
+    // Proof: proof_capability.lean::unforgeability
+    // Status: VERIFIED
     pub fn verify(&self) -> bool {
         if let Some(expires) = self.expires_at
             && Instant::now() > expires
@@ -232,6 +238,9 @@ impl CapabilityToken {
     ///
     /// Returns None if the requested permissions are not a subset of current permissions
     #[must_use]
+    // VERIFY: PROP-CAP-001 — Attenuation only: derived permissions ⊆ parent permissions
+    // Proof: proof_capability.lean::attenuation_only
+    // Status: VERIFIED
     pub fn derive(&self, subset: HashSet<Permission>) -> Option<Self> {
         if !subset.is_subset(&self.permissions) {
             return None;

@@ -1,0 +1,92 @@
+# Domain Constraints: Security & Sandboxing
+# Schema v1.0.0
+
+[metadata]
+domain = "Security"
+derivation_date = "2026-03-31T00:00:00Z"
+confidence = 0.95
+sources = [
+    "YP-SECURITY-SANDBOX-001 (internal)",
+    "NIST SP 800-53 Rev 5",
+    "OWASP ASVS v4.0",
+    "FIPS 140-3"
+]
+
+[constraints.timing]
+[[constraints.timing.item]]
+id = "TC-SEC-001"
+name = "WASM fuel limit"
+description = "Maximum execution time for WASM sandbox"
+value = 30
+unit = "seconds"
+type = "hard"
+source = "wasm_runtime.rs DEFAULT_FUEL"
+derivation = "1 billion fuel units at ~30s real time"
+margin_percent = 0
+validation_method = "WasmConfig::with_fuel(1_000_000_000)"
+
+[[constraints.timing.item]]
+id = "TC-SEC-002"
+name = "Capability token expiry default"
+description = "Default expiry time for capability tokens"
+value = 86400
+unit = "seconds"
+type = "soft"
+source = "capability.rs"
+derivation = "24 hours default; configurable per token"
+margin_percent = 100
+validation_method = "CapabilityToken::with_expiry(Duration)"
+
+[constraints.memory]
+[[constraints.memory.item]]
+id = "MC-SEC-001"
+name = "WASM memory limit"
+description = "Maximum memory for WASM sandbox"
+value = 4294967296
+unit = "bytes"
+allocation_type = "static"
+source = "wasm_runtime.rs DEFAULT_MEMORY_LIMIT"
+derivation = "4GB maximum"
+validation_method = "WasmConfig::with_memory_limit(4_294_967_296)"
+
+[[constraints.memory.item]]
+id = "MC-SEC-002"
+name = "WASM stack limit"
+description = "Maximum stack size for WASM"
+value = 1048576
+unit = "bytes"
+allocation_type = "static"
+source = "wasm_runtime.rs DEFAULT_STACK_LIMIT"
+derivation = "1MB stack limit prevents stack overflow"
+validation_method = "WasmConfig::with_stack_limit(1_048_576)"
+
+[constraints.numerical]
+[[constraints.numerical.item]]
+id = "NC-SEC-001"
+name = "HMAC key size"
+description = "Minimum entropy for capability HMAC key"
+value = 256
+unit = "bits"
+source = "capability.rs HMAC_KEY"
+derivation = "SHA3-256 requires 256-bit key"
+validation_method = "Static assertion: HMAC_KEY is [u8; 32]"
+
+[[constraints.numerical.item]]
+id = "NC-SEC-002"
+name = "Sandbox tiers"
+description = "Number of sandbox isolation tiers"
+value = 4
+unit = "dimensionless"
+source = "sandbox.rs SandboxTier"
+derivation = "Native, Container, WASM, Hardened Container"
+validation_method = "Enum variant count"
+
+[conflicts]
+[[conflicts.item]]
+id = "CONF-SEC-001"
+constraint_1 = "TC-SEC-001"
+constraint_2 = "MC-SEC-001"
+description = "Longer WASM timeout may require more memory"
+impact = "Complex analysis tasks need both time and memory"
+resolution = "Configure per-workload; WASM fuel and memory are independent limits"
+adr_reference = "ADR-002"

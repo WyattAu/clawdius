@@ -3,7 +3,7 @@
 **The High-Assurance Engineering Engine.**  
 *Powered by Rust. Governed by SOPs. Verified by Nexus.*
 
-[![Version](https://img.shields.io/badge/version-1.2.0-blue.svg)](https://github.com/WyattAu/clawdius/releases/tag/v1.2.0)
+[![Version](https://img.shields.io/badge/version-1.3.0-blue.svg)](https://github.com/WyattAu/clawdius/releases/tag/v1.3.0)
 [![Rust](https://img.shields.io/badge/language-Rust-orange.svg)](https://www.rust-lang.org)
 [![Security](https://img.shields.io/badge/Security-Zero_Vulnerabilities-brightgreen.svg)](#-security)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-yellow.svg)](LICENSE)
@@ -143,7 +143,7 @@ pnpm run compile
 
 ```bash
 clawdius --version
-# Output: clawdius 0.7.0
+# Output: clawdius 1.3.0
 ```
 
 ---

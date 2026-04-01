@@ -459,31 +459,31 @@ impl DriftDetector {
         match rule.id.as_str() {
             "todo-fixer" => {
                 drifts.extend(self.detect_todo_fixme(rule, file_path, content));
-            }
+            },
             "unwrap-usage" => {
                 drifts.extend(self.detect_unwrap(rule, file_path, content));
-            }
+            },
             "expect-usage" => {
                 drifts.extend(self.detect_expect(rule, file_path, content));
-            }
+            },
             "unsafe-block" => {
                 drifts.extend(self.detect_unsafe(rule, file_path, content));
-            }
+            },
             "clone-on-large-type" => {
                 drifts.extend(self.detect_expensive_clone(rule, file_path, content));
-            }
+            },
             "magic-number" => {
                 drifts.extend(self.detect_magic_numbers(rule, file_path, content));
-            }
+            },
             "long-function" => {
                 drifts.extend(self.detect_long_functions(rule, file_path, content));
-            }
+            },
             "deep-nesting" => {
                 drifts.extend(self.detect_deep_nesting(rule, file_path, content));
-            }
+            },
             _ => {
                 // Unknown rule - skip
-            }
+            },
         }
 
         drifts
@@ -611,9 +611,9 @@ impl DriftDetector {
         for (line_num, line) in content.lines().enumerate() {
             // Detect clone on potentially large types
             if line.contains(".clone()") {
-                let context = line.trim();
+                let trimmed_line = line.trim();
                 // Simple heuristic: clone in loops or on Vec/String
-                if context.contains("for ") || context.contains("while ") {
+                if trimmed_line.contains("for ") || trimmed_line.contains("while ") {
                     drifts.push(
                         ArchitectureDrift::new(
                             &rule.id,

@@ -1,9 +1,9 @@
 # Clawdius Roadmap
 ## Strategic Vision & Development Plan
 
-**Current Version:** 1.2.0  
+**Current Version:** 1.3.0  
 **Target:** v2.0.0 with Agentic Workflows & Multi-Profile Platform  
-**Last Updated** 2026-03-25
+**Last Updated** 2026-04-01
 
 ---
 
@@ -19,9 +19,10 @@ Clawdius v2.0.0 will be a **multi-purpose platform** supporting:
 
 | Metric | Value |
 |--------|-------|
-| **Rust LOC** | 65,834 |
-| **Tests** | 1002+ passing |
-| **Lean4 Proofs** | 104 theorems/axioms |
+| **Rust LOC** | 77,233 |
+| **Tests** | 1091+ passing |
+| **Lean4 Proofs** | 115 theorems (111 proven, 4 sorry, 68 axioms), 96.5% completion |
+| **Clippy** | 0 warnings |
 | **Sandbox Backends** | 7 (WASM, Container, gVisor, Firecracker, etc.) |
 | **LLM Providers** | 5 (Anthropic, OpenAI, Ollama, Z.AI, Local) |
 | **Enterprise Features** | SSO, Audit, Compliance, Teams |
@@ -46,7 +47,7 @@ Clawdius v2.0.0 will be a **multi-purpose platform** supporting:
 
 ## Phase 2: Polish & Adoption ✅ COMPLETE
 
-## Phase 3: Feature Expansion (Weeks 7-12) 🔄 IN PROGRESS
+## Phase 3: Feature Expansion (Weeks 7-12) ✅ COMPLETE
 
 ### v1.1.0 - REST API & Webhooks (Week 7) ✅ COMPLETE
 
@@ -167,7 +168,7 @@ Clawdius v2.0.0 will be a **multi-purpose platform** supporting:
 
 ---
 
-## Phase 3: Feature Expansion (Months 2-3) 🔄 IN PROGRESS
+## Phase 3: Feature Expansion (Months 2-3) ✅ COMPLETE
 
 **Theme:** Enhanced developer productivity
 
@@ -230,7 +231,28 @@ Clawdius v2.0.0 will be a **multi-purpose platform** supporting:
 
 ---
 
-## Phase 5: Platform (Months 7-9) 🔄 IN PROGRESS
+## Phase 5: Formal Verification & HFT (2026-04) ✅ COMPLETE
+
+**Theme:** Mathematical rigor and high-frequency trading
+
+### v1.3.0 - Formal Verification & HFT Broker (2026-04)
+
+| Task | Priority | Effort | Status |
+|------|----------|--------|--------|
+| Unified WalletGuard | HIGH | 16h | ✅ Complete |
+| HFT Feed Integration | HIGH | 24h | ✅ Complete |
+| E2E HFT Pipeline | HIGH | 16h | ✅ Complete |
+| Lean4 Broker Proof | HIGH | 16h | ✅ Complete |
+| Nexus FSM Phase Sync | HIGH | 8h | ✅ Complete |
+| FSM Persistence | HIGH | 16h | ✅ Complete |
+| FSM Test Vectors | MEDIUM | 8h | ✅ Complete |
+| Full Lean4 Audit | MEDIUM | 8h | ✅ Complete |
+| Clippy Zero | HIGH | 4h | ✅ Complete |
+| Test Suite Green | HIGH | 4h | ✅ Complete |
+
+---
+
+## Phase 6: Platform (Months 7-9) 🔄 IN PROGRESS
 
 **Theme:** Extensibility and connectivity
 
@@ -255,7 +277,7 @@ Clawdius v2.0.0 will be a **multi-purpose platform** supporting:
 
 ---
 
-## Phase 6: Maturity (Months 10-12)
+## Phase 7: Maturity (Months 10-12)
 
 ### v2.0.0 - Next Generation (Month 10-12)
 
@@ -263,11 +285,40 @@ Clawdius v2.0.0 will be a **multi-purpose platform** supporting:
 
 | Task | Priority | Effort | Description |
 |------|----------|--------|-------------|
-| Agentic workflows | HIGH | 80h | Autonomous task execution |
-| Code generation | HIGH | 60h | Generate entire features |
-| Test generation | MEDIUM | 40h | Auto-generate tests |
-| Documentation gen | MEDIUM | 24h | Auto-generate docs |
-| Architecture analysis | LOW | 40h | Dependency graphs, metrics |
+| Agentic workflows | HIGH | 80h | ✅ COMPLETE - Autonomous task execution |
+| Code generation | HIGH | 60h | ✅ COMPLETE - Generate entire features |
+| Test generation | MEDIUM | 40h | ✅ COMPLETE - Auto-generate tests |
+| Documentation gen | MEDIUM | 24h | ✅ COMPLETE - Auto-generate docs |
+| Architecture analysis | LOW | 40h | 📋 PLANNED | Dependency graphs, metrics |
+
+---
+
+## Phase 6.5: Quality & Integration (Next)
+
+### v1.4.0 — Quality Deepening
+
+| Task | Priority | Effort | Status |
+|------|----------|--------|--------|
+| Lean4 Axiom Reduction (<30) | HIGH | 40h | 📋 PLANNED |
+| Real HFT Feed Adapter | MEDIUM | 40h | 📋 PLANNED |
+| Nexus FSM CLI Surface | MEDIUM | 24h | 📋 PLANNED |
+| TLA+ Model Checking | MEDIUM | 16h | 📋 PLANNED |
+| Property Test Expansion | MEDIUM | 16h | 📋 PLANNED |
+| Multi-Repo RAG | LOW | 40h | 📋 PLANNED |
+
+---
+
+## Phase 7.5: Platform Maturity (2026 H2)
+
+### v2.0.0 — Agentic Lifecycle Engine
+
+| Task | Priority | Effort | Status |
+|------|----------|--------|--------|
+| Agentic FSM Workflow | HIGH | 80h | 📋 PLANNED |
+| WASM Plugin Marketplace | MEDIUM | 60h | 📋 PLANNED |
+| HFT Paper Trading | MEDIUM | 40h | 📋 PLANNED |
+| Multi-LLM Orchestration | HIGH | 60h | 📋 PLANNED |
+| Cross-Language Analysis | MEDIUM | 40h | 📋 PLANNED |
 
 ---
 

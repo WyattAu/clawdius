@@ -1,0 +1,181 @@
+# Yellow Paper Registry
+# Tracks all Yellow Papers and their relationships
+
+[metadata]
+last_updated = "2026-03-31T00:00:00Z"
+total_papers = 8
+
+[[yellow_paper]]
+id = "YP-FSM-NEXUS-001"
+title = "Nexus FSM — 24-Phase R&D Lifecycle Engine"
+status = "APPROVED"
+version = "1.0.0"
+created = "2026-03-31"
+author = "Nexus"
+confidence_level = 0.95
+tqa_level = 4
+
+[yellow_paper.scope]
+domain = "Software Engineering"
+algorithms = ["ALG-FSM-001", "ALG-FSM-002", "ALG-FSM-003"]
+theorems = ["THM-FSM-001", "THM-FSM-002", "THM-FSM-003", "THM-FSM-004", "THM-FSM-005"]
+test_vector_file = "test_vectors_fsm.toml"
+constraints_file = "domain_constraints_performance.toml"
+
+[yellow_paper.dependencies]
+axioms_from = []
+lemmas_from = []
+
+[yellow_paper.consumers]
+blue_papers = ["BP-NEXUS-FSM-001"]
+proof_files = ["proof_fsm.lean"]
+
+[[yellow_paper]]
+id = "YP-HFT-BROKER-001"
+title = "HFT Broker — Lock-Free Trading Pipeline"
+status = "APPROVED"
+version = "1.0.0"
+created = "2026-03-31"
+author = "Nexus"
+confidence_level = 0.95
+tqa_level = 4
+
+[yellow_paper.scope]
+domain = "Financial Technology"
+algorithms = ["ALG-HFT-001", "ALG-HFT-002"]
+theorems = ["THM-HFT-001", "THM-HFT-002", "THM-HFT-003", "THM-HFT-004"]
+test_vector_file = "test_vectors_hft.toml"
+constraints_file = "domain_constraints_hft.toml"
+
+[yellow_paper.dependencies]
+axioms_from = ["YP-PERFORMANCE-RING-BUFFER-001"]
+lemmas_from = []
+
+[yellow_paper.consumers]
+blue_papers = ["BP-HFT-BROKER-001"]
+proof_files = ["proof_broker.lean"]
+
+[[yellow_paper]]
+id = "YP-PERFORMANCE-RING-BUFFER-001"
+title = "Lock-Free SPSC Ring Buffer"
+status = "APPROVED"
+version = "1.0.0"
+created = "2026-03-31"
+author = "Nexus"
+confidence_level = 0.95
+tqa_level = 4
+
+[yellow_paper.scope]
+domain = "Performance Engineering"
+algorithms = ["ALG-RB-001"]
+theorems = ["THM-RB-001", "THM-RB-002", "THM-RB-003", "THM-RB-004", "THM-RB-005", "THM-RB-006", "THM-RB-007", "THM-RB-008"]
+test_vector_file = "test_vectors_ring_buffer.toml"
+constraints_file = "domain_constraints_hft.toml"
+
+[yellow_paper.dependencies]
+axioms_from = []
+lemmas_from = []
+
+[yellow_paper.consumers]
+blue_papers = ["BP-PERFORMANCE-RING-BUFFER-001"]
+proof_files = ["proof_ring_buffer.lean"]
+
+[[yellow_paper]]
+id = "YP-SECURITY-CAPABILITY-001"
+title = "Capability-Based Security System"
+status = "APPROVED"
+version = "1.0.0"
+created = "2026-03-31"
+author = "Nexus"
+confidence_level = 0.95
+tqa_level = 4
+
+[yellow_paper.scope]
+domain = "Security"
+algorithms = ["ALG-CAP-001", "ALG-CAP-002"]
+theorems = ["THM-CAP-001", "THM-CAP-002", "THM-CAP-003", "THM-CAP-004", "THM-CAP-005", "THM-CAP-006", "THM-CAP-007", "THM-CAP-008", "THM-CAP-009", "THM-CAP-010"]
+test_vector_file = "test_vectors_capability.toml"
+constraints_file = "domain_constraints_security.toml"
+
+[yellow_paper.dependencies]
+axioms_from = []
+lemmas_from = []
+
+[yellow_paper.consumers]
+blue_papers = ["BP-SECURITY-CAPABILITY-001"]
+proof_files = ["proof_capability.lean"]
+
+[[yellow_paper]]
+id = "YP-SANDBOX-ISOLATION-001"
+title = "Sandbox Isolation System"
+status = "APPROVED"
+version = "1.0.0"
+created = "2026-03-31"
+author = "Nexus"
+confidence_level = 0.90
+tqa_level = 4
+
+[yellow_paper.scope]
+domain = "Security"
+algorithms = ["ALG-SANDBOX-001"]
+theorems = ["THM-SANDBOX-001", "THM-SANDBOX-002", "THM-SANDBOX-003", "THM-SANDBOX-004", "THM-SANDBOX-005", "THM-SANDBOX-006", "THM-SANDBOX-007", "THM-SANDBOX-008"]
+test_vector_file = "test_vectors_sandbox.toml"
+constraints_file = "domain_constraints_security.toml"
+
+[yellow_paper.dependencies]
+axioms_from = ["YP-SECURITY-CAPABILITY-001"]
+lemmas_from = []
+
+[yellow_paper.consumers]
+blue_papers = ["BP-SANDBOX-ISOLATION-001"]
+proof_files = ["proof_sandbox.lean", "proof_container.lean"]
+
+[[yellow_paper]]
+id = "YP-GRAPH-RAG-001"
+title = "Graph-RAG Code Intelligence System"
+status = "APPROVED"
+version = "1.0.0"
+created = "2026-03-31"
+author = "Nexus"
+confidence_level = 0.90
+tqa_level = 4
+
+[yellow_paper.scope]
+domain = "Code Intelligence"
+algorithms = ["ALG-RAG-001", "ALG-RAG-002", "ALG-RAG-003"]
+theorems = ["THM-RAG-001", "THM-RAG-002", "THM-RAG-003"]
+test_vector_file = "test_vectors_graph_rag.toml"
+constraints_file = "domain_constraints_performance.toml"
+
+[yellow_paper.dependencies]
+axioms_from = []
+lemmas_from = []
+
+[yellow_paper.consumers]
+blue_papers = ["BP-GRAPH-RAG-001"]
+proof_files = []
+
+[[yellow_paper]]
+id = "YP-MESSAGING-ROUTING-001"
+title = "Messaging Gateway Command Routing"
+status = "APPROVED"
+version = "1.0.0"
+created = "2026-03-01"
+author = "Nexus"
+confidence_level = 0.90
+tqa_level = 4
+
+[yellow_paper.scope]
+domain = "Messaging"
+algorithms = ["ALG-MSG-001"]
+theorems = ["THM-MSG-001", "THM-MSG-002"]
+test_vector_file = "test_vectors_messaging.toml"
+constraints_file = "domain_constraints_messaging.toml"
+
+[yellow_paper.dependencies]
+axioms_from = []
+lemmas_from = []
+
+[yellow_paper.consumers]
+blue_papers = ["BP-MESSAGING-GATEWAY-001"]
+proof_files = []

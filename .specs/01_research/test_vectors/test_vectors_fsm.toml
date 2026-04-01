@@ -1,0 +1,160 @@
+# Test Vector Specification for Nexus FSM Phase Engine
+#
+# Tests cover PhaseId validation, phase numbering, categories,
+# terminal detection, next-phase computation, and engine creation.
+
+[metadata]
+algorithm_id = "FSM-NEXUS-001"
+algorithm_version = "1.0.0"
+generation_date = "2026-04-01T00:00:00Z"
+generator = "manual"
+verification_status = "verified"
+
+[precision_requirements]
+floating_point_type = "none"
+
+[[test_vector]]
+id = "TV-FSM-001"
+name = "valid_phase_ids"
+category = "nominal"
+priority = "critical"
+description = "PhaseId::new accepts 0 through 23"
+
+[test_vector.input]
+min = { type = "integer", value = 0 }
+max = { type = "integer", value = 23 }
+
+[test_vector.expected_output]
+valid = { type = "boolean", value = true }
+count = { type = "integer", value = 24 }
+
+[[test_vector]]
+id = "TV-FSM-002"
+name = "invalid_phase_ids"
+category = "boundary"
+priority = "critical"
+description = "PhaseId::new rejects 24 and 255"
+
+[test_vector.input]
+invalid_id = { type = "integer", value = 24 }
+another_invalid = { type = "integer", value = 255 }
+
+[test_vector.expected_output]
+valid = { type = "boolean", value = false }
+
+[[test_vector]]
+id = "TV-FSM-003"
+name = "phase_0_is_start"
+category = "nominal"
+priority = "critical"
+description = "Phase 0 is Context Discovery"
+
+[test_vector.input]
+phase_number = { type = "integer", value = 0 }
+
+[test_vector.expected_output]
+name = { type = "string", value = "Context Discovery" }
+category = { type = "string", value = "Discovery" }
+
+[[test_vector]]
+id = "TV-FSM-004"
+name = "phase_23_is_terminal"
+category = "boundary"
+priority = "critical"
+description = "Phase 23 has no next phase"
+
+[test_vector.input]
+phase_number = { type = "integer", value = 23 }
+
+[test_vector.expected_output]
+is_terminal = { type = "boolean", value = true }
+has_next = { type = "boolean", value = false }
+
+[[test_vector]]
+id = "TV-FSM-005"
+name = "phase_22_has_next"
+category = "nominal"
+priority = "high"
+description = "Phase 22 has next = 23"
+
+[test_vector.input]
+phase_number = { type = "integer", value = 22 }
+
+[test_vector.expected_output]
+is_terminal = { type = "boolean", value = false }
+next_is_some = { type = "boolean", value = true }
+
+[[test_vector]]
+id = "TV-FSM-006"
+name = "all_phases_count"
+category = "nominal"
+priority = "critical"
+description = "all_phases() returns exactly 24 phases"
+
+[test_vector.input]
+
+[test_vector.expected_output]
+count = { type = "integer", value = 24 }
+
+[[test_vector]]
+id = "TV-FSM-007"
+name = "phase_categories_correct"
+category = "nominal"
+priority = "high"
+description = "Each phase maps to the correct category"
+
+[test_vector.input]
+test_phases = { type = "list", value = [
+  ["0", "Discovery"],
+  ["3", "Requirements"],
+  ["6", "Architecture"],
+  ["10", "Planning"],
+  ["13", "Implementation"],
+  ["16", "Verification"],
+  ["20", "Validation"],
+  ["22", "Transition"],
+] }
+
+[test_vector.expected_output]
+all_match = { type = "boolean", value = true }
+
+[[test_vector]]
+id = "TV-FSM-008"
+name = "phase_id_properties"
+category = "nominal"
+priority = "high"
+description = "PhaseId arithmetic: next and is_terminal for phase 5"
+
+[test_vector.input]
+phase = { type = "integer", value = 5 }
+
+[test_vector.expected_output]
+next = { type = "integer", value = 6 }
+is_terminal = { type = "boolean", value = false }
+
+[[test_vector]]
+id = "TV-FSM-009"
+name = "phase_number_sequence"
+category = "nominal"
+priority = "critical"
+description = "Phases are numbered contiguously 0-23"
+
+[test_vector.input]
+
+[test_vector.expected_output]
+contiguous = { type = "boolean", value = true }
+starts_at = { type = "integer", value = 0 }
+ends_at = { type = "integer", value = 23 }
+
+[[test_vector]]
+id = "TV-FSM-010"
+name = "engine_creation"
+category = "nominal"
+priority = "critical"
+description = "NexusEngine starts at phase 0 with correct name"
+
+[test_vector.input]
+
+[test_vector.expected_output]
+current_phase = { type = "integer", value = 0 }
+phase_name = { type = "string", value = "Context Discovery" }

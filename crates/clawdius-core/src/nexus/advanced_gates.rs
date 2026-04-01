@@ -72,7 +72,7 @@ impl GateCondition {
         match (actual, &self.value) {
             (serde_json::Value::String(s), serde_json::Value::String(pattern)) => {
                 s.contains(pattern)
-            }
+            },
             (serde_json::Value::Array(arr), _) => arr.contains(&self.value),
             _ => false,
         }
@@ -84,7 +84,7 @@ impl GateCondition {
                 regex::Regex::new(pattern)
                     .map(|re| re.is_match(s))
                     .unwrap_or(false)
-            }
+            },
             _ => false,
         }
     }

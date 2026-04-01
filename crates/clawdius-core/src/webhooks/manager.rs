@@ -187,7 +187,7 @@ impl WebhookManager {
                     }
 
                     delivery.fail(format!("HTTP {status}: {body}"), duration_ms);
-                }
+                },
                 Err(e) => {
                     let duration_ms = start.elapsed().as_millis() as u64;
                     if e.is_timeout() {
@@ -195,7 +195,7 @@ impl WebhookManager {
                     } else {
                         delivery.fail(e.to_string(), duration_ms);
                     }
-                }
+                },
             }
 
             if attempt < ctx.max_retries {

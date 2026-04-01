@@ -255,11 +255,11 @@ impl SessionBinder {
                     perms_map.entry(key).or_insert(perm);
                 }
                 count
-            }
+            },
             Err(e) => {
                 tracing::error!(error = %e, "Failed to load sessions from DB");
                 0
-            }
+            },
         }
     }
 
@@ -371,7 +371,7 @@ impl SessionBinder {
         })
         .await
         {
-            Ok(Ok(())) => {}
+            Ok(Ok(())) => {},
             Ok(Err(e)) => tracing::warn!(error = %e, "Failed to delete session from DB"),
             Err(e) => tracing::warn!(error = %e, "spawn_blocking failed for delete"),
         }

@@ -463,20 +463,22 @@ impl StatePersistence {
     }
 
     pub fn create_session(&self, state: &FsmState) -> Result<()> {
-        let conn = self.get_connection()?;
-        conn.execute(
-            "INSERT INTO fsm_state (session_id, current_phase, status, created_at, updated_at, metadata)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
-            params![
-                state.session_id.0,
-                i32::from(state.current_phase.0),
-                state.status.to_string(),
-                state.created_at.to_rfc3339(),
-                state.updated_at.to_rfc3339(),
-                serde_json::to_string(&state.metadata).unwrap_or_default(),
-            ],
-        )
-        .map_err(NexusError::DatabaseError)?;
+        {
+            let conn = self.get_connection()?;
+            conn.execute(
+                "INSERT INTO fsm_state (session_id, current_phase, status, created_at, updated_at, metadata)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+                params![
+                    state.session_id.0,
+                    i32::from(state.current_phase.0),
+                    state.status.to_string(),
+                    state.created_at.to_rfc3339(),
+                    state.updated_at.to_rfc3339(),
+                    serde_json::to_string(&state.metadata).unwrap_or_default(),
+                ],
+            )
+            .map_err(NexusError::DatabaseError)?;
+        }
 
         for phase_num in 0..=state.current_phase.0 {
             let phase_record = PhaseStateRecord::new(state.session_id.clone(), PhaseId(phase_num));

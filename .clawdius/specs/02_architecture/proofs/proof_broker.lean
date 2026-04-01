@@ -3,241 +3,235 @@
   Component: COMP-BROKER-001
   Blue Paper: BP-HFT-BROKER-001
   Yellow Paper: YP-HFT-BROKER-001
+
+  IMPORTANT: This proof models the canonical WalletGuard at
+  crates/clawdius-core/src/broker/wallet_guard.rs.
+
+  NOTE: Lean4 Int/Nat are arbitrary precision — overflow (PositionOverflow)
+  cannot occur in this model. The Rust implementation uses checked_add /
+  checked_mul which can return None. We model only the overflow-free path.
+  PositionOverflow is removed from RejectReason accordingly.
 -/
 
 import Std.Data.HashMap
 
-/- Decimal type for financial calculations -/
 structure Decimal where
   value : Int
   scale : Nat
-deriving Repr, BEq
+  deriving Repr, BEq
 
 namespace Decimal
 
 def zero : Decimal := ⟨0, 0⟩
 
 def add (d1 d2 : Decimal) : Decimal :=
-  if d1.scale = d2.scale then
-    ⟨d1.value + d2.value, d1.scale⟩
-  else
-    ⟨d1.value + d2.value, max d1.scale d2.scale⟩ -- Simplified
+  if d1.scale = d2.scale then ⟨d1.value + d2.value, d1.scale⟩
+  else ⟨d1.value + d2.value, max d1.scale d2.scale⟩
 
-def sub (d1 d2 : Decimal) : Decimal :=
-  if d1.scale = d2.scale then
-    ⟨d1.value - d2.value, d1.scale⟩
-  else
-    ⟨d1.value - d2.value, max d1.scale d2.scale⟩ -- Simplified
-
-def abs (d : Decimal) : Decimal :=
-  ⟨Int.natAbs d.value, d.scale⟩
-
-def gt (d1 d2 : Decimal) : Bool :=
-  d1.value > d2.value
-
-def gte (d1 d2 : Decimal) : Bool :=
-  d1.value ≥ d2.value
+def abs (d : Decimal) : Decimal := ⟨Int.natAbs d.value, d.scale⟩
 
 instance : Add Decimal := ⟨Decimal.add⟩
-instance : Sub Decimal := ⟨Decimal.sub⟩
 instance : LT Decimal := ⟨fun d1 d2 => d1.value < d2.value⟩
 instance : LE Decimal := ⟨fun d1 d2 => d1.value ≤ d2.value⟩
 
 end Decimal
 
-/- Symbol type -/
-abbrev Symbol := String
+abbrev Symbol := Nat
 
-/- Order side -/
 inductive Side where
   | buy : Side
   | sell : Side
-deriving Repr
+  deriving Repr
 
-/- Order type -/
 structure Order where
   symbol : Symbol
   side : Side
-  quantity : Decimal
-  price : Option Decimal
-deriving Repr
+  quantity : Nat
+  price : Nat
+  deriving Repr
 
-/- Wallet state -/
 structure Wallet where
-  cash : Decimal
-  positions : Std.HashMap Symbol Decimal
-  pendingOrders : Nat -- Simplified as count
-  realizedPnl : Decimal
-  sessionStartPnl : Decimal
-deriving Repr
+  cash : Nat
+  positions : Std.HashMap Symbol Int
+  realizedPnl : Int
+  sessionStartPnl : Int
+  deriving Repr
 
-/- Risk parameters -/
 structure RiskParams where
-  maxPositionSize : Decimal
-  maxOrderSize : Decimal
-  maxDailyDrawdown : Decimal
-  maxDeltaExposure : Decimal
-deriving Repr
+  piMax : Int
+  sigmaMax : Nat
+  lambdaMax : Int
+  marginRatio : Nat
+  deriving Repr
 
-/- Risk rejection reasons -/
-inductive RiskRejection where
-  | positionLimitExceeded : RiskRejection
-  | orderSizeExceeded : RiskRejection
-  | dailyDrawdownExceeded : RiskRejection
-  | insufficientMargin : RiskRejection
-deriving Repr
+inductive RejectReason where
+  | positionLimitExceeded : Int → Int → RejectReason
+  | orderSizeExceeded : Nat → Nat → RejectReason
+  | dailyDrawdownExceeded : Int → Int → RejectReason
+  | insufficientMargin : Nat → Nat → RejectReason
+  | zeroPrice : RejectReason
+  | zeroQuantity : RejectReason
+  deriving Repr
 
-/-
-  Wallet Guard Validation
-  Implements the risk check predicate K from YP-HFT-BROKER-001
--/
-def validatePositionLimit (wallet : Wallet) (params : RiskParams) (order : Order) : Except RiskRejection Unit :=
-  let current := wallet.positions.getD order.symbol Decimal.zero
-  let newPosition := current + order.quantity
-  if newPosition.abs.gt params.maxPositionSize then
-    Except.error RiskRejection.positionLimitExceeded
-  else
-    Except.ok ()
+def signedQuantity (order : Order) : Int :=
+  match order.side with
+  | Side.buy => order.quantity
+  | Side.sell => -order.quantity
 
-def validateOrderSize (params : RiskParams) (order : Order) : Except RiskRejection Unit :=
-  if order.quantity.abs.gt params.maxOrderSize then
-    Except.error RiskRejection.orderSizeExceeded
-  else
-    Except.ok ()
+def currentPosition (wallet : Wallet) (symbol : Symbol) : Int :=
+  wallet.positions.getD symbol 0
 
-def validateDrawdown (wallet : Wallet) (params : RiskParams) : Except RiskRejection Unit :=
-  let drawdown := wallet.sessionStartPnl - wallet.realizedPnl
-  if drawdown.gt params.maxDailyDrawdown then
-    Except.error RiskRejection.dailyDrawdownExceeded
-  else
-    Except.ok ()
+def currentDrawdown (wallet : Wallet) : Int :=
+  wallet.sessionStartPnl - wallet.realizedPnl
 
-def validateMargin (wallet : Wallet) (order : Order) : Except RiskRejection Unit :=
-  -- Simplified margin check
-  if order.quantity.abs.gt wallet.cash then
-    Except.error RiskRejection.insufficientMargin
-  else
-    Except.ok ()
+-- Sub-checks return Option RejectReason: none = pass, some = fail.
+-- Lean4 Int.add and Nat.mul cannot overflow (arbitrary precision),
+-- so we compute directly without Option wrapping.
 
-/-
-  Combined Wallet Guard
-  K = K_position ∧ K_size ∧ K_drawdown ∧ K_margin
--/
-def validateOrder (wallet : Wallet) (params : RiskParams) (order : Order) : Except RiskRejection Unit :=
-  validatePositionLimit wallet params order *>
-  validateOrderSize params order *>
-  validateDrawdown wallet params *>
-  validateMargin wallet order
+def checkPositionLimit (wallet : Wallet) (params : RiskParams) (order : Order) : Option RejectReason :=
+  let newPos := currentPosition wallet order.symbol + signedQuantity order
+  if (Int.natAbs newPos : Int) > params.piMax then
+    some (RejectReason.positionLimitExceeded newPos params.piMax)
+  else none
 
-/-
-  Theorem 1: Risk Check Completeness
-  Invalid orders are always rejected
--/
-theorem invalid_orders_rejected_size (wallet : Wallet) (params : RiskParams) (order : Order) :
-    order.quantity.abs.gt params.maxOrderSize = true →
-    validateOrder wallet params order = Except.error RiskRejection.orderSizeExceeded := by
+def checkOrderSize (params : RiskParams) (order : Order) : Option RejectReason :=
+  if order.quantity > params.sigmaMax then
+    some (RejectReason.orderSizeExceeded order.quantity params.sigmaMax)
+  else none
+
+def checkDrawdown (wallet : Wallet) (params : RiskParams) : Option RejectReason :=
+  let dd := currentDrawdown wallet
+  if dd > params.lambdaMax then
+    some (RejectReason.dailyDrawdownExceeded dd params.lambdaMax)
+  else none
+
+def checkMargin (wallet : Wallet) (order : Order) (params : RiskParams) : Option RejectReason :=
+  match order.side with
+  | Side.sell => none
+  | Side.buy =>
+    let notional := order.quantity * order.price
+    let req := notional / params.marginRatio
+    if req > wallet.cash then
+      some (RejectReason.insufficientMargin req wallet.cash)
+    else none
+
+-- Full risk check in Rust WalletGuard::check evaluation order:
+-- 1. zero-price  → reject
+-- 2. zero-quantity → reject
+-- 3. position limit (checkPositionLimit)
+-- 4. order size (checkOrderSize)
+-- 5. drawdown (checkDrawdown)
+-- 6. margin (checkMargin, buy only)
+def check (wallet : Wallet) (params : RiskParams) (order : Order) : Option RejectReason :=
+  if order.price = 0 then
+    some RejectReason.zeroPrice
+  else if order.quantity = 0 then
+    some RejectReason.zeroQuantity
+  else match checkPositionLimit wallet params order with
+  | some reason => some reason
+  | none => match checkOrderSize params order with
+    | some reason => some reason
+    | none => match checkDrawdown wallet params with
+      | some reason => some reason
+      | none => checkMargin wallet order params
+
+def approved (wallet : Wallet) (params : RiskParams) (order : Order) : Bool :=
+  match check wallet params order with
+  | none => true
+  | some _ => false
+
+-- === Theorems ===
+
+theorem zero_price_rejected (wallet : Wallet) (params : RiskParams) (order : Order) :
+    order.price = 0 → ¬approved wallet params order := by
   intro h
-  simp [validateOrder, validateOrderSize]
-  split_ifs <;> simp [*]
+  simp [approved, check, h]
 
-theorem invalid_orders_rejected_position (wallet : Wallet) (params : RiskParams) (order : Order) :
-    let current := wallet.positions.getD order.symbol Decimal.zero
-    (current + order.quantity).abs.gt params.maxPositionSize = true →
-    validateOrder wallet params order = Except.error RiskRejection.positionLimitExceeded := by
-  intro hcurrent h
-  simp [validateOrder, validatePositionLimit, hcurrent]
-  split_ifs <;> simp [*]
+theorem zero_quantity_rejected (wallet : Wallet) (params : RiskParams) (order : Order) :
+    order.quantity = 0 → ¬approved wallet params order := by
+  intro h
+  simp only [approved, check]
+  by_cases hprice : order.price = 0 <;> simp_all
 
-/-
-  Theorem 2: Valid Orders Pass
-  Orders within limits are approved
--/
-theorem valid_orders_approved (wallet : Wallet) (params : RiskParams) (order : Order)
-    (hpos : ¬(let current := wallet.positions.getD order.symbol Decimal.zero
-              (current + order.quantity).abs.gt params.maxPositionSize))
-    (hsize : ¬order.quantity.abs.gt params.maxOrderSize)
-    (hdraw : ¬(wallet.sessionStartPnl - wallet.realizedPnl).gt params.maxDailyDrawdown)
-    (hmargin : ¬order.quantity.abs.gt wallet.cash) :
-    validateOrder wallet params order = Except.ok () := by
-  simp [validateOrder, validatePositionLimit, validateOrderSize, validateDrawdown, validateMargin]
-  split_ifs <;> simp [*]
+theorem order_size_exceeded_rejected (wallet : Wallet) (params : RiskParams) (order : Order) :
+    order.price ≠ 0 →
+    order.quantity ≠ 0 →
+    order.quantity > params.sigmaMax →
+    ¬approved wallet params order := by
+  sorry
+  -- TODO: requires HashMap reduction lemmas from Std for checkPositionLimit → currentPosition
 
-/-
-  Ring Buffer Specification
--/
+theorem position_limit_rejected (wallet : Wallet) (params : RiskParams) (order : Order) :
+    order.price ≠ 0 →
+    order.quantity ≠ 0 →
+    (Int.natAbs (currentPosition wallet order.symbol + signedQuantity order) : Int) > params.piMax →
+    ¬approved wallet params order := by
+  sorry
+  -- TODO: requires HashMap reduction lemmas from Std for currentPosition
+
+theorem drawdown_exceeded_rejected (wallet : Wallet) (params : RiskParams) (order : Order) :
+    order.price ≠ 0 →
+    order.quantity ≠ 0 →
+    currentDrawdown wallet > params.lambdaMax →
+    ¬approved wallet params order := by
+  sorry
+  -- TODO: requires HashMap reduction lemmas from Std for checkPositionLimit → currentPosition
+
+theorem insufficient_margin_rejected (wallet : Wallet) (params : RiskParams) (order : Order) :
+    order.price ≠ 0 →
+    order.quantity ≠ 0 →
+    order.side = Side.buy →
+    order.quantity * order.price / params.marginRatio > wallet.cash →
+    ¬approved wallet params order := by
+  sorry
+  -- TODO: requires HashMap reduction lemmas from Std for checkPositionLimit → currentPosition
+
+theorem sell_skips_margin (wallet : Wallet) (params : RiskParams) (order : Order) :
+    order.side = Side.sell →
+    checkMargin wallet order params = none := by
+  intro h
+  simp [checkMargin, h]
+
+-- === Ring Buffer Properties ===
+
 structure RingBuffer (T : Type) where
   capacity : Nat
   head : Nat
   tail : Nat
-  -- In production: buffer : Array T
-deriving Repr
+  deriving Repr
 
-/-
-  Ring Buffer Invariants
--/
 def ringBufferValid (rb : RingBuffer T) : Prop :=
   rb.head < rb.capacity ∧ rb.tail < rb.capacity
 
-def ringBufferFull (rb : RingBuffer T) : Prop :=
-  (rb.head + 1) % rb.capacity = rb.tail
-
-def ringBufferEmpty (rb : RingBuffer T) : Prop :=
-  rb.head = rb.tail
-
-/-
-  Theorem 3: Ring Buffer Index Safety
-  Indices always remain valid
--/
 theorem ring_buffer_head_valid (rb : RingBuffer T) (hvalid : ringBufferValid rb) :
     rb.head < rb.capacity := hvalid.1
 
 theorem ring_buffer_tail_valid (rb : RingBuffer T) (hvalid : ringBufferValid rb) :
     rb.tail < rb.capacity := hvalid.2
 
+theorem mod_succ_lt (a b : Nat) (h : 0 < b) : (a + 1) % b < b :=
+  Nat.mod_lt (a + 1) h
+
 theorem ring_buffer_next_head_valid (rb : RingBuffer T) (hvalid : ringBufferValid rb) :
     (rb.head + 1) % rb.capacity < rb.capacity := by
-  have h := hvalid.1
-  omega
+  have h1 : rb.head < rb.capacity := hvalid.1
+  have hcap : rb.capacity > 0 := by omega
+  exact mod_succ_lt rb.head rb.capacity hcap
 
-/-
-  WCET Specification
-  We model WCET bounds as typeclass constraints
--/
-class WCET (op : Type) where
-  bound : Nat -- microseconds
+-- === Latency Bounds ===
 
-instance : WCET (validateOrder wallet params order) where
-  bound := 100 -- <100μs as per YP-HFT-BROKER-001
-
-/-
-  Theorem 4: WCET Bound
-  Risk check completes within 100μs
-  (This is a specification theorem; actual timing verified by measurement)
--/
-theorem risk_check_wcet_bound :
-    WCET.bound (validateOrder wallet params order) ≤ 100 := by
-  simp [WCET.bound]
-
-/-
-  Latency Taxonomy from YP-HFT-BROKER-001
--/
 structure LatencyBounds where
-  signalToExecution : Nat -- < 1ms
-  riskCheck : Nat         -- < 100μs
-  gcPause : Nat           -- 0μs (zero-GC)
-  marketDataProcessing : Nat -- < 1μs
-deriving Repr
+  signalToExecution : Nat
+  riskCheck : Nat
+  gcPause : Nat
+  marketDataProcessing : Nat
+  deriving Repr
 
 def hftLatencyBounds : LatencyBounds :=
-  { signalToExecution := 1000
-    riskCheck := 100
-    gcPause := 0
-    marketDataProcessing := 1
-  }
+  { signalToExecution := 1000  -- <1ms target
+    riskCheck := 100         -- <100µs target
+    gcPause := 0             -- Zero GC (Rust native)
+    marketDataProcessing := 1 }
 
-/-
-  Zero-GC Guarantee
-  Arena allocation prevents GC
--/
 theorem zero_gc_guarantee :
     hftLatencyBounds.gcPause = 0 := rfl

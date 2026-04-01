@@ -296,7 +296,7 @@ impl MessagingGateway {
                     stream: None,
                 };
                 return self.send_response(platform, chat_id, result).await;
-            }
+            },
             Err(e) => return Err(e),
         };
 
@@ -439,7 +439,7 @@ impl MessagingGateway {
                     )
                     .await;
                     return Err(e);
-                }
+                },
             }
         } else {
             MessageHandlerResult {
@@ -528,7 +528,7 @@ impl MessagingGateway {
                                     .await;
                             }
                             return Err(e);
-                        }
+                        },
                     }
                 }
                 ids
@@ -547,7 +547,7 @@ impl MessagingGateway {
                                 .await;
                         }
                         return Err(e);
-                    }
+                    },
                 }
             };
 

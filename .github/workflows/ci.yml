@@ -325,6 +325,9 @@ jobs:
       - name: Run fuzz_mention (60s)
         run: timeout 60s cargo fuzz run fuzz_mention -- -max_total_time=55 || true
       
+      - name: Run fuzz_diff_engine (60s)
+        run: timeout 60s cargo fuzz run fuzz_diff_engine -- -max_total_time=55 || true
+      
       - name: Check for crash artifacts
         run: |
           if ls fuzz/artifacts/*/crash-* 2>/dev/null; then
@@ -332,6 +335,42 @@ jobs:
             exit 1
           fi
           echo "No crashes found"
+
+  proofs:
+    name: Formal Verification (Lean4)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: lint
+    if: github.event_name == 'pull_request' || github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install Lean4
+        uses: leanprover/lean4-action@v2
+        with:
+          toolchain: stable
+          elan-version: 3.1.1
+      
+      - name: Check Lean4 availability
+        run: lean --version
+      
+      - name: Compile Lean4 proofs
+        run: |
+          cd .clawdius/specs/02_architecture/proofs
+          echo "=== Compiling formal verification proofs ==="
+          FAILED=0
+          for f in *.lean; do
+            echo "Compiling $f..."
+            if ! lean "$f" 2>&1; then
+              echo "::error::$f failed to compile"
+              FAILED=1
+            fi
+          done
+          if [ $FAILED -eq 1 ]; then
+            echo "::error::One or more Lean4 proofs failed to compile"
+            exit 1
+          fi
+          echo "=== All Lean4 proofs compiled successfully ==="
 
   build:
     name: Build (${{ matrix.target }})
@@ -513,7 +552,7 @@ jobs:
   quality-gate:
     name: Quality Gate
     runs-on: ubuntu-latest
-    needs: [lint, test, coverage, vscode-extension, security]
+    needs: [lint, test, coverage, vscode-extension, security, fuzz, proofs]
     if: always() && !startsWith(github.ref, 'refs/tags/')
     steps:
       - name: Evaluate quality gate
@@ -555,6 +594,24 @@ jobs:
             echo "✅ Security: PASSED"
           else
             echo "❌ Security: FAILED"
+            FAILED=1
+          fi
+          
+          if [ "${{ needs.fuzz.result }}" == "success" ]; then
+            echo "✅ Fuzz Testing: PASSED"
+          elif [ "${{ needs.fuzz.result }}" == "skipped" ]; then
+            echo "⚠️ Fuzz Testing: SKIPPED"
+          else
+            echo "❌ Fuzz Testing: FAILED"
+            FAILED=1
+          fi
+          
+          if [ "${{ needs.proofs.result }}" == "success" ]; then
+            echo "✅ Formal Proofs: PASSED"
+          elif [ "${{ needs.proofs.result }}" == "skipped" ]; then
+            echo "⚠️ Formal Proofs: SKIPPED"
+          else
+            echo "❌ Formal Proofs: FAILED"
             FAILED=1
           fi
           

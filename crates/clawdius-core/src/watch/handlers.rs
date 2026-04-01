@@ -91,12 +91,12 @@ impl WatchHandler for ContextUpdateHandler {
                     }
                     tracing::debug!("Context updated for: {:?}", path);
                 }
-            }
+            },
             WatchEvent::Deleted { path } => {
                 let mut tracked = self.tracked_paths.write().await;
                 tracked.retain(|p| p != path);
                 tracing::debug!("Context removed for: {:?}", path);
-            }
+            },
             WatchEvent::Renamed { from, to } => {
                 let mut tracked = self.tracked_paths.write().await;
                 tracked.retain(|p| p != from);
@@ -104,7 +104,7 @@ impl WatchHandler for ContextUpdateHandler {
                     tracked.push(to.clone());
                 }
                 tracing::debug!("Context renamed: {:?} -> {:?}", from, to);
-            }
+            },
         }
 
         Ok(())
@@ -165,13 +165,13 @@ impl WatchHandler for DiagnosticHandler {
             match event {
                 WatchEvent::Created { path } | WatchEvent::Modified { path } => {
                     tracing::info!("Running diagnostics for: {:?}", path);
-                }
+                },
                 WatchEvent::Deleted { path } => {
                     tracing::info!("Clearing diagnostics for: {:?}", path);
-                }
+                },
                 WatchEvent::Renamed { from, to } => {
                     tracing::info!("Diagnostics: renamed {:?} -> {:?}", from, to);
-                }
+                },
             }
         }
 
@@ -275,12 +275,12 @@ impl WatchHandler for AutoAnalysisHandler {
                 if self.is_source_file(path) {
                     self.trigger_analysis(path).await?;
                 }
-            }
+            },
             WatchEvent::Deleted { path } => {
                 if self.is_source_file(path) {
                     tracing::debug!("Clearing analysis for deleted file: {:?}", path);
                 }
-            }
+            },
             WatchEvent::Renamed { from, to } => {
                 if self.is_source_file(from) {
                     tracing::debug!("Clearing analysis for renamed file: {:?}", from);
@@ -288,7 +288,7 @@ impl WatchHandler for AutoAnalysisHandler {
                 if self.is_source_file(to) {
                     self.trigger_analysis(to).await?;
                 }
-            }
+            },
         }
 
         Ok(())

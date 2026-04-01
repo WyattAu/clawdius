@@ -62,10 +62,10 @@ impl PluginLoader {
         match self.load_manifest(dir) {
             Ok(manifest) => {
                 result.manifest = Some(manifest);
-            }
+            },
             Err(e) => {
                 result.add_error(format!("Manifest error: {e}"));
-            }
+            },
         }
 
         // Check WASM file

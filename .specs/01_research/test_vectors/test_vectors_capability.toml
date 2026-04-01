@@ -1,0 +1,132 @@
+# Test Vector Specification for Capability Security System
+#
+# Permission names MUST match the Rust Permission enum variants at
+# crates/clawdius-core/src/capability.rs:
+#   FsRead, FsWrite, NetTcp, NetUdp, ExecSpawn, SecretAccess, EnvRead, EnvWrite
+#
+# The test harness (test_vector_harness.rs) parses these strings into real
+# Permission enum values using Permission::from_str_name() or equivalent.
+
+[metadata]
+algorithm_id = "ALG-CAP-001"
+algorithm_version = "1.1.0"
+generation_date = "2026-03-31T12:00:00Z"
+generator = "manual"
+verification_status = "verified"
+
+[[test_vector]]
+id = "TV-CAP-001"
+name = "Fresh token verifies"
+category = "nominal"
+priority = "critical"
+description = "Newly created capability token passes verification"
+
+[test_vector.input]
+permissions = { type = "list", value = ["FsRead", "SecretAccess"] }
+resource = { type = "string", value = "/tmp/project" }
+
+[test_vector.expected_output]
+verified = { type = "boolean", value = true }
+
+[[test_vector]]
+id = "TV-CAP-002"
+name = "Attenuation to subset"
+category = "nominal"
+priority = "critical"
+description = "Derive with subset of permissions succeeds"
+
+[test_vector.input]
+parent_permissions = { type = "list", value = ["FsRead", "FsWrite", "ExecSpawn", "NetTcp"] }
+derive_permissions = { type = "list", value = ["FsRead"] }
+
+[test_vector.expected_output]
+success = { type = "boolean", value = true }
+result_permissions = { type = "list", value = ["FsRead"] }
+
+[[test_vector]]
+id = "TV-CAP-003"
+name = "Escalation blocked"
+category = "adversarial"
+priority = "critical"
+description = "Derive with permissions not held by parent fails. NetUdp is not in parent set."
+
+[test_vector.input]
+parent_permissions = { type = "list", value = ["FsRead"] }
+derive_permissions = { type = "list", value = ["FsRead", "FsWrite", "NetUdp"] }
+
+[test_vector.expected_output]
+success = { type = "boolean", value = false }
+
+[[test_vector]]
+id = "TV-CAP-004"
+name = "Transitive attenuation"
+category = "nominal"
+priority = "high"
+description = "derive(derive(parent, {FsRead,FsWrite}), {FsRead}) has only FsRead"
+
+[test_vector.input]
+parent_permissions = { type = "list", value = ["FsRead", "FsWrite", "ExecSpawn", "NetTcp"] }
+first_derive = { type = "list", value = ["FsRead", "FsWrite"] }
+second_derive = { type = "list", value = ["FsRead"] }
+
+[test_vector.expected_output]
+final_permissions = { type = "list", value = ["FsRead"] }
+
+[[test_vector]]
+id = "TV-CAP-005"
+name = "Empty capability denies all"
+category = "boundary"
+priority = "high"
+description = "Token with empty permission set denies every permission check"
+
+[test_vector.input]
+permissions = { type = "list", value = [] }
+
+[test_vector.expected_output]
+has_FsRead = { type = "boolean", value = false }
+has_FsWrite = { type = "boolean", value = false }
+has_ExecSpawn = { type = "boolean", value = false }
+has_NetTcp = { type = "boolean", value = false }
+
+[[test_vector]]
+id = "TV-CAP-006"
+name = "Expired token detection"
+category = "boundary"
+priority = "high"
+description = "Token created with zero-duration expiry is detected as expired immediately"
+
+[test_vector.input]
+permissions = { type = "list", value = ["FsRead"] }
+expiry_duration_ms = { type = "u64", value = 0 }
+
+[test_vector.expected_output]
+is_expired = { type = "boolean", value = true }
+
+[[test_vector]]
+id = "TV-CAP-007"
+name = "Non-expired token within window"
+category = "nominal"
+priority = "high"
+description = "Token with 60-second expiry is not expired immediately after creation"
+
+[test_vector.input]
+permissions = { type = "list", value = ["FsRead", "FsWrite"] }
+expiry_duration_ms = { type = "u64", value = 60000 }
+
+[test_vector.expected_output]
+is_expired = { type = "boolean", value = false }
+verified = { type = "boolean", value = true }
+
+[[test_vector]]
+id = "TV-CAP-008"
+name = "All 8 permission variants parse correctly"
+category = "nominal"
+priority = "medium"
+description = "Every Rust Permission variant is represented as a string in TOML and parses to a valid enum value"
+
+[test_vector.input]
+permissions = { type = "list", value = ["FsRead", "FsWrite", "NetTcp", "NetUdp", "ExecSpawn", "SecretAccess", "EnvRead", "EnvWrite"] }
+
+[test_vector.expected_output]
+verified = { type = "boolean", value = true }
+permission_count = { type = "integer", value = 8 }

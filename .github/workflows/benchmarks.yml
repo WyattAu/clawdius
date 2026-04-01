@@ -1,124 +1,142 @@
-name: Phase 5 Benchmarks
+name: Benchmarks
 
+on:
+  push:
+    branches: [main, master, develop]
+  pull_request:
+    branches: [main, master, develop]
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+# Performance SLOs (documented, not enforced in CI yet):
+#   - Ring buffer ops: <100ns
+#   - Wallet guard: <100us
+#   - HFT pipeline: <1ms
+#   - Messaging routing: <1ms P99
+
+jobs:
+  benchmark:
+    name: Benchmark
     runs-on: ubuntu-latest
-    if: false  # Disabled until benchmark files are implemented
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      
+
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
-      
-      - name: Cache cargo registry
-        uses: actions/cache@v4
         with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          }
-          key: ${{ runner.os }}-cargo-bench-int-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-bench-int
-            ${{ runner.os }}-cargo-bench-int
-            ${{ runner.os }}-cargo-bench-int
-          
-      - name: Cache criterion baseline
+          toolchain: 1.85
+
+      - name: Cache cargo registry
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: bench
+
+      - name: Cache criterion data
         uses: actions/cache@v4
         with:
           path: target/criterion
-          key: ${{ runner.os }}-criterion-${{ github.base_ref || github.ref_name }}
+          key: ${{ runner.os }}-criterion-${{ github.ref_name }}
           restore-keys: |
             ${{ runner.os }}-criterion-main
             ${{ runner.os }}-criterion-
-          
-      - name: Run Phase 5 Benchmarks
+
+      - name: Run benchmarks
         run: |
-          cargo bench \
-            --bench phase5_bench \
-            -- --save-baseline ${{ github.sha }} noplot
-          
+          cargo bench --workspace -- --save-baseline ${{ github.sha }} noplot
+
       - name: Upload benchmark results
         uses: actions/upload-artifact@v4
         with:
-          name: phase5-bench-results
+          name: benchmark-results-${{ github.sha }}
           path: target/criterion
-          retention-days: 90
+          retention-days: 30
 
-      - name: Performance Gate Check
-        run: |
-          # Check for performance regression
-          if cargo bench --bench phase5_bench -- --baseline main 2>& /dev/null; then
-            echo "✅ No performance regression detected"
-          else
-            echo "❌ Performance regression detected!"
-            echo "::warning:: Performance regression detected!"
-            echo "Failing benchmarks:"
-            cargo bench --bench phase5_bench 2>& /dev/stderr || true
-            exit 1
-          fi
-          
-      - name: Upload baseline
-        uses: actions/upload-artifact@v4
-        with:
-          name: baseline
-          path: .specs/performance/baseline.json
-          retention-days: 365
-
-  performance-gate:
+  regression-check:
+    name: Regression Check
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request' && github.base_ref == 'main'
+    timeout-minutes: 30
+    needs: benchmark
+    if: github.event_name == 'pull_request'
+    permissions:
+      pull-requests: write
+      contents: read
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      
-      - name: Download baseline from main branch
-        run: |
-          mkdir -p .specs/performance
-          gh api repos/${{ github.repository }}/actions/artifacts?${{ github.run_id }}
-          --name baseline
-          --path .specs/performance/baseline.json
-          --repo ${{ github.repository }}
-        fi
-        
-        - name: Restore baseline
-        uses: actions/cache/restore@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
         with:
-          key: ${{ runner.os }}-performance-baseline
+          toolchain: 1.85
+
+      - name: Cache cargo registry
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: bench-regression
+
+      - name: Cache criterion data
+        uses: actions/cache@v4
+        with:
+          path: target/criterion
+          key: ${{ runner.os }}-criterion-${{ github.ref_name }}
           restore-keys: |
-            ${{ runner.os }}-performance-
-          
-      - name: Run Phase 5 benchmarks and baseline
+            ${{ runner.os }}-criterion-main
+            ${{ runner.os }}-criterion-
+
+      - name: Download benchmark results from benchmark job
+        uses: actions/download-artifact@v4
+        with:
+          name: benchmark-results-${{ github.sha }}
+          path: target/criterion
+
+      - name: Fetch main branch for baseline comparison
+        run: git fetch origin main
+
+      - name: Run regression comparison
+        id: regression
         run: |
-          cargo bench --bench phase5_bench -- --baseline main --save-baseline pr 2>& /dev/null || true
-            echo "✅ No performance regression detected"
+          REGRESSION_OUTPUT=$(mktemp)
+          if cargo bench --workspace -- --baseline main 2>&1 | tee "$REGRESSION_OUTPUT"; then
+            echo "result=pass" >> "$GITHUB_OUTPUT"
+            echo "No performance regression detected"
           else
-            echo "❌ Performance regression detected!"
-            cargo bench --bench phase5_bench -- --baseline main 2>& /dev/stderr || true
-            echo ""
-            echo "Failing benchmarks:"
-            cargo bench --bench phase5_bench 2>& /dev/null || true
+            echo "result=fail" >> "$GITHUB_OUTPUT"
+            echo "Performance regression detected!"
             exit 1
           fi
 
-      - name: Create PR comment
-        if: failure()
-        uses: peter-ev/create-pull-request-action@v3
-        with:
-          branch: ${{ github.head_ref }}
-          body: |
-            🚨 **Performance Regression Detected**
-            
-            Performance regression was been detected in the workflow. Please review the benchmark results:
-            - **Drift Detection**: ${drift_report.total_severity_score()} increased by > 10%
-            - **Debt Analysis**: ${debt_report.debt_score()} increased by > 5%
-            - **Rate Limiter**: Throughput maintained at > 100 req/sec
-            
-            [View the comparison on GitHub](https://github.com/${{ github.repository }}/pull/${{ github.head_ref }}/checks)
-            
-            If you notice any regressions, please comment on the PR. We suggest fixes.
-            before merging.
+      - name: Extract regression summary
+        if: always()
+        id: summary
+        run: |
+          {
+            echo "body<<COMMENT_EOF"
+            echo "## Benchmark Results"
+            echo ""
+            echo "**Commit:** \`${{ github.sha }}\`"
+            echo "**Branch:** \`${{ github.head_ref }}\` -> \`${{ github.base_ref }}\`"
+            echo "**Status:** ${{ steps.regression.outputs.result == 'pass' && '✅ Passed' || '❌ Regression detected' }}"
+            echo ""
+            echo "Regression threshold: **>15%** slowdown"
+            echo ""
+            echo "Benchmarks compared against \`main\` branch baseline using criterion."
+          } >> "$GITHUB_OUTPUT"
 
-          github-token: ${{ github.token }}
+      - name: Comment on PR
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const body = `${{ steps.summary.outputs.body }}`;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: body
+            });

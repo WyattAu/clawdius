@@ -101,17 +101,17 @@ impl LlmClient for OllamaProvider {
                                         break;
                                     }
                                 }
-                            }
+                            },
                             Err(e) => {
                                 let _ = tx.send(format!("[Error: {e}]")).await;
                                 break;
-                            }
+                            },
                         }
                     }
-                }
+                },
                 Err(e) => {
                     let _ = tx.send(format!("[Error: {e}]")).await;
-                }
+                },
             }
         });
 

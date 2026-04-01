@@ -78,7 +78,7 @@ impl CodeChunk {
             total,
             file_path,
             content,
-            is_final: index == total - 1,
+            is_final: total > 0 && index == total - 1,
             start_line,
             end_line,
             metadata: HashMap::new(),

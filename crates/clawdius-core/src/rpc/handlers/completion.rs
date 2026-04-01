@@ -138,7 +138,7 @@ impl Handler for CompletionHandler {
             Ok(r) => r,
             Err(e) => {
                 return Response::invalid_params(request.id, format!("Invalid parameters: {e}"))
-            }
+            },
         };
 
         // Check cache first
@@ -160,17 +160,17 @@ impl Handler for CompletionHandler {
                     // Cache the result
                     self.cache_completion(cache_key, text.clone()).await;
                     Response::success(request.id, CompletionResponse { text })
-                }
+                },
                 Ok(Err(e)) => {
                     warn!("LLM completion failed: {}, falling back to mock", e);
                     let mock_completion = self.generate_smart_completion(&completion_req);
                     Response::success(request.id, mock_completion)
-                }
+                },
                 Err(_) => {
                     warn!("LLM completion timed out, falling back to mock");
                     let mock_completion = self.generate_smart_completion(&completion_req);
                     Response::success(request.id, mock_completion)
-                }
+                },
             }
         } else {
             debug!("No LLM configured, using smart mock completion");

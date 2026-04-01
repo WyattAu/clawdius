@@ -465,7 +465,6 @@ impl DependencyGraph {
             self.topological_sort_util(node, &mut visited, &mut temp, &mut result)?;
         }
 
-        result.reverse();
         Ok(result)
     }
 
@@ -1010,13 +1009,17 @@ mod tests {
 
         let sorted = graph.topological_sort().unwrap();
 
+        // c must appear before b, b must appear before a
+        let pos_c = sorted.iter().position(|x| x == "c").unwrap();
+        let pos_b = sorted.iter().position(|x| x == "b").unwrap();
+        let pos_a = sorted.iter().position(|x| x == "a").unwrap();
         assert!(
-            sorted.iter().position(|x| x == "c").unwrap()
-                < sorted.iter().position(|x| x == "b").unwrap()
+            pos_c < pos_b,
+            "c ({pos_c}) must appear before b ({pos_b}): {sorted:?}"
         );
         assert!(
-            sorted.iter().position(|x| x == "b").unwrap()
-                < sorted.iter().position(|x| x == "a").unwrap()
+            pos_b < pos_a,
+            "b ({pos_b}) must appear before a ({pos_a}): {sorted:?}"
         );
     }
 

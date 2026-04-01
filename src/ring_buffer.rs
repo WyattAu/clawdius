@@ -112,6 +112,9 @@ unsafe impl Send for RingBuffer {}
 unsafe impl Sync for RingBuffer {}
 
 impl RingBuffer {
+    // VERIFY: PROP-RB-008 — Power-of-2 capacity enforced at construction
+    // Proof: proof_ring_buffer.lean::power_of_two_masking
+    // Status: VERIFIED
     pub fn new(capacity: usize) -> Result<Self, RingBufferError> {
         if !capacity.is_power_of_two() {
             return Err(RingBufferError::InvalidCapacity);
@@ -143,6 +146,9 @@ impl RingBuffer {
         self.capacity
     }
 
+    // VERIFY: PROP-RB-001 — Write preserves ring buffer invariants (bounded length, valid head)
+    // Proof: proof_ring_buffer.lean::write_preserves_invariants
+    // Status: VERIFIED
     pub fn try_write(&self, message: MarketDataMessage) -> Result<(), RingBufferError> {
         let head = self.head.load(Ordering::Relaxed);
         let tail = self.tail.load(Ordering::Acquire);
@@ -166,6 +172,9 @@ impl RingBuffer {
         Ok(())
     }
 
+    // VERIFY: PROP-RB-003 — Read preserves ring buffer invariants (bounded length, valid tail)
+    // Proof: proof_ring_buffer.lean::read_preserves_invariants
+    // Status: VERIFIED
     pub fn try_read(&self) -> Result<MarketDataMessage, RingBufferError> {
         let tail = self.tail.load(Ordering::Relaxed);
         let head = self.head.load(Ordering::Acquire);
@@ -207,6 +216,9 @@ impl RingBuffer {
     }
 }
 
+// VERIFY: PROP-RB-009 — Safe deallocation via matching layout from new()
+// Proof: N/A (destructive operation, ensured by construction)
+// Status: AXIOM
 impl Drop for RingBuffer {
     fn drop(&mut self) {
         let layout = Layout::array::<MarketDataMessage>(self.capacity).unwrap();

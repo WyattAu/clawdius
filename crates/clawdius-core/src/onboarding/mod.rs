@@ -346,7 +346,7 @@ impl Onboarding {
                 }
 
                 OnboardingStatus::Complete
-            }
+            },
             Err(_) => OnboardingStatus::MissingConfig,
         }
     }
@@ -381,7 +381,7 @@ impl Onboarding {
                     return std::env::var(env).is_ok();
                 }
                 false
-            }
+            },
             None => false,
         }
     }
@@ -473,7 +473,7 @@ pub fn print_onboarding_status(status: &OnboardingStatus) {
     match status {
         OnboardingStatus::Complete => {
             println!("✓ Clawdius is configured and ready!");
-        }
+        },
         OnboardingStatus::MissingApiKey { provider } => {
             println!("⚠ Missing API key for {provider}");
             println!("  Run: clawdius auth set-key {provider}");
@@ -482,15 +482,15 @@ pub fn print_onboarding_status(status: &OnboardingStatus) {
                 "  Or set the environment variable: {}_API_KEY",
                 provider.to_uppercase()
             );
-        }
+        },
         OnboardingStatus::MissingConfig => {
             println!("⚠ Missing configuration file");
             println!("  Run: clawdius init");
-        }
+        },
         OnboardingStatus::FirstRun => {
             println!("✨ First run detected!");
             println!("  Run: clawdius init");
-        }
+        },
     }
 }
 

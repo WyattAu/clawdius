@@ -1,0 +1,45 @@
+# CODEOWNERS — defines code review ownership for the Clawdius project
+#
+# Lines are matched in order: first match wins.
+# See https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default owner for everything
+* @WyattAu
+
+# Core library
+/crates/clawdius-core/ @WyattAu
+/crates/clawdius-core/src/broker/ @WyattAu
+/crates/clawdius-core/src/sandbox/ @WyattAu
+/crates/clawdius-core/src/capability/ @WyattAu
+
+# CLI and entry points
+/crates/clawdius/ @WyattAu
+/crates/clawdius-server/ @WyattAu
+/src/ @WyattAu
+
+# Formal verification
+/.clawdius/specs/02_architecture/proofs/ @WyattAu
+/.clawdius/specs/02_architecture/tla/ @WyattAu
+
+# Specifications and research
+/.specs/01_research/ @WyattAu
+/.specs/02_architecture/ @WyattAu
+
+# CI/CD
+/.github/workflows/ @WyattAu
+/supply-chain/ @WyattAu
+
+# Security
+/.specs/03_security/ @WyattAu
+
+# Deployment
+/deploy/ @WyattAu
+/Dockerfile @WyattAu
+/docker-compose.yml @WyattAu
+
+# Nix environment
+/flake.nix @WyattAu
+/flake.lock @WyattAu
+
+# VSCode extension
+/editors/vscode/ @WyattAu

@@ -131,7 +131,7 @@ impl StateStore for InMemoryStateStore {
                 } else {
                     Ok(Some(data))
                 }
-            }
+            },
         }
     }
 
@@ -178,7 +178,7 @@ impl StateStore for InMemoryStateStore {
                 } else {
                     Ok(true)
                 }
-            }
+            },
         }
     }
 

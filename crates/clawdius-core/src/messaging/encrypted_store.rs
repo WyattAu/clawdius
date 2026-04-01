@@ -194,7 +194,7 @@ impl StateStore for EncryptedStateStore {
             Some(data) => {
                 let plaintext = decrypt_value(&self.key, &data)?;
                 Ok(Some(plaintext))
-            }
+            },
         }
     }
 
@@ -218,10 +218,10 @@ impl StateStore for EncryptedStateStore {
             match decrypt_value(&self.key, &v) {
                 Ok(plaintext) => {
                     result.insert(k, plaintext);
-                }
+                },
                 Err(e) => {
                     warn!(key = %k, error = %e, "Failed to decrypt value, skipping");
-                }
+                },
             }
         }
         Ok(result)
@@ -313,11 +313,11 @@ pub fn maybe_encrypt(
         Ok(encrypted) => {
             debug!("Encryption at rest enabled for state store");
             Ok(Arc::new(encrypted))
-        }
+        },
         Err(e) => {
             warn!(error = %e, "Failed to initialize encrypted store — falling back to plaintext");
             Err(e)
-        }
+        },
     }
 }
 

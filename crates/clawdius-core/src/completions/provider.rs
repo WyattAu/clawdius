@@ -154,11 +154,11 @@ impl InlineCompletionProvider {
         match language.to_lowercase().as_str() {
             "rust" => {
                 "You are an expert Rust programmer. Write idiomatic, safe, and efficient code."
-            }
+            },
             "python" => "You are an expert Python programmer. Write clean, PEP-8 compliant code.",
             "javascript" | "typescript" => {
                 "You are an expert JavaScript/TypeScript programmer. Write modern, clean code."
-            }
+            },
             "go" => "You are an expert Go programmer. Write idiomatic Go code.",
             "java" => "You are an expert Java programmer. Write clean, efficient Java code.",
             "c" | "cpp" => "You are an expert C/C++ programmer. Write efficient, safe code.",
