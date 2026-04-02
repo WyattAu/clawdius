@@ -6,6 +6,11 @@
 
 use serde::{Deserialize, Serialize};
 use std::path::Path;
+use std::time::Duration;
+use tokio::io::AsyncReadExt;
+use tokio::process::Command;
+
+use crate::sandbox::backends::SandboxBackend as SandboxBackendTrait;
 
 /// Strategy for executing tests.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -290,27 +295,175 @@ impl TestRunner {
         timeout_ms: u64,
     ) -> crate::error::Result<TestResult> {
         let start = std::time::Instant::now();
+        let timeout = Duration::from_millis(timeout_ms);
+        let cwd = std::env::current_dir().map_err(|e| {
+            crate::error::Error::Generic(format!("failed to determine working directory: {e}"))
+        })?;
 
-        // In a real implementation, this would:
-        // 1. Copy changed files to sandbox
-        // 2. Set up the environment in the sandbox
-        // 3. Run tests inside the sandbox
-        // 4. Collect and parse results
+        let output = match backend {
+            SandboxBackend::Wasm => {
+                return Err(crate::error::Error::Sandbox(
+                    "WASM sandbox backend is not yet implemented".to_string(),
+                ));
+            },
+            SandboxBackend::Container => self.run_container_tests(timeout, &cwd).await?,
+            SandboxBackend::GVisor => self.run_gvisor_tests(timeout, &cwd).await?,
+            SandboxBackend::Bubblewrap => self.run_bubblewrap_tests(timeout, &cwd).await?,
+            SandboxBackend::SandboxExec => self.run_sandbox_exec_tests(timeout, &cwd).await?,
+            SandboxBackend::Filtered => self.run_filtered_tests(timeout, &cwd).await?,
+        };
 
-        // Placeholder implementation
-        let _ = (backend, timeout_ms);
+        let mut combined = String::from_utf8_lossy(&output.stdout).into_owned();
+        if !output.stderr.is_empty() {
+            combined.push_str("\n--- stderr ---\n");
+            combined.push_str(&String::from_utf8_lossy(&output.stderr));
+        }
 
-        Ok(TestResult {
-            passed: true,
-            total_tests: 1,
-            passed_tests: 1,
-            failed_tests: 0,
-            skipped_tests: 0,
-            output: "Sandboxed tests passed".to_string(),
-            failures: Vec::new(),
-            duration_ms: start.elapsed().as_millis() as u64,
-            rollback_performed: false,
-        })
+        let result = self.parse_test_output(&combined, start.elapsed().as_millis() as u64);
+        Ok(result)
+    }
+
+    async fn run_container_tests(
+        &self,
+        timeout: Duration,
+        cwd: &Path,
+    ) -> crate::error::Result<std::process::Output> {
+        let container_backend = crate::sandbox::backends::ContainerBackend::with_defaults();
+        tokio::time::timeout(
+            timeout,
+            container_backend.execute_async("cargo", &["test", "--color=never"], cwd),
+        )
+        .await
+        .map_err(|_| crate::error::Error::Timeout(timeout))?
+    }
+
+    async fn run_gvisor_tests(
+        &self,
+        timeout: Duration,
+        cwd: &Path,
+    ) -> crate::error::Result<std::process::Output> {
+        let gvisor_backend = crate::sandbox::backends::GVisorBackend::with_defaults();
+        tokio::time::timeout(
+            timeout,
+            gvisor_backend.execute_async("cargo", &["test", "--color=never"], cwd),
+        )
+        .await
+        .map_err(|_| crate::error::Error::Timeout(timeout))?
+    }
+
+    #[cfg(target_os = "linux")]
+    async fn run_bubblewrap_tests(
+        &self,
+        timeout: Duration,
+        cwd: &Path,
+    ) -> crate::error::Result<std::process::Output> {
+        if !crate::sandbox::backends::BubblewrapBackend::is_available() {
+            return Err(crate::error::Error::Sandbox(
+                "bubblewrap (bwrap) is not installed. Install with: apt install bubblewrap or dnf install bubblewrap".to_string(),
+            ));
+        }
+        let config = crate::sandbox::tiers::SandboxConfig {
+            tier: crate::sandbox::SandboxTier::Untrusted,
+            network: false,
+            mounts: vec![],
+        };
+        let bwrap_backend = crate::sandbox::backends::BubblewrapBackend::new(config);
+        let cwd = cwd.to_path_buf();
+        tokio::time::timeout(
+            timeout,
+            tokio::task::spawn_blocking(move || -> crate::error::Result<std::process::Output> {
+                SandboxBackendTrait::execute(
+                    &bwrap_backend,
+                    "cargo",
+                    &["test", "--color=never"],
+                    &cwd,
+                )
+            }),
+        )
+        .await
+        .map_err(|_| crate::error::Error::Timeout(timeout))??
+    }
+
+    #[cfg(not(target_os = "linux"))]
+    async fn run_bubblewrap_tests(
+        &self,
+        _timeout: Duration,
+        _cwd: &Path,
+    ) -> crate::error::Result<std::process::Output> {
+        Err(crate::error::Error::Sandbox(
+            "bubblewrap sandbox is only available on Linux".to_string(),
+        ))
+    }
+
+    #[cfg(target_os = "macos")]
+    async fn run_sandbox_exec_tests(
+        &self,
+        timeout: Duration,
+        cwd: &Path,
+    ) -> crate::error::Result<std::process::Output> {
+        if !crate::sandbox::backends::SandboxExecBackend::is_available() {
+            return Err(crate::error::Error::Sandbox(
+                "sandbox-exec is not available on this system".to_string(),
+            ));
+        }
+        let config = crate::sandbox::tiers::SandboxConfig {
+            tier: crate::sandbox::SandboxTier::Untrusted,
+            network: false,
+            mounts: vec![],
+        };
+        let sandbox_exec_backend = crate::sandbox::backends::SandboxExecBackend::new(config);
+        let cwd = cwd.to_path_buf();
+        tokio::time::timeout(
+            timeout,
+            tokio::task::spawn_blocking(move || -> crate::error::Result<std::process::Output> {
+                SandboxBackendTrait::execute(
+                    &sandbox_exec_backend,
+                    "cargo",
+                    &["test", "--color=never"],
+                    &cwd,
+                )
+            }),
+        )
+        .await
+        .map_err(|_| crate::error::Error::Timeout(timeout))??
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    async fn run_sandbox_exec_tests(
+        &self,
+        _timeout: Duration,
+        _cwd: &Path,
+    ) -> crate::error::Result<std::process::Output> {
+        Err(crate::error::Error::Sandbox(
+            "sandbox-exec is only available on macOS".to_string(),
+        ))
+    }
+
+    async fn run_filtered_tests(
+        &self,
+        timeout: Duration,
+        cwd: &Path,
+    ) -> crate::error::Result<std::process::Output> {
+        let config = crate::sandbox::tiers::SandboxConfig {
+            tier: crate::sandbox::SandboxTier::Trusted,
+            network: true,
+            mounts: vec![],
+        };
+        let filtered_backend = crate::sandbox::backends::FilteredBackend::new(config);
+        let cwd = cwd.to_path_buf();
+        tokio::time::timeout(
+            timeout,
+            tokio::task::spawn_blocking(move || -> crate::error::Result<std::process::Output> {
+                SandboxBackendTrait::execute(
+                    &filtered_backend,
+                    "cargo",
+                    &["test", "--color=never"],
+                    &cwd,
+                )
+            }),
+        )
+        .await
+        .map_err(|_| crate::error::Error::Timeout(timeout))??
     }
 
     async fn run_direct_tests(
@@ -321,18 +474,10 @@ impl TestRunner {
         let start = std::time::Instant::now();
         let rollback_performed = false;
 
-        // In a real implementation, this would:
-        // 1. Optionally create git stash
-        // 2. Apply changes directly
-        // 3. Run tests
-        // 4. Rollback on failure if git_stash is true
-
         let _ = (git_stash, timeout_ms);
 
-        // Placeholder - simulate running cargo test
         let output = self.run_cargo_test().await?;
 
-        // Parse test results
         let result = self.parse_test_output(&output, start.elapsed().as_millis() as u64);
 
         Ok(TestResult {
@@ -342,23 +487,137 @@ impl TestRunner {
     }
 
     async fn run_cargo_test(&self) -> crate::error::Result<String> {
-        // In a real implementation, this would run `cargo test` and capture output
-        // For now, return a placeholder
-        Ok("test result: ok. 0 passed; 0 failed; 0 ignored".to_string())
+        let timeout = Duration::from_millis(self.strategy.timeout_ms());
+
+        let mut child = Command::new("cargo")
+            .arg("test")
+            .arg("--color=never")
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped())
+            .spawn()
+            .map_err(|e| {
+                crate::error::Error::Generic(format!("failed to spawn cargo test: {e}"))
+            })?;
+
+        let mut stdout = child
+            .stdout
+            .take()
+            .ok_or_else(|| crate::error::Error::Generic("failed to capture stdout".to_string()))?;
+
+        let mut stderr = child
+            .stderr
+            .take()
+            .ok_or_else(|| crate::error::Error::Generic("failed to capture stderr".to_string()))?;
+
+        let output_fut = async {
+            let mut out = Vec::new();
+            stdout.read_to_end(&mut out).await.ok();
+            let mut err = Vec::new();
+            stderr.read_to_end(&mut err).await.ok();
+
+            let status = child.wait().await.map_err(|e| {
+                crate::error::Error::Generic(format!("failed to wait for cargo test: {e}"))
+            })?;
+
+            let mut combined = String::from_utf8_lossy(&out).into_owned();
+            if !err.is_empty() {
+                combined.push_str("\n--- stderr ---\n");
+                combined.push_str(&String::from_utf8_lossy(&err));
+            }
+
+            Ok::<(String, bool), crate::error::Error>((combined, status.success()))
+        };
+
+        let (output, _success) = tokio::time::timeout(timeout, output_fut)
+            .await
+            .map_err(|_| crate::error::Error::Timeout(timeout))??;
+
+        Ok(output)
     }
 
     fn parse_test_output(&self, output: &str, duration_ms: u64) -> TestResult {
-        // Simple parser for cargo test output
         let passed = output.contains("test result: ok");
+
+        let mut total_tests: u32 = 0;
+        let mut passed_tests: u32 = 0;
+        let mut failed_tests: u32 = 0;
+        let mut skipped_tests: u32 = 0;
+
+        for line in output.lines() {
+            if line.contains("test result:") {
+                let parts: Vec<&str> = line.split_whitespace().collect();
+                for part in &parts {
+                    if let Some(rest) = part.strip_suffix("passed") {
+                        if let Ok(n) = rest.trim_end_matches(';').parse() {
+                            passed_tests = n;
+                            total_tests += n;
+                        }
+                    } else if let Some(rest) = part.strip_suffix("failed") {
+                        if let Ok(n) = rest.trim_end_matches(';').parse() {
+                            failed_tests = n;
+                            total_tests += n;
+                        }
+                    } else if let Some(rest) = part.strip_suffix("ignored") {
+                        if let Ok(n) = rest.trim_end_matches(';').parse() {
+                            skipped_tests = n;
+                            total_tests += n;
+                        }
+                    }
+                }
+                break;
+            }
+        }
+
+        let mut failures = Vec::new();
+        let mut current_failure: Option<TestFailure> = None;
+
+        for line in output.lines() {
+            if line.starts_with("---- ") && line.contains(" stdout") {
+                if let Some(f) = current_failure.take() {
+                    failures.push(f);
+                }
+                let name = line
+                    .strip_prefix("---- ")
+                    .and_then(|s| s.strip_suffix(" stdout"))
+                    .unwrap_or("unknown")
+                    .to_string();
+                current_failure = Some(TestFailure {
+                    name,
+                    file: String::new(),
+                    line: 0,
+                    message: String::new(),
+                    stack_trace: None,
+                });
+            } else if let Some(ref mut f) = current_failure {
+                if line.starts_with("  --> ") {
+                    let loc: Vec<&str> = line.trim_start_matches("  --> ").split(':').collect();
+                    if loc.len() >= 2 {
+                        f.file = loc[0].to_string();
+                        f.line = loc[1].parse().unwrap_or(0);
+                    }
+                } else if line.starts_with("note: ")
+                    || line.contains("assertion")
+                    || line.contains("panic")
+                {
+                    if !f.message.is_empty() {
+                        f.message.push('\n');
+                    }
+                    f.message.push_str(line.trim());
+                }
+            }
+        }
+        if let Some(f) = current_failure.take() {
+            failures.push(f);
+        }
 
         TestResult {
             passed,
-            total_tests: 0,
-            passed_tests: 0,
-            failed_tests: 0,
-            skipped_tests: 0,
+            total_tests,
+            passed_tests,
+            failed_tests,
+            skipped_tests,
             output: output.to_string(),
-            failures: Vec::new(),
+            failures,
             duration_ms,
             rollback_performed: false,
         }

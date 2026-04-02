@@ -55,19 +55,29 @@ pub fn HistoryView() -> impl IntoView {
                 &window,
                 &wasm_bindgen::JsValue::from_str("acquireVsCodeApi"),
             ) {
-                let vscode = js_sys::Function::from(vscode)
+                let Some(vscode_val) = js_sys::Function::from(vscode)
                     .call0(&wasm_bindgen::JsValue::NULL)
-                    .unwrap();
-                let post_message =
-                    js_sys::Reflect::get(&vscode, &wasm_bindgen::JsValue::from_str("postMessage"))
-                        .unwrap();
-                let post_message = js_sys::Function::from(post_message);
+                    .ok()
+                else {
+                    return;
+                };
+                let Some(post_message_val) = js_sys::Reflect::get(
+                    &vscode_val,
+                    &wasm_bindgen::JsValue::from_str("postMessage"),
+                )
+                .ok() else {
+                    return;
+                };
+                let post_message = js_sys::Function::from(post_message_val);
                 let msg = serde_json::json!({
                     "type": msg_type,
                     "data": data
                 });
-                let msg_js = wasm_bindgen::JsValue::from_str(&serde_json::to_string(&msg).unwrap());
-                post_message.call1(&vscode, &msg_js).unwrap();
+                let Ok(msg_str) = serde_json::to_string(&msg) else {
+                    return;
+                };
+                let msg_js = wasm_bindgen::JsValue::from_str(&msg_str);
+                let _ = post_message.call1(&vscode_val, &msg_js);
             }
         }
     };
@@ -98,7 +108,7 @@ pub fn HistoryView() -> impl IntoView {
                                                     set_loading.set(false);
                                                 }
                                             }
-                                        }
+                                        },
                                         "sessionData" => {
                                             if let Some(data) = msg.get("data") {
                                                 if let Ok(session) =
@@ -109,7 +119,7 @@ pub fn HistoryView() -> impl IntoView {
                                                     set_session_data.set(Some(session));
                                                 }
                                             }
-                                        }
+                                        },
                                         "sessionDeleted" => {
                                             if let Some(session_id) =
                                                 msg.get("data").and_then(|d| d.get("id"))
@@ -125,21 +135,22 @@ pub fn HistoryView() -> impl IntoView {
                                                     }
                                                 }
                                             }
-                                        }
+                                        },
                                         "sessionExported" => {
                                             if let Some(content) =
                                                 msg.get("data").and_then(|d| d.get("content"))
                                             {
                                                 if let Some(content_str) = content.as_str() {
-                                                    let _ = web_sys::window()
-                                                        .unwrap()
-                                                        .navigator()
-                                                        .clipboard()
-                                                        .write_text(content_str);
+                                                    if let Some(window) = web_sys::window() {
+                                                        let _ = window
+                                                            .navigator()
+                                                            .clipboard()
+                                                            .write_text(content_str);
+                                                    }
                                                 }
                                             }
-                                        }
-                                        _ => {}
+                                        },
+                                        _ => {},
                                     }
                                 }
                             }
@@ -419,7 +430,7 @@ pub fn HistoryView() -> impl IntoView {
 fn event_target_value(ev: &leptos::ev::Event) -> String {
     use wasm_bindgen::JsCast;
     ev.target()
-        .unwrap()
-        .unchecked_into::<web_sys::HtmlInputElement>()
-        .value()
+        .and_then(|t| t.dyn_into::<web_sys::HtmlInputElement>().ok())
+        .map(|input| input.value())
+        .unwrap_or_default()
 }

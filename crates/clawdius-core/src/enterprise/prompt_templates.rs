@@ -179,7 +179,8 @@ impl PromptTemplate {
 
     /// Extract variable names from content
     pub fn extract_variables(&self) -> Vec<String> {
-        let re = regex::Regex::new(r"\{\{(\w+)\}\}").unwrap();
+        let re = regex::Regex::new(r"\{\{(\w+)\}\}")
+            .unwrap_or_else(|_| regex::Regex::new(r"$^").expect("empty regex fallback"));
         re.captures_iter(&self.content)
             .filter_map(|cap| cap.get(1).map(|m| m.as_str().to_string()))
             .collect()

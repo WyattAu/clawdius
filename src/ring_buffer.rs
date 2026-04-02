@@ -221,7 +221,8 @@ impl RingBuffer {
 // Status: AXIOM
 impl Drop for RingBuffer {
     fn drop(&mut self) {
-        let layout = Layout::array::<MarketDataMessage>(self.capacity).unwrap();
+        let layout = Layout::array::<MarketDataMessage>(self.capacity)
+            .expect("layout must match allocation from new()");
         // SAFETY: Layout matches the allocation in new(), and we own the buffer.
         #[expect(unsafe_code)]
         unsafe {

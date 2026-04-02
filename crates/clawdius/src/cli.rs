@@ -2127,9 +2127,11 @@ async fn handle_setup(
             .to_string();
 
         match TcpStream::connect_timeout(
-            &ollama_addr
-                .parse()
-                .unwrap_or_else(|_| "127.0.0.1:11434".parse().unwrap()),
+            &ollama_addr.parse().unwrap_or_else(|_| {
+                "127.0.0.1:11434"
+                    .parse()
+                    .expect("hardcoded address must parse")
+            }),
             std::time::Duration::from_secs(2),
         ) {
             Ok(_) => {
@@ -3249,7 +3251,8 @@ async fn handle_index(
     use clawdius_core::WorkspaceIndexer;
     use std::io;
 
-    let workspace_path = path.unwrap_or_else(|| std::env::current_dir().unwrap());
+    let workspace_path =
+        path.unwrap_or_else(|| std::env::current_dir().expect("failed to get current directory"));
 
     let options = OutputOptions {
         format: CoreOutputFormat::from(output_format),
@@ -3995,7 +3998,7 @@ async fn handle_lang(
                     // Update config
                     let config_path = config_path.unwrap_or_else(|| {
                         std::env::current_dir()
-                            .unwrap()
+                            .expect("failed to get current directory")
                             .join(".clawdius")
                             .join("config.toml")
                     });
@@ -4010,7 +4013,8 @@ async fn handle_lang(
                     // Update or add language setting
                     if config_content.contains("language =") {
                         // Replace existing language line
-                        let re = regex::Regex::new(r"^language\s*=\s*.*$").unwrap();
+                        let re =
+                            regex::Regex::new(r"^language\s*=\s*.*$").expect("regex must compile");
                         config_content = re
                             .replace(&config_content, &format!("language = \"{}\"", lang.code()))
                             .to_string();

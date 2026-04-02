@@ -143,7 +143,11 @@ impl MetricsStore {
             method, route, status
         );
         {
-            let mut counts = self.inner.request_counts.lock().unwrap();
+            let mut counts = self
+                .inner
+                .request_counts
+                .lock()
+                .unwrap_or_else(|e| e.into_inner());
             *counts.entry(count_key).or_insert(0) += 1;
         }
 
@@ -152,7 +156,11 @@ impl MetricsStore {
             method, route
         );
         {
-            let mut histograms = self.inner.request_durations.lock().unwrap();
+            let mut histograms = self
+                .inner
+                .request_durations
+                .lock()
+                .unwrap_or_else(|e| e.into_inner());
             histograms
                 .entry(hist_key)
                 .or_insert_with(Histogram::new_http)
@@ -172,7 +180,11 @@ impl MetricsStore {
 
     pub fn messaging_counter_inc(&self, name: &str, labels: &str) {
         let key = format!("{}{{{}}}", name, labels);
-        let mut counters = self.inner.messaging_counters.lock().unwrap();
+        let mut counters = self
+            .inner
+            .messaging_counters
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
         counters
             .entry(key)
             .or_insert_with(|| AtomicU64::new(0))
@@ -180,7 +192,11 @@ impl MetricsStore {
     }
 
     pub fn messaging_gauge_set(&self, name: &str, value: i64) {
-        let mut gauges = self.inner.messaging_gauges.lock().unwrap();
+        let mut gauges = self
+            .inner
+            .messaging_gauges
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
         gauges
             .entry(name.to_string())
             .or_insert_with(|| AtomicI64::new(0))
@@ -190,7 +206,11 @@ impl MetricsStore {
     /// Record a histogram observation for a messaging metric.
     pub fn messaging_histogram_observe(&self, name: &str, labels: &str, value_ms: f64) {
         let hist_key = format!("{}{{{}}}", name, labels);
-        let mut histograms = self.inner.request_durations.lock().unwrap();
+        let mut histograms = self
+            .inner
+            .request_durations
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
         histograms
             .entry(hist_key)
             .or_insert_with(Histogram::new_http)
@@ -202,14 +222,22 @@ impl MetricsStore {
         let mut out = String::new();
 
         {
-            let counts = self.inner.request_counts.lock().unwrap();
+            let counts = self
+                .inner
+                .request_counts
+                .lock()
+                .unwrap_or_else(|e| e.into_inner());
             for (key, value) in counts.iter() {
                 out.push_str(&format!("{} {}\n", key, value));
             }
         }
 
         {
-            let histograms = self.inner.request_durations.lock().unwrap();
+            let histograms = self
+                .inner
+                .request_durations
+                .lock()
+                .unwrap_or_else(|e| e.into_inner());
             for (key, hist) in histograms.iter() {
                 let open = '{';
                 if let Some(brace_pos) = key.find(open) {
@@ -224,14 +252,22 @@ impl MetricsStore {
         out.push_str(&format!("clawdius_http_active_requests {}\n", active));
 
         {
-            let counters = self.inner.messaging_counters.lock().unwrap();
+            let counters = self
+                .inner
+                .messaging_counters
+                .lock()
+                .unwrap_or_else(|e| e.into_inner());
             for (key, atomic) in counters.iter() {
                 out.push_str(&format!("{} {}\n", key, atomic.load(Ordering::Relaxed)));
             }
         }
 
         {
-            let gauges = self.inner.messaging_gauges.lock().unwrap();
+            let gauges = self
+                .inner
+                .messaging_gauges
+                .lock()
+                .unwrap_or_else(|e| e.into_inner());
             for (key, atomic) in gauges.iter() {
                 out.push_str(&format!("{} {}\n", key, atomic.load(Ordering::Relaxed)));
             }

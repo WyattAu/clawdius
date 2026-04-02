@@ -39,7 +39,9 @@ impl<T> Arena<T> {
                 (*self.chunks.get()).push(old);
             }
             current.push(value);
-            current.last_mut().unwrap()
+            current
+                .last_mut()
+                .expect("pushed value must be present in arena")
         }
     }
 

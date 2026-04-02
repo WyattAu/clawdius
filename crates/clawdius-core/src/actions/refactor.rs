@@ -303,7 +303,7 @@ fn generate_function_name(selection: &str, _language: &str) -> String {
             let mut chars = w.chars();
             match chars.next() {
                 None => String::new(),
-                first => first.unwrap().to_uppercase().collect::<String>() + chars.as_str(),
+                Some(first) => first.to_uppercase().collect::<String>() + chars.as_str(),
             }
         })
         .collect();

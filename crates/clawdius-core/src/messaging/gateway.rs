@@ -281,7 +281,7 @@ impl MessagingGateway {
         }
 
         // Parse command
-        let parser = CommandParser::new(platform);
+        let parser = CommandParser::new(platform)?;
         let parsed = match parser.parse(message) {
             Ok(cmd) => cmd,
             Err(MessagingError::InvalidCommandFormat { .. }) => {

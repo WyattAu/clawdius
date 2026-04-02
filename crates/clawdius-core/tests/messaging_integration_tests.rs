@@ -13,7 +13,7 @@ use clawdius_core::messaging::types::{
 /// Test that command parsing works for Telegram
 #[tokio::test]
 async fn test_command_parsing_telegram() {
-    let parser = CommandParser::new(Platform::Telegram);
+    let parser = CommandParser::new(Platform::Telegram).unwrap();
 
     // Test status command
     let result = parser.parse("/clawd status").unwrap();
@@ -35,7 +35,7 @@ async fn test_command_parsing_telegram() {
 /// Test that command parsing works for Matrix
 #[tokio::test]
 async fn test_command_parsing_matrix() {
-    let parser = CommandParser::new(Platform::Matrix);
+    let parser = CommandParser::new(Platform::Matrix).unwrap();
 
     // Matrix uses ! prefix
     let result = parser.parse("!clawd status").unwrap();
@@ -45,7 +45,7 @@ async fn test_command_parsing_matrix() {
 /// Test that command parsing works for Discord
 #[tokio::test]
 async fn test_command_parsing_discord() {
-    let parser = CommandParser::new(Platform::Discord);
+    let parser = CommandParser::new(Platform::Discord).unwrap();
 
     let result = parser.parse("/clawd analyze this code").unwrap();
     assert_eq!(result.category, CommandCategory::Analyze);
@@ -54,7 +54,7 @@ async fn test_command_parsing_discord() {
 /// Test invalid command format
 #[tokio::test]
 async fn test_invalid_command_format() {
-    let parser = CommandParser::new(Platform::Telegram);
+    let parser = CommandParser::new(Platform::Telegram).unwrap();
 
     // Missing prefix
     let result = parser.parse("status");
@@ -116,7 +116,7 @@ async fn test_session_permissions() {
 /// Test command categories
 #[tokio::test]
 async fn test_command_categories() {
-    let parser = CommandParser::new(Platform::Telegram);
+    let parser = CommandParser::new(Platform::Telegram).unwrap();
 
     // Session commands
     let result = parser.parse("/clawd start session").unwrap();
@@ -134,7 +134,7 @@ async fn test_command_categories() {
 /// Test flag parsing
 #[tokio::test]
 async fn test_flag_parsing() {
-    let parser = CommandParser::new(Platform::Telegram);
+    let parser = CommandParser::new(Platform::Telegram).unwrap();
 
     let result = parser
         .parse("/clawd generate code --lang rust --verbose --count=5")

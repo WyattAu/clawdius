@@ -871,7 +871,7 @@ mod tests {
     fn create_test_context() -> GateContext {
         GateContext::new(
             PhaseId(0),
-            Arc::new(ArtifactTracker::in_memory()),
+            Arc::new(ArtifactTracker::in_memory().unwrap()),
             PathBuf::from("/tmp"),
         )
     }

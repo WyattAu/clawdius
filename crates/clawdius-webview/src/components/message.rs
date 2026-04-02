@@ -126,8 +126,8 @@ fn process_inline_markdown(text: &str) -> String {
                         chars.next();
                         break;
                     }
-                } else {
-                    bold_text.push(chars.next().unwrap());
+                } else if let Some(ch) = chars.next() {
+                    bold_text.push(ch);
                 }
             }
             new_result.push_str(&format!("<strong>{}</strong>", html_escape(&bold_text)));
@@ -137,8 +137,8 @@ fn process_inline_markdown(text: &str) -> String {
                 if next == '*' {
                     chars.next();
                     break;
-                } else {
-                    italic_text.push(chars.next().unwrap());
+                } else if let Some(ch) = chars.next() {
+                    italic_text.push(ch);
                 }
             }
             new_result.push_str(&format!("<em>{}</em>", html_escape(&italic_text)));

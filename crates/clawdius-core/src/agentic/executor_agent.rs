@@ -379,8 +379,9 @@ impl ExecutorAgent {
             return Ok(response);
         }
 
-        // Fallback without LLM
-        Ok("Analysis complete (no LLM configured)".to_string())
+        Err(crate::error::Error::Config(
+            "No LLM client configured — cannot execute analyze step".to_string(),
+        ))
     }
 
     async fn execute_design(
@@ -421,8 +422,9 @@ impl ExecutorAgent {
             return Ok(response);
         }
 
-        // Fallback without LLM
-        Ok("Design complete (no LLM configured)".to_string())
+        Err(crate::error::Error::Config(
+            "No LLM client configured — cannot execute design step".to_string(),
+        ))
     }
 
     async fn execute_generate_code(&self, prompt: &str, target_files: &[String]) -> Result<String> {
@@ -464,9 +466,9 @@ impl ExecutorAgent {
             return Ok(response);
         }
 
-        // Fallback: stub implementation when no LLM configured
-        tracing::debug!("No LLM configured, using stub code generator");
-        Ok("// Generated code (stub - no LLM configured)\nfn generated_function() {\n    // Stub implementation\n}".to_string())
+        Err(crate::error::Error::Config(
+            "No LLM client configured — cannot execute code generation".to_string(),
+        ))
     }
 
     /// Generates code with streaming output for real-time UX.

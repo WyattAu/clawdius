@@ -79,22 +79,24 @@ struct CompiledPatterns {
     phone_re: Regex,
 }
 
+fn compile_regex(pattern: &str) -> Result<Regex, regex::Error> {
+    Regex::new(pattern)
+}
+
 impl CompiledPatterns {
-    fn new() -> Self {
-        Self {
-            uuid_re: Regex::new(
+    fn new() -> Result<Self, regex::Error> {
+        Ok(Self {
+            uuid_re: compile_regex(
                 r"(?i)[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}",
             )
-            .unwrap_or_else(|_| Regex::new(r"$^").unwrap()),
-            bearer_re: Regex::new(r"(?i)Bearer\s+[A-Za-z0-9\-._~+/]+=*")
-                .unwrap_or_else(|_| Regex::new(r"$^").unwrap()),
-            api_key_re: Regex::new(r"[A-Za-z0-9]{32,}")
-                .unwrap_or_else(|_| Regex::new(r"$^").unwrap()),
-            email_re: Regex::new(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}")
-                .unwrap_or_else(|_| Regex::new(r"$^").unwrap()),
-            phone_re: Regex::new(r"\+?[1-9]\d{6,14}")
-                .unwrap_or_else(|_| Regex::new(r"$^").unwrap()),
-        }
+            .or_else(|_| compile_regex(r"$^"))?,
+            bearer_re: compile_regex(r"(?i)Bearer\s+[A-Za-z0-9\-._~+/]+=*")
+                .or_else(|_| compile_regex(r"$^"))?,
+            api_key_re: compile_regex(r"[A-Za-z0-9]{32,}").or_else(|_| compile_regex(r"$^"))?,
+            email_re: compile_regex(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}")
+                .or_else(|_| compile_regex(r"$^"))?,
+            phone_re: compile_regex(r"\+?[1-9]\d{6,14}").or_else(|_| compile_regex(r"$^"))?,
+        })
     }
 }
 
@@ -105,12 +107,11 @@ pub struct PiiRedactionLayer {
 }
 
 impl PiiRedactionLayer {
-    #[must_use]
-    pub fn new(config: PiiRedactionConfig) -> Self {
-        Self {
+    pub fn new(config: PiiRedactionConfig) -> Result<Self, regex::Error> {
+        Ok(Self {
             config,
-            patterns: CompiledPatterns::new(),
-        }
+            patterns: CompiledPatterns::new()?,
+        })
     }
 
     fn is_sensitive_field(&self, field_name: &str) -> bool {
@@ -288,13 +289,16 @@ impl<'a> tracing::field::Visit for RedactingVisitor<'a> {
 #[must_use]
 pub fn setup_pii_redaction(
     config: PiiRedactionConfig,
-) -> tracing_subscriber::layer::Layered<
-    PiiRedactionLayer,
-    tracing_subscriber::fmt::Layer<tracing_subscriber::Registry>,
-    tracing_subscriber::Registry,
+) -> Result<
+    tracing_subscriber::layer::Layered<
+        PiiRedactionLayer,
+        tracing_subscriber::fmt::Layer<tracing_subscriber::Registry>,
+        tracing_subscriber::Registry,
+    >,
+    regex::Error,
 > {
-    let pii_layer = PiiRedactionLayer::new(config);
-    tracing_subscriber::fmt::Layer::new().and_then(pii_layer)
+    let pii_layer = PiiRedactionLayer::new(config)?;
+    Ok(tracing_subscriber::fmt::Layer::new().and_then(pii_layer))
 }
 
 #[cfg(test)]
@@ -302,7 +306,7 @@ mod tests {
     use super::*;
 
     fn default_layer() -> PiiRedactionLayer {
-        PiiRedactionLayer::new(PiiRedactionConfig::default())
+        PiiRedactionLayer::new(PiiRedactionConfig::default()).unwrap()
     }
 
     #[test]
@@ -409,7 +413,7 @@ mod tests {
     fn test_allowed_fields_not_redacted() {
         let mut config = PiiRedactionConfig::default();
         config.allowed_fields = vec!["token".to_owned()];
-        let layer = PiiRedactionLayer::new(config);
+        let layer = PiiRedactionLayer::new(config).unwrap();
         let result = layer.format_value("token", &"my_secret_token");
         assert_eq!(result, "\"my_secret_token\"");
     }
@@ -418,7 +422,7 @@ mod tests {
     fn test_extra_sensitive_fields() {
         let mut config = PiiRedactionConfig::default();
         config.extra_sensitive_fields = vec!["custom_secret".to_owned()];
-        let layer = PiiRedactionLayer::new(config);
+        let layer = PiiRedactionLayer::new(config).unwrap();
         assert!(layer.is_sensitive_field("custom_secret"));
         let result = layer.format_value("custom_secret", &"sensitive_data");
         assert_eq!(result, DEFAULT_REPLACEMENT);
@@ -435,7 +439,7 @@ mod tests {
     fn test_custom_replacement_string() {
         let mut config = PiiRedactionConfig::default();
         config.replacement = "***".to_owned();
-        let layer = PiiRedactionLayer::new(config);
+        let layer = PiiRedactionLayer::new(config).unwrap();
         let result = layer.format_value("password", &"hunter2");
         assert_eq!(result, "***");
     }

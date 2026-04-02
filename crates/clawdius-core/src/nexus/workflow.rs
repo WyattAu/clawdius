@@ -402,11 +402,12 @@ impl DependencyGraph {
         self.add_node(from);
         self.add_node(to);
 
-        self.nodes.get_mut(from).unwrap().insert(to.to_string());
-        self.reverse_edges
-            .get_mut(to)
-            .unwrap()
-            .insert(from.to_string());
+        if let Some(node) = self.nodes.get_mut(from) {
+            node.insert(to.to_string());
+        }
+        if let Some(rev) = self.reverse_edges.get_mut(to) {
+            rev.insert(from.to_string());
+        }
     }
 
     #[must_use]

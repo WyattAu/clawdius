@@ -275,7 +275,10 @@ impl SessionStore {
             .query_map(params![pattern], |row| {
                 let message = self.row_to_message(row)?;
                 let session_id_str: String = row.get(1)?;
-                let session_id = SessionId::from_uuid(Uuid::parse_str(&session_id_str).unwrap());
+                let session_id = SessionId::from_uuid(
+                    Uuid::parse_str(&session_id_str)
+                        .map_err(|e| rusqlite::Error::ToSqlConversionFailure(Box::new(e)))?,
+                );
                 Ok((session_id, message))
             })?
             .collect::<std::result::Result<Vec<_>, _>>()?;
@@ -303,7 +306,10 @@ impl SessionStore {
             serde_json::from_str(&extra_json).unwrap_or_default();
 
         Ok(Session {
-            id: SessionId::from_uuid(Uuid::parse_str(&id_str).unwrap()),
+            id: SessionId::from_uuid(
+                Uuid::parse_str(&id_str)
+                    .map_err(|e| rusqlite::Error::ToSqlConversionFailure(Box::new(e)))?,
+            ),
             title,
             messages: Vec::new(), // Loaded separately
             meta: SessionMeta {
@@ -356,7 +362,8 @@ impl SessionStore {
             .unwrap_or_default();
 
         Ok(Message {
-            id: Uuid::parse_str(&id_str).unwrap(),
+            id: Uuid::parse_str(&id_str)
+                .map_err(|e| rusqlite::Error::ToSqlConversionFailure(Box::new(e)))?,
             role: MessageRole::parse_role(&role_str),
             content,
             tokens: tokens.map(|t| t as usize),

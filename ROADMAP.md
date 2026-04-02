@@ -2,502 +2,327 @@
 ## Strategic Vision & Development Plan
 
 **Current Version:** 1.3.0  
-**Target:** v2.0.0 with Agentic Workflows & Multi-Profile Platform  
-**Last Updated** 2026-04-01
+**Next:** v1.4.0 — Credibility & Foundations  
+**Last Updated:** 2026-04-01
 
 ---
 
 ## Executive Summary
 
-Clawdius v2.0.0 will be a **multi-purpose platform** supporting:
-1. **Agentic Coding** - Code generation with multiple modes (single-pass, iterative, agent-based)
-2. **Remote LLM Proxy** - API server for LLM access
-3. **Personal/Company Assistant** - General AI assistant capabilities
-4. **HFT/Trading** - High-frequency trading using LLM for signal analysis
+Clawdius has deep technical differentiation (formal verification, 7 sandbox backends, SEC 15c3-5 risk controls, 142 Lean4 theorems) but faces a **credibility gap**: three critical features claimed in the competitive analysis — agentic code generation, sandboxed test execution, and direct cargo test invocation — are stubs that return hardcoded values. The next release cycle must close this gap before investing in feature expansion.
 
-### Current Achievements
+### Current State (v1.3.0)
 
 | Metric | Value |
 |--------|-------|
-| **Rust LOC** | 77,233 |
-| **Tests** | 1091+ passing |
-| **Lean4 Proofs** | 115 theorems (111 proven, 4 sorry, 68 axioms), 96.5% completion |
-| **Clippy** | 0 warnings |
-| **Sandbox Backends** | 7 (WASM, Container, gVisor, Firecracker, etc.) |
+| **Rust LOC** | 107,040 |
+| **Tests** | 1,162 passing (1,091 unit + 43 property + 28 integration) |
+| **Lean4 Proofs** | 142 theorems (138 proven, 4 HashMap-sorry, 39 axioms), 97.2% |
+| **Clippy** | 0 warnings, `deny(unsafe_code)`, `deny(unwrap_used)` in config |
+| **Panic-prone calls** | ~1,381 unwrap/expect in production code (`.clippy.toml` warns but CI doesn't enforce) |
+| **Sandbox Backends** | 7 (WASM, Filtered, Bubblewrap, Sandbox-exec, Container, gVisor, Firecracker) |
 | **LLM Providers** | 5 (Anthropic, OpenAI, Ollama, Z.AI, Local) |
-| **Enterprise Features** | SSO, Audit, Compliance, Teams |
-| **Plugin System** | WASM runtime, 26 hooks, marketplace |
-| **REST API** | Full CRUD for sessions, tools, plugins |
-| **Webhooks** | Event-driven notifications with HMAC signing |
+| **Lean4 Axioms** | 39 (target: <30) |
 
-### v2.0.0 Planning Progress (2026-03-16)
+### Strategic Pivot
 
-| Task | Status | Description |
-|------|--------|-------------|
-| HFT Trading Profile | ✅ COMPLETE | [docs/HFT_TRADING_PROFILE.md](docs/HFT_TRADING_PROFILE.md) |
-| Competitor Comparison | ✅ COMPLETE | [docs/COMPETITOR_COMPARISON.md](docs/COMPETITOR_COMPARISON.md) |
-| Trading Profile Config | ✅ COMPLETE | [docs/PROFILES/trading.toml](docs/PROFILES/trading.toml) |
-| GenerationMode Enum | 📋 NEXT | Single-pass, iterative, agent-based modes |
-| Test/Apply Strategies | 📋 PLANNED | User choice for workflows |
-| Agent System | 📋 PLANNED | Planner, Executor, Verifier agents |
+The original roadmap targeted v2.0.0 "agentic workflows" as the next release. This is premature — the agentic executor falls back to a stub string when no LLM client is configured, and the competitive comparison overclaims features that don't work. The revised plan prioritizes:
+
+1. **Credibility** — Make every claimed feature actually work
+2. **Reliability** — Eliminate panic surfaces in production code
+3. **Observability** — Coverage, benchmarks, monitoring
+4. **Distribution** — Binary releases, docs site, community
+
+Only after these foundations are solid does feature expansion make sense.
 
 ---
 
-## Phase 1: Launch ✅ COMPLETE
+## Phase 5: Credibility & Foundations (v1.4.0)
 
-## Phase 2: Polish & Adoption ✅ COMPLETE
+> **Goal:** Every feature claimed in the README and competitive analysis actually works. Zero stubs on user-facing paths.
 
-## Phase 3: Feature Expansion (Weeks 7-12) ✅ COMPLETE
+### v1.4.0-a — Panic Surface Reduction (Week 1-2)
 
-### v1.1.0 - REST API & Webhooks (Week 7) ✅ COMPLETE
+| # | Task | Effort | Priority | Rationale |
+|---|------|--------|---------|-----------|
+| 5.1 | Audit and classify all 1,182 `.unwrap()` calls by module | 2h | HIGH | Understand scope before fixing |
+| 5.2 | Fix critical-path unwraps: `messaging/` (14 files), `nexus/` (12), `agentic/` (11) | 3 days | HIGH | These handle async state and LLM interactions — panics here lose user data |
+| 5.3 | Fix initialization-path unwraps: `config.rs`, `plugin/loader.rs`, `onboarding/mod.rs` | 1 day | HIGH | Startup failures should be graceful errors |
+| 5.4 | Add `#[cfg(test)]` guards where false positives inflate count | 2h | MEDIUM | Get accurate count |
+| 5.5 | Enable `unwrap_used = "warn"` in CI (gradual enforcement) | 2h | HIGH | Prevent regression |
+| 5.6 | Fix remaining 2 `todo!()` and 3 `unimplemented!()` calls | 1h | MEDIUM | Zero tolerance policy |
+| **Target** | **<200 `.unwrap()` in production code** | — | Measurable |
 
-| Task | Priority | Effort | Status |
-|------|----------|--------|--------|
-| REST API with Actor Pattern | HIGH | 8h | ✅ Complete |
-| Webhook System | HIGH | 8h | ✅ Complete |
-| Workflow CLI Commands | MEDIUM | 4h | ✅ Complete |
-| Webhook CLI Commands | MEDIUM | 4h | ✅ Complete |
-| API Integration Tests | MEDIUM | 4h | ✅ Complete |
-| Security Vulnerability Fixes | HIGH | 2h | ✅ Complete |
+### v1.4.0-b — Make Agentic Code Generation Real (Week 2-3)
 
-### v1.2.0 - MCP Protocol (Week 8-9) ✅ COMPLETE
+| # | Task | Effort | Priority | Rationale |
+|---|------|--------|---------|-----------|
+| 5.7 | Remove stub fallback in `executor_agent.rs` — error if no LLM client configured | 4h | CRITICAL | Currently silently produces no-ops |
+| 5.8 | Implement real `run_cargo_test()` — invoke cargo subprocess, capture output, parse results | 1 day | CRITICAL | Currently returns hardcoded string |
+| 5.9 | Implement real `run_sandboxed_tests()` — dispatch to actual sandbox backend | 1 day | HIGH | Currently returns fake `passed: true` |
+| 5.10 | Add context-window management for LLM code generation (file slicing, summarization) | 2 days | HIGH | Required for quality generation on real codebases |
+| 5.11 | Add multi-turn refinement loop (generate → verify → fix → regenerate) | 2 days | HIGH | Claude Code and Cursor differentiate here |
+| 5.12 | Add agentic property tests (generated code compiles, tests pass) | 1 day | MEDIUM | Validate the agent end-to-end |
+| **Target** | **`clawdius chat` generates real code that compiles** | — | Measurable |
 
-| Task | Priority | Effort | Status |
-|------|----------|--------|--------|
-| MCP Protocol Completion | HIGH | 24h | ✅ Complete |
-| Tool Resource Handlers | MEDIUM | 16h | ✅ Complete |
-| Prompt Templates | MEDIUM | 8h | ✅ Complete |
-| Onboarding Wizard | HIGH | 8h | ✅ Complete |
-| lancedb 0.27.x Migration | MEDIUM | 2h | ✅ Complete |
-| Security Vulnerability Fixes | HIGH | 2h | ✅ Complete |
+### v1.4.0-c — Competitive Benchmarking (Week 3)
 
-### v2.0.0 - Agentic Features (Week 10-12) ✅ COMPLETE
+| # | Task | Effort | Priority | Rationale |
+|---|------|--------|---------|-----------|
+| 5.13 | Run real benchmarks: startup time, memory usage, response P95 | 1 day | HIGH | Currently "targets" are aspirational |
+| 5.14 | Benchmark against real competitors: Claude Code, Aider, Cursor (or publish methodology) | 2 days | HIGH | Prove or retract performance claims |
+| 5.15 | Update competitive comparison with real data or remove aspirational numbers | 2h | HIGH | Credibility |
+| 5.16 | Publish benchmark results in `docs/BENCHMARKS.md` | 2h | MEDIUM | Transparency |
 
-**Note:** Core agentic features are fully implemented. Polish and documentation in progress.
+### v1.4.0-d — Distribution (Week 3-4)
 
-| Task | Priority | Effort | Status |
-|------|----------|--------|--------|
-| Code Generation LLM Integration | HIGH | 40h | ✅ Complete |
-| Test Generation LLM Integration | HIGH | 24h | ✅ Complete |
-| Doc Generation LLM Integration | MEDIUM | 16h | ✅ Complete |
-| Streaming Generation | HIGH | 16h | ✅ Complete |
-| Incremental Generation | MEDIUM | 8h | ✅ Complete |
-| File Watching | MEDIUM | 8h | ✅ Complete |
-| Drift Detection | MEDIUM | 8h | ✅ Complete |
-| Debt Analysis | MEDIUM | 8h | ✅ Complete |
-| Rate Limiting | HIGH | 8h | ✅ Complete |
-| Timeout Handling | MEDIUM | 4h | ✅ Complete |
+| # | Task | Effort | Priority | Rationale |
+|---|------|--------|---------|-----------|
+| 5.17 | Build GitHub Releases with prebuilt binaries (Linux x86_64, aarch64, macOS) | 1 day | HIGH | Users shouldn't need Rust installed |
+| 5.18 | Install `cargo-acl` and enforce in CI | 2h | MEDIUM | Prevent quality regression |
+| 5.19 | Fix or remove aspirational claims from competitive comparison | 2h | HIGH | Honest marketing |
+| **Target** | **`cargo install clawdius` works from GitHub Releases** | — | Measurable |
 
----
+### v1.4.0 Quality Gates
 
-## Phase 1: Launch (Weeks 1-2) ✅ COMPLETE
-
-**Goal:** Stable v1.0.0 release with community presence
-
-### Week 1: Release Finalization
-
-| Task | Priority | Effort | Status |
-|------|----------|--------|--------|
-| Fix remaining compiler warnings | HIGH | 4h | ✅ Complete |
-| Complete crates.io publishing | HIGH | 2h | ✅ Complete |
-| Create GitHub Release (v1.0.0) | HIGH | 1h | ✅ Complete |
-| Enable GitHub Discussions | MEDIUM | 30m | ✅ Complete |
-| Deploy docs.clawdius.dev | MEDIUM | 2h | ⏳ Pending |
-| Create Discord server | MEDIUM | 2h | ✅ Complete |
-
-### Week 2: Community Launch
-
-| Task | Priority | Effort | Status |
-|------|----------|--------|--------|
-| Write launch blog post | HIGH | 4h | ⏳ Pending |
-| Submit to Hacker News | HIGH | 1h | ⏳ Pending |
-| Post to r/rust, r/programming | HIGH | 1h | ⏳ Pending |
-| Create demo video | MEDIUM | 8h | ⏳ Pending |
-| Reach out to tech press | MEDIUM | 4h | ⏳ Pending |
-| Create Twitter/X thread | MEDIUM | 2h | ⏳ Pending |
-
-### Launch Checklist
-
-```markdown
-- [x] All tests passing (993/993)
-- [x] No critical bugs open
-- [x] Documentation complete
-- [x] crates.io published
-- [x] GitHub Release created (v1.0.0)
-- [x] Discord server live
-- [x] GitHub Discussions enabled
-- [ ] docs.clawdius.dev deployed
-- [ ] Demo video published
-- [ ] Blog post written
-```
+| Gate | Criteria | Verification |
+|------|----------|-------------|
+| G1 | `.unwrap()` count <200 in production code | `grep -rc` automated check |
+| G2 | Agentic code gen produces compilable output for 3+ test repos | Integration test |
+| G3 | `run_cargo_test()` invokes real cargo | Integration test |
+| G4 | `run_sandboxed_tests()` uses real backend | Integration test |
+| G5 | Competitive benchmarks published with methodology | Documentation review |
+| G6 | Prebuilt binaries in GitHub Release | Manual verification |
+| G7 | `unwrap_used = "warn"` enforced in CI | CI pass/fail |
 
 ---
 
-## Phase 2: Polish & Adoption (Weeks 3-6) ✅ COMPLETE
+## Phase 6: User-Facing Quality (v1.5.0)
 
-**Goal:** Improve UX and grow early adopter base
+> **Goal:** Clawdius is the best-in-class Rust coding assistant for daily use.
 
-### v1.0.1 - Bug Fixes (Week 3-4)
+### v1.5.0-a — IDE Integration (Week 5-6)
 
-| Task | Priority | Effort | Status |
-|------|----------|--------|--------|
-| Fix clippy warnings | HIGH | 4h | ✅ Complete |
-| Dead code cleanup | MEDIUM | 4h | ✅ Complete |
-| Error message improvements | MEDIUM | 8h | ✅ Complete |
-| Performance profiling | MEDIUM | 8h | ⏳ Ongoing |
-| Memory optimization | LOW | 8h | ⏳ Pending |
+| # | Task | Effort | Priority | Rationale |
+|---|------|--------|---------|-----------|
+| 6.1 | Wire completion module to VSCode extension (LSP or direct) | 3 days | HIGH | Most users discover tools via IDE |
+| 6.2 | Wire completion module to JetBrains plugin | 3 days | HIGH | Second-largest IDE market |
+| 6.3 | Add file-aware context (surrounding code, imports, types) to completions | 2 days | HIGH | Quality differentiator |
+| 6.4 | Add debounce and cancellation for streaming completions | 1 day | MEDIUM | UX polish |
+| **Target** | **Inline completions appear in VSCode and JetBrains** | — | Measurable |
 
-### v1.0.2 - UX Improvements (Week 5-6)
+### v1.5.0-b — LLM Quality (Week 6-7)
 
-| Task | Priority | Effort | Description |
-|------|----------|--------|-------------|
-| Onboarding wizard | HIGH | 16h | Interactive first-run |
-| Default config improvements | HIGH | 4h | Better out-of-box experience |
-| TUI polish | MEDIUM | 8h | Smoother animations |
-| Error recovery | MEDIUM | 8h | Auto-retry, graceful degradation |
-| Progress indicators | MEDIUM | 4h | Better feedback during operations |
+| # | Task | Effort | Priority | Rationale |
+|---|------|--------|---------|-----------|
+| 6.5 | Prompt engineering: system prompts, few-shot examples, instruction formatting | 3 days | HIGH | Generated code quality |
+| 6.6 | Context window optimization: smart file selection, summarization, token budgeting | 2 days | HIGH | Large repo support |
+| 6.7 | Streaming UX: real-time progress, cancel, edit-in-place | 2 days | MEDIUM | Claude Code-level UX |
+| 6.8 | Error recovery: parse compiler errors, feed back to LLM, retry | 2 days | HIGH | Reliability loop |
+| **Target** | **Code generation quality matches Claude Code on standard benchmarks** | — | Measurable |
 
-### Community Growth Targets
+### v1.5.0-c — Developer Experience (Week 7-8)
 
-| Metric | Week 2 | Week 4 | Week 6 |
-|--------|--------|--------|--------|
-| GitHub Stars | 50 | 150 | 300 |
-| Discord Members | 25 | 75 | 150 |
-| Active Users | 10 | 50 | 100 |
-| GitHub Discussions | 5 | 25 | 50 |
+| # | Task | Effort | Priority | Rationale |
+|---|------|--------|---------|-----------|
+| 6.9 | Git workflow: auto-stage, commit messages, conflict resolution hints | 3 days | HIGH | Aider's key differentiator |
+| 6.10 | `clawdius init` project scaffolding (cargo init + CLAUDE.md + config) | 1 day | MEDIUM | Faster onboarding |
+| 6.11 | Interactive diff review: show changes, accept/reject/hunk-edit | 2 days | MEDIUM | Claude Code UX pattern |
+| 6.12 | Session persistence: resume interrupted coding sessions | 1 day | MEDIUM | Long-running tasks |
+| **Target** | **Full coding session from init to commit without leaving CLI** | — | Measurable |
 
----
+### v1.5.0 Quality Gates
 
-## Phase 3: Feature Expansion (Months 2-3) ✅ COMPLETE
-
-**Theme:** Enhanced developer productivity
-
-### v1.1.0 - Code Intelligence (Month 2)
-
-| Task | Priority | Effort | Status |
-|------|----------|--------|--------|
-| MCP Protocol completion | HIGH | 24h | ✅ Complete |
-| CLAUDE.md memory | HIGH | 16h | ✅ Complete |
-| Inline completions | HIGH | 32h | ⏳ Pending |
-| Multi-file context | MEDIUM | 24h | ✅ Complete |
-| Code actions | MEDIUM | 16h | ⏳ Pending |
-
-### v1.2.0 - IDE Integration (Month 3)
-
-| Task | Priority | Effort | Status |
-|------|----------|--------|--------|
-| JetBrains plugin | HIGH | 40h | ⏳ Scaffold exists |
-| Vim/Neovim plugin | MEDIUM | 24h | ⏳ Pending |
-| Emacs package | LOW | 16h | ⏳ Pending |
-| LSP server | HIGH | 32h | ✅ Complete |
-| DAP adapter | MEDIUM | 24h | ⏳ Pending |
+| Gate | Criteria | Verification |
+|------|----------|-------------|
+| G1 | Inline completions fire in VSCode (smoke test) | Manual QA |
+| G2 | LLM code gen passes "fix this bug" benchmark (3 repos) | Integration test |
+| G3 | Context window handles repo with 100+ files | Property test |
+| G4 | Git workflow creates valid commits | Integration test |
 
 ---
 
-## Phase 4: Enterprise (Months 4-6) 🔄 IN PROGRESS
+## Phase 7: Community & Observability (v1.6.0)
 
-**Theme:** Privacy, control, and collaboration
+> **Goal:** Clawdius has real users, real feedback, and real metrics.
 
-### v1.3.0 - Self-Hosted (Month 4)
+### v1.6.0-a — Observability (Week 9-10)
 
-| Task | Priority | Effort | Status |
-|------|----------|--------|--------|
-| Local LLM support (Ollama) | HIGH | 40h | ✅ Complete |
-| Model management | HIGH | 16h | ✅ Complete |
-| Offline mode | MEDIUM | 8h | ✅ Complete |
-| Air-gapped install | MEDIUM | 8h | ⏳ Pending |
+| # | Task | Effort | Priority | Rationale |
+|---|------|--------|---------|-----------|
+| 7.1 | Add `llvm-cov` to CI, publish coverage reports to PRs | 1 day | HIGH | Coverage tracking |
+| 7.2 | Code coverage threshold in CI: fail PRs below 80% | 2h | HIGH | Quality enforcement |
+| 7.3 | Structured logging with tracing spans for all user-facing paths | 2 days | MEDIUM | Production ops |
+| 7.4 | Grafana dashboards for deployed instances | 2 days | MEDIUM | Operational visibility |
+| 7.5 | Error telemetry: classified panic reports, graceful degradation tracking | 2 days | MEDIUM | Bug triage |
+| **Target** | **Code coverage visible on every PR** | — | Measurable |
 
-### v1.4.0 - Team Features (Month 5)
+### v1.6.0-b — Community (Week 10-12)
 
-**Theme:** Collaboration
+| # | Task | Effort | Priority | Rationale |
+|---|------|--------|---------|-----------|
+| 7.6 | Deploy docs.clawdius.dev (API reference, user guide, quickstart) | 3 days | HIGH | Discoverability |
+| 7.7 | Write launch blog post with real benchmarks and demo | 1 day | HIGH | Launch marketing |
+| 7.8 | Create 5-minute demo video (asciinema or screen recording) | 4h | HIGH | Visual demo |
+| 7.9 | HN/Reddit/Lobsters submission with technical angle | 2h | HIGH | Distribution |
+| 7.10 | Create Discord server with onboarding bot | 4h | MEDIUM | Community hub |
+| 7.11 | Contribute to 3 open-source projects using Clawdius (dogfooding) | ongoing | LOW | Real-world validation |
+| **Target** | **docs.clawdius.dev live, blog post published** | — | Measurable |
 
-| Task | Priority | Effort | Description |
-|------|----------|--------|-------------|
-| Shared contexts | HIGH | 24h | Team knowledge base |
-| Prompt templates | HIGH | 16h | Shared prompt library |
-| Session sharing | MEDIUM | 16h | Collaborate on conversations |
-| Team analytics | LOW | 16h | Usage insights |
+### v1.6.0-c — Cross-Platform (Week 12)
 
-### v1.5.0 - Enterprise Compliance (Month 6)
+| # | Task | Effort | Priority | Rationale |
+|---|------|--------|---------|-----------|
+| 7.12 | Add macOS CI runner to GitHub Actions | 4h | MEDIUM | 40% of developers use macOS |
+| 7.13 | Add Windows CI runner (basic smoke test) | 8h | LOW | Enterprise requirement |
+| 7.14 | Publish aarch64 Linux binary in GitHub Releases | 2h | MEDIUM | ARM server adoption |
+| **Target** | **CI runs on 2+ platforms** | — | Measurable |
 
-**Theme:** Security and compliance
+### v1.6.0 Quality Gates
 
-| Task | Priority | Effort | Description |
-|------|----------|--------|-------------|
-| SSO hardening | HIGH | 16h | Production SSO |
-| Audit log export | HIGH | 8h | SIEM integration |
-| SOC 2 preparation | MEDIUM | 40h | Compliance documentation |
-| Security audit | HIGH | 80h | Third-party penetration test |
-
----
-
-## Phase 5: Formal Verification & HFT (2026-04) ✅ COMPLETE
-
-**Theme:** Mathematical rigor and high-frequency trading
-
-### v1.3.0 - Formal Verification & HFT Broker (2026-04)
-
-| Task | Priority | Effort | Status |
-|------|----------|--------|--------|
-| Unified WalletGuard | HIGH | 16h | ✅ Complete |
-| HFT Feed Integration | HIGH | 24h | ✅ Complete |
-| E2E HFT Pipeline | HIGH | 16h | ✅ Complete |
-| Lean4 Broker Proof | HIGH | 16h | ✅ Complete |
-| Nexus FSM Phase Sync | HIGH | 8h | ✅ Complete |
-| FSM Persistence | HIGH | 16h | ✅ Complete |
-| FSM Test Vectors | MEDIUM | 8h | ✅ Complete |
-| Full Lean4 Audit | MEDIUM | 8h | ✅ Complete |
-| Clippy Zero | HIGH | 4h | ✅ Complete |
-| Test Suite Green | HIGH | 4h | ✅ Complete |
+| Gate | Criteria | Verification |
+|------|----------|-------------|
+| G1 | docs.clawdius.dev resolves | `curl` check |
+| G2 | Code coverage >80% on critical paths | CI report |
+| G3 | GitHub Stars > 50 (organic) | GitHub API |
+| G4 | CI runs on Linux + macOS | CI matrix |
 
 ---
 
-## Phase 6: Platform (Months 7-9) 🔄 IN PROGRESS
+## Phase 8: Deepening (v1.7.0)
 
-**Theme:** Extensibility and connectivity
+> **Goal:** Clawdius has best-in-class features in at least 2 categories.
 
-### v1.6.0 - Plugin Ecosystem (Month 7-8)
+### v1.7.0-a — HFT Deepening (Week 13-15)
 
-| Task | Priority | Effort | Status |
-|------|----------|--------|--------|
-| Plugin marketplace | HIGH | 40h | ⏳ Pending |
-| Plugin CLI | HIGH | 16h | ✅ Complete |
-| Plugin templates | MEDIUM | 16h | ⏳ Pending |
-| Plugin documentation | HIGH | 16h | ⏳ Pending |
-| Example plugins | MEDIUM | 24h | ⏳ Pending |
+| # | Task | Effort | Priority | Rationale |
+|---|------|--------|---------|-----------|
+| 8.1 | Paper trading mode: simulated portfolio, P&L tracking, risk metrics | 3 days | MEDIUM | HFT profile architecture-only currently |
+| 8.2 | News/sentiment feed adapter (at least 1 real source: Twitter/X API or RSS) | 2 days | MEDIUM | HFT sentiment analysis is architecture-only |
+| 8.3 | Real broker connector (Alpaca or IBKR paper trading API) | 3 days | MEDIUM | Live market data |
+| 8.4 | Lean4 axiom reduction: 39 → <30 (target <20 for HFT-critical) | 3 days | MEDIUM | Formal verification completeness |
+| 8.5 | WCET benchmarks for wallet guard and risk check on real workloads | 1 day | LOW | Prove latency claims |
 
-### v1.7.0 - API & Integration (Month 9)
+### v1.7.0-b — Sandbox Deepening (Week 15-17)
 
-| Task | Priority | Effort | Status |
-|------|----------|--------|--------|
-| REST API | HIGH | 32h | ✅ Complete |
-| GraphQL API | MEDIUM | 24h | ⏳ Pending |
-| Webhooks | MEDIUM | 16h | ⏳ Pending |
-| CLI scripting | MEDIUM | 16h | ⏳ Pending |
+| # | Task | Effort | Priority | Rationale |
+|---|------|--------|---------|-----------|
+| 8.6 | Make gVisor backend functional (currently just a binary path) | 3 days | MEDIUM | Claimed in competitive analysis |
+| 8.7 | Make Firecracker backend functional (microVM lifecycle management) | 3 days | MEDIUM | Claimed in competitive analysis |
+| 8.8 | Sandbox escape test suite: verify isolation for each backend | 2 days | HIGH | Security proof |
+| 8.9 | Resource limits enforcement (CPU, memory, network per sandbox) | 2 days | HIGH | Prevent abuse |
+| 8.10 | Add Firecracker + gVisor to CI (smoke test, not full E2E) | 1 day | LOW | CI validation |
 
----
+### v1.7.0 Quality Gates
 
-## Phase 7: Maturity (Months 10-12)
-
-### v2.0.0 - Next Generation (Month 10-12)
-
-**Theme:** Next-level capabilities
-
-| Task | Priority | Effort | Description |
-|------|----------|--------|-------------|
-| Agentic workflows | HIGH | 80h | ✅ COMPLETE - Autonomous task execution |
-| Code generation | HIGH | 60h | ✅ COMPLETE - Generate entire features |
-| Test generation | MEDIUM | 40h | ✅ COMPLETE - Auto-generate tests |
-| Documentation gen | MEDIUM | 24h | ✅ COMPLETE - Auto-generate docs |
-| Architecture analysis | LOW | 40h | 📋 PLANNED | Dependency graphs, metrics |
+| Gate | Criteria | Verification |
+|------|----------|-------------|
+| G1 | Paper trading runs for 100+ simulated trades | Integration test |
+| G2 | At least 1 real news source adapter works | Integration test |
+| G3 | 2+ sandbox backends pass escape test suite | Integration test |
+| G4 | Lean4 axioms <30 | Proof compilation |
 
 ---
 
-## Phase 6.5: Quality & Integration (Next)
+## Phase 9: Ecosystem (v1.8.0)
 
-### v1.4.0 — Quality Deepening
+> **Goal:** Clawdius has a plugin ecosystem and third-party integrations.
 
-| Task | Priority | Effort | Status |
-|------|----------|--------|--------|
-| Lean4 Axiom Reduction (<30) | HIGH | 40h | 📋 PLANNED |
-| Real HFT Feed Adapter | MEDIUM | 40h | 📋 PLANNED |
-| Nexus FSM CLI Surface | MEDIUM | 24h | 📋 PLANNED |
-| TLA+ Model Checking | MEDIUM | 16h | 📋 PLANNED |
-| Property Test Expansion | MEDIUM | 16h | 📋 PLANNED |
-| Multi-Repo RAG | LOW | 40h | 📋 PLANNED |
+| # | Task | Effort | Priority | Rationale |
+|---|------|--------|---------|-----------|
+| 9.1 | Plugin marketplace: discovery, install, version, trust scoring | 5 days | HIGH | Plugin system exists but no discoverability |
+| 9.2 | Plugin SDK documentation with worked examples | 3 days | MEDIUM | Ecosystem enabler |
+| 9.3 | DAP adapter (Debug Adapter Protocol) for IDE integration | 5 days | MEDIUM | VSCode debug integration |
+| 9.4 | Neovim plugin (Lua-based, using LSP client) | 3 days | LOW | Vim community demand |
+| 9.5 | Emacs package (Elisp, using LSP client) | 3 days | LOW | Emacs community demand |
+| 9.6 | MCP server mode: expose Clawdius as an MCP tool server | 2 days | MEDIUM | Claude Code MCP interop |
 
----
+### v1.8.0 Quality Gates
 
-## Phase 7.5: Platform Maturity (2026 H2)
-
-### v2.0.0 — Agentic Lifecycle Engine
-
-| Task | Priority | Effort | Status |
-|------|----------|--------|--------|
-| Agentic FSM Workflow | HIGH | 80h | 📋 PLANNED |
-| WASM Plugin Marketplace | MEDIUM | 60h | 📋 PLANNED |
-| HFT Paper Trading | MEDIUM | 40h | 📋 PLANNED |
-| Multi-LLM Orchestration | HIGH | 60h | 📋 PLANNED |
-| Cross-Language Analysis | MEDIUM | 40h | 📋 PLANNED |
+| Gate | Criteria | Verification |
+|------|----------|-------------|
+| G1 | External plugin can be installed via `clawdius plugin install <url>` | Integration test |
+| G2 | DAP adapter attaches to VSCode debug session | Manual QA |
 
 ---
 
-## Long-term Vision (2027+)
+## Deferred to v2.0.0+
 
-### Research Areas
-
-#### 1. Advanced Code Intelligence
-- Whole-repository semantic understanding
-- Architecture drift detection
-- Technical debt quantification
-- Predictive bug detection
-
-#### 2. Autonomous Development
-- Self-directed feature implementation
-- Continuous test generation
-- Automated performance optimization
-- Self-healing code
-
-#### 3. Domain Specialization
-- Industry-specific models (finance, healthcare, embedded)
-- Regulatory compliance automation
-- Safety-critical system verification
-- Formal specification generation
+| Feature | Why Deferred |
+|---------|---------------|
+| GraphQL API | REST API covers current needs; no user demand signal |
+| Air-gapped install | Complex deployment; no enterprise customer demand yet |
+| GUI / Desktop App | CLI + IDE plugins cover developer use case; Electron-style GUI is a different product |
+| Autonomous multi-agent (OpenDevin-style) | Requires solid single-agent first; premature |
+| Kubernetes Helm charts | Docker Compose covers self-hosted; K8s is overkill for current scale |
+| LLM sentiment analysis for trading | HFT deepening is sufficient for now |
+| Multi-repo RAG | Single-repo works; multi-repo adds complexity |
 
 ---
 
-## Business Model (Future Consideration)
+## Metrics Trajectory
 
-### Open Source Core + Enterprise
+### Engineering Quality
 
-| Tier | Price | Features |
-|------|-------|----------|
-| **Community** | Free | All core features, community support |
-| **Pro** | $20/mo | Cloud sync, team features, priority support |
-| **Enterprise** | Custom | SSO, audit logs, SLA, dedicated support |
-| **Self-Hosted** | Custom | Air-gapped, custom models, training |
+| Metric | v1.3.0 | v1.4.0 Target | v1.6.0 Target | v1.8.0 Target |
+|--------|---------|-----------------|-----------------|-----------------|
+| `.unwrap()` in prod | ~1,182 | <200 | <100 | <50 |
+| Test count | 1,162 | 1,300+ | 1,500+ | 2,000+ |
+| Property tests | 43 | 60+ | 80+ | 100+ |
+| Lean4 axioms | 39 | 39 | 35 | <30 |
+| Code coverage | Unknown | Measured | >80% critical | >90% |
+| CI platforms | 1 (Linux) | 1 | 2 (L+M) | 2+ |
 
-### Revenue Projections (Conservative)
+### Distribution
 
-| Quarter | Users | Revenue Target |
-|---------|-------|----------------|
-| Q2 2026 | 100 | $0 (community building) |
-| Q3 2026 | 500 | $2,000/mo |
-| Q4 2026 | 1,500 | $8,000/mo |
-| Q1 2027 | 3,000 | $20,000/mo |
+| Metric | v1.3.0 | v1.4.0 Target | v1.6.0 Target | v1.8.0 Target |
+|--------|---------|-----------------|-----------------|-----------------|
+| GitHub Stars | 0 | Organic | 50+ | 500+ |
+| Prebuilt binaries | None | Linux x86_64 | L+M+aarch64 | 5+ targets |
+| docs.clawdius.dev | Not live | — | Live | Updated |
+| Demo video | None | — | Published | Updated |
+| Blog posts | 0 | 1 | 3+ | 5+ |
 
----
+### Reliability
 
-## Resource Requirements
-
-### Current Team: 1 (You)
-
-### Ideal Team by Phase
-
-| Phase | Engineers | Duration | Focus |
-|-------|-----------|----------|-------|
-| Launch | 1-2 | 2 weeks | Release, community |
-| Polish | 2 | 4 weeks | UX, bugs |
-| Features | 2-3 | 8 weeks | MCP, completions |
-| Enterprise | 3-4 | 12 weeks | Self-hosted, teams |
-| Platform | 4-5 | 12 weeks | Plugins, API |
-
-### Hiring Priorities (If Funded)
-
-1. **Rust Backend Engineer** - Core development
-2. **TypeScript/Frontend Engineer** - VSCode, webview
-3. **DevOps/SRE** - CI/CD, infrastructure
-4. **Developer Advocate** - Community, content
+| Metric | v1.3.0 | v1.4.0 Target | v1.5.0 Target | v1.7.0 Target |
+|--------|---------|-----------------|-----------------|-----------------|
+| Stub features claimed | 3 | 0 | 0 | 0 |
+| Panic surfaces | ~1,381 | <200 | <100 | <50 |
+| Sandbox backends functional | 2 (WASM, Filtered) | 4 | 6 | 7 |
+| Agentic workflows | Stub | Functional | Iterative | Multi-turn |
 
 ---
 
-## Risk Management
+## Key Risk: Over-Engineering vs. Shipping
 
-### Technical Risks
+The biggest risk to this roadmap is spending too long on foundations and not enough on shipping. The mitigations:
 
-| Risk | Probability | Impact | Mitigation |
-|------|-------------|--------|------------|
-| LLM API changes | Medium | High | Provider abstraction |
-| Performance regression | Medium | Medium | Continuous benchmarking |
-| Security vulnerability | Low | High | Regular audits, sandboxing |
-| WASM compatibility | Low | Medium | Multi-runtime support |
+1. **Every phase has measurable quality gates** — no phase transitions without proof
+2. **Phase 5 (v1.4.0) is the last "catch-up" phase** — it fixes credibility gaps, not adds features
+3. **Phases 6+ add user-visible value** — IDE completions, community, docs
+4. **6-month horizon** — if v1.8.0 isn't substantially complete, reassess the approach
 
-### Business Risks
+### Decision Points
 
-| Risk | Probability | Impact | Mitigation |
-|------|-------------|--------|------------|
-| Low adoption | Medium | High | Community building, marketing |
-| Competition | High | Medium | Differentiation focus |
-| Burnout | Medium | High | Sustainable pace, hiring |
-| Funding | Medium | High | Enterprise features, monetization |
-
----
-
-## Success Metrics
-
-### Technical (v1.0.0 Target)
-
-| Metric | Current | Target |
-|--------|---------|--------|
-| Test Coverage | 85% | 90% |
-| Response Time (P95) | <2s | <500ms |
-| Memory Usage | ~100MB | <100MB |
-| Startup Time | ~20ms | <50ms |
-| Open CVEs | 0 | 0 |
-
-### Community (6-Month Target)
-
-| Metric | Current | Target |
-|--------|---------|--------|
-| GitHub Stars | 0 | 1,000 |
-| Discord Members | 0 | 500 |
-| Active Users | 0 | 500 |
-| Contributors | 1 | 25 |
-| Plugins | 0 | 10 |
-
-### Business (12-Month Target)
-
-| Metric | Current | Target |
-|--------|---------|--------|
-| Paying Users | 0 | 100 |
-| MRR | $0 | $5,000 |
-| Enterprise Customers | 0 | 5 |
-| NPS Score | - | 40+ |
-
----
-
-## Immediate Action Items (This Week)
-
-### Priority 1: Launch Blockers
-
-```bash
-# Day 1-2: Fix warnings
-cargo clippy --all-targets --all-features --fix
-
-# Day 2: crates.io
-cargo login
-cargo publish -p clawdius-core
-cargo publish -p clawdius
-
-# Day 3: GitHub
-gh release create v1.0.0 --title "Clawdius v1.0.0" --notes-file RELEASE_NOTES.md
-
-# Day 3-4: Community
-# - Create Discord server
-# - Enable GitHub Discussions
-# - Deploy docs.clawdius.dev
-```
-
-### Priority 2: Launch Marketing
-
-```markdown
-# Day 5-7: Content Creation
-- [ ] Write blog post: "Introducing Clawdius"
-- [ ] Create demo video (5 min)
-- [ ] Prepare HN submission
-- [ ] Draft Twitter thread
-- [ ] Email tech journalists
-```
+| Date | Decision | Criteria |
+|------|----------|----------|
+| After v1.4.0 | Continue to v1.5.0? | Are stubs fixed? Is CI enforcing unwrap limits? |
+| After v1.6.0 | Continue to v1.7.0? | Are real users providing feedback? Is docs site getting traffic? |
+| After v1.8.0 | Plan v2.0.0? | Is the plugin ecosystem forming? Are there paying customers? |
 
 ---
 
 ## Conclusion
 
-Clawdius v1.0.0-rc.1 is **ready for launch**. The path forward is:
+Clawdius v1.3.0 has exceptional technical depth (formal verification, 7 sandbox backends, HFT-grade performance) but needs to close a credibility gap before competing for users. The revised roadmap prioritizes:
 
-1. **Week 1-2:** Launch v1.0.0 stable + community presence
-2. **Month 2-3:** Polish, UX, code intelligence features
-3. **Month 4-6:** Enterprise features, self-hosted
-4. **Month 7-9:** Plugin ecosystem, API
-5. **Month 10-12:** v2.0.0 with agentic capabilities
+1. **v1.4.0 (2 weeks):** Fix stubs, reduce panics, publish benchmarks, ship binaries
+2. **v1.5.0 (4 weeks):** IDE completions, LLM quality, developer UX
+3. **v1.6.0 (4 weeks):** Coverage, community launch, cross-platform CI
+4. **v1.7.0 (4 weeks):** HFT deepening, sandbox completion, axiom reduction
+5. **v1.8.0 (4 weeks):** Plugin ecosystem, DAP/Neovim/Emacs, MCP server mode
 
-**Key Success Factors:**
-1. 🚀 Launch momentum - strike while iron is hot
-2. 🏗️ Maintain quality - don't rush features
-3. 🤝 Build community - respond to every issue/PR
-4. 💼 Enterprise credibility - early case studies
-5. 🔒 Security differentiation - lean into uniqueness
+**Estimated total: ~18 weeks to a credible, user-ready v1.8.0.**
 
----
-
-*This roadmap is a living document. Review and update monthly.*
+*This roadmap is a living document. Review after each phase.*

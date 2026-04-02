@@ -202,7 +202,7 @@ async fn require_api_key(
                     "Authorization header contains invalid UTF-8",
                 )
                 .into_response());
-            }
+            },
         },
         None => {
             return Err(json_error(
@@ -211,7 +211,7 @@ async fn require_api_key(
                 "Authorization header with Bearer token is required",
             )
             .into_response());
-        }
+        },
     };
 
     let token = match auth_header.strip_prefix("Bearer ") {
@@ -223,7 +223,7 @@ async fn require_api_key(
                 "Authorization header must use 'Bearer <token>' format",
             )
             .into_response());
-        }
+        },
     };
 
     // Strategy 1: Try JWT validation (feature-gated)
@@ -235,7 +235,7 @@ async fn require_api_key(
                     // Valid JWT — extract role for potential future use
                     let _ = &claims;
                     return Ok(());
-                }
+                },
                 Err(clawdius_core::messaging::jwt_auth::JwtError::Expired) => {
                     return Err(json_error(
                         StatusCode::UNAUTHORIZED,
@@ -243,10 +243,10 @@ async fn require_api_key(
                         "JWT token has expired",
                     )
                     .into_response());
-                }
+                },
                 Err(_) => {
                     // JWT validation failed — fall through to API key check
-                }
+                },
             }
         }
     }
@@ -460,7 +460,7 @@ async fn webhook_handler(
                 "Unknown platform in webhook path",
             )
             .into_response();
-        }
+        },
     };
 
     // Build the framework-agnostic WebhookRequest
@@ -524,7 +524,7 @@ async fn webhook_handler(
                 })),
             )
                 .into_response();
-        }
+        },
         WebhookResult::Parsed(msg) => msg,
     };
 
@@ -558,17 +558,17 @@ async fn webhook_handler(
             let (status, code) = match &e {
                 clawdius_core::messaging::types::MessagingError::RateLimited { .. } => {
                     (StatusCode::TOO_MANY_REQUESTS, "RATE_LIMITED")
-                }
+                },
                 clawdius_core::messaging::types::MessagingError::Unauthorized { .. } => {
                     (StatusCode::FORBIDDEN, "UNAUTHORIZED")
-                }
+                },
                 clawdius_core::messaging::types::MessagingError::ChannelUnavailable(_) => {
                     (StatusCode::SERVICE_UNAVAILABLE, "CHANNEL_UNAVAILABLE")
-                }
+                },
                 _ => (StatusCode::INTERNAL_SERVER_ERROR, "INTERNAL_ERROR"),
             };
             json_error(status, code, &e.to_string()).into_response()
-        }
+        },
     }
 }
 
@@ -648,11 +648,11 @@ fn build_jwt_auth(
             Ok(auth) => {
                 tracing::info!("JWT auth enabled (HMAC-SHA256)");
                 Some(auth)
-            }
+            },
             Err(e) => {
                 tracing::warn!(error = %e, "JWT auth disabled: invalid secret");
                 None
-            }
+            },
         }
     }
 }
@@ -778,14 +778,14 @@ fn build_real_channel(
                 return None;
             }
             Some(Arc::new(TelegramChannel::new(bot_token)))
-        }
+        },
         Platform::Discord => {
             let bot_token = cfg.discord_bot_token.as_deref()?.trim();
             if bot_token.is_empty() {
                 return None;
             }
             Some(Arc::new(DiscordChannel::new(bot_token)))
-        }
+        },
         Platform::Matrix => {
             let homeserver = cfg.homeserver_base_url.as_deref()?.trim();
             let token = cfg.access_token.as_deref()?.trim();
@@ -793,14 +793,14 @@ fn build_real_channel(
                 return None;
             }
             Some(Arc::new(MatrixChannel::new(homeserver, token)))
-        }
+        },
         Platform::Slack => {
             let bot_token = cfg.slack_bot_token.as_deref()?.trim();
             if bot_token.is_empty() {
                 return None;
             }
             Some(Arc::new(SlackChannel::new(bot_token)))
-        }
+        },
         Platform::RocketChat => {
             let server_url = cfg
                 .server_url
@@ -814,7 +814,7 @@ fn build_real_channel(
                 return None;
             }
             Some(Arc::new(RocketChatChannel::new(server_url, user_id, token)))
-        }
+        },
         Platform::Signal => {
             let api_url = cfg.signal_api_url.as_deref()?.trim();
             let number = cfg.signal_number.as_deref()?.trim();
@@ -822,7 +822,7 @@ fn build_real_channel(
                 return None;
             }
             Some(Arc::new(SignalChannel::new(api_url, number)))
-        }
+        },
         Platform::WhatsApp => {
             let phone_id = cfg.phone_number_id.as_deref()?.trim();
             let token = cfg.whatsapp_access_token.as_deref()?.trim();
@@ -830,7 +830,7 @@ fn build_real_channel(
                 return None;
             }
             Some(Arc::new(WhatsAppChannel::new(phone_id, token)))
-        }
+        },
         _ => None,
     }
 }
@@ -1007,7 +1007,8 @@ async fn main() -> anyhow::Result<()> {
     // Only init the regular subscriber if OTel did NOT set one up already.
     #[cfg(feature = "otel")]
     if otel_provider.is_none() {
-        let pii_layer = PiiRedactionLayer::new(PiiRedactionConfig::default());
+        let pii_layer = PiiRedactionLayer::new(PiiRedactionConfig::default())
+            .expect("PII redaction regex compilation must succeed");
         let env_filter =
             EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
 
@@ -1028,7 +1029,8 @@ async fn main() -> anyhow::Result<()> {
 
     #[cfg(not(feature = "otel"))]
     {
-        let pii_layer = PiiRedactionLayer::new(PiiRedactionConfig::default());
+        let pii_layer = PiiRedactionLayer::new(PiiRedactionConfig::default())
+            .expect("PII redaction regex compilation must succeed");
         let env_filter =
             EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
 
@@ -1052,16 +1054,16 @@ async fn main() -> anyhow::Result<()> {
         Some(path) => {
             tracing::info!(path = %path, "Loading config from file");
             Config::load(std::path::Path::new(path))?
-        }
+        },
         None => match Config::load_default() {
             Ok(cfg) => {
                 tracing::info!("Loaded config from default location");
                 cfg
-            }
+            },
             Err(_) => {
                 tracing::info!("No config file found — using defaults");
                 Config::default()
-            }
+            },
         },
     };
 
@@ -1083,7 +1085,7 @@ async fn main() -> anyhow::Result<()> {
         Some(path) => {
             tracing::info!(path = %path, "Opening session database");
             SessionStore::open(std::path::Path::new(path))?
-        }
+        },
         None => {
             let path = &config.storage.sessions_path;
             if path.as_os_str().is_empty() {
@@ -1093,7 +1095,7 @@ async fn main() -> anyhow::Result<()> {
                 tracing::info!(path = %path.display(), "Opening session database");
                 SessionStore::open(path)?
             }
-        }
+        },
     };
 
     // Build API state (for REST routes)
@@ -1150,11 +1152,11 @@ async fn main() -> anyhow::Result<()> {
             Ok(encrypted) => {
                 tracing::info!("Encryption at rest enabled for state store");
                 encrypted
-            }
+            },
             Err(e) => {
                 tracing::warn!(error = %e, "Encryption at rest failed — using plaintext store");
                 raw_store
-            }
+            },
         }
     } else {
         raw_store
@@ -1448,10 +1450,10 @@ mod tests {
                 assert!(r.status().is_success());
                 let body: serde_json::Value = r.json().await.unwrap();
                 assert_eq!(body["status"], "ok");
-            }
+            },
             Err(e) => {
                 eprintln!("Request error (may be timing): {e}");
-            }
+            },
         }
 
         handle.await.unwrap();

@@ -201,7 +201,13 @@ impl FirecrackerBackend {
             .join("firecracker.socket");
 
         // Ensure directories exist
-        tokio::fs::create_dir_all(socket_path.parent().unwrap()).await?;
+        let parent = socket_path.parent().ok_or_else(|| {
+            anyhow::anyhow!(
+                "Socket path has no parent directory: {}",
+                socket_path.display()
+            )
+        })?;
+        tokio::fs::create_dir_all(parent).await?;
 
         if self.config.jailer.enabled {
             self.start_with_jailer(vm_id, &socket_path).await?;

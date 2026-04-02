@@ -15,9 +15,9 @@ impl HelpHandler {
         Self
     }
 
-    fn generate_help(&self, platform: Platform) -> String {
+    fn generate_help(&self, platform: Platform) -> Result<String> {
         let prefix = platform.command_prefix().trim();
-        let parser = CommandParser::new(platform);
+        let _parser = CommandParser::new(platform)?;
 
         format!(
             r#"🤖 **Clawdius Help**
@@ -55,11 +55,28 @@ Available commands (prefix: `{}`):
 📝 Markdown: {}
 🧵 Threads: {}"#,
             prefix,
-            prefix, prefix, prefix, prefix, prefix,
-            prefix, prefix, prefix, prefix, prefix, prefix,
+            prefix,
+            prefix,
+            prefix,
+            prefix,
+            prefix,
+            prefix,
+            prefix,
+            prefix,
+            prefix,
+            prefix,
+            prefix,
             platform.max_message_length(),
-            if platform.supports_markdown() { "enabled" } else { "disabled" },
-            if platform.supports_threads() { "supported" } else { "not supported" }
+            if platform.supports_markdown() {
+                "enabled"
+            } else {
+                "disabled"
+            },
+            if platform.supports_threads() {
+                "supported"
+            } else {
+                "not supported"
+            }
         )
     }
 }
@@ -71,7 +88,7 @@ impl MessageHandler for HelpHandler {
         session: &MessagingSession,
         command: &ParsedCommand,
     ) -> Result<MessageHandlerResult> {
-        let response = self.generate_help(session.platform_user.platform);
+        let response = self.generate_help(session.platform_user.platform)?;
         Ok(MessageHandlerResult {
             response,
             should_chunk: false,

@@ -88,19 +88,29 @@ pub fn SettingsView() -> impl IntoView {
                 &window,
                 &wasm_bindgen::JsValue::from_str("acquireVsCodeApi"),
             ) {
-                let vscode = js_sys::Function::from(vscode)
+                let Some(vscode_val) = js_sys::Function::from(vscode)
                     .call0(&wasm_bindgen::JsValue::NULL)
-                    .unwrap();
-                let post_message =
-                    js_sys::Reflect::get(&vscode, &wasm_bindgen::JsValue::from_str("postMessage"))
-                        .unwrap();
-                let post_message = js_sys::Function::from(post_message);
+                    .ok()
+                else {
+                    return;
+                };
+                let Some(post_message_val) = js_sys::Reflect::get(
+                    &vscode_val,
+                    &wasm_bindgen::JsValue::from_str("postMessage"),
+                )
+                .ok() else {
+                    return;
+                };
+                let post_message = js_sys::Function::from(post_message_val);
                 let msg = serde_json::json!({
                     "type": msg_type,
                     "data": data
                 });
-                let msg_js = wasm_bindgen::JsValue::from_str(&serde_json::to_string(&msg).unwrap());
-                post_message.call1(&vscode, &msg_js).unwrap();
+                let Ok(msg_str) = serde_json::to_string(&msg) else {
+                    return;
+                };
+                let msg_js = wasm_bindgen::JsValue::from_str(&msg_str);
+                let _ = post_message.call1(&vscode_val, &msg_js);
             }
         }
     };
@@ -129,7 +139,7 @@ pub fn SettingsView() -> impl IntoView {
                                                     set_config.set(settings);
                                                 }
                                             }
-                                        }
+                                        },
                                         "settingsSaved" => {
                                             set_toasts.update(|t| {
                                                 t.push(ToastMessage {
@@ -140,7 +150,7 @@ pub fn SettingsView() -> impl IntoView {
                                                 });
                                             });
                                             set_has_changes.set(false);
-                                        }
+                                        },
                                         "settingsImported" => {
                                             set_toasts.update(|t| {
                                                 t.push(ToastMessage {
@@ -152,7 +162,7 @@ pub fn SettingsView() -> impl IntoView {
                                             });
                                             set_show_import_modal.set(false);
                                             set_import_data.set(String::new());
-                                        }
+                                        },
                                         "settingsReset" => {
                                             set_config.set(WebviewConfig::default());
                                             set_toasts.update(|t| {
@@ -163,7 +173,7 @@ pub fn SettingsView() -> impl IntoView {
                                                     toast_type: ToastType::Info,
                                                 });
                                             });
-                                        }
+                                        },
                                         "error" => {
                                             if let Some(error_msg) =
                                                 msg.get("data").and_then(|d| d.get("message"))
@@ -178,8 +188,8 @@ pub fn SettingsView() -> impl IntoView {
                                                     });
                                                 }
                                             }
-                                        }
-                                        _ => {}
+                                        },
+                                        _ => {},
                                     }
                                 }
                             }
@@ -196,7 +206,10 @@ pub fn SettingsView() -> impl IntoView {
     });
 
     let save_settings = move |_| {
-        send_to_vscode("saveSettings", serde_json::to_value(config.get()).unwrap());
+        send_to_vscode(
+            "saveSettings",
+            serde_json::to_value(config.get()).unwrap_or_default(),
+        );
     };
 
     let reset_settings = move |_| {
@@ -204,7 +217,7 @@ pub fn SettingsView() -> impl IntoView {
     };
 
     let export_settings = move |_| {
-        let json = serde_json::to_string_pretty(&config.get()).unwrap();
+        let json = serde_json::to_string_pretty(&config.get()).unwrap_or_default();
         if let Some(window) = web_sys::window() {
             let _ = window.navigator().clipboard().write_text(&json);
             set_toasts.update(|t| {
@@ -222,7 +235,7 @@ pub fn SettingsView() -> impl IntoView {
             set_config.set(imported);
             send_to_vscode(
                 "importSettings",
-                serde_json::to_value(config.get()).unwrap(),
+                serde_json::to_value(config.get()).unwrap_or_default(),
             );
         } else {
             set_toasts.update(|t| {
@@ -531,15 +544,15 @@ pub fn SettingsView() -> impl IntoView {
 fn event_target_value(ev: &leptos::ev::Event) -> String {
     use wasm_bindgen::JsCast;
     ev.target()
-        .unwrap()
-        .unchecked_into::<web_sys::HtmlInputElement>()
-        .value()
+        .and_then(|t| t.dyn_into::<web_sys::HtmlInputElement>().ok())
+        .map(|input| input.value())
+        .unwrap_or_default()
 }
 
 fn event_target_checked(ev: &leptos::ev::Event) -> bool {
     use wasm_bindgen::JsCast;
     ev.target()
-        .unwrap()
-        .unchecked_into::<web_sys::HtmlInputElement>()
-        .checked()
+        .and_then(|t| t.dyn_into::<web_sys::HtmlInputElement>().ok())
+        .map(|input| input.checked())
+        .unwrap_or_default()
 }

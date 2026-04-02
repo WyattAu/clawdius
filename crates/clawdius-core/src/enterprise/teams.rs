@@ -503,7 +503,10 @@ impl TeamManager {
         team.members.insert(user_id.clone(), member);
         team.updated_at = chrono::Utc::now();
 
-        Ok(team.members.get(&user_id).unwrap())
+        Ok(team
+            .members
+            .get(&user_id)
+            .ok_or_else(|| anyhow::anyhow!("Member not found after insert"))?)
     }
 
     /// Remove member from team

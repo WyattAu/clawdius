@@ -55,7 +55,7 @@ pub fn init_otel_tracing() -> Option<opentelemetry_sdk::trace::TracerProvider> {
                 "Failed to create OTLP exporter — OTel tracing disabled"
             );
             return None;
-        }
+        },
     };
 
     // Build tracer provider with batch export and tokio runtime
@@ -95,14 +95,14 @@ pub fn init_otel_tracing() -> Option<opentelemetry_sdk::trace::TracerProvider> {
                 "OTel tracing initialised (OTLP gRPC)"
             );
             Some(tracer_provider)
-        }
+        },
         Err(_) => {
             eprintln!(
                 "Global tracing subscriber already set — OTel layer not added \
                  (call init_otel_tracing before other tracing init)"
             );
             None
-        }
+        },
     }
 }
 

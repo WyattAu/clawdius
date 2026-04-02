@@ -81,8 +81,7 @@ impl HybridSearcher {
 
         for symbol in symbolic_results {
             let symbol_id = symbol.id.map(|id| id.to_string()).unwrap_or_default();
-            let (semantic_score, source) = if vector_map.contains_key(&symbol_id) {
-                let (score, _) = vector_map.remove(&symbol_id).unwrap();
+            let (semantic_score, source) = if let Some((score, _)) = vector_map.remove(&symbol_id) {
                 (score, ResultSource::Hybrid)
             } else {
                 (0.5, ResultSource::SymbolicSearch)

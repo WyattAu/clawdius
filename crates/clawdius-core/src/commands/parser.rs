@@ -165,7 +165,8 @@ impl CommandParser {
     /// Variables are in the format {{`variable_name`}}
     #[must_use]
     pub fn extract_variables(template: &str) -> Vec<String> {
-        let re = Regex::new(r"\{\{(\w+)\}\}").unwrap();
+        let re = Regex::new(r"\{\{(\w+)\}\}")
+            .unwrap_or_else(|_| Regex::new(r"$^").expect("empty regex fallback"));
         re.captures_iter(template)
             .map(|cap| cap[1].to_string())
             .collect()

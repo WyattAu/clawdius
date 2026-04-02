@@ -37,7 +37,7 @@ impl CodeParser {
     }
 
     pub fn parse(&self, source: &str, lang: LanguageKind) -> Result<Tree> {
-        let mut parsers = self.parsers.lock().unwrap();
+        let mut parsers = self.parsers.lock().unwrap_or_else(|e| e.into_inner());
         let parser = parsers
             .get_mut(&lang)
             .ok_or_else(|| anyhow::anyhow!("No parser available for language: {lang}"))?;

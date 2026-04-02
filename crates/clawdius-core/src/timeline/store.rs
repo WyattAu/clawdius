@@ -990,9 +990,13 @@ impl TimelineStore {
         let mut exported_files = Vec::new();
 
         for file in files {
-            let content = if file.content_path.as_ref().is_some_and(|p| p.exists()) {
-                let bytes = fs::read(file.content_path.as_ref().unwrap())?;
-                base64::Engine::encode(&base64::engine::general_purpose::STANDARD, &bytes)
+            let content = if let Some(ref path) = file.content_path {
+                if path.exists() {
+                    let bytes = fs::read(path)?;
+                    base64::Engine::encode(&base64::engine::general_purpose::STANDARD, &bytes)
+                } else {
+                    String::new()
+                }
             } else {
                 String::new()
             };

@@ -307,7 +307,7 @@ mod unit_tests {
 
     #[test]
     fn test_gate_context_metadata() {
-        let tracker = Arc::new(ArtifactTracker::in_memory());
+        let tracker = Arc::new(ArtifactTracker::in_memory().unwrap());
         let context = GateContext::new(PhaseId(0), tracker, PathBuf::from("/tmp"))
             .with_metadata("domain", serde_json::json!("test"))
             .with_metadata("count", serde_json::json!(5));
@@ -432,35 +432,35 @@ mod edge_case_tests {
 
     #[test]
     fn test_empty_artifact_list() {
-        let tracker = ArtifactTracker::in_memory();
+        let tracker = ArtifactTracker::in_memory().unwrap();
         let artifacts = tracker.list_by_phase(PhaseId(0)).unwrap();
         assert!(artifacts.is_empty());
     }
 
     #[test]
     fn test_missing_artifact_retrieval() {
-        let tracker = ArtifactTracker::in_memory();
+        let tracker = ArtifactTracker::in_memory().unwrap();
         let result = tracker.retrieve(&ArtifactId::new("nonexistent")).unwrap();
         assert!(result.is_none());
     }
 
     #[test]
     fn test_delete_nonexistent_artifact() {
-        let tracker = ArtifactTracker::in_memory();
+        let tracker = ArtifactTracker::in_memory().unwrap();
         let deleted = tracker.delete(&ArtifactId::new("nonexistent")).unwrap();
         assert!(!deleted);
     }
 
     #[test]
     fn test_search_empty_tracker() {
-        let tracker = ArtifactTracker::in_memory();
+        let tracker = ArtifactTracker::in_memory().unwrap();
         let results = tracker.search("anything").unwrap();
         assert!(results.is_empty());
     }
 
     #[test]
     fn test_empty_query() {
-        let tracker = ArtifactTracker::in_memory();
+        let tracker = ArtifactTracker::in_memory().unwrap();
 
         for i in 0..3 {
             let artifact = Artifact::new(
@@ -479,7 +479,7 @@ mod edge_case_tests {
     #[test]
     fn test_terminal_phase_cannot_transition() {
         let engine = TransitionEngine::new(
-            Arc::new(ArtifactTracker::in_memory()),
+            Arc::new(ArtifactTracker::in_memory().unwrap()),
             Arc::new(GateEvaluator::new()),
             Arc::new(EventBus::new()),
             PathBuf::from("/tmp"),
@@ -492,7 +492,7 @@ mod edge_case_tests {
     #[test]
     fn test_invalid_phase_skip() {
         let engine = TransitionEngine::new(
-            Arc::new(ArtifactTracker::in_memory()),
+            Arc::new(ArtifactTracker::in_memory().unwrap()),
             Arc::new(GateEvaluator::new()),
             Arc::new(EventBus::new()),
             PathBuf::from("/tmp"),
@@ -521,7 +521,7 @@ mod edge_case_tests {
 
     #[test]
     fn test_empty_dependencies() {
-        let tracker = ArtifactTracker::in_memory();
+        let tracker = ArtifactTracker::in_memory().unwrap();
 
         let artifact = Artifact::new(ArtifactType::SourceCode, serde_json::json!({}), PhaseId(0));
         let id = artifact.id.clone();
@@ -536,7 +536,7 @@ mod edge_case_tests {
 
     #[test]
     fn test_circular_dependency_detection() {
-        let tracker = ArtifactTracker::in_memory();
+        let tracker = ArtifactTracker::in_memory().unwrap();
 
         let a = Artifact::new(
             ArtifactType::Documentation,
@@ -626,7 +626,7 @@ mod extended_tests {
 
     #[test]
     fn test_artifact_tracker_update_nonexistent() {
-        let tracker = ArtifactTracker::in_memory();
+        let tracker = ArtifactTracker::in_memory().unwrap();
         let artifact = Artifact::new(
             ArtifactType::Documentation,
             serde_json::json!({"test": "data"}),
@@ -644,7 +644,7 @@ mod extended_tests {
 
     #[test]
     fn test_artifact_tracker_count_by_phase() {
-        let tracker = ArtifactTracker::in_memory();
+        let tracker = ArtifactTracker::in_memory().unwrap();
 
         for i in 0..5 {
             let artifact = Artifact::new(
@@ -671,7 +671,7 @@ mod extended_tests {
 
     #[test]
     fn test_artifact_query_date_filtering() {
-        let tracker = ArtifactTracker::in_memory();
+        let tracker = ArtifactTracker::in_memory().unwrap();
         let now = chrono::Utc::now();
         let past = now - chrono::Duration::hours(24);
         let future = now + chrono::Duration::hours(24);
@@ -699,7 +699,7 @@ mod extended_tests {
     #[test]
     fn test_quality_gate_boundary_coverage() {
         let gate = TestCoverageGate::new(0.8);
-        let tracker = Arc::new(ArtifactTracker::in_memory());
+        let tracker = Arc::new(ArtifactTracker::in_memory().unwrap());
 
         let context_exact = GateContext::new(PhaseId(16), tracker.clone(), PathBuf::from("/tmp"))
             .with_metadata("test_coverage", serde_json::json!(0.8));
@@ -726,7 +726,7 @@ mod extended_tests {
     #[test]
     fn test_quality_gate_deployment_readiness_combinations() {
         let gate = DeploymentReadinessGate;
-        let tracker = Arc::new(ArtifactTracker::in_memory());
+        let tracker = Arc::new(ArtifactTracker::in_memory().unwrap());
 
         let context_both = GateContext::new(PhaseId(18), tracker.clone(), PathBuf::from("/tmp"))
             .with_metadata("all_tests_pass", serde_json::json!(true))
@@ -758,7 +758,7 @@ mod extended_tests {
     #[test]
     fn test_phase_transition_backward_fails() {
         let engine = TransitionEngine::new(
-            Arc::new(ArtifactTracker::in_memory()),
+            Arc::new(ArtifactTracker::in_memory().unwrap()),
             Arc::new(GateEvaluator::new()),
             Arc::new(EventBus::new()),
             PathBuf::from("/tmp"),
@@ -771,7 +771,7 @@ mod extended_tests {
     #[test]
     fn test_phase_transition_same_phase_fails() {
         let engine = TransitionEngine::new(
-            Arc::new(ArtifactTracker::in_memory()),
+            Arc::new(ArtifactTracker::in_memory().unwrap()),
             Arc::new(GateEvaluator::new()),
             Arc::new(EventBus::new()),
             PathBuf::from("/tmp"),
@@ -783,7 +783,7 @@ mod extended_tests {
 
     #[test]
     fn test_artifact_dependency_missing_validation() {
-        let tracker = ArtifactTracker::in_memory();
+        let tracker = ArtifactTracker::in_memory().unwrap();
 
         let artifact = Artifact::new(
             ArtifactType::SourceCode,
@@ -804,7 +804,7 @@ mod extended_tests {
     #[test]
     fn test_gate_evaluator_missing_gate() {
         let evaluator = GateEvaluator::new();
-        let tracker = Arc::new(ArtifactTracker::in_memory());
+        let tracker = Arc::new(ArtifactTracker::in_memory().unwrap());
         let context = GateContext::new(PhaseId(0), tracker, PathBuf::from("/tmp"));
 
         let result = evaluator.evaluate_gate("nonexistent_gate", &context);
@@ -877,7 +877,7 @@ mod extended_tests {
     #[test]
     fn test_security_scan_gate_vulnerabilities() {
         let gate = SecurityScanGate;
-        let tracker = Arc::new(ArtifactTracker::in_memory());
+        let tracker = Arc::new(ArtifactTracker::in_memory().unwrap());
 
         let context_clean = GateContext::new(PhaseId(8), tracker.clone(), PathBuf::from("/tmp"))
             .with_metadata("vulnerability_count", serde_json::json!(0));
@@ -897,7 +897,7 @@ mod extended_tests {
 
     #[test]
     fn test_artifact_tracker_get_dependents_empty() {
-        let tracker = ArtifactTracker::in_memory();
+        let tracker = ArtifactTracker::in_memory().unwrap();
 
         let artifact = Artifact::new(
             ArtifactType::Documentation,

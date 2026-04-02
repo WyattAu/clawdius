@@ -484,7 +484,7 @@ mod tests {
     use std::path::PathBuf;
 
     fn create_test_engine() -> TransitionEngine {
-        let tracker = Arc::new(ArtifactTracker::in_memory());
+        let tracker = Arc::new(ArtifactTracker::in_memory().unwrap());
         let evaluator = Arc::new(GateEvaluator::new());
         let bus = Arc::new(EventBus::new());
         TransitionEngine::new(tracker, evaluator, bus, PathBuf::from("/tmp"))

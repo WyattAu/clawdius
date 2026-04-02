@@ -96,10 +96,13 @@ pub fn ChatInput(
 
                     let set_attachments_clone = set_attachments;
                     wasm_bindgen_futures::spawn_local(async move {
-                        let array_buffer =
+                        let Some(array_buffer) =
                             wasm_bindgen_futures::JsFuture::from(file.array_buffer())
                                 .await
-                                .unwrap();
+                                .ok()
+                        else {
+                            return;
+                        };
                         let uint8_array = js_sys::Uint8Array::new(&array_buffer);
                         let content = base64_encode(&uint8_array.to_vec());
 

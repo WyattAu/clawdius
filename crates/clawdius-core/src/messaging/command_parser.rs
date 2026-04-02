@@ -7,90 +7,96 @@ use std::collections::HashMap;
 
 use super::types::{CommandCategory, MessagingError, ParsedCommand, Platform, Result};
 
+fn build_regex(pattern: &str) -> Result<Regex> {
+    Regex::new(pattern)
+        .map_err(|e| MessagingError::ParseError(format!("Invalid regex '{pattern}': {e}")))
+}
+
 pub struct CommandParser {
     platform: Platform,
     command_patterns: HashMap<CommandCategory, Vec<Regex>>,
 }
 
 impl CommandParser {
-    pub fn new(platform: Platform) -> Self {
+    pub fn new(platform: Platform) -> Result<Self> {
         let mut patterns = HashMap::new();
 
         patterns.insert(
             CommandCategory::Session,
             vec![
-                Regex::new(r"(?i)^(start|new|create)\s*(session|chat)?").unwrap(),
-                Regex::new(r"(?i)^(stop|end|close)\s*(session|chat)?").unwrap(),
-                Regex::new(r"(?i)^sessions?$").unwrap(),
+                build_regex(r"(?i)^(start|new|create)\s*(session|chat)?")?,
+                build_regex(r"(?i)^(stop|end|close)\s*(session|chat)?")?,
+                build_regex(r"(?i)^sessions?$")?,
             ],
         );
 
         patterns.insert(
             CommandCategory::Status,
             vec![
-                Regex::new(r"(?i)^status$").unwrap(),
-                Regex::new(r"(?i)^ping$").unwrap(),
-                Regex::new(r"(?i)^health$").unwrap(),
+                build_regex(r"(?i)^status$")?,
+                build_regex(r"(?i)^ping$")?,
+                build_regex(r"(?i)^health$")?,
             ],
         );
 
         patterns.insert(
             CommandCategory::Generate,
             vec![
-                Regex::new(r"(?i)^(generate|gen|create)\s+(code|function|class|struct|test|tests)")
-                    .unwrap(),
-                Regex::new(r"(?i)^(write|add|implement)\s+(code|function|class|struct)").unwrap(),
+                build_regex(
+                    r"(?i)^(generate|gen|create)\s+(code|function|class|struct|test|tests)",
+                )?,
+                build_regex(r"(?i)^(write|add|implement)\s+(code|function|class|struct)")?,
             ],
         );
 
         patterns.insert(
             CommandCategory::Analyze,
             vec![
-                Regex::new(r"(?i)^(analyze|analyse|review|explain)\s*").unwrap(),
-                Regex::new(r"(?i)^(what|how|why|where)\s+(is|are|does|do)").unwrap(),
+                build_regex(r"(?i)^(analyze|analyse|review|explain)\s*")?,
+                build_regex(r"(?i)^(what|how|why|where)\s+(is|are|does|do)")?,
             ],
         );
 
         patterns.insert(
             CommandCategory::Timeline,
             vec![
-                Regex::new(r"(?i)^timeline\s*(list|history)?").unwrap(),
-                Regex::new(r"(?i)^checkpoint\s*(create|save|list)?").unwrap(),
-                Regex::new(r"(?i)^rollback\s*").unwrap(),
-                Regex::new(r"(?i)^diff\s*").unwrap(),
+                build_regex(r"(?i)^timeline\s*(list|history)?")?,
+                build_regex(r"(?i)^checkpoint\s*(create|save|list)?")?,
+                build_regex(r"(?i)^rollback\s*")?,
+                build_regex(r"(?i)^diff\s*")?,
             ],
         );
 
         patterns.insert(
             CommandCategory::Config,
             vec![
-                Regex::new(r"(?i)^config\s*(show|get|set|list)?").unwrap(),
-                Regex::new(r"(?i)^set\s+(provider|model|mode)").unwrap(),
+                build_regex(r"(?i)^config\s*(show|get|set|list)?")?,
+                build_regex(r"(?i)^set\s+(provider|model|mode)")?,
             ],
         );
 
         patterns.insert(
             CommandCategory::Admin,
             vec![
-                Regex::new(r"(?i)^admin\s*").unwrap(),
-                Regex::new(r"(?i)^debug\s*").unwrap(),
-                Regex::new(r"(?i)^clear\s*(cache|history|sessions)").unwrap(),
+                build_regex(r"(?i)^admin\s*")?,
+                build_regex(r"(?i)^debug\s*")?,
+                build_regex(r"(?i)^clear\s*(cache|history|sessions)")?,
             ],
         );
 
         patterns.insert(
             CommandCategory::Help,
             vec![
-                Regex::new(r"(?i)^help$").unwrap(),
-                Regex::new(r"(?i)^commands$").unwrap(),
-                Regex::new(r"(?i)^usage$").unwrap(),
+                build_regex(r"(?i)^help$")?,
+                build_regex(r"(?i)^commands$")?,
+                build_regex(r"(?i)^usage$")?,
             ],
         );
 
-        Self {
+        Ok(Self {
             platform,
             command_patterns: patterns,
-        }
+        })
     }
 
     pub fn parse(&self, message: &str) -> Result<ParsedCommand> {
@@ -203,7 +209,7 @@ mod tests {
 
     #[test]
     fn test_parse_simple_command() {
-        let parser = CommandParser::new(Platform::Telegram);
+        let parser = CommandParser::new(Platform::Telegram).unwrap();
         let result = parser.parse("/clawd status").unwrap();
 
         assert_eq!(result.category, CommandCategory::Status);
@@ -212,7 +218,7 @@ mod tests {
 
     #[test]
     fn test_parse_command_with_args() {
-        let parser = CommandParser::new(Platform::Telegram);
+        let parser = CommandParser::new(Platform::Telegram).unwrap();
         let result = parser.parse("/clawd generate code --lang rust").unwrap();
 
         assert_eq!(result.category, CommandCategory::Generate);
@@ -222,7 +228,7 @@ mod tests {
 
     #[test]
     fn test_parse_invalid_command() {
-        let parser = CommandParser::new(Platform::Telegram);
+        let parser = CommandParser::new(Platform::Telegram).unwrap();
         let result = parser.parse("invalid command");
 
         assert!(result.is_err());
@@ -241,7 +247,7 @@ mod tests {
 
     #[test]
     fn test_matrix_command_prefix() {
-        let parser = CommandParser::new(Platform::Matrix);
+        let parser = CommandParser::new(Platform::Matrix).unwrap();
         let result = parser.parse("!clawd status").unwrap();
 
         assert_eq!(result.category, CommandCategory::Status);

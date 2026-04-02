@@ -114,7 +114,9 @@ impl Mention {
         for (pattern, mention_type) in patterns {
             if let Ok(re) = Regex::new(pattern) {
                 for cap in re.captures_iter(text) {
-                    let full_match = cap.get(0).unwrap();
+                    let Some(full_match) = cap.get(0) else {
+                        continue;
+                    };
                     let start = full_match.start();
                     let end = full_match.end();
 
@@ -345,7 +347,8 @@ impl MentionResolver {
             .replace("</h3>", "\n\n");
 
         // Strip HTML tags (very basic)
-        let re = regex::Regex::new(r"<[^>]+>").unwrap();
+        let re = regex::Regex::new(r"<[^>]+>")
+            .unwrap_or_else(|_| regex::Regex::new(r"$^").expect("empty regex fallback"));
         let content = re.replace_all(&content, "").to_string();
 
         Ok(ContextItem::Url {

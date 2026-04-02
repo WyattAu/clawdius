@@ -24,16 +24,25 @@ pub fn ChatView() -> impl IntoView {
                 &window,
                 &wasm_bindgen::JsValue::from_str("acquireVsCodeApi"),
             ) {
-                let vscode = js_sys::Function::from(vscode)
+                let Some(vscode_val) = js_sys::Function::from(vscode)
                     .call0(&wasm_bindgen::JsValue::NULL)
-                    .unwrap();
-                let post_message =
-                    js_sys::Reflect::get(&vscode, &wasm_bindgen::JsValue::from_str("postMessage"))
-                        .unwrap();
-                let post_message = js_sys::Function::from(post_message);
-                let msg_json = serde_json::to_string(&msg).unwrap();
+                    .ok()
+                else {
+                    return;
+                };
+                let Some(post_message_val) = js_sys::Reflect::get(
+                    &vscode_val,
+                    &wasm_bindgen::JsValue::from_str("postMessage"),
+                )
+                .ok() else {
+                    return;
+                };
+                let post_message = js_sys::Function::from(post_message_val);
+                let Ok(msg_json) = serde_json::to_string(&msg) else {
+                    return;
+                };
                 let msg_js = wasm_bindgen::JsValue::from_str(&msg_json);
-                post_message.call1(&vscode, &msg_js).unwrap();
+                let _ = post_message.call1(&vscode_val, &msg_js);
             }
         }
     };
@@ -80,7 +89,7 @@ pub fn ChatView() -> impl IntoView {
                                                 .update(|msgs| msgs.push(assistant_message));
                                             set_loading.set(false);
                                         }
-                                    }
+                                    },
                                     "error" => {
                                         set_loading.set(false);
                                         web_sys::console::error_1(
@@ -89,8 +98,8 @@ pub fn ChatView() -> impl IntoView {
                                                 msg.data
                                             )),
                                         );
-                                    }
-                                    _ => {}
+                                    },
+                                    _ => {},
                                 }
                             }
                         }
@@ -99,7 +108,7 @@ pub fn ChatView() -> impl IntoView {
 
             window
                 .add_event_listener_with_callback("message", callback.as_ref().unchecked_ref())
-                .unwrap();
+                .ok();
             #[allow(unused_must_use)]
             callback.forget();
         }

@@ -154,7 +154,8 @@ impl LlmCodeGenerator {
     /// Extracts code from markdown code blocks.
     fn extract_code_block(&self, response: &str) -> (String, Option<String>) {
         // Look for ```language\ncode\n``` pattern
-        let code_block_regex = regex::Regex::new(r"```(\w*)\n([\s\S]*?)```").unwrap();
+        let code_block_regex =
+            regex::Regex::new(r"```(\w*)\n([\s\S]*?)```").expect("code block regex must compile");
 
         if let Some(caps) = code_block_regex.captures(response) {
             let language = caps.get(1).map(|m| m.as_str().to_string());

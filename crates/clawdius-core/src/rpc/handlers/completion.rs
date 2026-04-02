@@ -47,7 +47,7 @@ pub struct CompletionHandler {
 impl CompletionHandler {
     #[must_use]
     pub fn new() -> Self {
-        let cache_size = NonZeroUsize::new(100).unwrap();
+        let cache_size = NonZeroUsize::new(100).unwrap_or(NonZeroUsize::MIN);
         Self {
             llm: None,
             cache: Arc::new(RwLock::new(LruCache::new(cache_size))),

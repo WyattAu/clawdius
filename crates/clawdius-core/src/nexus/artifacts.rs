@@ -308,23 +308,26 @@ impl ArtifactTracker {
             db_path,
             store: Mutex::new(InMemoryStore::new()),
             pool,
-            cache: Mutex::new(LruCache::new(NonZeroUsize::new(256).unwrap())),
+            cache: Mutex::new(LruCache::new(NonZeroUsize::new(256).ok_or_else(|| {
+                NexusError::ConfigError("Invalid LRU cache capacity".into())
+            })?)),
             cache_enabled: true,
         })
     }
 
-    #[must_use]
-    pub fn in_memory() -> Self {
-        let pool = ConnectionPool::new(PathBuf::from(":memory:"), 1).unwrap();
-        pool.initialize_schema().unwrap();
+    pub fn in_memory() -> Result<Self> {
+        let pool = ConnectionPool::new(PathBuf::from(":memory:"), 1)?;
+        pool.initialize_schema()?;
 
-        Self {
+        Ok(Self {
             db_path: PathBuf::from(":memory:"),
             store: Mutex::new(InMemoryStore::new()),
             pool,
-            cache: Mutex::new(LruCache::new(NonZeroUsize::new(256).unwrap())),
+            cache: Mutex::new(LruCache::new(NonZeroUsize::new(256).ok_or_else(|| {
+                NexusError::ConfigError("Invalid LRU cache capacity".into())
+            })?)),
             cache_enabled: true,
-        }
+        })
     }
 
     pub fn store(&self, artifact: Artifact) -> Result<ArtifactId> {
@@ -663,7 +666,7 @@ mod tests {
     use super::*;
 
     fn create_test_tracker() -> ArtifactTracker {
-        ArtifactTracker::in_memory()
+        ArtifactTracker::in_memory().unwrap()
     }
 
     #[test]
