@@ -36,6 +36,7 @@
 //! ```
 
 pub mod apply_workflow;
+pub mod error_recovery;
 pub mod executor_agent;
 pub mod file_ops;
 pub mod generation_mode;
@@ -64,6 +65,9 @@ pub use test_execution::{
     SandboxBackend, TestExecutionStrategy, TestFramework, TestResult, TestRunner,
 };
 pub use tool_executor::{NoOpToolExecutor, ToolDefinition, ToolExecutor, ToolRequest, ToolResult};
+pub use error_recovery::{
+    CompilationError, ErrorRecovery, ErrorRecoveryConfig, ErrorRecoveryResult,
+};
 pub use verifier_agent::{
     IssueSeverity, VerificationIssue, VerificationResult, VerificationRule, VerifierAgent,
 };

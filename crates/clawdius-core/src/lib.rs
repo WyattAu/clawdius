@@ -63,8 +63,8 @@ pub use config::Config;
 #[cfg(feature = "vector-db")]
 pub use context::{AggregatedContext, ContextAggregator};
 pub use context::{
-    CompactResult, Context, ContextCompactor, ContextCompactorConfig, ContextItem, Mention,
-    MentionResolver, ProviderTokenLimits,
+    CompactResult, Context, ContextCompactor, ContextCompactorConfig, ContextItem,
+    ContextWindowManager, FileInfo, Mention, MentionResolver, ProviderTokenLimits,
 };
 pub use diff::{DiffPreview, DiffRenderer, DiffStats, DiffTheme, FileDiff};
 pub use enterprise::{

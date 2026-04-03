@@ -153,16 +153,90 @@ impl InlineCompletionProvider {
     fn get_language_prompt(&self, language: &str) -> String {
         match language.to_lowercase().as_str() {
             "rust" => {
-                "You are an expert Rust programmer. Write idiomatic, safe, and efficient code."
+                "You are an expert Rust programmer. Complete the code at the cursor position.\n\
+                 Rules:\n\
+                 - Follow Rust idioms and conventions (snake_case, Result/Option, ? operator)\n\
+                 - Match the existing code style, indentation (4 spaces), and module structure\n\
+                 - Prefer owned types over references where appropriate\n\
+                 - Include necessary imports if the completion uses new types\n\
+                 - Keep completions concise (1-20 lines typically)\n\
+                 - Do NOT include explanations, only code"
             },
-            "python" => "You are an expert Python programmer. Write clean, PEP-8 compliant code.",
-            "javascript" | "typescript" => {
-                "You are an expert JavaScript/TypeScript programmer. Write modern, clean code."
+            "python" => {
+                "You are an expert Python programmer. Complete the code at the cursor position.\n\
+                 Rules:\n\
+                 - Follow PEP-8 style and conventions (snake_case, type hints preferred)\n\
+                 - Match the existing code style, indentation (4 spaces), and module structure\n\
+                 - Use f-strings for string formatting\n\
+                 - Prefer dataclasses or Pydantic models for structured data\n\
+                 - Include necessary imports if the completion uses new types\n\
+                 - Keep completions concise (1-20 lines typically)\n\
+                 - Do NOT include explanations, only code"
             },
-            "go" => "You are an expert Go programmer. Write idiomatic Go code.",
-            "java" => "You are an expert Java programmer. Write clean, efficient Java code.",
-            "c" | "cpp" => "You are an expert C/C++ programmer. Write efficient, safe code.",
-            _ => "You are an expert programmer. Write clean, efficient code.",
+            "javascript" => {
+                "You are an expert JavaScript programmer. Complete the code at the cursor position.\n\
+                 Rules:\n\
+                 - Follow modern JavaScript (ES2022+) idioms and conventions (camelCase)\n\
+                 - Match the existing code style, indentation, and module system (ESM/CJS)\n\
+                 - Prefer const/let over var, arrow functions where idiomatic\n\
+                 - Use optional chaining (?.) and nullish coalescing (??) where appropriate\n\
+                 - Include necessary imports if the completion uses new types\n\
+                 - Keep completions concise (1-20 lines typically)\n\
+                 - Do NOT include explanations, only code"
+            },
+            "typescript" => {
+                "You are an expert TypeScript programmer. Complete the code at the cursor position.\n\
+                 Rules:\n\
+                 - Follow TypeScript best practices (strict types, interfaces over type aliases)\n\
+                 - Match the existing code style, indentation, and module system\n\
+                 - Prefer const/let over var, arrow functions where idiomatic\n\
+                 - Use generics and utility types (Partial, Pick, Omit) where appropriate\n\
+                 - Include necessary imports if the completion uses new types\n\
+                 - Keep completions concise (1-20 lines typically)\n\
+                 - Do NOT include explanations, only code"
+            },
+            "go" => {
+                "You are an expert Go programmer. Complete the code at the cursor position.\n\
+                 Rules:\n\
+                 - Follow Go idioms and conventions (camelCase for unexported, PascalCase for exported)\n\
+                 - Match the existing code style, indentation (tabs), and package structure\n\
+                 - Use errors.Wrap/errors.Is for error handling, avoid panic in library code\n\
+                 - Prefer interfaces and composition over inheritance patterns\n\
+                 - Include necessary imports if the completion uses new types\n\
+                 - Keep completions concise (1-20 lines typically)\n\
+                 - Do NOT include explanations, only code"
+            },
+            "java" => {
+                "You are an expert Java programmer. Complete the code at the cursor position.\n\
+                 Rules:\n\
+                 - Follow Java conventions (PascalCase for classes, camelCase for methods/fields)\n\
+                 - Match the existing code style, indentation (4 spaces), and package structure\n\
+                 - Prefer Optional over null, streams over loops where appropriate\n\
+                 - Use records for immutable data carriers (Java 16+)\n\
+                 - Include necessary imports if the completion uses new types\n\
+                 - Keep completions concise (1-20 lines typically)\n\
+                 - Do NOT include explanations, only code"
+            },
+            "c" | "cpp" => {
+                "You are an expert C++ programmer. Complete the code at the cursor position.\n\
+                 Rules:\n\
+                 - Follow C++ best practices (RAII, smart pointers, STL algorithms)\n\
+                 - Match the existing code style, indentation, and namespace structure\n\
+                 - Prefer std::unique_ptr/std::shared_ptr over raw new/delete\n\
+                 - Use constexpr where possible, avoid macros for constants\n\
+                 - Include necessary headers if the completion uses new types\n\
+                 - Keep completions concise (1-20 lines typically)\n\
+                 - Do NOT include explanations, only code"
+            },
+            _ => {
+                "You are an expert programmer. Complete the code at the cursor position.\n\
+                 Rules:\n\
+                 - Follow the language's established idioms and conventions\n\
+                 - Match the existing code style and indentation\n\
+                 - Include necessary imports if the completion uses new types\n\
+                 - Keep completions concise (1-20 lines typically)\n\
+                 - Do NOT include explanations, only code"
+            },
         }
         .to_string()
     }

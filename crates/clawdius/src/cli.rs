@@ -171,11 +171,10 @@ pub enum Commands {
         output_format: Option<String>,
     },
 
-    #[command(about = "Initialize Clawdius in a project")]
+    #[command(about = "Initialize a new Clawdius project in the current directory")]
     Init {
-        #[arg(default_value = ".")]
-        #[arg(help = "Project path")]
-        path: PathBuf,
+        /// Project name (defaults to directory name)
+        name: Option<String>,
     },
 
     #[command(about = "Interactive setup wizard for first-time users")]
@@ -617,6 +616,12 @@ pub enum Commands {
     Nexus {
         #[command(subcommand)]
         action: NexusAction,
+    },
+
+    #[command(about = "Git workflow operations")]
+    Git {
+        #[command(subcommand)]
+        action: GitCommands,
     },
 }
 
@@ -1151,6 +1156,28 @@ pub enum NexusAction {
     },
 }
 
+#[derive(Subcommand)]
+pub enum GitCommands {
+    /// Stage files and create a commit with an LLM-generated message
+    Commit {
+        /// Files to stage (default: all modified)
+        files: Vec<String>,
+        /// Commit message hint (optional)
+        #[arg(short, long)]
+        message: Option<String>,
+    },
+    /// Show a diff of staged or modified files
+    Diff {
+        /// Show staged diff instead of working diff
+        #[arg(short = 's', long)]
+        staged: bool,
+        /// Specific file to diff
+        file: Option<String>,
+    },
+    /// Show git status summary
+    Status,
+}
+
 /// Handle a command
 pub async fn handle_command(
     cmd: Commands,
@@ -1207,7 +1234,7 @@ pub async fn handle_command(
             )
             .await
         },
-        Commands::Init { path } => handle_init(path, output_format).await,
+        Commands::Init { name } => handle_init(name).await,
         Commands::Setup { quick, provider } => handle_setup(quick, provider, output_format).await,
         Commands::Sessions { delete, search } => {
             handle_sessions(delete, search, config_path, output_format).await
@@ -1395,6 +1422,7 @@ pub async fn handle_command(
             .await
         },
         Commands::Nexus { action } => handle_nexus(action).await,
+        Commands::Git { action } => handle_git(action, config_path).await,
     }
 }
 
@@ -1547,6 +1575,273 @@ fn run_nexus_engine(project_root: &PathBuf) -> anyhow::Result<()> {
     println!("Nexus FSM complete.");
     println!("  Total artifacts: {}", finalized.total_artifacts);
     println!("  Duration: {}ms", finalized.duration.num_milliseconds());
+
+    Ok(())
+}
+
+async fn handle_git(action: GitCommands, config_path: Option<PathBuf>) -> anyhow::Result<()> {
+    match action {
+        GitCommands::Commit { files, message } => {
+            handle_git_commit(files, message, config_path).await
+        },
+        GitCommands::Diff { staged, file } => handle_git_diff(staged, file).await,
+        GitCommands::Status => handle_git_status().await,
+    }
+}
+
+async fn handle_git_commit(
+    files: Vec<String>,
+    message: Option<String>,
+    config_path: Option<PathBuf>,
+) -> anyhow::Result<()> {
+    use std::io::Write as _;
+    use std::process::Command;
+
+    let cwd = std::env::current_dir()?;
+
+    let files_to_stage: Vec<&str> = if files.is_empty() {
+        vec!["-A"]
+    } else {
+        files.iter().map(|s| s.as_str()).collect()
+    };
+
+    let add_output = Command::new("git")
+        .args(["add"])
+        .args(&files_to_stage)
+        .current_dir(&cwd)
+        .output();
+
+    let add_output = match add_output {
+        Ok(output) => output,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+            anyhow::bail!("git not found on PATH. Please install git.");
+        },
+        Err(e) => anyhow::bail!("Failed to run git add: {e}"),
+    };
+
+    if !add_output.status.success() {
+        let stderr = String::from_utf8_lossy(&add_output.stderr);
+        anyhow::bail!("git add failed: {stderr}");
+    }
+
+    let commit_message = if let Some(msg) = message {
+        msg
+    } else {
+        let diff_output = Command::new("git")
+            .args(["diff", "--cached"])
+            .current_dir(&cwd)
+            .output();
+
+        let diff_output = match diff_output {
+            Ok(output) => output,
+            Err(e) => anyhow::bail!("Failed to run git diff --cached: {e}"),
+        };
+
+        let diff_text = String::from_utf8_lossy(&diff_output.stdout).to_string();
+
+        if diff_text.trim().is_empty() {
+            anyhow::bail!(
+                "No staged changes to commit. Stage files first or provide files as arguments."
+            );
+        }
+
+        match generate_commit_message(&diff_text, config_path.as_ref()).await {
+            Ok(msg) => msg,
+            Err(_) => {
+                anyhow::bail!("No LLM configured and no --message provided. Please provide a commit message with -m.");
+            },
+        }
+    };
+
+    let commit_output = Command::new("git")
+        .args(["commit", "-m", &commit_message])
+        .current_dir(&cwd)
+        .output();
+
+    let commit_output = match commit_output {
+        Ok(output) => output,
+        Err(e) => anyhow::bail!("Failed to run git commit: {e}"),
+    };
+
+    if commit_output.status.success() {
+        let stdout = String::from_utf8_lossy(&commit_output.stdout);
+        println!("Committed successfully:");
+        for line in stdout.lines() {
+            println!("  {line}");
+        }
+    } else {
+        let stderr = String::from_utf8_lossy(&commit_output.stderr);
+        anyhow::bail!("git commit failed: {stderr}");
+    }
+
+    Ok(())
+}
+
+async fn generate_commit_message(
+    diff: &str,
+    config_path: Option<&PathBuf>,
+) -> anyhow::Result<String> {
+    use clawdius_core::llm::{create_provider, ChatMessage, ChatRole, LlmConfig};
+
+    let config = load_config(config_path)?;
+    let provider_name = config
+        .llm
+        .default_provider
+        .clone()
+        .unwrap_or_else(|| "anthropic".to_string());
+    let llm_config = LlmConfig::from_config(&config.llm, &provider_name)?;
+    let llm_client =
+        create_provider(&llm_config).map_err(|_| anyhow::anyhow!("Failed to create LLM client"))?;
+
+    let prompt = format!(
+        "Generate a concise conventional commit message for these changes:\n```\n{diff}\n```\nRules:\n- Use conventional commit format (feat/fix/refactor/docs/test/chore)\n- First line <=72 chars\n- No quotes around the message\n- Output ONLY the commit message, nothing else"
+    );
+
+    let messages = vec![ChatMessage {
+        role: ChatRole::User,
+        content: prompt,
+    }];
+
+    let response = llm_client.chat(messages).await?;
+    let mut msg = response
+        .lines()
+        .next()
+        .unwrap_or(&response)
+        .trim()
+        .to_string();
+
+    msg = msg.trim_matches('"').trim_matches('\'').to_string();
+    if let Some(first_newline) = msg.find('\n') {
+        msg.truncate(first_newline);
+    }
+
+    Ok(msg)
+}
+
+async fn handle_git_diff(staged: bool, file: Option<String>) -> anyhow::Result<()> {
+    use std::process::Command;
+
+    let cwd = std::env::current_dir()?;
+
+    let mut args = vec!["diff".to_string()];
+    if staged {
+        args.push("--cached".to_string());
+    }
+    if let Some(ref f) = file {
+        args.push("--".to_string());
+        args.push(f.clone());
+    }
+
+    let output = Command::new("git").args(&args).current_dir(&cwd).output();
+
+    let output = match output {
+        Ok(output) => output,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+            anyhow::bail!("git not found on PATH. Please install git.");
+        },
+        Err(e) => anyhow::bail!("Failed to run git diff: {e}"),
+    };
+
+    if output.status.success() {
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        if stdout.is_empty() {
+            if staged {
+                println!("No staged changes.");
+            } else {
+                println!("No unstaged changes.");
+            }
+        } else {
+            print!("{stdout}");
+        }
+    } else {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        anyhow::bail!("git diff failed: {stderr}");
+    }
+
+    Ok(())
+}
+
+async fn handle_git_status() -> anyhow::Result<()> {
+    use std::process::Command;
+
+    let cwd = std::env::current_dir()?;
+
+    let output = Command::new("git")
+        .args(["status", "--porcelain"])
+        .current_dir(&cwd)
+        .output();
+
+    let output = match output {
+        Ok(output) => output,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+            anyhow::bail!("git not found on PATH. Please install git.");
+        },
+        Err(e) => anyhow::bail!("Failed to run git status: {e}"),
+    };
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        anyhow::bail!("git status failed: {stderr}");
+    }
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let lines: Vec<&str> = stdout.lines().collect();
+
+    if lines.is_empty() {
+        println!("Clean working tree.");
+        return Ok(());
+    }
+
+    let mut modified = 0usize;
+    let mut added = 0usize;
+    let mut deleted = 0usize;
+    let mut untracked = 0usize;
+    let mut renamed = 0usize;
+    let mut copied = 0usize;
+    let mut other = 0usize;
+
+    for line in &lines {
+        if line.len() < 2 {
+            continue;
+        }
+        let index_status = line.chars().next().unwrap_or(' ');
+        let worktree_status = line.chars().nth(1).unwrap_or(' ');
+
+        match (index_status, worktree_status) {
+            ('?', _) => untracked += 1,
+            ('A', _) | (_, 'A') => added += 1,
+            ('D', _) | (_, 'D') => deleted += 1,
+            ('R', _) | (_, 'R') => renamed += 1,
+            ('C', _) | (_, 'C') => copied += 1,
+            ('M', _) | (_, 'M') => modified += 1,
+            _ => other += 1,
+        }
+    }
+
+    println!("Summary:");
+    if modified > 0 {
+        println!("  Modified:  {modified}");
+    }
+    if added > 0 {
+        println!("  Added:     {added}");
+    }
+    if deleted > 0 {
+        println!("  Deleted:   {deleted}");
+    }
+    if untracked > 0 {
+        println!("  Untracked: {untracked}");
+    }
+    if renamed > 0 {
+        println!("  Renamed:   {renamed}");
+    }
+    if copied > 0 {
+        println!("  Copied:    {copied}");
+    }
+    if other > 0 {
+        println!("  Other:     {other}");
+    }
+    println!();
+    println!("Total: {} file(s)", lines.len());
 
     Ok(())
 }
@@ -1964,40 +2259,102 @@ async fn handle_auto(
     Ok(())
 }
 
-async fn handle_init(path: PathBuf, output_format: OutputFormat) -> anyhow::Result<()> {
-    use clawdius_core::output::{InitResult, OutputOptions};
-    use std::io;
+async fn handle_init(name: Option<String>) -> anyhow::Result<()> {
+    use std::path::PathBuf;
 
-    let options = OutputOptions {
-        format: CoreOutputFormat::from(output_format),
-        show_progress: output_format == OutputFormat::Text,
-        quiet: false,
-        include_metadata: output_format == OutputFormat::Text,
-    };
-    let formatter = OutputFormatter::new(options);
+    let project_name = name.unwrap_or_else(|| {
+        std::env::current_dir()
+            .ok()
+            .and_then(|p| p.file_name().map(|n| n.to_string_lossy().to_string()))
+            .unwrap_or_else(|| "my-project".to_string())
+    });
 
-    let onboarding = Onboarding::new(path.join(".clawdius/config.toml"));
+    let clawdius_dir = std::env::current_dir()?.join(".clawdius");
+    let modes_dir = clawdius_dir.join("modes");
 
-    let result: Result<_, anyhow::Error> = (|| {
-        onboarding.create_directory_structure(&path)?;
-        onboarding.create_default_config()?;
+    let config_path = clawdius_dir.join("config.toml");
+    let default_mode_path = modes_dir.join("default.md");
 
-        let config_path = onboarding.config_path();
-        let status = onboarding.check();
+    let default_config = format!(
+        r#"[project]
+name = "{project_name}"
+version = "0.1.0"
 
-        Ok((config_path, status == OnboardingStatus::Complete))
-    })();
+[llm]
+default_provider = "anthropic"
 
-    let result = match result {
-        Ok((config_path, complete)) => InitResult::success(
-            path.to_string_lossy().to_string(),
-            config_path.to_string_lossy().to_string(),
-            complete,
-        ),
-        Err(e) => InitResult::error(e.to_string()),
-    };
+[llm.providers.anthropic]
+model = "claude-sonnet-4-20250514"
 
-    formatter.format_init_result(&mut io::stdout(), &result)?;
+[llm.providers.openai]
+model = "gpt-4o"
+
+[llm.providers.ollama]
+model = "codellama"
+base_url = "http://localhost:11434"
+
+[completion]
+max_tokens = 256
+temperature = 0.3
+
+[modes]
+default = "default"
+"#
+    );
+
+    let default_mode = r#"# Default Coding Assistant
+
+You are an expert software engineer acting as a coding assistant.
+
+## Capabilities
+- Write, review, and debug code
+- Explain architectural decisions
+- Suggest refactoring and improvements
+- Generate tests and documentation
+
+## Guidelines
+- Follow the project's existing code style and conventions
+- Provide concise, actionable responses
+- When modifying code, show the minimal diff needed
+- Ask clarifying questions when requirements are ambiguous
+- Prefer standard library solutions over external dependencies
+"#;
+
+    if clawdius_dir.exists() {
+        println!("  .clawdius/ directory already exists, skipping creation");
+    } else {
+        tokio::fs::create_dir_all(&clawdius_dir).await?;
+        println!("  Created .clawdius/");
+    }
+
+    if config_path.exists() {
+        println!("  .clawdius/config.toml already exists, skipping (use --config to specify)");
+    } else {
+        tokio::fs::write(&config_path, &default_config).await?;
+        println!("  Created .clawdius/config.toml");
+    }
+
+    if modes_dir.exists() {
+        println!("  .clawdius/modes/ directory already exists, skipping");
+    } else {
+        tokio::fs::create_dir_all(&modes_dir).await?;
+        println!("  Created .clawdius/modes/");
+    }
+
+    if default_mode_path.exists() {
+        println!("  .clawdius/modes/default.md already exists, skipping");
+    } else {
+        tokio::fs::write(&default_mode_path, default_mode).await?;
+        println!("  Created .clawdius/modes/default.md");
+    }
+
+    println!();
+    println!("Project \"{project_name}\" initialized successfully!");
+    println!();
+    println!("Next steps:");
+    println!("  1. Set your API key: export ANTHROPIC_API_KEY=<your-key>");
+    println!("  2. Start a chat:    clawdius chat");
+    println!("  3. Or run setup:     clawdius setup");
 
     Ok(())
 }

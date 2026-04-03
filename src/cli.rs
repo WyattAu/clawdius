@@ -36,11 +36,10 @@ pub enum Commands {
         provider: String,
     },
 
-    #[command(about = "Initialize Clawdius in a project")]
+    #[command(about = "Initialize a new Clawdius project in the current directory")]
     Init {
-        #[arg(default_value = ".")]
-        #[arg(help = "Project path")]
-        path: PathBuf,
+        /// Project name (defaults to directory name)
+        name: Option<String>,
     },
 
     #[command(about = "Plan and execute a cross-language refactor")]

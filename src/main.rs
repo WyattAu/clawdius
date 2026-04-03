@@ -197,7 +197,7 @@ fn handle_cli_command(command: &cli::Commands) -> ExitCode {
             model,
             provider,
         } => handle_chat_command(message, model.as_deref(), provider),
-        cli::Commands::Init { path } => handle_init_command(path),
+        cli::Commands::Init { name } => handle_init_command(name),
         cli::Commands::Refactor {
             from,
             to,
@@ -266,18 +266,67 @@ fn handle_chat_command(message: &str, model: Option<&str>, provider_str: &str) -
     }
 }
 
-fn handle_init_command(path: &std::path::Path) -> ExitCode {
-    println!("Initializing Clawdius in: {}", path.display());
-    match Config::load(path) {
-        Ok(_config) => {
-            println!("Clawdius initialized successfully");
-            ExitCode::SUCCESS
-        }
+fn handle_init_command(name: Option<String>) -> ExitCode {
+    let project_name = name.unwrap_or_else(|| {
+        std::env::current_dir()
+            .ok()
+            .and_then(|p| p.file_name().map(|n| n.to_string_lossy().to_string()))
+            .unwrap_or_else(|| "my-project".to_string())
+    });
+
+    println!("Initializing Clawdius project \"{project_name}\"...");
+
+    let rt = match tokio::runtime::Runtime::new() {
+        Ok(rt) => rt,
         Err(e) => {
-            eprintln!("Error: Failed to initialize: {}", e);
-            ExitCode::FAILURE
+            eprintln!("Error: Failed to create runtime: {e}");
+            return ExitCode::FAILURE;
         }
+    };
+
+    if let Err(e) = rt.block_on(async {
+        let clawdius_dir = std::env::current_dir()?.join(".clawdius");
+        let modes_dir = clawdius_dir.join("modes");
+
+        if !clawdius_dir.exists() {
+            tokio::fs::create_dir_all(&clawdius_dir).await?;
+        }
+
+        let config_path = clawdius_dir.join("config.toml");
+        if !config_path.exists() {
+            let default_config = format!(
+                r#"[project]
+name = "{project_name}"
+version = "0.1.0"
+
+[llm]
+default_provider = "anthropic"
+"#
+            );
+            tokio::fs::write(&config_path, default_config).await?;
+        }
+
+        if !modes_dir.exists() {
+            tokio::fs::create_dir_all(&modes_dir).await?;
+        }
+
+        let default_mode_path = modes_dir.join("default.md");
+        if !default_mode_path.exists() {
+            tokio::fs::write(&default_mode_path, "# Default Coding Assistant\n").await?;
+        }
+
+        Ok::<(), std::io::Error>(())
+    }) {
+        eprintln!("Error: {e}");
+        return ExitCode::FAILURE;
     }
+
+    println!("Project \"{project_name}\" initialized successfully!");
+    println!();
+    println!("Next steps:");
+    println!("  1. Set your API key: export ANTHROPIC_API_KEY=<your-key>");
+    println!("  2. Start a chat:    clawdius chat");
+    ExitCode::SUCCESS
 }
 
 fn handle_refactor_command(from: &str, to: &str, path: &std::path::Path, dry_run: bool) -> ExitCode {

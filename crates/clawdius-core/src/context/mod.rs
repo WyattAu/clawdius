@@ -8,6 +8,7 @@ mod builder;
 mod cache;
 mod compactor;
 mod mentions;
+mod window_manager;
 
 #[cfg(feature = "vector-db")]
 pub use aggregator::{AggregatedContext, ContextAggregator, FileContext, SymbolContext};
@@ -15,6 +16,7 @@ pub use builder::{ContextBuilder, ContextContent};
 pub use cache::{CacheStats, CachedContext, ContextCache};
 pub use compactor::{CompactResult, ContextCompactor, ContextCompactorConfig, ProviderTokenLimits};
 pub use mentions::{Mention, MentionParser, MentionResolver};
+pub use window_manager::{ContextWindowManager, FileInfo};
 
 use serde::{Deserialize, Serialize};
 

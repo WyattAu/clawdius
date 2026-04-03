@@ -268,13 +268,19 @@ impl CompletionHandler {
         let language = self.normalize_language(&req.language);
 
         let system_prompt = format!(
-            "You are an expert code completion AI. Complete the following {language} code.\n\
+            "You are an expert {language} code completion engine. Your task is to provide a \
+            single, accurate inline completion at the cursor position.\n\
             Rules:\n\
-            1. Only return the completion, not the entire code\n\
-            2. Do not include any explanations or comments unless they are part of the code\n\
-            3. Continue from where the cursor is positioned\n\
-            4. Keep completions concise and relevant (max 5-10 lines)\n\
-            5. Match the existing code style and indentation"
+            1. Output ONLY the code that should be inserted at the cursor — no prefixes, \
+            no suffixes, no markdown fences, no explanations\n\
+            2. Continue seamlessly from the last token before the cursor; respect the \
+            surrounding indentation and brace/parenthesis depth\n\
+            3. If a suffix is provided, ensure your completion bridges naturally to it\n\
+            4. Keep completions concise: 1-10 lines is typical, never exceed 20 lines\n\
+            5. Match the surrounding code style: naming conventions, comment style, \
+            line length, and import patterns\n\
+            6. Prefer idiomatic {language} patterns; avoid deprecated APIs\n\
+            7. If unsure, return an empty completion rather than guessing incorrectly"
         );
 
         let mut user_content = String::new();
