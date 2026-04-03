@@ -1,0 +1,28 @@
+coverage:
+  status:
+    project:
+      default:
+        target: 85%
+        threshold: 1%
+        if_ci_failed: error
+    patch:
+      default:
+        target: 80%
+        threshold: 1%
+        if_ci_failed: error
+
+ignore:
+  - "crates/*/tests/"
+  - "crates/*/benches/"
+  - "crates/*/examples/"
+  - "src/main.rs"
+  - "scripts/"
+
+comment:
+  layout: "reach, diff, flags, files"
+  behavior: default
+  require_changes: false
+  require_base: false
+
+github_checks:
+  annotations: true

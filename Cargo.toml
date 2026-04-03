@@ -17,7 +17,7 @@ members = [
 ]
 
 [workspace.package]
-version = "1.4.0"
+version = "1.6.0"
 edition = "2021"
 authors = ["Clawdius Team <team@clawdius.dev>"]
 license = "Apache-2.0"
@@ -206,6 +206,11 @@ rpath = false
 
 [profile.dev]
 panic = "abort"
+
+[profile.ci]
+inherits = "release"
+lto = "thin"
+codegen-units = 4
 
 # WASM-specific profile
 [profile.release.package.clawdius-webview]

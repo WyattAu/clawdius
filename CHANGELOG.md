@@ -1,6 +1,40 @@
 # Changelog
 All notable changes to Clawdius will be documented in this file.
 
+## [1.6.0] - 2026-04-03
+
+### Added
+
+- **ContextWindowManager**: Smart file selection with tiktoken-based token budgeting,
+  auto-truncation, and `format_messages()` for assembling LLM prompts within context limits
+- **ErrorRecovery**: Compiler error parser (Rust/Python/TypeScript) with LLM fix loop —
+  parses `cargo check` output, builds fix prompts, retries up to 3 times
+- **Git workflow**: `clawdius git commit` with LLM-generated conventional commit messages,
+  `clawdius git diff`, and `clawdius git status` with structured output
+- **`clawdius init`**: Scaffolds `.clawdius/` directory with `config.toml` and
+  `modes/default.md` for new projects
+- **`codecov.yml`**: Codecov configuration with 85% project / 80% patch thresholds,
+  PR annotations, and ignore patterns for tests/benches/examples
+- **`[profile.ci]`**: CI-optimized Cargo profile (thin LTO, 4 codegen-units)
+- **ARM64 Linux CI**: Added `aarch64-unknown-linux-gnu` to CI build matrix
+
+### Changed
+
+- **All 5 RPC handlers wired to real implementations**: ChatHandler (LLM + streaming),
+  SessionHandler (in-memory CRUD), FileHandler (tokio::fs), ContextHandler (compaction),
+  CompletionHandler (file-aware context)
+- **`clawdius-code` main.rs**: Loads config from file, creates LLM client, shares
+  session store across all handlers
+- **CLI `complete` command**: Now reads from config file instead of env-only
+- **Completions context**: `build_context()` connected to completion flow — related files
+  are now included in completion prompts
+- **System prompts**: Expanded from one-liners to detailed language-specific rules for
+  Rust, Python, JavaScript, TypeScript, Go, Java, C++, and generic completion
+
+### Fixed
+
+- No `.unwrap()` calls in new production code (31 new tests, all use proper error handling)
+
 ## [1.4.0] - 2026-04-02
 
 ### Added
