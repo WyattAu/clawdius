@@ -6011,7 +6011,7 @@ async fn handle_complete(
     use clawdius_core::completions::{
         CompletionProviderTrait, CompletionRequest, InlineCompletionProvider, LlmCompletionConfig,
     };
-    use clawdius_core::llm::{create_provider, LlmConfig};
+    use clawdius_core::llm::{create_provider, ChatMessage, ChatRole, LlmConfig};
     use clawdius_core::lsp::Position;
 
     // Read file content
@@ -6027,8 +6027,9 @@ async fn handle_complete(
             .to_string()
     });
 
-    // Create LLM config
-    let mut llm_config = LlmConfig::from_env(&provider)?;
+    // Create LLM config from config file
+    let config = load_config(_config_path.as_ref())?;
+    let mut llm_config = LlmConfig::from_config(&config.llm, &provider)?;
     if let Some(m) = model {
         llm_config.model = m;
     }

@@ -217,8 +217,6 @@ impl InlineCompletionProvider {
         result
     }
 
-    /// Gets context from related files.
-    #[allow(dead_code)]
     fn build_context(&self, context: &CompletionContext) -> Option<String> {
         if context.related_files.is_empty() {
             return None;
@@ -254,8 +252,11 @@ impl CompletionProvider for InlineCompletionProvider {
             }
         }
 
-        // Build prompt
-        let prompt = self.build_prompt(request);
+        // Build context from related files
+        let mut prompt = self.build_prompt(request);
+        if let Some(context_str) = self.build_context(&request.context) {
+            prompt = format!("{}\n\n{}", context_str, prompt);
+        }
 
         // Create chat message
         let messages = vec![crate::llm::ChatMessage {
@@ -295,7 +296,10 @@ impl CompletionProvider for InlineCompletionProvider {
         let (tx, rx) = mpsc::channel(16);
 
         // Build prompt
-        let prompt = self.build_prompt(request);
+        let mut prompt = self.build_prompt(request);
+        if let Some(context_str) = self.build_context(&request.context) {
+            prompt = format!("{}\n\n{}", context_str, prompt);
+        }
 
         // Create chat message
         let messages = vec![crate::llm::ChatMessage {
