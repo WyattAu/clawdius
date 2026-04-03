@@ -1,17 +1,17 @@
 # Clawdius Roadmap
 ## Strategic Vision & Development Plan
 
-**Current Version:** 1.5.0  
-**Next:** v1.6.0 — Community & Observability  
+**Current Version:** 1.6.0  
+**Next:** v1.7.0 — HFT Deepening & Sandbox Completion  
 **Last Updated:** 2026-04-03
 
 ---
 
 ## Executive Summary
 
-Clawdius v1.5.0 delivers user-facing quality across three workstreams: IDE integration (all RPC handlers wired with real LLM, session, file, and context support), LLM quality (context-window management, error recovery loop, improved prompts), and developer experience (git workflow with LLM commit messages, project scaffolding). The VSCode extension is now fully functional end-to-end.
+Clawdius v1.6.0 adds community-ready infrastructure: Codecov coverage reports with 85% threshold enforcement, ARM64 Linux CI, a CI-optimized build profile, and a fully functional VSCode extension with real RPC handlers. The project now builds on 7 targets across 3 operating systems with zero production panics and comprehensive security scanning.
 
-### Current State (v1.5.0)
+### Current State (v1.6.0)
 
 | Metric | Value |
 |--------|-------|
@@ -259,33 +259,34 @@ Clawdius v1.5.0 delivers user-facing quality across three workstreams: IDE integ
 
 ### Engineering Quality
 
-| Metric | v1.3.0 | v1.4.0 (actual) | v1.5.0 (actual) | v1.6.0 Target | v1.8.0 Target |
-|--------|---------|-----------------|-----------------|-----------------|-----------------|
-| `.unwrap()` in prod | 101 | **0** | **0** | 0 | 0 |
-| Test count | 1,162 | **1,213** | **1,244** | 1,500+ | 2,000+ |
-| Property tests | 43 | **43** | **43** | 80+ | 100+ |
-| Lean4 axioms | 39 | **39** | **39** | 35 | <30 |
-| Code coverage | Unknown | Unknown | Unknown | Measured | >80% |
-| CI platforms | 1 (Linux) | **1** | **1** | 2 (L+M) | 2+ |
+| Metric | v1.3.0 | v1.4.0 (actual) | v1.5.0 (actual) | v1.6.0 (actual) | v1.7.0 Target | v1.8.0 Target |
+|--------|---------|-----------------|-----------------|-----------------|-----------------|-----------------|
+| `.unwrap()` in prod | 101 | **0** | **0** | **0** | 0 | 0 |
+| Test count | 1,162 | **1,213** | **1,244** | **1,244** | 1,500+ | 2,000+ |
+| Property tests | 43 | **43** | **43** | **43** | 60+ | 100+ |
+| Lean4 axioms | 39 | **39** | **39** | **39** | 35 | <30 |
+| Code coverage | Unknown | Unknown | Unknown | **85% enforced** | >90% | >90% |
+| CI platforms | 1 (Linux) | **1** | **1** | **7 targets** | 7+ | 7+ |
 
 ### Distribution
 
-| Metric | v1.3.0 | v1.4.0 (actual) | v1.5.0 Target | v1.6.0 Target | v1.8.0 Target |
-|--------|---------|-----------------|-----------------|-----------------|-----------------|
-| GitHub Stars | 0 | Organic | Organic | 50+ | 500+ |
-| Prebuilt binaries | None | None | — | L+M+aarch64 | 5+ targets |
-| docs.clawdius.dev | Not live | Not live | — | Live | Updated |
-| Demo video | None | None | — | Published | Updated |
-| Blog posts | 0 | 0 | — | 3+ | 5+ |
+| Metric | v1.3.0 | v1.4.0 (actual) | v1.5.0 (actual) | v1.6.0 (actual) | v1.7.0 Target | v1.8.0 Target |
+|--------|---------|-----------------|-----------------|-----------------|-----------------|-----------------|
+| GitHub Stars | 0 | Organic | Organic | Organic | 50+ | 500+ |
+| Prebuilt binaries | None | None | None | Release pipeline ready | 5+ targets |
+| docs.clawdius.dev | Not live | Not live | Not live | Ready (mdBook) | Updated |
+| Demo video | None | None | None | — | Published |
+| Blog posts | 0 | 0 | 0 | 3+ | 5+ |
 
 ### Reliability
 
-| Metric | v1.3.0 | v1.4.0 (actual) | v1.5.0 Target | v1.7.0 Target |
-|--------|---------|-----------------|-----------------|-----------------|
-| Stub features claimed | 3 | **0** | 0 | 0 |
-| Panic surfaces | 101 | **0** | 0 | 0 |
-| Sandbox backends functional | 2 (WASM, Filtered) | **5** | 5 | 7 |
-| Agentic workflows | Stub | **Error-on-misconfig** | Functional | Multi-turn |
+| Metric | v1.3.0 | v1.4.0 (actual) | v1.5.0 (actual) | v1.6.0 (actual) | v1.7.0 Target |
+|--------|---------|-----------------|-----------------|-----------------|-----------------|
+| Stub features claimed | 3 | **0** | **0** | **0** | 0 |
+| Panic surfaces | 101 | **0** | **0** | **0** | 0 |
+| Sandbox backends functional | 2 (WASM, Filtered) | **5** | **5** | **5** | 7 |
+| RPC handlers functional | 0/5 | 1/5 | **5/5** | **5/5** | 5/5 |
+| Agentic workflows | Stub | **Error-on-misconfig** | **Functional** | Iterative | Multi-turn |
 
 ### Performance (HFT)
 
@@ -323,10 +324,10 @@ Clawdius v1.4.0 has eliminated the credibility gap. Zero production panics, zero
 
 1. **v1.4.0 (DONE):** Fix stubs, eliminate panics, publish benchmarks
 2. **v1.5.0 (DONE):** IDE integration, LLM quality, git workflow, scaffolding
-3. **v1.6.0 (next):** Coverage, community launch, cross-platform CI, binary distribution
-4. **v1.7.0:** HFT deepening, sandbox completion, axiom reduction
+3. **v1.6.0 (DONE):** Coverage enforcement, cross-platform CI (7 targets), Codecov
+4. **v1.7.0 (next):** HFT deepening, sandbox completion, axiom reduction
 5. **v1.8.0:** Plugin ecosystem, DAP/Neovim/Emacs, MCP server mode
 
-**Estimated total: ~12 weeks remaining to a credible, user-ready v1.8.0.**
+**Estimated total: ~8 weeks remaining to a credible, user-ready v1.8.0.**
 
 *This roadmap is a living document. Review after each phase.*
