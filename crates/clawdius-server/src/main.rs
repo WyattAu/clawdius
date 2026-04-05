@@ -31,8 +31,6 @@ use tracing_subscriber::EnvFilter;
 use clawdius_core::api::rest::{self, ApiState};
 use clawdius_core::api::tenant_api::{self, TenantApiState};
 use clawdius_core::config::Config;
-#[cfg(feature = "jwt")]
-use clawdius_core::config::MessagingConfig;
 use clawdius_core::llm::providers::LlmClient;
 use clawdius_core::messaging::channels::{MessagingChannel, MockChannel};
 use clawdius_core::messaging::config_builder::build_webhook_infrastructure;
@@ -846,7 +844,7 @@ fn build_app(
     max_body_size: usize,
     rate_limit_config: api_rate_limiter::ApiRateLimitConfig,
 ) -> Router {
-    let http_metrics = state.http_metrics.clone();
+    let _http_metrics = state.http_metrics.clone();
 
     // 1. Webhook routes — each platform's path maps to `any(webhook_handler)`
     let mut router = Router::new();
@@ -1002,7 +1000,7 @@ async fn main() -> anyhow::Result<()> {
     let otel_provider = otel::init_otel_tracing();
 
     #[cfg(not(feature = "otel"))]
-    let otel_provider: Option<()> = None;
+    let _otel_provider: Option<()> = None;
 
     // Only init the regular subscriber if OTel did NOT set one up already.
     #[cfg(feature = "otel")]

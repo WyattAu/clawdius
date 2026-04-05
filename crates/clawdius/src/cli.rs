@@ -13,7 +13,7 @@ use clawdius_core::output::{
 use clawdius_core::proof::LeanVerifier;
 #[cfg(feature = "vector-db")]
 use clawdius_core::workspace::IndexStats;
-use clawdius_core::{Config, MentionResolver, Onboarding, OnboardingStatus, SessionManager};
+use clawdius_core::{Config, MentionResolver, Onboarding, SessionManager};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum OutputFormat {
@@ -1594,7 +1594,6 @@ async fn handle_git_commit(
     message: Option<String>,
     config_path: Option<PathBuf>,
 ) -> anyhow::Result<()> {
-    use std::io::Write as _;
     use std::process::Command;
 
     let cwd = std::env::current_dir()?;
@@ -2260,8 +2259,6 @@ async fn handle_auto(
 }
 
 async fn handle_init(name: Option<String>) -> anyhow::Result<()> {
-    use std::path::PathBuf;
-
     let project_name = name.unwrap_or_else(|| {
         std::env::current_dir()
             .ok()
@@ -3043,7 +3040,7 @@ async fn handle_doc(
         quiet: false,
         include_metadata: output_format == OutputFormat::Text,
     };
-    let formatter = OutputFormatter::new(options);
+    let _formatter = OutputFormatter::new(options);
 
     let code = fs::read_to_string(&file)?;
     let language = file
@@ -6368,7 +6365,7 @@ async fn handle_complete(
     use clawdius_core::completions::{
         CompletionProviderTrait, CompletionRequest, InlineCompletionProvider, LlmCompletionConfig,
     };
-    use clawdius_core::llm::{create_provider, ChatMessage, ChatRole, LlmConfig};
+    use clawdius_core::llm::{create_provider, LlmConfig};
     use clawdius_core::lsp::Position;
 
     // Read file content
@@ -6726,7 +6723,7 @@ async fn handle_watch(
     verbose: bool,
     output_format: OutputFormat,
 ) -> anyhow::Result<()> {
-    use clawdius_core::watch::handlers::{ContextUpdateHandler, DiagnosticHandler, WatchHandler};
+    use clawdius_core::watch::handlers::{ContextUpdateHandler, DiagnosticHandler};
     use clawdius_core::watch::{FileWatcher, WatchConfig};
 
     println!("👀 Watching {} for changes...", path.display());

@@ -120,7 +120,7 @@ cargo build --release --no-default-features
 | `default` | Core features, WASM sandbox, basic tools |
 | `enterprise` | SSO, audit logging, compliance |
 | `plugins` | Plugin system with WASM runtime |
-| `all-sandboxes` | All 7 sandbox backends |
+| `all-sandboxes` | All available sandbox backends |
 | `self-hosted` | Self-hosted LLM support |
 
 ## Docker

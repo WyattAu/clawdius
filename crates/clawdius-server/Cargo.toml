@@ -6,7 +6,7 @@ description = "HTTP server for Clawdius REST API and messaging webhooks"
 license.workspace = true
 
 [dependencies]
-clawdius-core = { path = "../clawdius-core" }
+clawdius-core = { path = "../clawdius-core", version = "1.6.0" }
 axum.workspace = true
 tower.workspace = true
 tower-http = { workspace = true, features = ["cors", "trace", "limit"] }

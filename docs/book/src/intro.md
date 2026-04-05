@@ -8,7 +8,7 @@
 
 Clawdius was designed from the ground up with security as a primary concern:
 
-- **7 Sandbox Backends**: From lightweight WASM to hardware-isolated Firecracker microVMs
+- **5 Sandbox Backends (+ 2 Planned)**: From lightweight WASM to hardware-isolated Firecracker microVMs
 - **104 Formal Verification Theorems**: Mathematically proven correctness for critical operations
 - **Enterprise SSO**: SAML 2.0, OIDC, Okta, Azure AD, and GitHub integration
 - **Comprehensive Audit Logging**: SQLite, Elasticsearch, and webhook backends
@@ -33,7 +33,7 @@ Built in Rust for maximum performance:
 
 | Feature | Clawdius | Competitors |
 |---------|----------|-------------|
-| Sandbox Backends | 7 | 1-3 |
+| Sandbox Backends | 5 (+ 2 planned) | 1-3 |
 | Formal Verification | 104 theorems | None |
 | Cold Boot Time | <20ms | 100-500ms |
 | Plugin System | WASM + 26 hooks | Limited or None |

@@ -408,16 +408,26 @@ mod tier_isolation {
     }
 
     #[test]
-    #[cfg(target_os = "linux")]
-    fn test_tier_untrusted_uses_bubblewrap_when_available() {
+    fn test_tier_untrusted_uses_best_available() {
         let config = create_test_config(SandboxTier::Untrusted);
         let result = SandboxExecutor::new(SandboxTier::Untrusted, config);
 
         if let Ok(executor) = result {
-            assert_eq!(executor.backend_name(), "bubblewrap");
+            // Should prefer gVisor > Container > Bubblewrap > error.
+            let name = executor.backend_name();
+            assert!(
+                name == "gvisor" || name == "docker" || name == "podman" || name == "bubblewrap",
+                "Unexpected backend for Untrusted tier: {}",
+                name
+            );
         } else {
             let err = result.unwrap_err().to_string();
-            assert!(err.contains("bubblewrap"));
+            // Should mention one of the required backends.
+            assert!(
+                err.contains("gVisor") || err.contains("Docker") || err.contains("bubblewrap"),
+                "Error should mention required backends: {}",
+                err
+            );
         }
     }
 
@@ -461,5 +471,178 @@ mod concurrent_execution {
             let result = handle.join().expect("Thread panicked");
             assert!(result.is_ok());
         }
+    }
+}
+
+mod isolation_tests {
+    use super::*;
+
+    /// Test that the DirectBackend (TrustedAudited) can execute arbitrary commands.
+    /// This establishes the baseline: no isolation means all commands work.
+    #[test]
+    fn test_direct_backend_no_isolation() {
+        let config = create_test_config(SandboxTier::TrustedAudited);
+        let executor = SandboxExecutor::new(SandboxTier::TrustedAudited, config).unwrap();
+        let cwd = get_cwd();
+
+        // Should succeed — no restrictions at Tier 1.
+        let output = executor.execute("echo", &["hello"], &cwd).unwrap();
+        assert!(String::from_utf8_lossy(&output.stdout).contains("hello"));
+    }
+
+    /// Test that the FilteredBackend (Trusted) blocks dangerous patterns.
+    #[test]
+    fn test_filtered_backend_blocks_rm_rf_root() {
+        let config = create_test_config(SandboxTier::Trusted);
+        let executor = SandboxExecutor::new(SandboxTier::Trusted, config).unwrap();
+        let cwd = get_cwd();
+
+        // The blocked pattern "rm -rf /" should be rejected.
+        // Note: the filtered backend checks the full command string, not individual args.
+        // We construct the command as a single string that matches the blocklist.
+        let result = executor.execute("rm", &["-rf", "/"], &cwd);
+        assert!(
+            result.is_err(),
+            "rm -rf / should be blocked by filtered backend"
+        );
+    }
+
+    /// Test that the FilteredBackend allows safe commands.
+    #[test]
+    fn test_filtered_backend_allows_echo() {
+        let config = create_test_config(SandboxTier::Trusted);
+        let executor = SandboxExecutor::new(SandboxTier::Trusted, config).unwrap();
+        let cwd = get_cwd();
+
+        let output = executor.execute("echo", &["safe"], &cwd).unwrap();
+        assert!(String::from_utf8_lossy(&output.stdout).contains("safe"));
+    }
+
+    /// Test that the FilteredBackend blocks fork bombs.
+    #[test]
+    fn test_filtered_backend_blocks_fork_bomb() {
+        let config = create_test_config(SandboxTier::Trusted);
+        let executor = SandboxExecutor::new(SandboxTier::Trusted, config).unwrap();
+        let cwd = get_cwd();
+
+        // The fork bomb pattern should be detected.
+        let result = executor.execute("bash", &["-c", ":(){ :|:& };:"], &cwd);
+        assert!(result.is_err(), "fork bomb pattern should be blocked");
+    }
+
+    /// Test that the FilteredBackend blocks dd to /dev/zero.
+    #[test]
+    fn test_filtered_backend_blocks_dd_dev_zero() {
+        let config = create_test_config(SandboxTier::Trusted);
+        let executor = SandboxExecutor::new(SandboxTier::Trusted, config).unwrap();
+        let cwd = get_cwd();
+
+        let result = executor.execute("dd", &["if=/dev/zero"], &cwd);
+        assert!(result.is_err(), "dd if=/dev/zero should be blocked");
+    }
+
+    /// Test that new_with_fallback always produces a working executor.
+    #[test]
+    fn test_fallback_executor_always_works() {
+        let config = create_test_config(SandboxTier::TrustedAudited);
+        let executor = SandboxExecutor::new_with_fallback(SandboxTier::TrustedAudited, config);
+        let cwd = get_cwd();
+
+        // Use TrustedAudited tier to guarantee direct execution.
+        let output = executor.execute("echo", &["fallback_test"], &cwd).unwrap();
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        assert!(
+            stdout.contains("fallback_test"),
+            "Expected 'fallback_test' in stdout, got: {:?}",
+            stdout
+        );
+    }
+
+    /// Test that different tiers produce different backends.
+    #[test]
+    fn test_tier_isolation_differentiation() {
+        let trusted = SandboxExecutor::new(
+            SandboxTier::TrustedAudited,
+            create_test_config(SandboxTier::TrustedAudited),
+        )
+        .unwrap();
+        let filtered = SandboxExecutor::new(
+            SandboxTier::Trusted,
+            create_test_config(SandboxTier::Trusted),
+        )
+        .unwrap();
+
+        // Tier 1 uses direct, Tier 2 uses filtered.
+        assert_eq!(trusted.backend_name(), "direct");
+        assert_eq!(filtered.backend_name(), "filtered");
+    }
+
+    /// Test that backend_name() returns a non-empty string.
+    #[test]
+    fn test_backend_name_nonempty() {
+        for tier in [
+            SandboxTier::TrustedAudited,
+            SandboxTier::Trusted,
+            SandboxTier::Untrusted,
+            SandboxTier::Hardened,
+        ] {
+            if let Ok(executor) = SandboxExecutor::new(tier, create_test_config(tier)) {
+                assert!(
+                    !executor.backend_name().is_empty(),
+                    "Backend name should not be empty for tier {:?}",
+                    tier
+                );
+            }
+        }
+    }
+
+    /// Test that unknown commands produce errors, not panics.
+    #[test]
+    fn test_unknown_command_returns_error() {
+        let config = create_test_config(SandboxTier::TrustedAudited);
+        let executor = SandboxExecutor::new(SandboxTier::TrustedAudited, config).unwrap();
+        let cwd = get_cwd();
+
+        let result = executor.execute("nonexistent_command_xyz_12345", &[], &cwd);
+        assert!(result.is_err());
+    }
+
+    /// Test execution with empty args.
+    #[test]
+    fn test_execution_empty_args() {
+        let config = create_test_config(SandboxTier::TrustedAudited);
+        let executor = SandboxExecutor::new(SandboxTier::TrustedAudited, config).unwrap();
+        let cwd = get_cwd();
+
+        // "true" with no args should succeed with exit code 0.
+        let output = executor.execute("true", &[], &cwd).unwrap();
+        assert!(output.status.success());
+    }
+
+    /// Test that exit codes are propagated.
+    #[test]
+    fn test_exit_code_propagation() {
+        let config = create_test_config(SandboxTier::TrustedAudited);
+        let executor = SandboxExecutor::new(SandboxTier::TrustedAudited, config).unwrap();
+        let cwd = get_cwd();
+
+        // "false" exits with code 1.
+        let output = executor.execute("false", &[], &cwd).unwrap();
+        assert!(!output.status.success());
+        assert_eq!(output.status.code(), Some(1));
+    }
+
+    /// Test that stderr is captured.
+    #[test]
+    fn test_stderr_capture() {
+        let config = create_test_config(SandboxTier::TrustedAudited);
+        let executor = SandboxExecutor::new(SandboxTier::TrustedAudited, config).unwrap();
+        let cwd = get_cwd();
+
+        let output = executor
+            .execute("bash", &["-c", "echo error >&2"], &cwd)
+            .unwrap();
+        assert!(String::from_utf8_lossy(&output.stderr).contains("error"));
+        assert!(output.status.success());
     }
 }

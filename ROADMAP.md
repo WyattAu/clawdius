@@ -16,12 +16,12 @@ Clawdius v1.6.0 adds community-ready infrastructure: Codecov coverage reports wi
 | Metric | Value |
 |--------|-------|
 | **Rust LOC** | ~108,000 |
-| **Tests** | 1,213 passing (1,122 unit + 97 integration + 25 external) |
-| **Lean4 Proofs** | 142 theorems (138 proven, 4 HashMap-sorry, 39 axioms), 97.2% |
+| **Tests** | 1,244 passing |
+| **Lean4 Proofs** | 142 theorems (142 proven, 0 sorry, 39 axioms), 97.9% |
 | **Clippy** | 0 warnings, `deny(unwrap_used)` in config AND CI |
 | **Production `.unwrap()` calls** | **0** (down from 101) |
 | **Stub features** | **0** (all 3 eliminated) |
-| **Sandbox Backends** | 7 (WASM, Filtered, Bubblewrap, Sandbox-exec, Container, gVisor, Firecracker) |
+| **Sandbox Backends** | 5 production + 2 planned (WASM, Filtered, Bubblewrap, Sandbox-exec, Container, gVisor [v1.7], Firecracker [v1.7]) |
 | **LLM Providers** | 5 (Anthropic, OpenAI, Ollama, Z.AI, Local) |
 | **Lean4 Axioms** | 39 (target: <30) |
 | **Ring buffer latency** | 2 ns push, 1 ns pop (SLO: <100 ns) |

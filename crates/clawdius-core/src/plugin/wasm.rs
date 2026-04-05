@@ -121,7 +121,7 @@ impl WasmPlugin {
              _key_len: i32,
              _val_ptr: i32,
              _val_len: i32| {
-                // TODO: Implement config retrieval
+                // FIXME(v1.7.0): Implement config retrieval
                 Ok(0i32)
             },
         )?;
@@ -255,7 +255,7 @@ impl Plugin for WasmPlugin {
         // Serialize context to JSON
         let _context_json = serde_json::to_string(context)?;
 
-        // TODO: Pass context to WASM via shared memory
+        // FIXME(v1.8.0): Pass context to WASM via shared memory for zero-copy data transfer
         // For now, just call the hook without context
         let start = std::time::Instant::now();
 

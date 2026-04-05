@@ -899,3 +899,419 @@ mod persistence_properties {
         }
     }
 }
+
+// ---------------------------------------------------------------------------
+// Module 8: Token Counting Properties
+// ---------------------------------------------------------------------------
+
+mod token_counting_properties {
+    use super::*;
+    use clawdius_core::tokenize::{count_tokens, TokenizerStrategy};
+
+    fn strategy_variants() -> Vec<TokenizerStrategy> {
+        vec![
+            TokenizerStrategy::Simple,
+            TokenizerStrategy::Code,
+            TokenizerStrategy::Natural,
+            TokenizerStrategy::BpeApproximation,
+        ]
+    }
+
+    proptest! {
+        #[test]
+        fn token_count_non_negative(
+            text in proptest::string::string_regex("[a-zA-Z0-9 \t\n]{0,1000}").unwrap(),
+            strategy_idx in 0usize..4usize,
+        ) {
+            let strategies = strategy_variants();
+            let count = count_tokens(&text, strategies[strategy_idx]);
+            prop_assert!(count <= text.len() * 2,
+                "token count {} should not wildly exceed text length {}", count, text.len());
+        }
+
+        #[test]
+        fn empty_string_zero_tokens(strategy_idx in 0usize..4usize) {
+            let strategies = strategy_variants();
+            let count = count_tokens("", strategies[strategy_idx]);
+            prop_assert_eq!(count, 0, "empty string must produce 0 tokens");
+        }
+
+        #[test]
+        fn pure_whitespace_zero_or_one_tokens(
+            whitespace in proptest::string::string_regex("[ \t\n\r]{0,200}").unwrap(),
+            strategy_idx in 0usize..4usize,
+        ) {
+            let strategies = strategy_variants();
+            let count = count_tokens(&whitespace, strategies[strategy_idx]);
+            prop_assert!(count <= 1,
+                "pure whitespace should produce 0 or 1 tokens, got {}", count);
+        }
+
+        #[test]
+        fn single_char_nonempty(strategy_idx in 0usize..4usize) {
+            let strategies = strategy_variants();
+            for c in ['a', 'Z', '0', ';', ' '] {
+                let count = count_tokens(&c.to_string(), strategies[strategy_idx]);
+                if c != ' ' {
+                    prop_assert!(count >= 1,
+                        "non-space single char must produce >= 1 token");
+                }
+            }
+        }
+
+        #[test]
+        fn repeating_content_more_tokens(
+            base in "[a-z]{1,50}",
+            repeat_count in 1usize..20usize,
+        ) {
+            let single = count_tokens(&base, TokenizerStrategy::Simple);
+            let repeated = base.repeat(repeat_count);
+            let repeated_count = count_tokens(&repeated, TokenizerStrategy::Simple);
+            if single > 0 && repeat_count > 1 {
+                prop_assert!(repeated_count >= single,
+                    "repeated content must have >= tokens of single occurrence");
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Module 9: Config Serialization Properties
+// ---------------------------------------------------------------------------
+
+mod config_properties {
+    use super::*;
+    use clawdius_core::config::{Config, RetryConfig, SessionConfig};
+
+    fn rigor_strategy() -> impl Strategy<Value = String> {
+        proptest::sample::select(&["low", "medium", "high"]).prop_map(|s| s.to_string())
+    }
+
+    proptest! {
+        #[test]
+        fn config_project_roundtrip(
+            name in "[a-zA-Z0-9_-]{1,50}",
+            rigor in rigor_strategy(),
+            lifecycle in "[a-z_]{1,30}",
+        ) {
+            let mut config = Config::default();
+            config.project.name = name.clone();
+            config.project.rigor_level = rigor;
+            config.project.lifecycle_phase = lifecycle.to_string();
+
+            let toml_str = toml::to_string(&config).expect("serialize should succeed");
+            let deserialized: Config = toml::from_str(&toml_str).expect("deserialize should succeed");
+            prop_assert_eq!(deserialized.project.name, name);
+            prop_assert_eq!(deserialized.project.lifecycle_phase, lifecycle);
+        }
+    }
+
+    proptest! {
+        #[test]
+        fn default_config_valid(_dummy in 0u8..1u8) {
+            let config = Config::default();
+            let errors = config.validate();
+            prop_assert!(errors.is_empty(), "default config must be valid: {:?}", errors);
+        }
+    }
+
+    proptest! {
+        #[test]
+        fn retry_config_serialization_roundtrip(
+            max_retries in 0u32..10u32,
+            initial_delay in 100u64..5000u64,
+            max_delay in 1000u64..60000u64,
+            base in 1.0f64..5.0f64,
+        ) {
+            let retry = RetryConfig {
+                max_retries,
+                initial_delay_ms: initial_delay,
+                max_delay_ms: max_delay,
+                exponential_base: base,
+                retry_on: vec![],
+            };
+            let toml_str = toml::to_string(&retry).expect("serialize");
+            let deserialized: RetryConfig = toml::from_str(&toml_str).expect("deserialize");
+            prop_assert_eq!(deserialized.max_retries, max_retries);
+            prop_assert_eq!(deserialized.initial_delay_ms, initial_delay);
+            prop_assert_eq!(deserialized.max_delay_ms, max_delay);
+            prop_assert!((deserialized.exponential_base - base).abs() < f64::EPSILON);
+        }
+    }
+
+    proptest! {
+        #[test]
+        fn session_config_threshold_bounds(
+            threshold in 0.0f32..1.0f32,
+            keep_recent in 0usize..100usize,
+            min_messages in 0usize..1000usize,
+        ) {
+            let session = SessionConfig {
+                compact_threshold: threshold,
+                keep_recent,
+                min_messages,
+                auto_save: true,
+            };
+            let toml_str = toml::to_string(&session).expect("serialize");
+            let deserialized: SessionConfig = toml::from_str(&toml_str).expect("deserialize");
+            prop_assert!((deserialized.compact_threshold - threshold).abs() < f32::EPSILON);
+            prop_assert_eq!(deserialized.keep_recent, keep_recent);
+            prop_assert_eq!(deserialized.min_messages, min_messages);
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Module 10: Diff Properties
+// ---------------------------------------------------------------------------
+
+mod diff_properties {
+    use super::*;
+    use clawdius_core::diff::FileDiff;
+    use std::path::PathBuf;
+
+    proptest! {
+        #[test]
+        fn identical_content_empty_hunks(
+            lines in proptest::collection::vec("[a-zA-Z0-9 ]{1,80}", 0..50),
+        ) {
+            let content = lines.join("\n");
+            let diff = FileDiff::compute(PathBuf::from("test.txt"), Some(&content), &content);
+            prop_assert_eq!(diff.hunks.len(), 0,
+                "identical content must produce no hunks");
+            let stats = diff.stats();
+            prop_assert_eq!(stats.additions, 0);
+            prop_assert_eq!(stats.deletions, 0);
+        }
+
+        #[test]
+        fn new_file_no_deletions(
+            lines in proptest::collection::vec("[a-zA-Z0-9 ]{1,80}", 0..30),
+        ) {
+            let content = lines.join("\n");
+            let diff = FileDiff::compute(PathBuf::from("new.txt"), None, &content);
+            let stats = diff.stats();
+            prop_assert_eq!(stats.deletions, 0,
+                "new file must have zero deletions");
+        }
+
+        #[test]
+        fn diff_stats_bounded_by_input(
+            old_lines in proptest::collection::vec("[a-zA-Z0-9 ]{1,60}", 0..30),
+            new_lines in proptest::collection::vec("[a-zA-Z0-9 ]{1,60}", 0..30),
+        ) {
+            let old_content = old_lines.join("\n");
+            let new_content = new_lines.join("\n");
+            let diff = FileDiff::compute(PathBuf::from("test.txt"), Some(&old_content), &new_content);
+            let stats = diff.stats();
+            let total_changes = stats.additions + stats.deletions;
+            let input_sum = old_lines.len() + new_lines.len();
+            prop_assert!(total_changes <= input_sum,
+                "total changes {} must not exceed sum of input lines {}",
+                total_changes, input_sum);
+        }
+
+        #[test]
+        fn diff_path_preserved(
+            path in "[a-zA-Z0-9_/\\.-]{1,100}",
+        ) {
+            let diff = FileDiff::compute(
+                PathBuf::from(&path),
+                Some("old\n"),
+                "new\n",
+            );
+            prop_assert_eq!(diff.path.to_string_lossy(), path);
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Module 11: Session ID Uniqueness Properties
+// ---------------------------------------------------------------------------
+
+mod session_id_properties {
+    use super::*;
+    use clawdius_core::nexus::{SessionId, StatePersistence};
+
+    proptest! {
+        #[test]
+        fn session_ids_are_unique(
+            count in 5usize..50usize,
+        ) {
+            let persistence = StatePersistence::in_memory();
+            let mut ids = Vec::new();
+            for i in 0..count {
+                let sid = SessionId::new(format!("unique-session-{}", i));
+                let state = clawdius_core::nexus::FsmState::new(sid.clone(), clawdius_core::nexus::PhaseId(0));
+                persistence.create_session(&state).unwrap();
+                ids.push(sid);
+            }
+            let unique_names: std::collections::HashSet<_> = ids.iter().map(|s| &s.0).collect();
+            prop_assert_eq!(unique_names.len(), ids.len(),
+                "all session IDs must be unique");
+        }
+
+        #[test]
+        fn session_create_and_load_roundtrip(
+            name in "[a-zA-Z0-9_-]{1,50}",
+            phase in 0u8..24u8,
+        ) {
+            let persistence = StatePersistence::in_memory();
+            let sid = SessionId::new(name.clone());
+            let state = clawdius_core::nexus::FsmState::new(sid.clone(), clawdius_core::nexus::PhaseId(phase));
+            persistence.create_session(&state).unwrap();
+
+            let loaded = persistence.load_session(&sid).unwrap();
+            prop_assert!(loaded.is_some(), "session should be loadable after creation");
+            let loaded = loaded.unwrap();
+            prop_assert_eq!(loaded.session_id.0, name);
+            prop_assert_eq!(loaded.current_phase.0, phase);
+        }
+
+        #[test]
+        fn multiple_sessions_independent(
+            name1 in "[a-zA-Z0-9_-]{1,20}",
+            name2 in "[a-zA-Z0-9_-]{1,20}",
+        ) {
+            let persistence = StatePersistence::in_memory();
+            let sid1 = SessionId::new(name1.clone());
+            let sid2 = SessionId::new(name2.clone());
+
+            let state1 = clawdius_core::nexus::FsmState::new(sid1.clone(), clawdius_core::nexus::PhaseId(0));
+            let state2 = clawdius_core::nexus::FsmState::new(sid2.clone(), clawdius_core::nexus::PhaseId(5));
+            persistence.create_session(&state1).unwrap();
+            persistence.create_session(&state2).unwrap();
+
+            let loaded1 = persistence.load_session(&sid1).unwrap().unwrap();
+            let loaded2 = persistence.load_session(&sid2).unwrap().unwrap();
+            prop_assert_eq!(loaded1.current_phase.0, 0);
+            prop_assert_eq!(loaded2.current_phase.0, 5);
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Module 12: Retry / Backoff Properties
+// ---------------------------------------------------------------------------
+
+mod retry_properties {
+    use super::*;
+    use clawdius_core::config::RetryConfig;
+
+    proptest! {
+        #[test]
+        fn exponential_backoff_monotonic(
+            base in 1.5f64..4.0f64,
+            initial_ms in 50u64..2000u64,
+            max_ms in 5000u64..60000u64,
+            steps in 2u32..10u32,
+        ) {
+            let mut prev_delay = initial_ms as f64;
+            for i in 1..=steps {
+                let delay = (initial_ms as f64) * base.powi(i as i32);
+                let capped = delay.min(max_ms as f64);
+                prop_assert!(capped >= prev_delay - f64::EPSILON,
+                    "backoff must be monotonically non-decreasing: step {} gave {} < prev {}",
+                    i, capped, prev_delay);
+                prev_delay = capped;
+            }
+        }
+
+        #[test]
+        fn total_retry_time_bounded(
+            base in 1.5f64..4.0f64,
+            initial_ms in 50u64..2000u64,
+            max_ms in 5000u64..60000u64,
+            max_retries in 1u32..20u32,
+        ) {
+            let mut total: u64 = 0;
+            for i in 0..max_retries {
+                let delay = (initial_ms as f64) * base.powi(i as i32);
+                let capped = delay.min(max_ms as f64) as u64;
+                total = total.saturating_add(capped);
+            }
+            let worst_case = max_ms.saturating_mul(max_retries as u64);
+            prop_assert!(total <= worst_case,
+                "total retry time {} must not exceed max_delay * retries {}",
+                total, worst_case);
+        }
+
+        #[test]
+        fn retry_count_bounded_by_max(
+            attempt in 0u32..100u32,
+            max_retries in 1u32..10u32,
+        ) {
+            let should_retry = attempt < max_retries;
+            prop_assert_eq!(should_retry, attempt < max_retries,
+                "retry must stop at max_retries");
+        }
+
+        #[test]
+        fn backoff_never_negative(
+            base in 1.0f64..10.0f64,
+            initial_ms in 0u64..10000u64,
+            step in 0u32..50u32,
+        ) {
+            let delay = (initial_ms as f64) * base.powi(step as i32);
+            prop_assert!(delay >= 0.0,
+                "backoff delay must never be negative");
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Module 13: Sandbox Config Properties
+// ---------------------------------------------------------------------------
+
+mod sandbox_config_properties {
+    use super::*;
+    use clawdius_core::config::ShellSandboxConfig;
+
+    proptest! {
+        #[test]
+        fn sandbox_timeout_positive(timeout in 1u64..3600u64) {
+            let config = ShellSandboxConfig {
+                timeout_secs: timeout,
+                ..ShellSandboxConfig::default()
+            };
+            prop_assert!(config.timeout_secs > 0);
+            prop_assert!(config.timeout_secs <= 3600);
+        }
+
+        #[test]
+        fn sandbox_max_output_bounded(max_bytes in 1024usize..10_000_000usize) {
+            let config = ShellSandboxConfig {
+                max_output_bytes: max_bytes,
+                ..ShellSandboxConfig::default()
+            };
+            prop_assert!(config.max_output_bytes >= 1024);
+        }
+
+        #[test]
+        fn blocked_commands_nonempty_after_default(_dummy in 0u8..1u8) {
+            let config = ShellSandboxConfig::default();
+            prop_assert!(!config.blocked_commands.is_empty(),
+                "default blocked commands must not be empty");
+            prop_assert!(config.blocked_commands.contains(&"rm -rf /".to_string()),
+                "rm -rf / must be blocked by default");
+        }
+
+        #[test]
+        fn sandbox_serialization_roundtrip(
+            timeout in 10u64..600u64,
+            max_bytes in 1024usize..5_000_000usize,
+        ) {
+            let config = ShellSandboxConfig {
+                timeout_secs: timeout,
+                max_output_bytes: max_bytes,
+                blocked_commands: vec!["rm -rf /".to_string()],
+                restrict_to_cwd: true,
+            };
+            let toml_str = toml::to_string(&config).expect("serialize");
+            let deserialized: ShellSandboxConfig = toml::from_str(&toml_str).expect("deserialize");
+            prop_assert_eq!(deserialized.timeout_secs, timeout);
+            prop_assert_eq!(deserialized.max_output_bytes, max_bytes);
+            prop_assert!(deserialized.restrict_to_cwd);
+        }
+    }
+}

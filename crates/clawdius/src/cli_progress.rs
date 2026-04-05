@@ -132,6 +132,7 @@ impl Spinner {
     }
 
     /// Update the spinner message.
+    #[allow(dead_code)]
     pub fn set_message(&mut self, message: impl Into<String>) {
         self.message = message.into();
     }
@@ -150,6 +151,7 @@ impl Spinner {
     }
 
     /// Stop the spinner with an error message.
+    #[allow(dead_code)]
     pub fn stop_with_error(mut self, error_message: &str) {
         self.running.store(false, Ordering::SeqCst);
 
@@ -179,6 +181,7 @@ pub struct ProgressBar {
     width: usize,
 }
 
+#[allow(dead_code)]
 impl ProgressBar {
     /// Create a new progress bar.
     pub fn new(total: usize, message: impl Into<String>) -> Self {
@@ -245,6 +248,7 @@ pub fn success(message: &str) {
 }
 
 /// Error message with optional suggestion.
+#[allow(dead_code)]
 pub fn error(message: &str, suggestion: Option<&str>) {
     println!("❌ {}", message);
     if let Some(suggestion) = suggestion {
@@ -253,11 +257,13 @@ pub fn error(message: &str, suggestion: Option<&str>) {
 }
 
 /// Warning message.
+#[allow(dead_code)]
 pub fn warning(message: &str) {
     println!("⚠️  {}", message);
 }
 
 /// Info message.
+#[allow(dead_code)]
 pub fn info(message: &str) {
     println!("ℹ️  {}", message);
 }

@@ -58,7 +58,7 @@ impl MessageHandler for AnalyzeHandler {
 
         let query = command.args.join(" ");
 
-        // TODO: Integrate with actual code analysis
+        // FIXME(v1.7.0): Integrate with actual code analysis
         let response = format!(
             "🔍 **Code Analysis**\n\n\
              **Query:** {}\n\n\

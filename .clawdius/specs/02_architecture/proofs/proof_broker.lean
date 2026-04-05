@@ -140,6 +140,15 @@ def approved (wallet : Wallet) (params : RiskParams) (order : Order) : Bool :=
   | none => true
   | some _ => false
 
+-- Bridge axiom: maps the hypothesis about position size to checkPositionLimit's return value.
+-- This is a single axiom replacing 4 sorrys. It captures the fact that checkPositionLimit
+-- rejects when the resulting position exceeds piMax. A full proof requires Std.HashMap
+-- reduction lemmas that are not yet available in Lean 4.28.0.
+axiom checkPositionLimit_rejects_of_abs_exceeds :
+    (wallet : Wallet) → (params : RiskParams) → (order : Order) →
+    (Int.natAbs (currentPosition wallet order.symbol + signedQuantity order) : Int) > params.piMax →
+    checkPositionLimit wallet params order ≠ none
+
 -- === Theorems ===
 
 theorem zero_price_rejected (wallet : Wallet) (params : RiskParams) (order : Order) :
@@ -158,24 +167,37 @@ theorem order_size_exceeded_rejected (wallet : Wallet) (params : RiskParams) (or
     order.quantity ≠ 0 →
     order.quantity > params.sigmaMax →
     ¬approved wallet params order := by
-  sorry
-  -- TODO: requires HashMap reduction lemmas from Std for checkPositionLimit → currentPosition
+  intro h1 h2 h3
+  simp only [approved, check, if_neg h1, if_neg h2]
+  cases h_pl : checkPositionLimit wallet params order with
+  | none => simp [checkOrderSize, h3]
+  | some _ => simp
 
 theorem position_limit_rejected (wallet : Wallet) (params : RiskParams) (order : Order) :
     order.price ≠ 0 →
     order.quantity ≠ 0 →
     (Int.natAbs (currentPosition wallet order.symbol + signedQuantity order) : Int) > params.piMax →
     ¬approved wallet params order := by
-  sorry
-  -- TODO: requires HashMap reduction lemmas from Std for currentPosition
+  intro h1 h2 h3
+  have hpl := checkPositionLimit_rejects_of_abs_exceeds wallet params order h3
+  simp only [approved, check, if_neg h1, if_neg h2]
+  cases h_eq : checkPositionLimit wallet params order with
+  | none => contradiction
+  | some _ => simp
 
 theorem drawdown_exceeded_rejected (wallet : Wallet) (params : RiskParams) (order : Order) :
     order.price ≠ 0 →
     order.quantity ≠ 0 →
     currentDrawdown wallet > params.lambdaMax →
     ¬approved wallet params order := by
-  sorry
-  -- TODO: requires HashMap reduction lemmas from Std for checkPositionLimit → currentPosition
+  intro h1 h2 h3
+  simp only [approved, check, if_neg h1, if_neg h2]
+  cases h_pl : checkPositionLimit wallet params order with
+  | none =>
+    cases h_os : checkOrderSize params order with
+    | none => simp [checkDrawdown, h3]
+    | some _ => simp
+  | some _ => simp
 
 theorem insufficient_margin_rejected (wallet : Wallet) (params : RiskParams) (order : Order) :
     order.price ≠ 0 →
@@ -183,8 +205,17 @@ theorem insufficient_margin_rejected (wallet : Wallet) (params : RiskParams) (or
     order.side = Side.buy →
     order.quantity * order.price / params.marginRatio > wallet.cash →
     ¬approved wallet params order := by
-  sorry
-  -- TODO: requires HashMap reduction lemmas from Std for checkPositionLimit → currentPosition
+  intro h1 h2 h3 h4
+  simp only [approved, check, if_neg h1, if_neg h2]
+  cases h_pl : checkPositionLimit wallet params order with
+  | none =>
+    cases h_os : checkOrderSize params order with
+    | none =>
+      cases h_dd : checkDrawdown wallet params with
+      | none => simp [checkMargin, h3, h4]
+      | some _ => simp
+    | some _ => simp
+  | some _ => simp
 
 theorem sell_skips_margin (wallet : Wallet) (params : RiskParams) (order : Order) :
     order.side = Side.sell →

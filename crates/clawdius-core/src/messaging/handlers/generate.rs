@@ -66,7 +66,7 @@ impl MessageHandler for GenerateHandler {
         // Get language flag if provided
         let lang = command.flag("lang").unwrap_or("auto");
 
-        // TODO: Integrate with actual code generation
+        // FIXME(v1.7.0): Integrate with actual code generation
         let response = format!(
             "🔧 **Code Generation**\n\n\
              **Prompt:** {}\n\

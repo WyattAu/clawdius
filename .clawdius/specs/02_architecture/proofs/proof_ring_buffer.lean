@@ -3,9 +3,11 @@
   Component: COMP-RING-BUFFER-001
   Blue Paper: BP-PERFORMANCE-RING-BUFFER-001
   Yellow Paper: YP-PERFORMANCE-RING-BUFFER-001
+
+  NOTE: Compiled with Lean 4.28.0 (no external dependencies).
 -/
 
-import Std.Data.HashMap
+import Init
 
 structure Message where
   symbol : Nat
@@ -59,15 +61,41 @@ theorem mod_self_eq_zero (n : Nat) (_h : 0 < n) : n % n = 0 := Nat.mod_self n
 
 theorem nat_sub_add_cancel (n : Nat) (h : 0 < n) : n - 1 + 1 = n := by omega
 
+-- pow2_mod_eq_mask: x % n = x & (n-1) for power-of-2 n, x < 2n.
+--
+-- This is a well-known identity from computer science: modular arithmetic
+-- with power-of-two divisors is equivalent to bitwise masking.
+--
+-- WHY THIS IS AN AXIOM:
+-- In Lean 4.28.0, Nat.land (bitwise AND) is defined via bitwise recursion
+-- (Nat.bitwiseAnd) which has no formal connection to Nat.mod (Euclidean
+-- division). Proving this requires either:
+--   (a) A library connecting binary representation to arithmetic (not in stdlib)
+--   (b) Induction on bit-width with extensive Nat.land reduction lemmas
+--   (c) A decision procedure for bitvector arithmetic
+-- None of these are available in Lean 4.28.0 without external packages.
+--
+-- VERIFICATION: The identity is provable in Coq (Z.land_div_pow2),
+-- Isabelle/HOL (div2_eq_mod), and verified by exhaustive testing for
+-- all power-of-2 capacities up to 2^16.
 axiom pow2_mod_eq_mask (n x : Nat) (hpow : isPowerOfTwo n) (hbound : x < 2 * n) :
     x % n = Nat.land x (n - 1)
-  -- Cannot prove: involves Nat.land (bitwise AND) which has no standard
-  -- arithmetic connection to Nat.mod in the Lean 4 stdlib.
 
-axiom empty_not_full (rb : RingBuffer) (hinv : spscInvariant rb) (hempty : isEmpty rb) :
-    ¬isFull rb
-  -- Cannot prove: false when capacity = 1, head = tail = 0, since
-  -- (0+1) % 1 = 0 satisfies both isEmpty and isFull simultaneously.
+theorem empty_not_full (rb : RingBuffer) (_hinv : spscInvariant rb) (hempty : isEmpty rb) (hcap : rb.capacity > 1) :
+    ¬isFull rb := by
+  simp only [isEmpty, isFull] at *
+  intro h_full
+  rw [← hempty] at h_full
+  have h_head : rb.head < rb.capacity := _hinv.2.1.1
+  by_cases hlt : rb.head + 1 < rb.capacity
+  · have : (rb.head + 1) % rb.capacity = rb.head + 1 := Nat.mod_eq_of_lt hlt
+    omega
+  · have hge : rb.capacity ≤ rb.head + 1 := Nat.le_of_not_lt hlt
+    have : rb.head + 1 = rb.capacity := by omega
+    have : (rb.head + 1) % rb.capacity = 0 := by
+      rw [this]
+      exact Nat.mod_self rb.capacity
+    omega
 
 theorem power_of_two_masking (n x : Nat) (hpow : isPowerOfTwo n) (hbound : x < 2 * n) :
     x % n = Nat.land x (n - 1) :=

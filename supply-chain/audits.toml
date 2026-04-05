@@ -259,3 +259,27 @@ the limiter allows. Fuel metering and epoch interruption provide DoS protection.
 Maintained by the Bytecode Alliance with formal verification efforts and regular
 security audits.
 """
+
+[[audits.syntect]]
+who = "WyattAu <wyatt@clawdius.dev>"
+criteria = "safe-to-deploy"
+version = "5.3.0"
+notes = """
+Reviewed syntax highlighting engine, theme parsing, and code classification.
+Contains unsafe limited to Oniguruma regex FFI bindings used for pattern matching.
+Not security-critical: only affects display rendering in the TUI. No network or
+filesystem access in core library. Maintained by the syntect project with active
+development and wide adoption in terminal UI applications.
+"""
+
+[[audits.mimalloc]]
+who = "WyattAu <wyatt@clawdius.dev>"
+criteria = "safe-to-deploy"
+version = "0.1.48"
+notes = """
+Reviewed allocator interface, thread-local heap management, and OS memory mapping.
+Contains unsafe for the allocator implementation itself (raw pointer manipulation,
+page mapping via mmap/VirtualAlloc). Microsoft-maintained with extensive benchmarking
+and production use. Not security-critical: memory safety is enforced by Rust's borrow
+checker at the application level. Used as global allocator via #[global_allocator].
+"""

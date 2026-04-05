@@ -20,7 +20,7 @@ After using various AI coding tools, I kept running into the same problems:
 ## What makes Clawdius different?
 
 **1. Security-first architecture**
-- 7 sandbox backends (WASM, gVisor, Firecracker, Bubblewrap, etc.)
+- 5 sandbox backends (+ 2 planned) (WASM, gVisor, Firecracker, Bubblewrap, etc.)
 - Your API keys stay in host memory - never visible to agents
 - Code runs in isolated, just-in-time sandboxes
 
@@ -67,7 +67,7 @@ clawdius chat --provider ollama --model llama3
 - 65,834 lines of Rust
 - 1,002+ tests passing
 - 5 LLM providers
-- 7 sandbox backends
+- 5 sandbox backends (+ 2 planned)
 - Zero cargo audit vulnerabilities
 
 ## What's next

@@ -111,12 +111,15 @@ impl GVisorBackend {
         command: &str,
         args: &[&str],
         cwd: &Path,
+        detach: bool,
     ) -> Vec<String> {
         let mut cmd = Vec::new();
 
         // Base command
         cmd.push("run".to_string());
-        cmd.push("--detach".to_string());
+        if detach {
+            cmd.push("--detach".to_string());
+        }
         cmd.push("--name".to_string());
         cmd.push(name.to_string());
 
@@ -199,7 +202,7 @@ impl GVisorBackend {
     /// Execute a command in gVisor
     pub async fn execute_async(&self, command: &str, args: &[&str], cwd: &Path) -> Result<Output> {
         let name = self.generate_container_name().await;
-        let cmd_args = self.build_run_command(&name, command, args, cwd);
+        let cmd_args = self.build_run_command(&name, command, args, cwd, true);
 
         let output = tokio::process::Command::new("runsc")
             .args(&cmd_args)
@@ -307,18 +310,14 @@ pub struct ContainerInfo {
 impl SandboxBackend for GVisorBackend {
     fn execute(&self, command: &str, args: &[&str], cwd: &Path) -> Result<Output> {
         let name = format!("clawdius-gvisor-{}", chrono::Utc::now().timestamp());
-        let cmd_args = self.build_run_command(&name, command, args, cwd);
+        // Run in foreground (no --detach) so we capture stdout/stderr.
+        let cmd_args = self.build_run_command(&name, command, args, cwd, false);
 
         let output = std::process::Command::new("runsc")
             .args(&cmd_args)
             .current_dir(cwd)
             .output()
             .map_err(|e| Error::Sandbox(format!("Failed to execute gVisor: {e}")))?;
-
-        // Cleanup
-        let _ = std::process::Command::new("runsc")
-            .args(["delete", "--force", &name])
-            .output();
 
         Ok(output)
     }

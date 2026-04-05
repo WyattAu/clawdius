@@ -1,6 +1,7 @@
 //! Sandbox executor
 
 use crate::error::{Error, Result};
+use crate::sandbox::backends::{ContainerBackend, GVisorBackend};
 use crate::sandbox::backends::{DirectBackend, FilteredBackend, SandboxBackend};
 use crate::sandbox::tiers::SandboxConfig;
 use crate::sandbox::SandboxTier;
@@ -38,35 +39,100 @@ impl SandboxExecutor {
         Ok(Self { backend, tier })
     }
 
+    /// Create a sandbox executor that uses the best available backend
+    /// for the given tier, with cascading fallback.
+    pub fn new_with_fallback(tier: SandboxTier, config: SandboxConfig) -> Self {
+        let backend: Box<dyn SandboxBackend> = match tier {
+            SandboxTier::TrustedAudited => Box::new(DirectBackend::new(config)),
+            SandboxTier::Trusted => Box::new(FilteredBackend::new(config)),
+            SandboxTier::Untrusted | SandboxTier::Hardened => Self::best_available_sandbox(config),
+        };
+        Self { backend, tier }
+    }
+
+    /// Select the best available sandbox backend with cascading priority:
+    /// gVisor > Container > Bubblewrap/Sandbox-exec > Filtered (degraded)
+    fn best_available_sandbox(config: SandboxConfig) -> Box<dyn SandboxBackend> {
+        // Priority 1: gVisor (strongest userspace isolation)
+        if GVisorBackend::is_available() {
+            return Box::new(GVisorBackend::with_defaults());
+        }
+
+        // Priority 2: Container (Docker/Podman with --rm --network=none)
+        if ContainerBackend::is_available() {
+            return Box::new(ContainerBackend::with_defaults());
+        }
+
+        // Priority 3: Platform sandbox (Bubblewrap on Linux, sandbox-exec on macOS)
+        #[cfg(target_os = "linux")]
+        if BubblewrapBackend::is_available() {
+            return Box::new(BubblewrapBackend::new(config));
+        }
+
+        #[cfg(target_os = "macos")]
+        if SandboxExecBackend::is_available() {
+            return Box::new(SandboxExecBackend::new(config));
+        }
+
+        // Priority 4: Filtered (degraded — command blocklist only, no isolation)
+        eprintln!(
+            "[SECURITY WARNING] No sandbox isolation backend available. \
+             Falling back to filtered execution (command blocklist only). \
+             Install gVisor, Docker/Podman, or bubblewrap for proper isolation."
+        );
+        Box::new(FilteredBackend::new(config))
+    }
+
     #[cfg(target_os = "linux")]
     fn platform_sandbox(config: SandboxConfig) -> Result<Box<dyn SandboxBackend>> {
-        if BubblewrapBackend::is_available() {
-            Ok(Box::new(BubblewrapBackend::new(config)))
-        } else {
-            Err(Error::Sandbox(
-                "bubblewrap (bwrap) is required for Untrusted/Hardened sandbox tiers on Linux. \
-                 Please install bubblewrap: apt install bubblewrap or dnf install bubblewrap"
-                    .to_string(),
-            ))
+        // Try gVisor first (strongest isolation without KVM)
+        if GVisorBackend::is_available() {
+            return Ok(Box::new(GVisorBackend::with_defaults()));
         }
+
+        // Try Container backend (Docker/Podman)
+        if ContainerBackend::is_available() {
+            return Ok(Box::new(ContainerBackend::with_defaults()));
+        }
+
+        // Fall back to Bubblewrap
+        if BubblewrapBackend::is_available() {
+            return Ok(Box::new(BubblewrapBackend::new(config)));
+        }
+
+        Err(Error::Sandbox(
+            "No sandbox backend available for Untrusted/Hardened tiers. \
+             Install one of: gVisor (runsc), Docker/Podman, or bubblewrap (bwrap)."
+                .to_string(),
+        ))
     }
 
     #[cfg(target_os = "macos")]
     fn platform_sandbox(config: SandboxConfig) -> Result<Box<dyn SandboxBackend>> {
-        if SandboxExecBackend::is_available() {
-            Ok(Box::new(SandboxExecBackend::new(config)))
-        } else {
-            Err(Error::Sandbox(
-                "sandbox-exec is required for Untrusted/Hardened sandbox tiers on macOS"
-                    .to_string(),
-            ))
+        // Try Container backend first (Docker/Podman)
+        if ContainerBackend::is_available() {
+            return Ok(Box::new(ContainerBackend::with_defaults()));
         }
+
+        if SandboxExecBackend::is_available() {
+            return Ok(Box::new(SandboxExecBackend::new(config)));
+        }
+
+        Err(Error::Sandbox(
+            "No sandbox backend available for Untrusted/Hardened tiers on macOS. \
+             Install Docker/Podman or sandbox-exec."
+                .to_string(),
+        ))
     }
 
     #[cfg(not(any(target_os = "linux", target_os = "macos")))]
     fn platform_sandbox(_config: SandboxConfig) -> Result<Box<dyn SandboxBackend>> {
+        if ContainerBackend::is_available() {
+            return Ok(Box::new(ContainerBackend::with_defaults()));
+        }
+
         Err(Error::Sandbox(
-            "Platform sandboxing is only supported on Linux and macOS".to_string(),
+            "Platform sandboxing requires Docker/Podman on this platform".to_string(),
         ))
     }
 
@@ -116,28 +182,35 @@ mod tests {
             mounts: vec![],
         };
 
-        let result = SandboxExecutor::new(SandboxTier::Untrusted, config);
+        // new_with_fallback always succeeds by cascading through backends.
+        let executor = SandboxExecutor::new_with_fallback(SandboxTier::Untrusted, config);
+        // The backend name depends on what's installed; just verify it doesn't panic.
+        let _name = executor.backend_name();
+    }
 
-        #[cfg(target_os = "linux")]
-        {
-            if BubblewrapBackend::is_available() {
-                let executor = result.expect("Should create executor when bwrap is available");
-                assert_eq!(executor.backend_name(), "bubblewrap");
-            } else {
-                result.expect_err("Should fail when bwrap is not available");
-            }
-        }
+    #[test]
+    fn test_executor_new_with_fallback_trusted_audited() {
+        let config = SandboxConfig {
+            tier: SandboxTier::TrustedAudited,
+            network: true,
+            mounts: vec![],
+        };
 
-        #[cfg(target_os = "macos")]
-        {
-            if SandboxExecBackend::is_available() {
-                let executor =
-                    result.expect("Should create executor when sandbox-exec is available");
-                assert_eq!(executor.backend_name(), "sandbox-exec");
-            } else {
-                result.expect_err("Should fail when sandbox-exec is not available");
-            }
-        }
+        let executor = SandboxExecutor::new_with_fallback(SandboxTier::TrustedAudited, config);
+        assert_eq!(executor.backend_name(), "direct");
+    }
+
+    #[test]
+    fn test_executor_hardened_same_as_untrusted() {
+        let config = SandboxConfig {
+            tier: SandboxTier::Hardened,
+            network: false,
+            mounts: vec![],
+        };
+
+        // Hardened and Untrusted use the same backend selection.
+        let executor = SandboxExecutor::new_with_fallback(SandboxTier::Hardened, config);
+        let _name = executor.backend_name();
     }
 
     #[test]

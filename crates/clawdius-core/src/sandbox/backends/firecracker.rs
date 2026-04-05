@@ -361,10 +361,10 @@ impl FirecrackerBackend {
 
 impl SandboxBackend for FirecrackerBackend {
     fn execute(&self, _command: &str, _args: &[&str], _cwd: &Path) -> Result<Output> {
-        // Firecracker requires async API interaction
-        // This synchronous implementation would block
         Err(Error::Sandbox(
-            "Firecracker requires async execution. Use execute_async instead.".to_string(),
+            "Firecracker backend requires async execution context. \
+             Use execute_async() or choose a different backend."
+                .to_string(),
         ))
     }
 

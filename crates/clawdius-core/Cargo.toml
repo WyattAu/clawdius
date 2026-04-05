@@ -142,6 +142,7 @@ criterion = { workspace = true }
 mockall.workspace = true
 httpmock = { workspace = true }
 proptest.workspace = true
+loom = "0.7"
 
 [[bench]]
 name = "core_bench"

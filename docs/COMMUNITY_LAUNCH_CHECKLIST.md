@@ -104,7 +104,7 @@
 ### HN/Reddit - Common Questions
 
 **Q: How is this different from Claude Code / Cursor?**
-> Clawdius runs natively in Rust (<20ms cold boot vs Node.js), has 7 sandbox backends for security, 104 formal verification proofs, and supports local LLMs via Ollama for 100% privacy.
+> Clawdius runs natively in Rust (<20ms cold boot vs Node.js), has 5 sandbox backends (+ 2 planned) for security, 104 formal verification proofs, and supports local LLMs via Ollama for 100% privacy.
 
 **Q: Why Rust?**
 > Performance (<20ms cold boot), memory safety without GC, and the ability to formally verify critical code paths. We have 104 Lean4 proofs.

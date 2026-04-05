@@ -41,7 +41,7 @@ Zero vulnerabilities in cargo audit ✅
 - 1,002+ test functions
 - 104 Lean4 formal proofs
 - 5 LLM providers
-- 7 sandbox backends
+- 5 sandbox backends (+ 2 planned)
 
 Built for developers who can't afford hallucinations.
 

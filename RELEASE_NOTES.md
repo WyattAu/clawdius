@@ -15,7 +15,7 @@ Clawdius v1.0.0-rc.1 marks our first release candidate for the stable v1.0.0 lau
 ## 🚀 Highlights
 
 ### Security-First Design
-- **7 sandbox backends** for isolated code execution
+- **5 sandbox backends (+ 2 planned: gVisor, Firecracker)** for isolated code execution
 - **104 Lean4 theorems** providing mathematical guarantees
 - **Capability-based security** with fine-grained permissions
 - **Enterprise SSO** with SAML 2.0 and OIDC support
@@ -83,7 +83,7 @@ pub enum AuditStorage {
 | Lean4 Theorems | 104 |
 | Lean4 Axioms | 15 |
 | LLM Providers | 5 |
-| Sandbox Backends | 7 |
+| Sandbox Backends | 5 (+ 2 planned) |
 | Supported Languages | 5 (Rust, Python, JS, TS, Go) |
 | Research Languages | 16 |
 

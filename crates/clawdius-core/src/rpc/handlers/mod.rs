@@ -11,7 +11,7 @@ use tracing::warn;
 use super::types::{Error, Request, Response};
 use crate::context::{ContextCompactor, ContextItem};
 use crate::llm::{ChatMessage, ChatRole, LlmClient};
-use crate::session::{Message, Session, SessionId};
+use crate::session::Session;
 
 pub use completion::CompletionHandler;
 
@@ -595,7 +595,7 @@ impl ContextHandler {
         };
 
         let mut items = self.items.write().await;
-        let tokens_before: usize = items
+        let _tokens_before: usize = items
             .iter()
             .map(|i| compactor.estimate_item_tokens(i))
             .sum();

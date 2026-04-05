@@ -17,7 +17,6 @@ use std::sync::{
     atomic::{AtomicI64, AtomicU64, Ordering},
     Mutex,
 };
-use std::time::Instant;
 
 use axum::extract::State as AxumState;
 use axum::http::StatusCode;
@@ -27,14 +26,23 @@ use axum::response::IntoResponse;
 // Metric name constants
 // ---------------------------------------------------------------------------
 
+#[allow(dead_code)]
 pub const AUDIT_EVENTS_TOTAL: &str = "clawdius_messaging_audit_events_total";
+#[allow(dead_code)]
 pub const RETRY_DEAD_LETTER_TOTAL: &str = "clawdius_messaging_retry_dead_letter_total";
+#[allow(dead_code)]
 pub const PII_REDACTIONS_TOTAL: &str = "clawdius_messaging_pii_redactions_total";
+#[allow(dead_code)]
 pub const ACTIVE_SESSIONS: &str = "clawdius_messaging_active_sessions";
+#[allow(dead_code)]
 pub const TENANTS_TOTAL: &str = "clawdius_messaging_tenants_total";
+#[allow(dead_code)]
 pub const RETRY_QUEUE_PENDING: &str = "clawdius_messaging_retry_queue_pending";
+#[allow(dead_code)]
 pub const USAGE_MESSAGES_TOTAL: &str = "clawdius_usage_messages_total";
+#[allow(dead_code)]
 pub const USAGE_MESSAGE_DURATION_MS: &str = "clawdius_usage_message_duration_ms";
+#[allow(dead_code)]
 pub const USAGE_ACTIVE_TENANTS: &str = "clawdius_usage_active_tenants";
 
 // ---------------------------------------------------------------------------
@@ -77,10 +85,12 @@ impl Histogram {
         }
     }
 
+    #[allow(dead_code)]
     pub fn count(&self) -> u64 {
         self.count
     }
 
+    #[allow(dead_code)]
     pub fn sum(&self) -> f64 {
         self.sum
     }
@@ -137,6 +147,7 @@ impl MetricsStore {
     }
 
     /// Record a completed request.
+    #[allow(dead_code)]
     pub fn record_request(&self, method: &str, route: &str, status: u16, duration_ms: f64) {
         let count_key = format!(
             "clawdius_http_requests_total{{method=\"{}\",route=\"{}\",status=\"{}\"}}",
@@ -168,12 +179,14 @@ impl MetricsStore {
         }
     }
 
+    #[allow(dead_code)]
     pub fn active_inc(&self) {
         self.inner
             .active_requests
             .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     }
 
+    #[allow(dead_code)]
     pub fn active_dec(&self) {
         self.inner.active_requests.fetch_sub(1, Ordering::Relaxed);
     }
@@ -298,6 +311,7 @@ pub struct HttpMetrics {
 // ---------------------------------------------------------------------------
 
 /// GET `/metrics` — Prometheus scrape endpoint.
+#[allow(dead_code)]
 pub async fn metrics_handler(AxumState(metrics): AxumState<HttpMetrics>) -> impl IntoResponse {
     let body = metrics.store.export_prometheus();
     (
@@ -319,6 +333,7 @@ pub async fn metrics_handler(AxumState(metrics): AxumState<HttpMetrics>) -> impl
 /// - Strips query strings
 /// - Replaces UUIDs and long numeric IDs with `:id`
 /// - Keeps segments that are ID replacements, caps total at 4 segments
+#[allow(dead_code)]
 pub fn normalize_route(path: &str) -> String {
     let path = path.split('?').next().unwrap_or(path);
     let mut segments: Vec<&str> = path.split('/').filter(|s| !s.is_empty()).collect();
@@ -343,6 +358,7 @@ pub fn normalize_route(path: &str) -> String {
     result
 }
 
+#[allow(dead_code)]
 fn looks_like_uuid(s: &str) -> bool {
     s.len() == 36
         && s.chars().filter(|&c| c == '-').count() == 4

@@ -15,7 +15,7 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use axum::body::Body;
-use axum::http::{HeaderMap, HeaderName, HeaderValue, Request, StatusCode};
+use axum::http::{HeaderMap, Request, StatusCode};
 use axum::response::{IntoResponse, Response};
 use tower::{Layer, Service};
 

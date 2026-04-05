@@ -11,7 +11,7 @@ A comprehensive comparison of Clawdius with other AI coding assistants.
 | **Runtime** | Rust (Native) | Node.js | Electron | Python | Node.js | VSCode |
 | **Boot Time** | <20ms | ~500ms | ~2s | ~300ms | ~500ms | ~100ms |
 | **Memory** | ~100MB | ~200MB | ~500MB | ~150MB | ~200MB | ~300MB |
-| **Sandboxing** | 7 backends | None | Limited | None | None | None |
+| **Sandboxing** | 5 backends (+ 2 planned) | None | Limited | None | None | None |
 | **Formal Proofs** | 104 theorems | None | None | None | None | None |
 | **Enterprise SSO** | SAML/OIDC | Limited | Limited | None | None | None |
 | **Plugin System** | WASM | None | Limited | None | None | Limited |
@@ -25,7 +25,7 @@ A comprehensive comparison of Clawdius with other AI coding assistants.
 ### 1. Security & Sandboxing
 
 #### Clawdius ✅
-- **7 sandbox backends:** WASM, Filtered, Bubblewrap, Sandbox-exec, Container, gVisor, Firecracker
+- **5 sandbox backends (+ 2 planned):** WASM, Filtered, Bubblewrap, Sandbox-exec, Container, gVisor [v1.7.0], Firecracker [v1.7.0]
 - **Capability tokens:** Fine-grained permission system
 - **Keyring storage:** OS-native secure credential storage
 - **Command filtering:** Blocks dangerous commands (rm -rf /, fork bombs, etc.)

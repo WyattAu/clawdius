@@ -154,7 +154,7 @@ jobs:
             --timeout-seconds 300 \
             --max-test-duration-seconds 60 \
             --minimum-test-coverage 85 \
-            || echo "::warning::Mutation score below threshold"
+            || { echo "::error::Mutation score below threshold 85%"; exit 1; }
 
   coverage:
     name: Coverage
@@ -287,6 +287,88 @@ jobs:
       - name: Check sources
         run: cargo deny check sources
 
+  sanitizer:
+    name: AddressSanitizer
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: lint
+    if: github.event_name == 'push' || github.event_name == 'pull_request'
+    env:
+      RUSTFLAGS: "-Z sanitizer=address"
+      ASAN_OPTIONS: "detect_leaks=1:detect_stack_use_after_return=1"
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install Rust toolchain (nightly)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: nightly
+          components: llvm-tools-preview
+      
+      - name: Cache cargo registry
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: sanitizer
+      
+      - name: Run tests with AddressSanitizer
+        run: |
+          cargo test --workspace --target x86_64-unknown-linux-gnu \
+            -- --nocapture 2>&1 | tee asan-output.txt
+          if grep -q "ERROR: AddressSanitizer" asan-output.txt; then
+            echo "::error::AddressSanitizer detected memory issues"
+            exit 1
+          fi
+          echo "✅ No AddressSanitizer issues detected"
+
+  benchmarks:
+    name: Benchmarks
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: lint
+    if: github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+      
+      - name: Cache cargo registry
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: benchmarks
+      
+      - name: Cache previous benchmark results
+        uses: actions/cache@v4
+        with:
+          path: target/criterion
+          key: criterion-baseline-${{ github.sha }}
+          restore-keys: |
+            criterion-baseline-
+      
+      - name: Run benchmarks
+        run: |
+          cargo bench --workspace -- --save-baseline current 2>&1 | tee benchmark-results.txt
+      
+      - name: Check for benchmark regressions
+        run: |
+          if cargo bench --workspace -- --baseline current 2>&1 | grep -q "performance has regressed"; then
+            echo "::warning::Performance regression detected in benchmarks"
+          else
+            echo "✅ No performance regressions detected"
+          fi
+      
+      - name: Upload benchmark results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: benchmark-results
+          path: |
+            target/criterion/
+            benchmark-results.txt
+          retention-days: 30
+
   fuzz:
     name: Fuzz Testing
     runs-on: ubuntu-latest
@@ -371,6 +453,28 @@ jobs:
             exit 1
           fi
           echo "=== All Lean4 proofs compiled successfully ==="
+
+      - name: Check sorry count
+        run: |
+          cd .clawdius/specs/02_architecture/proofs
+          SORRY_COUNT=$(grep -r "^  sorry$" *.lean 2>/dev/null | wc -l || echo 0)
+          echo "Sorry count: ${SORRY_COUNT}"
+          if [ "$SORRY_COUNT" -gt 0 ]; then
+            echo "::error::Sorry count ${SORRY_COUNT} exceeds threshold of 0. All theorems must be proven."
+            exit 1
+          fi
+          echo "✅ Sorry count within threshold (0 — all theorems proven)"
+
+      - name: Check axiom count
+        run: |
+          cd .clawdius/specs/02_architecture/proofs
+          AXIOM_COUNT=$(grep -r "^axiom " *.lean 2>/dev/null | wc -l || echo 0)
+          echo "Axiom count: ${AXIOM_COUNT}"
+          if [ "$AXIOM_COUNT" -gt 39 ]; then
+            echo "::error::Axiom count ${AXIOM_COUNT} exceeds threshold of 39. Reduce axioms before merging."
+            exit 1
+          fi
+          echo "✅ Axiom count within threshold (≤39)"
 
   build:
     name: Build (${{ matrix.target }})
@@ -561,7 +665,7 @@ jobs:
   quality-gate:
     name: Quality Gate
     runs-on: ubuntu-latest
-    needs: [lint, test, coverage, vscode-extension, security, fuzz, proofs]
+    needs: [lint, test, coverage, vscode-extension, security, sanitizer, benchmarks, fuzz, proofs]
     if: always() && !startsWith(github.ref, 'refs/tags/')
     steps:
       - name: Evaluate quality gate
@@ -606,6 +710,24 @@ jobs:
             FAILED=1
           fi
           
+          if [ "${{ needs.sanitizer.result }}" == "success" ]; then
+            echo "✅ AddressSanitizer: PASSED"
+          elif [ "${{ needs.sanitizer.result }}" == "skipped" ]; then
+            echo "⚠️ AddressSanitizer: SKIPPED"
+          else
+            echo "❌ AddressSanitizer: FAILED"
+            FAILED=1
+          fi
+          
+          if [ "${{ needs.benchmarks.result }}" == "success" ]; then
+            echo "✅ Benchmarks: PASSED"
+          elif [ "${{ needs.benchmarks.result }}" == "skipped" ]; then
+            echo "⚠️ Benchmarks: SKIPPED"
+          else
+            echo "❌ Benchmarks: FAILED"
+            FAILED=1
+          fi
+          
           if [ "${{ needs.fuzz.result }}" == "success" ]; then
             echo "✅ Fuzz Testing: PASSED"
           elif [ "${{ needs.fuzz.result }}" == "skipped" ]; then
@@ -616,7 +738,7 @@ jobs:
           fi
           
           if [ "${{ needs.proofs.result }}" == "success" ]; then
-            echo "✅ Formal Proofs: PASSED"
+            echo "✅ Formal Proofs: PASSED (sorry = 0, axioms ≤39)"
           elif [ "${{ needs.proofs.result }}" == "skipped" ]; then
             echo "⚠️ Formal Proofs: SKIPPED"
           else

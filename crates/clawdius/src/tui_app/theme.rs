@@ -38,6 +38,7 @@ pub struct Theme {
     pub selection: Color,
 }
 
+#[allow(dead_code)]
 impl Theme {
     #[allow(dead_code)]
     /// Create the default dark theme

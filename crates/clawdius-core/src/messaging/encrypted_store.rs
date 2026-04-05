@@ -38,9 +38,11 @@ use super::types::Result;
 const KDF_CONTEXT: &str = "clawdius-state-store-encryption-v1";
 
 /// Current encryption format version.
+#[allow(dead_code)]
 const FORMAT_VERSION: u8 = 1;
 
 /// Header size: 1 byte version + 12 byte nonce = 13 bytes.
+#[allow(dead_code)]
 const HEADER_SIZE: usize = 1 + 12;
 
 /// AES-256-GCM key size in bytes.

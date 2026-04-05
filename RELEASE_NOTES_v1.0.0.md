@@ -14,7 +14,7 @@ After extensive development and testing, Clawdius v1.0.0 is now **stable and pro
 
 | Feature | Clawdius | Others |
 |---------|----------|--------|
-| **Sandboxed Execution** | ✅ 7 backends (WASM, Container, gVisor, Firecracker, etc.) | ❌ None |
+| **Sandboxed Execution** | ✅ 5 backends (WASM, Container, Bubblewrap, Sandbox-exec, Filtered) + 2 planned (gVisor, Firecracker) | ❌ None |
 | **Formal Verification** | ✅ 104 Lean4 theorems | ❌ None |
 | **Native Performance** | ✅ Rust (<20ms boot) | ❌ Node.js/Electron |
 | **Enterprise SSO** | ✅ SAML 2.0, OIDC, Okta, Azure AD | ⚠️ Limited |
@@ -62,7 +62,7 @@ clawdius tui
 
 ### 🔒 Multi-Tier Sandboxing
 
-All code execution is sandboxed by default with 7 backends:
+All code execution is sandboxed by default with 5 production backends (+ 2 planned):
 
 | Tier | Backend | Use Case |
 |------|---------|----------|
@@ -117,7 +117,7 @@ WASM-based plugins with 26 hook types:
 | Lean4 Theorems | 104 |
 | Lean4 Axioms | 15 |
 | LLM Providers | 5 |
-| Sandbox Backends | 7 |
+| Sandbox Backends | 5 (+ 2 planned) |
 | Supported Languages | 5 (Rust, Python, JS, TS, Go) |
 
 ---

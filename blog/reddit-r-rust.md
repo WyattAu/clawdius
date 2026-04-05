@@ -17,7 +17,7 @@ I'm excited to share **Clawdius v1.2.0** - a high-assurance AI coding assistant 
 Clawdius is an AI coding assistant that runs natively in Rust (no Node.js runtime), designed for developers who need more than just code suggestions:
 
 - **<20ms cold boot** - Native binary, no Electron
-- **7 sandbox backends** - WASM, gVisor, Firecracker, etc.
+- **5 sandbox backends (+ 2 planned)** - WASM, gVisor, Firecracker, etc.
 - **104 formal verification proofs** - Lean4 theorems
 - **Zero vulnerabilities** - Clean security audit
 - **Local LLM support** - 100% private via Ollama
@@ -65,7 +65,7 @@ clawdius chat --provider ollama --model llama3
 | Rust LOC | 65,834 |
 | Tests | 1,002+ passing |
 | Lean4 Proofs | 104 theorems |
-| Sandbox Backends | 7 |
+| Sandbox Backends | 5 (+ 2 planned) |
 | LLM Providers | 5 |
 
 ## Links

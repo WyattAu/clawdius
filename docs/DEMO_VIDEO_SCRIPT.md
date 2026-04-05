@@ -157,7 +157,7 @@ You: What are the benefits of Rust for systems programming?
 ### Script
 "Clawdius was built with security as a primary concern.
 
-Seven sandbox backends - from WASM to Firecracker microVMs.
+Five sandbox backends (+ two planned) - from WASM to Firecracker microVMs.
 
 104 formal verification proofs in Lean4.
 
@@ -237,7 +237,7 @@ docs.clawdius.dev
 1. **Split screen:** Rust logo + AI brain icon
 2. **Terminal screenshot:** `clawdius setup` wizard
 3. **Performance graph:** <20ms boot time vs competitors
-4. **Security badges:** 7 sandboxes, 104 proofs, 0 CVEs
+4. **Security badges:** 5 sandboxes (+ 2 planned), 104 proofs, 0 CVEs
 
 ---
 

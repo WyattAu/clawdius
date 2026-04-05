@@ -7,6 +7,7 @@ pub mod arena;
 pub mod execution;
 pub mod feed_manager;
 pub mod feeds;
+pub mod matching;
 pub mod notification;
 pub mod ring_buffer;
 pub mod signal;
@@ -16,11 +17,14 @@ pub mod wallet_guard;
 pub use arena::Arena;
 pub use execution::{ExecutionAdapter, ExecutionError, Fill, SimulatedExecution};
 pub use feed_manager::{FeedManager, FeedSubscriber, LoggingSubscriber};
-pub use feeds::{FeedError, FeedStatus, MarketFeed, MarketUpdate, Quote, SimulatedFeed, Symbol};
+pub use feeds::{
+    FeedError, FeedStatus, GbmConfig, MarketFeed, MarketUpdate, Quote, SimulatedFeed, Symbol,
+};
+pub use matching::{BookInfo, ExecutionConfig, MatchFill, MatchingExecution, OrderBook, OrderType};
 pub use notification::{NotificationChannel, NotificationGateway, WebhookChannel};
 pub use ring_buffer::RingBuffer;
 pub use signal::{MarketData, Signal, SignalDirection, SignalEngine};
-pub use strategy::Strategy;
+pub use strategy::{MovingAverageCrossover, Strategy};
 pub use wallet_guard::{
     Order, OrderSide, RejectReason, RiskDecision, RiskParams, Wallet, WalletGuard,
 };
