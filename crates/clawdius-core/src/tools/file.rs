@@ -2,7 +2,58 @@
 
 use serde::{Deserialize, Serialize};
 use std::fs;
-use std::path::Path;
+
+/// Validate that a path is safe (no traversal, no symlinks outside workspace)
+/// Returns the canonicalized path if safe, or an error if traversal is detected.
+fn validate_path(
+    path: &str,
+    workspace_root: &std::path::Path,
+) -> Result<std::path::PathBuf, String> {
+    let path = std::path::Path::new(path);
+
+    // Reject paths with null bytes
+    if path
+        .components()
+        .any(|c| matches!(c, std::path::Component::Normal(s) if s.to_string_lossy().contains('\0')))
+    {
+        return Err("Path contains null bytes".to_string());
+    }
+
+    // Canonicalize the path (resolves .., symlinks, etc.)
+    let canonical = match path.canonicalize() {
+        Ok(p) => p,
+        Err(_) => {
+            // Path doesn't exist yet — build it relative to current dir
+            // For new files, check the parent directory
+            let parent = path.parent().unwrap_or(std::path::Path::new("."));
+            match parent.canonicalize() {
+                Ok(p) => p.join(path.file_name().unwrap_or(std::ffi::OsStr::new(""))),
+                Err(_) => return Err(format!("Cannot resolve path: {}", path.display())),
+            }
+        },
+    };
+
+    // Check canonical path starts with workspace root
+    let canonical_workspace = match workspace_root.canonicalize() {
+        Ok(p) => p,
+        Err(_) => {
+            return Err(format!(
+                "Cannot resolve workspace root: {}",
+                workspace_root.display()
+            ))
+        },
+    };
+
+    if !canonical.starts_with(&canonical_workspace) {
+        return Err(format!(
+            "Path '{}' resolves outside workspace '{}'",
+            path.display(),
+            workspace_root.display()
+        ));
+    }
+
+    Ok(canonical)
+}
 
 /// File read parameters
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -57,7 +108,10 @@ impl FileTool {
     }
 
     pub fn read(&self, params: FileReadParams) -> crate::Result<String> {
-        let path = Path::new(&params.path);
+        let workspace_root = std::env::current_dir().unwrap_or_default();
+        let safe_path = validate_path(&params.path, &workspace_root)
+            .map_err(|e| crate::Error::Tool(format!("Path validation failed: {}", e)))?;
+        let path = &safe_path;
 
         if !path.exists() {
             return Err(crate::Error::Tool(format!(
@@ -82,7 +136,10 @@ impl FileTool {
     }
 
     pub fn write(&self, params: FileWriteParams) -> crate::Result<()> {
-        let path = Path::new(&params.path);
+        let workspace_root = std::env::current_dir().unwrap_or_default();
+        let safe_path = validate_path(&params.path, &workspace_root)
+            .map_err(|e| crate::Error::Tool(format!("Path validation failed: {}", e)))?;
+        let path = &safe_path;
 
         if let Some(parent) = path.parent() {
             if !parent.exists() {
@@ -95,7 +152,10 @@ impl FileTool {
     }
 
     pub fn edit(&self, params: FileEditParams) -> crate::Result<bool> {
-        let path = Path::new(&params.path);
+        let workspace_root = std::env::current_dir().unwrap_or_default();
+        let safe_path = validate_path(&params.path, &workspace_root)
+            .map_err(|e| crate::Error::Tool(format!("Path validation failed: {}", e)))?;
+        let path = &safe_path;
 
         if !path.exists() {
             return Err(crate::Error::Tool(format!(
@@ -142,7 +202,10 @@ impl FileTool {
     }
 
     pub fn list(&self, params: FileListParams) -> crate::Result<Vec<String>> {
-        let path = Path::new(&params.path);
+        let workspace_root = std::env::current_dir().unwrap_or_default();
+        let safe_path = validate_path(&params.path, &workspace_root)
+            .map_err(|e| crate::Error::Tool(format!("Path validation failed: {}", e)))?;
+        let path = &safe_path;
 
         if !path.exists() {
             return Err(crate::Error::Tool(format!(

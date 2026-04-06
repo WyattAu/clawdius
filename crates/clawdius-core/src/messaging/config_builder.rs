@@ -345,36 +345,39 @@ global_api_keys = ["super-key"]
 telegram = ["tg-key-1", "tg-key-2"]
 discord = ["dc-key"]
 
+# WARNING: These are placeholder values for documentation/testing only.
+# NEVER use these values in production. Always load secrets from
+# environment variables or a secure secret manager.
 [messaging.platforms.telegram]
-secret_token = "my-tg-secret"
-bot_token = "123456:ABC-DEF"
+secret_token = "PLACEHOLDER_NEVER_USE_IN_PRODUCTION"
+bot_token = "PLACEHOLDER_BOT_TOKEN"
 
 [messaging.platforms.discord]
-discord_bot_token = "discord-bot-token"
+discord_bot_token = "PLACEHOLDER_DISCORD_TOKEN"
 
 [messaging.platforms.matrix]
-access_token = "syt_abc123"
+access_token = "PLACEHOLDER_ACCESS_TOKEN"
 homeserver_base_url = "https://matrix.org"
 
 [messaging.platforms.slack]
-signing_secret = "slack-secret"
-slack_bot_token = "xoxb-slack-bot"
+signing_secret = "PLACEHOLDER_SIGNING_SECRET"
+slack_bot_token = "PLACEHOLDER_SLACK_BOT_TOKEN"
 
 [messaging.platforms.rocketchat]
-token = "rc-token"
+token = "PLACEHOLDER_RC_TOKEN"
 user_id = "rc-user"
 server_url = "https://chat.example.com"
 
 [messaging.platforms.signal]
-verification_token = "signal-verify"
+verification_token = "PLACEHOLDER_VERIFY_TOKEN"
 signal_api_url = "http://localhost:8080"
 signal_number = "+1234567890"
 
 [messaging.platforms.whatsapp]
-verify_token = "wa-verify"
-app_secret = "wa-secret"
+verify_token = "PLACEHOLDER_VERIFY_TOKEN"
+app_secret = "PLACEHOLDER_APP_SECRET"
 phone_number_id = "123456789"
-whatsapp_access_token = "wa-token"
+whatsapp_access_token = "PLACEHOLDER_ACCESS_TOKEN"
 "#;
 
         let full: toml::Value = toml::from_str(toml_str).unwrap();
@@ -394,11 +397,11 @@ whatsapp_access_token = "wa-token"
                 .unwrap()
                 .secret_token
                 .as_deref(),
-            Some("my-tg-secret")
+            Some("PLACEHOLDER_NEVER_USE_IN_PRODUCTION")
         );
         assert_eq!(
             msg.platforms.get("telegram").unwrap().bot_token.as_deref(),
-            Some("123456:ABC-DEF")
+            Some("PLACEHOLDER_BOT_TOKEN")
         );
         assert_eq!(
             msg.platforms
@@ -406,7 +409,7 @@ whatsapp_access_token = "wa-token"
                 .unwrap()
                 .discord_bot_token
                 .as_deref(),
-            Some("discord-bot-token")
+            Some("PLACEHOLDER_DISCORD_TOKEN")
         );
         assert_eq!(
             msg.platforms
@@ -414,7 +417,7 @@ whatsapp_access_token = "wa-token"
                 .unwrap()
                 .slack_bot_token
                 .as_deref(),
-            Some("xoxb-slack-bot")
+            Some("PLACEHOLDER_SLACK_BOT_TOKEN")
         );
 
         let infra = build_webhook_infrastructure(&msg);

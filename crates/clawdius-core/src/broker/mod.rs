@@ -3,6 +3,7 @@
 //! High-frequency trading broker components with lock-free data structures
 //! and risk management (SEC 15c3-5 compliance).
 
+pub mod alpaca;
 pub mod arena;
 pub mod execution;
 pub mod feed_manager;

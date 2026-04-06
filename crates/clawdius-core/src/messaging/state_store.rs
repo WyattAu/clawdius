@@ -62,6 +62,11 @@ fn validate_table_name(table: &str) -> Result<()> {
             "table name must not be empty".into(),
         ));
     }
+    if table.len() > 64 {
+        return Err(MessagingError::InvalidConfig(
+            "table name too long (max 64 characters)".into(),
+        ));
+    }
     if !table.chars().all(|c| c.is_ascii_alphanumeric() || c == '_') {
         return Err(MessagingError::InvalidConfig(format!(
             "invalid table name: {table}"

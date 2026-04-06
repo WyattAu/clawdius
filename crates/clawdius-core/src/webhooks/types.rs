@@ -396,7 +396,7 @@ mod tests {
             WebhookEvent::SessionCreated,
             serde_json::json!({"id": "123"}),
         );
-        let secret = "my-secret";
+        let secret = "test-webhook-secret-for-fixtures-only";
 
         payload.sign(secret);
         assert!(payload.signature.is_some());

@@ -889,7 +889,7 @@ fn main() {
         let analyzer = DebtAnalyzer::new();
         let content = r#"
 fn main() {
-    let password = "secret123";
+    let password = "test-password-for-fixtures-only";
 }
 "#;
         let report = analyzer.analyze_file(&PathBuf::from("test.rs"), content);

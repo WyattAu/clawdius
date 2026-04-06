@@ -4,7 +4,80 @@ use crate::config::ShellSandboxConfig;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 use std::process::{Command, Stdio};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, Instant};
+
+const BLOCKED_COMMANDS: &[&str] = &[
+    "rm",
+    "rmdir",
+    "mkfs",
+    "dd",
+    "shred",
+    "wipe",
+    "chmod",
+    "chown",
+    "chgrp",
+    "sudo",
+    "su",
+    "doas",
+    "run0",
+    "kill",
+    "killall",
+    "pkill",
+    "shutdown",
+    "reboot",
+    "halt",
+    "poweroff",
+    "passwd",
+    "useradd",
+    "userdel",
+    "usermod",
+    "crontab",
+    "at",
+    "batch",
+    "iptables",
+    "nft",
+    "ufw",
+    "firewalld",
+    "mount",
+    "umount",
+    "nc",
+    "ncat",
+    "socat",
+];
+
+fn is_command_blocked(command: &str) -> bool {
+    let base = std::path::Path::new(command)
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or(command);
+
+    BLOCKED_COMMANDS.contains(&base)
+}
+
+static SHELL_CALL_COUNT: AtomicU64 = AtomicU64::new(0);
+static SHELL_WINDOW_START: std::sync::Mutex<Option<Instant>> = std::sync::Mutex::new(None);
+
+fn check_shell_rate_limit() -> crate::Result<()> {
+    let now = Instant::now();
+    let mut window_start = SHELL_WINDOW_START.lock().unwrap();
+
+    match *window_start {
+        Some(start) if now.duration_since(start) < Duration::from_secs(60) => {
+            let count = SHELL_CALL_COUNT.fetch_add(1, Ordering::Relaxed) + 1;
+            if count > 10 {
+                return Err(crate::Error::Tool(
+                    "Shell tool rate limit exceeded (max 10 calls per 60 seconds)".to_string(),
+                ));
+            }
+        },
+        _ => {
+            SHELL_CALL_COUNT.store(1, Ordering::Relaxed);
+            *window_start = Some(now);
+        },
+    }
+    Ok(())
+}
 
 /// Shell command parameters
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -106,6 +179,15 @@ impl ShellTool {
     }
 
     pub fn execute(&self, params: ShellParams) -> crate::Result<ShellResult> {
+        check_shell_rate_limit()?;
+
+        if is_command_blocked(&params.command) {
+            return Err(crate::Error::Tool(format!(
+                "Command '{}' is blocked for safety. Use a sandbox backend for restricted operations.",
+                params.command
+            )));
+        }
+
         self.validate_command(&params.command)?;
 
         let shell = if cfg!(target_os = "windows") {
