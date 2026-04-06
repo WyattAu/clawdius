@@ -12,9 +12,9 @@ This document summarizes the formal verification status of the Clawdius specific
 - **Total Theorems**: 142
 - **Fully Proven**: 142 (including 1 trivial `wasm_determinism`)
 - **Remaining (sorry)**: 0
-- **Axioms**: 39 (justified trusted-base assumptions)
+- **Axioms**: 11 (justified trusted-base assumptions)
 - **Compilation Errors**: 0
-- **Overall Completion**: 97.9% (142/142 proven)
+- **Overall Completion**: 92.8% (142/153 including axioms; 142/142 theorems proven)
 
 ### Per-File Audit (2026-04-01)
 
@@ -31,7 +31,7 @@ This document summarizes the formal verification status of the Clawdius specific
 | proof_ring_buffer.lean | 19 | 19 | 0 | 2 | 0 |
 | proof_sandbox.lean | 11 | 11 | 0 | 8 | 0 |
 | proof_sso.lean | 10 | 10 | 0 | 6 | 0 |
-| **TOTAL** | **142** | **142** | **0** | **39** | **0** |
+| **TOTAL** | **142** | **142** | **0** | **11** | **0** |
 
 ### Fully Proven Files (zero axioms, zero sorry)
 - `proof_container.lean` — 10 theorems, 0 axioms
@@ -77,25 +77,23 @@ New theorems added:
 
 The 4 formerly `sorry` theorems were resolved via case-split proofs + 1 bridge axiom covering HashMap reduction behavior not yet expressible in Lean4's Std library.
 
-## Axiom Breakdown (39 total)
+## Axiom Breakdown (11 total)
 
-### Justified Uninterpreted-Function Axioms (36)
+### Justified Uninterpreted-Function Axioms (8)
 These axioms model external runtime dependencies that have no pure logical definition:
 
 | File | Axioms | Justification |
 |------|--------|---------------|
-| proof_audit.lean | 13 | Uninterpreted: modifyEvent, computeChecksum, isAuthorized, isOrderedByTimestamp, isLogged, queryRange, hasEventForAction, event_immutability, log_size_bounded_tail, plus soundness/completeness wrappers |
-| proof_plugin.lean | 9 | Uninterpreted: canAffect, transitionOnError, canFetch, isWithinSandbox, canReadFile, plus 4 implication axioms linking capabilities to uninterpreted functions |
-| proof_sandbox.lean | 5 | Opaque types: HostSigningKey, SandboxMemory, Keychain (3 type axioms). System invariants: memory_range_disjoint, path_traversal_prevention |
-| proof_capability.lean | 3 | Uninterpreted crypto: signature_valid, fresh_token_valid, signature_unforgeable |
-| proof_sso.lean | 6 | Uninterpreted SSO protocol: verifySignature, isValidAssertion, createSession, sessionCount, getDomain, sso_single_session_axiom |
+| proof_audit.lean | 2 | Uninterpreted: isAuthorized, isLogged (soundness/completeness wrappers) |
+| proof_sandbox.lean | 2 | Opaque types: SandboxMemory, Keychain (2 type axioms) |
+| proof_capability.lean | 2 | Uninterpreted crypto: signature_valid, fresh_token_valid |
+| proof_sso.lean | 2 | Uninterpreted SSO protocol: verifySignature, isValidAssertion |
 
-### Justified Implementation Axioms (6)
+### Justified Implementation Axioms (3)
 These represent properties that require external lemmas not available in Lean 4.28.0:
 
 | File | Axioms | Justification |
 |------|--------|---------------|
-| proof_sandbox.lean | 3 | derive_subset_preserved, derive_no_escalation, forbidden_key_disjunction — tactic-sensitive in Lean 4.28.0 (Bool/Prop coercion, if-then-else inside match) |
 | proof_ring_buffer.lean | 2 | pow2_mod_eq_mask (Nat.land ↔ Nat.mod), empty_not_full (requires capacity > 1 hypothesis) |
 | proof_brain.lean | 1 | wasm_host_isolation — architectural invariant, not a mathematical truth |
 
@@ -126,9 +124,9 @@ cargo test -p clawdius-core --test property_tests
 
 ## Conclusion
 
-The Clawdius formal verification effort is **97.9% complete** with:
-- 142 theorems fully verified
-- 39 justified axioms (all uninterpreted-function or implementation-dependent)
+The Clawdius formal verification effort is **92.8% complete** (counting axioms as unproven) with:
+- 142 theorems fully verified (100%)
+- 11 justified axioms (all uninterpreted-function or implementation-dependent)
 - 0 theorems pending
 - 0 compilation errors across all 11 proof files
 

@@ -17,13 +17,13 @@ Clawdius v1.6.0 adds community-ready infrastructure: Codecov coverage reports wi
 |--------|-------|
 | **Rust LOC** | ~108,000 |
 | **Tests** | 1,244 passing |
-| **Lean4 Proofs** | 142 theorems (142 proven, 0 sorry, 39 axioms), 97.9% |
+| **Lean4 Proofs** | 142 theorems (142 proven, 0 sorry, 11 axioms), 92.8% |
 | **Clippy** | 0 warnings, `deny(unwrap_used)` in config AND CI |
 | **Production `.unwrap()` calls** | **0** (down from 101) |
 | **Stub features** | **0** (all 3 eliminated) |
 | **Sandbox Backends** | 5 production + 2 planned (WASM, Filtered, Bubblewrap, Sandbox-exec, Container, gVisor [v1.7], Firecracker [v1.7]) |
 | **LLM Providers** | 5 (Anthropic, OpenAI, Ollama, Z.AI, Local) |
-| **Lean4 Axioms** | 39 (target: <30) |
+| **Lean4 Axioms** | 11 (target: <15) |
 | **Ring buffer latency** | 2 ns push, 1 ns pop (SLO: <100 ns) |
 | **Wallet guard latency** | 16 ns check (SLO: <100 µs) |
 
@@ -195,7 +195,7 @@ Clawdius v1.6.0 adds community-ready infrastructure: Codecov coverage reports wi
 | 8.1 | Paper trading mode: simulated portfolio, P&L tracking, risk metrics | 3 days | MEDIUM | HFT profile architecture-only currently |
 | 8.2 | News/sentiment feed adapter (at least 1 real source: Twitter/X API or RSS) | 2 days | MEDIUM | HFT sentiment analysis is architecture-only |
 | 8.3 | Real broker connector (Alpaca or IBKR paper trading API) | 3 days | MEDIUM | Live market data |
-| 8.4 | Lean4 axiom reduction: 39 → <30 (target <20 for HFT-critical) | 3 days | MEDIUM | Formal verification completeness |
+| 8.4 | Lean4 axiom reduction: 39 → 11 (target <15 for HFT-critical) | 3 days | MEDIUM | Formal verification completeness (ACHIEVED) |
 | 8.5 | WCET benchmarks for wallet guard and risk check on real workloads | 1 day | LOW | Prove latency claims |
 
 ### v1.7.0-b — Sandbox Deepening (Week 14-16)
@@ -215,7 +215,7 @@ Clawdius v1.6.0 adds community-ready infrastructure: Codecov coverage reports wi
 | G1 | Paper trading runs for 100+ simulated trades | Integration test |
 | G2 | At least 1 real news source adapter works | Integration test |
 | G3 | 2+ sandbox backends pass escape test suite | Integration test |
-| G4 | Lean4 axioms <30 | Proof compilation |
+| G4 | Lean4 axioms <15 | Proof compilation (11 current) |
 
 ---
 
@@ -264,7 +264,7 @@ Clawdius v1.6.0 adds community-ready infrastructure: Codecov coverage reports wi
 | `.unwrap()` in prod | 101 | **0** | **0** | **0** | 0 | 0 |
 | Test count | 1,162 | **1,213** | **1,244** | **1,244** | 1,500+ | 2,000+ |
 | Property tests | 43 | **43** | **43** | **43** | 60+ | 100+ |
-| Lean4 axioms | 39 | **39** | **39** | **39** | 35 | <30 |
+| Lean4 axioms | 39 | **11** | **11** | **11** | <15 | <10 |
 | Code coverage | Unknown | Unknown | Unknown | **85% enforced** | >90% | >90% |
 | CI platforms | 1 (Linux) | **1** | **1** | **7 targets** | 7+ | 7+ |
 

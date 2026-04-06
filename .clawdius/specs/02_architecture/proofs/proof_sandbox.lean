@@ -101,14 +101,21 @@ def deriveCapability (parent : Capability) (subset : PermissionSet) : Option Cap
 theorem capability_unforgeable (_cap : Capability) (_sandbox : SandboxMemory) (_key : HostSigningKey) :
     True := trivial
 
--- deriveCapability preserves subset relationship when the condition holds.
--- Proving this requires showing that split on if-then-else inside match
--- correctly substitutes in Lean 4.28.0, which is tactic-sensitive.
-axiom derive_subset_preserved (parent : Capability) (subset : PermissionSet) :
+theorem derive_subset_preserved (parent : Capability) (subset : PermissionSet) :
     PermissionSet.subset subset parent.permissions = true →
     match deriveCapability parent subset with
     | some child => PermissionSet.subset child.permissions parent.permissions = true
-    | none => True
+    | none => True := by
+  intro h
+  cases h1 : deriveCapability parent subset with
+  | none => trivial
+  | some child =>
+    unfold deriveCapability at h1
+    split at h1
+    · have hstruct : { resource := parent.resource, permissions := subset, signature := parent.signature, expiresAt := parent.expiresAt } = child := Option.some.inj h1
+      have : child.permissions = subset := (congrArg Capability.permissions hstruct).symm
+      simp only [this, h]
+    · contradiction
 
 theorem derivation_attenuates (parent : Capability) (subset : PermissionSet) :
     PermissionSet.subset subset parent.permissions = true →
@@ -117,12 +124,17 @@ theorem derivation_attenuates (parent : Capability) (subset : PermissionSet) :
      | none => True) :=
   derive_subset_preserved parent subset
 
--- No privilege escalation: derived capabilities never exceed parent permissions.
--- Requires showing congruence on Capability struct fields via Option.some.inj,
--- which is tactic-sensitive in Lean 4.28.0.
-axiom derive_no_escalation (parent : Capability) (child : Capability) (subset : PermissionSet) :
+theorem derive_no_escalation (parent : Capability) (child : Capability) (subset : PermissionSet) :
     deriveCapability parent subset = some child →
-    PermissionSet.subset child.permissions parent.permissions = true
+    PermissionSet.subset child.permissions parent.permissions = true := by
+  intro horig
+  unfold deriveCapability at horig
+  split at horig
+  · have hstruct := Option.some.inj horig
+    have : child.permissions = subset := (congrArg Capability.permissions hstruct).symm
+    rw [this]
+    assumption
+  · contradiction
 
 theorem no_privilege_escalation (parent : Capability) (child : Capability) (subset : PermissionSet) :
     deriveCapability parent subset = some child →
@@ -203,13 +215,19 @@ theorem list_any_correctness {α : Type} (f : α → Bool) (l : List α) :
       have ⟨x, hx, hfx⟩ := ih hany
       exact ⟨x, List.mem_cons_of_mem a hx, hfx⟩
 
--- Whether a key is forbidden (matches known secret patterns).
--- This axiom is kept because the Bool-to-Prop coercion for String equality
--- makes exhaustive case splitting tactic-sensitive in Lean 4.28.0.
-axiom forbidden_key_disjunction (key : String) :
+theorem forbidden_key_disjunction (key : String) :
     isForbiddenKey key = true →
     key == "_KEY" ∨ key == "_SECRET" ∨ key == "_TOKEN" ∨
-    key == "_PASSWORD" ∨ key == "_CREDENTIAL"
+    key == "_PASSWORD" ∨ key == "_CREDENTIAL" := by
+  intro h
+  unfold isForbiddenKey at h
+  repeat rw [Bool.or_eq_true] at h
+  match h with
+  | Or.inl (Or.inl (Or.inl (Or.inl hk))) => exact Or.inl hk
+  | Or.inl (Or.inl (Or.inl (Or.inr hs))) => exact Or.inr (Or.inl hs)
+  | Or.inl (Or.inl (Or.inr ht)) => exact Or.inr (Or.inr (Or.inl ht))
+  | Or.inl (Or.inr hp) => exact Or.inr (Or.inr (Or.inr (Or.inl hp)))
+  | Or.inr hc => exact Or.inr (Or.inr (Or.inr (Or.inr hc)))
 
 theorem forbidden_key_detected (key : String) :
     isForbiddenKey key = true →

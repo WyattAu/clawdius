@@ -144,6 +144,10 @@ def approved (wallet : Wallet) (params : RiskParams) (order : Order) : Bool :=
 -- This is a single axiom replacing 4 sorrys. It captures the fact that checkPositionLimit
 -- rejects when the resulting position exceeds piMax. A full proof requires Std.HashMap
 -- reduction lemmas that are not yet available in Lean 4.28.0.
+-- Bridge axiom: maps the hypothesis about position size to checkPositionLimit's return value.
+-- This is a single axiom replacing 4 sorrys. It captures the fact that checkPositionLimit
+-- rejects when the resulting position exceeds piMax. A full proof requires Std.HashMap
+-- reduction lemmas that are not yet available in Lean 4.28.0.
 axiom checkPositionLimit_rejects_of_abs_exceeds :
     (wallet : Wallet) → (params : RiskParams) → (order : Order) →
     (Int.natAbs (currentPosition wallet order.symbol + signedQuantity order) : Int) > params.piMax →

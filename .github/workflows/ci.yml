@@ -470,11 +470,11 @@ jobs:
           cd .clawdius/specs/02_architecture/proofs
           AXIOM_COUNT=$(grep -r "^axiom " *.lean 2>/dev/null | wc -l || echo 0)
           echo "Axiom count: ${AXIOM_COUNT}"
-          if [ "$AXIOM_COUNT" -gt 39 ]; then
-            echo "::error::Axiom count ${AXIOM_COUNT} exceeds threshold of 39. Reduce axioms before merging."
+          if [ "$AXIOM_COUNT" -gt 11 ]; then
+            echo "::error::Axiom count ${AXIOM_COUNT} exceeds threshold of 11. Reduce axioms before merging."
             exit 1
           fi
-          echo "✅ Axiom count within threshold (≤39)"
+          echo "✅ Axiom count within threshold (≤11)"
 
   build:
     name: Build (${{ matrix.target }})
@@ -738,7 +738,7 @@ jobs:
           fi
           
           if [ "${{ needs.proofs.result }}" == "success" ]; then
-            echo "✅ Formal Proofs: PASSED (sorry = 0, axioms ≤39)"
+            echo "✅ Formal Proofs: PASSED (sorry = 0, axioms ≤11)"
           elif [ "${{ needs.proofs.result }}" == "skipped" ]; then
             echo "⚠️ Formal Proofs: SKIPPED"
           else

@@ -2,7 +2,7 @@
 
 > Measured on the actual library types in release mode (`-O`).
 > 1,000,000 iterations per benchmark.
-> Date: 2026-04-02
+> Date: 2026-04-05 (commit `9acca6f`)
 
 ## HFT Critical Path SLOs
 
@@ -17,12 +17,14 @@ All Service Level Objectives are met with significant margin.
 | Wallet Guard | `check` (reject order) | **9 ns** | <100 µs | **11,111x** |
 | Ring Buffer | init (capacity 4096) | **<1 ns** | — | — |
 | Wallet Guard | init (default params) | **<1 ns** | — | — |
+| Boot time | `clawdius --version` | **15 ms** | <20 ms | **1.3x** |
+| Binary size | `clawdius` (release) | **17 MB** | — | — |
 
 ## Methodology
 
 - **Framework**: `std::time::Instant` with `black_box` to prevent optimization
 - **Build**: `cargo run --release --package clawdius-core --example quick_perf`
-- **Platform**: Linux x86_64, Rust 1.93.1
+- **Platform**: Linux x86_64, Intel i5-9400F @ 2.90GHz, Rust 1.93.1
 - **Types**: Actual `clawdius_core::broker::ring_buffer::RingBuffer` and `clawdius_core::broker::wallet_guard::WalletGuard`
 - **Iterations**: 1,000,000 per benchmark (init: 10,000)
 
@@ -32,10 +34,10 @@ The standalone `scripts/quick_bench.rs` validates the algorithm patterns indepen
 
 | Operation | Latency | Notes |
 |-----------|---------|-------|
-| Ring buffer push | 8.56 ns | Standalone implementation |
-| Ring buffer pop | 9.66 ns | Standalone implementation |
-| Wallet guard hash insert | 45.07 ns | HashSet-based restricted symbol check |
-| Wallet guard restricted check | 14.79 ns | Symbol lookup in restricted set |
+| Ring buffer push | 56 ns | Standalone `-O`, 1M iterations |
+| Ring buffer pop | 32 ns | Standalone `-O`, 1M iterations |
+| Wallet guard hash insert | 294 ns | HashSet-based restricted symbol check |
+| Wallet guard restricted check | 80 ns | Symbol lookup in restricted set |
 
 ## Criterion Benchmarks (Extended)
 
@@ -56,6 +58,13 @@ Run extended benchmarks:
 ```bash
 cargo bench --package clawdius-core
 cargo bench --package clawdius
+```
+
+## Baseline File
+
+Machine-readable baselines stored in `.specs/performance/baseline.json`:
+```bash
+cat .specs/performance/baseline.json | jq '.benchmarks'
 ```
 
 ## Architecture

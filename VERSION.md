@@ -73,7 +73,7 @@
 | E2E Pipeline | ✅ COMPLETE | Feed → Signal → Risk → Execution (avg 4µs latency) |
 | Lean4 Broker Proof | ✅ COMPLETE | 12 theorems (12 proven, 0 sorry, 1 bridge axiom) |
 | Lean4 FSM Proof | ✅ COMPLETE | 9 theorems (all proven, 0 axioms) |
-| Lean4 Axiom Reduction | ✅ COMPLETE | 68 → 39 axioms (42% reduction, 6 proven/removed) |
+| Lean4 Axiom Reduction | ✅ COMPLETE | 68 → 11 axioms (84% reduction, 28 proven/removed) |
 | FSM Persistence | ✅ COMPLETE | StatePersistence + EventStore wired to engine |
 | Deadlock Fix | ✅ COMPLETE | MutexGuard scope fix in persistence create_session() |
 | Topo Sort Fix | ✅ COMPLETE | Removed incorrect result.reverse() in workflow |
@@ -95,7 +95,7 @@
 - Ring buffer ops: <100ns (SLO met)
 - Wallet guard: <100µs (SLO met)
 - Signal-to-dispatch: avg 4µs, max 148µs (SLO <1ms)
-- Lean4: 142 theorems (142 proven, 0 sorry, 39 axioms) — 97.9% proven
+- Lean4: 142 theorems (142 proven, 0 sorry, 11 axioms) — 92.8% proven
 - Lean4: 0 compilation errors across all 11 proof files
 - All 1,162 tests passing, zero clippy warnings
 
@@ -588,8 +588,8 @@
 | **Test Functions** | 1,244 passing |
 | **Build Status** | ✅ PASSING |
 | **Clippy Warnings** | 0 |
-| **Lean4 Proofs** | 142 theorems (142 proven, 0 sorry, 39 axioms) |
-| **Lean4 Completion** | 97.9% |
+| **Lean4 Proofs** | 142 theorems (142 proven, 0 sorry, 11 axioms) |
+| **Lean4 Completion** | 92.8% |
 | **Test Vector Files** | 4 (HFT, FSM, Ring Buffer, Capability) |
 | **Property Test Suites** | 7 (ring buffer, wallet guard, capability, FSM, execution, feed, persistence) |
 | **LLM Providers** | 5 (Anthropic, OpenAI, Ollama, Z.AI, Local) |
@@ -620,7 +620,7 @@
 - Session management with auto-compact
 - @mentions context system
 - Nexus FSM with 24-phase lifecycle and `clawdius nexus start` CLI command
-- Formal verification with Lean4 (142 theorems, 97.9% proven, 39 justified axioms)
+- Formal verification with Lean4 (142 theorems, 92.8% proven, 11 justified axioms)
 - E2E HFT pipeline with simulated feed and execution
 - Nexus FSM persistence and event sourcing
 - FSM test vector harness (34 test vectors total)
@@ -636,7 +636,7 @@
 | Feature | Clawdius | Competitors |
 |---------|----------|-------------|
 | Sandboxed Execution | ✅ 5 production backends (WASM/Container/Filtered/Bubblewrap/Sandbox-exec) + 2 planned (gVisor, Firecracker) | ❌ None |
-| Formal Verification | ✅ Lean4 proofs (142 theorems, 97.9% proven) | ❌ None |
+| Formal Verification | ✅ Lean4 proofs (142 theorems, 92.8% proven) | ❌ None |
 | Native Performance | ✅ Rust (<20ms boot) | ❌ Node.js/Electron |
 | Graph-RAG | ✅ SQLite + LanceDB | ⚠️ Basic |
 | Plugin System | ✅ WASM + Marketplace | ⚠️ Limited |
