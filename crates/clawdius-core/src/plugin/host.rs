@@ -12,6 +12,7 @@ use super::hooks::{HookContext, HookType};
 use super::manifest::PluginManifest;
 use super::marketplace::{MarketplaceClient, MarketplaceConfig};
 use super::registry::PluginRegistry;
+use super::signing::verify_plugin;
 use super::wasm::WasmRuntime;
 
 /// Plugin directory name
@@ -207,8 +208,13 @@ impl PluginHost {
         // Download WASM module if URL is provided
         if let Some(ref download_url) = result.download_url {
             let wasm_path = plugin_dir.join(&result.manifest.wasm);
-            self.download_wasm_module(download_url, &wasm_path, result.checksum.as_deref())
-                .await?;
+            self.download_wasm_module(
+                download_url,
+                &wasm_path,
+                result.checksum.as_deref(),
+                result.signature.as_deref(),
+            )
+            .await?;
             tracing::info!(
                 "Plugin {} downloaded and installed to {:?}",
                 plugin_name,
@@ -231,6 +237,7 @@ impl PluginHost {
         url: &str,
         dest_path: &std::path::Path,
         expected_checksum: Option<&str>,
+        signature: Option<&str>,
     ) -> Result<()> {
         use sha3::{Digest, Sha3_256};
 
@@ -265,6 +272,29 @@ impl PluginHost {
                 anyhow::bail!("Checksum mismatch: expected {checksum}, got {calculated}");
             }
             tracing::debug!("WASM module checksum verified");
+        }
+
+        // Verify signature if enabled
+        if self.config.marketplace.verify_signatures
+            && signature.is_some()
+            && !self.config.marketplace.trusted_keys.is_empty()
+        {
+            let sig_str = signature.expect("signature checked above");
+            let wasm_slice = bytes.as_ref();
+            let mut verified = false;
+            for trusted_key in &self.config.marketplace.trusted_keys {
+                if verify_plugin(wasm_slice, sig_str, trusted_key).is_ok() {
+                    verified = true;
+                    tracing::debug!("WASM module signature verified with trusted key");
+                    break;
+                }
+            }
+            if !verified {
+                anyhow::bail!(
+                    "Signature verification failed: none of the {} trusted keys matched",
+                    self.config.marketplace.trusted_keys.len()
+                );
+            }
         }
 
         // Write to destination

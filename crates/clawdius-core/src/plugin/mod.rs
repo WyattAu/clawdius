@@ -11,6 +11,7 @@ pub mod loader;
 pub mod manifest;
 pub mod marketplace;
 pub mod registry;
+pub mod signing;
 pub mod wasm;
 
 // Re-export specific types to avoid ambiguity
@@ -28,6 +29,7 @@ pub use marketplace::{
     MarketplaceSearchResults, MarketplaceSort, MarketplaceVersion, UpdateCheck,
 };
 pub use registry::PluginRegistry;
+pub use signing::{sign_plugin, verify_plugin, PluginKeyPair};
 pub use wasm::WasmRuntime;
 
 // Re-export the trait as WasmPluginTrait to avoid ambiguity with the struct

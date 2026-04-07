@@ -19,6 +19,7 @@ use axum::{
     Json,
 };
 use chrono::Utc;
+use clawdius_core::messaging::state_store::StateStore;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -76,18 +77,70 @@ pub struct Category {
     pub icon: Option<String>,
 }
 
-/// Thread-safe in-memory marketplace registry.
-#[derive(Debug, Clone)]
+/// Thread-safe in-memory marketplace registry with optional SQLite persistence.
+#[derive(Clone)]
 pub struct MarketplaceRegistry {
     pub plugins: Arc<RwLock<HashMap<String, RegisteredPlugin>>>,
     pub categories: Arc<RwLock<HashMap<String, Category>>>,
+    store: Option<Arc<dyn StateStore>>,
 }
+
+const MARKETPLACE_TABLE: &str = "marketplace_plugins";
 
 impl MarketplaceRegistry {
     pub fn new() -> Self {
         Self {
             plugins: Arc::new(RwLock::new(HashMap::new())),
             categories: Arc::new(RwLock::new(HashMap::new())),
+            store: None,
+        }
+    }
+
+    pub fn with_persistence(store: Arc<dyn StateStore>) -> Self {
+        Self {
+            plugins: Arc::new(RwLock::new(HashMap::new())),
+            categories: Arc::new(RwLock::new(HashMap::new())),
+            store: Some(store),
+        }
+    }
+
+    pub async fn new_with_store(store: Arc<dyn StateStore>) -> Self {
+        let registry = Self::with_persistence(store);
+        registry.load_plugins().await;
+        registry
+    }
+
+    async fn persist_plugin(&self, plugin: &RegisteredPlugin) {
+        if let Some(ref store) = self.store {
+            if let Ok(json) = serde_json::to_vec(plugin) {
+                if let Err(e) = store.set(MARKETPLACE_TABLE, &plugin.id, &json, None).await {
+                    tracing::warn!(plugin_id = %plugin.id, error = %e, "Failed to persist plugin to state store");
+                }
+            }
+        }
+    }
+
+    async fn load_plugins(&self) {
+        if let Some(ref store) = self.store {
+            match store.keys(MARKETPLACE_TABLE, "*").await {
+                Ok(keys) => {
+                    let mut plugins = self.plugins.write().await;
+                    for key in keys {
+                        if let Ok(Some(bytes)) = store.get(MARKETPLACE_TABLE, &key).await {
+                            if let Ok(plugin) = serde_json::from_slice::<RegisteredPlugin>(&bytes) {
+                                plugins.insert(plugin.id.clone(), plugin);
+                            }
+                        }
+                    }
+                    let count = plugins.len();
+                    if count > 0 {
+                        tracing::info!(count, "Loaded plugins from state store");
+                    }
+                },
+                Err(e) => {
+                    tracing::warn!(error = %e, "Failed to load plugins from state store");
+                },
+            }
         }
     }
 
@@ -188,8 +241,12 @@ impl MarketplaceRegistry {
         ];
 
         let mut plugins = self.plugins.write().await;
-        for p in sample_plugins {
-            plugins.insert(p.id.clone(), p);
+        for p in &sample_plugins {
+            plugins.insert(p.id.clone(), p.clone());
+        }
+
+        for p in &sample_plugins {
+            self.persist_plugin(p).await;
         }
 
         let mut categories = self.categories.write().await;
@@ -242,6 +299,8 @@ pub struct CheckUpdatesRequest {
 pub struct SubmitRequest {
     pub manifest: String,
     pub wasm_base64: String,
+    pub signature: Option<String>,
+    pub public_key: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -415,18 +474,45 @@ pub async fn submit_plugin(
     }
 
     // Validate base64 decoding succeeds
-    if base64::Engine::decode(
+    let wasm_bytes = match base64::Engine::decode(
         &base64::engine::general_purpose::STANDARD,
         &body.wasm_base64,
-    )
-    .is_err()
-    {
-        return json_error(
-            StatusCode::BAD_REQUEST,
-            "INVALID_WASM",
-            "WASM payload is not valid base64",
-        );
-    }
+    ) {
+        Ok(bytes) => bytes,
+        Err(_) => {
+            return json_error(
+                StatusCode::BAD_REQUEST,
+                "INVALID_WASM",
+                "WASM payload is not valid base64",
+            );
+        },
+    };
+
+    // Verify signature if provided
+    let stored_signature =
+        if let (Some(ref sig), Some(ref pk)) = (&body.signature, &body.public_key) {
+            match clawdius_core::plugin::verify_plugin(&wasm_bytes, sig, pk) {
+                Ok(()) => {
+                    tracing::info!("Plugin signature verified");
+                    Some(body.signature.clone().unwrap())
+                },
+                Err(e) => {
+                    return json_error(
+                        StatusCode::BAD_REQUEST,
+                        "INVALID_SIGNATURE",
+                        &format!("Signature verification failed: {e}"),
+                    );
+                },
+            }
+        } else if body.signature.is_some() || body.public_key.is_some() {
+            return json_error(
+                StatusCode::BAD_REQUEST,
+                "INVALID_SIGNATURE",
+                "Both 'signature' and 'public_key' must be provided together",
+            );
+        } else {
+            None
+        };
 
     // Generate plugin ID from manifest name (basic extraction)
     let plugin_id =
@@ -466,7 +552,7 @@ pub async fn submit_plugin(
                 "https://marketplace.clawdius.dev/plugins/{plugin_id}/v0.1.0/plugin.wasm"
             ),
             checksum: format!("{:064x}", sha256_hex(&body.wasm_base64)),
-            signature: None,
+            signature: stored_signature,
             min_clawdius_version: "1.6.0".into(),
             published_at: now,
             prerelease: false,
@@ -482,7 +568,9 @@ pub async fn submit_plugin(
         .plugins
         .write()
         .await
-        .insert(plugin_id.clone(), plugin);
+        .insert(plugin_id.clone(), plugin.clone());
+
+    registry.persist_plugin(&plugin).await;
 
     (
         StatusCode::CREATED,
@@ -932,6 +1020,8 @@ tags = ["test"]
             Json(SubmitRequest {
                 manifest,
                 wasm_base64: wasm_b64,
+                signature: None,
+                public_key: None,
             }),
         )
         .await;
@@ -954,6 +1044,8 @@ tags = ["test"]
             Json(SubmitRequest {
                 manifest: "  ".to_string(),
                 wasm_base64: "AAAA".to_string(),
+                signature: None,
+                public_key: None,
             }),
         )
         .await;
@@ -971,6 +1063,8 @@ tags = ["test"]
             Json(SubmitRequest {
                 manifest: r#"name = "bad""#.to_string(),
                 wasm_base64: "not-valid-base64!!!".to_string(),
+                signature: None,
+                public_key: None,
             }),
         )
         .await;
@@ -994,6 +1088,8 @@ tags = ["test"]
             Json(SubmitRequest {
                 manifest: r#"name = "clawdius-lint""#.to_string(),
                 wasm_base64: wasm_b64,
+                signature: None,
+                public_key: None,
             }),
         )
         .await;
@@ -1147,5 +1243,98 @@ tags = ["a", "b"]
         assert_eq!(body["page"], 2);
         assert_eq!(body["total_pages"], 3);
         assert_eq!(body["plugins"].as_array().unwrap().len(), 1);
+    }
+
+    #[tokio::test]
+    async fn test_submit_plugin_with_valid_signature() {
+        let registry = MarketplaceRegistry::new();
+        let registry_clone = registry.clone();
+        let state = State(registry);
+
+        let wasm_bytes = vec![0x00, 0x61, 0x73, 0x6d];
+        let wasm_b64 =
+            base64::Engine::encode(&base64::engine::general_purpose::STANDARD, &wasm_bytes);
+        let keypair = clawdius_core::plugin::PluginKeyPair::generate();
+        let signature = clawdius_core::plugin::sign_plugin(&wasm_bytes, &keypair);
+        let public_key = keypair.public_key_base64();
+
+        let manifest = r#"
+name = "signed-plugin"
+version = "1.0.0"
+description = "A signed plugin"
+author = "tester"
+"#
+        .to_string();
+
+        let resp = submit_plugin(
+            state,
+            Json(SubmitRequest {
+                manifest,
+                wasm_base64: wasm_b64,
+                signature: Some(signature),
+                public_key: Some(public_key),
+            }),
+        )
+        .await;
+        let (status, body) = into_status_body(resp).await;
+        assert_eq!(status, StatusCode::CREATED);
+        assert_eq!(body["plugin_id"], "signed-plugin");
+
+        let plugins = registry_clone.plugins.read().await;
+        let p = plugins.get("signed-plugin").unwrap();
+        assert!(p.versions[0].signature.is_some());
+    }
+
+    #[tokio::test]
+    async fn test_submit_plugin_with_invalid_signature() {
+        let registry = MarketplaceRegistry::new();
+        let state = State(registry);
+
+        let wasm_bytes = vec![0x00, 0x61, 0x73, 0x6d];
+        let wasm_b64 =
+            base64::Engine::encode(&base64::engine::general_purpose::STANDARD, &wasm_bytes);
+        let keypair = clawdius_core::plugin::PluginKeyPair::generate();
+        let other_kp = clawdius_core::plugin::PluginKeyPair::generate();
+        let signature = clawdius_core::plugin::sign_plugin(&wasm_bytes, &keypair);
+        let wrong_key = other_kp.public_key_base64();
+
+        let resp = submit_plugin(
+            state,
+            Json(SubmitRequest {
+                manifest: r#"name = "bad-sig""#.to_string(),
+                wasm_base64: wasm_b64,
+                signature: Some(signature),
+                public_key: Some(wrong_key),
+            }),
+        )
+        .await;
+        let (status, body) = into_status_body(resp).await;
+        assert_eq!(status, StatusCode::BAD_REQUEST);
+        assert_eq!(body["error"]["code"], "INVALID_SIGNATURE");
+    }
+
+    #[tokio::test]
+    async fn test_submit_plugin_partial_signature_fields() {
+        let registry = MarketplaceRegistry::new();
+        let state = State(registry);
+
+        let wasm_b64 = base64::Engine::encode(
+            &base64::engine::general_purpose::STANDARD,
+            &[0x00, 0x61, 0x73, 0x6d],
+        );
+
+        let resp = submit_plugin(
+            state,
+            Json(SubmitRequest {
+                manifest: r#"name = "partial-sig""#.to_string(),
+                wasm_base64: wasm_b64,
+                signature: Some("somesig".into()),
+                public_key: None,
+            }),
+        )
+        .await;
+        let (status, body) = into_status_body(resp).await;
+        assert_eq!(status, StatusCode::BAD_REQUEST);
+        assert_eq!(body["error"]["code"], "INVALID_SIGNATURE");
     }
 }

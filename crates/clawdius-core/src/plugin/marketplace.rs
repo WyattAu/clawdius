@@ -228,6 +228,8 @@ pub struct InstallResult {
     pub download_url: Option<String>,
     /// SHA-256 checksum for verification
     pub checksum: Option<String>,
+    /// Ed25519 signature for verification (base64)
+    pub signature: Option<String>,
     /// Installed dependencies
     pub dependencies: Vec<String>,
     /// Whether this was an update

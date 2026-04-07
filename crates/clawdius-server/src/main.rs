@@ -1291,9 +1291,14 @@ async fn main() -> anyhow::Result<()> {
     });
 
     // Build marketplace registry and seed with defaults
-    let marketplace_registry = marketplace::MarketplaceRegistry::new();
-    marketplace_registry.seed_defaults().await;
-    tracing::info!("Plugin marketplace initialized (in-memory)");
+    let marketplace_registry = {
+        let reg = marketplace::MarketplaceRegistry::new_with_store(state_store_arc.clone()).await;
+        if reg.plugins.read().await.is_empty() {
+            reg.seed_defaults().await;
+        }
+        tracing::info!("Plugin marketplace initialized (SQLite-backed)");
+        reg
+    };
 
     // Build application state
     let gateway_for_shutdown = gateway.clone();

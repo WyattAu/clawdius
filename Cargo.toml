@@ -77,6 +77,7 @@ jsonrpsee = { version = "0.24", features = ["server", "client", "ws-client"] }
 keyring = "3.6"
 rpassword = "7.3"
 aes-gcm = "0.10"
+ed25519-dalek = { version = "2", features = ["rand_core"] }
 rand_core = "0.6"
 
 # === HTTP ===

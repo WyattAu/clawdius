@@ -731,12 +731,15 @@ const TABLE_RETRY_QUEUE: &str = "messaging_retry_queue";
 const TABLE_OAUTH_TOKENS: &str = "messaging_oauth_tokens";
 const TABLE_TENANTS: &str = "messaging_tenants";
 
+const TABLE_MARKETPLACE_PLUGINS: &str = "marketplace_plugins";
+
 const ALL_TABLES: &[&str] = &[
     TABLE_SESSIONS,
     TABLE_RATE_LIMITS,
     TABLE_RETRY_QUEUE,
     TABLE_OAUTH_TOKENS,
     TABLE_TENANTS,
+    TABLE_MARKETPLACE_PLUGINS,
 ];
 
 pub struct StateStoreFactory {

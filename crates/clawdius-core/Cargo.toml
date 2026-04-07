@@ -112,7 +112,8 @@ keyring = { workspace = true, optional = true }
 
 # Encryption at rest
 aes-gcm = { workspace = true, optional = true }
-rand_core = { workspace = true, optional = true }
+ed25519-dalek = { workspace = true }
+rand_core = { workspace = true }
 
 # JWT authentication (optional)
 jsonwebtoken = { workspace = true, optional = true }
@@ -178,7 +179,7 @@ hft-mode = []
 broker-mode = []
 keyring = ["dep:keyring"]
 crash-reporting = ["dep:sentry"]
-encryption = ["dep:aes-gcm", "dep:rand_core"]
+encryption = ["dep:aes-gcm"]
 jwt = ["dep:jsonwebtoken"]
 embeddings = ["dep:candle-core", "dep:candle-nn", "dep:candle-transformers", "dep:tokenizers", "dep:hf-hub"]
 vector-db = ["dep:lancedb", "dep:arrow", "dep:arrow-array", "dep:arrow-schema"]
