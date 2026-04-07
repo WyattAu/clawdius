@@ -52,6 +52,9 @@ pub mod verifier_agent;
 pub use apply_workflow::{
     ApplyWorkflow, Checkpoint, CheckpointManager, TrustLevel, WorkflowResult,
 };
+pub use error_recovery::{
+    CompilationError, ErrorRecovery, ErrorRecoveryConfig, ErrorRecoveryResult,
+};
 pub use executor_agent::{ExecutorAgent, StepResult};
 pub use file_ops::{FileBackup, FileOperation, FileOperationResult, FileOperations};
 pub use generation_mode::{GenerationMode, GenerationOptions, GenerationResult};
@@ -65,9 +68,6 @@ pub use test_execution::{
     SandboxBackend, TestExecutionStrategy, TestFramework, TestResult, TestRunner,
 };
 pub use tool_executor::{NoOpToolExecutor, ToolDefinition, ToolExecutor, ToolRequest, ToolResult};
-pub use error_recovery::{
-    CompilationError, ErrorRecovery, ErrorRecoveryConfig, ErrorRecoveryResult,
-};
 pub use verifier_agent::{
     IssueSeverity, VerificationIssue, VerificationResult, VerificationRule, VerifierAgent,
 };
