@@ -5,16 +5,16 @@
 
 [![Version](https://img.shields.io/badge/version-1.6.0-blue.svg)](https://github.com/WyattAu/clawdius/releases/tag/v1.6.0)
 [![Rust](https://img.shields.io/badge/language-Rust-orange.svg)](https://www.rust-lang.org)
-[![Security](https://img.shields.io/badge/Security-Zero_Vulnerabilities-brightgreen.svg)](#-security)
+[![Security](https://img.shields.io/badge/Security-Audited-brightgreen.svg)](#-security)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-yellow.svg)](LICENSE)
 
-**Clawdius** is a next-generation AI agentic engine built for developers who can't afford hallucinations and traders who can't afford latency. While other "claws" run on bloated Node.js runtimes with raw shell access, Clawdius is a native Rust binary that enforces a formal R&D lifecycle and executes code in strictly isolated, just-in-time sandboxes.
+**Clawdius** is a next-generation AI agentic engine built for developers who can't afford hallucinations and traders who can't afford latency. While other "claws" run on interpreted runtimes with system-level access, Clawdius is a native Rust binary that enforces a formal R&D lifecycle and executes code in strictly isolated, just-in-time sandboxes.
 
 ---
 
 ## Features
 
-- **Multi-Provider LLM Support** - Anthropic, OpenAI, Ollama, ZAI with automatic retry
+- **Multi-Provider LLM Support** - Anthropic, OpenAI, DeepSeek, OpenRouter, Ollama, ZAI with automatic retry
 - **File Timeline System** - Complete change tracking with checkpoints and rollback capability
 - **JSON Output** - All commands support JSON output for programmatic consumption
 - **Enhanced Completions** - LRU-cached, language-specific code completions with smart fallbacks
@@ -72,20 +72,21 @@ clawdius/
 
 | Feature      | Clawdius                           | Claude Code / OpenClaw             |
 | :----------- | :--------------------------------- | :--------------------------------- |
-| **Runtime**  | **Rust** (Zero GC, <20ms boot)     | Node.js (Heavy, Garbage Collected) |
+| **Runtime**  | **Rust** (Zero GC, <50ms cold start) | Node.js (Heavy, Garbage Collected) |
 | **Security** | **Sentinel JIT Sandboxing**        | Raw Shell / Local OS Access        |
 | **Rigor**    | **Nexus Lifecycle** (Formal Specs) | Stochastic (Guess & Check)         |
 | **Context**  | **Graph-RAG** (AST + Vector)       | Simple Vector / RAG                |
-| **Trading**  | **Broker Mode** (Sub-ms latency)   | Not Supported / High Latency       |
+| **Trading**  | **Broker Mode** (Low-latency)      | Not Supported / High Latency       |
 
 ---
 
 ## Core Pillars
 
 ### The Sentinel (JIT Sandboxing)
-Stop letting AI agents run `rm -rf /` on your machine. Clawdius analyzes your project and dynamically spawns the most restrictive environment needed:
+Stop letting AI agents run `rm -rf /` on your machine. Clawdius uses a tiered sandbox strategy, falling back to more restrictive environments based on availability:
 - **Tier 1 (Systems):** Bubblewrap/sandbox-exec passthrough for high-performance C++/Rust.
 - **Tier 2 (Scripts):** Rootless Podman containers for untrusted Node.js/Python code.
+- **Tier 3 (Experimental):** gVisor and Firecracker micro-VMs planned for hardened isolation.
 - **Privacy:** Your API keys and SSH secrets stay in the Host memory; they are never visible to the agent.
 
 ### Graph-RAG Intelligence
@@ -117,7 +118,7 @@ Deploy Clawdius as a 24/7 financial assistant on your server or Mac Mini.
 cargo install clawdius
 
 # Or via Nix
-nix shell github:clawdius/clawdius
+nix shell github:WyattAu/clawdius
 ```
 
 ### From Source
@@ -196,7 +197,7 @@ clawdius setup
 clawdius setup --quick --provider anthropic
 ```
 
-The will:
+The wizard will:
 - Guide you through provider selection (Anthropic, OpenAI, Ollama, Zhipu AI)
 - Securely store your API key using system keyring
 - Apply a settings preset (Balanced, Security, Performance, Development)
@@ -214,6 +215,7 @@ clawdius chat
 clawdius generate --mode agent "Create a REST API endpoint"
 ```
 
+```toml
 [llm.retry]
 max_retries = 3
 retry_on = ["rate_limit", "timeout", "server_error"]
@@ -227,26 +229,26 @@ restrict_to_cwd = true
 
 ```bash
 # Quick message
-clawd chat "Explain this code"
+clawdius chat "Explain this code"
 
 # Specify provider and model
-clawd chat "Write tests" --provider openai --model gpt-4o
+clawdius chat "Write tests" --provider openai --model gpt-4o
 
 # Use local Ollama
-clawd chat "Hello" --provider ollama --model llama3.2
+clawdius chat "Hello" --provider ollama --model llama3.2
 ```
 
 ### 5. Manage Sessions
 
 ```bash
 # List sessions
-clawd sessions
+clawdius sessions
 
 # Search sessions
-clawd sessions --search "error handling"
+clawdius sessions --search "error handling"
 
 # Delete a session
-clawd sessions --delete <session-id>
+clawdius sessions --delete <session-id>
 ```
 
 ### 6. Use @Mentions for Context
@@ -255,30 +257,30 @@ Clawdius supports @mentions to include context in your messages:
 
 ```bash
 # Include a file
-clawd chat "Explain this @file:src/main.rs"
+clawdius chat "Explain this @file:src/main.rs"
 
 # Include multiple files
-clawd chat "Compare @file:src/a.rs with @file:src/b.rs"
+clawdius chat "Compare @file:src/a.rs with @file:src/b.rs"
 
 # Include folder listing
-clawd chat "What's in @folder:src/components?"
+clawdius chat "What's in @folder:src/components?"
 
 # Fetch URL content
-clawd chat "Summarize @url:https://example.com/doc"
+clawdius chat "Summarize @url:https://example.com/doc"
 
 # Include git diff
-clawd chat "Review @git:diff"
-clawd chat "Review staged changes @git:staged"
+clawdius chat "Review @git:diff"
+clawdius chat "Review staged changes @git:staged"
 
 # Show recent commits
-clawd chat "What changed? @git:log:5"
+clawdius chat "What changed? @git:log:5"
 
 # Search codebase
-clawd chat "Find @search:\"error handling\""
+clawdius chat "Find @search:\"error handling\""
 
 # Include workspace problems (requires LSP)
-clawd chat "Fix @problems"
-clawd chat "Fix errors @problems:error"
+clawdius chat "Fix @problems"
+clawdius chat "Fix errors @problems:error"
 ```
 
 @mentions work in both CLI chat and TUI modes. Multiple mentions are resolved and included as context.
@@ -391,27 +393,27 @@ clawdius chat "Explain this" --format json
 
 | Command | Description |
 |---------|-------------|
-| `clawd init` | Initialize Clawdius in current directory |
-| `clawd chat` | Send a message to the LLM |
-| `clawd sessions` | List and manage conversation sessions |
-| `clawd timeline create` | Create a file timeline checkpoint |
-| `clawd timeline list` | List all timeline checkpoints |
-| `clawd timeline rollback` | Rollback to a specific checkpoint |
-| `clawd timeline diff` | View diff between checkpoints |
-| `clawd timeline history` | View file change history |
-| `clawd auth set-key` | Store API key in system keyring |
-| `clawd auth get-key` | Retrieve stored API key |
-| `clawd auth delete-key` | Delete stored API key |
-| `clawd refactor` | Plan and execute cross-language refactoring |
-| `clawd broker` | Activate financial monitoring and trading signals |
-| `clawd verify` | Run Lean 4 proofs and SOP compliance checks |
-| `clawd compliance` | Generate compliance matrix |
-| `clawd research` | Multi-lingual research synthesis |
+| `clawdius init` | Initialize Clawdius in current directory |
+| `clawdius chat` | Send a message to the LLM |
+| `clawdius sessions` | List and manage conversation sessions |
+| `clawdius timeline create` | Create a file timeline checkpoint |
+| `clawdius timeline list` | List all timeline checkpoints |
+| `clawdius timeline rollback` | Rollback to a specific checkpoint |
+| `clawdius timeline diff` | View diff between checkpoints |
+| `clawdius timeline history` | View file change history |
+| `clawdius auth set-key` | Store API key in system keyring |
+| `clawdius auth get-key` | Retrieve stored API key |
+| `clawdius auth delete-key` | Delete stored API key |
+| `clawdius refactor` | Plan and execute cross-language refactoring |
+| `clawdius broker` | Activate financial monitoring and trading signals |
+| `clawdius verify` | Run Lean 4 proofs and SOP compliance checks |
+| `clawdius compliance` | Generate compliance matrix |
+| `clawdius research` | Multi-lingual research synthesis |
 
 ### CLI Options
 
 ```bash
-clawd chat "message" [OPTIONS]
+clawdius chat "message" [OPTIONS]
 
 Options:
   -P, --provider <PROVIDER>  LLM provider (anthropic, openai, ollama, zai)
@@ -486,13 +488,13 @@ secret_token = "webhook-secret"
 
 | Command | Description |
 |---------|-------------|
-| `/clawd status` | Show gateway and session status |
-| `/clawd help` | List all available commands |
-| `/clawd session` | Manage or switch coding sessions |
-| `/clawd generate` | Trigger code generation from a prompt |
-| `/clawd analyze` | Run analysis on a repository or file |
-| `/clawd config` | View or update gateway configuration |
-| `/clawd admin` | Administrative operations (requires auth) |
+| `/clawdius status` | Show gateway and session status |
+| `/clawdius help` | List all available commands |
+| `/clawdius session` | Manage or switch coding sessions |
+| `/clawdius generate` | Trigger code generation from a prompt |
+| `/clawdius analyze` | Run analysis on a repository or file |
+| `/clawdius config` | View or update gateway configuration |
+| `/clawdius admin` | Administrative operations (requires auth) |
 
 ### Docker
 
@@ -526,7 +528,7 @@ The gateway follows a **reverse-proxy pattern**: each messaging platform registe
 
 ### Prerequisites
 
-- Rust 1.85+
+- Rust 1.88+
 - Cargo
 - pnpm (for VSCode extension)
 

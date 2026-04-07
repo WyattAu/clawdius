@@ -1,7 +1,7 @@
 # Clawdius User Guide
 
-**Version:** 0.7.0  
-**Last Updated:** 2026-03-06
+**Version:** 2.0.0  
+**Last Updated:** 2026-04-07
 
 ---
 
@@ -28,10 +28,17 @@ Clawdius is a high-assurance AI engineering engine that enforces rigorous develo
 
 - **24-Phase Nexus Lifecycle:** Structured development process with quality gates
 - **Graph-RAG Intelligence:** AST-based code understanding with vector search
+- **Multi-Agent Modes:** Built-in and custom agent modes (code, architect, ask, debug, review, refactor, test, auto)
+- **Autonomous CI/CD:** Run tasks without interaction with auto-commit and test execution
+- **Agentic Code Generation:** Single-pass, iterative, and agent generation modes
 - **Sentinel Sandboxing:** Multi-tier execution isolation
 - **SOP Enforcement:** Automated standard operating procedure compliance
 - **HFT-Ready:** Sub-millisecond latency for financial applications
 - **Monorepo Architecture:** Single repository for all components
+- **Project Memory:** CLAUDE.md-based persistent project knowledge
+- **Git Integration:** AI-generated commit messages, diffs, and status
+- **Webhook Support:** Event notifications via webhooks
+- **Multi-Language Output:** i18n support for 10 languages
 
 ### 1.2 System Requirements
 
@@ -106,7 +113,7 @@ pnpm run compile
 vsce package
 
 # Install in VSCode
-code --install-extension clawdius-0.7.0.vsix
+code --install-extension clawdius-2.0.0.vsix
 ```
 
 **Option 2: Development Mode**
@@ -120,7 +127,7 @@ code .
 
 ```bash
 clawdius --version
-# Output: clawdius 0.7.0
+# Output: clawdius 2.0.0
 
 # Check all components
 clawdius --version          # CLI
@@ -137,6 +144,14 @@ Initialize Clawdius in your project:
 
 ```bash
 clawdius init
+```
+
+Or use the interactive setup wizard:
+
+```bash
+clawdius setup
+clawdius setup --provider anthropic  # Pre-select provider
+clawdius setup --quick               # Skip welcome screen
 ```
 
 This creates the `.clawdius/` directory structure:
@@ -175,16 +190,14 @@ vector_path = ".clawdius/graph/vectors.lance"
 sessions_path = ".clawdius/sessions.db"
 
 [llm]
-default_provider = "anthropic"  # anthropic, openai, ollama, zai
+default_provider = "anthropic"  # anthropic, openai, ollama, zai, deepseek, openrouter
 max_tokens = 4096
 
 [llm.anthropic]
-model = "claude-3-5-sonnet-20241022"
-# api_key_env = "ANTHROPIC_API_KEY"  # Optional: custom env var name
+model = "claude-sonnet-4-20250514"
 
 [llm.openai]
 model = "gpt-4o"
-# base_url = "https://api.openai.com/v1"  # Optional: custom endpoint
 
 [llm.ollama]
 model = "llama3.2"
@@ -229,17 +242,19 @@ Clawdius supports multiple LLM providers:
 
 | Provider | Models | API Key Required |
 |----------|--------|------------------|
-| **Anthropic** | claude-3-5-sonnet, claude-3-opus | Yes |
+| **Anthropic** | claude-sonnet-4, claude-3-opus | Yes |
 | **OpenAI** | gpt-4o, gpt-4-turbo, gpt-3.5-turbo | Yes |
 | **Ollama** | llama3.2, mistral, codellama | No (local) |
+| **DeepSeek** | deepseek-coder | Yes |
 | **ZAI** | zai-default | Yes |
+| **OpenRouter** | Various (multi-provider routing) | Yes |
 
 Select a provider via CLI:
 
 ```bash
-clawd chat --provider anthropic --model claude-3-5-sonnet-20241022
-clawd chat --provider openai --model gpt-4o
-clawd chat --provider ollama --model llama3.2
+clawdius chat --provider anthropic --model claude-sonnet-4-20250514
+clawdius chat --provider openai --model gpt-4o
+clawdius chat --provider ollama --model llama3.2
 ```
 
 ### 3.4 Retry Configuration
@@ -320,24 +335,24 @@ export OPENAI_API_KEY="sk-..."
 
 ### 4.2 System Keyring Storage
 
-Clawdius can securely store API keys in your system's keyring:
+Requires the `keyring` feature. Clawdius can securely store API keys in your system's keyring:
 
 ```bash
 # Store an API key (prompts for key input)
-clawd auth set-key anthropic
-clawd auth set-key openai
-clawd auth set-key zai
+clawdius auth set anthropic
+clawdius auth set openai
+clawdius auth set zai
 
 # Retrieve a stored key (shows first 8 characters)
-clawd auth get-key anthropic
+clawdius auth get anthropic
 
 # Delete a stored key
-clawd auth delete-key anthropic
+clawdius auth delete anthropic
 ```
 
 **Key Priority Order:**
 1. Environment variable (e.g., `ANTHROPIC_API_KEY`)
-2. System keyring (via `clawd auth set-key`)
+2. System keyring (via `clawdius auth set`)
 3. Config file `api_key` field (not recommended)
 
 ### 4.3 Config File (Not Recommended)
@@ -353,30 +368,50 @@ api_key = "sk-ant-..."  # WARNING: Visible in file, git history
 
 ## 5. Commands
 
-### 5.1 `clawd init`
+### 5.1 `clawdius init`
 
 Initialize Clawdius in the current directory.
 
 ```bash
-clawd init [PATH]
+clawdius init [NAME]
 ```
 
 | Argument | Description | Default |
 |----------|-------------|---------|
-| `PATH` | Project directory | `.` |
+| `NAME` | Project name | Directory name |
 
 **Example:**
 ```bash
-clawd init                    # Initialize in current directory
-clawd init ~/projects/my-app  # Initialize in specific directory
+clawdius init                    # Initialize with directory name
+clawdius init my-app            # Initialize with specific name
 ```
 
-### 5.2 `clawd chat`
+### 5.2 `clawdius setup`
+
+Interactive setup wizard for first-time configuration.
+
+```bash
+clawdius setup [OPTIONS]
+```
+
+| Flag | Description |
+|------|-------------|
+| `--quick`, `-q` | Skip welcome screen |
+| `--provider`, `-P` | Pre-select provider |
+
+**Example:**
+```bash
+clawdius setup                        # Full interactive setup
+clawdius setup --provider anthropic   # Pre-select Anthropic
+clawdius setup --quick                # Quick setup
+```
+
+### 5.3 `clawdius chat`
 
 Send a message to the LLM or start an interactive session.
 
 ```bash
-clawd chat MESSAGE [OPTIONS]
+clawdius chat [MESSAGE] [OPTIONS]
 ```
 
 | Flag | Description | Default |
@@ -384,28 +419,69 @@ clawd chat MESSAGE [OPTIONS]
 | `--provider`, `-P` | LLM provider | `anthropic` |
 | `--model`, `-m` | Model to use | Provider default |
 | `--session`, `-s` | Continue from session ID | New session |
+| `--mode`, `-M` | Agent mode | `code` |
+| `--editor`, `-e` | Open external editor to compose | Disabled |
+| `--exit` | Non-interactive mode (auto with prompt) | Disabled |
+| `--quiet` | Suppress all output except response | Disabled |
+| `--auto-approve` | Auto-approve all tool executions | Disabled |
+
+**Built-in Modes:** `code`, `architect`, `ask`, `debug`, `review`, `refactor`, `test`, `auto`
 
 **Examples:**
 ```bash
-# Simple message
-clawd chat "Explain this code"
+# Interactive chat
+clawdius chat
+
+# Single-shot message
+clawdius chat "Explain this code"
 
 # Specify provider and model
-clawd chat "Write tests" --provider openai --model gpt-4o
+clawdius chat "Write tests" --provider openai --model gpt-4o
 
 # Continue previous session
-clawd chat "Continue" --session abc123
+clawdius chat "Continue" --session abc123
+
+# Use specific agent mode
+clawdius chat --mode architect
 
 # Use local Ollama
-clawd chat "Hello" --provider ollama --model llama3.2
+clawdius chat "Hello" --provider ollama --model llama3.2
+
+# Compose in editor
+clawdius chat --editor
 ```
 
-### 5.3 `clawd sessions`
+### 5.4 `clawdius auto`
+
+Autonomous CI/CD mode - run tasks without interaction.
+
+```bash
+clawdius auto <TASK> [OPTIONS]
+```
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--provider`, `-P` | LLM provider | `anthropic` |
+| `--model`, `-m` | Model to use | Provider default |
+| `--max-iterations` | Max iterations before stopping | 50 |
+| `--run-tests` | Run tests after changes | Disabled |
+| `--auto-commit` | Commit changes automatically | Disabled |
+| `--fail-on-test-failure` | Fail if tests fail after changes | Disabled |
+| `--output-format` | CI output format (text, json, github-actions) | text |
+
+**Examples:**
+```bash
+clawdius auto "fix failing tests" --run-tests --fail-on-test-failure
+clawdius auto "implement user auth" --auto-commit
+clawdius auto "refactor module" --output-format json
+```
+
+### 5.5 `clawdius sessions`
 
 List and manage conversation sessions.
 
 ```bash
-clawd sessions [OPTIONS]
+clawdius sessions [OPTIONS]
 ```
 
 | Flag | Description |
@@ -416,68 +492,179 @@ clawd sessions [OPTIONS]
 **Examples:**
 ```bash
 # List all sessions
-clawd sessions
+clawdius sessions
 
 # Delete a session
-clawd sessions --delete abc123
+clawdius sessions --delete abc123
 
 # Search sessions
-clawd sessions --search "error handling"
+clawdius sessions --search "error handling"
 ```
 
-### 5.4 `clawd auth`
+### 5.6 `clawdius auth`
 
-Manage API keys in system keyring.
+Manage API keys in system keyring (requires `keyring` feature).
 
 ```bash
-clawd auth <COMMAND>
+clawdius auth <COMMAND>
 ```
 
 | Command | Description |
 |---------|-------------|
-| `set-key <provider>` | Store API key for provider |
-| `get-key <provider>` | Retrieve stored API key |
-| `delete-key <provider>` | Delete stored API key |
+| `set <provider>` | Store API key for provider |
+| `get <provider>` | Retrieve stored API key |
+| `delete <provider>` | Delete stored API key |
 
 **Supported Providers:** `anthropic`, `openai`, `zai`
 
 **Examples:**
 ```bash
-# Store API key (prompts securely)
-clawd auth set-key anthropic
-
-# Verify key is stored
-clawd auth get-key anthropic
-
-# Remove key
-clawd auth delete-key anthropic
+clawdius auth set anthropic
+clawdius auth get anthropic
+clawdius auth delete anthropic
 ```
 
-### 5.5 `clawd refactor`
+### 5.7 `clawdius generate`
+
+Generate code using agentic AI.
+
+```bash
+clawdius generate <PROMPT> [OPTIONS]
+```
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--files`, `-f` | Target files (comma-separated) | None |
+| `--mode`, `-M` | Generation mode: `single-pass`, `iterative`, `agent` | `single-pass` |
+| `--trust`, `-T` | Trust level: `low`, `medium`, `high` | `medium` |
+| `--test-strategy` | Test execution: `sandboxed`, `direct`, `skip` | None |
+| `--max-iterations`, `-i` | Max iterations for iterative/agent mode | 5 |
+| `--dry-run` | Preview without applying | Disabled |
+| `--provider`, `-P` | LLM provider | `anthropic` |
+| `--model`, `-m` | Model to use | Provider default |
+| `--stream` | Enable streaming output | Disabled |
+| `--incremental` | Enable incremental (diff-based) generation | Disabled |
+| `--timeout-secs`, `-R` | Timeout for LLM operations | None |
+
+**Examples:**
+```bash
+clawdius generate "create REST API handlers"
+clawdius generate "add validation" --files src/api.rs --dry-run
+clawdius generate "implement feature" --mode agent --max-iterations 10
+```
+
+### 5.8 `clawdius refactor`
 
 Plan and execute cross-language refactoring.
 
 ```bash
-clawd refactor --from LANG --to LANG [PATH] [OPTIONS]
+clawdius refactor --from LANG --to LANG [PATH] [OPTIONS]
 ```
 
 | Flag | Description |
 |------|-------------|
 | `--from`, `-f` | Source language |
 | `--to`, `-t` | Target language |
+| `--path`, `-p` | Path to file or directory |
 | `--dry-run` | Preview without applying |
 
 **Example:**
 ```bash
-clawd refactor --from typescript --to rust src/ --dry-run
+clawdius refactor --from typescript --to rust src/ --dry-run
 ```
 
-### 5.6 `clawd broker`
+### 5.9 `clawdius test`
+
+Generate tests for code.
+
+```bash
+clawdius test <FILE> [OPTIONS]
+```
+
+| Flag | Description |
+|------|-------------|
+| `--function` | Function to generate tests for (all if omitted) |
+| `--output`, `-o` | Output file path |
+
+**Example:**
+```bash
+clawdius test src/lib.rs
+clawdius test src/lib.rs --function my_function
+clawdius test src/lib.rs -o tests/lib_test.rs
+```
+
+### 5.10 `clawdius doc`
+
+Generate documentation for code.
+
+```bash
+clawdius doc <FILE> [OPTIONS]
+```
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--element` | Element to document (function, struct, module) | None |
+| `--format`, `-f` | Doc format: `auto`, `rustdoc`, `jsdoc`, `pydoc`, `markdown` | `auto` |
+| `--output`, `-o` | Output file path (stdout if omitted) | stdout |
+| `--inline` | Include inline comments | Disabled |
+
+**Example:**
+```bash
+clawdius doc src/lib.rs
+clawdius doc src/lib.rs --element MyStruct --format rustdoc
+clawdius doc src/lib.rs --inline -o docs/api.md
+```
+
+### 5.11 `clawdius analyze`
+
+Analyze codebase for architecture drift and technical debt.
+
+```bash
+clawdius analyze [PATH] [OPTIONS]
+```
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--drift` | Analyze for architecture drift only | Disabled |
+| `--debt` | Analyze for technical debt only | Disabled |
+| `--format`, `-f` | Output format: `text`, `json` | `text` |
+| `--output`, `-o` | Output file path | stdout |
+| `--severity` | Minimum severity: `low`, `medium`, `high`, `critical` | `low` |
+| `--exclude` | Exclude patterns (comma-separated) | None |
+
+**Examples:**
+```bash
+clawdius analyze .
+clawdius analyze . --drift --severity high
+clawdius analyze . --debt -f json -o report.json
+```
+
+### 5.12 `clawdius action`
+
+Apply a code action.
+
+```bash
+clawdius action <ACTION> <FILE> [OPTIONS]
+```
+
+| Argument | Description |
+|----------|-------------|
+| `ACTION` | Action: `extract-function`, `extract-variable`, `inline-variable`, `rename`, `move-module`, `generate-tests` |
+| `FILE` | File path |
+
+| Flag | Description |
+|------|-------------|
+| `--line`, `-l` | Line number |
+| `--column`, `-c` | Column number |
+| `--end-line`, `-s` | End line for selection |
+| `--end-column`, `-e` | End column for selection |
+
+### 5.13 `clawdius broker`
 
 Activate financial monitoring and trading signals.
 
 ```bash
-clawd broker [--config CONFIG] [--paper-trade]
+clawdius broker [OPTIONS]
 ```
 
 | Flag | Description |
@@ -487,15 +674,15 @@ clawd broker [--config CONFIG] [--paper-trade]
 
 **Example:**
 ```bash
-clawd broker --config broker.toml --paper-trade
+clawdius broker --config broker.toml --paper-trade
 ```
 
-### 5.7 `clawd verify`
+### 5.14 `clawdius verify`
 
 Run Lean 4 proofs and SOP compliance checks.
 
 ```bash
-clawd verify --proof PATH [--lean-path PATH]
+clawdius verify --proof PATH [--lean-path PATH]
 ```
 
 | Flag | Description |
@@ -505,15 +692,15 @@ clawd verify --proof PATH [--lean-path PATH]
 
 **Example:**
 ```bash
-clawd verify --proof proofs/
+clawdius verify --proof proofs/
 ```
 
-### 5.8 `clawd compliance`
+### 5.15 `clawdius compliance`
 
 Generate compliance matrix.
 
 ```bash
-clawd compliance --standards STANDARDS [OPTIONS]
+clawdius compliance --standards STANDARDS [OPTIONS]
 ```
 
 | Flag | Description | Default |
@@ -525,15 +712,15 @@ clawd compliance --standards STANDARDS [OPTIONS]
 
 **Example:**
 ```bash
-clawd compliance --standards iso26262,do178c --format markdown
+clawdius compliance --standards iso26262,do178c --format markdown
 ```
 
-### 5.9 `clawd research`
+### 5.16 `clawdius research`
 
 Multi-lingual research synthesis.
 
 ```bash
-clawd research QUERY [OPTIONS]
+clawdius research <QUERY> [OPTIONS]
 ```
 
 | Flag | Description | Default |
@@ -544,8 +731,226 @@ clawd research QUERY [OPTIONS]
 
 **Example:**
 ```bash
-clawd research "distributed systems consensus" --languages en,zh,ru
+clawdius research "distributed systems consensus" --languages en,zh,ru
 ```
+
+### 5.17 `clawdius git`
+
+Git workflow operations with AI-generated commit messages.
+
+```bash
+clawdius git <COMMAND>
+```
+
+| Command | Description |
+|---------|-------------|
+| `commit [FILES...]` | Stage files and create AI-generated commit |
+| `diff` | Show working diff |
+| `diff --staged` | Show staged diff |
+| `status` | Show git status summary |
+
+**Examples:**
+```bash
+clawdius git commit                   # Stage all, AI-generated message
+clawdius git commit src/lib.rs        # Stage specific files
+clawdius git commit -m "fix typo"     # Use provided message
+clawdius git diff
+clawdius git status
+```
+
+### 5.18 `clawdius memory`
+
+Manage project memory (CLAUDE.md).
+
+```bash
+clawdius memory <COMMAND>
+```
+
+| Command | Description |
+|---------|-------------|
+| `show` | Show project memory |
+| `show --instructions` | Show as LLM-ready instructions |
+| `learn <type> <content>` | Learn a new entry (build, test, debug, pattern, preference) |
+| `instructions <content>` | Set project instructions |
+| `list [category]` | List entries by category |
+| `clear [category]` | Clear entries |
+| `init` | Create/update CLAUDE.md file |
+
+**Examples:**
+```bash
+clawdius memory show
+clawdius memory learn pattern "always use Result<T, E>"
+clawdius memory instructions "This project uses async Rust"
+clawdius memory init --name my-project --language rust --framework actix-web
+```
+
+### 5.19 `clawdius workflow`
+
+Manage agentic workflows.
+
+```bash
+clawdius workflow <COMMAND>
+```
+
+| Command | Description |
+|---------|-------------|
+| `list` | List all workflows |
+| `create <name>` | Create a new workflow |
+| `show <id>` | Show workflow details |
+| `run <id>` | Execute a workflow |
+| `cancel <execution-id>` | Cancel a running workflow |
+| `status <execution-id>` | Show execution status |
+| `delete <id>` | Delete a workflow |
+
+**Examples:**
+```bash
+clawdius workflow list
+clawdius workflow create "code-review" --description "Automated review pipeline"
+clawdius workflow run <workflow-id> --provider anthropic
+```
+
+### 5.20 `clawdius modes`
+
+Manage agent modes.
+
+```bash
+clawdius modes <COMMAND>
+```
+
+| Command | Description |
+|---------|-------------|
+| `list` | List all available modes |
+| `create <name>` | Create a custom mode |
+| `show <name>` | Show mode details |
+
+**Examples:**
+```bash
+clawdius modes list
+clawdius modes create security-review
+clawdius modes show architect
+```
+
+### 5.21 `clawdius models`
+
+Manage local LLM models (Ollama).
+
+```bash
+clawdius models <COMMAND> [OPTIONS]
+```
+
+| Command | Description |
+|---------|-------------|
+| `list` | List available local models |
+| `pull <model>` | Pull a model from registry |
+| `health` | Check Ollama server health |
+| `current` | Show current model |
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--host`, `-H` | Ollama host | `localhost` |
+| `--port`, `-p` | Ollama port | `11434` |
+
+**Examples:**
+```bash
+clawdius models list
+clawdius models pull llama3.2
+clawdius models health
+```
+
+### 5.22 `clawdius nexus`
+
+Run the Nexus 24-phase FSM engine.
+
+```bash
+clawdius nexus start [PATH]
+```
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--path`, `-p` | Project root path | `.` |
+
+**Example:**
+```bash
+clawdius nexus start .
+```
+
+### 5.23 `clawdius webhook`
+
+Manage webhooks for event notifications.
+
+```bash
+clawdius webhook <COMMAND>
+```
+
+| Command | Description |
+|---------|-------------|
+| `list` | List all webhooks |
+| `create <name> <url>` | Create a webhook |
+| `show <id>` | Show webhook details |
+| `update <id>` | Update a webhook |
+| `delete <id>` | Delete a webhook |
+| `test <id>` | Test a webhook |
+| `deliveries [id]` | Show delivery history |
+| `stats` | Show webhook statistics |
+
+### 5.24 `clawdius metrics`
+
+Show performance metrics.
+
+```bash
+clawdius metrics [OPTIONS]
+```
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--format`, `-f` | Output format: `text`, `json`, `html` | `text` |
+| `--output`, `-o` | Output file path | stdout |
+| `--reset`, `-r` | Reset metrics after displaying | Disabled |
+| `--watch`, `-w` | Watch mode - continuously display | Disabled |
+
+### 5.25 `clawdius telemetry`
+
+Configure telemetry settings.
+
+```bash
+clawdius telemetry [OPTIONS]
+```
+
+| Flag | Description |
+|------|-------------|
+| `--enable` | Enable telemetry |
+| `--disable` | Disable telemetry |
+| `--enable-metrics` | Enable metrics collection |
+| `--enable-crash-reporting` | Enable crash reporting |
+
+### 5.26 `clawdius watch`
+
+Watch files for changes and trigger auto-analysis.
+
+```bash
+clawdius watch [PATH] [OPTIONS]
+```
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--ignore` | Patterns to ignore (comma-separated) | None |
+| `--auto-analyze` | Enable auto-analysis on changes | Disabled |
+| `--debounce-ms` | Debounce interval in milliseconds | `500` |
+| `--verbose`, `-v` | Enable verbose output | Disabled |
+
+### 5.27 `clawdius complete`
+
+Get inline code completions from LLM.
+
+```bash
+clawdius complete <FILE> <LINE> <CHARACTER> [OPTIONS]
+```
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--language` | Programming language | Auto-detected |
+| `--provider`, `-P` | LLM provider | `ollama` |
+| `--model`, `-m` | Model name | None |
 
 ---
 
@@ -558,21 +963,17 @@ The file timeline system provides complete change tracking and rollback capabili
 Create a checkpoint to save the current state of your project:
 
 ```bash
-clawd timeline create <name> [OPTIONS]
+clawdius timeline create <name> [OPTIONS]
 ```
 
 | Flag | Description |
 |------|-------------|
 | `--description`, `-d` | Description of the checkpoint |
-| `--tag`, `-t` | Tag for categorization |
 
 **Examples:**
 ```bash
-# Simple checkpoint
-clawd timeline create "before-refactor"
-
-# With description and tag
-clawd timeline create "v1.0-rc1" --description "Release candidate 1" --tag release
+clawdius timeline create "before-refactor"
+clawdius timeline create "v1.0-rc1" --description "Release candidate 1"
 ```
 
 ### 6.2 Listing Checkpoints
@@ -580,24 +981,7 @@ clawd timeline create "v1.0-rc1" --description "Release candidate 1" --tag relea
 View all timeline checkpoints:
 
 ```bash
-clawd timeline list [OPTIONS]
-```
-
-| Flag | Description |
-|------|-------------|
-| `--format`, `-f` | Output format (text, json) |
-| `--limit`, `-l` | Limit number of results |
-
-**Examples:**
-```bash
-# List all checkpoints
-clawd timeline list
-
-# List in JSON format
-clawd timeline list --format json
-
-# List last 10 checkpoints
-clawd timeline list --limit 10
+clawdius timeline list
 ```
 
 ### 6.3 Rolling Back
@@ -605,24 +989,7 @@ clawd timeline list --limit 10
 Restore project to a previous checkpoint:
 
 ```bash
-clawd timeline rollback <checkpoint-id> [OPTIONS]
-```
-
-| Flag | Description |
-|------|-------------|
-| `--dry-run` | Preview changes without applying |
-| `--force`, `-f` | Force rollback without confirmation |
-
-**Examples:**
-```bash
-# Rollback to checkpoint
-clawd timeline rollback abc123
-
-# Preview rollback
-clawd timeline rollback abc123 --dry-run
-
-# Force rollback
-clawd timeline rollback abc123 --force
+clawdius timeline rollback <checkpoint-id>
 ```
 
 ### 6.4 Viewing Diff
@@ -630,24 +997,7 @@ clawd timeline rollback abc123 --force
 Compare changes between checkpoints:
 
 ```bash
-clawd timeline diff <from-id> <to-id> [OPTIONS]
-```
-
-| Flag | Description |
-|------|-------------|
-| `--format`, `-f` | Diff format (unified, json) |
-| `--stat` | Show diff statistics only |
-
-**Examples:**
-```bash
-# View diff between checkpoints
-clawd timeline diff abc123 def456
-
-# Show statistics only
-clawd timeline diff abc123 def456 --stat
-
-# JSON output
-clawd timeline diff abc123 def456 --format json
+clawdius timeline diff <from-id> <to-id>
 ```
 
 ### 6.5 File History
@@ -655,116 +1005,81 @@ clawd timeline diff abc123 def456 --format json
 View change history for a specific file:
 
 ```bash
-clawd timeline history <file-path> [OPTIONS]
+clawdius timeline history <file-path>
 ```
 
-| Flag | Description |
-|------|-------------|
-| `--limit`, `-l` | Limit number of entries |
-| `--format`, `-f` | Output format (text, json) |
+### 6.6 Session Checkpoints
 
-**Examples:**
+Session-level checkpoints provide per-session save/restore:
+
 ```bash
-# View file history
-clawd timeline history src/main.rs
-
-# Limited history
-clawd timeline history src/main.rs --limit 20
-
-# JSON output
-clawd timeline history src/main.rs --format json
+clawdius checkpoint create "before-refactor"
+clawdius checkpoint list
+clawdius checkpoint show <checkpoint-id>
+clawdius checkpoint restore <checkpoint-id>
+clawdius checkpoint compare <id1> <id2>
+clawdius checkpoint delete <checkpoint-id>
+clawdius checkpoint cleanup --keep 10
 ```
+
+### 6.7 Timeline Watch Mode
+
+Automatically create checkpoints when files change:
+
+```bash
+clawdius timeline watch
+```
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--debounce-secs`, `-d` | Debounce interval in seconds | `30` |
+| `--ignore`, `-i` | Patterns to ignore (repeatable) | None |
+| `--max-per-hour`, `-m` | Maximum checkpoints per hour | `120` |
 
 ---
 
 ## 7. JSON Output
 
-All CLI commands support JSON output for programmatic consumption and integration.
+All CLI commands support JSON output via the global `--output-format` flag for programmatic consumption.
 
 ### 7.1 Usage
 
-Add `--format json` to any command:
+Add `-f json` (or `--output-format json`) to any command:
 
 ```bash
-clawd <command> --format json
+clawdius <command> -f json
 ```
 
 ### 7.2 Examples
 
-**Init Command:**
-```bash
-clawd init . --format json
-# Output:
-# {
-#   "status": "success",
-#   "path": "/path/to/project/.clawdius",
-#   "message": "Initialized Clawdius in /path/to/project"
-# }
-```
-
 **Chat Command:**
 ```bash
-clawd chat "Explain this code" --format json
-# Output:
-# {
-#   "response": "This code implements...",
-#   "provider": "anthropic",
-#   "model": "claude-3-5-sonnet-20241022",
-#   "tokens_used": 1234
-# }
-```
-
-**Timeline List:**
-```bash
-clawd timeline list --format json
-# Output:
-# {
-#   "checkpoints": [
-#     {
-#       "id": "abc123",
-#       "name": "before-refactor",
-#       "description": "Pre-refactor checkpoint",
-#       "timestamp": "2026-03-06T10:30:00Z",
-#       "files_changed": 15
-#     }
-#   ]
-# }
+clawdius chat "Explain this code" -f json
 ```
 
 **Metrics Command:**
 ```bash
-clawd metrics --format json
-# Output:
-# {
-#   "files_indexed": 234,
-#   "ast_nodes": 12456,
-#   "vectors": 8901,
-#   "sessions": 12,
-#   "timeline_checkpoints": 5
-# }
+clawdius metrics -f json
 ```
 
-### 7.3 JSON Output Structure
+**Analyze Command:**
+```bash
+clawdius analyze . -f json -o report.json
+```
 
-All JSON output follows this structure:
+### 7.3 Stream JSON Mode
 
-```json
-{
-  "status": "success" | "error",
-  "data": { ... },
-  "error": null | { "code": "...", "message": "..." },
-  "metadata": {
-    "version": "0.7.0",
-    "timestamp": "2026-03-06T10:30:00Z"
-  }
-}
+For real-time streaming output:
+
+```bash
+clawdius chat -f stream-json
 ```
 
 ---
 
 ## 8. Enhanced Completions
 
-The completion system now features improved performance and reliability.
+The completion system features improved performance and reliability.
 
 ### 8.1 Features
 
@@ -775,38 +1090,21 @@ The completion system now features improved performance and reliability.
 
 ### 8.2 Usage
 
-Completions are automatically invoked during chat sessions:
+Get inline completions:
 
 ```bash
-clawd chat "Complete this function: @file:src/main.rs"
+clawdius complete src/main.rs 42 10 --language rust --provider ollama
 ```
 
-### 8.3 Configuration
-
-Configure completion behavior in `.clawdius/config.toml`:
-
-```toml
-[completions]
-cache_size = 100          # LRU cache size
-timeout_ms = 5000         # Completion timeout
-fallback_enabled = true   # Enable language fallbacks
-
-[completions.languages]
-rust = { enabled = true, max_tokens = 2048 }
-python = { enabled = true, max_tokens = 2048 }
-javascript = { enabled = true, max_tokens = 2048 }
-go = { enabled = true, max_tokens = 2048 }
-```
-
-### 8.4 Supported Languages
+### 8.3 Supported Languages
 
 | Language | Status | Features |
 |----------|--------|----------|
-| Rust | ✅ Full | Full syntax support, type inference |
-| Python | ✅ Full | Full syntax support, type hints |
-| JavaScript | ✅ Full | ES6+, TypeScript |
-| TypeScript | ✅ Full | Full type system support |
-| Go | ✅ Full | Full syntax support |
+| Rust | Supported | Full syntax support, type inference |
+| Python | Supported | Full syntax support, type hints |
+| JavaScript | Supported | ES6+, TypeScript |
+| TypeScript | Supported | Full type system support |
+| Go | Supported | Full syntax support |
 
 ---
 
@@ -816,93 +1114,120 @@ go = { enabled = true, max_tokens = 2048 }
 
 ```bash
 # 1. Initialize
-clawd init
+clawdius init
 
 # 2. Set up API keys
 export ANTHROPIC_API_KEY="sk-ant-..."
 # Or use keyring:
-clawd auth set-key anthropic
+clawdius auth set anthropic
 
 # 3. Edit configuration
 vim .clawdius/config.toml
 
 # 4. Create initial checkpoint
-clawd timeline create "initial" --description "Initial project state"
+clawdius timeline create "initial" --description "Initial project state"
 
 # 5. Start a chat
-clawd chat "Help me understand this codebase"
+clawdius chat "Help me understand this codebase"
 
 # 6. View sessions
-clawd sessions
+clawdius sessions
 ```
 
-### 9.2 Code Refactoring with Timeline
+### 9.2 Autonomous Development
+
+```bash
+# Fix a bug autonomously
+clawdius auto "fix the failing test in src/auth.rs" --run-tests --fail-on-test-failure
+
+# Implement a feature
+clawdius auto "implement user authentication" --auto-commit --run-tests
+
+# CI integration with JSON output
+clawdius auto "resolve lint errors" --output-format json
+```
+
+### 9.3 Code Refactoring with Timeline
 
 ```bash
 # 1. Create checkpoint before refactoring
-clawd timeline create "before-refactor" --description "Pre-refactor state"
+clawdius timeline create "before-refactor" --description "Pre-refactor state"
 
 # 2. Analyze current codebase
-clawd refactor --from typescript --to rust src/ --dry-run
+clawdius analyze . --drift
 
-# 3. Review migration plan
-cat .clawdius/specs/migration_plan.md
+# 3. Preview migration
+clawdius refactor --from typescript --to rust src/ --dry-run
 
 # 4. Execute migration
-clawd refactor --from typescript --to rust src/
+clawdius refactor --from typescript --to rust src/
 
 # 5. If something goes wrong, rollback
-clawd timeline rollback <checkpoint-id>
+clawdius timeline rollback <checkpoint-id>
 
 # 6. Verify results
-clawd verify --proof proofs/
+clawdius verify --proof proofs/
 ```
 
-### 9.3 Using Multiple Providers
+### 9.4 Using Multiple Providers
 
 ```bash
 # Quick question with OpenAI
-clawd chat "Explain this regex" --provider openai
+clawdius chat "Explain this regex" --provider openai
 
 # Deep analysis with Claude
-clawd chat "Review architecture" --provider anthropic --model claude-3-5-sonnet-20241022
+clawdius chat "Review architecture" --provider anthropic
 
 # Local development with Ollama
-clawd chat "Write tests" --provider ollama --model llama3.2
+clawdius chat "Write tests" --provider ollama --model llama3.2
 
 # JSON output for scripting
-clawd chat "Analyze code" --format json | jq '.response'
+clawdius chat "Analyze code" -f json | jq '.response'
 ```
 
-### 9.4 HFT Mode Setup
+### 9.5 HFT Mode Setup
 
 ```bash
-# 1. Enable HFT in settings
-vim .clawdius/config.toml
-# Set [hft].enabled = true
+# 1. Configure risk parameters
+clawdius broker --config hft_config.toml --paper-trade
 
-# 2. Configure risk parameters
-clawd broker --config hft_config.toml --paper-trade
-
-# 3. Start broker mode
-clawd broker --config hft_config.toml
+# 2. Start broker mode
+clawdius broker --config hft_config.toml
 ```
 
-### 9.5 Timeline-Based Development
+### 9.6 Timeline-Based Development
 
 ```bash
 # 1. Create feature branch checkpoint
-clawd timeline create "feature-auth-start" --tag feature
+clawdius timeline create "feature-auth-start"
 
 # 2. Make changes and create intermediate checkpoints
-clawd timeline create "auth-models-done" --tag milestone
-clawd timeline create "auth-routes-done" --tag milestone
+clawdius timeline create "auth-models-done"
+clawdius timeline create "auth-routes-done"
 
 # 3. Review changes
-clawd timeline diff "feature-auth-start" "auth-routes-done"
+clawdius timeline diff "feature-auth-start" "auth-routes-done"
 
 # 4. If needed, rollback to intermediate state
-clawd timeline rollback "auth-models-done"
+clawdius timeline rollback "auth-models-done"
+```
+
+### 9.7 Project Memory Workflow
+
+```bash
+# Initialize project memory
+clawdius memory init --name my-project --language rust
+
+# Set project instructions
+clawdius memory instructions "Use tower for middleware, sqlx for database"
+
+# Learn patterns from development
+clawdius memory learn build "cargo build --release"
+clawdius memory learn test "cargo test --all"
+
+# Review accumulated knowledge
+clawdius memory show
+clawdius memory list patterns
 ```
 
 ---
@@ -918,23 +1243,7 @@ clawd timeline rollback "auth-models-done"
 **Solution:**
 ```bash
 rm -rf .clawdius/
-clawd init
-```
-
-#### "Sandbox creation failed"
-
-**Cause:** Missing sandboxing tools
-
-**Solution (Linux):**
-```bash
-sudo apt install bubblewrap
-```
-
-**Solution (macOS):**
-```bash
-# sandbox-exec is built-in
-# Ensure SIP is enabled
-csrutil status
+clawdius init
 ```
 
 #### "LLM provider error" / "API key not set"
@@ -947,10 +1256,13 @@ csrutil status
 echo $ANTHROPIC_API_KEY
 
 # Or set via keyring
-clawd auth set-key anthropic
+clawdius auth set anthropic
+
+# Or run setup wizard
+clawdius setup
 
 # Test connection
-clawd chat "Hello" --provider anthropic
+clawdius chat "Hello" --provider anthropic
 ```
 
 #### "Retry exhausted" errors
@@ -974,8 +1286,6 @@ max_delay_ms = 60000
 ```bash
 # Review blocked commands in config
 # .clawdius/config.toml [shell_sandbox].blocked_commands
-
-# For trusted operations, modify config (use caution)
 ```
 
 #### "Binary not found"
@@ -1009,7 +1319,7 @@ cargo build --release -p clawdius-code
 Enable verbose logging:
 
 ```bash
-RUST_LOG=clawdius=debug clawd chat "Hello"
+RUST_LOG=clawdius=debug clawdius chat "Hello"
 ```
 
 ### 10.3 Getting Help
@@ -1020,9 +1330,9 @@ RUST_LOG=clawdius=debug clawd chat "Hello"
 
 ---
 
-## 8. Monorepo Features
+## Appendix A: Monorepo Development
 
-### 7.1 Building from Source
+### A.1 Building from Source
 
 The monorepo allows building all components from a single repository:
 
@@ -1037,14 +1347,11 @@ cargo build --release
 # Build specific crate
 cargo build -p clawdius-core
 
-# Build with features
-cargo build --features hft-mode
-
 # Run tests
 cargo test --all
 ```
 
-### 7.2 Development Workflow
+### A.2 Development Workflow
 
 ```bash
 # Check all crates
@@ -1060,32 +1367,21 @@ cargo fmt --all
 cargo bench --all
 ```
 
-### 7.3 Cross-Crate Testing
-
-The monorepo enables integration testing across crates:
-
-```bash
-# Run integration tests
-cargo test --test '*'
-
-# Test specific integration
-cargo test --test cli_core_integration
-```
-
-### 7.4 Feature Flags
+### A.3 Feature Flags
 
 Features propagate across crates:
 
 ```bash
-# Build CLI with HFT mode
-cargo build -p clawdius --features hft-mode
+# Build CLI with keyring support
+cargo build -p clawdius --features keyring
 
-# This automatically enables hft-mode in clawdius-core
+# Build CLI with vector-db support
+cargo build -p clawdius --features vector-db
 ```
 
 ---
 
-## Appendix A: Environment Variables
+## Appendix B: Environment Variables
 
 | Variable | Description | Default |
 |----------|-------------|---------|
@@ -1095,19 +1391,14 @@ cargo build -p clawdius --features hft-mode
 | `ZAI_API_KEY` | Z.AI API key | - |
 | `OLLAMA_BASE_URL` | Ollama server URL | `http://localhost:11434` |
 
-## Appendix B: Exit Codes
+## Appendix C: Exit Codes
 
 | Code | Meaning |
 |------|---------|
 | 0 | Success |
 | 1 | General error |
-| 2 | Configuration error |
-| 3 | Sandbox error |
-| 4 | LLM error |
-| 5 | Authentication error |
-| 6 | Retry exhausted |
 
-## Appendix C: VSCode Extension Commands
+## Appendix D: VSCode Extension Commands
 
 | Command | Description |
 |---------|-------------|
@@ -1117,3 +1408,16 @@ cargo build -p clawdius --features hft-mode
 | `Clawdius: Add current file to context` | Add active editor file |
 | `Clawdius: Create checkpoint` | Save current state |
 | `Clawdius: Open chat view` | Open sidebar chat |
+
+## Appendix E: Global Flags
+
+All commands accept these global flags:
+
+| Flag | Short | Description |
+|------|-------|-------------|
+| `--no-tui` | `-n` | Run without TUI (headless mode) |
+| `--cwd` | `-w` | Working directory |
+| `--output-format` | `-f` | Output format: `text`, `json`, `stream-json` |
+| `--quiet` | `-q` | Quiet mode (no progress indicators) |
+| `--config` | `-C` | Path to config file |
+| `--lang` | `-L` | Output language (en, zh, ja, ko, de, fr, es, it, pt, ru) |

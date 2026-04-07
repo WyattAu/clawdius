@@ -1,6 +1,6 @@
 # Getting Started with Clawdius
 
-**Time to First Chat: ~10 minutes**  
+**Time to First Chat: ~5 minutes**  
 **Full Setup: ~30 minutes**
 
 ---
@@ -13,14 +13,6 @@
 | OS | Linux, macOS, Windows | Linux (Ubuntu 22.04+) |
 | Memory | 512MB | 2GB+ |
 | Disk | 100MB | 500MB+ |
-
-### Optional Dependencies
-
-| Tool | Purpose | Installation |
-|------|---------|--------------|
-| `bubblewrap` | Linux sandboxing | `sudo apt install bubblewrap` |
-| `sandbox-exec` | macOS sandboxing | Included with macOS |
-| `podman` | Container sandboxing | `sudo apt install podman` |
 
 ---
 
@@ -54,27 +46,21 @@ clawdius chat
 
 ---
 
-## Step 1: Configure Your LLM Provider (5 minutes)
+## Step 1: Configure Your LLM Provider (2 minutes)
 
 Clawdius supports multiple LLM providers. Choose one:
 
 ### Anthropic Claude (Recommended)
 
 ```bash
-# Set your API key securely
-clawdius config set provider anthropic
-clawdius config set api-key anthropic
-
-# Or use environment variable
+# Set your API key via environment variable
 export ANTHROPIC_API_KEY="sk-ant-..."
 ```
 
 ### OpenAI
 
 ```bash
-clawdius config set provider openai
-clawdius config set api-key openai
-# Or: export OPENAI_API_KEY="sk-..."
+export OPENAI_API_KEY="sk-..."
 ```
 
 ### Ollama (Local, Free)
@@ -84,21 +70,47 @@ clawdius config set api-key openai
 curl -fsSL https://ollama.com/install.sh | sh
 ollama pull llama3.2
 
-# Configure Clawdius
-clawdius config set provider ollama
-clawdius config set ollama-base-url http://localhost:11434
-clawdius config set ollama-model llama3.2
+# No API key needed - configure in .clawdius/config.toml:
+# [llm]
+# default_provider = "ollama"
+# [llm.ollama]
+# model = "llama3.2"
+# base_url = "http://localhost:11434"
+```
+
+### Using the Setup Wizard
+
+```bash
+# Interactive first-time setup
+clawdius setup
+
+# Quick setup with pre-selected provider
+clawdius setup --provider anthropic
+```
+
+### Storing Keys in System Keyring
+
+Requires the `keyring` feature. Store keys securely without env vars:
+
+```bash
+clawdius auth set anthropic    # Prompts for key input
+clawdius auth get anthropic    # Verify key is stored
+clawdius auth delete anthropic # Remove stored key
 ```
 
 ### Verify Configuration
 
 ```bash
-clawdius config show
+# View your config file directly
+cat .clawdius/config.toml
+
+# Or test with a simple chat
+clawdius chat "Hello"
 ```
 
 ---
 
-## Step 2: Start Your First Chat (2 minutes)
+## Step 2: Start Your First Chat (1 minute)
 
 ### Basic Chat
 
@@ -106,138 +118,160 @@ clawdius config show
 clawdius chat
 ```
 
-```
-🤖 Clawdius v1.0.0 | Provider: anthropic | Model: claude-sonnet-4-20250514
-
-You: Hello! Can you help me write a Rust function?
-
-Claude: Of course! I'd be happy to help you write a Rust function. What would 
-you like the function to do?
-
-You: /exit
-```
-
-### Chat with File Context
+### Chat with Provider/Model Selection
 
 ```bash
-# Start chat with file context
-clawdius chat --with src/main.rs
+# Use specific provider
+clawdius chat --provider openai --model gpt-4o
 
-# Or reference files with @mentions
-You: @src/main.rs Can you explain what this code does?
+# Use local Ollama
+clawdius chat --provider ollama
+
+# Single-shot (non-interactive)
+clawdius chat "Explain this function"
 ```
 
 ### Chat with Session Persistence
 
 ```bash
-# Name your session
-clawdius chat --session my-project
+# Start a session (clawdius auto-assigns an ID)
+clawdius chat
 
-# Resume later
-clawdius chat --session my-project
+# Resume a session by ID
+clawdius chat --session <session-id>
+
+# List and search sessions
+clawdius sessions
+clawdius sessions --search "error handling"
+```
+
+### Chat with Agent Modes
+
+```bash
+clawdius chat --mode architect
+clawdius chat --mode code
+clawdius chat --mode debug
+clawdius chat --mode review
+clawdius chat --mode test
+clawdius chat --mode refactor
 ```
 
 ---
 
-## Step 3: Enable Tools (3 minutes)
+## Step 3: Autonomous CI/CD Mode
 
-Clawdius can interact with your codebase through tools:
-
-### Enable File Operations
+Run tasks without interaction, with optional test execution and auto-commit:
 
 ```bash
-# In your chat session
-You: /tools enable file
+# Fix failing tests autonomously
+clawdius auto "fix failing tests" --run-tests --fail-on-test-failure
 
-# Now you can ask for file operations
-You: Read the file @src/lib.rs and suggest improvements
-```
+# Implement a feature
+clawdius auto "implement user authentication" --auto-commit
 
-### Enable Shell Commands
-
-```bash
-You: /tools enable shell
-
-# Run commands safely
-You: Run `cargo test` and summarize the results
-```
-
-### Enable Git Operations
-
-```bash
-You: /tools enable git
-
-# Git operations
-You: What files changed in the last commit?
-```
-
-### Check Tool Status
-
-```bash
-You: /tools status
-
-┌─────────────────┬─────────┬─────────────────────┐
-│ Tool            │ Status  │ Sandbox             │
-├─────────────────┼─────────┼─────────────────────┤
-│ file            │ enabled │ filtered            │
-│ shell           │ enabled │ bubblewrap          │
-│ git             │ enabled │ filtered            │
-│ web_search      │ disabled│ -                   │
-│ browser         │ disabled│ -                   │
-│ keyring         │ enabled │ direct              │
-└─────────────────┴─────────┴─────────────────────┘
+# CI mode with JSON output
+clawdius auto "refactor error handling" --output-format json
 ```
 
 ---
 
-## Step 4: Use Sandboxing (5 minutes)
+## Step 4: Code Generation and Analysis
 
-Clawdius protects your system with multi-tier sandboxing:
-
-### Check Available Backends
+### Generate Code
 
 ```bash
-clawdius sandbox status
+# Generate code with agentic AI
+clawdius generate "create a REST API handler for user management"
+
+# Preview changes without applying
+clawdius generate "add input validation" --dry-run
+
+# Specify target files
+clawdius generate "add unit tests" --files src/lib.rs,src/models.rs
+
+# Iterative generation with more passes
+clawdius generate "implement feature X" --mode iterative --max-iterations 10
 ```
 
-```
-Sandbox Backends:
-  ✅ wasm        - WASM runtime (always available)
-  ✅ filtered    - Command filtering (always available)
-  ✅ bubblewrap  - Linux namespace sandbox
-  ⬜ sandbox-exec - macOS sandbox (macOS only)
-  ✅ container   - Docker/Podman containers
-  ⬜ gvisor      - gVisor runsc (requires runsc)
-  ⬜ firecracker - Firecracker microVM (requires firecracker)
-
-Current Default: bubblewrap
-```
-
-### Set Sandbox Tier
+### Generate Tests
 
 ```bash
-# Maximum security (slower)
-clawdius config set sandbox-tier hardened
-
-# Balanced (default)
-clawdius config set sandbox-tier standard
-
-# Trusted code only
-clawdius config set sandbox-tier trusted
+clawdius test src/lib.rs
+clawdius test src/lib.rs --function my_function
 ```
 
-### Sandbox Tiers Explained
+### Generate Documentation
 
-| Tier | Use Case | Isolation | Performance |
-|------|----------|-----------|-------------|
-| `hardened` | Untrusted code | Container/gVisor | ~80% |
-| `standard` | General use | Bubblewrap/filtered | ~95% |
-| `trusted` | Your own code | Filtered commands | ~100% |
-| `direct` | audited code only | None | 100% |
+```bash
+clawdius doc src/lib.rs
+clawdius doc src/lib.rs --element MyStruct --format rustdoc
+```
+
+### Analyze Codebase
+
+```bash
+# General analysis
+clawdius analyze .
+
+# Architecture drift only
+clawdius analyze . --drift
+
+# Technical debt only
+clawdius analyze . --debt --severity high
+
+# JSON output
+clawdius analyze . -f json -o report.json
+```
+
+### Watch for Changes
+
+```bash
+# Watch files and auto-analyze on changes
+clawdius watch . --auto-analyze
+```
 
 ---
 
-## Step 5: VSCode Integration (5 minutes)
+## Step 5: Checkpoint and Timeline System
+
+### Session Checkpoints
+
+```bash
+# Create a checkpoint
+clawdius checkpoint create "before-refactor"
+
+# List checkpoints
+clawdius checkpoint list
+
+# Restore a checkpoint
+clawdius checkpoint restore <checkpoint-id>
+
+# Compare checkpoints
+clawdius checkpoint compare <id1> <id2>
+```
+
+### File Timeline
+
+```bash
+# Create a timeline checkpoint
+clawdius timeline create "v1.0-rc1" --description "Release candidate 1"
+
+# List timeline checkpoints
+clawdius timeline list
+
+# Rollback to a checkpoint
+clawdius timeline rollback <checkpoint-id>
+
+# View diff between checkpoints
+clawdius timeline diff <from-id> <to-id>
+
+# View file history
+clawdius timeline history src/main.rs
+```
+
+---
+
+## Step 6: VSCode Integration (5 minutes)
 
 ### Install the Extension
 
@@ -255,16 +289,6 @@ pnpm run compile
 # Then: Extensions → ... → Install from VSIX
 ```
 
-### Start the Language Server
-
-```bash
-# Terminal 1: Start Clawdius server
-clawdius serve --port 9527
-
-# Terminal 2: Open VSCode
-code .
-```
-
 ### VSCode Features
 
 - **Chat Panel:** `Ctrl+Shift+P` → "Clawdius: Open Chat"
@@ -274,67 +298,99 @@ code .
 
 ---
 
-## Step 6: Explore Advanced Features (10 minutes)
+## Step 7: Advanced Features
 
-### Sessions with Checkpoints
+### Nexus FSM Engine
+
+Run the 24-phase Nexus R&D lifecycle:
 
 ```bash
-# Create a checkpoint
-You: /checkpoint save "before-refactor"
-
-# Make changes with AI...
-
-# Rollback if needed
-You: /checkpoint restore "before-refactor"
-
-# View history
-You: /checkpoint list
+clawdius nexus start .
 ```
 
-### Graph-RAG Context
+### Git Workflow
 
 ```bash
-# Index your codebase
-clawdius index .
+# AI-generated commit messages
+clawdius git commit
 
-# Ask with semantic context
-You: Where is the authentication logic in this codebase?
+# View diffs
+clawdius git diff
+clawdius git diff --staged
 
-# View indexed symbols
-clawdius index show
+# Status summary
+clawdius git status
 ```
 
-### Custom Modes
+### Project Memory (CLAUDE.md)
 
 ```bash
-# Use built-in modes
-clawdius chat --mode architect
-clawdius chat --mode code
-clawdius chat --mode ask
+# Show project memory
+clawdius memory show
 
-# Create custom mode
-cat > .clawdius/modes.toml << EOF
-[modes.security-review]
-description = "Security-focused code review"
-system_prompt = "You are a security expert..."
-tools = ["file", "git"]
-temperature = 0.3
-EOF
+# Learn a new pattern
+clawdius memory learn pattern "always use Result<T, E> for fallible operations"
 
-clawdius chat --mode security-review
+# Set project instructions
+clawdius memory instructions "This project uses async Rust throughout"
+
+# Initialize CLAUDE.md
+clawdius memory init --name my-project --language rust --framework actix-web
 ```
 
-### Enterprise SSO (if applicable)
+### Workflows
 
 ```bash
-# Configure SSO
-clawdius sso configure --provider okta --domain your-company.okta.com
+# List workflows
+clawdius workflow list
 
-# Login
-clawdius sso login
+# Create a workflow
+clawdius workflow create "code-review" --description "Automated code review pipeline"
 
-# Verify
-clawdius sso status
+# Execute a workflow
+clawdius workflow run <workflow-id>
+
+# Check status
+clawdius workflow status <execution-id>
+```
+
+### Custom Agent Modes
+
+```bash
+# List available modes
+clawdius modes list
+
+# Show mode details
+clawdius modes show architect
+
+# Create a custom mode
+clawdius modes create security-review
+```
+
+### Local LLM Management
+
+```bash
+# List available Ollama models
+clawdius models list
+
+# Pull a new model
+clawdius models pull llama3.2
+
+# Check Ollama health
+clawdius models health
+```
+
+### Metrics and Telemetry
+
+```bash
+# Show performance metrics
+clawdius metrics
+
+# JSON metrics output
+clawdius metrics -f json -o metrics.json
+
+# Configure telemetry
+clawdius telemetry --enable --enable-metrics
 ```
 
 ---
@@ -344,36 +400,29 @@ clawdius sso status
 ### Code Review
 
 ```bash
-clawdius chat --mode architect --with src/
-
-You: Review the code in @src/auth/ for security issues
+clawdius chat --mode review
 ```
 
 ### Refactoring
 
 ```bash
-clawdius chat --mode code
+# Cross-language refactor
+clawdius refactor --from typescript --to rust src/ --dry-run
 
-You: /checkpoint save "before-refactor"
-You: Refactor @src/database.rs to use async/await
-You: Apply the changes
-You: Run tests with `cargo test`
-```
-
-### Documentation
-
-```bash
-clawdius chat --mode ask
-
-You: Generate documentation for the public API in @src/lib.rs
+# Or use chat with refactor mode
+clawdius chat --mode refactor
 ```
 
 ### Debugging
 
 ```bash
-clawdius chat --tools file,shell,git
+clawdius chat --mode debug
+```
 
-You: I'm getting a panic in @src/parser.rs at line 42. Help me debug it.
+### Autonomous Development
+
+```bash
+clawdius auto "implement feature X" --run-tests --auto-commit
 ```
 
 ---
@@ -383,37 +432,39 @@ You: I'm getting a panic in @src/parser.rs at line 42. Help me debug it.
 ### "No provider configured"
 
 ```bash
-clawdius config set provider anthropic
-clawdius config set api-key anthropic
-```
+# Set environment variable
+export ANTHROPIC_API_KEY="sk-ant-..."
 
-### "Sandbox not available"
+# Or run setup wizard
+clawdius setup
 
-```bash
-# Linux: Install bubblewrap
-sudo apt install bubblewrap
-
-# Or use filtered backend
-clawdius config set sandbox-backend filtered
+# Or store in keyring
+clawdius auth set anthropic
 ```
 
 ### "API key not found"
 
 ```bash
+# Check environment variable
+echo $ANTHROPIC_API_KEY
+
 # Check keyring
-clawdius keyring list
+clawdius auth get anthropic
 
 # Re-set the key
-clawdius config set api-key anthropic
+clawdius auth set anthropic
 ```
 
 ### "Session not found"
 
 ```bash
 # List sessions
-clawdius session list
+clawdius sessions
 
-# Or start fresh
+# Search sessions
+clawdius sessions --search "keyword"
+
+# Start fresh
 clawdius chat
 ```
 
@@ -421,7 +472,7 @@ clawdius chat
 
 ## Next Steps
 
-1. **Read the User Guide:** [docs/user_guide.md](./user_guide.md)
+1. **Read the User Guide:** [.docs/user_guide.md](../.docs/user_guide.md)
 2. **Explore the API:** [docs/api_reference.md](./api_reference.md)
 3. **Join the Community:** [Discord](https://discord.gg/clawdius)
 4. **Contribute:** [CONTRIBUTING.md](../CONTRIBUTING.md)
@@ -433,28 +484,36 @@ clawdius chat
 | Command | Description |
 |---------|-------------|
 | `clawdius chat` | Start interactive chat |
-| `clawdius chat --session NAME` | Resume named session |
-| `clawdius chat --mode MODE` | Use specific mode |
-| `clawdius config show` | Show configuration |
-| `clawdius config set KEY VALUE` | Set configuration |
-| `clawdius index PATH` | Index codebase for RAG |
-| `clawdius sandbox status` | Check sandbox backends |
-| `clawdius session list` | List saved sessions |
+| `clawdius chat -M MODE` | Use specific agent mode |
+| `clawdius chat -P PROVIDER` | Use specific LLM provider |
+| `clawdius auto TASK` | Run task autonomously |
+| `clawdius generate PROMPT` | Generate code with AI |
+| `clawdius init` | Initialize project |
+| `clawdius setup` | Interactive setup wizard |
+| `clawdius sessions` | List/manage sessions |
+| `clawdius auth set PROVIDER` | Store API key in keyring |
+| `clawdius analyze PATH` | Analyze codebase for drift/debt |
+| `clawdius test FILE` | Generate tests for code |
+| `clawdius doc FILE` | Generate documentation |
+| `clawdius refactor --from LANG --to LANG` | Cross-language refactor |
+| `clawdius checkpoint create DESC` | Create a checkpoint |
+| `clawdius timeline create NAME` | Create timeline checkpoint |
+| `clawdius git commit` | AI-generated commit messages |
+| `clawdius memory show` | Show project memory |
+| `clawdius models list` | List local Ollama models |
+| `clawdius workflow list` | List workflows |
+| `clawdius nexus start .` | Run Nexus 24-phase engine |
 | `clawdius --help` | Show all commands |
 
-### Chat Commands
+### Global Flags
 
-| Command | Description |
-|---------|-------------|
-| `/help` | Show available commands |
-| `/tools enable NAME` | Enable a tool |
-| `/tools disable NAME` | Disable a tool |
-| `/tools status` | Show tool status |
-| `/checkpoint save NAME` | Save checkpoint |
-| `/checkpoint restore NAME` | Restore checkpoint |
-| `/checkpoint list` | List checkpoints |
-| `/exit` | Exit chat |
-| `/clear` | Clear conversation |
+| Flag | Description |
+|------|-------------|
+| `-f`, `--output-format` | Output format: `text`, `json`, `stream-json` |
+| `-C`, `--config` | Path to config file |
+| `-L`, `--lang` | Output language |
+| `-n`, `--no-tui` | Run without TUI (headless mode) |
+| `-q`, `--quiet` | Quiet mode |
 
 ---
 

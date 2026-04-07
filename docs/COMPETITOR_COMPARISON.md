@@ -2,18 +2,18 @@
 
 ## Executive Summary
 
-Clawdius is a Rust-native LLM coding assistant designed to surpass all existing competitors. This document provides a comprehensive comparison across key dimensions.
+Clawdius is a Rust-native LLM coding assistant designed to fill gaps that existing competitors leave open. This document provides a comprehensive, honest comparison across key dimensions.
 
 ### Competitive Positioning
 
 | Competitor | Market Position | Clawdius Advantage |
 |------------|-----------------|-------------------|
-| Claude Code | Leading AI pair programmer | Multi-profile, open-source, HFT trading |
-| Cursor | VS Code fork with AI | Native Rust, no VS Code dependency |
+| Claude Code | Leading AI coding agent | Open source, multi-provider LLM, HFT trading |
+| Cursor | AI-native VS Code fork | Native Rust, no VS Code dependency, open source |
 | Aider | Terminal-based AI coder | Better UX, profile system, LSP integration |
-| OpenDevin | Open-source autonomous agent | More focused, production-ready |
-| Windsurf | AI-native IDE | Broader use cases, trading support |
-| Continue | VS Code extension | Standalone, no extension host needed |
+| OpenDevin | Open-source autonomous agent | Rust performance, more focused scope |
+| Windsurf | AI-native IDE | Open source, self-hosted, trading support |
+| Continue | CLI CI/CD check runner | Interactive agent mode, multi-provider, trading |
 
 ---
 
@@ -23,12 +23,12 @@ Clawdius is a Rust-native LLM coding assistant designed to surpass all existing 
 
 | Feature | Clawdius | Claude Code | Cursor | Aider | OpenDevin | Windsurf | Continue |
 |---------|----------|-------------|--------|-------|-----------|----------|----------|
-| Code Generation | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Multi-mode Generation | ✅ 1,2,3 | ❌ | ❌ | ✅ | ✅ | ❌ | ❌ |
-| Code Completion | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ |
-| Chat Interface | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Code Generation | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | N/A |
+| Multi-mode Generation | ✅ 1,2,3 | ✅ | ❌ | ✅ | ✅ | ❌ | ❌ |
+| Code Completion | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ❌ |
+| Chat Interface | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
 | Context Awareness | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Multi-file Edits | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Multi-file Edits | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
 | Diff Preview | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 
 ### Agentic Capabilities
@@ -37,18 +37,18 @@ Clawdius is a Rust-native LLM coding assistant designed to surpass all existing 
 |---------|----------|-------------|--------|-------|-----------|----------|----------|
 | Single-pass Mode | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ |
 | Iterative Mode | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
-| Full Agent Mode | ✅ | 🔜 | 🔜 | ✅ | ✅ | 🔜 | ❌ |
-| Planner Agent | ✅ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ |
-| Executor Agent | ✅ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ |
-| Verifier Agent | ✅ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ |
-| Autonomous Execution | ✅ | 🔜 | 🔜 | ✅ | ✅ | 🔜 | ❌ |
+| Full Agent Mode | ✅ | ✅ | ✅ | 🔜 | ✅ | 🔜 | ❌ |
+| Planner Agent | ✅ | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ |
+| Executor Agent | ✅ | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ |
+| Verifier Agent | ✅ | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ |
+| Autonomous Execution | ✅ | ✅ | ✅ | 🔜 | ✅ | 🔜 | ❌ |
 
 ### Test & Apply Workflows
 
 | Feature | Clawdius | Claude Code | Cursor | Aider | OpenDevin | Windsurf | Continue |
 |---------|----------|-------------|--------|-------|-----------|----------|----------|
-| Sandboxed Testing | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ❌ |
-| Direct Testing | ✅ | ❌ | ✅ | ✅ | ❌ | ✅ | ✅ |
+| Sandboxed Testing | ✅ | ❌ | ✅ | ❌ | ✅ | ✅ | ❌ |
+| Direct Testing | ✅ | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
 | Rollback System | ✅ | ❌ | ✅ | ✅ | ❌ | ✅ | ❌ |
 | Configurable Trust | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | User Choice (Test) | ✅ B+C | A only | C only | C only | B only | C only | C only |
@@ -59,7 +59,7 @@ Clawdius is a Rust-native LLM coding assistant designed to surpass all existing 
 | Feature | Clawdius | Claude Code | Cursor | Aider | OpenDevin | Windsurf | Continue |
 |---------|----------|-------------|--------|-------|-----------|----------|----------|
 | LSP Support | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ |
-| MCP Protocol | ✅ | ✅ | 🔜 | ❌ | 🔜 | 🔜 | ❌ |
+| MCP Protocol | ✅ | ✅ | ✅ | ❌ | 🔜 | 🔜 | ❌ |
 | Git Integration | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Custom Tools | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Plugin System | 🔜 | ❌ | ✅ | ❌ | ✅ | ✅ | ✅ |
@@ -73,10 +73,10 @@ Clawdius is a Rust-native LLM coding assistant designed to surpass all existing 
 | Language | Rust | TypeScript | TS/Elec | Python | Python | TS/Elec | TypeScript |
 | Open Source | ✅ | ❌ | ❌ | ✅ | ✅ | ❌ | ✅ |
 | Self-hosted | ✅ | ❌ | ❌ | ✅ | ✅ | ❌ | ✅ |
-| CLI Interface | ✅ | ✅ | ❌ | ✅ | ✅ | ❌ | ✅ |
-| GUI Interface | 🔜 | ✅ | ✅ | ❌ | 🔜 | ✅ | ✅ |
+| CLI Interface | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ✅ |
+| GUI Interface | 🔜 | ✅ | ✅ | ❌ | 🔜 | ✅ | ❌ |
 | Desktop App | 🔜 | ✅ | ✅ | ❌ | ❌ | ✅ | ❌ |
-| Web Interface | ✅ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ |
+| Web Interface | ✅ | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ |
 
 ### Unique Features
 
@@ -105,7 +105,7 @@ Clawdius is a Rust-native LLM coding assistant designed to surpass all existing 
 **Weaknesses:**
 - Closed source, proprietary
 - No self-hosting option
-- Limited to single mode (iterative)
+- Anthropic-only (no multi-provider)
 - No trading/finance features
 - No multi-profile support
 
@@ -129,7 +129,6 @@ Clawdius is a Rust-native LLM coding assistant designed to surpass all existing 
 - Fork of VS Code (technical debt)
 - Closed source
 - Limited to VS Code ecosystem
-- No CLI option
 - No trading features
 
 **Clawdius Advantage:**
@@ -152,7 +151,7 @@ Clawdius is a Rust-native LLM coding assistant designed to surpass all existing 
 - CLI only, no GUI
 - Steep learning curve
 - Limited LSP support
-- No autonomous mode
+- Auto-accept mode, not full autonomous planning
 - No trading features
 
 **Clawdius Advantage:**
@@ -211,19 +210,19 @@ Clawdius is a Rust-native LLM coding assistant designed to surpass all existing 
 
 **Strengths:**
 - Open source
-- Multiple LLM support
-- VS Code extension
+- CI/CD check runner (standalone CLI)
 - Active community
 
 **Weaknesses:**
-- Requires VS Code
-- Extension limitations
-- No autonomous mode
+- Pivoted from IDE extension to CI/CD-focused tool
+- No interactive code generation
+- No chat interface
+- Suggests diffs but doesn't edit files directly
 - No trading features
 
 **Clawdius Advantage:**
-- Standalone application
-- Autonomous agent mode
+- Interactive coding assistant with full agent mode
+- Multi-provider LLM support
 - Trading profile
 - REST API
 
@@ -267,11 +266,11 @@ Clawdius is a Rust-native LLM coding assistant designed to surpass all existing 
 
 | Feature | Clawdius | Claude Code | Cursor | Aider |
 |---------|----------|-------------|--------|-------|
-| Agentic Mode | ✅ | 🔜 | 🔜 | ✅ |
-| Multi-mode Gen | ✅ | ❌ | ❌ | 🔜 |
+| Agentic Mode | ✅ | ✅ | ✅ | 🔜 |
+| Multi-mode Gen | ✅ | ✅ | ❌ | 🔜 |
 | Trading Profile | ✅ | ❌ | ❌ | ❌ |
 | LSP Full Support | ✅ | ✅ | ✅ | ❌ |
-| MCP Protocol | ✅ | ✅ | 🔜 | ❌ |
+| MCP Protocol | ✅ | ✅ | ✅ | ❌ |
 
 ---
 
@@ -294,16 +293,22 @@ Users choose how code is generated:
 2. **Iterative**: Progressive refinement
 3. **Agent-based**: Full autonomous workflow
 
-**Competitors lock users into one mode.**
+**Most competitors now offer multiple modes, but Clawdius lets users explicitly choose between them per-task.**
 
-### 3. Test & Apply Flexibility
+### 3. Multi-Provider LLM Support
+
+Clawdius supports Anthropic, OpenAI, Ollama, DeepSeek, OpenRouter, and local models:
+
+**Claude Code is Anthropic-only. Cursor and Windsurf are similarly locked to their providers.**
+
+### 4. Test & Apply Flexibility
 
 - **Test**: Sandboxed OR Direct with rollback (user choice)
 - **Apply**: Trust-based OR Rollback-based (user choice)
 
-**Competitors offer only one approach.**
+**Most competitors offer only one approach; Clawdius gives users explicit control.**
 
-### 4. HFT Trading Profile
+### 5. HFT Trading Profile
 
 Complete trading infrastructure:
 - Lock-free ring buffers (<100ns)
@@ -314,7 +319,7 @@ Complete trading infrastructure:
 
 **No competitor has any trading capability.**
 
-### 5. Open Source + Rust
+### 6. Open Source + Rust
 
 - Full source code availability
 - Self-hosting capability
@@ -322,9 +327,9 @@ Complete trading infrastructure:
 - Memory safety guarantees
 - No vendor lock-in
 
-**Only Aider and OpenDevin are open source, but Python-based.**
+**Claude Code, Cursor, and Windsurf are closed source. Aider and OpenDevin are open source but Python-based.**
 
-### 6. Extensibility
+### 7. Extensibility
 
 - REST API for integration
 - Webhook support
@@ -366,10 +371,13 @@ Clawdius occupies a unique position in the AI coding assistant market:
 1. **Only open-source Rust implementation** with production-ready features
 2. **Only multi-profile system** supporting coding, trading, and general AI
 3. **Only HFT trading capability** with SEC compliance
-4. **Only true user choice** in generation and workflow modes
-5. **Best performance characteristics** due to Rust implementation
+4. **Multi-provider LLM support** (Anthropic, OpenAI, Ollama, DeepSeek, OpenRouter, local) — most competitors are vendor-locked
+5. **WASM plugin system** with marketplace extensibility
+6. **Formal verification** via Lean4 proofs
+7. **Multiple sandbox backends** for flexible testing
+8. **Best performance characteristics** due to Rust implementation
 
-The combination of open source, Rust performance, multi-profile system, and HFT trading creates a defensible competitive moat that no other product can easily replicate.
+The competitive landscape has matured significantly — Claude Code now offers multi-mode agent capabilities, Cursor ships Composer and Cloud Agents, and Aider provides strong auto-accept workflows. Clawdius differentiates through open source, multi-provider flexibility, Rust performance, WASM extensibility, and unique trading capabilities that no competitor offers.
 
 ---
 

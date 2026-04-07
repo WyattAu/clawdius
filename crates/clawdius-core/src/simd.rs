@@ -15,8 +15,8 @@ use std::arch::x86_64::*;
 #[cfg(target_arch = "aarch64")]
 use std::arch::aarch64::*;
 
-const FNV_OFFSET_BASIS: u64 = 0xcbf29ce484222325;
-const FNV_PRIME: u64 = 0x100000001b3;
+const FNV_OFFSET_BASIS: u64 = 0xcbf2_9ce4_8422_2325;
+const FNV_PRIME: u64 = 0x0100_0000_01b3;
 
 #[inline]
 fn scalar_checksum(data: &[u8]) -> u64 {
@@ -30,9 +30,9 @@ fn scalar_checksum(data: &[u8]) -> u64 {
 
 #[inline]
 fn scalar_hash(data: &[u8]) -> u64 {
-    let k1: u64 = 0x9e3779b97f4a7c15;
-    let k2: u64 = 0xff51afd7ed558ccd;
-    let k3: u64 = 0x87c37b91114253d5;
+    let k1: u64 = 0x9e37_79b9_7f4a_7c15;
+    let k2: u64 = 0xff51_afd7_ed55_8ccd;
+    let k3: u64 = 0x87c3_7b91_1142_53d5;
 
     let mut h1: u64 = k1;
     let mut h2: u64 = k1;
@@ -122,9 +122,9 @@ unsafe fn hash_sse2(data: &[u8]) -> u64 {
         return scalar_hash(data);
     }
 
-    let k1: u64 = 0x9e3779b97f4a7c15;
-    let k2: u64 = 0xff51afd7ed558ccd;
-    let k3: u64 = 0x87c37b91114253d5;
+    let k1: u64 = 0x9e37_79b9_7f4a_7c15;
+    let k2: u64 = 0xff51_afd7_ed55_8ccd;
+    let k3: u64 = 0x87c3_7b91_1142_53d5;
 
     let mut h1: u64 = k1;
     let mut h2: u64 = k1;

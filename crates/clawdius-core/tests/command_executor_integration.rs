@@ -8,7 +8,6 @@ use clawdius_core::commands::{
 };
 use std::collections::HashMap;
 use std::fs;
-use tempfile::TempDir;
 
 fn create_test_command() -> CustomCommand {
     CustomCommand {
@@ -90,8 +89,12 @@ async fn test_missing_required_argument() {
 
 #[tokio::test]
 async fn test_file_read_operation() {
-    let temp_dir = TempDir::new().unwrap();
-    let test_file = temp_dir.path().join("test_read.txt");
+    let temp_dir = std::env::current_dir()
+        .unwrap()
+        .join("target")
+        .join("test_tmp_read");
+    let _ = fs::create_dir_all(&temp_dir);
+    let test_file = temp_dir.join("test_read.txt");
     fs::write(&test_file, "test content for reading").unwrap();
 
     let executor = CommandExecutor;
@@ -111,12 +114,18 @@ async fn test_file_read_operation() {
     assert!(!results.is_empty());
     assert!(results[0].success);
     assert!(results[0].output.contains("test content for reading"));
+
+    let _ = fs::remove_dir_all(&temp_dir);
 }
 
 #[tokio::test]
 async fn test_file_write_operation() {
-    let temp_dir = TempDir::new().unwrap();
-    let test_file = temp_dir.path().join("test_write.txt");
+    let temp_dir = std::env::current_dir()
+        .unwrap()
+        .join("target")
+        .join("test_tmp_write");
+    let _ = fs::create_dir_all(&temp_dir);
+    let test_file = temp_dir.join("test_write.txt");
 
     let executor = CommandExecutor;
     let mut command = create_test_command();
@@ -138,6 +147,8 @@ async fn test_file_write_operation() {
 
     let content = fs::read_to_string(&test_file).unwrap();
     assert_eq!(content, "new content here");
+
+    let _ = fs::remove_dir_all(&temp_dir);
 }
 
 #[tokio::test]
