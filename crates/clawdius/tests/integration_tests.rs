@@ -152,7 +152,7 @@ fn test_file_tool_write_and_read() {
     let file_path = temp_dir.path().join("test.txt");
     let path_str = file_path.to_string_lossy().to_string();
 
-    let tool = FileTool::new();
+    let tool = FileTool::with_workspace_root(temp_dir.path().to_path_buf());
 
     tool.write(FileWriteParams {
         path: path_str.clone(),
@@ -177,7 +177,7 @@ fn test_file_tool_read_with_offset() {
     let file_path = temp_dir.path().join("test.txt");
     let path_str = file_path.to_string_lossy().to_string();
 
-    let tool = FileTool::new();
+    let tool = FileTool::with_workspace_root(temp_dir.path().to_path_buf());
 
     tool.write(FileWriteParams {
         path: path_str.clone(),
@@ -202,7 +202,7 @@ fn test_file_tool_edit() {
     let file_path = temp_dir.path().join("test.txt");
     let path_str = file_path.to_string_lossy().to_string();
 
-    let tool = FileTool::new();
+    let tool = FileTool::with_workspace_root(temp_dir.path().to_path_buf());
 
     tool.write(FileWriteParams {
         path: path_str.clone(),
@@ -238,7 +238,7 @@ fn test_file_tool_edit_not_found() {
     let file_path = temp_dir.path().join("test.txt");
     let path_str = file_path.to_string_lossy().to_string();
 
-    let tool = FileTool::new();
+    let tool = FileTool::with_workspace_root(temp_dir.path().to_path_buf());
 
     tool.write(FileWriteParams {
         path: path_str.clone(),
@@ -262,7 +262,7 @@ fn test_file_tool_edit_not_found() {
 fn test_file_tool_list() {
     let temp_dir = TempDir::new().unwrap();
 
-    let tool = FileTool::new();
+    let tool = FileTool::with_workspace_root(temp_dir.path().to_path_buf());
 
     tool.write(FileWriteParams {
         path: temp_dir.path().join("a.txt").to_string_lossy().to_string(),
@@ -530,7 +530,7 @@ fn test_streaming_event_creation() {
         } => {
             assert_eq!(session_id, "session-123");
             assert_eq!(model, Some("gpt-4o".to_string()));
-        }
+        },
         _ => panic!("Expected Start event"),
     }
 }
@@ -541,7 +541,7 @@ fn test_streaming_token_event() {
     match event {
         StreamEvent::Token { content } => {
             assert_eq!(content, "Hello, world!");
-        }
+        },
         _ => panic!("Expected Token event"),
     }
 }
@@ -554,7 +554,7 @@ fn test_streaming_tool_call_event() {
         StreamEvent::ToolCall { name, arguments } => {
             assert_eq!(name, "read_file");
             assert_eq!(arguments, args);
-        }
+        },
         _ => panic!("Expected ToolCall event"),
     }
 }
@@ -568,7 +568,7 @@ fn test_streaming_complete_event() {
             assert_eq!(usage.output, 50);
             assert_eq!(usage.total, 150);
             assert_eq!(duration_ms, 1500);
-        }
+        },
         _ => panic!("Expected Complete event"),
     }
 }
@@ -585,7 +585,7 @@ fn test_streaming_error_event() {
             assert_eq!(message, "Something went wrong");
             assert_eq!(code, "ERR_001");
             assert!(!recoverable);
-        }
+        },
         _ => panic!("Expected Error event"),
     }
 }
@@ -602,7 +602,7 @@ fn test_streaming_recoverable_error_event() {
             assert_eq!(message, "Rate limited");
             assert_eq!(code, "ERR_RATE");
             assert!(recoverable);
-        }
+        },
         _ => panic!("Expected Error event"),
     }
 }
@@ -614,7 +614,7 @@ fn test_streaming_file_change_event() {
         StreamEvent::FileChange { path, change_type } => {
             assert_eq!(path, "/src/main.rs");
             assert!(matches!(change_type, ChangeType::Modified));
-        }
+        },
         _ => panic!("Expected FileChange event"),
     }
 }
@@ -631,7 +631,7 @@ fn test_streaming_progress_event() {
             assert_eq!(message, "Processing files");
             assert_eq!(current, 5);
             assert_eq!(total, 10);
-        }
+        },
         _ => panic!("Expected Progress event"),
     }
 }

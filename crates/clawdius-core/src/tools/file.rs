@@ -2,6 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 use std::fs;
+use std::path::PathBuf;
 
 /// Validate that a path is safe (no traversal, no symlinks outside workspace)
 /// Returns the canonicalized path if safe, or an error if traversal is detected.
@@ -99,17 +100,27 @@ pub struct FileListParams {
 }
 
 /// File tool implementation
-pub struct FileTool;
+pub struct FileTool {
+    workspace_root: PathBuf,
+}
 
 impl FileTool {
     #[must_use]
     pub fn new() -> Self {
-        FileTool
+        Self {
+            workspace_root: std::env::current_dir().unwrap_or_default(),
+        }
+    }
+
+    #[must_use]
+    pub fn with_workspace_root(root: impl Into<PathBuf>) -> Self {
+        Self {
+            workspace_root: root.into(),
+        }
     }
 
     pub fn read(&self, params: FileReadParams) -> crate::Result<String> {
-        let workspace_root = std::env::current_dir().unwrap_or_default();
-        let safe_path = validate_path(&params.path, &workspace_root)
+        let safe_path = validate_path(&params.path, &self.workspace_root)
             .map_err(|e| crate::Error::Tool(format!("Path validation failed: {}", e)))?;
         let path = &safe_path;
 
@@ -136,8 +147,7 @@ impl FileTool {
     }
 
     pub fn write(&self, params: FileWriteParams) -> crate::Result<()> {
-        let workspace_root = std::env::current_dir().unwrap_or_default();
-        let safe_path = validate_path(&params.path, &workspace_root)
+        let safe_path = validate_path(&params.path, &self.workspace_root)
             .map_err(|e| crate::Error::Tool(format!("Path validation failed: {}", e)))?;
         let path = &safe_path;
 
@@ -152,8 +162,7 @@ impl FileTool {
     }
 
     pub fn edit(&self, params: FileEditParams) -> crate::Result<bool> {
-        let workspace_root = std::env::current_dir().unwrap_or_default();
-        let safe_path = validate_path(&params.path, &workspace_root)
+        let safe_path = validate_path(&params.path, &self.workspace_root)
             .map_err(|e| crate::Error::Tool(format!("Path validation failed: {}", e)))?;
         let path = &safe_path;
 
@@ -202,8 +211,7 @@ impl FileTool {
     }
 
     pub fn list(&self, params: FileListParams) -> crate::Result<Vec<String>> {
-        let workspace_root = std::env::current_dir().unwrap_or_default();
-        let safe_path = validate_path(&params.path, &workspace_root)
+        let safe_path = validate_path(&params.path, &self.workspace_root)
             .map_err(|e| crate::Error::Tool(format!("Path validation failed: {}", e)))?;
         let path = &safe_path;
 
