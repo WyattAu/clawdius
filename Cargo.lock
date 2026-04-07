@@ -1989,6 +1989,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "clawdius-mcp"
+version = "1.6.0"
+dependencies = [
+ "clawdius-core",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "clawdius-server"
 version = "1.6.0"
 dependencies = [

@@ -5,7 +5,7 @@
 use serde::{Deserialize, Serialize};
 
 /// MCP Protocol version
-pub const MCP_VERSION: &str = "2024-11-05";
+pub const MCP_VERSION: &str = "2025-03-26";
 
 /// An MCP message.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -23,6 +23,7 @@ pub struct McpRequest {
     /// JSON-RPC version
     pub jsonrpc: String,
     /// Request ID
+    #[serde(default)]
     pub id: u64,
     /// Method name
     pub method: String,
@@ -64,6 +65,9 @@ pub struct McpResponse {
     /// Error (if failed)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub error: Option<McpError>,
+    /// Whether this is a notification (no response expected)
+    #[serde(skip)]
+    is_notification: bool,
 }
 
 impl McpResponse {
@@ -75,6 +79,7 @@ impl McpResponse {
             id,
             result: Some(result),
             error: None,
+            is_notification: false,
         }
     }
 
@@ -86,7 +91,26 @@ impl McpResponse {
             id,
             result: None,
             error: Some(error),
+            is_notification: false,
         }
+    }
+
+    /// Creates a notification response (no result or error).
+    #[must_use]
+    pub fn notification() -> Self {
+        Self {
+            jsonrpc: "2.0".to_string(),
+            id: 0,
+            result: None,
+            error: None,
+            is_notification: true,
+        }
+    }
+
+    /// Returns true if this is a notification response (no response should be sent).
+    #[must_use]
+    pub fn is_notification(&self) -> bool {
+        self.is_notification
     }
 }
 
@@ -232,6 +256,7 @@ pub struct McpTool {
     /// Tool description
     pub description: String,
     /// Input schema
+    #[serde(rename = "inputSchema")]
     pub input_schema: serde_json::Value,
 }
 

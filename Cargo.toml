@@ -12,6 +12,7 @@ members = [
     "crates/clawdius",
     "crates/clawdius-core",
     "crates/clawdius-code",
+    "crates/clawdius-mcp",
     "crates/clawdius-server",
     "crates/clawdius-webview",
 ]
