@@ -50,6 +50,8 @@ use clawdius_core::session::SessionStore;
 
 mod api_rate_limiter;
 mod dap;
+mod graphql;
+mod marketplace;
 mod mcp;
 mod metrics;
 #[cfg(feature = "otel")]
@@ -168,6 +170,8 @@ struct AppState {
     key_store: Arc<ApiKeyStore>,
     /// DAP debug adapter handler.
     dap_handler: Arc<tokio::sync::Mutex<dap::DapHandler>>,
+    /// Plugin marketplace registry (in-memory).
+    marketplace_registry: marketplace::MarketplaceRegistry,
     /// Pre-built JWT auth instance (feature-gated). `None` when no secret is
     /// configured; the auth middleware falls back to API-key validation.
     #[cfg(feature = "jwt")]
@@ -882,6 +886,58 @@ fn build_app(
     router = router.route("/metrics", axum::routing::get(metrics_handler));
     router = router.route("/mcp", axum::routing::post(mcp::handle_mcp));
 
+    // 2c. GraphQL API endpoint
+    let gql_schema = graphql::schema(state.marketplace_registry.clone());
+    router = router.route_service(
+        "/api/v2/graphql",
+        async_graphql_axum::GraphQL::new(gql_schema),
+    );
+
+    async fn graphql_playground_handler() -> impl IntoResponse {
+        (
+            StatusCode::OK,
+            [(axum::http::header::CONTENT_TYPE, "text/html; charset=utf-8")],
+            async_graphql::http::graphiql_source("/api/v2/graphql", None),
+        )
+    }
+    router = router.route(
+        "/api/v2/graphql/playground",
+        axum::routing::get(graphql_playground_handler),
+    );
+
+    // 2d. Plugin Marketplace API routes (nested with MarketplaceRegistry state)
+    let marketplace_router = axum::Router::new()
+        .route(
+            "/api/v1/plugins/search",
+            axum::routing::get(marketplace::search_plugins),
+        )
+        .route(
+            "/api/v1/plugins/featured",
+            axum::routing::get(marketplace::featured_plugins),
+        )
+        .route(
+            "/api/v1/plugins/{id}",
+            axum::routing::get(marketplace::get_plugin),
+        )
+        .route(
+            "/api/v1/plugins/submit",
+            axum::routing::post(marketplace::submit_plugin),
+        )
+        .route(
+            "/api/v1/plugins/check-updates",
+            axum::routing::post(marketplace::check_updates),
+        )
+        .route(
+            "/api/v1/plugins/install",
+            axum::routing::post(marketplace::install_plugin),
+        )
+        .route(
+            "/api/v1/categories",
+            axum::routing::get(marketplace::list_categories),
+        )
+        .with_state(state.marketplace_registry.clone());
+    router = router.merge(marketplace_router);
+
     // 2b. Health / readiness endpoints (K8s-style probes)
     // GET /health — liveness probe: server process is responsive
     router = router.route(
@@ -1234,6 +1290,11 @@ async fn main() -> anyhow::Result<()> {
         gw
     });
 
+    // Build marketplace registry and seed with defaults
+    let marketplace_registry = marketplace::MarketplaceRegistry::new();
+    marketplace_registry.seed_defaults().await;
+    tracing::info!("Plugin marketplace initialized (in-memory)");
+
     // Build application state
     let gateway_for_shutdown = gateway.clone();
     let app_state = AppState {
@@ -1247,6 +1308,7 @@ async fn main() -> anyhow::Result<()> {
         usage_tracker: Some(usage_tracker),
         key_store: key_store.clone(),
         dap_handler: Arc::new(tokio::sync::Mutex::new(dap::DapHandler::new())),
+        marketplace_registry,
         #[cfg(feature = "jwt")]
         jwt_auth: build_jwt_auth(&config.messaging),
     };
@@ -1430,6 +1492,7 @@ mod tests {
             usage_tracker: None,
             key_store: Arc::new(ApiKeyStore::new()),
             dap_handler: Arc::new(tokio::sync::Mutex::new(dap::DapHandler::new())),
+            marketplace_registry: marketplace::MarketplaceRegistry::new(),
             #[cfg(feature = "jwt")]
             jwt_auth: None,
         };
@@ -1520,6 +1583,7 @@ mod tests {
             usage_tracker: None,
             key_store: Arc::new(ApiKeyStore::new()),
             dap_handler: Arc::new(tokio::sync::Mutex::new(dap::DapHandler::new())),
+            marketplace_registry: marketplace::MarketplaceRegistry::new(),
             #[cfg(feature = "jwt")]
             jwt_auth: None,
         };
@@ -1684,6 +1748,7 @@ mod tests {
             usage_tracker: None,
             key_store: Arc::new(ApiKeyStore::new()),
             dap_handler: Arc::new(tokio::sync::Mutex::new(dap::DapHandler::new())),
+            marketplace_registry: marketplace::MarketplaceRegistry::new(),
             #[cfg(feature = "jwt")]
             jwt_auth: None,
         };
@@ -1783,6 +1848,7 @@ mod tests {
             usage_tracker: Some(usage_tracker),
             key_store,
             dap_handler: Arc::new(tokio::sync::Mutex::new(dap::DapHandler::new())),
+            marketplace_registry: marketplace::MarketplaceRegistry::new(),
             #[cfg(feature = "jwt")]
             jwt_auth: None,
         };

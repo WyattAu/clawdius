@@ -254,6 +254,7 @@ fn extract_rate_limit_key(headers: &HeaderMap) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use reqwest::header::HeaderValue;
     use tower::ServiceExt; // for oneshot()
 
     fn default_layer() -> ApiRateLimitLayer {

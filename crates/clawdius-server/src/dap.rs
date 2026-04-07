@@ -3,6 +3,11 @@
 //! Skeleton DAP adapter that handles the standard initialization sequence
 //! and returns stub responses for other DAP requests.
 
+// Type stubs for the DAP protocol schema. Many are not yet consumed by the
+// handler methods but are kept here so the adapter can be extended without
+// breaking downstream consumers that deserialize responses.
+#![allow(dead_code)]
+
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
