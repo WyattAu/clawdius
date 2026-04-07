@@ -214,6 +214,22 @@ inherits = "release"
 lto = "thin"
 codegen-units = 4
 
+# PGO instrumented build (step 1 of PGO)
+[profile.pgo-instrument]
+inherits = "release"
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+panic = "abort"
+
+# PGO optimized build (step 3 of PGO — uses profiling data)
+[profile.pgo-optimized]
+inherits = "release"
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+
 # WASM-specific profile
 [profile.release.package.clawdius-webview]
 opt-level = "z"      # Optimize for size

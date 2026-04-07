@@ -237,6 +237,28 @@ jobs:
           gpg --batch --yes --detach-sign --armor clawdius-${VERSION}-${{ matrix.target }}.zip
         shell: bash
 
+      - name: Apply BOLT post-link optimization (Linux x86_64)
+        if: matrix.target == 'x86_64-unknown-linux-gnu'
+        run: |
+          if command -v bolt &>/dev/null; then
+            echo "Applying BOLT optimizations..."
+            BOLT_DIR=$(mktemp -d)
+            objcopy --only-keep-debug target/x86_64-unknown-linux-gnu/release/clawdius "$BOLT_DIR/clawdius.debug"
+            bolt merge-fdata "$BOLT_DIR/clawdius.debug" -o "$BOLT_DIR/clawdius.fdata" \
+                -ignore-unresolved 2>/dev/null || echo "BOLT merge skipped (no fdata)"
+            bolt optimize -o target/x86_64-unknown-linux-gnu/release/clawdius-bolt \
+                target/x86_64-unknown-linux-gnu/release/clawdius \
+                --data "$BOLT_DIR/clawdius.fdata" \
+                --reorder-blocks=ext-tsp \
+                --reorder-functions=hot-cold \
+                --split-functions=2 \
+                --split-all-cold \
+                --icf=1 2>/dev/null || echo "BOLT optimization skipped"
+            rm -rf "$BOLT_DIR"
+          else
+            echo "BOLT not installed, skipping post-link optimization"
+          fi
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:

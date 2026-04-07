@@ -1,0 +1,23 @@
+name: PGO + BOLT Build
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 3 * * 0'  # Weekly Sunday 3am UTC
+
+jobs:
+  pgo:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install BOLT
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y llvm clang
+      - name: PGO Build
+        run: bash scripts/pgo.sh
+      - name: Upload optimized binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: clawdius-pgo-bolt
+          path: target/release/clawdius*

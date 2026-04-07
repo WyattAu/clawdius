@@ -88,6 +88,7 @@ pub struct MarketplaceRegistry {
 const MARKETPLACE_TABLE: &str = "marketplace_plugins";
 
 impl MarketplaceRegistry {
+    #[allow(dead_code)]
     pub fn new() -> Self {
         Self {
             plugins: Arc::new(RwLock::new(HashMap::new())),
