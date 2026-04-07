@@ -44,6 +44,7 @@ pub mod retry;
 pub mod rpc;
 pub mod sandbox;
 pub mod session;
+pub mod simd;
 pub mod skills;
 pub mod telemetry;
 pub mod timeline;

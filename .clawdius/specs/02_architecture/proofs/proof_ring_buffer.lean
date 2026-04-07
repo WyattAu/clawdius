@@ -24,7 +24,7 @@ structure RingBuffer where
   deriving Repr
 
 def isPowerOfTwo (n : Nat) : Prop :=
-  n > 0 ∧ ∀ k, n % (2 * k) ≠ 1 ∨ n = 1
+  (0 < n) ∧ (∃ k, n = 2 ^ k)
 
 def indicesValid (rb : RingBuffer) : Prop :=
   rb.head < rb.capacity ∧ rb.tail < rb.capacity
@@ -63,23 +63,14 @@ theorem nat_sub_add_cancel (n : Nat) (h : 0 < n) : n - 1 + 1 = n := by omega
 
 -- pow2_mod_eq_mask: x % n = x & (n-1) for power-of-2 n, x < 2n.
 --
--- This is a well-known identity from computer science: modular arithmetic
--- with power-of-two divisors is equivalent to bitwise masking.
---
--- WHY THIS IS AN AXIOM:
--- In Lean 4.28.0, Nat.land (bitwise AND) is defined via bitwise recursion
--- (Nat.bitwiseAnd) which has no formal connection to Nat.mod (Euclidean
--- division). Proving this requires either:
---   (a) A library connecting binary representation to arithmetic (not in stdlib)
---   (b) Induction on bit-width with extensive Nat.land reduction lemmas
---   (c) A decision procedure for bitvector arithmetic
--- None of these are available in Lean 4.28.0 without external packages.
---
--- VERIFICATION: The identity is provable in Coq (Z.land_div_pow2),
--- Isabelle/HOL (div2_eq_mod), and verified by exhaustive testing for
--- all power-of-2 capacities up to 2^16.
-axiom pow2_mod_eq_mask (n x : Nat) (hpow : isPowerOfTwo n) (hbound : x < 2 * n) :
-    x % n = Nat.land x (n - 1)
+-- PROOF: Decompose isPowerOfTwo n to obtain ∃ k, n = 2^k, then apply
+-- the standard library lemma Nat.and_two_pow_sub_one_eq_mod which
+-- establishes x &&& (2^k - 1) = x % 2^k via bitwise testBit equality.
+theorem pow2_mod_eq_mask (n x : Nat) (hpow : isPowerOfTwo n) (hbound : x < 2 * n) :
+    x % n = Nat.land x (n - 1) := by
+  have ⟨_, ⟨k, hk⟩⟩ := hpow
+  subst hk
+  exact (Nat.and_two_pow_sub_one_eq_mod x k).symm
 
 theorem empty_not_full (rb : RingBuffer) (_hinv : spscInvariant rb) (hempty : isEmpty rb) (hcap : rb.capacity > 1) :
     ¬isFull rb := by

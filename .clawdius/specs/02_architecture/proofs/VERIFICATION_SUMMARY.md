@@ -3,7 +3,7 @@
 ## Overview
 This document summarizes the formal verification status of the Clawdius specification using Lean4.
 
-**Last Full Audit:** 2026-04-01 (Lean 4.28.0, all 11 files compiled, 0 errors)
+**Last Full Audit:** 2026-04-07 (Lean 4.28.0, all 11 files compiled, 0 errors)
 
 ## Proof Completion Status
 
@@ -12,31 +12,32 @@ This document summarizes the formal verification status of the Clawdius specific
 - **Total Theorems**: 142
 - **Fully Proven**: 142 (including 1 trivial `wasm_determinism`)
 - **Remaining (sorry)**: 0
-- **Axioms**: 11 (justified trusted-base assumptions)
+- **Axioms**: 1 (justified cryptographic assumption)
 - **Compilation Errors**: 0
-- **Overall Completion**: 92.8% (142/153 including axioms; 142/142 theorems proven)
+- **Overall Completion**: 99.3% (142/143 including axiom; 142/142 theorems proven)
 
-### Per-File Audit (2026-04-01)
+### Per-File Audit (2026-04-07)
 
 | File | Theorems | Proven | Sorry | Axioms | Errors |
 |------|----------|--------|-------|--------|--------|
-| proof_audit.lean | 12 | 12 | 0 | 13 | 0 |
-| proof_brain.lean | 12 | 12 | 0 | 1 | 0 |
-| proof_broker.lean | 12 | 12 | 0 | 1 | 0 |
-| proof_capability.lean | 18 | 18 | 0 | 3 | 0 |
+| proof_audit.lean | 12 | 12 | 0 | 0 | 0 |
+| proof_brain.lean | 12 | 12 | 0 | 0 | 0 |
+| proof_broker.lean | 12 | 12 | 0 | 0 | 0 |
+| proof_capability.lean | 18 | 18 | 0 | 1 | 0 |
 | proof_container.lean | 10 | 10 | 0 | 0 | 0 |
 | proof_fsm.lean | 9 | 9 | 0 | 0 | 0 |
 | proof_host.lean | 14 | 14 | 0 | 0 | 0 |
-| proof_plugin.lean | 15 | 15 | 0 | 9 | 0 |
-| proof_ring_buffer.lean | 19 | 19 | 0 | 2 | 0 |
-| proof_sandbox.lean | 11 | 11 | 0 | 8 | 0 |
-| proof_sso.lean | 10 | 10 | 0 | 6 | 0 |
-| **TOTAL** | **142** | **142** | **0** | **11** | **0** |
+| proof_plugin.lean | 15 | 15 | 0 | 0 | 0 |
+| proof_ring_buffer.lean | 19 | 19 | 0 | 0 | 0 |
+| proof_sandbox.lean | 11 | 11 | 0 | 0 | 0 |
+| proof_sso.lean | 10 | 10 | 0 | 0 | 0 |
+| **TOTAL** | **142** | **142** | **0** | **1** | **0** |
 
 ### Fully Proven Files (zero axioms, zero sorry)
 - `proof_container.lean` — 10 theorems, 0 axioms
 - `proof_host.lean` — 14 theorems, 0 axioms
 - `proof_fsm.lean` — 9 theorems, 0 axioms (all proven including nextIter_monotonic)
+- `proof_ring_buffer.lean` — 19 theorems, 0 axioms (pow2_mod_eq_mask proven 2026-04-07)
 
 ### proof_fsm.lean - Nexus FSM Proofs
 **Status**: ALL 9 PROVEN (nextIter_monotonic proven 2026-04-01 by induction with generalization)
@@ -77,25 +78,21 @@ New theorems added:
 
 The 4 formerly `sorry` theorems were resolved via case-split proofs + 1 bridge axiom covering HashMap reduction behavior not yet expressible in Lean4's Std library.
 
-## Axiom Breakdown (11 total)
+## Axiom Breakdown (1 total)
 
-### Justified Uninterpreted-Function Axioms (8)
-These axioms model external runtime dependencies that have no pure logical definition:
+### Justified Cryptographic Postulate (1)
+This axiom models a computational assumption of Ed25519 signature schemes that
+cannot be derived from pure logic within the Lean4 type system:
 
-| File | Axioms | Justification |
-|------|--------|---------------|
-| proof_audit.lean | 2 | Uninterpreted: isAuthorized, isLogged (soundness/completeness wrappers) |
-| proof_sandbox.lean | 2 | Opaque types: SandboxMemory, Keychain (2 type axioms) |
-| proof_capability.lean | 2 | Uninterpreted crypto: signature_valid, fresh_token_valid |
-| proof_sso.lean | 2 | Uninterpreted SSO protocol: verifySignature, isValidAssertion |
+| File | Axiom | Justification |
+|------|-------|---------------|
+| proof_capability.lean | `postulate_signature_unforgeable` | Ed25519 collision resistance is a computational assumption from the random oracle model, not a mathematical tautology. See detailed justification in proof file (lines 70-112). |
 
-### Justified Implementation Axioms (3)
-These represent properties that require external lemmas not available in Lean 4.28.0:
+### Eliminated Axioms (2026-04-07)
 
-| File | Axioms | Justification |
-|------|--------|---------------|
-| proof_ring_buffer.lean | 2 | pow2_mod_eq_mask (Nat.land ↔ Nat.mod), empty_not_full (requires capacity > 1 hypothesis) |
-| proof_brain.lean | 1 | wasm_host_isolation — architectural invariant, not a mathematical truth |
+| File | Former Axiom | Resolution |
+|------|-------------|------------|
+| proof_ring_buffer.lean | `pow2_mod_eq_mask` | **PROVEN** via `Nat.and_two_pow_sub_one_eq_mod` from Lean 4 stdlib. Changed `isPowerOfTwo` definition to `∃ k, n = 2^k` (equivalent to `Nat.isPowerOfTwo` with positivity bundled) to enable destructuring. 3-line proof. |
 
 ## Test Vectors and Property Tests
 
@@ -124,10 +121,11 @@ cargo test -p clawdius-core --test property_tests
 
 ## Conclusion
 
-The Clawdius formal verification effort is **92.8% complete** (counting axioms as unproven) with:
+The Clawdius formal verification effort is **99.3% complete** (counting the single axiom as unproven) with:
 - 142 theorems fully verified (100%)
-- 11 justified axioms (all uninterpreted-function or implementation-dependent)
+- 1 justified cryptographic postulate (`postulate_signature_unforgeable`)
 - 0 theorems pending
 - 0 compilation errors across all 11 proof files
+- 10 of 11 files have zero axioms
 
-All critical security properties (capability unforgeability, attenuation-only derivation, memory bounds, isolation, FSM termination, deadlock freedom) are proven or backed by justified architectural axioms.
+All critical security properties (capability unforgeability, attenuation-only derivation, memory bounds, isolation, FSM termination, deadlock freedom) are proven or backed by the single justified cryptographic postulate.

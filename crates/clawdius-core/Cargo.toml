@@ -170,6 +170,10 @@ name = "hft_bench"
 harness = false
 
 [[bench]]
+name = "simd_bench"
+harness = false
+
+[[bench]]
 name = "wcet_bench"
 harness = false
 
