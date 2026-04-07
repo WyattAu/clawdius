@@ -248,6 +248,20 @@ impl HookContext {
             .get(key)
             .and_then(|v| serde_json::from_value(v.clone()).ok())
     }
+
+    /// Serialize the context to JSON for WASM consumption
+    #[must_use]
+    pub fn to_json(&self) -> String {
+        serde_json::json!({
+            "hook_type": self.hook_type.as_str(),
+            "session_id": self.session_id,
+            "timestamp": self.timestamp,
+            "data": self.data,
+            "cancellable": self.cancellable,
+            "cancelled": self.cancelled,
+        })
+        .to_string()
+    }
 }
 
 /// Hook subscription configuration

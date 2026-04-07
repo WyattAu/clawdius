@@ -158,6 +158,7 @@ impl AgentRole {
         }
     }
 
+    #[allow(dead_code)]
     fn from_name(name: &str) -> Option<Self> {
         match name {
             "coder" => Some(AgentRole::Coder),
@@ -360,6 +361,305 @@ pub struct Subtask {
     pub assigned_role: AgentRole,
     /// Any context from previous subtask results that this subtask depends on
     pub context: String,
+}
+
+/// Complexity level of a decomposed subtask.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum TaskComplexity {
+    Trivial,
+    Simple,
+    Moderate,
+    Complex,
+}
+
+/// A decomposed subtask from the planner.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SubTask {
+    pub id: String,
+    pub description: String,
+    pub assigned_role: AgentRole,
+    pub depends_on: Vec<String>,
+    pub estimated_complexity: TaskComplexity,
+    pub acceptance_criteria: Vec<String>,
+}
+
+/// Result of LLM-backed task decomposition.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TaskDecomposition {
+    pub original_task: String,
+    pub subtasks: Vec<SubTask>,
+    pub total_estimated_steps: usize,
+    pub requires_human_review: bool,
+}
+
+/// LLM-backed task decomposer that breaks high-level tasks into subtasks
+/// with dependencies, complexity estimates, and acceptance criteria.
+pub struct TaskDecomposer {
+    llm_client: Arc<dyn LlmClient>,
+}
+
+impl TaskDecomposer {
+    pub fn new(llm_client: Arc<dyn LlmClient>) -> Self {
+        Self { llm_client }
+    }
+
+    /// Decompose a high-level task into subtasks using the LLM.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the LLM call fails or the response cannot be parsed.
+    pub async fn decompose(&self, task: &str, context: Option<&str>) -> Result<TaskDecomposition> {
+        let context_section = context
+            .map(|c| format!("Additional context:\n{c}"))
+            .unwrap_or_default();
+
+        let prompt = format!(
+            r#"You are a task decomposition engine. Break this task into concrete subtasks.
+
+Task: {task}
+
+{context_section}
+
+Respond with a JSON object:
+{{
+  "subtasks": [
+    {{
+      "id": "1",
+      "description": "Concrete description of what to do",
+      "assigned_role": "executor|researcher|reviewer|security|coder|tester|architect|debugger",
+      "depends_on": [],
+      "estimated_complexity": "trivial|simple|moderate|complex",
+      "acceptance_criteria": ["criterion 1", "criterion 2"]
+    }}
+  ],
+  "requires_human_review": false
+}}
+
+Rules:
+- Each subtask must be independently verifiable
+- Dependencies must form a DAG (no cycles)
+- Security-sensitive tasks must be assigned to the security or reviewer role
+- Code changes must be reviewed by the reviewer role
+- Respond with ONLY valid JSON (no markdown fences)"#
+        );
+
+        let messages = vec![
+            ChatMessage {
+                role: ChatRole::System,
+                content: AgentRole::Coordinator.system_prompt(),
+            },
+            ChatMessage {
+                role: ChatRole::User,
+                content: prompt,
+            },
+        ];
+
+        let response = self
+            .llm_client
+            .chat(messages)
+            .await
+            .map_err(|e| AgentError::LlmError(e.to_string()))?;
+
+        parse_task_decomposition(task, &response)
+    }
+}
+
+fn parse_task_decomposition(task: &str, response: &str) -> Result<TaskDecomposition> {
+    let cleaned = response.trim();
+    let json_str = if cleaned.starts_with("```") {
+        let without_fences = cleaned
+            .strip_prefix("```json")
+            .or_else(|| cleaned.strip_prefix("```"))
+            .unwrap_or(cleaned);
+        without_fences
+            .strip_suffix("```")
+            .unwrap_or(without_fences)
+            .trim()
+    } else {
+        let start = cleaned.find('{').ok_or_else(|| {
+            AgentError::TaskFailed("No JSON object found in decomposer response".into())
+        })?;
+        let end = cleaned.rfind('}').ok_or_else(|| {
+            AgentError::TaskFailed("No closing brace in decomposer response".into())
+        })?;
+        &cleaned[start..=end]
+    };
+
+    #[derive(Deserialize)]
+    struct SubTaskRaw {
+        id: String,
+        description: String,
+        assigned_role: String,
+        #[serde(default)]
+        depends_on: Vec<String>,
+        #[serde(default)]
+        estimated_complexity: Option<String>,
+        #[serde(default)]
+        acceptance_criteria: Vec<String>,
+    }
+
+    #[derive(Deserialize)]
+    struct DecompositionRaw {
+        subtasks: Vec<SubTaskRaw>,
+        #[serde(default)]
+        requires_human_review: bool,
+    }
+
+    let raw: DecompositionRaw = serde_json::from_str(json_str)
+        .map_err(|e| AgentError::TaskFailed(format!("Failed to parse task decomposition: {e}")))?;
+
+    if raw.subtasks.is_empty() {
+        return Err(AgentError::TaskFailed(
+            "Decomposer produced zero subtasks".into(),
+        ));
+    }
+
+    let subtasks: Vec<SubTask> = raw
+        .subtasks
+        .into_iter()
+        .map(|s| {
+            let role = parse_decompose_role(&s.assigned_role);
+            let complexity = match s.estimated_complexity.as_deref() {
+                Some("trivial") => TaskComplexity::Trivial,
+                Some("simple") => TaskComplexity::Simple,
+                Some("moderate") => TaskComplexity::Moderate,
+                Some("complex") => TaskComplexity::Complex,
+                _ => TaskComplexity::Moderate,
+            };
+            SubTask {
+                id: s.id,
+                description: s.description,
+                assigned_role: role,
+                depends_on: s.depends_on,
+                estimated_complexity: complexity,
+                acceptance_criteria: s.acceptance_criteria,
+            }
+        })
+        .collect();
+
+    validate_subtask_dag(&subtasks)?;
+
+    let total_estimated_steps = subtasks.len();
+
+    Ok(TaskDecomposition {
+        original_task: task.to_string(),
+        subtasks,
+        total_estimated_steps,
+        requires_human_review: raw.requires_human_review,
+    })
+}
+
+fn parse_decompose_role(name: &str) -> AgentRole {
+    match name.trim().to_lowercase().as_str() {
+        "coder" | "executor" => AgentRole::Coder,
+        "reviewer" => AgentRole::Reviewer,
+        "tester" => AgentRole::Tester,
+        "architect" => AgentRole::Architect,
+        "researcher" => AgentRole::Researcher,
+        "debugger" => AgentRole::Debugger,
+        "security" => AgentRole::Reviewer,
+        _ => AgentRole::Coder,
+    }
+}
+
+fn validate_subtask_dag(subtasks: &[SubTask]) -> Result<()> {
+    let id_set: std::collections::HashSet<&str> = subtasks.iter().map(|s| s.id.as_str()).collect();
+
+    for subtask in subtasks {
+        for dep in &subtask.depends_on {
+            if !id_set.contains(dep.as_str()) {
+                return Err(AgentError::TaskFailed(format!(
+                    "Subtask '{}' depends on unknown subtask '{}'",
+                    subtask.id, dep
+                )));
+            }
+        }
+    }
+
+    let mut visited = std::collections::HashSet::new();
+    let mut stack = std::collections::HashSet::new();
+
+    for subtask in subtasks {
+        if dfs_cycle_check(subtask.id.as_str(), subtasks, &mut visited, &mut stack)? {
+            return Err(AgentError::TaskFailed(
+                "Subtask dependencies contain a cycle".into(),
+            ));
+        }
+    }
+
+    Ok(())
+}
+
+fn dfs_cycle_check(
+    id: &str,
+    subtasks: &[SubTask],
+    visited: &mut std::collections::HashSet<String>,
+    stack: &mut std::collections::HashSet<String>,
+) -> Result<bool> {
+    if stack.contains(id) {
+        return Ok(true);
+    }
+    if visited.contains(id) {
+        return Ok(false);
+    }
+
+    visited.insert(id.to_string());
+    stack.insert(id.to_string());
+
+    if let Some(subtask) = subtasks.iter().find(|s| s.id == id) {
+        for dep in &subtask.depends_on {
+            if dfs_cycle_check(dep, subtasks, visited, stack)? {
+                return Ok(true);
+            }
+        }
+    }
+
+    stack.remove(id);
+    Ok(false)
+}
+
+fn topological_sort(subtasks: &[SubTask]) -> Vec<usize> {
+    let id_to_idx: std::collections::HashMap<&str, usize> = subtasks
+        .iter()
+        .enumerate()
+        .map(|(i, s)| (s.id.as_str(), i))
+        .collect();
+
+    let mut in_degree: std::collections::HashMap<&str, usize> =
+        subtasks.iter().map(|s| (s.id.as_str(), 0usize)).collect();
+
+    for subtask in subtasks {
+        for dep in &subtask.depends_on {
+            if id_to_idx.contains_key(dep.as_str()) {
+                *in_degree.get_mut(subtask.id.as_str()).unwrap() += 1;
+            }
+        }
+    }
+
+    let mut queue: std::collections::VecDeque<usize> = subtasks
+        .iter()
+        .enumerate()
+        .filter(|(_, s)| *in_degree.get(s.id.as_str()).unwrap() == 0)
+        .map(|(i, _)| i)
+        .collect();
+
+    let mut order = Vec::new();
+
+    while let Some(idx) = queue.pop_front() {
+        order.push(idx);
+        for (other_i, other) in subtasks.iter().enumerate() {
+            if other.depends_on.contains(&subtasks[idx].id) {
+                let deg = in_degree.get_mut(other.id.as_str()).unwrap();
+                *deg -= 1;
+                if *deg == 0 {
+                    queue.push_back(other_i);
+                }
+            }
+        }
+    }
+
+    order
 }
 
 /// Agent Team
@@ -622,36 +922,38 @@ impl AgentTeam {
             timestamp: Utc::now(),
         })?;
 
-        let available_roles: Vec<String> = worker_roles
-            .iter()
-            .map(|r| {
-                format!(
-                    "{} ({})",
-                    r.name(),
-                    r.system_prompt().chars().take(80).collect::<String>()
-                )
-            })
-            .collect();
+        let decomposition = self
+            .coordinator_decompose_with_llm(task, &worker_roles)
+            .await?;
+        let sorted_indices = topological_sort(&decomposition.subtasks);
 
-        let subtasks = self.coordinator_decompose(task, &available_roles).await?;
-
-        let mut subtask_results: Vec<(Subtask, String)> = Vec::new();
+        let mut completed_results: HashMap<String, (SubTask, String)> = HashMap::new();
         let mut contributions: HashMap<String, AgentContribution> = HashMap::new();
         let mut total_turns = 0;
 
-        for subtask in &subtasks {
+        for idx in &sorted_indices {
+            let subtask = &decomposition.subtasks[*idx];
             let role = &subtask.assigned_role;
 
-            let prior_context = subtask_results
+            let prior_context = subtask
+                .depends_on
                 .iter()
-                .map(|(s, r)| format!("[{}]: {}", s.assigned_role.name(), r))
+                .filter_map(|dep_id| {
+                    completed_results
+                        .get(dep_id)
+                        .map(|(s, r)| format!("[{}]: {}", s.assigned_role.name(), r))
+                })
                 .collect::<Vec<_>>()
                 .join("\n\n");
 
             let user_prompt = build_worker_prompt(&subtask.description, &prior_context);
 
             let response = self.call_agent(role, &user_prompt).await.map_err(|e| {
-                AgentError::TaskFailed(format!("Agent {} failed: {e}", role.name()))
+                AgentError::TaskFailed(format!(
+                    "Agent {} failed on subtask '{}': {e}",
+                    role.name(),
+                    subtask.id
+                ))
             })?;
 
             total_turns += 1;
@@ -684,10 +986,17 @@ impl AgentTeam {
                 timestamp: Utc::now(),
             })?;
 
-            subtask_results.push((subtask.clone(), response));
+            completed_results.insert(subtask.id.clone(), (subtask.clone(), response));
         }
 
-        let fused = self.coordinator_fuse(task, &subtask_results).await?;
+        let subtask_results: Vec<(SubTask, String)> = sorted_indices
+            .iter()
+            .filter_map(|i| completed_results.remove(&decomposition.subtasks[*i].id))
+            .collect();
+
+        let fused = self
+            .coordinator_fuse_decomposed(task, &subtask_results)
+            .await?;
 
         total_turns += 1;
 
@@ -702,7 +1011,7 @@ impl AgentTeam {
             coord_entry.message_count += 2;
             coord_entry
                 .highlights
-                .push("Decomposed task into subtasks".into());
+                .push("Decomposed task into subtasks with dependencies".into());
             coord_entry
                 .highlights
                 .push("Fused subtask results into final output".into());
@@ -728,41 +1037,43 @@ impl AgentTeam {
         Ok(result)
     }
 
-    async fn coordinator_decompose(
+    async fn coordinator_decompose_with_llm(
         &self,
         task: &str,
-        available_roles: &[String],
-    ) -> Result<Vec<Subtask>> {
-        let roles_list = available_roles.join("\n");
+        _worker_roles: &[AgentRole],
+    ) -> Result<TaskDecomposition> {
+        let llm = self.llm_client.read().await;
+        let client = llm
+            .as_ref()
+            .ok_or_else(|| AgentError::InvalidState("No LLM client configured".into()))?;
+        let client = Arc::clone(client);
+        drop(llm);
 
-        let prompt = format!(
-            "You are a team coordinator. Break the following task into subtasks.\n\n\
-             Available agent roles:\n{roles_list}\n\n\
-             Original task:\n{task}\n\n\
-             For each subtask, specify the best suited agent role from the list above.\n\n\
-             Respond with ONLY valid JSON (no markdown fences) in this exact format:\n\
-             {{\n  \"subtasks\": [\n    {{\n      \"description\": \"<what to do>\",\n      \"assigned_role\": \"<role_name>\",\n      \"context\": \"<any additional context>\"\n    }}\n  ]\n}}\n\n\
-             If only one agent role is available, create one subtask assigned to that role."
-        );
-
-        let response = self.call_agent(&AgentRole::Coordinator, &prompt).await?;
-
-        parse_subtasks(&response)
+        let decomposer = TaskDecomposer::new(client);
+        decomposer.decompose(task, None).await
     }
 
-    async fn coordinator_fuse(
+    async fn coordinator_fuse_decomposed(
         &self,
         task: &str,
-        subtask_results: &[(Subtask, String)],
+        subtask_results: &[(SubTask, String)],
     ) -> Result<String> {
         let results_text = subtask_results
             .iter()
-            .enumerate()
-            .map(|(i, (s, r))| {
+            .map(|(s, r)| {
+                let criteria = if s.acceptance_criteria.is_empty() {
+                    String::new()
+                } else {
+                    format!(
+                        "\nAcceptance criteria: {}",
+                        s.acceptance_criteria.join(", ")
+                    )
+                };
                 format!(
-                    "--- Subtask {} (assigned to {}) ---\n{}\n\nResult:\n{}",
-                    i + 1,
+                    "--- Subtask {} (assigned to {}, complexity: {:?}) ---\n{}\n{criteria}\n\nResult:\n{}",
+                    s.id,
                     s.assigned_role.name(),
+                    s.estimated_complexity,
                     s.description,
                     r
                 )
@@ -830,6 +1141,7 @@ fn build_worker_prompt(description: &str, prior_context: &str) -> String {
     prompt
 }
 
+#[cfg(test)]
 fn parse_subtasks(response: &str) -> Result<Vec<Subtask>> {
     let cleaned = response.trim();
     let json_str = if cleaned.starts_with("```") {
@@ -912,16 +1224,23 @@ mod tests {
             let coordinator_decompose = r#"{
                 "subtasks": [
                     {
+                        "id": "1",
                         "description": "Implement the solution for the given task",
                         "assigned_role": "coder",
-                        "context": ""
+                        "depends_on": [],
+                        "estimated_complexity": "simple",
+                        "acceptance_criteria": ["Code compiles without errors"]
                     },
                     {
+                        "id": "2",
                         "description": "Review the implemented solution for quality and correctness",
                         "assigned_role": "reviewer",
-                        "context": ""
+                        "depends_on": ["1"],
+                        "estimated_complexity": "simple",
+                        "acceptance_criteria": ["No bugs found"]
                     }
-                ]
+                ],
+                "requires_human_review": false
             }"#.to_string();
             m.responses
                 .insert("coordinator_decompose".to_string(), coordinator_decompose);
@@ -952,7 +1271,9 @@ mod tests {
                 .map(|m| m.content.as_str())
                 .unwrap_or("");
 
-            if user_msg.contains("Break the following task") {
+            if user_msg.contains("Break the following task")
+                || user_msg.contains("task decomposition engine")
+            {
                 if let Some(r) = self.responses.get("coordinator_decompose") {
                     return Ok(r.clone());
                 }
@@ -972,6 +1293,11 @@ mod tests {
             }
             if system_msg.contains("reviewer") {
                 if let Some(r) = self.responses.get("reviewer_response") {
+                    return Ok(r.clone());
+                }
+            }
+            if system_msg.contains("architect") {
+                if let Some(r) = self.responses.get("architect_response") {
                     return Ok(r.clone());
                 }
             }
@@ -1194,7 +1520,7 @@ mod tests {
         let mut mock = MockLlmClient::new();
         mock.responses.insert(
             "coordinator_decompose".to_string(),
-            r#"{"subtasks": [{"description": "Design the REST API architecture", "assigned_role": "architect", "context": ""}]}"#.to_string(),
+            r#"{"subtasks": [{"id": "1", "description": "Design the REST API architecture", "assigned_role": "architect", "depends_on": [], "estimated_complexity": "moderate", "acceptance_criteria": ["API endpoints defined"]}], "requires_human_review": false}"#.to_string(),
         );
         mock.responses.insert(
             "architect_response".to_string(),
@@ -1208,5 +1534,347 @@ mod tests {
 
         let result = team.execute("Design a REST API").await;
         assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_parse_task_decomposition_valid() {
+        let json = r#"{
+            "subtasks": [
+                {
+                    "id": "1",
+                    "description": "Research existing auth solutions",
+                    "assigned_role": "researcher",
+                    "depends_on": [],
+                    "estimated_complexity": "simple",
+                    "acceptance_criteria": ["Survey completed"]
+                },
+                {
+                    "id": "2",
+                    "description": "Implement user authentication",
+                    "assigned_role": "coder",
+                    "depends_on": ["1"],
+                    "estimated_complexity": "complex",
+                    "acceptance_criteria": ["Login works", "Signup works"]
+                },
+                {
+                    "id": "3",
+                    "description": "Review auth implementation",
+                    "assigned_role": "reviewer",
+                    "depends_on": ["2"],
+                    "estimated_complexity": "moderate",
+                    "acceptance_criteria": ["No security issues"]
+                }
+            ],
+            "requires_human_review": true
+        }"#;
+
+        let result = parse_task_decomposition("Add user authentication", json).unwrap();
+        assert_eq!(result.original_task, "Add user authentication");
+        assert_eq!(result.subtasks.len(), 3);
+        assert_eq!(result.total_estimated_steps, 3);
+        assert!(result.requires_human_review);
+
+        assert_eq!(result.subtasks[0].assigned_role, AgentRole::Researcher);
+        assert_eq!(result.subtasks[0].depends_on.len(), 0);
+        assert_eq!(
+            result.subtasks[0].estimated_complexity,
+            TaskComplexity::Simple
+        );
+
+        assert_eq!(result.subtasks[1].assigned_role, AgentRole::Coder);
+        assert_eq!(result.subtasks[1].depends_on, vec!["1"]);
+        assert_eq!(
+            result.subtasks[1].estimated_complexity,
+            TaskComplexity::Complex
+        );
+        assert_eq!(result.subtasks[1].acceptance_criteria.len(), 2);
+
+        assert_eq!(result.subtasks[2].depends_on, vec!["2"]);
+    }
+
+    #[test]
+    fn test_parse_task_decomposition_with_markdown_fences() {
+        let json = "```json\n{\"subtasks\": [{\"id\": \"1\", \"description\": \"Do the thing\", \"assigned_role\": \"coder\", \"depends_on\": [], \"estimated_complexity\": \"trivial\", \"acceptance_criteria\": []}], \"requires_human_review\": false}\n```";
+
+        let result = parse_task_decomposition("Some task", json).unwrap();
+        assert_eq!(result.subtasks.len(), 1);
+        assert_eq!(result.subtasks[0].description, "Do the thing");
+        assert_eq!(
+            result.subtasks[0].estimated_complexity,
+            TaskComplexity::Trivial
+        );
+    }
+
+    #[test]
+    fn test_parse_task_decomposition_empty_subtasks_errors() {
+        let json = r#"{"subtasks": [], "requires_human_review": false}"#;
+        let result = parse_task_decomposition("task", json);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("zero subtasks"));
+    }
+
+    #[test]
+    fn test_parse_task_decomposition_invalid_json_errors() {
+        let result = parse_task_decomposition("task", "not json at all");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_parse_task_decomposition_empty_response_errors() {
+        let result = parse_task_decomposition("task", "");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_validate_subtask_dag_valid() {
+        let subtasks = vec![
+            SubTask {
+                id: "1".into(),
+                description: "Research".into(),
+                assigned_role: AgentRole::Researcher,
+                depends_on: vec![],
+                estimated_complexity: TaskComplexity::Simple,
+                acceptance_criteria: vec![],
+            },
+            SubTask {
+                id: "2".into(),
+                description: "Implement".into(),
+                assigned_role: AgentRole::Coder,
+                depends_on: vec!["1".into()],
+                estimated_complexity: TaskComplexity::Moderate,
+                acceptance_criteria: vec![],
+            },
+            SubTask {
+                id: "3".into(),
+                description: "Review".into(),
+                assigned_role: AgentRole::Reviewer,
+                depends_on: vec!["2".into()],
+                estimated_complexity: TaskComplexity::Simple,
+                acceptance_criteria: vec![],
+            },
+        ];
+        assert!(validate_subtask_dag(&subtasks).is_ok());
+    }
+
+    #[test]
+    fn test_validate_subtask_dag_cycle_detected() {
+        let subtasks = vec![
+            SubTask {
+                id: "1".into(),
+                description: "A".into(),
+                assigned_role: AgentRole::Coder,
+                depends_on: vec!["2".into()],
+                estimated_complexity: TaskComplexity::Simple,
+                acceptance_criteria: vec![],
+            },
+            SubTask {
+                id: "2".into(),
+                description: "B".into(),
+                assigned_role: AgentRole::Coder,
+                depends_on: vec!["1".into()],
+                estimated_complexity: TaskComplexity::Simple,
+                acceptance_criteria: vec![],
+            },
+        ];
+        let result = validate_subtask_dag(&subtasks);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("cycle"));
+    }
+
+    #[test]
+    fn test_validate_subtask_dag_unknown_dependency_errors() {
+        let subtasks = vec![SubTask {
+            id: "1".into(),
+            description: "A".into(),
+            assigned_role: AgentRole::Coder,
+            depends_on: vec!["999".into()],
+            estimated_complexity: TaskComplexity::Simple,
+            acceptance_criteria: vec![],
+        }];
+        let result = validate_subtask_dag(&subtasks);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("unknown subtask"));
+    }
+
+    #[test]
+    fn test_topological_sort_respects_dependencies() {
+        let subtasks = vec![
+            SubTask {
+                id: "1".into(),
+                description: "Research".into(),
+                assigned_role: AgentRole::Researcher,
+                depends_on: vec![],
+                estimated_complexity: TaskComplexity::Simple,
+                acceptance_criteria: vec![],
+            },
+            SubTask {
+                id: "2".into(),
+                description: "Implement".into(),
+                assigned_role: AgentRole::Coder,
+                depends_on: vec!["1".into()],
+                estimated_complexity: TaskComplexity::Moderate,
+                acceptance_criteria: vec![],
+            },
+            SubTask {
+                id: "3".into(),
+                description: "Review".into(),
+                assigned_role: AgentRole::Reviewer,
+                depends_on: vec!["2".into()],
+                estimated_complexity: TaskComplexity::Simple,
+                acceptance_criteria: vec![],
+            },
+        ];
+
+        let order = topological_sort(&subtasks);
+        assert_eq!(order.len(), 3);
+
+        let pos: std::collections::HashMap<&str, usize> = order
+            .iter()
+            .enumerate()
+            .map(|(pos, idx)| (subtasks[*idx].id.as_str(), pos))
+            .collect();
+
+        assert!(pos["1"] < pos["2"], "Research must come before Implement");
+        assert!(pos["2"] < pos["3"], "Implement must come before Review");
+    }
+
+    #[test]
+    fn test_topological_sort_independent_subtasks_all_included() {
+        let subtasks = vec![
+            SubTask {
+                id: "a".into(),
+                description: "Task A".into(),
+                assigned_role: AgentRole::Coder,
+                depends_on: vec![],
+                estimated_complexity: TaskComplexity::Trivial,
+                acceptance_criteria: vec![],
+            },
+            SubTask {
+                id: "b".into(),
+                description: "Task B".into(),
+                assigned_role: AgentRole::Tester,
+                depends_on: vec![],
+                estimated_complexity: TaskComplexity::Trivial,
+                acceptance_criteria: vec![],
+            },
+            SubTask {
+                id: "c".into(),
+                description: "Task C".into(),
+                assigned_role: AgentRole::Reviewer,
+                depends_on: vec![],
+                estimated_complexity: TaskComplexity::Trivial,
+                acceptance_criteria: vec![],
+            },
+        ];
+
+        let order = topological_sort(&subtasks);
+        assert_eq!(order.len(), 3);
+    }
+
+    #[test]
+    fn test_topological_sort_diamond_dependency() {
+        let subtasks = vec![
+            SubTask {
+                id: "root".into(),
+                description: "Root".into(),
+                assigned_role: AgentRole::Architect,
+                depends_on: vec![],
+                estimated_complexity: TaskComplexity::Simple,
+                acceptance_criteria: vec![],
+            },
+            SubTask {
+                id: "left".into(),
+                description: "Left".into(),
+                assigned_role: AgentRole::Coder,
+                depends_on: vec!["root".into()],
+                estimated_complexity: TaskComplexity::Simple,
+                acceptance_criteria: vec![],
+            },
+            SubTask {
+                id: "right".into(),
+                description: "Right".into(),
+                assigned_role: AgentRole::Coder,
+                depends_on: vec!["root".into()],
+                estimated_complexity: TaskComplexity::Simple,
+                acceptance_criteria: vec![],
+            },
+            SubTask {
+                id: "join".into(),
+                description: "Join".into(),
+                assigned_role: AgentRole::Reviewer,
+                depends_on: vec!["left".into(), "right".into()],
+                estimated_complexity: TaskComplexity::Simple,
+                acceptance_criteria: vec![],
+            },
+        ];
+
+        let order = topological_sort(&subtasks);
+        assert_eq!(order.len(), 4);
+
+        let pos: std::collections::HashMap<&str, usize> = order
+            .iter()
+            .enumerate()
+            .map(|(pos, idx)| (subtasks[*idx].id.as_str(), pos))
+            .collect();
+
+        assert!(pos["root"] < pos["left"]);
+        assert!(pos["root"] < pos["right"]);
+        assert!(pos["left"] < pos["join"]);
+        assert!(pos["right"] < pos["join"]);
+    }
+
+    #[test]
+    fn test_parse_decompose_role_maps_security_to_reviewer() {
+        assert_eq!(parse_decompose_role("security"), AgentRole::Reviewer);
+        assert_eq!(parse_decompose_role("executor"), AgentRole::Coder);
+        assert_eq!(parse_decompose_role("coder"), AgentRole::Coder);
+        assert_eq!(parse_decompose_role("reviewer"), AgentRole::Reviewer);
+        assert_eq!(parse_decompose_role("tester"), AgentRole::Tester);
+        assert_eq!(parse_decompose_role("architect"), AgentRole::Architect);
+        assert_eq!(parse_decompose_role("researcher"), AgentRole::Researcher);
+        assert_eq!(parse_decompose_role("debugger"), AgentRole::Debugger);
+        assert_eq!(parse_decompose_role("unknown"), AgentRole::Coder);
+    }
+
+    #[tokio::test]
+    async fn test_task_decomposer_with_mock_llm() {
+        let mut mock = MockLlmClient::new();
+        mock.responses.insert(
+            "coordinator_decompose".to_string(),
+            r#"{
+                "subtasks": [
+                    {
+                        "id": "1",
+                        "description": "Analyze the codebase structure",
+                        "assigned_role": "researcher",
+                        "depends_on": [],
+                        "estimated_complexity": "simple",
+                        "acceptance_criteria": ["Structure documented"]
+                    },
+                    {
+                        "id": "2",
+                        "description": "Implement the feature",
+                        "assigned_role": "coder",
+                        "depends_on": ["1"],
+                        "estimated_complexity": "moderate",
+                        "acceptance_criteria": ["Tests pass"]
+                    }
+                ],
+                "requires_human_review": false
+            }"#
+            .to_string(),
+        );
+
+        let decomposer = TaskDecomposer::new(Arc::new(mock));
+        let result = decomposer
+            .decompose("Add caching layer", Some("Using Redis"))
+            .await
+            .unwrap();
+
+        assert_eq!(result.original_task, "Add caching layer");
+        assert_eq!(result.subtasks.len(), 2);
+        assert!(!result.requires_human_review);
+        assert_eq!(result.subtasks[0].assigned_role, AgentRole::Researcher);
+        assert_eq!(result.subtasks[1].depends_on, vec!["1"]);
     }
 }

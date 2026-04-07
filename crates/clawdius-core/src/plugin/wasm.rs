@@ -16,6 +16,23 @@ use super::api::{
 use super::hooks::{HookContext, HookType};
 use super::manifest::PluginManifest;
 
+/// Store data shared between host and WASM guest via host imports.
+struct PluginStoreData {
+    context_json: String,
+    result_json: String,
+    success: bool,
+}
+
+impl Default for PluginStoreData {
+    fn default() -> Self {
+        Self {
+            context_json: String::new(),
+            result_json: "{}".to_string(),
+            success: true,
+        }
+    }
+}
+
 /// WASM plugin instance
 pub struct WasmPlugin {
     /// Plugin metadata
@@ -31,7 +48,7 @@ pub struct WasmPlugin {
     /// WASM instance (lazy initialized)
     instance: Option<Instance>,
     /// Linker for WASM imports
-    linker: Linker<()>,
+    linker: Linker<PluginStoreData>,
     /// Statistics
     stats: PluginStats,
 }
@@ -41,7 +58,6 @@ impl WasmPlugin {
     pub async fn load(path: &Path, manifest: PluginManifest) -> Result<Self> {
         let metadata = manifest.to_metadata();
 
-        // Configure WASM engine with security constraints
         let mut config = Config::new();
         config
             .wasm_backtrace(true)
@@ -51,12 +67,10 @@ impl WasmPlugin {
 
         let engine = Engine::new(&config)?;
 
-        // Load and compile the module
         let wasm_bytes = tokio::fs::read(path)
             .await
             .context("Failed to read WASM file")?;
 
-        // Validate size
         if wasm_bytes.len() > super::MAX_PLUGIN_SIZE {
             anyhow::bail!(
                 "Plugin too large: {} bytes (max: {})",
@@ -68,7 +82,6 @@ impl WasmPlugin {
         let module = Module::from_binary(&engine, &wasm_bytes)
             .map_err(|e| anyhow::anyhow!("Failed to compile WASM module: {e}"))?;
 
-        // Create linker with host functions
         let linker = Self::create_linker(&engine)?;
 
         Ok(Self {
@@ -84,22 +97,18 @@ impl WasmPlugin {
     }
 
     /// Create linker with host functions
-    fn create_linker(engine: &Engine) -> Result<Linker<()>> {
+    fn create_linker(engine: &Engine) -> Result<Linker<PluginStoreData>> {
         let mut linker = Linker::new(engine);
-
-        // Add Clawdius host functions
         Self::add_clawdius_imports(&mut linker)?;
-
         Ok(linker)
     }
 
     /// Add Clawdius-specific host functions
-    fn add_clawdius_imports(linker: &mut Linker<()>) -> Result<()> {
-        // Log function
+    fn add_clawdius_imports(linker: &mut Linker<PluginStoreData>) -> Result<()> {
         linker.func_wrap(
             "clawdius",
             "log",
-            |_caller: Caller<'_, ()>, level: i32, _ptr: i32, _len: i32| {
+            |_caller: Caller<'_, PluginStoreData>, level: i32, _ptr: i32, _len: i32| {
                 match level {
                     0 => tracing::trace!("WASM log"),
                     1 => tracing::debug!("WASM log"),
@@ -107,36 +116,108 @@ impl WasmPlugin {
                     3 => tracing::warn!("WASM log"),
                     _ => tracing::error!("WASM log"),
                 }
-
                 Ok(())
             },
         )?;
 
-        // Get config value
         linker.func_wrap(
             "clawdius",
             "get_config",
-            |_caller: Caller<'_, ()>,
-             _key_ptr: i32,
-             _key_len: i32,
-             _val_ptr: i32,
-             _val_len: i32| {
-                // FIXME(v1.7.0): Implement config retrieval
-                Ok(0i32)
+            |mut caller: Caller<'_, PluginStoreData>,
+             key_ptr: i32,
+             key_len: i32,
+             val_ptr: i32,
+             val_max_len: i32| {
+                let key = {
+                    let Some(mem) = caller.get_export("memory").and_then(|e| e.into_memory())
+                    else {
+                        return Ok(-1);
+                    };
+                    let mem_data = mem.data(&caller);
+                    let start = key_ptr as usize;
+                    let end = start + key_len as usize;
+                    if end > mem_data.len() {
+                        return Ok(-1);
+                    }
+                    std::str::from_utf8(&mem_data[start..end])
+                        .map(|s| s.to_string())
+                        .unwrap_or_default()
+                };
+
+                let value: &str = match key.as_str() {
+                    "version" => env!("CARGO_PKG_VERSION"),
+                    _ => "",
+                };
+
+                if value.len() > val_max_len as usize {
+                    return Ok(-1);
+                }
+
+                let Some(mem) = caller.get_export("memory").and_then(|e| e.into_memory()) else {
+                    return Ok(-1);
+                };
+
+                match mem.write(&mut caller, val_ptr as usize, value.as_bytes()) {
+                    Ok(()) => Ok(value.len() as i32),
+                    Err(_) => Ok(-1),
+                }
             },
         )?;
 
-        // Hook result functions
+        linker.func_wrap(
+            "clawdius",
+            "get_context",
+            |mut caller: Caller<'_, PluginStoreData>, ptr: i32, max_len: i32| {
+                let ctx_bytes = caller.data().context_json.as_bytes().to_vec();
+                if ctx_bytes.len() > max_len as usize {
+                    return Ok(-1);
+                }
+                let Some(mem) = caller.get_export("memory").and_then(|e| e.into_memory()) else {
+                    return Ok(-1);
+                };
+                match mem.write(&mut caller, ptr as usize, &ctx_bytes) {
+                    Ok(()) => Ok(ctx_bytes.len() as i32),
+                    Err(_) => Ok(-1),
+                }
+            },
+        )?;
+
+        linker.func_wrap(
+            "clawdius",
+            "set_result",
+            |mut caller: Caller<'_, PluginStoreData>, ptr: i32, len: i32, success: i32| {
+                let json = {
+                    let Some(mem) = caller.get_export("memory").and_then(|e| e.into_memory())
+                    else {
+                        return Ok(-1);
+                    };
+                    let mem_data = mem.data(&caller);
+                    let start = ptr as usize;
+                    let end = start + len as usize;
+                    if end > mem_data.len() {
+                        return Ok(-1);
+                    }
+                    std::str::from_utf8(&mem_data[start..end])
+                        .map(|s| s.to_string())
+                        .unwrap_or_else(|_| "{}".to_string())
+                };
+
+                caller.data_mut().result_json = json;
+                caller.data_mut().success = success != 0;
+                Ok(0)
+            },
+        )?;
+
         linker.func_wrap(
             "clawdius",
             "hook_result_success",
-            |_caller: Caller<'_, ()>| Ok(0i32),
+            |_caller: Caller<'_, PluginStoreData>| Ok(0i32),
         )?;
 
         linker.func_wrap(
             "clawdius",
             "hook_result_error",
-            |_caller: Caller<'_, ()>, _ptr: i32, _len: i32| Ok(0i32),
+            |_caller: Caller<'_, PluginStoreData>, _ptr: i32, _len: i32| Ok(0i32),
         )?;
 
         Ok(())
@@ -144,7 +225,7 @@ impl WasmPlugin {
 
     /// Instantiate the WASM module
     fn instantiate(&mut self) -> Result<()> {
-        let mut store = Store::new(&self.engine, ());
+        let mut store = Store::new(&self.engine, PluginStoreData::default());
         let instance = self.linker.instantiate(&mut store, &self.module)?;
         self.instance = Some(instance);
         Ok(())
@@ -152,7 +233,7 @@ impl WasmPlugin {
 
     /// Call an exported function
     fn call_export<T: WasmRet>(&mut self, name: &str, args: &[Val]) -> Result<T> {
-        let mut store = Store::new(&self.engine, ());
+        let mut store = Store::new(&self.engine, PluginStoreData::default());
         let instance = self
             .instance
             .as_ref()
@@ -171,7 +252,6 @@ impl WasmPlugin {
 
     /// Check if an export exists
     fn has_export(&self, name: &str) -> bool {
-        // This is a simplified check - full implementation would need store access
         self.module.get_export(name).is_some()
     }
 
@@ -206,15 +286,12 @@ impl Plugin for WasmPlugin {
         self.state = PluginState::Initializing;
         self.config = config;
 
-        // Instantiate the WASM module
         self.instantiate()?;
 
-        // Call the _initialize export if it exists (WASM reactor pattern)
         if self.has_export("_initialize") {
             self.call_export::<()>("_initialize", &[])?;
         }
 
-        // Call the plugin's init function if it exists
         if self.has_export("clawdius_init") {
             self.call_export::<i32>("clawdius_init", &[])?;
         }
@@ -230,7 +307,6 @@ impl Plugin for WasmPlugin {
 
         self.state = PluginState::Unloading;
 
-        // Call the plugin's shutdown function if it exists
         if self.has_export("clawdius_shutdown") {
             let _ = self.call_export::<i32>("clawdius_shutdown", &[]);
         }
@@ -245,37 +321,67 @@ impl Plugin for WasmPlugin {
             return Ok(HookResult::error("Plugin not active"));
         }
 
-        // Convert hook name to function name (e.g., "before_edit" -> "hook_before_edit")
         let func_name = format!("hook_{}", hook_name.replace('-', "_"));
 
         if !self.has_export(&func_name) {
             return Ok(HookResult::success());
         }
 
-        // Serialize context to JSON
-        let _context_json = serde_json::to_string(context)?;
+        let context_json = context.to_json();
+        let mut store = Store::new(
+            &self.engine,
+            PluginStoreData {
+                context_json,
+                result_json: "{}".to_string(),
+                success: true,
+            },
+        );
 
-        // FIXME(v1.8.0): Pass context to WASM via shared memory for zero-copy data transfer
-        // For now, just call the hook without context
+        let instance = self
+            .instance
+            .as_ref()
+            .ok_or_else(|| anyhow::anyhow!("Plugin not instantiated"))?;
+
+        let export = match instance
+            .get_export(&mut store, &func_name)
+            .and_then(wasmtime::Extern::into_func)
+        {
+            Some(func) => func,
+            None => return Ok(HookResult::success()),
+        };
+
         let start = std::time::Instant::now();
 
-        // We need mutable access for the call
-        // This is a limitation of the current design
-        let result = HookResult::success();
+        let mut results = vec![Val::I32(0)];
+        let call_result = export.call(&mut store, &[], &mut results);
 
         let elapsed = start.elapsed();
+        let store_data = store.data();
 
-        // Update stats (note: would need interior mutability for proper stats tracking)
+        let hook_result = if call_result.is_err() {
+            HookResult::error(format!("WASM hook '{func_name}' execution failed"))
+        } else if store_data.success {
+            let result_data: serde_json::Value = serde_json::from_str(&store_data.result_json)
+                .unwrap_or(serde_json::Value::Object(serde_json::Map::new()));
+            HookResult::success_with_data(result_data)
+        } else {
+            let error_msg = serde_json::from_str::<serde_json::Value>(&store_data.result_json)
+                .ok()
+                .and_then(|v| v.get("error").and_then(|e| e.as_str()).map(String::from))
+                .unwrap_or_else(|| "Unknown WASM error".to_string());
+            HookResult::error(error_msg)
+        };
+
         let _stats = PluginStats {
             hook_calls: self.stats.hook_calls + 1,
-            successful_hooks: self.stats.successful_hooks + 1,
+            successful_hooks: self.stats.successful_hooks + (hook_result.success as u64),
             total_execution_time_ms: self.stats.total_execution_time_ms
                 + elapsed.as_millis() as u64,
             last_activity: Some(chrono::Utc::now()),
             ..self.stats.clone()
         };
 
-        Ok(result)
+        Ok(hook_result)
     }
 
     fn config(&self) -> &PluginConfig {
@@ -285,7 +391,6 @@ impl Plugin for WasmPlugin {
     async fn update_config(&mut self, config: PluginConfig) -> Result<()> {
         self.config = config;
 
-        // Notify plugin of config change
         if self.has_export("clawdius_config_changed") {
             self.call_export::<i32>("clawdius_config_changed", &[])?;
         }
@@ -416,7 +521,6 @@ impl WasmRuntime {
         for plugin_lock in plugins.iter() {
             let plugin = plugin_lock.read().await;
 
-            // Check if plugin subscribes to this hook
             if !plugin
                 .metadata()
                 .subscribed_hooks
@@ -495,5 +599,31 @@ mod tests {
     fn test_wasm_runtime_creation() {
         let runtime = WasmRuntime::new();
         assert!(runtime.is_ok());
+    }
+
+    #[test]
+    fn test_plugin_store_data_default() {
+        let data = PluginStoreData::default();
+        assert!(data.context_json.is_empty());
+        assert_eq!(data.result_json, "{}");
+        assert!(data.success);
+    }
+
+    #[test]
+    fn test_hook_context_to_json() {
+        let ctx = HookContext::new(HookType::BeforeEdit)
+            .with_session("test-session")
+            .with_data("file_path", serde_json::json!("/tmp/test.rs"))
+            .cancellable();
+
+        let json = ctx.to_json();
+        let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(parsed["hook_type"], "before_edit");
+        assert_eq!(parsed["session_id"], "test-session");
+        assert_eq!(parsed["data"]["file_path"], "/tmp/test.rs");
+        assert_eq!(parsed["cancellable"], true);
+        assert_eq!(parsed["cancelled"], false);
+        assert!(parsed.get("timestamp").is_some());
     }
 }
