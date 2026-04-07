@@ -140,18 +140,21 @@ def approved (wallet : Wallet) (params : RiskParams) (order : Order) : Bool :=
   | none => true
   | some _ => false
 
--- Bridge axiom: maps the hypothesis about position size to checkPositionLimit's return value.
--- This is a single axiom replacing 4 sorrys. It captures the fact that checkPositionLimit
--- rejects when the resulting position exceeds piMax. A full proof requires Std.HashMap
--- reduction lemmas that are not yet available in Lean 4.28.0.
--- Bridge axiom: maps the hypothesis about position size to checkPositionLimit's return value.
--- This is a single axiom replacing 4 sorrys. It captures the fact that checkPositionLimit
--- rejects when the resulting position exceeds piMax. A full proof requires Std.HashMap
--- reduction lemmas that are not yet available in Lean 4.28.0.
-axiom checkPositionLimit_rejects_of_abs_exceeds :
+-- Bridge theorem: maps the hypothesis about position size to checkPositionLimit's return value.
+-- Replaces former axiom; proven by unfolding the definition and case-splitting on the
+-- if-then-else condition, which is exactly the hypothesis.
+theorem checkPositionLimit_rejects_of_abs_exceeds :
     (wallet : Wallet) → (params : RiskParams) → (order : Order) →
     (Int.natAbs (currentPosition wallet order.symbol + signedQuantity order) : Int) > params.piMax →
-    checkPositionLimit wallet params order ≠ none
+    checkPositionLimit wallet params order ≠ none := by
+  intro wallet params order h
+  unfold checkPositionLimit
+  show (if (Int.natAbs (currentPosition wallet order.symbol + signedQuantity order) : Int) > params.piMax
+        then some (RejectReason.positionLimitExceeded (currentPosition wallet order.symbol + signedQuantity order) params.piMax)
+        else none) ≠ none
+  split
+  · simp
+  · contradiction
 
 -- === Theorems ===
 

@@ -77,9 +77,9 @@ def isOrderedByTimestamp (_events : List AuditEvent) : Bool := true
 def isLogged (log : AuditLog) (event : AuditEvent) : Bool :=
   log.events.elem event
 
--- Trusted base assumption: critical severity events are always logged (compliance requirement)
-axiom critical_always_logged (log : AuditLog) (event : AuditEvent) :
-    event.severity = AuditSeverity.Critical → log.events.elem event = true
+-- Critical severity events being always logged is a runtime/compliance invariant,
+-- not derivable from the log data structure alone. Removed axiom and dependent
+-- theorem; the invariant is enforced by the audit subsystem.
 
 def queryRange (log : AuditLog) (start end_ : Nat) : List AuditEvent :=
   log.events.filter (fun event => event.timestamp ≥ start ∧ event.timestamp ≤ end_)
@@ -126,10 +126,10 @@ def addEvent (log : AuditLog) (event : AuditEvent) : AuditLog :=
   else
     { events := log.events ++ [event], maxSize := log.maxSize }
 
--- Trusted base assumption: size bound on tail path requires log invariant (events.length ≤ maxSize)
-axiom log_size_bounded_tail (log : AuditLog) (event : AuditEvent) :
-    log.events.length >= log.maxSize →
-    (addEvent log event).events.length ≤ log.maxSize
+-- The tail-path size bound requires the precondition log.events.length ≤ log.maxSize
+-- (an invariant maintained by construction). Without this precondition the statement
+-- is not provable, so the axiom is removed; the invariant is guaranteed by the
+-- addEvent implementation when starting from a valid log.
 
 theorem log_size_bounded_append (log : AuditLog) (event : AuditEvent) :
     ¬log.events.length ≥ log.maxSize →
@@ -140,12 +140,6 @@ theorem log_size_bounded_append (log : AuditLog) (event : AuditEvent) :
   · omega
   · simp [List.length_append, List.length_cons, List.length_nil]
     omega
-
-theorem log_size_bounded (log : AuditLog) (event : AuditEvent) :
-    (addEvent log event).events.length ≤ log.maxSize := by
-  by_cases h : log.events.length >= log.maxSize
-  · exact log_size_bounded_tail log event h
-  · exact log_size_bounded_append log event h
 
 theorem event_preservation_append (log : AuditLog) (event : AuditEvent) :
     log.events.length < log.maxSize →
@@ -164,13 +158,6 @@ theorem event_preservation (log : AuditLog) (event : AuditEvent) :
 theorem sequential_timestamps (log : AuditLog) :
     isOrderedByTimestamp log.events = true :=
   rfl
-
-theorem no_missing_critical (log : AuditLog) (event : AuditEvent) :
-    event.severity = AuditSeverity.Critical →
-    isLogged log event = true := by
-  intro h
-  simp only [isLogged]
-  exact critical_always_logged log event h
 
 theorem query_completeness (log : AuditLog) (start end_ : Nat) :
     ∀ event ∈ log.events,

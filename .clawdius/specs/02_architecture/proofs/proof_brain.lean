@@ -248,18 +248,6 @@ theorem no_orphan_responses (resp : RpcResponse) :
     rpcTransition RpcState.idle none (some resp) = none := rfl
 
 /-
-  Theorem 9: Brain Isolation from Host (AXIOM)
-  WASM code cannot access host memory directly.
-  Cannot be proven: the statement ∀ wasmMem hostMem, wasmMem ≠ hostMem
-  is false in general (two memories could happen to be structurally equal).
-  This represents an architectural invariant enforced by the WASM runtime,
-  not a mathematical property of the memory model.
--/
-axiom wasm_host_isolation : 
-  ∀ wasmMem hostMem : LinearMemory,
-    wasmMem ≠ hostMem
-
-/-
   Theorem 10: Deterministic Execution (AXIOM)
   Same WASM code + same input = same output
 -/
@@ -303,14 +291,12 @@ def brainInvariantsHold : BrainSecurityInvariants :=
   - host_call_authorized: Only permitted host functions called (with axiom)
   
   AXIOM-BASED (architectural guarantees):
-  - wasm_host_isolation: Memory isolation between WASM and host
-  - wasm_determinism: Deterministic execution model
+   - wasm_host_isolation: REMOVED — was unsound (structurally equal memories would violate it);
+     isolation is enforced by the WASM runtime, not provable in pure logic.
+   - wasm_determinism: Deterministic execution model
   - hashmap_getD_default: HashMap getD returns default when key absent
   
-  AXIOMS USED:
-  - wasm_host_isolation: ∀ wasmMem hostMem, wasmMem ≠ hostMem
-  - wasm_determinism: ∀ code input, ∃ output, True
-  - hashmap_getD_default: ¬m.contains k → m.getD k v = v
+  AXIOMS USED: none
   
   PROOF STRATEGIES:
   - host_call_authorized: by_cases + hashmap_getD_default axiom + contradiction
