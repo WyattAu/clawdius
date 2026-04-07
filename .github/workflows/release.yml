@@ -16,6 +16,10 @@ on:
         type: boolean
         default: false
 
+permissions:
+  contents: write
+  id-token: write
+
 env:
   CARGO_TERM_COLOR: always
 
@@ -214,6 +218,25 @@ jobs:
           sha256sum ${ARCHIVE} > ${ARCHIVE}.sha256
         shell: bash
       
+      - name: Import GPG key
+        uses: crazy-max/ghaction-import-gpg@v6
+        with:
+          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
+          passphrase: ${{ secrets.GPG_PASSPHRASE }}
+
+      - name: Sign archive (Unix)
+        if: matrix.archive == 'tar.gz'
+        run: |
+          VERSION="${{ needs.validate.outputs.version }}"
+          gpg --batch --yes --detach-sign --armor clawdius-${VERSION}-${{ matrix.target }}.tar.gz
+
+      - name: Sign archive (Windows)
+        if: matrix.archive == 'zip'
+        run: |
+          VERSION="${{ needs.validate.outputs.version }}"
+          gpg --batch --yes --detach-sign --armor clawdius-${VERSION}-${{ matrix.target }}.zip
+        shell: bash
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
@@ -221,8 +244,10 @@ jobs:
           path: |
             clawdius-*.tar.gz
             clawdius-*.tar.gz.sha256
+            clawdius-*.tar.gz.asc
             clawdius-*.zip
             clawdius-*.zip.sha256
+            clawdius-*.zip.asc
           retention-days: 30
 
   sbom:
@@ -270,7 +295,7 @@ jobs:
       - name: Prepare release assets
         run: |
           mkdir -p release-assets
-          find artifacts/ -name "*.tar.gz" -o -name "*.zip" -o -name "*.sha256" | xargs -I {} cp {} release-assets/
+          find artifacts/ -name "*.tar.gz" -o -name "*.zip" -o -name "*.sha256" -o -name "*.asc" | xargs -I {} cp {} release-assets/
           find artifacts/ -name "*-sbom.json" | xargs -I {} cp {} release-assets/
       
       - name: Extract changelog

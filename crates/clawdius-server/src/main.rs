@@ -49,6 +49,8 @@ use clawdius_core::messaging::webhook_receiver::WebhookRequest;
 use clawdius_core::session::SessionStore;
 
 mod api_rate_limiter;
+mod dap;
+mod mcp;
 mod metrics;
 #[cfg(feature = "otel")]
 mod otel;
@@ -164,6 +166,8 @@ struct AppState {
     usage_tracker: Option<Arc<UsageTracker>>,
     /// API key store for authenticating management endpoints.
     key_store: Arc<ApiKeyStore>,
+    /// DAP debug adapter handler.
+    dap_handler: Arc<tokio::sync::Mutex<dap::DapHandler>>,
     /// Pre-built JWT auth instance (feature-gated). `None` when no secret is
     /// configured; the auth middleware falls back to API-key validation.
     #[cfg(feature = "jwt")]
@@ -853,6 +857,16 @@ fn build_app(
         router = router.route(&axum_path, axum::routing::any(webhook_handler));
     }
 
+    // 1b. DAP debug adapter endpoint
+    async fn dap_handler(
+        State(state): State<AppState>,
+        Json(message): Json<dap::DapMessage>,
+    ) -> impl IntoResponse {
+        let mut handler = state.dap_handler.lock().await;
+        Json(handler.handle(&message))
+    }
+    router = router.route("/dap", axum::routing::post(dap_handler));
+
     // 2. Prometheus metrics scrape endpoint
     async fn metrics_handler(State(state): State<AppState>) -> impl IntoResponse {
         let body = state.http_metrics.store.export_prometheus();
@@ -866,6 +880,7 @@ fn build_app(
         )
     }
     router = router.route("/metrics", axum::routing::get(metrics_handler));
+    router = router.route("/mcp", axum::routing::post(mcp::handle_mcp));
 
     // 2b. Health / readiness endpoints (K8s-style probes)
     // GET /health — liveness probe: server process is responsive
@@ -1231,6 +1246,7 @@ async fn main() -> anyhow::Result<()> {
         tenant_manager,
         usage_tracker: Some(usage_tracker),
         key_store: key_store.clone(),
+        dap_handler: Arc::new(tokio::sync::Mutex::new(dap::DapHandler::new())),
         #[cfg(feature = "jwt")]
         jwt_auth: build_jwt_auth(&config.messaging),
     };
@@ -1413,6 +1429,7 @@ mod tests {
             tenant_manager: None,
             usage_tracker: None,
             key_store: Arc::new(ApiKeyStore::new()),
+            dap_handler: Arc::new(tokio::sync::Mutex::new(dap::DapHandler::new())),
             #[cfg(feature = "jwt")]
             jwt_auth: None,
         };
@@ -1502,6 +1519,7 @@ mod tests {
             tenant_manager: None,
             usage_tracker: None,
             key_store: Arc::new(ApiKeyStore::new()),
+            dap_handler: Arc::new(tokio::sync::Mutex::new(dap::DapHandler::new())),
             #[cfg(feature = "jwt")]
             jwt_auth: None,
         };
@@ -1665,6 +1683,7 @@ mod tests {
             tenant_manager: None,
             usage_tracker: None,
             key_store: Arc::new(ApiKeyStore::new()),
+            dap_handler: Arc::new(tokio::sync::Mutex::new(dap::DapHandler::new())),
             #[cfg(feature = "jwt")]
             jwt_auth: None,
         };
@@ -1763,6 +1782,7 @@ mod tests {
             tenant_manager: None,
             usage_tracker: Some(usage_tracker),
             key_store,
+            dap_handler: Arc::new(tokio::sync::Mutex::new(dap::DapHandler::new())),
             #[cfg(feature = "jwt")]
             jwt_auth: None,
         };
