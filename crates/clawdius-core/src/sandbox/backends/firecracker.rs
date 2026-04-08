@@ -1,10 +1,16 @@
-//! Firecracker microVM sandbox backend
+//! Firecracker microVM sandbox backend (EXPERIMENTAL — not yet functional)
 //!
 //! Firecracker provides lightweight VM isolation using KVM.
 //! This backend requires firecracker and jailer to be installed.
+//!
+//! **Status:** This module is architectural scaffolding. The sync `execute()` method
+//! returns an error because Firecracker requires async VM lifecycle management.
+//! The async helpers (`start_vm`, `stop_vm`, etc.) are prepared for future
+//! integration but are not yet wired into the sandbox trait's execution path.
 
-// Note: Several structures and methods in this module are prepared for future
-// Firecracker integration but not yet fully utilized. Suppress dead_code warnings.
+// Suppress dead_code: most structs and async methods are prepared for future
+// Firecracker integration but not yet wired into the SandboxBackend trait
+// execution path. Retained as architectural scaffolding.
 #![allow(dead_code)]
 
 use crate::error::{Error, Result};
@@ -362,8 +368,8 @@ impl FirecrackerBackend {
 impl SandboxBackend for FirecrackerBackend {
     fn execute(&self, _command: &str, _args: &[&str], _cwd: &Path) -> Result<Output> {
         Err(Error::Sandbox(
-            "Firecracker backend requires async execution context. \
-             Use execute_async() or choose a different backend."
+            "Firecracker backend requires async execution context and is not yet implemented. \
+             Choose a different backend (e.g., `docker` or `process`)."
                 .to_string(),
         ))
     }

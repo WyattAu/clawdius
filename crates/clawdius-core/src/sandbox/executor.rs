@@ -32,8 +32,21 @@ impl std::fmt::Debug for SandboxExecutor {
 impl SandboxExecutor {
     pub fn new(tier: SandboxTier, config: SandboxConfig) -> Result<Self> {
         let backend: Box<dyn SandboxBackend> = match tier {
-            SandboxTier::TrustedAudited => Box::new(DirectBackend::new(config)),
-            SandboxTier::Trusted => Box::new(FilteredBackend::new(config)),
+            SandboxTier::TrustedAudited => {
+                tracing::warn!(
+                    "TrustedAudited tier uses direct execution with NO sandboxing. \
+                     Only use for fully trusted, audited code."
+                );
+                Box::new(DirectBackend::new(config))
+            },
+            SandboxTier::Trusted => {
+                tracing::warn!(
+                    "Trusted tier uses filtered execution (command blocklist only). \
+                     This is NOT a real sandbox — payloads can bypass the blocklist \
+                     via interpreters, flag reordering, etc."
+                );
+                Box::new(FilteredBackend::new(config))
+            },
             SandboxTier::Untrusted | SandboxTier::Hardened => Self::platform_sandbox(config)?,
         };
         Ok(Self { backend, tier })
@@ -41,19 +54,42 @@ impl SandboxExecutor {
 
     /// Create a sandbox executor that uses the best available backend
     /// for the given tier, with cascading fallback.
+    ///
+    /// For `TrustedAudited` and `Trusted` tiers, this always uses `direct` and
+    /// `filtered` respectively — these tiers intentionally opt out of real
+    /// isolation. See [`SandboxTier`] documentation for security implications.
     pub fn new_with_fallback(tier: SandboxTier, config: SandboxConfig) -> Self {
         let backend: Box<dyn SandboxBackend> = match tier {
-            SandboxTier::TrustedAudited => Box::new(DirectBackend::new(config)),
-            SandboxTier::Trusted => Box::new(FilteredBackend::new(config)),
+            SandboxTier::TrustedAudited => {
+                tracing::warn!(
+                    "TrustedAudited tier uses direct execution with NO sandboxing. \
+                     Only use for fully trusted, audited code."
+                );
+                Box::new(DirectBackend::new(config))
+            },
+            SandboxTier::Trusted => {
+                tracing::warn!(
+                    "Trusted tier uses filtered execution (command blocklist only). \
+                     This is NOT a real sandbox — payloads can bypass the blocklist \
+                     via interpreters, flag reordering, etc."
+                );
+                Box::new(FilteredBackend::new(config))
+            },
             SandboxTier::Untrusted | SandboxTier::Hardened => Self::best_available_sandbox(config),
         };
         Self { backend, tier }
     }
 
     /// Select the best available sandbox backend with cascading priority:
-    /// gVisor > Container > Bubblewrap/Sandbox-exec > Filtered (degraded)
+    ///
+    /// gVisor (kernel intercept) > Container (process isolation) >
+    /// Bubblewrap/Sandbox-exec (namespace/seatbelt) > Filtered (degraded, no real isolation)
+    ///
+    /// **The `direct` backend is never used as a fallback** — if all isolation
+    /// backends are unavailable, we degrade to `filtered` (blocklist) rather
+    /// than running with zero protection.
     fn best_available_sandbox(config: SandboxConfig) -> Box<dyn SandboxBackend> {
-        // Priority 1: gVisor (strongest userspace isolation)
+        // Priority 1: gVisor (strongest userspace isolation — intercepts all syscalls)
         if GVisorBackend::is_available() {
             return Box::new(GVisorBackend::with_defaults());
         }
@@ -74,9 +110,11 @@ impl SandboxExecutor {
             return Box::new(SandboxExecBackend::new(config));
         }
 
-        // Priority 4: Filtered (degraded — command blocklist only, no isolation)
-        eprintln!(
-            "[SECURITY WARNING] No sandbox isolation backend available. \
+        // Priority 4: Filtered (degraded — command blocklist only, NO real isolation).
+        // We intentionally do NOT fall back to `direct` here. A blocklist is weak
+        // but still better than nothing.
+        tracing::error!(
+            "No sandbox isolation backend available. \
              Falling back to filtered execution (command blocklist only). \
              Install gVisor, Docker/Podman, or bubblewrap for proper isolation."
         );

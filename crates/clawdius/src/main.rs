@@ -9,6 +9,7 @@ use clap::Parser;
 
 mod cli;
 mod cli_progress;
+mod tool_executor;
 mod tui_app;
 
 pub use cli::{Cli, Commands};
@@ -52,7 +53,7 @@ fn main() -> anyhow::Result<()> {
                     // TUI mode
                     tui_app::run_tui().await
                 }
-            }
+            },
         }
     })
 }

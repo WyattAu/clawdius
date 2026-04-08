@@ -67,14 +67,14 @@ impl MessageHandler for GenerateHandler {
         let lang = command.flag("lang").unwrap_or("auto");
 
         // FIXME(v1.7.0): Integrate with actual code generation
-        let response = format!(
-            "🔧 **Code Generation**\n\n\
-             **Prompt:** {}\n\
-             **Language:** {}\n\n\
-             ⏳ Processing with Clawdius LLM...\n\n\
-             _Full LLM integration coming soon!_",
-            prompt, lang
+        tracing::warn!(
+            command = %prompt,
+            lang = %lang,
+            "Generate handler is using a stub response; LLM integration not yet wired"
         );
+        let response = "[STUB] Code generation is not yet integrated via the messaging gateway. \
+                         Use 'clawdius generate' CLI command instead."
+            .to_string();
 
         Ok(MessageHandlerResult {
             response,
@@ -107,8 +107,8 @@ mod tests {
 
         let result = handler.handle(&session, &command).await.unwrap();
 
-        assert!(result.response.contains("Code Generation"));
-        assert!(result.response.contains("test function"));
+        assert!(result.response.contains("[STUB]"));
+        assert!(result.response.contains("not yet integrated"));
     }
 
     #[tokio::test]

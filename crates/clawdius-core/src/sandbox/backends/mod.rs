@@ -80,12 +80,24 @@ pub fn is_kvm_available() -> bool {
     FirecrackerBackend::is_kvm_available()
 }
 
-/// Detect the best available sandbox backend
+/// Detect the best available sandbox backend.
+///
+/// **Security tiers** (strongest to weakest):
+///
+/// 1. **VM-level**: Firecracker — hardware-level isolation via KVM.
+/// 2. **Kernel-level**: gVisor — intercepts all syscalls in a userspace kernel.
+/// 3. **Namespace-level**: Bubblewrap (Linux) / sandbox-exec (macOS) — OS-level
+///    namespaces or Seatbelt profiles.
+/// 4. **Container**: Docker/Podman — shared host kernel, process-level isolation.
+/// 5. **Filtered**: Command blocklist only — **no real isolation**, trivially bypassed.
+///
+/// The `direct` backend (zero isolation) is **never** returned by this function.
+/// It must be selected explicitly via [`SandboxExecutor::new`] with
+/// [`SandboxTier::TrustedAudited`].
 #[must_use]
 pub fn detect_best_backend() -> &'static str {
     #[cfg(target_os = "linux")]
     {
-        // Prefer gVisor for strong isolation
         if is_gvisor_available() {
             return "gvisor";
         }
@@ -94,7 +106,6 @@ pub fn detect_best_backend() -> &'static str {
             return "bubblewrap";
         }
 
-        // Firecracker for VM-level isolation
         if is_firecracker_available() && is_kvm_available() {
             return "firecracker";
         }
@@ -111,20 +122,24 @@ pub fn detect_best_backend() -> &'static str {
         return "container";
     }
 
-    "direct"
+    "filtered"
 }
 
-/// List all available backends
+/// List all available backends.
+///
+/// Each entry is `(name, available)`. Backends are ordered from strongest
+/// isolation to weakest. See [`detect_best_backend`] for security tier details.
 #[must_use]
 pub fn list_available_backends() -> Vec<(&'static str, bool)> {
     vec![
-        ("direct", true), // Always available
-        ("container", is_container_available()),
-        ("gvisor", is_gvisor_available()),
         ("firecracker", is_firecracker_available()),
+        ("gvisor", is_gvisor_available()),
+        ("container", is_container_available()),
         #[cfg(target_os = "linux")]
         ("bubblewrap", is_bwrap_available()),
         #[cfg(target_os = "macos")]
         ("sandbox-exec", is_sandbox_exec_available()),
+        ("filtered", true),
+        ("direct", true),
     ]
 }

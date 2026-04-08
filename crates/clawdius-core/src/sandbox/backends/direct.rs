@@ -1,4 +1,9 @@
-//! Direct execution backend (no sandboxing)
+//! Direct execution backend (NO ISOLATION — for trusted code only).
+//!
+//! This backend runs commands on the host with zero sandboxing. It provides
+//! no filesystem isolation, no network restrictions, no resource limits, and
+//! no command filtering. It should **only** be used for code that is fully
+//! trusted and audited.
 
 use super::SandboxBackend;
 use crate::error::Result;
@@ -13,6 +18,10 @@ pub struct DirectBackend {
 impl DirectBackend {
     #[must_use]
     pub fn new(config: SandboxConfig) -> Self {
+        tracing::warn!(
+            "Using direct execution backend with no sandboxing. \
+             Ensure the caller is fully trusted."
+        );
         Self { _config: config }
     }
 }

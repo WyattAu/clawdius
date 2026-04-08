@@ -27,9 +27,13 @@ pub trait LlmClient: Send + Sync {
 pub enum Provider {
     Anthropic,
     OpenAI,
+    /// DeepSeek provider (not yet implemented — use OpenAI-compatible API with a
+    /// custom base URL pointing to `https://api.deepseek.com`)
     DeepSeek,
     Ollama,
     Local,
     Zai,
+    /// OpenRouter provider (not yet implemented — use OpenAI-compatible API with a
+    /// custom base URL pointing to `https://openrouter.ai/api/v1`)
     OpenRouter,
 }

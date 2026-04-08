@@ -4979,7 +4979,7 @@ async fn handle_generate(
     config_path: Option<std::path::PathBuf>,
     output_format: OutputFormat,
 ) -> anyhow::Result<()> {
-    use clawdius_core::agentic::tool_executor::NoOpToolExecutor;
+    use crate::tool_executor::CliToolExecutor;
     use clawdius_core::agentic::{
         AgenticSystem, ApplyWorkflow, GenerationMode, TaskContext, TaskRequest,
         TestExecutionStrategy, TrustLevel,
@@ -5147,9 +5147,8 @@ async fn handle_generate(
 
     let llm_client = std::sync::Arc::new(create_provider(&llm_config)?);
 
-    // Create agentic system with NoOp tool executor
-    // TODO: Wire up MCP tool executor when proper cross-crate integration is available
-    let tool_executor = std::sync::Arc::new(NoOpToolExecutor);
+    let workspace_root = std::env::current_dir().context("Failed to determine workspace root")?;
+    let tool_executor = std::sync::Arc::new(CliToolExecutor::new(workspace_root));
 
     // Create agentic system
     let apply_workflow =

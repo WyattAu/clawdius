@@ -59,14 +59,13 @@ impl MessageHandler for AnalyzeHandler {
         let query = command.args.join(" ");
 
         // FIXME(v1.7.0): Integrate with actual code analysis
-        let response = format!(
-            "🔍 **Code Analysis**\n\n\
-             **Query:** {}\n\n\
-             ⏳ Analysis is being processed...\n\
-             Your request has been queued and will be analyzed by Clawdius.\n\n\
-             _Note: Full integration coming soon!_",
-            query
+        tracing::warn!(
+            query = %query,
+            "Analyze handler is using a stub response; LLM integration not yet wired"
         );
+        let response = "[STUB] Code analysis is not yet integrated via the messaging gateway. \
+                         Use 'clawdius analyze' CLI command instead."
+            .to_string();
 
         Ok(MessageHandlerResult {
             response,
@@ -98,8 +97,8 @@ mod tests {
         .with_args(vec!["why".to_string(), "slow".to_string()]);
 
         let result = handler.handle(&session, &command).await.unwrap();
-        assert!(result.response.contains("Code Analysis"));
-        assert!(result.response.contains("why slow"));
+        assert!(result.response.contains("[STUB]"));
+        assert!(result.response.contains("not yet integrated"));
     }
 
     #[tokio::test]
