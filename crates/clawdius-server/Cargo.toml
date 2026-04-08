@@ -2,8 +2,15 @@
 name = "clawdius-server"
 version.workspace = true
 edition.workspace = true
-description = "HTTP server for Clawdius REST API and messaging webhooks"
+authors.workspace = true
 license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+documentation = "https://docs.rs/clawdius-server"
+description = "HTTP server for Clawdius REST API and messaging webhooks"
+readme = "README.md"
+keywords = ["ai", "llm", "coding-assistant", "server", "api"]
+categories = ["development-tools", "web-programming", "asynchronous"]
 
 [dependencies]
 clawdius-core = { path = "../clawdius-core", version = "1.6.0" }
@@ -37,3 +44,6 @@ otel = ["dep:opentelemetry", "dep:opentelemetry_sdk", "dep:opentelemetry-otlp", 
 [dev-dependencies]
 reqwest.workspace = true
 async-trait = "0.1"
+
+[lints]
+workspace = true

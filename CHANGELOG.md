@@ -1,6 +1,51 @@
 # Changelog
 All notable changes to Clawdius will be documented in this file.
 
+## [2.0.0] - 2026-04-08
+
+### Added
+
+- **Lean4 axiom reduction**: 42 → 1 (99.3% proven — only `postulate_signature_unforgeable` remains)
+- **`pow2_mod_eq_mask` theorem**: Proved via `Nat.and_two_pow_sub_one_eq_mod`
+- **Plugin marketplace backend**: 7 REST endpoints, 23 tests, SQLite write-through persistence
+- **Ed25519 plugin signing**: Hash-then-sign with SHA3-256, 8 tests
+- **MCP stdio transport**: `clawdius-mcp` binary for Claude Desktop integration
+- **DAP adapter skeleton**: 15 method handlers for debugger integration
+- **GraphQL API**: `POST /api/v2/graphql` with GraphiQL playground
+- **Neovim plugin**: `plugins/neovim/clawdius.lua` — full LSP integration
+- **Emacs plugin**: `editors/emacs/clawdius.el` — full LSP integration
+- **Multi-agent LLM task decomposition**: DAG validation, topological dispatch, 31 tests
+- **WASM plugin context passing**: `PluginStoreData`, host imports for context/result
+- **TLA+ specifications**: 5 modules (SessionManager, RateLimiter, MessageQueue, WasmPluginRuntime, CLAWDIUS)
+- **SIMD optimizations**: SSE2/NEON `fast_checksum` + `fast_hash`, 12 tests
+- **PGO + BOLT build profiles**: CI workflow for profile-guided optimization
+- **Nix flake**: Reproducible builds via `flake.nix`
+- **Crates.io metadata**: All 6 crates have complete `repository`, `readme`, `keywords`, `categories`
+
+### Changed
+
+- **Honest sandbox labeling**: `direct` = NO ISOLATION, `filtered` = WEAK DEFENSE-IN-DEPTH, `firecracker` = EXPERIMENTAL
+- **`clawd` → `clawdius`**: 35 README references fixed, binary name consistent everywhere
+- **Competitor comparison**: 12 inaccuracies corrected (Claude Code agent mode, Cursor CLI, Aider, Continue)
+- **MCP handler extracted to `clawdius-core`**: Transport-agnostic, reusable across binaries
+- **CLI chat uses real `CliToolExecutor`**: 8 tools actually execute (was `NoOpToolExecutor`)
+- **Messaging stubs return `[STUB]`**: With `tracing::warn!` instead of hardcoded strings with FIXME comments
+- **Security badge**: Changed from `Zero_Vulnerabilities` to `Audited` (honest about transitive advisory warnings)
+- **Documentation synced**: User guide updated v0.7.0 → v2.0.0, GETTING_STARTED non-existent commands removed
+
+### Fixed
+
+- **Release workflow**: 5 bugs fixed (cross-compilation `target-cpu`, musl linker, dead BOLT code, missing `validate` dependency, CHANGELOG entry)
+- **`.clippy.toml`**: Fixed invalid `[lints.clippy]` format (belongs in `Cargo.toml`)
+- **9 clippy `unreadable_literal` errors**: Fixed across codebase
+- **2 failing tests**: Fixed broken test assertions
+- **`api_rate_limiter.rs`**: Missing `HeaderValue` import
+
+### Security
+
+- **Transitive advisory disclosure**: 9 documented (7 unmaintained crates, 2 unsound: `lexical-core` via arrow, `lru` via tantivy/lancedb)
+- All direct dependencies audited via cargo-vet (safe-to-deploy)
+
 ## [1.6.0] - 2026-04-03
 
 ### Added

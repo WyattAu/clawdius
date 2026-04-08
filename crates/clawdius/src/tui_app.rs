@@ -49,11 +49,11 @@ pub async fn run_tui() -> anyhow::Result<()> {
                     if app.should_quit {
                         break;
                     }
-                }
+                },
                 Event::Resize(_cols, _rows) => {
                     app.resize();
-                }
-                _ => {}
+                },
+                _ => {},
             }
         }
     }

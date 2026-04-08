@@ -77,11 +77,11 @@ impl App {
                 match key.code {
                     KeyCode::Char('q' | '?') | KeyCode::Esc => {
                         self.mode = AppMode::Chat;
-                    }
-                    _ => {}
+                    },
+                    _ => {},
                 }
                 return Ok(());
-            }
+            },
             AppMode::Chat => self.handle_chat_key(key).await?,
             AppMode::FileBrowser => self.handle_file_browser_key(key).await?,
             AppMode::Diff => self.handle_diff_key(key).await?,
@@ -97,94 +97,94 @@ impl App {
             InputMode::Normal => match key.code {
                 KeyCode::Char('i') => {
                     self.input_mode = InputMode::Insert;
-                }
+                },
                 KeyCode::Char(':') => {
                     self.input_mode = InputMode::Command;
                     self.input.clear();
                     self.input.push(':');
-                }
+                },
                 KeyCode::Char('j') | KeyCode::Down => {
                     self.chat_view.scroll_down(10);
-                }
+                },
                 KeyCode::Char('k') | KeyCode::Up => {
                     self.chat_view.scroll_up();
-                }
+                },
                 KeyCode::Char('d')
                     if key
                         .modifiers
                         .contains(crossterm::event::KeyModifiers::CONTROL) =>
                 {
                     self.chat_view.scroll_page_down(10, 10);
-                }
+                },
                 KeyCode::Char('u')
                     if key
                         .modifiers
                         .contains(crossterm::event::KeyModifiers::CONTROL) =>
                 {
                     self.chat_view.scroll_page_up(10);
-                }
+                },
                 KeyCode::Char('q') => {
                     self.should_quit = true;
-                }
+                },
                 KeyCode::Char('?') => {
                     self.mode = AppMode::Help;
-                }
+                },
                 KeyCode::Tab => {
                     self.mode = AppMode::FileBrowser;
-                }
+                },
                 KeyCode::Char('2') => {
                     self.mode = AppMode::FileBrowser;
-                }
+                },
                 KeyCode::Char('3') => {
                     self.mode = AppMode::Diff;
-                }
-                _ => {}
+                },
+                _ => {},
             },
             InputMode::Insert => match key.code {
                 KeyCode::Esc => {
                     self.input_mode = InputMode::Normal;
-                }
+                },
                 KeyCode::Enter => {
                     if !self.input.is_empty() {
                         self.send_message().await?;
                     }
-                }
+                },
                 KeyCode::Backspace => {
                     self.input.pop();
-                }
+                },
                 KeyCode::Char('e')
                     if key
                         .modifiers
                         .contains(crossterm::event::KeyModifiers::CONTROL) =>
                 {
                     self.open_external_editor().await?;
-                }
+                },
                 KeyCode::Char(c) => {
                     self.input.push(c);
-                }
-                _ => {}
+                },
+                _ => {},
             },
             InputMode::Command => match key.code {
                 KeyCode::Esc => {
                     self.input_mode = InputMode::Normal;
                     self.input.clear();
-                }
+                },
                 KeyCode::Enter => {
                     self.execute_command(&self.input.clone());
                     self.input_mode = InputMode::Normal;
                     self.input.clear();
-                }
+                },
                 KeyCode::Backspace => {
                     self.input.pop();
                     if self.input == ":" {
                         self.input_mode = InputMode::Normal;
                         self.input.clear();
                     }
-                }
+                },
                 KeyCode::Char(c) => {
                     self.input.push(c);
-                }
-                _ => {}
+                },
+                _ => {},
             },
         }
 
@@ -200,13 +200,13 @@ impl App {
         match key.code {
             KeyCode::Char('q') => {
                 self.mode = AppMode::Chat;
-            }
+            },
             KeyCode::Char('j') | KeyCode::Down => {
                 self.file_list.down();
-            }
+            },
             KeyCode::Char('k') | KeyCode::Up => {
                 self.file_list.up();
-            }
+            },
             KeyCode::Enter => {
                 if let Some(path) = self.file_list.enter() {
                     if let Ok(content) = std::fs::read_to_string(&path) {
@@ -215,23 +215,23 @@ impl App {
                         self.mode = AppMode::Diff;
                     }
                 }
-            }
+            },
             KeyCode::Char(' ') => {
                 self.file_list.toggle_select();
-            }
+            },
             KeyCode::Char('r') => {
                 self.file_list.refresh();
-            }
+            },
             KeyCode::Tab => {
                 self.mode = AppMode::Chat;
-            }
+            },
             KeyCode::Char('1') => {
                 self.mode = AppMode::Chat;
-            }
+            },
             KeyCode::Char('3') => {
                 self.mode = AppMode::Diff;
-            }
-            _ => {}
+            },
+            _ => {},
         }
 
         Ok(())
@@ -243,20 +243,20 @@ impl App {
         match key.code {
             KeyCode::Char('q') | KeyCode::Esc => {
                 self.mode = AppMode::Chat;
-            }
+            },
             KeyCode::Char('j') | KeyCode::Down => {
                 self.diff_view.scroll_down(10);
-            }
+            },
             KeyCode::Char('k') | KeyCode::Up => {
                 self.diff_view.scroll_up();
-            }
+            },
             KeyCode::Char('d')
                 if key
                     .modifiers
                     .contains(crossterm::event::KeyModifiers::CONTROL) =>
             {
                 self.diff_view.scroll_down(20);
-            }
+            },
             KeyCode::Char('u')
                 if key
                     .modifiers
@@ -265,17 +265,17 @@ impl App {
                 for _ in 0..20 {
                     self.diff_view.scroll_up();
                 }
-            }
+            },
             KeyCode::Tab => {
                 self.mode = AppMode::Chat;
-            }
+            },
             KeyCode::Char('1') => {
                 self.mode = AppMode::Chat;
-            }
+            },
             KeyCode::Char('2') => {
                 self.mode = AppMode::FileBrowser;
-            }
-            _ => {}
+            },
+            _ => {},
         }
 
         Ok(())
@@ -288,19 +288,19 @@ impl App {
         match parts[0] {
             "q" | "quit" => {
                 self.should_quit = true;
-            }
+            },
             "help" | "?" => {
                 self.mode = AppMode::Help;
-            }
+            },
             "files" | "ls" => {
                 self.mode = AppMode::FileBrowser;
-            }
+            },
             "diff" => {
                 self.mode = AppMode::Diff;
-            }
+            },
             "clear" => {
                 self.chat_view = ChatView::new();
-            }
+            },
             "mode" => {
                 if parts.len() > 1 {
                     let mode_name = parts[1].trim();
@@ -316,16 +316,16 @@ impl App {
                                 "Switched to {} mode",
                                 self.agent_mode.name()
                             )));
-                        }
+                        },
                         Err(e) => {
                             self.error_message =
                                 Some(format!("Failed to load mode '{mode_name}': {e}"));
-                        }
+                        },
                     }
                 } else {
                     self.error_message = Some("Usage: :mode <mode-name>".to_string());
                 }
-            }
+            },
             "modes" => {
                 let modes_dir = std::env::current_dir()
                     .unwrap_or_default()
@@ -342,10 +342,10 @@ impl App {
                 } else {
                     self.error_message = Some("Failed to list modes".to_string());
                 }
-            }
+            },
             _ => {
                 self.error_message = Some(format!("Unknown command: {cmd}"));
-            }
+            },
         }
     }
 

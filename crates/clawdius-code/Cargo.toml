@@ -4,7 +4,13 @@ version.workspace = true
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+documentation = "https://docs.rs/clawdius-code"
 description = "Clawdius Code - VSCode extension helper binary"
+readme = "README.md"
+keywords = ["ai", "llm", "coding-assistant", "vscode", "editor"]
+categories = ["development-tools", "command-line-utilities"]
 
 [[bin]]
 name = "clawdius-code"

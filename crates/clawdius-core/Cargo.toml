@@ -16,7 +16,6 @@ exclude = [
     "/examples",
     "/.github",
     "/fuzz",
-    "*.md",
     "*.log",
 ]
 

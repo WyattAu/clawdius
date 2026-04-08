@@ -120,58 +120,58 @@ impl VimKeymap {
             KeyCode::Char('g') => {
                 self.pending_keys.push(key);
                 VimAction::None
-            }
+            },
             KeyCode::Char('G') => VimAction::Move(Motion::FileEnd),
             KeyCode::Char('i') => VimAction::ChangeMode(VimMode::Insert),
             KeyCode::Char('a') => {
                 self.pending_keys.push(key);
                 VimAction::None
-            }
+            },
             KeyCode::Char('o') => {
                 self.pending_keys.push(key);
                 VimAction::None
-            }
+            },
             KeyCode::Char('O') => {
                 self.pending_keys.push(key);
                 VimAction::None
-            }
+            },
             KeyCode::Char('d') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                 VimAction::Scroll(ScrollDirection::HalfPageDown)
-            }
+            },
             KeyCode::Char('d') => {
                 self.pending_keys.push(key);
                 VimAction::None
-            }
+            },
             KeyCode::Char('y') => {
                 self.pending_keys.push(key);
                 VimAction::None
-            }
+            },
             KeyCode::Char('p') => VimAction::Put(Placement::After),
             KeyCode::Char('P') => VimAction::Put(Placement::Before),
             KeyCode::Char('u') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                 VimAction::Scroll(ScrollDirection::HalfPageUp)
-            }
+            },
             KeyCode::Char('u') => VimAction::Undo,
             KeyCode::Char('r') if key.modifiers.contains(KeyModifiers::CONTROL) => VimAction::Redo,
             KeyCode::Char('r') => {
                 self.pending_keys.push(key);
                 VimAction::None
-            }
+            },
             KeyCode::Char(':') => {
                 self.mode = VimMode::Command;
                 self.command_buffer.clear();
                 VimAction::ChangeMode(VimMode::Command)
-            }
+            },
             KeyCode::Char('/') => {
                 self.mode = VimMode::Command;
                 self.search_buffer.clear();
                 self.search_buffer.push('/');
                 VimAction::ChangeMode(VimMode::Command)
-            }
+            },
             KeyCode::Char('z') => {
                 self.pending_keys.push(key);
                 VimAction::None
-            }
+            },
             KeyCode::Char('q') => VimAction::Quit,
             KeyCode::Up => VimAction::Move(Motion::LineUp),
             KeyCode::Down => VimAction::Move(Motion::LineDown),
@@ -202,21 +202,21 @@ impl VimKeymap {
             }] => {
                 self.mode = VimMode::Insert;
                 VimAction::ChangeMode(VimMode::Insert)
-            }
+            },
             [KeyEvent {
                 code: KeyCode::Char('o'),
                 ..
             }] => {
                 self.mode = VimMode::Insert;
                 VimAction::ChangeMode(VimMode::Insert)
-            }
+            },
             [KeyEvent {
                 code: KeyCode::Char('O'),
                 ..
             }] => {
                 self.mode = VimMode::Insert;
                 VimAction::ChangeMode(VimMode::Insert)
-            }
+            },
             [KeyEvent {
                 code: KeyCode::Char('d'),
                 ..
@@ -255,7 +255,7 @@ impl VimKeymap {
             KeyCode::Esc => {
                 self.mode = VimMode::Normal;
                 VimAction::ChangeMode(VimMode::Normal)
-            }
+            },
             KeyCode::Char(c) if key.modifiers.contains(KeyModifiers::CONTROL) => {
                 if c == 'c' {
                     self.mode = VimMode::Normal;
@@ -263,7 +263,7 @@ impl VimKeymap {
                 } else {
                     VimAction::None
                 }
-            }
+            },
             KeyCode::Enter => VimAction::SubmitInput,
             KeyCode::Backspace => VimAction::Move(Motion::CharLeft),
             _ => VimAction::None,
@@ -275,11 +275,11 @@ impl VimKeymap {
             KeyCode::Esc => {
                 self.mode = VimMode::Normal;
                 VimAction::ChangeMode(VimMode::Normal)
-            }
+            },
             KeyCode::Char('v') => {
                 self.mode = VimMode::Normal;
                 VimAction::ChangeMode(VimMode::Normal)
-            }
+            },
             KeyCode::Char('h') => VimAction::Move(Motion::CharLeft),
             KeyCode::Char('j') => VimAction::Move(Motion::LineDown),
             KeyCode::Char('k') => VimAction::Move(Motion::LineUp),
@@ -299,7 +299,7 @@ impl VimKeymap {
                 self.command_buffer.clear();
                 self.search_buffer.clear();
                 VimAction::ChangeMode(VimMode::Normal)
-            }
+            },
             KeyCode::Enter => {
                 let cmd = if self.search_buffer.starts_with('/') {
                     let search = self.search_buffer[1..].to_string();
@@ -314,7 +314,7 @@ impl VimKeymap {
                     cmd
                 };
                 self.execute_command(&cmd)
-            }
+            },
             KeyCode::Backspace => {
                 if !self.search_buffer.is_empty() && self.search_buffer != "/" {
                     self.search_buffer.pop();
@@ -325,7 +325,7 @@ impl VimKeymap {
                     return VimAction::ChangeMode(VimMode::Normal);
                 }
                 VimAction::None
-            }
+            },
             KeyCode::Char(c) => {
                 if self.search_buffer.starts_with('/') || self.search_buffer == "/" {
                     self.search_buffer.push(c);
@@ -333,7 +333,7 @@ impl VimKeymap {
                     self.command_buffer.push(c);
                 }
                 VimAction::None
-            }
+            },
             _ => VimAction::None,
         }
     }
@@ -351,7 +351,7 @@ impl VimKeymap {
             cmd if cmd.chars().all(|c| c.is_ascii_digit()) => {
                 let line = cmd.parse().unwrap_or(1);
                 VimAction::Move(Motion::Line(line))
-            }
+            },
             _ => VimAction::None,
         }
     }

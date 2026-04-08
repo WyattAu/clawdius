@@ -2,7 +2,15 @@
 name = "clawdius-mcp"
 version.workspace = true
 edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+documentation = "https://docs.rs/clawdius-mcp"
 description = "MCP stdio server for Claude Desktop interop"
+readme = "README.md"
+keywords = ["ai", "llm", "mcp", "claude", "coding-assistant"]
+categories = ["development-tools", "command-line-utilities"]
 
 [dependencies]
 clawdius-core = { path = "../clawdius-core", version = "1.6.0" }

@@ -189,14 +189,29 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu musl-tools
-          echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
+          # Build musl cross-compiler (aarch64-linux-gnu-gcc links against glibc, not musl)
+          # Use cargo's zig support as an alternative: Zig provides a drop-in musl cross-compiler
+          cargo install cargo-zigbuild --locked || true
+          if command -v zig &>/dev/null; then
+            echo "Using zig for musl cross-compilation"
+            echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER=aarch64-linux-musl-gcc" >> $GITHUB_ENV
+          else
+            echo "WARNING: zig not available. aarch64-unknown-linux-musl build may fail."
+            echo "Install zig via: curl -L https://ziglang.org/download/0.13.0/zig-linux-x86_64-0.13.0.tar.xz"
+          fi
       
       - name: Build release binaries
         run: |
+          # Use target-cpu=native only for host-matching targets, not cross-compilation
+          if [[ "${{ matrix.target }}" == "x86_64-unknown-linux-gnu" && "${{ matrix.os }}" == "ubuntu-latest" ]]; then
+            export RUSTFLAGS="-C target-cpu=x86-64-v3 -C lto=fat -C codegen-units=1"
+          elif [[ "${{ matrix.target }}" == "aarch64-apple-darwin" && "${{ matrix.os }}" == "macos-latest" ]]; then
+            export RUSTFLAGS="-C target-cpu=apple-m1 -C lto=fat -C codegen-units=1"
+          else
+            export RUSTFLAGS="-C lto=fat -C codegen-units=1"
+          fi
           cargo build --release --target ${{ matrix.target }} -p clawdius
           cargo build --release --target ${{ matrix.target }} -p clawdius-code
-        env:
-          RUSTFLAGS: "-C target-cpu=native -C lto=fat -C codegen-units=1"
       
       - name: Create archive (Unix)
         if: matrix.archive == 'tar.gz'
@@ -236,28 +251,6 @@ jobs:
           VERSION="${{ needs.validate.outputs.version }}"
           gpg --batch --yes --detach-sign --armor clawdius-${VERSION}-${{ matrix.target }}.zip
         shell: bash
-
-      - name: Apply BOLT post-link optimization (Linux x86_64)
-        if: matrix.target == 'x86_64-unknown-linux-gnu'
-        run: |
-          if command -v bolt &>/dev/null; then
-            echo "Applying BOLT optimizations..."
-            BOLT_DIR=$(mktemp -d)
-            objcopy --only-keep-debug target/x86_64-unknown-linux-gnu/release/clawdius "$BOLT_DIR/clawdius.debug"
-            bolt merge-fdata "$BOLT_DIR/clawdius.debug" -o "$BOLT_DIR/clawdius.fdata" \
-                -ignore-unresolved 2>/dev/null || echo "BOLT merge skipped (no fdata)"
-            bolt optimize -o target/x86_64-unknown-linux-gnu/release/clawdius-bolt \
-                target/x86_64-unknown-linux-gnu/release/clawdius \
-                --data "$BOLT_DIR/clawdius.fdata" \
-                --reorder-blocks=ext-tsp \
-                --reorder-functions=hot-cold \
-                --split-functions=2 \
-                --split-all-cold \
-                --icf=1 2>/dev/null || echo "BOLT optimization skipped"
-            rm -rf "$BOLT_DIR"
-          else
-            echo "BOLT not installed, skipping post-link optimization"
-          fi
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -388,7 +381,7 @@ jobs:
   post-release:
     name: Post-Release Tasks
     runs-on: ubuntu-latest
-    needs: [github-release]
+    needs: [validate, github-release]
     if: success()
     steps:
       - uses: actions/checkout@v4

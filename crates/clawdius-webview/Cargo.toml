@@ -1,10 +1,16 @@
 [package]
 name = "clawdius-webview"
-version = "0.1.0"
-edition = "2021"
-license = "Apache-2.0"
-authors = ["Clawdius Team <team@clawdius.dev>"]
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+documentation = "https://docs.rs/clawdius-webview"
 description = "WASM webview UI for Clawdius"
+readme = "README.md"
+keywords = ["ai", "llm", "wasm", "webview", "leptos"]
+categories = ["development-tools", "gui", "wasm"]
 
 [lib]
 crate-type = ["cdylib", "rlib"]

@@ -66,7 +66,7 @@ impl MentionAutocomplete {
                     } else {
                         i + 1
                     }
-                }
+                },
                 None => 0,
             };
             self.state.select(Some(i));
@@ -82,7 +82,7 @@ impl MentionAutocomplete {
                     } else {
                         i - 1
                     }
-                }
+                },
                 None => 0,
             };
             self.state.select(Some(i));
