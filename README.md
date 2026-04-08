@@ -3,7 +3,7 @@
 **The High-Assurance Engineering Engine.**  
 *Powered by Rust. Governed by SOPs. Verified by Nexus.*
 
-[![Version](https://img.shields.io/badge/version-1.6.0-blue.svg)](https://github.com/WyattAu/clawdius/releases/tag/v1.6.0)
+[![Version](https://img.shields.io/badge/version-2.0.0-blue.svg)](https://github.com/WyattAu/clawdius/releases/tag/v2.0.0)
 [![Rust](https://img.shields.io/badge/language-Rust-orange.svg)](https://www.rust-lang.org)
 [![Security](https://img.shields.io/badge/Security-Audited-brightgreen.svg)](#-security)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-yellow.svg)](LICENSE)
@@ -70,13 +70,13 @@ clawdius/
 
 ## Why Clawdius?
 
-| Feature      | Clawdius                           | Claude Code / OpenClaw             |
+| Feature      | Clawdius                           | Claude Code / Aider                 |
 | :----------- | :--------------------------------- | :--------------------------------- |
-| **Runtime**  | **Rust** (Zero GC, <50ms cold start) | Node.js (Heavy, Garbage Collected) |
-| **Security** | **Sentinel JIT Sandboxing**        | Raw Shell / Local OS Access        |
-| **Rigor**    | **Nexus Lifecycle** (Formal Specs) | Stochastic (Guess & Check)         |
-| **Context**  | **Graph-RAG** (AST + Vector)       | Simple Vector / RAG                |
-| **Trading**  | **Broker Mode** (Low-latency)      | Not Supported / High Latency       |
+| **Runtime**  | **Rust** (Zero GC, <50ms cold start) | Node.js (Claude Code) / Python (Aider) |
+| **Sandboxing** | **Multiple backends** (Container, Bubblewrap, sandbox-exec) | Shell commands (Aider) / Managed (Claude Code) |
+| **Verification** | **Lean4 proofs** (142 theorems) | None |
+| **Context**  | **Graph-RAG** (tree-sitter AST + SQLite) | File context / Vector RAG |
+| **Offline**  | **Full local mode** (Ollama) | Limited (Aider) / Cloud-only (Claude Code) |
 
 ---
 
@@ -125,7 +125,7 @@ nix shell github:WyattAu/clawdius
 
 ```bash
 # Clone the monorepo
-git clone https://github.com/clawdius/clawdius
+git clone https://github.com/WyattAu/clawdius
 cd clawdius
 
 # Build all crates
@@ -144,7 +144,7 @@ pnpm run compile
 
 ```bash
 clawdius --version
-# Output: clawdius 1.6.0
+# Output: clawdius 2.0.0
 ```
 
 ---
@@ -393,22 +393,26 @@ clawdius chat "Explain this" --format json
 
 | Command | Description |
 |---------|-------------|
+| `clawdius chat` | Send a chat message to the LLM |
+| `clawdius setup` | Interactive first-time setup wizard |
 | `clawdius init` | Initialize Clawdius in current directory |
-| `clawdius chat` | Send a message to the LLM |
 | `clawdius sessions` | List and manage conversation sessions |
-| `clawdius timeline create` | Create a file timeline checkpoint |
-| `clawdius timeline list` | List all timeline checkpoints |
-| `clawdius timeline rollback` | Rollback to a specific checkpoint |
-| `clawdius timeline diff` | View diff between checkpoints |
-| `clawdius timeline history` | View file change history |
-| `clawdius auth set-key` | Store API key in system keyring |
-| `clawdius auth get-key` | Retrieve stored API key |
-| `clawdius auth delete-key` | Delete stored API key |
+| `clawdius generate` | Generate code using agentic AI |
+| `clawdius complete` | Get inline code completions from LLM |
+| `clawdius analyze` | Analyze codebase for drift and technical debt |
 | `clawdius refactor` | Plan and execute cross-language refactoring |
-| `clawdius broker` | Activate financial monitoring and trading signals |
-| `clawdius verify` | Run Lean 4 proofs and SOP compliance checks |
+| `clawdius test` | Generate tests for code |
+| `clawdius doc` | Generate documentation for code |
+| `clawdius git` | Git workflow (commit, diff, status) |
+| `clawdius timeline` | Manage file timeline and checkpoints |
+| `clawdius memory` | Manage project memory (CLAUDE.md) |
+| `clawdius models` | Manage local LLM models (Ollama) |
+| `clawdius verify` | Run Lean4 proof verification |
 | `clawdius compliance` | Generate compliance matrix |
-| `clawdius research` | Multi-lingual research synthesis |
+| `clawdius broker` | Activate HFT broker mode |
+| `clawdius nexus` | Nexus FSM engine |
+| `clawdius lsp` | Language Server Protocol operations |
+| `clawdius auth` | Manage API keys in system keyring |
 
 ### CLI Options
 
@@ -494,6 +498,8 @@ secret_token = "webhook-secret"
 | `/clawdius generate` | Trigger code generation from a prompt |
 | `/clawdius analyze` | Run analysis on a repository or file |
 | `/clawdius config` | View or update gateway configuration |
+
+> **Note:** The `/clawdius generate` and `/clawdius analyze` gateway commands are currently stubs — they acknowledge the request but return a placeholder response. Full LLM-powered generation via the messaging gateway is planned for a future release. The CLI `clawdius generate` and `clawdius analyze` commands work with real LLM providers.
 | `/clawdius admin` | Administrative operations (requires auth) |
 
 ### Docker
@@ -658,14 +664,14 @@ For full details, see [API Stability Guarantee](docs/API_STABILITY.md).
 Clawdius is built by and for developers who value security, performance, and rigor.
 
 ### Get Help
-- **Documentation:** [docs.clawdius.dev](https://docs.clawdius.dev)
-- **GitHub Discussions:** [github.com/clawdius/clawdius/discussions](https://github.com/clawdius/clawdius/discussions)
+- **Documentation:** [README](https://github.com/WyattAu/clawdius#clawdius) and [.docs/](https://github.com/WyattAu/clawdius/tree/main/.docs)
+- **GitHub Discussions:** [github.com/WyattAu/clawdius/discussions](https://github.com/WyattAu/clawdius/discussions)
 - **Discord:** [discord.gg/clawdius](https://discord.gg/clawdius)
-- **Issues:** [github.com/clawdius/clawdius/issues](https://github.com/clawdius/clawdius/issues)
+- **Issues:** [github.com/WyattAu/clawdius/issues](https://github.com/WyattAu/clawdius/issues)
 
 ### Contribute
 - See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines
-- Check [Good First Issues](https://github.com/clawdius/clawdius/labels/good%20first%20issue)
+- Check [Good First Issues](https://github.com/WyattAu/clawdius/labels/good%20first%20issue)
 
 ### Stay Updated
 - Watch releases on GitHub

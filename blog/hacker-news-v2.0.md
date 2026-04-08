@@ -11,7 +11,7 @@ Clawdius is a Rust CLI for coding with LLMs. Generated code runs in sandboxed en
 ```
 $ clawdius chat                            # Multi-provider LLM chat
 $ clawdius generate "a REST API with auth"  # Agent-mode code generation
-$ clawawdius chat --provider ollama         # 100% local, no data leaves your machine
+$ clawdius chat --provider ollama         # 100% local, no data leaves your machine
 ```
 
 Sandboxing
