@@ -377,14 +377,74 @@ impl AgenticSystem {
         let success = tests_passed && verification_passed;
 
         // Apply changes based on workflow
-        if success {
-            log.push(LogEntry {
-                timestamp: current_timestamp(),
-                level: LogLevel::Info,
-                component: "AgenticSystem".to_string(),
-                message: "Applying changes".to_string(),
-            });
-            // In a real implementation, this would write the changes to disk
+        if success && !changes.is_empty() {
+            match &request.apply_workflow {
+                ApplyWorkflow::PreviewOnly => {
+                    log.push(LogEntry {
+                        timestamp: current_timestamp(),
+                        level: LogLevel::Info,
+                        component: "AgenticSystem".to_string(),
+                        message: format!(
+                            "Preview mode — {} change(s) would be applied:\n{}",
+                            changes.len(),
+                            changes
+                                .iter()
+                                .map(|c| format!("  [{:?}] {}", c.change_type, c.path))
+                                .collect::<Vec<_>>()
+                                .join("\n")
+                        ),
+                    });
+                },
+                _ => {
+                    // Actually write changes to disk
+                    let mut applied = 0;
+                    let mut failed = Vec::new();
+                    for change in &changes {
+                        // Create parent directories if needed
+                        if let Some(parent) = std::path::Path::new(&change.path).parent() {
+                            if let Err(e) = std::fs::create_dir_all(parent) {
+                                failed.push(format!("{}: mkdir {}", change.path, e));
+                                continue;
+                            }
+                        }
+                        match std::fs::write(&change.path, &change.new) {
+                            Ok(()) => {
+                                applied += 1;
+                                log.push(LogEntry {
+                                    timestamp: current_timestamp(),
+                                    level: LogLevel::Info,
+                                    component: "AgenticSystem".to_string(),
+                                    message: format!(
+                                        "Applied [{:?}] {}",
+                                        change.change_type, change.path
+                                    ),
+                                });
+                            },
+                            Err(e) => {
+                                failed.push(format!("{}: {}", change.path, e));
+                            },
+                        }
+                    }
+                    if !failed.is_empty() {
+                        log.push(LogEntry {
+                            timestamp: current_timestamp(),
+                            level: LogLevel::Warn,
+                            component: "AgenticSystem".to_string(),
+                            message: format!(
+                                "Failed to apply {} change(s): {}",
+                                failed.len(),
+                                failed.join("; ")
+                            ),
+                        });
+                    }
+                    log.push(LogEntry {
+                        timestamp: current_timestamp(),
+                        level: LogLevel::Info,
+                        component: "AgenticSystem".to_string(),
+                        message: format!("Applied {}/{} change(s) to disk", applied, changes.len()),
+                    });
+                },
+            }
         }
 
         // Update state

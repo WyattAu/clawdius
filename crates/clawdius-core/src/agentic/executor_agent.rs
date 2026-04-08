@@ -620,35 +620,187 @@ impl ExecutorAgent {
     }
 
     async fn execute_write_file(&self, path: &str, content: &str) -> Result<String> {
-        // In a real implementation, this would write to the file system
-        let _ = (path, content);
-        Ok(format!("Wrote to {}", path))
+        // Delegate to tool executor if available (e.g., CliToolExecutor with FileTool)
+        if let Some(executor) = &self.tool_executor {
+            if executor.has_tool("write_file") {
+                let request = ToolRequest::new("write_file")
+                    .with_arg("path", serde_json::json!(path))
+                    .with_arg("content", serde_json::json!(content));
+                let result = executor.execute(request).await?;
+                if result.success {
+                    return Ok(format!("Wrote {} ({} bytes)", path, content.len()));
+                }
+                return Err(crate::error::Error::ToolExecution {
+                    tool: "write_file".to_string(),
+                    reason: result.content,
+                });
+            }
+        }
+        // Fallback: write directly
+        match std::fs::write(path, content) {
+            Ok(()) => Ok(format!("Wrote {} ({} bytes)", path, content.len())),
+            Err(e) => Err(crate::error::Error::Io(e)),
+        }
     }
 
-    async fn execute_edit_file(&self, path: &str, _edits: &[super::FileEdit]) -> Result<String> {
-        // In a real implementation, this would apply edits to the file
-        Ok(format!("Edited {}", path))
+    async fn execute_edit_file(&self, path: &str, edits: &[super::FileEdit]) -> Result<String> {
+        // Delegate to tool executor if available
+        if let Some(executor) = &self.tool_executor {
+            if executor.has_tool("edit_file") {
+                let mut applied = 0;
+                let mut errors = Vec::new();
+                for edit in edits {
+                    let request = ToolRequest::new("edit_file")
+                        .with_arg("path", serde_json::json!(path))
+                        .with_arg("old_string", serde_json::json!(edit.old_text))
+                        .with_arg("new_string", serde_json::json!(edit.new_text))
+                        .with_arg("replace_all", serde_json::json!(edit.replace_all));
+                    match executor.execute(request).await {
+                        Ok(result) if result.success => applied += 1,
+                        Ok(result) => errors.push(result.content),
+                        Err(e) => errors.push(e.to_string()),
+                    }
+                }
+                if errors.is_empty() {
+                    return Ok(format!("Edited {} ({} change(s) applied)", path, applied));
+                }
+                return Ok(format!(
+                    "Edited {} ({} applied, {} failed: {})",
+                    path,
+                    applied,
+                    errors.len(),
+                    errors.join("; ")
+                ));
+            }
+        }
+        // Fallback: read file, apply edits in memory, write back
+        let content = std::fs::read_to_string(path).map_err(|e| crate::error::Error::Io(e))?;
+        let mut result = content;
+        for edit in edits {
+            if edit.replace_all {
+                result = result.replace(&edit.old_text, &edit.new_text);
+            } else if let Some(idx) = result.find(&edit.old_text) {
+                result = format!(
+                    "{}{}{}",
+                    &result[..idx],
+                    &edit.new_text,
+                    &result[idx + edit.old_text.len()..]
+                );
+            } else {
+                return Err(crate::error::Error::ToolExecution {
+                    tool: "edit_file".to_string(),
+                    reason: format!("old_text not found in {}", path),
+                });
+            }
+        }
+        std::fs::write(path, result).map_err(|e| crate::error::Error::Io(e))?;
+        Ok(format!(
+            "Edited {} ({} change(s) applied)",
+            path,
+            edits.len()
+        ))
     }
 
     async fn execute_delete_file(&self, path: &str) -> Result<String> {
-        // In a real implementation, this would delete the file
-        Ok(format!("Deleted {}", path))
+        // Delegate to tool executor if available
+        if let Some(executor) = &self.tool_executor {
+            if executor.has_tool("shell") || executor.has_tool("run_command") {
+                let tool_name = if executor.has_tool("shell") {
+                    "shell"
+                } else {
+                    "run_command"
+                };
+                let request = ToolRequest::new(tool_name)
+                    .with_arg("command", serde_json::json!("rm"))
+                    .with_arg("arg0", serde_json::json!(path));
+                let result = executor.execute(request).await?;
+                if result.success {
+                    return Ok(format!("Deleted {}", path));
+                }
+                return Err(crate::error::Error::ToolExecution {
+                    tool: "delete_file".to_string(),
+                    reason: result.content,
+                });
+            }
+        }
+        // Fallback: delete directly
+        match std::fs::remove_file(path) {
+            Ok(()) => Ok(format!("Deleted {}", path)),
+            Err(e) => Err(crate::error::Error::Io(e)),
+        }
     }
 
     async fn execute_run_tests(&self, _coverage_threshold: Option<f64>) -> Result<String> {
-        // In a real implementation, this would run the test suite
-        // and check coverage against the threshold
-        Ok("All tests passed".to_string())
+        // Run cargo test via tool executor
+        if let Some(executor) = &self.tool_executor {
+            if executor.has_tool("shell") || executor.has_tool("run_command") {
+                let tool_name = if executor.has_tool("shell") {
+                    "shell"
+                } else {
+                    "run_command"
+                };
+                let request = ToolRequest::new(tool_name)
+                    .with_arg("command", serde_json::json!("cargo"))
+                    .with_arg("arg0", serde_json::json!("test"))
+                    .with_arg("arg1", serde_json::json!("--color=never"))
+                    .with_arg("timeout_ms", serde_json::json!(300_000u64));
+                let result = executor.execute(request).await?;
+                if result.success {
+                    return Ok(result.content);
+                }
+                return Ok(result.content); // Return output even on failure for error recovery
+            }
+        }
+        Err(crate::error::Error::Config(
+            "No tool executor configured — cannot run tests".to_string(),
+        ))
     }
 
     async fn execute_verify(
         &self,
         _check_tests: bool,
-        _check_lint: bool,
+        check_lint: bool,
         _check_types: bool,
     ) -> Result<String> {
-        // In a real implementation, this would run verification checks
-        Ok("Verification passed".to_string())
+        let mut outputs = Vec::new();
+        // Always run cargo check
+        if let Some(executor) = &self.tool_executor {
+            if executor.has_tool("shell") || executor.has_tool("run_command") {
+                let tool_name = if executor.has_tool("shell") {
+                    "shell"
+                } else {
+                    "run_command"
+                };
+
+                // cargo check
+                let request = ToolRequest::new(tool_name)
+                    .with_arg("command", serde_json::json!("cargo"))
+                    .with_arg("arg0", serde_json::json!("check"))
+                    .with_arg("arg1", serde_json::json!("--color=never"))
+                    .with_arg("timeout_ms", serde_json::json!(120_000u64));
+                if let Ok(result) = executor.execute(request).await {
+                    outputs.push(result.content);
+                }
+
+                // cargo clippy if requested
+                if check_lint {
+                    let request = ToolRequest::new(tool_name)
+                        .with_arg("command", serde_json::json!("cargo"))
+                        .with_arg("arg0", serde_json::json!("clippy"))
+                        .with_arg("arg1", serde_json::json!("--all-targets"))
+                        .with_arg("arg2", serde_json::json!("--color=never"))
+                        .with_arg("timeout_ms", serde_json::json!(120_000u64));
+                    if let Ok(result) = executor.execute(request).await {
+                        outputs.push(result.content);
+                    }
+                }
+
+                return Ok(outputs.join("\n---\n"));
+            }
+        }
+        Err(crate::error::Error::Config(
+            "No tool executor configured — cannot run verification".to_string(),
+        ))
     }
 
     async fn execute_refine(
@@ -656,13 +808,55 @@ impl ExecutorAgent {
         _max_iterations: u32,
         _focus_areas: &[String],
     ) -> Result<String> {
-        // In a real implementation, this would refine the code based on feedback
-        Ok("Refinement complete".to_string())
+        if let Some(client) = &self.llm_client {
+            let prompt = format!(
+                "Review and refine the code. Focus areas: {}\n\n\
+                 Provide specific, actionable improvements.",
+                _focus_areas.join(", ")
+            );
+            let messages = vec![
+                ChatMessage {
+                    role: ChatRole::System,
+                    content: "You are a code reviewer. Suggest specific improvements.".to_string(),
+                },
+                ChatMessage {
+                    role: ChatRole::User,
+                    content: prompt,
+                },
+            ];
+            let response = client.chat(messages).await?;
+            return Ok(response);
+        }
+        Err(crate::error::Error::Config(
+            "No LLM client configured — cannot execute refine step".to_string(),
+        ))
     }
 
-    async fn execute_review(&self, _criteria: &[ReviewCriterion]) -> Result<String> {
-        // In a real implementation, this would perform a code review
-        Ok("Review complete".to_string())
+    async fn execute_review(&self, criteria: &[ReviewCriterion]) -> Result<String> {
+        if let Some(client) = &self.llm_client {
+            let criteria_str: Vec<String> = criteria.iter().map(|c| format!("- {:?}", c)).collect();
+            let prompt = format!(
+                "Review the code against these criteria:\n{}\n\n\
+                 For each criterion, report: PASS, FAIL, or WARNING with explanation.",
+                criteria_str.join("\n")
+            );
+            let messages = vec![
+                ChatMessage {
+                    role: ChatRole::System,
+                    content: "You are a code reviewer. Be thorough and specific.".to_string(),
+                },
+                ChatMessage {
+                    role: ChatRole::User,
+                    content: prompt,
+                },
+            ];
+            let response = client.chat(messages).await?;
+            return Ok(response);
+        }
+        Ok(format!(
+            "Review complete ({} criteria, no LLM configured)",
+            criteria.len()
+        ))
     }
 
     async fn execute_fix(
@@ -671,8 +865,29 @@ impl ExecutorAgent {
         _file: &str,
         _line: Option<u32>,
     ) -> Result<String> {
-        // In a real implementation, this would fix the identified issue
-        Ok("Fix applied".to_string())
+        if let Some(client) = &self.llm_client {
+            let prompt = format!(
+                "Fix the issue '{}' in {} at line {:?}.\n\n\
+                 Read the file, understand the context, and provide the corrected code.",
+                _issue_id, _file, _line
+            );
+            let messages = vec![
+                ChatMessage {
+                    role: ChatRole::System,
+                    content: "You are a code fixer. Provide corrected code only, with minimal explanation."
+                        .to_string(),
+                },
+                ChatMessage {
+                    role: ChatRole::User,
+                    content: prompt,
+                },
+            ];
+            let response = client.chat(messages).await?;
+            return Ok(response);
+        }
+        Err(crate::error::Error::Config(
+            "No LLM client configured — cannot execute fix step".to_string(),
+        ))
     }
 
     async fn execute_command(
