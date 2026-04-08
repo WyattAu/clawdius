@@ -669,7 +669,7 @@ mod mock_llm_client_tests {
                             }
                         }
                     });
-                }
+                },
                 MockResponse::RateLimited { retry_after_ms } => {
                     let retry_after_ms = *retry_after_ms;
                     tokio::spawn(async move {
@@ -679,19 +679,19 @@ mod mock_llm_client_tests {
                             ))
                             .await;
                     });
-                }
+                },
                 MockResponse::Timeout(d) => {
                     let d = *d;
                     tokio::spawn(async move {
                         let _ = tx.send(format!("[Error: Timeout after {d:?}]")).await;
                     });
-                }
+                },
                 MockResponse::ConfigError(msg) => {
                     let msg = msg.clone();
                     tokio::spawn(async move {
                         let _ = tx.send(format!("[Error: {msg}]")).await;
                     });
-                }
+                },
             }
             Ok(rx)
         }

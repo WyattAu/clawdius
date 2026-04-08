@@ -170,7 +170,7 @@ fn test_diff_line_types() {
     for hunk in &diff.hunks {
         for line in &hunk.lines {
             match line {
-                DiffLine::Context(_) => {}
+                DiffLine::Context(_) => {},
                 DiffLine::Added(_) => has_added = true,
                 DiffLine::Removed(_) => has_removed = true,
             }

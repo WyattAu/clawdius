@@ -156,7 +156,7 @@ async fn test_rpc_multiple_requests() {
             ),
             "session/delete" => {
                 Response::success(req.id.clone(), serde_json::json!({"deleted": true}))
-            }
+            },
             _ => Response::method_not_found(req.id.clone(), &req.method),
         })
         .collect();
