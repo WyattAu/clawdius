@@ -534,7 +534,7 @@ The gateway follows a **reverse-proxy pattern**: each messaging platform registe
 
 ### Prerequisites
 
-- Rust 1.88+
+- Rust 1.93+
 - Cargo
 - pnpm (for VSCode extension)
 
