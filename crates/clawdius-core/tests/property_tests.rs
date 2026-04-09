@@ -703,7 +703,7 @@ mod execution_properties {
             let exec = SimulatedExecution::new();
             let order = Order::new(symbol, side, quantity, price);
             let fill = exec.submit_order(&order).unwrap();
-            prop_assert!(fill.timestamp >= 0, "fill timestamp must be non-negative");
+            // u64 timestamp is always >= 0, so no assertion needed
         }
     }
 }

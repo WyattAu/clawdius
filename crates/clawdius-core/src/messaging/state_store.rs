@@ -304,7 +304,7 @@ impl StateStore for InMemoryStateStore {
 
     async fn health_check(&self) -> Result<bool> {
         let tables = self.data.read();
-        Ok(!tables.is_empty() || true)
+        Ok(!tables.is_empty())
     }
 
     fn store_type(&self) -> &'static str {
