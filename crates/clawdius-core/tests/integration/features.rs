@@ -132,7 +132,7 @@ fn test_file_tool_write_and_read() {
     let file_path = temp_dir.path().join("test.txt");
     let path_str = file_path.to_string_lossy().to_string();
 
-    let tool = FileTool::new();
+    let tool = FileTool::with_workspace_root(temp_dir.path().to_path_buf());
 
     tool.write(FileWriteParams {
         path: path_str.clone(),
@@ -157,7 +157,7 @@ fn test_file_tool_read_with_offset_and_limit() {
     let file_path = temp_dir.path().join("multiline.txt");
     let path_str = file_path.to_string_lossy().to_string();
 
-    let tool = FileTool::new();
+    let tool = FileTool::with_workspace_root(temp_dir.path().to_path_buf());
 
     tool.write(FileWriteParams {
         path: path_str.clone(),
@@ -182,7 +182,7 @@ fn test_file_tool_edit() {
     let file_path = temp_dir.path().join("edit_test.txt");
     let path_str = file_path.to_string_lossy().to_string();
 
-    let tool = FileTool::new();
+    let tool = FileTool::with_workspace_root(temp_dir.path().to_path_buf());
 
     tool.write(FileWriteParams {
         path: path_str.clone(),
@@ -218,7 +218,7 @@ fn test_file_tool_edit_not_found() {
     let file_path = temp_dir.path().join("edit_not_found.txt");
     let path_str = file_path.to_string_lossy().to_string();
 
-    let tool = FileTool::new();
+    let tool = FileTool::with_workspace_root(temp_dir.path().to_path_buf());
 
     tool.write(FileWriteParams {
         path: path_str.clone(),
@@ -242,7 +242,7 @@ fn test_file_tool_edit_not_found() {
 fn test_file_tool_list() {
     let temp_dir = TempDir::new().unwrap();
 
-    let tool = FileTool::new();
+    let tool = FileTool::with_workspace_root(temp_dir.path().to_path_buf());
 
     tool.write(FileWriteParams {
         path: temp_dir
@@ -664,7 +664,7 @@ fn test_file_tool_creates_parent_dirs() {
     let nested_path = temp_dir.path().join("a/b/c/nested.txt");
     let path_str = nested_path.to_string_lossy().to_string();
 
-    let tool = FileTool::new();
+    let tool = FileTool::with_workspace_root(temp_dir.path().to_path_buf());
 
     tool.write(FileWriteParams {
         path: path_str.clone(),

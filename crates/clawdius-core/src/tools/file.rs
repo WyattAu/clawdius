@@ -24,12 +24,31 @@ fn validate_path(
     let canonical = match path.canonicalize() {
         Ok(p) => p,
         Err(_) => {
-            // Path doesn't exist yet — build it relative to current dir
-            // For new files, check the parent directory
-            let parent = path.parent().unwrap_or(std::path::Path::new("."));
-            match parent.canonicalize() {
-                Ok(p) => p.join(path.file_name().unwrap_or(std::ffi::OsStr::new(""))),
-                Err(_) => return Err(format!("Cannot resolve path: {}", path.display())),
+            // Path doesn't exist yet — walk up the directory tree until we find
+            // an existing ancestor, then join the remaining components.
+            let mut current = path;
+            let mut suffix_parts = Vec::new();
+            loop {
+                match current.canonicalize() {
+                    Ok(p) => {
+                        let mut resolved = p;
+                        for part in suffix_parts.into_iter().rev() {
+                            resolved.push(part);
+                        }
+                        break resolved;
+                    },
+                    Err(_) => {
+                        if let Some(name) = current.file_name() {
+                            suffix_parts.push(name.to_owned());
+                        } else {
+                            return Err(format!("Cannot resolve path: {}", path.display()));
+                        }
+                        match current.parent() {
+                            Some(p) => current = p,
+                            None => return Err(format!("Cannot resolve path: {}", path.display())),
+                        }
+                    },
+                }
             }
         },
     };
