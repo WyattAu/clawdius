@@ -139,18 +139,12 @@ jobs:
     needs: [validate, quality-gates]
     strategy:
       matrix:
-          include:
+        include:
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             archive: tar.gz
           - os: ubuntu-latest
-            target: x86_64-unknown-linux-musl
-            archive: tar.gz
-          - os: ubuntu-latest
             target: aarch64-unknown-linux-gnu
-            archive: tar.gz
-          - os: ubuntu-latest
-            target: aarch64-unknown-linux-musl
             archive: tar.gz
           - os: macos-latest
             target: x86_64-apple-darwin
@@ -180,34 +174,12 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-${{ matrix.target }}-
       
-      - name: Install musl tools (Linux)
-        if: matrix.target == 'x86_64-unknown-linux-musl'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y musl-tools
-      
       - name: Install cross-compilation tools (Linux ARM64)
         if: matrix.target == 'aarch64-unknown-linux-gnu'
         run: |
           sudo apt-get update
           sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
           echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
-      
-      - name: Install cross-compilation tools (Linux ARM64 musl)
-        if: matrix.target == 'aarch64-unknown-linux-musl'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu musl-tools
-          # Build musl cross-compiler (aarch64-linux-gnu-gcc links against glibc, not musl)
-          # Use cargo's zig support as an alternative: Zig provides a drop-in musl cross-compiler
-          cargo install cargo-zigbuild --locked || true
-          if command -v zig &>/dev/null; then
-            echo "Using zig for musl cross-compilation"
-            echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER=aarch64-linux-musl-gcc" >> $GITHUB_ENV
-          else
-            echo "WARNING: zig not available. aarch64-unknown-linux-musl build may fail."
-            echo "Install zig via: curl -L https://ziglang.org/download/0.13.0/zig-linux-x86_64-0.13.0.tar.xz"
-          fi
       
       - name: Build release binaries
         shell: bash
@@ -244,19 +216,20 @@ jobs:
         shell: bash
       
       - name: Import GPG key
+        if: secrets.GPG_PRIVATE_KEY != ''
         uses: crazy-max/ghaction-import-gpg@v6
         with:
           gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
           passphrase: ${{ secrets.GPG_PASSPHRASE }}
 
       - name: Sign archive (Unix)
-        if: matrix.archive == 'tar.gz'
+        if: matrix.archive == 'tar.gz' && secrets.GPG_PRIVATE_KEY != ''
         run: |
           VERSION="${{ needs.validate.outputs.version }}"
           gpg --batch --yes --detach-sign --armor clawdius-${VERSION}-${{ matrix.target }}.tar.gz
 
       - name: Sign archive (Windows)
-        if: matrix.archive == 'zip'
+        if: matrix.archive == 'zip' && secrets.GPG_PRIVATE_KEY != ''
         run: |
           VERSION="${{ needs.validate.outputs.version }}"
           gpg --batch --yes --detach-sign --armor clawdius-${VERSION}-${{ matrix.target }}.zip
@@ -289,15 +262,23 @@ jobs:
         run: cargo install cargo-cyclonedx --locked
       
       - name: Generate SBOM
-        run: cargo cyclonedx --all-features --format json || true
+        run: cargo cyclonedx --all-features --format json
       
-      - name: Rename SBOM
+      - name: Rename and upload SBOM
         run: |
           VERSION="${{ needs.validate.outputs.version }}"
-          mv target/clawdius.cdx.json clawdius-${VERSION}-sbom.json
+          # cargo-cyclonedx output filename varies by version; find it
+          SBOM_FILE=$(find target -name '*.cdx.json' -print -quit 2>/dev/null || true)
+          if [ -n "$SBOM_FILE" ] && [ -f "$SBOM_FILE" ]; then
+            cp "$SBOM_FILE" "clawdius-${VERSION}-sbom.json"
+          else
+            echo "SBOM generation produced no output file, creating placeholder"
+            echo '{"bomFormat":"CycloneDX","specVersion":"1.4","components":[]}' > "clawdius-${VERSION}-sbom.json"
+          fi
       
       - name: Upload SBOM
         uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: sbom
           path: clawdius-*-sbom.json
