@@ -117,7 +117,7 @@ jobs:
           cargo audit || true
       
       - name: Run tests
-        run: cargo nextest run --workspace --profile ci
+        run: cargo nextest run --workspace --cargo-profile ci
       
       - name: Check coverage
         run: |
