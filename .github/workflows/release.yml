@@ -216,20 +216,22 @@ jobs:
         shell: bash
       
       - name: Import GPG key
-        if: secrets.GPG_PRIVATE_KEY != ''
+        continue-on-error: true
         uses: crazy-max/ghaction-import-gpg@v6
         with:
           gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
           passphrase: ${{ secrets.GPG_PASSPHRASE }}
 
       - name: Sign archive (Unix)
-        if: matrix.archive == 'tar.gz' && secrets.GPG_PRIVATE_KEY != ''
+        if: matrix.archive == 'tar.gz'
+        continue-on-error: true
         run: |
           VERSION="${{ needs.validate.outputs.version }}"
           gpg --batch --yes --detach-sign --armor clawdius-${VERSION}-${{ matrix.target }}.tar.gz
 
       - name: Sign archive (Windows)
-        if: matrix.archive == 'zip' && secrets.GPG_PRIVATE_KEY != ''
+        if: matrix.archive == 'zip'
+        continue-on-error: true
         run: |
           VERSION="${{ needs.validate.outputs.version }}"
           gpg --batch --yes --detach-sign --armor clawdius-${VERSION}-${{ matrix.target }}.zip
