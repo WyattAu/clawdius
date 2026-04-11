@@ -303,8 +303,10 @@ impl StateStore for InMemoryStateStore {
     }
 
     async fn health_check(&self) -> Result<bool> {
-        let tables = self.data.read();
-        Ok(!tables.is_empty())
+        // In-memory store is healthy if the lock is acquirable (store is reachable).
+        // We don't require tables to exist — an empty store is still operational.
+        let _tables = self.data.read();
+        Ok(true)
     }
 
     fn store_type(&self) -> &'static str {
