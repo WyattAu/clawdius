@@ -71,12 +71,26 @@ impl Default for WebSearchTool {
 impl WebSearchTool {
     #[must_use]
     pub fn new(provider: SearchProvider) -> Self {
-        let client = Client::builder()
-            .user_agent("Mozilla/5.0 (compatible; Clawdius/0.2.0)")
-            .timeout(std::time::Duration::from_secs(30))
-            .build()
-            .unwrap_or_else(|_| Client::new());
+        Self::with_proxy(provider, None)
+    }
 
+    /// Creates a new WebSearchTool with an optional proxy.
+    ///
+    /// The proxy URL should be in the format `http://user:pass@host:port`
+    /// or `socks5://user:pass@host:port`.
+    #[must_use]
+    pub fn with_proxy(provider: SearchProvider, proxy_url: Option<&str>) -> Self {
+        let mut builder = Client::builder()
+            .user_agent("Mozilla/5.0 (compatible; Clawdius/0.2.0)")
+            .timeout(std::time::Duration::from_secs(30));
+
+        if let Some(url) = proxy_url {
+            if let Ok(proxy) = reqwest::Proxy::all(url) {
+                builder = builder.proxy(proxy);
+            }
+        }
+
+        let client = builder.build().unwrap_or_else(|_| Client::new());
         Self { client, provider }
     }
 

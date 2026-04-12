@@ -81,6 +81,7 @@ pub mod browser;
 pub mod editor;
 pub mod file;
 pub mod git;
+pub mod html_compressor;
 pub mod shell;
 pub mod web_search;
 
