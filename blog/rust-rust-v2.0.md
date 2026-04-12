@@ -25,7 +25,7 @@ The project is a Cargo workspace with 6 crates:
 - `clawdius-server` — JSON-RPC / LSP / GraphQL server
 - `clawdius-webview` — Leptos WASM frontend
 
-LLM support covers 6 providers. Protocol stack: JSON-RPC, LSP, MCP, DAP, GraphQL, REST. No Node.js runtime anywhere in the pipeline.
+LLM support covers 3 working providers (Anthropic, OpenAI, Ollama) plus 2 stubs (DeepSeek, OpenRouter). Protocol stack: JSON-RPC, LSP, MCP, DAP, GraphQL, REST. No Node.js runtime anywhere in the pipeline.
 
 Sandboxing
 
@@ -80,20 +80,9 @@ What Doesn't Work Yet
 
 CI and Quality
 
-The CI pipeline runs 14 job types on every push and PR:
+1,956 tests pass across the workspace (3 skipped on CI: lean binary not installed, headless Chrome available). Clippy pedantic + nursery + deny on unwrap_used, expect_used, panic, todo is configured. Compiler warnings are zero. The release pipeline builds signed binaries for 4 platforms with SBOM generation.
 
-- Sharded tests (4 shards x 2 Rust versions = 8 parallel jobs)
-- Platform tests (Windows, macOS ARM64)
-- Mutation testing with cargo-mutants (≥85% score required)
-- Coverage enforcement (≥85% line coverage)
-- AddressSanitizer (nightly, full workspace)
-- Fuzzing (5 targets, 55s each)
-- Lean4 proof compilation and axiom/sorry counting
-- Security scanning (cargo-deny, cargo-audit, cargo-vet)
-- VSCode extension build and lint
-- Benchmark regression detection
-
-Zero `unwrap()` calls in production code. Zero compiler warnings. Clippy pedantic + nursery + deny on unwrap_used, expect_used, panic, todo.
+**Known debt:** ~1,200 `unwrap()` calls remain in production code across 109 files. The clippy deny-on-unwrap configuration was intended to enforce zero unwraps but was added after most of the codebase was written, so existing calls weren't fixed incrementally. This is tracked for gradual remediation.
 
 Install
 

@@ -49,7 +49,7 @@ A cryptographic assumption about Ed25519 capability token unforgeability — the
 
 Architecture
 
-6 crates, 6 protocol layers (JSON-RPC, LSP, MCP, DAP, GraphQL, REST), 4 IDE plugins (VSCode, JetBrains, Neovim, Emacs), plus `clawdius-mcp` for Claude Desktop interop. 6 LLM providers. Zero `unwrap()` in production code, zero compiler warnings.
+6 crates, 6 protocol layers (JSON-RPC, LSP, MCP, DAP, GraphQL, REST), 4 IDE plugins (VSCode, JetBrains, Neovim, Emacs), plus `clawdius-mcp` for Claude Desktop interop. 3 working LLM providers (Anthropic, OpenAI, Ollama). ~1,200 `unwrap()` calls remain in production code (tracked for remediation). Zero compiler warnings.
 
 Limitations
 
@@ -58,7 +58,7 @@ Limitations
 - gVisor/Firecracker sandboxes are stubs
 - IDE inline completions exist but aren't wired to editor plugins
 
-CI runs 14 job types: sharded tests (4 shards × 2 Rust versions), mutation testing (≥85%), AddressSanitizer, 5 fuzz targets, Lean4 proof compilation, coverage (≥85%), security scanning (cargo-deny, cargo-audit, cargo-vet).
+CI runs tests on every push with coverage, clippy, security scanning (cargo-deny, cargo-audit), and Lean4 proof compilation. Release pipeline builds signed binaries for 4 platforms.
 
 ```
 cargo install clawdius
