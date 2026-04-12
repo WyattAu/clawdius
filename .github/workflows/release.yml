@@ -405,7 +405,7 @@ jobs:
           # Commit and push
           git add VERSION.md
           git commit -m "chore: bump version to $NEW_VERSION for next development cycle"
-          git push origin main
+          git push origin main || true
 
   rollback:
     name: Rollback
