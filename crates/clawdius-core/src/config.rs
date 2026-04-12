@@ -787,8 +787,6 @@ impl MessagingConfig {
 /// Audit logging configuration.
 ///
 /// Controls where audit events are persisted and how long they are retained.
-/// Used by [`crate::messaging::audit::MessagingAuditLogger`] construction in the
-/// server binary.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AuditConfig {
     /// Storage backend: `"file"`, `"sqlite"`, `"elasticsearch"`, `"webhook"`, or `"memory"`.
@@ -837,10 +835,6 @@ fn default_audit_retention() -> u32 {
 }
 
 /// PII redaction configuration for log output.
-///
-/// This is the TOML-deserialisable counterpart of
-/// [`crate::messaging::pii_redaction::PiiRedactionConfig`].  The server binary
-/// converts this into the runtime type when constructing the tracing layer.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PiiRedactionConfig {
     /// Whether to redact known sensitive field names (default: `true`).

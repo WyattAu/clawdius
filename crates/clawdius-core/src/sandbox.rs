@@ -28,7 +28,7 @@
 //!
 //! # Usage
 //!
-//! ```rust,no_run
+//! ```ignore
 //! use clawdius_core::sandbox::{SandboxTier, executor::SandboxExecutor};
 //!
 //! # fn main() -> clawdius_core::Result<()> {

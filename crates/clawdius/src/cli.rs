@@ -446,12 +446,6 @@ pub enum Commands {
         extension: Option<String>,
     },
 
-    #[command(about = "Manage agentic workflows")]
-    Workflow {
-        #[command(subcommand)]
-        action: WorkflowCommands,
-    },
-
     #[command(about = "Manage webhooks for event notifications")]
     Webhook {
         #[command(subcommand)]
@@ -610,12 +604,6 @@ pub enum Commands {
         /// Enable verbose output
         #[arg(short, long)]
         verbose: bool,
-    },
-
-    #[command(about = "Nexus FSM engine")]
-    Nexus {
-        #[command(subcommand)]
-        action: NexusAction,
     },
 
     #[command(about = "Git workflow operations")]
@@ -816,64 +804,6 @@ pub enum LangCommands {
 
     #[command(about = "Show current language")]
     Show,
-}
-
-#[derive(Subcommand)]
-pub enum WorkflowCommands {
-    #[command(about = "List all workflows")]
-    List,
-
-    #[command(about = "Create a new workflow")]
-    Create {
-        #[arg(help = "Workflow name")]
-        name: String,
-
-        #[arg(short, long)]
-        #[arg(help = "Workflow description")]
-        description: Option<String>,
-    },
-
-    #[command(about = "Show workflow details")]
-    Show {
-        #[arg(help = "Workflow ID")]
-        id: String,
-    },
-
-    #[command(about = "Execute a workflow")]
-    Run {
-        #[arg(help = "Workflow ID")]
-        id: String,
-
-        #[arg(short, long)]
-        #[arg(help = "Context data as JSON")]
-        context: Option<String>,
-
-        #[arg(short = 'P', long, default_value = "anthropic")]
-        #[arg(help = "Provider to use")]
-        provider: String,
-
-        #[arg(short, long)]
-        #[arg(help = "Model to use")]
-        model: Option<String>,
-    },
-
-    #[command(about = "Cancel a running workflow")]
-    Cancel {
-        #[arg(help = "Execution ID")]
-        execution_id: String,
-    },
-
-    #[command(about = "Show workflow execution status")]
-    Status {
-        #[arg(help = "Execution ID")]
-        execution_id: String,
-    },
-
-    #[command(about = "Delete a workflow")]
-    Delete {
-        #[arg(help = "Workflow ID")]
-        id: String,
-    },
 }
 
 #[derive(Subcommand)]
@@ -1147,16 +1077,6 @@ pub enum ModelsCommands {
 }
 
 #[derive(Subcommand)]
-pub enum NexusAction {
-    #[command(about = "Run the Nexus 24-phase FSM engine")]
-    Start {
-        #[arg(short, long, default_value = ".")]
-        #[arg(help = "Project root path")]
-        path: PathBuf,
-    },
-}
-
-#[derive(Subcommand)]
 pub enum GitCommands {
     /// Stage files and create a commit with an LLM-generated message
     Commit {
@@ -1336,7 +1256,6 @@ pub async fn handle_command(
             editor,
             extension,
         } => handle_edit(initial, editor, extension, output_format).await,
-        Commands::Workflow { action } => handle_workflow(action, config_path, output_format).await,
         Commands::Webhook { action } => handle_webhook(action, config_path, output_format).await,
         Commands::Generate {
             prompt,
@@ -1421,162 +1340,8 @@ pub async fn handle_command(
             )
             .await
         },
-        Commands::Nexus { action } => handle_nexus(action).await,
         Commands::Git { action } => handle_git(action, config_path).await,
     }
-}
-
-async fn handle_nexus(action: NexusAction) -> anyhow::Result<()> {
-    match action {
-        NexusAction::Start { path } => {
-            let path = path.clone();
-            tokio::task::spawn_blocking(move || run_nexus_engine(&path)).await?
-        },
-    }
-}
-
-fn run_nexus_engine(project_root: &PathBuf) -> anyhow::Result<()> {
-    use clawdius_core::nexus::{NexusEngine, RequirementData};
-
-    println!("Nexus FSM Engine");
-    println!("================");
-    println!("Project root: {}", project_root.display());
-    println!();
-    println!("[Phase 00/23] Context Discovery");
-
-    let engine = NexusEngine::new(project_root.clone())
-        .map_err(|e| anyhow::anyhow!("Failed to create NexusEngine: {e}"))?;
-
-    let engine = engine
-        .transition_to_environment("demo", vec![])
-        .map_err(|e| anyhow::anyhow!("Phase 0->1: {e}"))?;
-    println!("[Phase 01/23] Environment Materialization");
-
-    let engine = engine
-        .transition_to_requirements("cargo", vec![], true)
-        .map_err(|e| anyhow::anyhow!("Phase 1->2: {e}"))?;
-    println!("[Phase 02/23] Requirements Engineering");
-
-    let engine = engine
-        .transition_to_research(vec![RequirementData {
-            id: "REQ-001".into(),
-            description: "Demo requirement".into(),
-            priority: "High".into(),
-            testable: true,
-        }])
-        .map_err(|e| anyhow::anyhow!("Phase 2->3: {e}"))?;
-    println!("[Phase 03/23] Epistemological Discovery");
-
-    let engine = engine
-        .transition_to_cross_lingual("YP-001", vec![])
-        .map_err(|e| anyhow::anyhow!("Phase 3->4: {e}"))?;
-    println!("[Phase 04/23] Cross-Lingual Integration");
-
-    let engine = engine
-        .transition_to_supply_chain()
-        .map_err(|e| anyhow::anyhow!("Phase 4->5: {e}"))?;
-    println!("[Phase 05/23] Supply Chain Hardening");
-
-    let engine = engine
-        .transition_to_architecture(serde_json::json!({}))
-        .map_err(|e| anyhow::anyhow!("Phase 5->6: {e}"))?;
-    println!("[Phase 06/23] Architectural Specification");
-
-    let engine = engine
-        .transition_to_concurrency("BP-001", vec![])
-        .map_err(|e| anyhow::anyhow!("Phase 6->7: {e}"))?;
-    println!("[Phase 07/23] Concurrency Analysis");
-
-    let engine = engine
-        .transition_to_security(serde_json::json!({}))
-        .map_err(|e| anyhow::anyhow!("Phase 7->8: {e}"))?;
-    println!("[Phase 08/23] Security Engineering");
-
-    let engine = engine
-        .transition_to_resources(serde_json::json!({}))
-        .map_err(|e| anyhow::anyhow!("Phase 8->9: {e}"))?;
-    println!("[Phase 09/23] Resource Management");
-
-    let engine = engine
-        .transition_to_performance()
-        .map_err(|e| anyhow::anyhow!("Phase 9->10: {e}"))?;
-    println!("[Phase 10/23] Performance Engineering");
-
-    let engine = engine
-        .transition_to_cross_platform(serde_json::json!({}))
-        .map_err(|e| anyhow::anyhow!("Phase 10->11: {e}"))?;
-    println!("[Phase 11/23] Cross-Platform Compatibility");
-
-    let engine = engine
-        .transition_to_adversarial()
-        .map_err(|e| anyhow::anyhow!("Phase 11->12: {e}"))?;
-    println!("[Phase 12/23] Adversarial Loop");
-
-    let engine = engine
-        .transition_to_cicd(serde_json::json!({}))
-        .map_err(|e| anyhow::anyhow!("Phase 12->13: {e}"))?;
-    println!("[Phase 13/23] CI/CD Engineering");
-
-    let engine = engine
-        .transition_to_documentation(serde_json::json!({}))
-        .map_err(|e| anyhow::anyhow!("Phase 13->14: {e}"))?;
-    println!("[Phase 14/23] Documentation Verification");
-
-    let engine = engine
-        .transition_to_knowledge_base(serde_json::json!({}))
-        .map_err(|e| anyhow::anyhow!("Phase 14->15: {e}"))?;
-    println!("[Phase 15/23] Knowledge Base Update");
-
-    let engine = engine
-        .transition_to_execution_graph()
-        .map_err(|e| anyhow::anyhow!("Phase 15->16: {e}"))?;
-    println!("[Phase 16/23] Execution Graph Generation");
-
-    let engine = engine
-        .transition_to_supply_monitoring(serde_json::json!({}))
-        .map_err(|e| anyhow::anyhow!("Phase 16->17: {e}"))?;
-    println!("[Phase 17/23] Supply Chain Monitoring");
-
-    let engine = engine
-        .transition_to_deployment()
-        .map_err(|e| anyhow::anyhow!("Phase 17->18: {e}"))?;
-    println!("[Phase 18/23] Deployment & Operations");
-
-    let engine = engine
-        .transition_to_operations(serde_json::json!({}))
-        .map_err(|e| anyhow::anyhow!("Phase 18->19: {e}"))?;
-    println!("[Phase 19/23] Operations");
-
-    let engine = engine
-        .transition_to_closure()
-        .map_err(|e| anyhow::anyhow!("Phase 19->20: {e}"))?;
-    println!("[Phase 20/23] Project Closure");
-
-    let engine = engine
-        .transition_to_continuous_monitoring()
-        .map_err(|e| anyhow::anyhow!("Phase 20->21: {e}"))?;
-    println!("[Phase 21/23] Continuous Monitoring");
-
-    let engine = engine
-        .transition_to_knowledge_transfer()
-        .map_err(|e| anyhow::anyhow!("Phase 21->22: {e}"))?;
-    println!("[Phase 22/23] Knowledge Transfer");
-
-    let engine = engine
-        .transition_to_archive(serde_json::json!({}))
-        .map_err(|e| anyhow::anyhow!("Phase 22->23: {e}"))?;
-    println!("[Phase 23/23] Archive");
-
-    let finalized = engine
-        .finalize()
-        .map_err(|e| anyhow::anyhow!("Finalization: {e}"))?;
-
-    println!();
-    println!("Nexus FSM complete.");
-    println!("  Total artifacts: {}", finalized.total_artifacts);
-    println!("  Duration: {}ms", finalized.duration.num_milliseconds());
-
-    Ok(())
 }
 
 async fn handle_git(action: GitCommands, config_path: Option<PathBuf>) -> anyhow::Result<()> {
@@ -3327,18 +3092,14 @@ async fn handle_compliance(
 }
 
 async fn handle_research(
-    query: String,
-    languages: Option<String>,
+    _query: String,
+    _languages: Option<String>,
     _tqa_level: u8,
-    max_results: usize,
+    _max_results: usize,
     output_format: OutputFormat,
 ) -> anyhow::Result<()> {
-    use clawdius_core::output::{
-        OutputOptions, ResearchConcept, ResearchRelationship, ResearchResult,
-    };
-    use clawdius_core::{Language, ResearchQuery, ResearchSynthesizer};
+    use clawdius_core::output::{OutputOptions, ResearchResult};
     use std::io;
-    use std::str::FromStr;
 
     let options = OutputOptions {
         format: CoreOutputFormat::from(output_format),
@@ -3348,64 +3109,9 @@ async fn handle_research(
     };
     let formatter = OutputFormatter::new(options);
 
-    let target_languages: Vec<Language> = match languages {
-        Some(langs) => langs
-            .split(',')
-            .map(|s| Language::from_str(s.trim()))
-            .collect::<Result<Vec<_>, _>>()
-            .map_err(|e| anyhow::anyhow!("Invalid language: {e}"))?,
-        None => vec![
-            Language::EN,
-            Language::ZH,
-            Language::DE,
-            Language::FR,
-            Language::JP,
-        ],
-    };
-
-    let research_query = ResearchQuery::from_single_term(&query, target_languages.clone())
-        .with_max_results(max_results);
-
-    let mut synthesizer = ResearchSynthesizer::new();
-
-    let result = match synthesizer.search_multilingual(research_query).await {
-        Ok(synth_result) => {
-            let languages_covered: Vec<String> = synth_result
-                .languages_covered()
-                .into_iter()
-                .map(|l| format!("{l:?}"))
-                .collect();
-
-            let concepts: Vec<ResearchConcept> = synth_result
-                .concepts
-                .iter()
-                .map(|c| ResearchConcept {
-                    language: format!("{:?}", c.language),
-                    name: c.name.clone(),
-                    definition: c.definition.clone(),
-                })
-                .collect();
-
-            let relationships: Vec<ResearchRelationship> = synth_result
-                .relationships
-                .iter()
-                .map(|r| ResearchRelationship {
-                    from: r.from.clone(),
-                    relationship: format!("{:?}", r.relationship),
-                    to: r.to.clone(),
-                })
-                .collect();
-
-            ResearchResult::success(
-                &query,
-                languages_covered,
-                f64::from(synth_result.confidence),
-                concepts,
-                relationships,
-            )
-        },
-        Err(e) => ResearchResult::error(e.to_string()),
-    };
+    let result = ResearchResult::error(format!(
+        "Research command is not available in this build (knowledge module removed)"
+    ));
 
     formatter.format_research_result(&mut io::stdout(), &result)?;
 
@@ -4478,203 +4184,6 @@ async fn handle_edit(
                 content.len(),
                 content.lines().count()
             );
-        },
-    }
-
-    Ok(())
-}
-
-async fn handle_workflow(
-    action: WorkflowCommands,
-    _config_path: Option<PathBuf>,
-    output_format: OutputFormat,
-) -> anyhow::Result<()> {
-    use clawdius_core::nexus::workflow::{WorkflowDefinition, WorkflowOrchestrator};
-
-    let orchestrator = WorkflowOrchestrator::with_default_config();
-
-    match action {
-        WorkflowCommands::List => {
-            let workflows = orchestrator.list_workflows().await;
-
-            if output_format == OutputFormat::Json {
-                println!("{}", serde_json::to_string_pretty(&workflows)?);
-            } else if workflows.is_empty() {
-                println!("No workflows registered");
-            } else {
-                println!("Registered workflows:\n");
-                for workflow in &workflows {
-                    println!(
-                        "  {} - {} (v{})",
-                        workflow.id, workflow.name, workflow.version
-                    );
-                    if !workflow.description.is_empty() {
-                        println!("    {}", workflow.description);
-                    }
-                    println!("    Tasks: {}", workflow.task_count());
-                    println!();
-                }
-            }
-        },
-
-        WorkflowCommands::Create { name, description } => {
-            let mut workflow = WorkflowDefinition::new(&name);
-            if let Some(desc) = description {
-                workflow = workflow.with_description(&desc);
-            }
-
-            let id = orchestrator.register_workflow(workflow).await?;
-
-            if output_format == OutputFormat::Json {
-                println!(
-                    "{}",
-                    serde_json::json!({
-                        "id": id.to_string(),
-                        "name": name,
-                        "status": "created"
-                    })
-                );
-            } else {
-                println!("✓ Workflow created: {} ({})", name, id);
-            }
-        },
-
-        WorkflowCommands::Show { id } => {
-            use clawdius_core::nexus::WorkflowId;
-            let workflow_id = WorkflowId::new(&id);
-
-            match orchestrator.get_workflow(&workflow_id).await {
-                Some(workflow) => {
-                    if output_format == OutputFormat::Json {
-                        println!("{}", serde_json::to_string_pretty(&workflow)?);
-                    } else {
-                        println!("Workflow: {} (v{})", workflow.name, workflow.version);
-                        println!("ID: {}", workflow.id);
-                        if !workflow.description.is_empty() {
-                            println!("Description: {}", workflow.description);
-                        }
-                        println!("\nTasks ({}):", workflow.task_count());
-                        for task in &workflow.tasks {
-                            println!("  - {} [{}]", task.name, task.id);
-                            if !task.dependencies.is_empty() {
-                                println!("    Dependencies: {}", task.dependencies.join(", "));
-                            }
-                        }
-                    }
-                },
-                None => {
-                    anyhow::bail!("Workflow not found: {id}");
-                },
-            }
-        },
-
-        WorkflowCommands::Run {
-            id,
-            context,
-            provider,
-            model,
-        } => {
-            use clawdius_core::nexus::WorkflowId;
-
-            let workflow_id = WorkflowId::new(&id);
-            let exec_id = orchestrator.start_workflow(&workflow_id).await?;
-
-            let context_json = context
-                .map(|c| serde_json::from_str(&c))
-                .transpose()?
-                .unwrap_or(serde_json::json!({}));
-
-            if output_format == OutputFormat::Text {
-                println!("Starting workflow execution...");
-                println!("  Workflow: {}", id);
-                println!("  Execution ID: {}", exec_id);
-                println!("  Provider: {}", provider);
-                if let Some(ref m) = model {
-                    println!("  Model: {}", m);
-                }
-                println!();
-            }
-
-            // Get ready tasks and display progress
-            let ready = orchestrator.get_ready_tasks(&exec_id).await?;
-
-            if output_format == OutputFormat::Json {
-                println!(
-                    "{}",
-                    serde_json::json!({
-                        "execution_id": exec_id,
-                        "workflow_id": id,
-                        "ready_tasks": ready,
-                        "context": context_json
-                    })
-                );
-            } else {
-                println!("Ready tasks: {:?}", ready);
-                println!("\nWorkflow execution started. Use 'clawdius workflow status' to check progress.");
-            }
-        },
-
-        WorkflowCommands::Cancel { execution_id } => {
-            orchestrator.cancel_execution(&execution_id).await?;
-
-            if output_format == OutputFormat::Json {
-                println!(
-                    "{}",
-                    serde_json::json!({
-                        "execution_id": execution_id,
-                        "status": "cancelled"
-                    })
-                );
-            } else {
-                println!("✓ Workflow execution cancelled: {}", execution_id);
-            }
-        },
-
-        WorkflowCommands::Status { execution_id } => {
-            match orchestrator.get_execution(&execution_id).await {
-                Some(execution) => {
-                    if output_format == OutputFormat::Json {
-                        println!("{}", serde_json::to_string_pretty(&execution)?);
-                    } else {
-                        println!("Execution: {}", execution.execution_id);
-                        println!("Status: {:?}", execution.status);
-                        println!("Progress: {:.1}%", execution.progress_percent());
-                        println!("Started: {}", execution.started_at.unwrap_or_default());
-                        if let Some(completed) = execution.completed_at {
-                            println!("Completed: {}", completed);
-                        }
-                        if let Some(duration) = execution.duration_ms {
-                            println!("Duration: {}ms", duration);
-                        }
-                        println!("\nTasks:");
-                        for (task_id, task_exec) in &execution.task_executions {
-                            println!(
-                                "  {} - {:?} (attempt {})",
-                                task_id, task_exec.status, task_exec.attempt
-                            );
-                        }
-                    }
-                },
-                None => {
-                    anyhow::bail!("Execution not found: {}", execution_id);
-                },
-            }
-        },
-
-        WorkflowCommands::Delete { id } => {
-            // Note: WorkflowOrchestrator doesn't have delete method yet
-            // For now, just acknowledge the request
-            if output_format == OutputFormat::Json {
-                println!(
-                    "{}",
-                    serde_json::json!({
-                        "id": id,
-                        "status": "deleted"
-                    })
-                );
-            } else {
-                println!("✓ Workflow deleted: {}", id);
-            }
         },
     }
 

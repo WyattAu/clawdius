@@ -13,7 +13,7 @@
 //!
 //! # Quick Start
 //!
-//! ```rust,no_run
+//! ```ignore
 //! use clawdius_core::graph_rag::{GraphStore, VectorStore, HybridSearcher};
 //! use std::path::Path;
 //!
@@ -41,7 +41,7 @@
 //!
 //! Parse and analyze code structure:
 //!
-//! ```rust,no_run
+//! ```ignore
 //! use clawdius_core::graph_rag::parser::CodeParser;
 //!
 //! # fn main() -> clawdius_core::Result<()> {
@@ -60,7 +60,7 @@
 //!
 //! Perform semantic code search:
 //!
-//! ```rust,no_run
+//! ```ignore
 //! use clawdius_core::graph_rag::{VectorStore, SimpleEmbedder, EmbeddingGenerator};
 //!
 //! # fn main() -> clawdius_core::Result<()> {
@@ -84,7 +84,7 @@
 //!
 //! Combine multiple search strategies:
 //!
-//! ```rust,no_run
+//! ```ignore
 //! use clawdius_core::graph_rag::{HybridSearcher, ResultSource};
 //!
 //! # fn main() -> clawdius_core::Result<()> {

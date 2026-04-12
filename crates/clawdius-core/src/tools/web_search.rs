@@ -290,7 +290,7 @@ impl WebSearchTool {
 
         let text = self.decode_html_entities(&text);
 
-        let whitespace_regex = Regex::new(r"\s+").unwrap_or_else(|_| Regex::new(r"").unwrap());
+        let whitespace_regex = Regex::new(r"\s+").expect(r"\s+ is a valid regex");
         let text = whitespace_regex.replace_all(&text, " ").to_string();
 
         let lines: Vec<&str> = text.lines().collect();
@@ -417,7 +417,7 @@ impl WebSearchTool {
             result = result.replace(entity, replacement);
         }
 
-        let numeric_entity = Regex::new(r"&#(\d+);").unwrap_or_else(|_| Regex::new(r"").unwrap());
+        let numeric_entity = Regex::new(r"&#(\d+);").expect(r"&#(\d+); is a valid regex");
         result = numeric_entity
             .replace_all(&result, |caps: &regex::Captures<'_>| {
                 caps.get(1)
@@ -429,7 +429,7 @@ impl WebSearchTool {
             .to_string();
 
         let hex_entity =
-            Regex::new(r"&#x([0-9a-fA-F]+);").unwrap_or_else(|_| Regex::new(r"").unwrap());
+            Regex::new(r"&#x([0-9a-fA-F]+);").expect(r"&#x([0-9a-fA-F]+); is a valid regex");
         result = hex_entity
             .replace_all(&result, |caps: &regex::Captures<'_>| {
                 caps.get(1)

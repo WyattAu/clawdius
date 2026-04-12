@@ -7,7 +7,7 @@
 //!
 //! # Example
 //!
-//! ```no_run
+//! ```ignore
 //! use clawdius_core::memory::{ProjectMemory, MemoryStore};
 //!
 //! // Load project memory

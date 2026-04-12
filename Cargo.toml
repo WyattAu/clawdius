@@ -13,8 +13,6 @@ members = [
     "crates/clawdius-core",
     "crates/clawdius-code",
     "crates/clawdius-mcp",
-    "crates/clawdius-server",
-    "crates/clawdius-webview",
 ]
 
 [workspace.package]
@@ -32,16 +30,12 @@ readme = "README.md"
 
 [workspace.dependencies]
 # === Async Runtime ===
-monoio = { version = "0.2", features = ["signal", "sync", "tracing"] }
 tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros", "sync", "time", "process", "io-util", "signal"] }
 
 # === Serialization ===
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 toml = "1.0"
-jsonweb = "0.18"
-jsonwebtoken = "9"
-rkyv = { version = "0.8", features = ["std"] }
 
 # === CLI ===
 clap = { version = "4", features = ["derive", "env"] }
@@ -51,7 +45,6 @@ rusqlite = { version = "0.38", features = ["bundled"] }
 
 # === LLM Integration ===
 genai = "0.5"
-async-openai = "0.33"
 # Fix RUSTSEC-2026-0037 (HIGH - CVSS 8.7) - quinn-proto via reqwest/genai chain
 reqwest = { version = "0.12", features = ["json", "stream"] }
 # Note: lancedb's object_store vulnerability needs upstream lancedb update
@@ -78,9 +71,6 @@ jsonrpsee = { version = "0.24", features = ["server", "client", "ws-client"] }
 # === Security ===
 keyring = "3.6"
 rpassword = "7.3"
-aes-gcm = "0.10"
-ed25519-dalek = { version = "2", features = ["rand_core"] }
-rand_core = "0.6"
 
 # === HTTP ===
 axum = { version = "0.8", features = ["macros"] }
@@ -91,15 +81,6 @@ tower-http = { version = "0.6", features = ["cors", "fs"] }
 # NOTE: default-features = false is required to exclude async-std (RUSTSEC-2025-0052)
 chromiumoxide = { version = "0.7", default-features = false, features = ["tokio-runtime", "bytes"] }
 # headless_chrome removed - chromiumoxide provides equivalent functionality without async-std
-
-# === Leptos (Webview) ===
-leptos = { version = "0.7", features = ["csr"] }
-leptos_meta = { version = "0.7", features = ["csr"] }
-leptos_router = { version = "0.7", features = ["csr"] }
-leptos-use = "0.15"
-wasm-bindgen = "0.2"
-web-sys = "0.3"
-console_error_panic_hook = "0.1"
 
 # === Utilities ===
 uuid = { version = "1.21", features = ["v4", "serde"] }
@@ -123,10 +104,6 @@ ignore = "0.4"
 notify = "8.0"
 futures = "0.3"
 async-trait = "0.1"
-pin-project = "1.1"
-bytes = "1.9"
-tokio-stream = "0.1"
-async-stream = "0.3"
 # Fix RUSTSEC-2026-0002 (unsound IterMut) - upgrade to 0.16+
 lru = "0.16"
 
@@ -135,10 +112,6 @@ tiktoken-rs = "0.5"
 
 # === Diff ===
 similar = "2.6"
-
-# === Git ===
-# Fix RUSTSEC-2026-0008 (unsound) - upgrade to 0.20+
-git2 = "0.20"
 
 # === Vector Database ===
 # Upgraded to 0.27.x to fix RUSTSEC-2026-0044, RUSTSEC-2026-0048, RUSTSEC-2026-0049
@@ -154,18 +127,6 @@ candle-transformers = "0.4"
 tokenizers = "0.15"
 hf-hub = "0.3"
 
-# === Internationalization ===
-fluent = "0.17"
-fluent-bundle = "0.16"
-unic-langid = "0.9"
-
-# === High-Performance Allocator ===
-mimalloc = "0.1"
-
-# === HFT Broker ===
-crossbeam-utils = "0.8"
-rust_decimal = "1.35"
-
 # === Testing ===
 proptest = "1.6"
 rstest = "0.25"
@@ -177,7 +138,9 @@ httpmock = "0.7"
 # === System Information ===
 sysinfo = "0.33"
 parking_lot = "0.12"
-once_cell = "1.20"
+
+# === High-Performance Allocator ===
+mimalloc = "0.1"
 
 [workspace.lints.rust]
 unsafe_code = "deny"
@@ -230,9 +193,5 @@ opt-level = 3
 lto = "fat"
 codegen-units = 1
 panic = "abort"
-
-# WASM-specific profile
-[profile.release.package.clawdius-webview]
-opt-level = "z"      # Optimize for size
 
 # No workspace features - each crate defines its own

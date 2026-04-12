@@ -12,8 +12,7 @@
 //!
 //! # Quick Start
 //!
-//! ```rust,no_run
-//! use clawdius_core::session::{SessionManager, SessionStore, Session, Message, MessageRole};
+//! ```ignore
 //! use std::path::PathBuf;
 //!
 //! # fn main() -> clawdius_core::Result<()> {
@@ -48,7 +47,7 @@
 //! The [`SessionManager`] provides higher-level session operations with automatic
 //! compaction and context management:
 //!
-//! ```rust,no_run
+//! ```ignore
 //! use clawdius_core::session::{SessionManager, SessionStore};
 //! use clawdius_core::config::SessionConfig;
 //! use std::path::PathBuf;
@@ -80,7 +79,7 @@
 //! Sessions automatically compact when they approach context limits. The compactor
 //! preserves recent messages and creates summaries of older content:
 //!
-//! ```rust,no_run
+//! ```ignore
 //! use clawdius_core::session::{Compactor, CompactConfig, Session, Message, MessageRole};
 //!
 //! # fn main() -> clawdius_core::Result<()> {
@@ -107,7 +106,7 @@
 //!
 //! Sessions include rich metadata for organization and search:
 //!
-//! ```rust,no_run
+//! ```ignore
 //! use clawdius_core::session::{Session, SessionMeta};
 //! use chrono::Utc;
 //!

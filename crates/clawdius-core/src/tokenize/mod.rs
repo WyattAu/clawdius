@@ -11,7 +11,7 @@
 //! # Example
 //!
 //! ```rust
-//! use clawdius_core::tokenize::count_tokens;
+//! use clawdius_core::tokenize::{count_tokens, TokenizerStrategy};
 //!
 //! let code = r#"fn main() {
 //!     println!("Hello, world!");

@@ -49,12 +49,6 @@ tree-sitter-javascript.workspace = true
 tree-sitter-typescript.workspace = true
 tree-sitter-go.workspace = true
 
-# WASM Runtime
-wasmtime.workspace = true
-
-# JSON-RPC
-jsonrpsee = { version = "0.24", features = ["server"] }
-
 # HTTP (REST API)
 axum.workspace = true
 tower.workspace = true
@@ -70,7 +64,6 @@ blake3.workspace = true
 sha3.workspace = true
 chrono.workspace = true
 regex.workspace = true
-tokio-stream.workspace = true
 lru.workspace = true
 url = "2.5"
 which.workspace = true
@@ -78,9 +71,6 @@ tempfile.workspace = true
 
 # Token counting
 tiktoken-rs.workspace = true
-
-# Git
-git2.workspace = true
 
 # Diff
 similar.workspace = true
@@ -102,23 +92,11 @@ candle-transformers = { workspace = true, optional = true }
 tokenizers = { workspace = true, optional = true }
 hf-hub = { workspace = true, optional = true }
 
-# HFT Broker
-crossbeam-utils.workspace = true
-rust_decimal.workspace = true
-
 # Keyring (optional)
 keyring = { workspace = true, optional = true }
 
-# Encryption at rest
-aes-gcm = { workspace = true, optional = true }
-ed25519-dalek = { workspace = true }
-rand_core = { workspace = true }
-
-# JWT authentication (optional)
-jsonwebtoken = { workspace = true, optional = true }
-
-# Browser Automation
-chromiumoxide.workspace = true
+# Browser Automation (optional)
+chromiumoxide = { workspace = true, optional = true }
 
 # Crash Reporting (optional)
 sentry = { version = "0.32", optional = true }
@@ -134,7 +112,6 @@ urlencoding = "2.1"
 # System information
 sysinfo.workspace = true
 parking_lot.workspace = true
-once_cell.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true
@@ -161,29 +138,14 @@ name = "session_benchmark"
 harness = false
 
 [[bench]]
-name = "messaging_bench"
-harness = false
-
-[[bench]]
-name = "hft_bench"
-harness = false
-
-[[bench]]
 name = "simd_bench"
-harness = false
-
-[[bench]]
-name = "wcet_bench"
 harness = false
 
 [features]
 default = []
-hft-mode = []
-broker-mode = []
 keyring = ["dep:keyring"]
 crash-reporting = ["dep:sentry"]
-encryption = ["dep:aes-gcm"]
-jwt = ["dep:jsonwebtoken"]
+browser = ["dep:chromiumoxide"]
 embeddings = ["dep:candle-core", "dep:candle-nn", "dep:candle-transformers", "dep:tokenizers", "dep:hf-hub"]
 vector-db = ["dep:lancedb", "dep:arrow", "dep:arrow-array", "dep:arrow-schema"]
 

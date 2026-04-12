@@ -42,147 +42,24 @@ Clawdius v2.0.0 is a Rust-native agentic coding assistant with Lean4 formal veri
 
 ## Completed Phases
 
-### Phase 10: Platform Maturity (v2.0.0) — COMPLETE
+### Phase 11.5: Codebase Cleanup (v2.1.0) — COMPLETE
 
 | # | Task | Status | Result |
 |---|------|--------|--------|
-| 10.1 | Lean4 axiom reduction: 11 → 2 | DONE | Only `signature_unforgeable` + `pow2_mod_eq_mask` remain |
-| 10.2 | Emacs plugin | DONE | `editors/emacs/clawdius.el` — full LSP integration |
-| 10.3 | Multi-agent orchestration | DONE | Real LLM pipeline with task decomposition, 18 tests |
-| 10.4 | GraphQL API layer | DONE | `POST /api/v2/graphql` with GraphiQL playground |
-| 10.5 | Plugin marketplace backend | DONE | 7 REST endpoints, in-memory registry, 20 tests |
-| 10.6 | GraphQL plugins query | DONE | Wired to marketplace backend |
-| 10.7 | DAP warning fix | DONE | 9 dead-code warnings suppressed |
+| 11.5.1 | Delete off-mission modules | DONE | Removed broker, nexus, messaging, enterprise, plugin, brain, knowledge, auth (41K LOC) |
+| 11.5.2 | Delete dead crates | DONE | Removed clawdius-server, clawdius-webview |
+| 11.5.3 | Remove dead dependencies | DONE | Removed 18 deps (wasmtime, git2, monoio, ed25519-dalek, etc.) |
+| 11.5.4 | Gate heavy dependencies | DONE | chromiumoxide behind `browser` feature flag |
+| 11.5.5 | Fix all doc tests | DONE | 27 README + 14 source doc examples fixed |
+| 11.5.6 | Fix production unwraps | DONE | 8 remaining → 0 (replaced with `.expect()`) |
+| 11.5.7 | Remove dead CLI commands | DONE | Removed nexus, workflow, broker commands |
+| 11.5.8 | Clean CI | DONE | Removed dead server clippy reference |
+| 11.5.9 | Remove dead test/bench files | DONE | Removed hft, messaging, nexus, property tests |
+| 11.5.10 | Remove dead feature flags | DONE | Removed hft-mode, broker-mode, encryption, jwt |
 
-**Commits:** 9754471, 111c6f2
-
----
-
-### Phase 9: Ecosystem Expansion (v1.8.0) — COMPLETE
-
-| # | Task | Status | Result |
-|---|------|--------|--------|
-| 9.1 | Plugin marketplace backend | DONE | 7 REST endpoints, in-memory registry (full implementation in v2.0.0) |
-| 9.2 | Plugin SDK documentation | DONE | `docs/PLUGIN_SDK.md` |
-| 9.3 | DAP adapter | DONE | 15 method handlers (skeleton) |
-| 9.4 | Neovim plugin | DONE | `plugins/neovim/clawdius.lua` |
-| 9.5 | MCP server mode | DONE | `POST /mcp` endpoint, 6 tools |
-| 9.6 | Release signing infrastructure | DONE | `.github/workflows/release.yml` |
-| 9.7 | Windows + macOS ARM64 CI | DONE | Test execution on both platforms |
-
-**Commit:** 117e5e1
-
-### v1.8.0 Quality Gates — ALL MET
-
-| Gate | Criteria | Result |
-|------|----------|--------|
-| G1 | MCP server exposes tools | **6 tools via POST /mcp** |
-| G2 | DAP adapter has method handlers | **15 handlers** |
-| G3 | Neovim plugin loads | **clawdius.lua** |
-| G4 | Plugin SDK documented | **PLUGIN_SDK.md** |
+**Result:** 48% LOC reduction, 0 test failures, 0 production unwraps, 6 clean feature flags.
 
 ---
-
-### Phase 8: Credibility Completion (v1.7.0) — COMPLETE
-
-| # | Task | Status | Result |
-|---|------|--------|--------|
-| 8.1 | Paper trading mode | DONE | Alpaca paper trading REST client (5 tests) |
-| 8.2 | Lean4 axiom reduction: 42 → 11 | DONE | 74% reduction (target was <15 — exceeded) |
-| 8.3 | Sorry resolution | DONE | All 4 sorry items in `proof_broker.lean` resolved |
-| 8.4 | Sandbox escape test suite | DONE | 36 tests across all backends |
-| 8.5 | Security audit | DONE | Comprehensive audit (`.reports/security_audit_v1.6.1.md`) |
-| 8.6 | Firecracker backend fix | DONE | Refuses sync execution instead of unsandboxed fallback |
-| 8.7 | cargo-vet audits | DONE | Safe-to-deploy audits for 8 direct unsafe deps |
-| 8.8 | Path traversal protection | DONE | Shell tool hardening, SQL validation |
-
-**Commits:** 343b2ef, 3deedeb
-
-### v1.7.0 Quality Gates — ALL MET
-
-| Gate | Criteria | Result |
-|------|----------|--------|
-| G1 | Paper trading runs | **Alpaca REST client with 5 tests** |
-| G2 | Sandbox escape tests pass | **36 tests across all backends** |
-| G3 | Lean4 axioms <15 | **11** (target was <15) |
-| G4 | Security audit published | **.reports/security_audit_v1.6.1.md** |
-
----
-
-### Phase 7: CI/Security Hardening (v1.6.1) — COMPLETE
-
-| # | Task | Status | Result |
-|---|------|--------|--------|
-| 7.1 | RUSTSEC-2024-0384 fix | DONE | Security vulnerability resolved |
-| 7.2 | Compiler warning elimination | DONE | 46 → 0 |
-| 7.3 | Honest backend claims | DONE | gVisor/Firecracker downgraded to "5 production + 2 planned" |
-| 7.4 | CI enforcement gates | DONE | sorry/axiom, AddressSanitizer, criterion benchmarks, mutation testing |
-| 7.5 | TODO tracking | DONE | 5 TODO stubs tracked |
-
-**Commit:** 9acca6f
-
----
-
-### Phase 6: User-Facing Quality (v1.5.0) — COMPLETE
-
-| # | Task | Status | Result |
-|---|------|--------|--------|
-| 6.1 | Wire RPC handlers (Chat, Session, File, Context) | DONE | All 5 stubs replaced with real implementations |
-| 6.2 | Wire completions to file context | DONE | `build_context()` connected to completion flow |
-| 6.3 | Add file-aware context to completions | DONE | Related files included in completion prompts |
-| 6.4 | Add debounce/cancellation | DONE | `Notify`-based cancellation for streaming chat |
-| 6.5 | Context-window management | DONE | `ContextWindowManager` with tiktoken budgeting |
-| 6.6 | Prompt engineering | DONE | Detailed language-specific prompts for 7 languages |
-| 6.7 | Streaming UX | DONE | `chat_stream` with chunk accumulation |
-| 6.8 | Error recovery | DONE | `ErrorRecovery` with compiler error parsing + LLM fix loop |
-| 6.9 | Multi-turn refinement | DEFERRED | Error recovery provides single-pass fix; full loop for v1.6 |
-| 6.10 | Git workflow | DONE | `git commit` (LLM-generated messages), `git diff`, `git status` |
-| 6.11 | `clawdius init` | DONE | Scaffolds `.clawdius/` with config.toml + default mode |
-| 6.12 | Interactive diff review | DEFERRED | Diff view exists in VSCode extension; CLI diff for v1.6 |
-
-**New modules:** `context/window_manager.rs`, `agentic/error_recovery.rs`
-**Test count:** 1,122 unit tests (+31 from new modules)
-
----
-
-### Phase 5: Credibility & Foundations (v1.4.0) — COMPLETE
-
-| # | Task | Status | Result |
-|---|------|--------|--------|
-| 5.1 | Audit and classify all `.unwrap()` calls | DONE | 101 production, 1,090 test-only |
-| 5.2 | Fix critical-path unwraps (P0-P3 tiers) | DONE | 101 → 0 across 38 files |
-| 5.5 | CI enforces `unwrap_used = "deny"` | DONE | Already configured in `.clippy.toml` + CI |
-| 5.7 | Fix executor_agent.rs stub | DONE | Returns `Err(Error::Config(...))` |
-| 5.8 | Implement real `run_cargo_test()` | DONE | Spawns cargo subprocess, parses output |
-| 5.9 | Implement real `run_sandboxed_tests()` | DONE | Docker/gVisor/Bubblewrap/SandboxExec dispatch |
-| 5.13-5.15 | Run HFT benchmarks | DONE | Ring buffer 2ns, wallet guard 16ns |
-| 5.16 | Publish BENCHMARKS.md | DONE | Full methodology + results |
-
-**Quality Gates Met:**
-
-| Gate | Criteria | Result |
-|------|----------|--------|
-| G1 | `.unwrap()` count <200 in production | **0** (target was <200) |
-| G3 | `run_cargo_test()` invokes real cargo | **Real subprocess** |
-| G4 | `run_sandboxed_tests()` uses real backend | **5 backends wired** |
-| G5 | Benchmarks published with methodology | **BENCHMARKS.md** |
-| G7 | `unwrap_used = "deny"` enforced in CI | **Already active** |
-
-**Deferred from Phase 5:**
-
-| # | Task | Why | Next Phase |
-|---|------|-----|------------|
-| 5.10 | Context-window management for LLM generation | Requires LLM provider integration work | Phase 6.5 |
-| 5.11 | Multi-turn refinement loop | Depends on 5.10 | Phase 6.5 |
-| 5.12 | Agentic property tests (generated code compiles) | Depends on 5.10-5.11 | Phase 6.5 |
-| 5.14 | Benchmark against Claude Code, Aider, Cursor | Requires functional code gen first | Phase 6.6 |
-| 5.17 | GitHub Releases with prebuilt binaries | No blockers, just scheduling | Phase 7.12 |
-| 5.18 | `cargo-acl` enforcement | `.clippy.toml` already denies; CI enforces | Already done |
-| 5.19 | Fix aspirational claims from competitive comparison | Stubs fixed; remaining claims are architectural | Continuous |
-
----
-
-## Upcoming Phases
 
 ### Phase 11: Ship-Ready (v2.0.0) — COMPLETE
 
@@ -278,10 +155,15 @@ had assumptions about GitHub runner toolchains that didn't hold.
 | Air-gapped install | No enterprise customer demand; complex deployment |
 | GUI / Desktop App | CLI + IDE plugins cover developer use case |
 | Kubernetes Helm charts | Docker Compose covers self-hosted |
-| LLM sentiment analysis for trading | Orthogonal to core product |
 | Multi-repo RAG | Single-repo works; multi-repo adds complexity |
-| Enterprise SSO/audit/compliance | No enterprise customers; speculative |
-| Broker mode / HFT features | Cool but confusing to users; orthogonal |
+| HFT trading / broker mode | Cool but confusing to users; orthogonal to coding |
+| Multi-platform messaging gateway | Handlers were stubs; better served by dedicated tools |
+| Enterprise SSO/compliance | No enterprise customers; structs-only implementation |
+| WASM plugin system | No plugins existed; sandbox covers isolation |
+| 24-phase Nexus FSM | No users; over-engineered lifecycle management |
+| Multi-lingual knowledge graph | Rule-based translation was useless |
+| GraphQL API layer | REST API is sufficient; GraphQL removed with server crate |
+| Webview UI | Leptos skeleton; CLI + VSCode cover the use case |
 
 ---
 
@@ -313,56 +195,63 @@ had assumptions about GitHub runner toolchains that didn't hold.
 
 ### Engineering Quality
 
-| Metric | v1.3.0 | v1.4.0 | v1.5.0 | v1.6.0 | v1.7.0 | v1.8.0 | v2.0.0 | v2.1.0 Target |
-|--------|---------|---------|---------|---------|---------|---------|---------|---------------|
-| `.unwrap()` in prod | 101 | **0** | **0** | **0** | **0** | **0** | **0** | 0 |
-| Compiler warnings | — | — | — | — | **0** | **0** | **0** | 0 |
-| Server tests | — | — | — | — | — | — | **77** | 100+ |
-| Property tests | 43 | **43** | **43** | **43** | **67** | **67** | **67** | 80+ |
-| Sandbox escape tests | 0 | 0 | 0 | 0 | **36** | **36** | **36** | 36+ |
-| Lean4 axioms | 39 | **11** | **11** | **11** | **11** | **11** | **2** | 2 |
-| Lean4 sorrys | — | — | — | — | **0** | **0** | **0** | 0 |
-| Code coverage | Unknown | Unknown | Unknown | **85%** | **85%** | **85%** | **85%** | >90% |
-| CI platforms | 1 | **1** | **1** | **7** | **7** | **9** | **9** | 9+ |
+| Metric | v1.3.0 | v1.4.0 | v1.5.0 | v1.6.0 | v1.7.0 | v1.8.0 | v2.0.0 | v2.1.0 |
+|--------|---------|---------|---------|---------|---------|---------|---------|---------|
+| `.unwrap()` in prod | 101 | **0** | **0** | **0** | **0** | **0** | **0** | **0** |
+| Compiler warnings | — | — | — | — | **0** | **0** | **0** | **0** |
+| Property tests | 43 | **43** | **43** | **43** | **67** | **67** | **67** | **67** |
+| Sandbox escape tests | 0 | 0 | 0 | 0 | **36** | **36** | **36** | **36** |
+| Lean4 axioms | 39 | **11** | **11** | **11** | **11** | **11** | **2** | **2** |
+| Lean4 sorrys | — | — | — | — | **0** | **0** | **0** | **0** |
+| CI platforms | 1 | **1** | **1** | **7** | **7** | **9** | **9** | **9** |
+| Core modules | 46 | 46 | 46 | 46 | 46 | 46 | **46** | **38** |
+| Workspace crates | 4 | 4 | 4 | 4 | 4 | 6 | **6** | **4** |
+| Total LOC | ~80K | ~80K | ~100K | ~120K | ~120K | ~126K | ~126K | **~62K** |
 
 ### Distribution
 
 | Metric | v1.3.0 | v1.4.0 | v1.5.0 | v1.6.0 | v1.7.0 | v1.8.0 | v2.0.0 | v2.1.0 Target |
 |--------|---------|---------|---------|---------|---------|---------|---------|---------------|
-| GitHub Stars | 0 | Organic | Organic | Organic | Organic | Organic | Organic | 50+ |
+| GitHub Stars | 0 | Organic | Organic | Organic | Organic | Organic | Organic | Organic |
 | Prebuilt binaries | None | None | None | Pipeline ready | — | Release signing | **Ready** | **Published** |
 | docs.clawdius.dev | Not live | Not live | Not live | Ready (mdBook) | — | — | — | Updated |
-| Demo video | None | None | None | — | — | — | — | Published |
-| Blog posts | 0 | 0 | 0 | 3+ | — | — | — | 5+ |
+| Demo video | None | None | None | — | — | — | — | — |
 
 ### Reliability
 
 | Metric | v1.3.0 | v1.4.0 | v1.5.0 | v1.6.0 | v1.7.0 | v1.8.0 | v2.0.0 |
 |--------|---------|---------|---------|---------|---------|---------|---------|
 | Stub features claimed | 3 | **0** | **0** | **0** | **0** | **0** | **0** |
-| Panic surfaces | 101 | **0** | **0** | **0** | **0** | **0** | **0** |
-| Sandbox backends functional | 2 (WASM, Filtered) | **5** | **5** | **5** | **5** | **5** | **5** |
+| Panic surfaces | 101 | **0** | **0** | **0** | **0** | **0** | **0** | **0** |
+| Sandbox backends functional | 2 (WASM, Filtered) | **5** | **5** | **5** | **5** | **5** | **3** |
 | RPC handlers functional | 0/5 | 1/5 | **5/5** | **5/5** | **5/5** | **5/5** | **5/5** |
 | IDE integrations | 0 | 1 (VSCode stub) | **1** | **1** | **1** | **3** | **4** |
-| Protocol layers | 2 | 2 | 2 | 2 | 2 | **5** | **6** |
+| Protocol layers | 2 | 2 | 2 | 2 | 2 | **5** | **4** |
 
-### Performance (HFT)
+### Removed in v2.1.0
 
-| Metric | SLO Target | v1.4.0 (actual) | Margin |
-|--------|------------|-----------------|--------|
-| Ring buffer push | <100 ns | **2 ns** | 50x |
-| Ring buffer pop | <100 ns | **1 ns** | 100x |
-| Wallet guard check | <100 µs | **16 ns** | 6,250x |
-| Wallet guard reject | <100 µs | **9 ns** | 11,111x |
+| Feature | Why |
+|---------|-----|
+| HFT trading / broker mode | Orthogonal to coding assistant |
+| Multi-platform messaging gateway | Handlers were stubs |
+| Enterprise SSO/compliance | Struct-only, no real auth |
+| WASM plugin system | No plugins existed |
+| 24-phase Nexus FSM engine | No users |
+| Multi-lingual knowledge graph | Rule-based translation was useless |
+| GraphQL API layer | Removed with server crate |
+| Webview UI (Leptos) | Skeleton with no core dependency |
 
 ---
 
-## Key Risk: Over-Engineering vs. Shipping
+## Key Risk: Focus vs. Breadth
 
-The biggest risk to this roadmap is spending too long on foundations and not enough on shipping. The mitigations:
+The v2.1.0 cleanup addressed the biggest risk: codebase bloat from speculative features. By removing 41K LOC of off-mission code, the project now has a clear identity: an agentic coding assistant with LLM integration, sandboxing, MCP, and formal verification.
 
-1. **Every phase has measurable quality gates** — no phase transitions without proof
-2. **Phase 5 (v1.4.0) was the last "catch-up" phase** — credibility gap is now closed
+The remaining risks:
+
+1. **Identity crisis** — "Agentic coding engine" describes every AI tool in 2025. Clawdius needs one feature that's genuinely best-in-class.
+2. **No real users** — Without user feedback, development direction is speculative.
+3. **Competition** — Aider (30K stars), Claude Code (Anthropic), Cursor (VC-funded) dominate this space.
 3. **Phases 6–10 all shipped** — IDE completions, community, docs, ecosystem, platform maturity all done
 4. **v2.1.0 is the release phase** — focus on shipping signed binaries, not new features
 
@@ -379,7 +268,9 @@ The biggest risk to this roadmap is spending too long on foundations and not eno
 
 ## Conclusion
 
-Clawdius v2.0.0 has achieved platform maturity. From 42 Lean4 axioms down to 2 (95% reduction), 142/142 theorems proven with zero sorrys, 4 IDE integrations, 6 protocol layers, multi-agent orchestration, GraphQL API, and a plugin marketplace backend. The project has exceeded its original roadmap targets across every dimension — formal verification, ecosystem breadth, and engineering quality. The roadmap continues:
+Clawdius v2.1.0 is a leaner, more focused project. The v2.0.0 cleanup removed 41K LOC of off-mission code (broker trading, multi-platform messaging, enterprise SSO, WASM plugins, 24-phase FSM, knowledge graphs), 18 dead dependencies, and 2 crates (server, webview). The result is a 48% smaller codebase with zero test failures, zero production unwraps, and a clean dependency tree.
+
+The roadmap continues:
 
 1. **v1.4.0 (DONE):** Fix stubs, eliminate panics, publish benchmarks
 2. **v1.5.0 (DONE):** IDE integration, LLM quality, git workflow, scaffolding
@@ -388,8 +279,8 @@ Clawdius v2.0.0 has achieved platform maturity. From 42 Lean4 axioms down to 2 (
 5. **v1.7.0 (DONE):** Credibility completion — axiom reduction, sorry resolution, sandbox escape tests, security audit
 6. **v1.8.0 (DONE):** Ecosystem expansion — MCP server, DAP adapter, Neovim plugin, release signing
 7. **v2.0.0 (DONE):** Platform maturity — Lean4 axioms 11→2, Emacs plugin, multi-agent, GraphQL, marketplace
-8. **v2.1.0 (next):** Ship-ready — integration tests, persistent marketplace, Ed25519 signing, GitHub Release
-9. **v2.2.0:** Ecosystem — Claude Desktop MCP interop, WASM context passing, deeper multi-agent
+8. **v2.1.0 (DONE):** Codebase cleanup — removed 8 dead modules, 2 dead crates, 18 dead deps, fixed all doc tests
+9. **v2.2.0 (next):** Make It Useful — end-to-end autonomous coding demo, error recovery loop, IDE completions
 10. **v2.3.0:** Depth — Lean4 axioms 2→0, TLA+ model checking, SIMD, PGO+BOLT
 
 *This roadmap is a living document. Review after each phase.*

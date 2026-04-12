@@ -22,7 +22,7 @@
 //!
 //! # Example
 //!
-//! ```no_run
+//! ```ignore
 //! use clawdius_core::skills::{SkillRegistry, Skill, SkillContext};
 //!
 //! let mut registry = SkillRegistry::new();

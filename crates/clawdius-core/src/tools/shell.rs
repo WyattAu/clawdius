@@ -60,7 +60,9 @@ static SHELL_WINDOW_START: std::sync::Mutex<Option<Instant>> = std::sync::Mutex:
 
 fn check_shell_rate_limit() -> crate::Result<()> {
     let now = Instant::now();
-    let mut window_start = SHELL_WINDOW_START.lock().unwrap();
+    let mut window_start = SHELL_WINDOW_START
+        .lock()
+        .expect("shell rate-limit mutex not poisoned");
 
     match *window_start {
         Some(start) if now.duration_since(start) < Duration::from_secs(60) => {

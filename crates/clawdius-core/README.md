@@ -51,165 +51,149 @@ cargo build -p clawdius-core --features vector-db,embeddings
 
 ### LLM Integration
 
-```rust
-use clawdius_core::llm::{LlmClient, Provider, Message};
+```rust,no_run
+use clawdius_core::llm::{LlmConfig, create_provider, ChatMessage, ChatRole};
 
-// Create client
-let client = LlmClient::new(Provider::OpenAI)?;
+# #[tokio::main]
+# async fn main() -> clawdius_core::Result<()> {
+// Create provider from environment
+let config = LlmConfig::from_env("anthropic")?;
+let provider = create_provider(&config)?;
 
 // Send message
-let response = client.complete(vec![
-    Message::system("You are a helpful coding assistant."),
-    Message::user("Explain Rust ownership."),
-]).await?;
+let response = provider.chat(vec![ChatMessage {
+    role: ChatRole::User,
+    content: "Explain Rust ownership.".to_string(),
+}]).await?;
 
-println!("{}", response.content);
+println!("{}", response);
+# Ok(())
+# }
 ```
 
 ### Session Management
 
-```rust
-use clawdius_core::session::{Session, SessionConfig};
+```rust,no_run
+use clawdius_core::session::{SessionStore, Session, Message};
+use std::path::Path;
+
+# fn main() -> clawdius_core::Result<()> {
+// Create session store
+let store = SessionStore::open(Path::new(".clawdius/sessions.db"))?;
 
 // Create session
-let config = SessionConfig {
-    provider: Provider::Anthropic,
-    model: "claude-3-opus".to_string(),
-    max_tokens: 4096,
-};
-
-let mut session = Session::new(config)?;
-
-// Add messages
+let mut session = Session::new();
 session.add_message(Message::user("Hello!"));
 
-// Get completion
-let response = session.complete().await?;
+// Save and retrieve
+store.create_session(&session)?;
+let loaded = store.load_session(&session.id)?;
 
-// Access history
-for msg in session.history() {
-    println!("{}: {}", msg.role, msg.content);
+// List sessions
+let sessions = store.list_sessions()?;
+for s in sessions {
+    println!("{:?} - {:?}", s.id, s.title);
 }
+# Ok(())
+# }
 ```
 
 ### Tool System
 
 ```rust
-use clawdius_core::tools::{ToolRegistry, BashTool, FileReadTool};
+use clawdius_core::tools::{Tool, ToolResult};
+use serde_json::json;
 
-// Create registry
-let mut registry = ToolRegistry::new();
+// Define a tool with JSON Schema parameters
+let tool = Tool {
+    name: "bash".to_string(),
+    description: "Execute shell commands".to_string(),
+    parameters: json!({
+        "type": "object",
+        "properties": {
+            "command": { "type": "string", "description": "The command to run" }
+        },
+        "required": ["command"]
+    }),
+};
 
-// Register tools
-registry.register(BashTool::new())?;
-registry.register(FileReadTool::new())?;
-
-// Execute tool
-let result = registry.execute("bash", json!({
-    "command": "echo 'Hello, World!'"
-})).await?;
-
-println!("{}", result.output);
+// Tool results are structured
+let result = ToolResult {
+    success: true,
+    output: "Hello, World!".to_string(),
+    metadata: Some(json!({ "exit_code": 0 })),
+};
 ```
 
 ### Graph-RAG
 
-```rust
-use clawdius_core::graph_rag::{GraphRag, SearchResult};
+```rust,no_run
+use clawdius_core::graph_rag::{GraphStore, GraphRagConfig};
+use std::path::Path;
 
-// Initialize
-let graph_rag = GraphRag::new("./my-project")?;
+# fn main() -> clawdius_core::Result<()> {
+// Configure Graph-RAG
+let config = GraphRagConfig {
+    database_path: ".clawdius/graph/index.db".to_string(),
+    vector_path: ".clawdius/graph/vectors.lance".to_string(),
+};
 
-// Index project
-graph_rag.index_project("./src")?;
-
-// Semantic search
-let results: Vec<SearchResult> = graph_rag
-    .semantic_search("error handling", 10)
-    .await?;
-
-for result in results {
-    println!("{} (score: {:.2})", result.file_path, result.score);
+// Open graph store and search symbols
+let graph_store = GraphStore::open(Path::new(&config.database_path))?;
+let symbols = graph_store.search_symbols("handle_request")?;
+for symbol in symbols {
+    println!("Found: {} ({:?})", symbol.name, symbol.kind);
 }
-
-// Structural query
-let callers = graph_rag.find_callers("main")?;
-for caller in callers {
-    println!("Called by: {} at {:?}", caller.symbol, caller.location);
-}
+# Ok(())
+# }
 ```
 
 ### Sandboxing
 
-```rust
-use clawdius_core::sandbox::{Sandbox, SandboxTier, SandboxPolicy};
+```rust,no_run
+use clawdius_core::sandbox::{SandboxTier, executor::SandboxExecutor, tiers::SandboxConfig};
+use std::path::Path;
 
-// Create sandbox policy
-let policy = SandboxPolicy {
-    tier: SandboxTier::Container,
-    allowed_commands: vec!["python3", "node"],
-    network_access: false,
-    read_paths: vec!["./src"],
-    write_paths: vec!["./output"],
+# fn main() -> clawdius_core::Result<()> {
+// Choose appropriate tier based on code trust level
+let tier = SandboxTier::Untrusted;
+let config = SandboxConfig {
+    tier,
+    network: false,
+    mounts: vec![],
 };
 
-// Create sandbox
-let sandbox = Sandbox::new(policy)?;
+// Execute command in sandbox
+let executor = SandboxExecutor::new(tier, config)?;
+let result = executor.execute("ls", &["-la"], Path::new("."))?;
 
-// Execute command
-let result = sandbox.execute("python3 script.py").await?;
-
-println!("Exit code: {}", result.exit_code);
-println!("Output: {}", result.stdout);
+println!("Status: {:?}", result.status);
+println!("Output: {}", String::from_utf8_lossy(&result.stdout));
+# Ok(())
+# }
 ```
 
 ---
 
 ## Module Structure
 
-```
+````text
 clawdius-core/
 ├── src/
 │   ├── lib.rs              # Library entry point
 │   ├── llm/                # LLM integration
-│   │   ├── mod.rs
-│   │   ├── client.rs       # LLM client trait
-│   │   ├── openai.rs       # OpenAI implementation
-│   │   ├── anthropic.rs    # Anthropic implementation
-│   │   ├── deepseek.rs     # DeepSeek implementation
-│   │   └── ollama.rs       # Ollama implementation
 │   ├── session/            # Session management
-│   │   ├── mod.rs
-│   │   ├── session.rs      # Session struct
-│   │   └── history.rs      # Conversation history
 │   ├── tools/              # Tool system
-│   │   ├── mod.rs
-│   │   ├── registry.rs     # Tool registry
-│   │   ├── bash.rs         # Bash execution
-│   │   ├── file.rs         # File operations
-│   │   ├── web_search.rs   # Web search
-│   │   └── ...             # Other tools
 │   ├── graph_rag/          # Graph-RAG system
-│   │   ├── mod.rs
-│   │   ├── ast_index.rs    # SQLite AST index
-│   │   ├── vector_store.rs # LanceDB vectors
-│   │   └── search.rs       # Search implementation
 │   ├── sandbox/            # Sandboxing
-│   │   ├── mod.rs
-│   │   ├── policy.rs       # Sandbox policies
-│   │   ├── bubblewrap.rs   # Linux sandbox
-│   │   ├── sandbox_exec.rs # macOS sandbox
-│   │   └── wasmtime.rs     # WASM sandbox
 │   ├── mcp/                # Model Context Protocol
-│   │   ├── mod.rs
-│   │   ├── server.rs       # MCP server
-│   │   └── protocol.rs     # Protocol types
-│   └── utils/              # Utilities
-│       ├── mod.rs
-│       ├── token_counter.rs
-│       └── diff.rs
+│   ├── agentic/            # Agentic system
+│   ├── agents/             # Agent teams
+│   ├── config.rs           # Configuration
+│   ├── error/              # Error types
+│   └── ...
 └── Cargo.toml
-```
+````
 
 ---
 
@@ -218,106 +202,86 @@ clawdius-core/
 ### Custom Tool Implementation
 
 ```rust
-use clawdius_core::tools::{Tool, ToolResult, ToolContext};
-use async_trait::async_trait;
-use serde::{Deserialize, Serialize};
+use clawdius_core::tools::{Tool, ToolResult};
+use serde_json::json;
 
-#[derive(Deserialize)]
-struct MyToolInput {
-    query: String,
-}
+// Define a custom tool with JSON Schema parameters
+let tool = Tool {
+    name: "my_tool".to_string(),
+    description: "A custom tool that processes queries".to_string(),
+    parameters: json!({
+        "type": "object",
+        "properties": {
+            "query": {
+                "type": "string",
+                "description": "The query to process"
+            }
+        },
+        "required": ["query"]
+    }),
+};
 
-#[derive(Serialize)]
-struct MyToolOutput {
-    result: String,
-}
-
-struct MyTool;
-
-#[async_trait]
-impl Tool for MyTool {
-    fn name(&self) -> &str {
-        "my_tool"
-    }
-    
-    fn description(&self) -> &str {
-        "A custom tool that does something useful"
-    }
-    
-    fn parameters_schema(&self) -> serde_json::Value {
-        json!({
-            "type": "object",
-            "properties": {
-                "query": {
-                    "type": "string",
-                    "description": "The query to process"
-                }
-            },
-            "required": ["query"]
-        })
-    }
-    
-    async fn execute(
-        &self,
-        input: serde_json::Value,
-        _context: ToolContext,
-    ) -> Result<ToolResult, Box<dyn std::error::Error>> {
-        let input: MyToolInput = serde_json::from_value(input)?;
-        
-        // Do something useful
-        let result = format!("Processed: {}", input.query);
-        
-        Ok(ToolResult {
-            output: serde_json::to_value(MyToolOutput { result })?,
-            metadata: Default::default(),
-        })
-    }
-}
+// Return structured results
+let result = ToolResult {
+    success: true,
+    output: json!({ "result": "Processed successfully" }).to_string(),
+    metadata: Some(json!({ "tokens_used": 42 })),
+};
 ```
 
-### MCP Server
+### MCP Protocol
 
 ```rust
-use clawdius_core::mcp::{McpServer, McpConfig};
+use clawdius_core::mcp::{McpRequest, McpResponse, McpTool, McpToolResult};
+use serde_json::json;
 
-#[tokio::main]
-async fn main() -> Result<()> {
-    let config = McpConfig {
-        port: 3000,
-        host: "127.0.0.1".to_string(),
-    };
-    
-    let server = McpServer::new(config)?;
-    
-    // Register tools
-    server.register_tool(BashTool::new())?;
-    server.register_tool(FileReadTool::new())?;
-    
-    // Start server
-    server.start().await?;
-    
-    Ok(())
-}
+// Create an MCP request
+let request = McpRequest::new(1, "tools/list");
+
+// Define an MCP tool
+let tool = McpTool {
+    name: "read_file".to_string(),
+    description: "Read contents of a file".to_string(),
+    input_schema: json!({
+        "type": "object",
+        "properties": {
+            "path": { "type": "string" }
+        },
+        "required": ["path"]
+    }),
+};
+
+// Create a tool result
+let result = McpToolResult {
+    content: vec![],
+    is_error: false,
+};
 ```
 
 ### Graph-RAG with Custom Indexing
 
-```rust
-use clawdius_core::graph_rag::{GraphRag, IndexConfig};
+```rust,no_run
+use clawdius_core::graph_rag::{GraphStore, GraphRagConfig};
+use std::path::Path;
 
-let config = IndexConfig {
-    include_patterns: vec!["**/*.rs".to_string()],
-    exclude_patterns: vec!["**/target/**".to_string()],
-    max_file_size: 1024 * 1024, // 1MB
-    embedding_model: "text-embedding-ada-002".to_string(),
+# fn main() -> clawdius_core::Result<()> {
+let config = GraphRagConfig {
+    database_path: ".clawdius/graph/index.db".to_string(),
+    vector_path: ".clawdius/graph/vectors.lance".to_string(),
 };
 
-let graph_rag = GraphRag::with_config("./project", config)?;
+let graph_store = GraphStore::open(Path::new(&config.database_path))?;
 
-// Index with progress
-graph_rag.index_project_with_progress("./src", |progress| {
-    println!("Indexed {} / {} files", progress.current, progress.total);
-})?;
+// Query symbol relationships
+let symbols = graph_store.search_symbols("main")?;
+for symbol in symbols {
+    if let Some(id) = symbol.id {
+        let refs = graph_store.find_symbol_refs(id)?;
+        println!("{} referenced {} times", symbol.name, refs.len());
+    }
+}
+# Ok(())
+# }
 ```
 
 ---
@@ -339,19 +303,21 @@ export OLLAMA_API_BASE="http://localhost:11434"
 
 ### Programmatic Configuration
 
-```rust
-use clawdius_core::llm::{LlmConfig, Provider};
+```rust,no_run
+use clawdius_core::llm::{LlmConfig, create_provider};
 
+# fn main() -> clawdius_core::Result<()> {
 let config = LlmConfig {
-    provider: Provider::OpenAI,
+    provider: "openai".to_string(),
     model: "gpt-4".to_string(),
-    api_key: std::env::var("OPENAI_API_KEY")?,
+    api_key: std::env::var("OPENAI_API_KEY").ok(),
     base_url: Some("https://api.openai.com/v1".to_string()),
-    temperature: 0.7,
     max_tokens: 4096,
 };
 
-let client = LlmClient::with_config(config)?;
+let provider = create_provider(&config)?;
+# Ok(())
+# }
 ```
 
 ---
@@ -410,24 +376,21 @@ cargo test -p clawdius-core --test '*'
 cargo test -p clawdius-core --features hft-mode
 ```
 
-### Mock Testing
+### Error-Based Testing
 
 ```rust
-use clawdius_core::llm::{LlmClient, MockLlmClient};
+use clawdius_core::{Error, Result};
 
-#[tokio::test]
-async fn test_with_mock() {
-    let mut mock = MockLlmClient::new();
-    
-    mock.expect_complete()
-        .returning(|_| Ok(Message::assistant("Mock response")));
-    
-    let response = mock.complete(vec![
-        Message::user("Test")
-    ]).await?;
-    
-    assert_eq!(response.content, "Mock response");
+fn test_provider_error() -> Result<()> {
+    let config = clawdius_core::llm::LlmConfig::from_env("anthropic")?;
+    let _provider = clawdius_core::llm::create_provider(&config)?;
+    Ok(())
 }
+
+// Test error classification
+let error = Error::RateLimited { retry_after_ms: 5000 };
+assert!(error.is_retryable());
+assert_eq!(error.retry_after_ms(), Some(5000));
 ```
 
 ---
@@ -440,27 +403,31 @@ async fn test_with_mock() {
 use clawdius_core::{Error, Result};
 
 // Library uses thiserror
-match graph_rag.semantic_search("test", 10) {
-    Ok(results) => println!("Found {} results", results.len()),
-    Err(Error::DatabaseError(e)) => eprintln!("Database error: {}", e),
-    Err(Error::VectorSearchError(e)) => eprintln!("Search failed: {}", e),
-    Err(e) => eprintln!("Other error: {}", e),
-}
+let error = Error::Config("missing API key".to_string());
+assert!(!error.is_retryable());
+
+let rate_error = Error::RateLimited { retry_after_ms: 5000 };
+assert!(rate_error.is_retryable());
+assert_eq!(rate_error.retry_after_ms(), Some(5000));
+
+let timeout_error = Error::Timeout(std::time::Duration::from_secs(30));
+assert!(timeout_error.is_retryable());
 ```
 
 ### Application Error Handling
 
-```rust
-use anyhow::Context;
+```rust,no_run
+use clawdius_core::{Error, Result};
+use std::path::Path;
 
-fn main() -> anyhow::Result<()> {
-    let graph_rag = GraphRag::new("./project")
-        .context("Failed to initialize Graph-RAG")?;
-    
-    let results = graph_rag
-        .semantic_search("error handling", 10)
-        .context("Search failed")?;
-    
+fn search_code() -> Result<()> {
+    let graph_store = clawdius_core::graph_rag::GraphStore::open(
+        Path::new(".clawdius/graph/index.db")
+    )?;
+
+    let symbols = graph_store.search_symbols("handle_request")?;
+    println!("Found {} symbols", symbols.len());
+
     Ok(())
 }
 ```

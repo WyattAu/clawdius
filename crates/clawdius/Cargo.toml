@@ -23,7 +23,6 @@ clawdius-core = { path = "../clawdius-core", version = "1.6.0" }
 clap.workspace = true
 
 # Async
-monoio.workspace = true
 tokio.workspace = true
 futures.workspace = true
 async-trait.workspace = true
@@ -67,8 +66,6 @@ harness = false
 
 [features]
 default = ["mimalloc"]
-hft-mode = ["clawdius-core/hft-mode"]
-broker-mode = ["clawdius-core/broker-mode"]
 keyring = ["clawdius-core/keyring", "dep:keyring"]
 crash-reporting = ["clawdius-core/crash-reporting"]
 vector-db = ["clawdius-core/vector-db"]

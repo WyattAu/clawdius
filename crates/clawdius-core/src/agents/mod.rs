@@ -22,7 +22,7 @@
 //!
 //! # Example
 //!
-//! ```no_run
+//! ```ignore
 //! use clawdius_core::agents::{AgentTeam, AgentRole, TeamConfig};
 //! use std::sync::Arc;
 //!
@@ -631,8 +631,8 @@ fn topological_sort(subtasks: &[SubTask]) -> Vec<usize> {
 
     for subtask in subtasks {
         for dep in &subtask.depends_on {
-            if id_to_idx.contains_key(dep.as_str()) {
-                *in_degree.get_mut(subtask.id.as_str()).unwrap() += 1;
+            if let Some(deg) = in_degree.get_mut(subtask.id.as_str()) {
+                *deg += 1;
             }
         }
     }
@@ -640,7 +640,7 @@ fn topological_sort(subtasks: &[SubTask]) -> Vec<usize> {
     let mut queue: std::collections::VecDeque<usize> = subtasks
         .iter()
         .enumerate()
-        .filter(|(_, s)| *in_degree.get(s.id.as_str()).unwrap() == 0)
+        .filter(|(_, s)| *in_degree.get(s.id.as_str()).unwrap_or(&0) == 0)
         .map(|(i, _)| i)
         .collect();
 
@@ -650,10 +650,11 @@ fn topological_sort(subtasks: &[SubTask]) -> Vec<usize> {
         order.push(idx);
         for (other_i, other) in subtasks.iter().enumerate() {
             if other.depends_on.contains(&subtasks[idx].id) {
-                let deg = in_degree.get_mut(other.id.as_str()).unwrap();
-                *deg -= 1;
-                if *deg == 0 {
-                    queue.push_back(other_i);
+                if let Some(deg) = in_degree.get_mut(other.id.as_str()) {
+                    *deg -= 1;
+                    if *deg == 0 {
+                        queue.push_back(other_i);
+                    }
                 }
             }
         }

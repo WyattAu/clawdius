@@ -43,10 +43,26 @@ fn scalar_hash(data: &[u8]) -> u64 {
     let remainder = chunks.remainder();
 
     for chunk in chunks {
-        let w0 = u64::from_le_bytes(chunk[0..8].try_into().unwrap());
-        let w1 = u64::from_le_bytes(chunk[8..16].try_into().unwrap());
-        let w2 = u64::from_le_bytes(chunk[16..24].try_into().unwrap());
-        let w3 = u64::from_le_bytes(chunk[24..32].try_into().unwrap());
+        let w0 = u64::from_le_bytes(
+            chunk[0..8]
+                .try_into()
+                .expect("chunks_exact(32) guarantees 8-byte slices"),
+        );
+        let w1 = u64::from_le_bytes(
+            chunk[8..16]
+                .try_into()
+                .expect("chunks_exact(32) guarantees 8-byte slices"),
+        );
+        let w2 = u64::from_le_bytes(
+            chunk[16..24]
+                .try_into()
+                .expect("chunks_exact(32) guarantees 8-byte slices"),
+        );
+        let w3 = u64::from_le_bytes(
+            chunk[24..32]
+                .try_into()
+                .expect("chunks_exact(32) guarantees 8-byte slices"),
+        );
 
         h1 = h1.wrapping_add(w0);
         h2 = h2.wrapping_add(w1);

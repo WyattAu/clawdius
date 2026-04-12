@@ -1,5 +1,7 @@
 //! Tests for browser automation tool
 
+#![cfg(feature = "browser")]
+
 use clawdius_core::tools::browser::{BrowserTool, BrowserToolConfig};
 
 #[tokio::test]

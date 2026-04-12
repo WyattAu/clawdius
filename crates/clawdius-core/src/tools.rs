@@ -76,6 +76,7 @@
 //! };
 //! ```
 
+#[cfg(feature = "browser")]
 pub mod browser;
 pub mod editor;
 pub mod file;

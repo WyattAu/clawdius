@@ -104,7 +104,6 @@ jobs:
           # pre-existing clippy suggestions across 126K LOC that will be
           # addressed incrementally. Blocking release on these is not practical.
           cargo clippy --lib -- -W clippy::all
-          cargo clippy --lib -p clawdius-server 2>/dev/null || true
           cargo clippy --lib -p clawdius-code 2>/dev/null || true
           cargo clippy --lib -p clawdius-mcp 2>/dev/null || true
       

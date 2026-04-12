@@ -266,3 +266,4 @@ logs/
 .continue/
 .cody/
 .clawdius/config.toml
+generated_code.txt

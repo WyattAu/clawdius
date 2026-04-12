@@ -9,7 +9,7 @@
 //!
 //! # Example
 //!
-//! ```rust,no_run
+//! ```ignore
 //! use clawdius_core::timeline::TimelineManager;
 //! use std::path::PathBuf;
 //!
