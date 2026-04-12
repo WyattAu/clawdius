@@ -95,6 +95,7 @@
 
 pub mod backends;
 pub mod executor;
+pub mod firewall;
 pub mod tiers;
 
 use serde::{Deserialize, Serialize};
