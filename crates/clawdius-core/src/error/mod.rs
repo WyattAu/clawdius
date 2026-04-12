@@ -166,6 +166,14 @@ pub enum Error {
     #[error("Authentication error: {0}")]
     Auth(String),
 
+    /// Quota exceeded error
+    #[error("Quota exceeded: {0}")]
+    QuotaExceeded(String),
+
+    /// Internal error
+    #[error("Internal error: {0}")]
+    Internal(String),
+
     /// Not found error
     #[error("Not found: {0}")]
     NotFound(String),

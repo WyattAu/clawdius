@@ -113,6 +113,9 @@ urlencoding = "2.1"
 sysinfo.workspace = true
 parking_lot.workspace = true
 
+# Redis (optional, for orchestrator queue)
+redis = { version = "0.27", features = ["tokio-comp", "connection-manager"], optional = true }
+
 [dev-dependencies]
 tempfile.workspace = true
 criterion = { workspace = true }
@@ -148,6 +151,8 @@ crash-reporting = ["dep:sentry"]
 browser = ["dep:chromiumoxide"]
 embeddings = ["dep:candle-core", "dep:candle-nn", "dep:candle-transformers", "dep:tokenizers", "dep:hf-hub"]
 vector-db = ["dep:lancedb", "dep:arrow", "dep:arrow-array", "dep:arrow-schema"]
+orchestrator = []
+redis-queue = ["orchestrator", "dep:redis"]
 
 [lints]
 workspace = true
