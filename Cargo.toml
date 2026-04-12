@@ -235,4 +235,8 @@ panic = "abort"
 [profile.release.package.clawdius-webview]
 opt-level = "z"      # Optimize for size
 
+# rustls-platform-verifier uses a crate type that can't be LTO'd
+[profile.release.package.rustls-platform-verifier]
+lto = "off"
+
 # No workspace features - each crate defines its own
