@@ -182,14 +182,16 @@ jobs:
       - name: Build release binaries
         shell: bash
         run: |
-          # Use target-cpu=native only for host-matching targets, not cross-compilation
+          # Optimize for host architecture on native builds
           if [[ "${{ matrix.target }}" == "x86_64-unknown-linux-gnu" && "${{ matrix.os }}" == "ubuntu-latest" ]]; then
-            export RUSTFLAGS="-C target-cpu=x86-64-v3 -C lto=fat -C codegen-units=1"
+            export RUSTFLAGS="-C target-cpu=x86-64-v3"
           elif [[ "${{ matrix.target }}" == "aarch64-apple-darwin" && "${{ matrix.os }}" == "macos-latest" ]]; then
-            export RUSTFLAGS="-C target-cpu=apple-m1 -C lto=fat -C codegen-units=1"
-          else
-            export RUSTFLAGS="-C lto=fat -C codegen-units=1"
+            export RUSTFLAGS="-C target-cpu=apple-m1"
           fi
+          # LTO and codegen-units are set in Cargo.toml [profile.release]
+          # We don't override them here because rustls-platform-verifier
+          # (a proc-macro crate) can't be LTO'd. The profile's lto setting
+          # is handled by Cargo which correctly skips incompatible crates.
           cargo build --release --target ${{ matrix.target }} -p clawdius
           cargo build --release --target ${{ matrix.target }} -p clawdius-code
       
