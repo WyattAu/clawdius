@@ -4,11 +4,16 @@
 
 mod crash;
 mod metrics;
+pub mod structured;
 
 pub use crash::CrashReporter;
 pub use metrics::{
     metrics, ErrorMetrics, ErrorRecord, LegacyMetricsSnapshot, LlmMetrics, Metrics,
     MetricsDashboard, MetricsSnapshot, PerformanceMetrics, SessionMetrics, ToolMetrics,
+};
+pub use structured::{
+    LogFormat, StructuredTelemetryConfig, TelemetryEvent, TelemetryLayer, TimelineCheckpoint,
+    TimelineExporter,
 };
 
 /// Telemetry configuration

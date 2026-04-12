@@ -60,6 +60,7 @@ thiserror.workspace = true
 anyhow.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
+tracing-appender.workspace = true
 blake3.workspace = true
 sha3.workspace = true
 chrono.workspace = true
