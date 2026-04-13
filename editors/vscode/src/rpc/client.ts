@@ -47,22 +47,22 @@ export class ClawdiusClient extends EventEmitter {
             return configPath;
         }
         
-        const localPath = path.join(__dirname, '..', '..', 'bin', 'clawdius-code');
+        const localPath = path.join(__dirname, '..', '..', 'bin', 'clawdius');
         if (fs.existsSync(localPath)) {
             return localPath;
         }
         
-        const debugPath = path.join(__dirname, '..', '..', '..', '..', 'target', 'debug', 'clawdius-code');
+        const debugPath = path.join(__dirname, '..', '..', '..', '..', 'target', 'debug', 'clawdius');
         if (fs.existsSync(debugPath)) {
             return debugPath;
         }
         
-        const releasePath = path.join(__dirname, '..', '..', '..', '..', 'target', 'release', 'clawdius-code');
+        const releasePath = path.join(__dirname, '..', '..', '..', '..', 'target', 'release', 'clawdius');
         if (fs.existsSync(releasePath)) {
             return releasePath;
         }
         
-        return 'clawdius-code';
+        return 'clawdius';
     }
     
     async start(): Promise<void> {

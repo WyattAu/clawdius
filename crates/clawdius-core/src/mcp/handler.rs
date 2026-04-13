@@ -51,6 +51,16 @@ fn handle_tools_list(request: &McpRequest) -> McpResponse {
         ),
         McpTool::new("git_diff", "Show git diff output"),
         McpTool::new("check_build", "Run cargo check and return the result"),
+        McpTool::new("write_file", "Write content to a file")
+            .with_string_param("path", "File path relative to workspace root", true)
+            .with_string_param("content", "Content to write", true),
+        McpTool::new(
+            "edit_file",
+            "Replace first occurrence of old_string with new_string in a file",
+        )
+        .with_string_param("path", "File path relative to workspace root", true)
+        .with_string_param("old_string", "Text to find and replace", true)
+        .with_string_param("new_string", "Replacement text", true),
     ];
     McpResponse::success(request.id, serde_json::json!({ "tools": tools }))
 }
@@ -77,6 +87,8 @@ fn handle_tools_call(request: &McpRequest) -> McpResponse {
         "git_log" => tool_git_log(&arguments),
         "git_diff" => tool_git_diff(),
         "check_build" => tool_check_build(),
+        "write_file" => tool_write_file(&arguments),
+        "edit_file" => tool_edit_file(&arguments),
         _ => {
             return McpResponse::error(
                 request.id,
@@ -194,6 +206,86 @@ fn tool_check_build() -> McpToolResult {
     }
 }
 
+fn validate_path(path: &str) -> Result<std::path::PathBuf, String> {
+    if path.contains("..") {
+        return Err("path traversal ('..') is not allowed".to_string());
+    }
+    let workspace_root =
+        std::env::current_dir().map_err(|e| format!("failed to get workspace root: {e}"))?;
+    let resolved = workspace_root.join(path);
+    let resolved = resolved.canonicalize().unwrap_or_else(|_| resolved.clone());
+    if !resolved.starts_with(&workspace_root) {
+        return Err("path is outside the workspace root".to_string());
+    }
+    Ok(resolved)
+}
+
+fn tool_write_file(args: &serde_json::Value) -> McpToolResult {
+    let path = match args.get("path").and_then(|v| v.as_str()) {
+        Some(p) => p,
+        None => return McpToolResult::error("missing 'path' parameter"),
+    };
+    let content = match args.get("content").and_then(|v| v.as_str()) {
+        Some(c) => c,
+        None => return McpToolResult::error("missing 'content' parameter"),
+    };
+
+    let resolved = match validate_path(path) {
+        Ok(p) => p,
+        Err(e) => return McpToolResult::error(e),
+    };
+
+    if let Some(parent) = resolved.parent() {
+        if let Err(e) = std::fs::create_dir_all(parent) {
+            return McpToolResult::error(format!("failed to create directories: {e}"));
+        }
+    }
+
+    match std::fs::write(&resolved, content) {
+        Ok(()) => {
+            let bytes = content.len();
+            McpToolResult::text(format!("wrote {bytes} bytes to {path}"))
+        },
+        Err(e) => McpToolResult::error(format!("failed to write file: {e}")),
+    }
+}
+
+fn tool_edit_file(args: &serde_json::Value) -> McpToolResult {
+    let path = match args.get("path").and_then(|v| v.as_str()) {
+        Some(p) => p,
+        None => return McpToolResult::error("missing 'path' parameter"),
+    };
+    let old_string = match args.get("old_string").and_then(|v| v.as_str()) {
+        Some(s) => s,
+        None => return McpToolResult::error("missing 'old_string' parameter"),
+    };
+    let new_string = match args.get("new_string").and_then(|v| v.as_str()) {
+        Some(s) => s,
+        None => return McpToolResult::error("missing 'new_string' parameter"),
+    };
+
+    let resolved = match validate_path(path) {
+        Ok(p) => p,
+        Err(e) => return McpToolResult::error(e),
+    };
+
+    let content = match std::fs::read_to_string(&resolved) {
+        Ok(c) => c,
+        Err(e) => return McpToolResult::error(format!("failed to read file: {e}")),
+    };
+
+    if !content.contains(old_string) {
+        return McpToolResult::error("old_string not found in file");
+    }
+
+    let new_content = content.replacen(old_string, new_string, 1);
+
+    match std::fs::write(&resolved, new_content) {
+        Ok(()) => McpToolResult::text(format!("edited {path} successfully")),
+        Err(e) => McpToolResult::error(format!("failed to write file: {e}")),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -236,7 +328,7 @@ mod tests {
         let tools = result["tools"]
             .as_array()
             .expect("tools should be an array");
-        assert_eq!(tools.len(), 6);
+        assert_eq!(tools.len(), 8);
         let names: Vec<&str> = tools.iter().map(|t| t["name"].as_str().unwrap()).collect();
         assert!(names.contains(&"read_file"));
         assert!(names.contains(&"git_status"));
@@ -357,5 +449,126 @@ mod tests {
         let json = serde_json::to_string(&tool).unwrap();
         assert!(json.contains("inputSchema"));
         assert!(!json.contains("input_schema"));
+    }
+
+    #[test]
+    fn test_write_file_creates_file() {
+        let dir = std::env::temp_dir().join("clawdius_test_write");
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let file_path = dir.join("sub").join("test.txt");
+        let relative = format!("sub/test.txt");
+
+        let saved = std::env::current_dir().unwrap();
+        std::env::set_current_dir(&dir).unwrap();
+
+        let req = McpRequest::new(1, "tools/call").with_params(serde_json::json!({
+            "name": "write_file",
+            "arguments": { "path": relative, "content": "hello world" }
+        }));
+        let resp = handle_mcp_request(&req);
+        std::env::set_current_dir(&saved).unwrap();
+
+        assert!(resp.result.is_some());
+        let result = resp.result.unwrap();
+        assert!(!result["is_error"].as_bool().unwrap());
+        assert!(result["content"][0]["text"]
+            .as_str()
+            .unwrap()
+            .contains("11 bytes"));
+        assert_eq!(std::fs::read_to_string(&file_path).unwrap(), "hello world");
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn test_write_file_rejects_traversal() {
+        let dir = std::env::temp_dir().join("clawdius_test_traversal");
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+
+        let saved = std::env::current_dir().unwrap();
+        std::env::set_current_dir(&dir).unwrap();
+
+        let req = McpRequest::new(1, "tools/call").with_params(serde_json::json!({
+            "name": "write_file",
+            "arguments": { "path": "../etc/passwd", "content": "hack" }
+        }));
+        let resp = handle_mcp_request(&req);
+        std::env::set_current_dir(&saved).unwrap();
+
+        assert!(resp.result.is_some());
+        let result = resp.result.unwrap();
+        assert!(result["is_error"].as_bool().unwrap());
+        assert!(result["content"][0]["text"]
+            .as_str()
+            .unwrap()
+            .contains("traversal"));
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn test_edit_file_replaces_content() {
+        let dir = std::env::temp_dir().join("clawdius_test_edit");
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("edit_me.txt"), "foo bar baz").unwrap();
+
+        let saved = std::env::current_dir().unwrap();
+        std::env::set_current_dir(&dir).unwrap();
+
+        let req = McpRequest::new(1, "tools/call").with_params(serde_json::json!({
+            "name": "edit_file",
+            "arguments": {
+                "path": "edit_me.txt",
+                "old_string": "bar",
+                "new_string": "qux"
+            }
+        }));
+        let resp = handle_mcp_request(&req);
+        std::env::set_current_dir(&saved).unwrap();
+
+        assert!(resp.result.is_some());
+        let result = resp.result.unwrap();
+        assert!(!result["is_error"].as_bool().unwrap());
+        assert_eq!(
+            std::fs::read_to_string(dir.join("edit_me.txt")).unwrap(),
+            "foo qux baz"
+        );
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn test_edit_file_old_string_not_found() {
+        let dir = std::env::temp_dir().join("clawdius_test_edit_nf");
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("missing.txt"), "hello").unwrap();
+
+        let saved = std::env::current_dir().unwrap();
+        std::env::set_current_dir(&dir).unwrap();
+
+        let req = McpRequest::new(1, "tools/call").with_params(serde_json::json!({
+            "name": "edit_file",
+            "arguments": {
+                "path": "missing.txt",
+                "old_string": "goodbye",
+                "new_string": "world"
+            }
+        }));
+        let resp = handle_mcp_request(&req);
+        std::env::set_current_dir(&saved).unwrap();
+
+        assert!(resp.result.is_some());
+        let result = resp.result.unwrap();
+        assert!(result["is_error"].as_bool().unwrap());
+        assert!(result["content"][0]["text"]
+            .as_str()
+            .unwrap()
+            .contains("not found"));
+
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }

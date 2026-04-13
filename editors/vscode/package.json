@@ -80,16 +80,8 @@
             {
                 "command": "clawdius.showAllChanges",
                 "title": "Clawdius: Show all pending changes"
-            },
-            {
-                "command": "clawdius.testDiff",
-                "title": "Clawdius: Test diff view (demo)"
-            },
-            {
-                "command": "clawdius.testMultipleDiffs",
-                "title": "Clawdius: Test multiple diffs (demo)"
             }
-        ],
+         ],
         "menus": {
             "editor/context": [
                 {
@@ -128,7 +120,7 @@
                 "clawdius.binaryPath": {
                     "type": "string",
                     "default": "",
-                    "description": "Path to clawdius-code binary (empty for auto-detect)"
+                    "description": "Path to clawdius binary (empty for auto-detect)"
                 },
                 "clawdius.provider": {
                     "type": "string",

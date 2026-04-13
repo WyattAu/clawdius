@@ -5,8 +5,6 @@ import { StatusBarProvider } from './providers/statusBar';
 import { DiffViewProvider } from './providers/diffView';
 import { ClawdiusCompletionProvider } from './completion/provider';
 import { ClawdiusCodeActionProvider } from './codeActions/provider';
-import { registerDiffDemo } from './test/diffViewDemo';
-
 let client: ClawdiusClient;
 let diffViewProvider: DiffViewProvider;
 
@@ -24,8 +22,6 @@ export async function activate(context: vscode.ExtensionContext) {
     
     diffViewProvider = new DiffViewProvider();
     context.subscriptions.push(diffViewProvider);
-    
-    registerDiffDemo(context, diffViewProvider);
     
     registerCommands(context, client, diffViewProvider);
     
