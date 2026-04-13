@@ -441,14 +441,6 @@ pub enum Commands {
         #[arg(help = "Model to use")]
         model: Option<String>,
 
-        #[arg(long)]
-        #[arg(help = "Enable streaming output")]
-        stream: bool,
-
-        #[arg(long)]
-        #[arg(help = "Enable incremental generation (diff-based updates)")]
-        incremental: bool,
-
         #[arg(short = 'R', long)]
         #[arg(help = "Timeout in seconds for LLM operations")]
         timeout_secs: Option<u64>,
@@ -1203,8 +1195,6 @@ pub async fn handle_command(
             dry_run,
             provider,
             model,
-            stream,
-            incremental,
             timeout_secs,
         } => {
             handle_generate(
@@ -1217,8 +1207,6 @@ pub async fn handle_command(
                 dry_run,
                 provider,
                 model,
-                stream,
-                incremental,
                 timeout_secs,
                 config_path,
                 output_format,
@@ -4343,8 +4331,6 @@ async fn handle_generate(
     dry_run: bool,
     provider: String,
     model: Option<String>,
-    stream: bool,
-    incremental: bool,
     timeout_secs: Option<u64>,
     config_path: Option<std::path::PathBuf>,
     output_format: OutputFormat,
@@ -4360,14 +4346,6 @@ async fn handle_generate(
     // Set up timeout if specified
     let _timeout_guard = timeout_secs
         .map(|secs| TimeoutGuard::with_label(std::time::Duration::from_secs(secs), "generate"));
-
-    // Log streaming and incremental flags
-    if stream {
-        tracing::info!("Streaming mode enabled");
-    }
-    if incremental {
-        tracing::info!("Incremental generation enabled");
-    }
 
     // Parse generation mode
     let generation_mode = match mode.as_str() {
