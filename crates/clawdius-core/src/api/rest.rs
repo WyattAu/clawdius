@@ -21,9 +21,12 @@ use crate::api::auth::{auth_middleware, ApiKeyAuth};
 use crate::api::gateway::RateLimitConfig;
 use crate::api::metrics_handler;
 use crate::api::rate_limit::{rate_limit_middleware, ApiRateLimiter};
-use crate::api::routes::{ChatRequest, ChatResponse, HealthResponse};
+use crate::api::routes::{
+    AgentRequest, AgentResponse, ChatRequest, ChatResponse, HealthResponse, ToolCallInfo,
+};
 use crate::api::tenant::{default_tenants, AuthenticatedApiKey, TenantStore};
 use crate::llm::{ChatMessage, ChatRole, LlmProvider};
+use crate::mcp::McpRequest;
 use crate::session::{Message as SessionMessage, Session, SessionId, SessionStore};
 
 // ============================================================================
@@ -478,8 +481,291 @@ pub async fn chat(
 }
 
 // ============================================================================
-// Tool Endpoints
+// Agent Endpoints
 // ============================================================================
+
+const AGENT_SYSTEM_PROMPT: &str =
+    "You are a coding agent with access to tools. When you need to read files, run tests, \
+     search code, or edit code, use the appropriate tool. Think step-by-step.\n\n\
+     Available tools: read_file, list_directory, write_file, edit_file, codebase_search, \
+     git_status, git_log, git_diff, check_build, run_tests, web_search, generate_code\n\n\
+     To call a tool, use one of these formats:\n\
+     1. On a line by itself: [TOOL_CALL] {\"name\": \"tool_name\", \"arguments\": {\"param\": \"value\"}} [/TOOL_CALL]\n\
+     2. On a line by itself: ant:invoke:tool_name{\"param\": \"value\"}ant:invoke:end\n\n\
+     Always include the tool call on its own line. After receiving the tool result, you can \
+     call another tool or provide your final answer.";
+
+const MAX_AGENT_ITERATIONS: usize = 10;
+
+#[derive(Debug, Clone)]
+struct ParsedToolCall {
+    name: String,
+    arguments: serde_json::Value,
+}
+
+fn parse_tool_calls(text: &str) -> (Vec<ParsedToolCall>, String) {
+    let mut tool_calls = Vec::new();
+    let mut remaining_lines: Vec<&str> = Vec::new();
+    let mut found_any = false;
+
+    for line in text.lines() {
+        let trimmed = line.trim();
+
+        if let Some(inner) = trimmed
+            .strip_prefix("[TOOL_CALL]")
+            .and_then(|s| s.strip_suffix("[/TOOL_CALL]"))
+        {
+            found_any = true;
+            if let Ok(json) = serde_json::from_str::<serde_json::Value>(inner.trim()) {
+                if let (Some(name), Some(args)) = (
+                    json.get("name").and_then(|v| v.as_str()),
+                    json.get("arguments").cloned(),
+                ) {
+                    tool_calls.push(ParsedToolCall {
+                        name: name.to_string(),
+                        arguments: args,
+                    });
+                }
+            }
+            continue;
+        }
+
+        if let Some(rest) = trimmed
+            .strip_prefix("ant:invoke:")
+            .and_then(|s| s.strip_suffix("ant:invoke:end"))
+        {
+            found_any = true;
+            let parts: Vec<&str> = rest
+                .splitn(2, |c: char| !c.is_alphanumeric() && c != '_')
+                .collect();
+            if let Some(name) = parts.first() {
+                let args_str = rest.get(name.len()..).unwrap_or("");
+                let args: serde_json::Value = if args_str.is_empty() {
+                    serde_json::json!({})
+                } else {
+                    serde_json::from_str(args_str)
+                        .unwrap_or_else(|_| serde_json::json!({"raw": args_str.to_string()}))
+                };
+                tool_calls.push(ParsedToolCall {
+                    name: name.to_string(),
+                    arguments: args,
+                });
+            }
+            continue;
+        }
+
+        remaining_lines.push(line);
+    }
+
+    let remaining = remaining_lines.join("\n").trim().to_string();
+    if found_any && remaining.is_empty() {
+        (tool_calls, String::new())
+    } else {
+        (tool_calls, remaining)
+    }
+}
+
+fn execute_mcp_tool_call(name: &str, arguments: &serde_json::Value) -> String {
+    let request = McpRequest::new(1, "tools/call").with_params(serde_json::json!({
+        "name": name,
+        "arguments": arguments,
+    }));
+
+    let response = crate::mcp::handle_mcp_request(&request);
+
+    match response.result {
+        Some(result) => {
+            if let Some(content) = result.get("content").and_then(|c| c.as_array()) {
+                let texts: Vec<&str> = content
+                    .iter()
+                    .filter_map(|item| item.get("text").and_then(|t| t.as_str()))
+                    .collect();
+                texts.join("\n")
+            } else {
+                result.to_string()
+            }
+        },
+        None => {
+            if let Some(err) = response.error {
+                format!("Tool error: {}", err.message)
+            } else {
+                "Tool returned no result".to_string()
+            }
+        },
+    }
+}
+
+/// POST /api/v1/agent - Send a message to the coding agent
+pub async fn agent_handler(
+    State(state): State<ApiState>,
+    Json(request): Json<AgentRequest>,
+) -> Result<Json<AgentResponse>, (StatusCode, Json<ApiError>)> {
+    use crate::session::MessageRole;
+
+    let llm_client = match &state.llm_client {
+        Some(client) => client,
+        None => {
+            return Err((
+                StatusCode::SERVICE_UNAVAILABLE,
+                Json(ApiError {
+                    code: "LLM_NOT_CONFIGURED".to_string(),
+                    message:
+                        "No LLM provider is configured. Set up a provider in your config file."
+                            .to_string(),
+                }),
+            ))
+        },
+    };
+
+    let mut messages: Vec<ChatMessage> = vec![ChatMessage {
+        role: ChatRole::System,
+        content: AGENT_SYSTEM_PROMPT.to_string(),
+    }];
+
+    if let Some(ref session_id_str) = request.session_id {
+        let session_id = match Uuid::parse_str(session_id_str) {
+            Ok(uuid) => SessionId::from_uuid(uuid),
+            Err(e) => {
+                return Err((
+                    StatusCode::BAD_REQUEST,
+                    Json(ApiError {
+                        code: "BAD_REQUEST".to_string(),
+                        message: format!("Invalid session ID: {e}"),
+                    }),
+                ))
+            },
+        };
+
+        if let Some(session) = state.db.get_session(session_id).await {
+            for msg in &session.messages {
+                let role = match msg.role {
+                    MessageRole::System => ChatRole::System,
+                    MessageRole::User => ChatRole::User,
+                    MessageRole::Assistant => ChatRole::Assistant,
+                    MessageRole::Tool => continue,
+                };
+                if let Some(text) = msg.as_text() {
+                    messages.push(ChatMessage {
+                        role,
+                        content: text.to_string(),
+                    });
+                }
+            }
+        }
+    }
+
+    messages.push(ChatMessage {
+        role: ChatRole::User,
+        content: request.message.clone(),
+    });
+
+    let mut all_tool_calls: Vec<ToolCallInfo> = Vec::new();
+    let mut iterations = 0;
+
+    for _ in 0..MAX_AGENT_ITERATIONS {
+        iterations += 1;
+
+        let response_text = match llm_client.chat(messages.clone()).await {
+            Ok(text) => text,
+            Err(e) => {
+                return Err((
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(ApiError {
+                        code: "LLM_ERROR".to_string(),
+                        message: format!("LLM request failed: {e}"),
+                    }),
+                ))
+            },
+        };
+
+        let (tool_calls, remaining) = parse_tool_calls(&response_text);
+
+        if tool_calls.is_empty() {
+            let session_id = request
+                .session_id
+                .clone()
+                .unwrap_or_else(|| Uuid::new_v4().to_string());
+
+            if let Some(ref session_id_str) = request.session_id {
+                if let Ok(uuid) = Uuid::parse_str(session_id_str) {
+                    let sid = SessionId::from_uuid(uuid);
+                    let _ = state
+                        .db
+                        .add_message(sid, SessionMessage::user(&request.message))
+                        .await;
+                    let _ = state
+                        .db
+                        .add_message(sid, SessionMessage::assistant(&response_text))
+                        .await;
+                }
+            }
+
+            return Ok(Json(AgentResponse {
+                response: if remaining.is_empty() {
+                    response_text
+                } else {
+                    remaining
+                },
+                session_id,
+                tool_calls: all_tool_calls,
+                iterations,
+            }));
+        }
+
+        let assistant_msg = response_text.clone();
+        messages.push(ChatMessage {
+            role: ChatRole::Assistant,
+            content: assistant_msg,
+        });
+
+        let mut tool_results_text = String::new();
+        for tc in &tool_calls {
+            let result = execute_mcp_tool_call(&tc.name, &tc.arguments);
+            let summary = if result.len() > 200 {
+                format!("{}...", &result[..200])
+            } else {
+                result.clone()
+            };
+            all_tool_calls.push(ToolCallInfo {
+                name: tc.name.clone(),
+                result_summary: summary,
+            });
+            tool_results_text.push_str(&format!("Tool {} result:\n{}\n\n", tc.name, result));
+        }
+
+        messages.push(ChatMessage {
+            role: ChatRole::User,
+            content: format!(
+                "Here are the tool results. Continue working based on these results. If you need \
+                 to call more tools, do so. Otherwise, provide your final answer.\n\n{}",
+                tool_results_text
+            ),
+        });
+    }
+
+    let session_id = request
+        .session_id
+        .clone()
+        .unwrap_or_else(|| Uuid::new_v4().to_string());
+
+    let last_msg = messages
+        .iter()
+        .rev()
+        .find(|m| m.role == ChatRole::Assistant)
+        .map(|m| m.content.clone())
+        .unwrap_or_else(|| "Agent stopped after max iterations.".to_string());
+
+    Ok(Json(AgentResponse {
+        response: format!(
+            "(Reached max iterations after {} tool calls) {}",
+            all_tool_calls.len(),
+            last_msg
+        ),
+        session_id,
+        tool_calls: all_tool_calls,
+        iterations,
+    }))
+}
 
 /// GET /api/v1/tools - List available tools
 pub async fn list_tools() -> Json<Vec<serde_json::Value>> {
@@ -605,6 +891,7 @@ pub fn create_router(state: ApiState) -> Router {
             get(get_session).delete(delete_session),
         )
         .route("/api/v1/chat", post(chat))
+        .route("/api/v1/agent", post(agent_handler))
         .route("/api/v1/tools", get(list_tools))
         .route("/api/v1/tools/execute", post(execute_tool))
         .route("/api/v1/plugins", get(list_plugins))
@@ -786,5 +1073,89 @@ mod tests {
         assert_eq!(full.messages.len(), 2);
         assert_eq!(full.messages[0].as_text(), Some("Hello"));
         assert_eq!(full.messages[1].as_text(), Some("Hi there"));
+    }
+
+    #[tokio::test]
+    async fn agent_without_llm_returns_503() {
+        let store = SessionStore::in_memory().unwrap();
+        let state = test_state(store);
+        let app = create_router(state);
+
+        let req = Request::builder()
+            .method("POST")
+            .uri("/api/v1/agent")
+            .header("content-type", "application/json")
+            .body(Body::from(
+                serde_json::to_string(&AgentRequest {
+                    message: "Hello".to_string(),
+                    session_id: None,
+                })
+                .unwrap(),
+            ))
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::SERVICE_UNAVAILABLE);
+    }
+
+    #[test]
+    fn parse_tool_calls_bracket_format() {
+        let input = "I need to read a file.\n[TOOL_CALL] {\"name\": \"read_file\", \"arguments\": {\"path\": \"src/main.rs\"}} [/TOOL_CALL]\nLet me check that.";
+        let (calls, remaining) = parse_tool_calls(input);
+        assert_eq!(calls.len(), 1);
+        assert_eq!(calls[0].name, "read_file");
+        assert_eq!(calls[0].arguments["path"], "src/main.rs");
+        assert!(remaining.contains("I need to read a file"));
+        assert!(remaining.contains("Let me check that"));
+    }
+
+    #[test]
+    fn parse_tool_calls_no_tool_calls() {
+        let input = "This is just a plain response with no tool calls.";
+        let (calls, remaining) = parse_tool_calls(input);
+        assert!(calls.is_empty());
+        assert_eq!(remaining, input);
+    }
+
+    #[test]
+    fn parse_tool_calls_multiple() {
+        let input = "[TOOL_CALL] {\"name\": \"git_status\", \"arguments\": {}} [/TOOL_CALL]\n[TOOL_CALL] {\"name\": \"read_file\", \"arguments\": {\"path\": \"Cargo.toml\"}} [/TOOL_CALL]";
+        let (calls, remaining) = parse_tool_calls(input);
+        assert_eq!(calls.len(), 2);
+        assert_eq!(calls[0].name, "git_status");
+        assert_eq!(calls[1].name, "read_file");
+        assert!(remaining.is_empty());
+    }
+
+    #[test]
+    fn parse_tool_calls_invoke_format() {
+        let input = "ant:invoke:git_status{}ant:invoke:end";
+        let (calls, remaining) = parse_tool_calls(input);
+        assert_eq!(calls.len(), 1);
+        assert_eq!(calls[0].name, "git_status");
+        assert!(remaining.is_empty());
+    }
+
+    #[test]
+    fn execute_mcp_tool_call_git_status() {
+        let result = execute_mcp_tool_call("git_status", &serde_json::json!({}));
+        assert!(
+            result.contains("clean")
+                || result.contains("M")
+                || result.contains("A")
+                || result.contains("??")
+                || result.contains("working tree")
+        );
+    }
+
+    #[test]
+    fn execute_mcp_tool_call_unknown_tool() {
+        let result = execute_mcp_tool_call("nonexistent_tool_xyz", &serde_json::json!({}));
+        assert!(result.contains("error") || result.contains("unknown"));
+    }
+
+    #[test]
+    fn agent_max_iterations_constant() {
+        assert_eq!(MAX_AGENT_ITERATIONS, 10);
     }
 }
