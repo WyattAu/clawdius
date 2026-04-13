@@ -333,6 +333,14 @@ impl LlmConfig {
                 })?;
                 (Some(key), None, "claude-3-5-sonnet-20241022".to_string())
             },
+            "google" => {
+                let key = std::env::var("GOOGLE_API_KEY").map_err(|_| {
+                    Error::Config(
+                        ErrorHelpers::api_key_missing("Google", "GOOGLE_API_KEY").to_string(),
+                    )
+                })?;
+                (Some(key), None, "gemini-2.0-flash".to_string())
+            },
             "openai" => {
                 let key = std::env::var("OPENAI_API_KEY").map_err(|_| {
                     Error::Config(
@@ -366,7 +374,7 @@ impl LlmConfig {
                 return Err(Error::Config(
                     ErrorHelpers::unknown_provider(
                         provider,
-                        &["anthropic", "openai", "ollama", "zai"],
+                        &["anthropic", "google", "openai", "ollama", "zai"],
                     )
                     .to_string(),
                 ))
@@ -464,6 +472,27 @@ impl LlmConfig {
 
                 (model, Some(api_key), None)
             },
+            "google" => {
+                let cfg = config.google.as_ref();
+                let model = cfg
+                    .and_then(|c| c.model.clone())
+                    .unwrap_or_else(|| "gemini-2.0-flash".to_string());
+
+                let api_key = Self::load_api_key(
+                    "GOOGLE_API_KEY",
+                    "google",
+                    &cfg.and_then(|c| c.api_key.clone()),
+                    &cfg.and_then(|c| c.api_key_env.clone()),
+                )?;
+
+                let api_key = api_key.ok_or_else(|| {
+                    Error::Config(
+                        ErrorHelpers::api_key_missing("Google", "GOOGLE_API_KEY").to_string(),
+                    )
+                })?;
+
+                (model, Some(api_key), None)
+            },
             "ollama" => {
                 let cfg = config.ollama.as_ref();
                 let model = cfg
@@ -508,7 +537,7 @@ impl LlmConfig {
                 return Err(Error::Config(
                     ErrorHelpers::unknown_provider(
                         provider,
-                        &["anthropic", "openai", "ollama", "zai"],
+                        &["anthropic", "google", "openai", "ollama", "zai"],
                     )
                     .to_string(),
                 ))
@@ -527,6 +556,7 @@ impl LlmConfig {
 
 pub enum LlmProvider {
     Anthropic(providers::anthropic::AnthropicProvider),
+    Google(providers::google::GoogleProvider),
     OpenAi(providers::openai::OpenAIProvider),
     Ollama(providers::ollama::OllamaProvider),
     Local(providers::local::LocalLlmProvider),
@@ -553,6 +583,7 @@ impl LlmClientWithRetry {
         with_retry(&retry_config, || async {
             match provider {
                 LlmProvider::Anthropic(p) => p.chat(messages.clone()).await,
+                LlmProvider::Google(p) => p.chat(messages.clone()).await,
                 LlmProvider::OpenAi(p) => p.chat(messages.clone()).await,
                 LlmProvider::Ollama(p) => p.chat(messages.clone()).await,
                 LlmProvider::Local(p) => p.chat(messages.clone()).await,
@@ -565,6 +596,7 @@ impl LlmClientWithRetry {
     pub fn count_tokens(&self, text: &str) -> usize {
         match &self.provider {
             LlmProvider::Anthropic(p) => p.count_tokens(text),
+            LlmProvider::Google(p) => p.count_tokens(text),
             LlmProvider::OpenAi(p) => p.count_tokens(text),
             LlmProvider::Ollama(p) => p.count_tokens(text),
             LlmProvider::Local(p) => p.count_tokens(text),
@@ -581,6 +613,7 @@ impl LlmProvider {
     pub async fn chat(&self, messages: Vec<ChatMessage>) -> Result<String> {
         match self {
             LlmProvider::Anthropic(p) => p.chat(messages).await,
+            LlmProvider::Google(p) => p.chat(messages).await,
             LlmProvider::OpenAi(p) => p.chat(messages).await,
             LlmProvider::Ollama(p) => p.chat(messages).await,
             LlmProvider::Local(p) => p.chat(messages).await,
@@ -603,6 +636,7 @@ impl LlmProvider {
     pub fn count_tokens(&self, text: &str) -> usize {
         match self {
             LlmProvider::Anthropic(p) => p.count_tokens(text),
+            LlmProvider::Google(p) => p.count_tokens(text),
             LlmProvider::OpenAi(p) => p.count_tokens(text),
             LlmProvider::Ollama(p) => p.count_tokens(text),
             LlmProvider::Local(p) => p.count_tokens(text),
@@ -615,6 +649,7 @@ impl providers::LlmClient for LlmProvider {
     async fn chat(&self, messages: Vec<ChatMessage>) -> Result<String> {
         match self {
             LlmProvider::Anthropic(p) => p.chat(messages).await,
+            LlmProvider::Google(p) => p.chat(messages).await,
             LlmProvider::OpenAi(p) => p.chat(messages).await,
             LlmProvider::Ollama(p) => p.chat(messages).await,
             LlmProvider::Local(p) => p.chat(messages).await,
@@ -627,6 +662,7 @@ impl providers::LlmClient for LlmProvider {
     ) -> Result<tokio::sync::mpsc::Receiver<String>> {
         match self {
             LlmProvider::Anthropic(p) => p.chat_stream(messages).await,
+            LlmProvider::Google(p) => p.chat_stream(messages).await,
             LlmProvider::OpenAi(p) => p.chat_stream(messages).await,
             LlmProvider::Ollama(p) => p.chat_stream(messages).await,
             LlmProvider::Local(p) => p.chat_stream(messages).await,
@@ -636,6 +672,7 @@ impl providers::LlmClient for LlmProvider {
     fn count_tokens(&self, text: &str) -> usize {
         match self {
             LlmProvider::Anthropic(p) => p.count_tokens(text),
+            LlmProvider::Google(p) => p.count_tokens(text),
             LlmProvider::OpenAi(p) => p.count_tokens(text),
             LlmProvider::Ollama(p) => p.count_tokens(text),
             LlmProvider::Local(p) => p.count_tokens(text),
@@ -656,6 +693,15 @@ pub fn create_provider(config: &LlmConfig) -> Result<LlmProvider> {
             Ok(LlmProvider::Anthropic(
                 providers::anthropic::AnthropicProvider::new(api_key, Some(&config.model))?,
             ))
+        },
+        "google" => {
+            let api_key = config.api_key.as_ref().ok_or_else(|| {
+                Error::Config(ErrorHelpers::api_key_missing("Google", "GOOGLE_API_KEY").to_string())
+            })?;
+            Ok(LlmProvider::Google(providers::google::GoogleProvider::new(
+                api_key,
+                Some(&config.model),
+            )?))
         },
         "openai" => {
             let api_key = config.api_key.as_ref().ok_or_else(|| {
@@ -687,8 +733,11 @@ pub fn create_provider(config: &LlmConfig) -> Result<LlmProvider> {
             )))
         },
         _ => Err(Error::Config(
-            ErrorHelpers::unknown_provider(&config.provider, &["anthropic", "openai", "ollama"])
-                .to_string(),
+            ErrorHelpers::unknown_provider(
+                &config.provider,
+                &["anthropic", "google", "openai", "ollama"],
+            )
+            .to_string(),
         )),
     }
 }

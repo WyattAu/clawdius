@@ -1,6 +1,7 @@
 //! LLM providers
 
 pub mod anthropic;
+pub mod google;
 pub mod local;
 pub mod ollama;
 pub mod openai;
@@ -25,6 +26,7 @@ pub trait LlmClient: Send + Sync {
 #[serde(rename_all = "lowercase")]
 pub enum Provider {
     Anthropic,
+    Google,
     OpenAI,
     /// DeepSeek provider (not yet implemented — use OpenAI-compatible API with a
     /// custom base URL pointing to `https://api.deepseek.com`)

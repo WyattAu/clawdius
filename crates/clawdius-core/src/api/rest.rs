@@ -23,7 +23,8 @@ use crate::api::metrics_handler;
 use crate::api::rate_limit::{rate_limit_middleware, ApiRateLimiter};
 use crate::api::routes::{ChatRequest, ChatResponse, HealthResponse};
 use crate::api::tenant::{default_tenants, AuthenticatedApiKey, TenantStore};
-use crate::session::{Session, SessionId, SessionStore};
+use crate::llm::{ChatMessage, ChatRole, LlmProvider};
+use crate::session::{Message as SessionMessage, Session, SessionId, SessionStore};
 
 // ============================================================================
 // Database Actor Pattern
@@ -44,6 +45,11 @@ enum DbCommand {
     },
     DeleteSession {
         id: SessionId,
+        reply: oneshot::Sender<bool>,
+    },
+    AddMessage {
+        session_id: SessionId,
+        message: SessionMessage,
         reply: oneshot::Sender<bool>,
     },
 }
@@ -72,11 +78,19 @@ impl DbActor {
                         let _ = reply.send(*session);
                     },
                     DbCommand::GetSession { id, reply } => {
-                        let session = store.load_session(&id).unwrap_or_default();
+                        let session = store.load_session_full(&id).unwrap_or_default();
                         let _ = reply.send(session);
                     },
                     DbCommand::DeleteSession { id, reply } => {
                         let result = store.delete_session(&id).is_ok();
+                        let _ = reply.send(result);
+                    },
+                    DbCommand::AddMessage {
+                        session_id,
+                        message,
+                        reply,
+                    } => {
+                        let result = store.save_message(&session_id, &message).is_ok();
                         let _ = reply.send(result);
                     },
                 }
@@ -122,6 +136,20 @@ impl DbActor {
             .await;
         rx.await.unwrap_or(false)
     }
+
+    /// Add a message to a session
+    pub async fn add_message(&self, session_id: SessionId, message: SessionMessage) -> bool {
+        let (reply, rx) = oneshot::channel();
+        let _ = self
+            .sender
+            .send(DbCommand::AddMessage {
+                session_id,
+                message,
+                reply,
+            })
+            .await;
+        rx.await.unwrap_or(false)
+    }
 }
 
 // ============================================================================
@@ -136,6 +164,7 @@ pub struct ApiState {
     pub api_keys: HashMap<String, String>,
     pub rate_limit_config: Option<RateLimitConfig>,
     pub tenant_store: Arc<RwLock<TenantStore>>,
+    pub llm_client: Option<Arc<LlmProvider>>,
 }
 
 impl ApiState {
@@ -147,6 +176,7 @@ impl ApiState {
             api_keys: HashMap::new(),
             rate_limit_config: None,
             tenant_store: Arc::new(RwLock::new(default_tenants())),
+            llm_client: None,
         }
     }
 
@@ -157,6 +187,11 @@ impl ApiState {
 
     pub fn with_rate_limit_config(mut self, config: RateLimitConfig) -> Self {
         self.rate_limit_config = Some(config);
+        self
+    }
+
+    pub fn with_llm_client(mut self, client: LlmProvider) -> Self {
+        self.llm_client = Some(Arc::new(client));
         self
     }
 }
@@ -349,14 +384,97 @@ pub async fn delete_session(
 
 /// POST /api/v1/chat - Send a chat message
 pub async fn chat(
-    State(_state): State<ApiState>,
-    Json(_request): Json<ChatRequest>,
-) -> Json<ChatResponse> {
-    Json(ChatResponse {
-        response: "Chat API is operational. Connect LLM provider for responses.".to_string(),
-        session_id: Uuid::new_v4().to_string(),
-        tokens_used: Some(0),
-    })
+    State(state): State<ApiState>,
+    Json(request): Json<ChatRequest>,
+) -> Result<Json<ChatResponse>, (StatusCode, Json<ApiError>)> {
+    use crate::session::MessageRole;
+
+    let mut messages: Vec<ChatMessage> = Vec::new();
+
+    if let Some(ref session_id_str) = request.session_id {
+        let session_id = match Uuid::parse_str(session_id_str) {
+            Ok(uuid) => SessionId::from_uuid(uuid),
+            Err(e) => {
+                return Err((
+                    StatusCode::BAD_REQUEST,
+                    Json(ApiError {
+                        code: "BAD_REQUEST".to_string(),
+                        message: format!("Invalid session ID: {e}"),
+                    }),
+                ))
+            },
+        };
+
+        if let Some(session) = state.db.get_session(session_id).await {
+            for msg in &session.messages {
+                let role = match msg.role {
+                    MessageRole::System => ChatRole::System,
+                    MessageRole::User => ChatRole::User,
+                    MessageRole::Assistant => ChatRole::Assistant,
+                    MessageRole::Tool => continue,
+                };
+                if let Some(text) = msg.as_text() {
+                    messages.push(ChatMessage {
+                        role,
+                        content: text.to_string(),
+                    });
+                }
+            }
+        }
+    }
+
+    let llm_client = match &state.llm_client {
+        Some(client) => client,
+        None => {
+            return Err((
+                StatusCode::SERVICE_UNAVAILABLE,
+                Json(ApiError {
+                    code: "LLM_NOT_CONFIGURED".to_string(),
+                    message:
+                        "No LLM provider is configured. Set up a provider in your config file."
+                            .to_string(),
+                }),
+            ))
+        },
+    };
+
+    messages.push(ChatMessage {
+        role: ChatRole::User,
+        content: request.message.clone(),
+    });
+
+    let response_text = match llm_client.chat(messages).await {
+        Ok(text) => text,
+        Err(e) => {
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ApiError {
+                    code: "LLM_ERROR".to_string(),
+                    message: format!("LLM request failed: {e}"),
+                }),
+            ))
+        },
+    };
+
+    if let Some(ref session_id_str) = request.session_id {
+        if let Ok(uuid) = Uuid::parse_str(session_id_str) {
+            let session_id = SessionId::from_uuid(uuid);
+            let user_msg = SessionMessage::user(&request.message);
+            let _ = state.db.add_message(session_id, user_msg).await;
+            let assistant_msg = SessionMessage::assistant(&response_text);
+            let _ = state.db.add_message(session_id, assistant_msg).await;
+        }
+    }
+
+    let session_id = request
+        .session_id
+        .unwrap_or_else(|| Uuid::new_v4().to_string());
+
+    Ok(Json(ChatResponse {
+        response: response_text,
+        session_id,
+        tokens_used: None,
+    }))
 }
 
 // ============================================================================
@@ -517,5 +635,156 @@ pub fn create_router(state: ApiState) -> Router {
         ))
     } else {
         router
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use axum::body::Body;
+    use axum::http::{Request, StatusCode};
+    use tower::ServiceExt;
+
+    fn test_state(store: SessionStore) -> ApiState {
+        ApiState::new(store)
+    }
+
+    #[tokio::test]
+    async fn chat_without_llm_returns_503() {
+        let store = SessionStore::in_memory().unwrap();
+        let state = test_state(store);
+        let app = create_router(state);
+
+        let req = Request::builder()
+            .method("POST")
+            .uri("/api/v1/chat")
+            .header("content-type", "application/json")
+            .body(Body::from(
+                serde_json::to_string(&ChatRequest {
+                    message: "Hello".to_string(),
+                    session_id: None,
+                    context: None,
+                })
+                .unwrap(),
+            ))
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::SERVICE_UNAVAILABLE);
+    }
+
+    #[tokio::test]
+    async fn chat_with_invalid_session_id_returns_400() {
+        let store = SessionStore::in_memory().unwrap();
+        let state = test_state(store);
+        let app = create_router(state);
+
+        let req = Request::builder()
+            .method("POST")
+            .uri("/api/v1/chat")
+            .header("content-type", "application/json")
+            .body(Body::from(
+                serde_json::to_string(&ChatRequest {
+                    message: "Hello".to_string(),
+                    session_id: Some("not-a-uuid".to_string()),
+                    context: None,
+                })
+                .unwrap(),
+            ))
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+    }
+
+    #[tokio::test]
+    async fn session_history_loaded_for_context() {
+        let store = SessionStore::in_memory().unwrap();
+        let state = test_state(store);
+        let app = create_router(state.clone());
+
+        let create_req = Request::builder()
+            .method("POST")
+            .uri("/api/v1/sessions")
+            .header("content-type", "application/json")
+            .body(Body::from(
+                serde_json::to_string(&CreateSessionRequest {
+                    name: Some("test".to_string()),
+                    model: None,
+                })
+                .unwrap(),
+            ))
+            .unwrap();
+
+        let create_resp = app.clone().oneshot(create_req).await.unwrap();
+        assert_eq!(create_resp.status(), StatusCode::OK);
+
+        let body_bytes = axum::body::to_bytes(create_resp.into_body(), 1024 * 1024)
+            .await
+            .unwrap();
+        let session: Session = serde_json::from_slice(&body_bytes).unwrap();
+
+        state
+            .db
+            .add_message(session.id, SessionMessage::user("First message"))
+            .await;
+        state
+            .db
+            .add_message(session.id, SessionMessage::assistant("First response"))
+            .await;
+
+        let get_req = Request::builder()
+            .method("GET")
+            .uri(format!("/api/v1/sessions/{}", session.id))
+            .body(Body::empty())
+            .unwrap();
+
+        let get_resp = app.clone().oneshot(get_req).await.unwrap();
+        assert_eq!(get_resp.status(), StatusCode::OK);
+
+        let get_body = axum::body::to_bytes(get_resp.into_body(), 1024 * 1024)
+            .await
+            .unwrap();
+        let loaded_session: Session = serde_json::from_slice(&get_body).unwrap();
+        assert_eq!(loaded_session.messages.len(), 2);
+    }
+
+    #[tokio::test]
+    async fn messages_persisted_to_session() {
+        let store = SessionStore::in_memory().unwrap();
+
+        let create_req = Request::builder()
+            .method("POST")
+            .uri("/api/v1/sessions")
+            .header("content-type", "application/json")
+            .body(Body::from(
+                serde_json::to_string(&CreateSessionRequest {
+                    name: Some("persist-test".to_string()),
+                    model: None,
+                })
+                .unwrap(),
+            ))
+            .unwrap();
+
+        let state = test_state(store);
+        let app = create_router(state.clone());
+
+        let create_resp = app.clone().oneshot(create_req).await.unwrap();
+        let body_bytes = axum::body::to_bytes(create_resp.into_body(), 1024 * 1024)
+            .await
+            .unwrap();
+        let session: Session = serde_json::from_slice(&body_bytes).unwrap();
+
+        let user_msg = SessionMessage::user("Hello");
+        let assistant_msg = SessionMessage::assistant("Hi there");
+        state.db.add_message(session.id, user_msg).await;
+        state.db.add_message(session.id, assistant_msg).await;
+
+        let full = state.db.get_session(session.id).await;
+        assert!(full.is_some());
+        let full = full.unwrap();
+        assert_eq!(full.messages.len(), 2);
+        assert_eq!(full.messages[0].as_text(), Some("Hello"));
+        assert_eq!(full.messages[1].as_text(), Some("Hi there"));
     }
 }

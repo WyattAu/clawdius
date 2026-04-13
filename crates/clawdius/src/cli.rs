@@ -1282,9 +1282,32 @@ async fn handle_server(host: &str, port: u16) -> anyhow::Result<()> {
     use clawdius_core::session::SessionStore;
     use tower_http::cors::CorsLayer;
 
-    let store = SessionStore::in_memory()
+    let config = clawdius_core::config::Config::load_or_default();
+
+    let sessions_dir = std::path::Path::new(".clawdius");
+    std::fs::create_dir_all(sessions_dir)?;
+    let sessions_path = sessions_dir.join("sessions.db");
+    let store = SessionStore::open(&sessions_path)
         .map_err(|e| anyhow::anyhow!("Failed to create session store: {e}"))?;
-    let state = ApiState::new(store);
+
+    let mut state = ApiState::new(store);
+
+    let provider_name = config
+        .llm
+        .default_provider
+        .as_deref()
+        .unwrap_or("anthropic");
+    match clawdius_core::llm::LlmConfig::from_config(&config.llm, provider_name)
+        .and_then(|llm_config| clawdius_core::llm::create_provider(&llm_config))
+    {
+        Ok(provider) => {
+            state = state.with_llm_client(provider);
+        },
+        Err(e) => {
+            eprintln!("Warning: LLM provider not configured: {e}. Chat endpoint will return 503.");
+        },
+    }
+
     let app = clawdius_core::api::rest::create_router(state).layer(CorsLayer::permissive());
 
     let addr = std::net::SocketAddr::from(([0, 0, 0, 0], port));

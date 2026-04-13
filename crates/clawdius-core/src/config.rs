@@ -298,6 +298,9 @@ pub struct LlmConfig {
     /// Anthropic provider settings
     #[serde(default)]
     pub anthropic: Option<ProviderConfig>,
+    /// Google Gemini provider settings
+    #[serde(default)]
+    pub google: Option<ProviderConfig>,
     /// `OpenAI` provider settings
     #[serde(default)]
     pub openai: Option<ProviderConfig>,
