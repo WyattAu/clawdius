@@ -9,11 +9,10 @@ mod json_tests;
 pub mod stream;
 
 pub use format::{
-    ActionEdit, ActionResult, BrokerResult, ChangeType, CheckpointInfo, CheckpointResult,
-    ComplianceResult, ConfigResult, ContextFile, ContextResult, ContextSymbol, FileChange,
-    FileVersionInfo, IndexResult, InitResult, JsonOutput, MetricsResult, ModeDetails, ModeInfo,
-    ModesResult, OutputFormat, OutputOptions, ProofError, RefactorFileChange, RefactorResult,
-    ResearchConcept, ResearchRelationship, ResearchResult, TelemetryResult, TestCaseInfo,
+    ActionEdit, ActionResult, ChangeType, CheckpointInfo, CheckpointResult, ConfigResult,
+    ContextFile, ContextResult, ContextSymbol, FileChange, FileVersionInfo, IndexResult,
+    InitResult, JsonOutput, MetricsResult, ModeDetails, ModeInfo, ModesResult, OutputFormat,
+    OutputOptions, ProofError, RefactorFileChange, RefactorResult, TelemetryResult, TestCaseInfo,
     TestResult, TimelineResult, TokenUsageInfo, ToolCallInfo, VerifyResult,
 };
 pub use formatter::{OutputFormatter, SessionInfo};

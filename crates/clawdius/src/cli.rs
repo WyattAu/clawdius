@@ -292,54 +292,6 @@ pub enum Commands {
         lean_path: Option<PathBuf>,
     },
 
-    #[command(about = "Activate HFT broker mode")]
-    Broker {
-        #[arg(short, long)]
-        #[arg(help = "Path to broker config")]
-        config: Option<PathBuf>,
-
-        #[arg(long)]
-        #[arg(help = "Enable paper trading (no real orders)")]
-        paper_trade: bool,
-    },
-
-    #[command(about = "Generate compliance matrix")]
-    Compliance {
-        #[arg(short, long)]
-        #[arg(help = "Standards to include (comma-separated: iso26262,do178c,iec62304)")]
-        standards: String,
-
-        #[arg(short, long, default_value = ".")]
-        #[arg(help = "Project root path")]
-        path: PathBuf,
-
-        #[arg(short, long, default_value = "markdown")]
-        #[arg(help = "Output format (markdown, toml)")]
-        format: String,
-
-        #[arg(short, long)]
-        #[arg(help = "Output file path")]
-        output: Option<PathBuf>,
-    },
-
-    #[command(about = "Multi-lingual research synthesis")]
-    Research {
-        #[arg(help = "Research query")]
-        query: String,
-
-        #[arg(short, long)]
-        #[arg(help = "Languages to search (comma-separated: en,zh,ru,de,jp)")]
-        languages: Option<String>,
-
-        #[arg(short = 'L', long, default_value = "3")]
-        #[arg(help = "Minimum TQA level (1-5)")]
-        tqa_level: u8,
-
-        #[arg(short, long, default_value = "10")]
-        #[arg(help = "Maximum results per language")]
-        max_results: usize,
-    },
-
     #[command(about = "Manage API keys in system keyring")]
     #[cfg(feature = "keyring")]
     Auth {
@@ -1199,22 +1151,6 @@ pub async fn handle_command(
         Commands::Verify { proof, lean_path } => {
             handle_verify(proof, lean_path, output_format).await
         },
-        Commands::Broker {
-            config,
-            paper_trade,
-        } => handle_broker(config, paper_trade, output_format).await,
-        Commands::Compliance {
-            standards,
-            path,
-            format,
-            output,
-        } => handle_compliance(standards, path, format, output, output_format).await,
-        Commands::Research {
-            query,
-            languages,
-            tqa_level,
-            max_results,
-        } => handle_research(query, languages, tqa_level, max_results, output_format).await,
         #[cfg(feature = "keyring")]
         Commands::Auth { action } => handle_auth(action).await,
         Commands::Metrics {
@@ -3039,81 +2975,6 @@ async fn handle_verify(
     };
 
     formatter.format_verify_result(&mut io::stdout(), &result)?;
-
-    Ok(())
-}
-
-async fn handle_broker(
-    _config: Option<PathBuf>,
-    _paper_trade: bool,
-    output_format: OutputFormat,
-) -> anyhow::Result<()> {
-    use clawdius_core::output::{BrokerResult, OutputOptions};
-    use std::io;
-
-    let options = OutputOptions {
-        format: CoreOutputFormat::from(output_format),
-        show_progress: output_format == OutputFormat::Text,
-        quiet: false,
-        include_metadata: output_format == OutputFormat::Text,
-    };
-    let formatter = OutputFormatter::new(options);
-
-    let result = BrokerResult::error("Broker command not yet implemented");
-
-    formatter.format_broker_result(&mut io::stdout(), &result)?;
-
-    Ok(())
-}
-
-async fn handle_compliance(
-    _standards: String,
-    _path: PathBuf,
-    _format: String,
-    _output: Option<PathBuf>,
-    output_format: OutputFormat,
-) -> anyhow::Result<()> {
-    use clawdius_core::output::{ComplianceResult, OutputOptions};
-    use std::io;
-
-    let options = OutputOptions {
-        format: CoreOutputFormat::from(output_format),
-        show_progress: output_format == OutputFormat::Text,
-        quiet: false,
-        include_metadata: output_format == OutputFormat::Text,
-    };
-    let formatter = OutputFormatter::new(options);
-
-    let result = ComplianceResult::error("Compliance command not yet implemented");
-
-    formatter.format_compliance_result(&mut io::stdout(), &result)?;
-
-    Ok(())
-}
-
-async fn handle_research(
-    _query: String,
-    _languages: Option<String>,
-    _tqa_level: u8,
-    _max_results: usize,
-    output_format: OutputFormat,
-) -> anyhow::Result<()> {
-    use clawdius_core::output::{OutputOptions, ResearchResult};
-    use std::io;
-
-    let options = OutputOptions {
-        format: CoreOutputFormat::from(output_format),
-        show_progress: output_format == OutputFormat::Text,
-        quiet: false,
-        include_metadata: output_format == OutputFormat::Text,
-    };
-    let formatter = OutputFormatter::new(options);
-
-    let result = ResearchResult::error(format!(
-        "Research command is not available in this build (knowledge module removed)"
-    ));
-
-    formatter.format_research_result(&mut io::stdout(), &result)?;
 
     Ok(())
 }

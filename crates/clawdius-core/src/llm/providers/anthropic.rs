@@ -15,9 +15,15 @@ pub struct AnthropicProvider {
 }
 
 impl AnthropicProvider {
-    pub fn new(_api_key: &str, model: Option<&str>) -> Result<Self> {
+    pub fn new(api_key: &str, model: Option<&str>) -> Result<Self> {
+        let key = api_key.to_string();
+        let client = genai::Client::builder()
+            .with_auth_resolver_fn(move |_model_iden| {
+                Ok(Some(genai::resolver::AuthData::from_single(key.clone())))
+            })
+            .build();
         Ok(Self {
-            client: genai::Client::default(),
+            client,
             model: model.unwrap_or("claude-3-5-sonnet-20241022").to_string(),
         })
     }

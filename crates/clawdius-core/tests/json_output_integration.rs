@@ -5,10 +5,9 @@
 
 use chrono::Utc;
 use clawdius_core::output::{
-    BrokerResult, ChangeType, ComplianceResult, ConfigResult, FileChange, FileVersionInfo,
-    InitResult, JsonOutput, MetricsResult, OutputFormat, OutputOptions, ProofError,
-    RefactorFileChange, RefactorResult, ResearchConcept, ResearchRelationship, ResearchResult,
-    TimelineResult, TokenUsageInfo, ToolCallInfo, VerifyResult,
+    ChangeType, ConfigResult, FileChange, FileVersionInfo, InitResult, JsonOutput, MetricsResult,
+    OutputFormat, OutputOptions, ProofError, RefactorFileChange, RefactorResult, TimelineResult,
+    TokenUsageInfo, ToolCallInfo, VerifyResult,
 };
 
 #[test]
@@ -214,89 +213,6 @@ fn test_refactor_result_dry_run() {
 #[test]
 fn test_refactor_result_error() {
     let result = RefactorResult::error("Unsupported language");
-
-    assert!(!result.success);
-    assert!(result.error.is_some());
-}
-
-#[test]
-fn test_broker_result_success() {
-    let result = BrokerResult::success(
-        true,
-        "connected",
-        Some("/path/to/broker.toml".to_string()),
-        "Broker initialized",
-    );
-
-    assert!(result.success);
-    assert!(result.paper_trade);
-    assert!(result.error.is_none());
-}
-
-#[test]
-fn test_broker_result_error() {
-    let result = BrokerResult::error("Connection failed");
-
-    assert!(!result.success);
-    assert!(result.error.is_some());
-}
-
-#[test]
-fn test_compliance_result_success() {
-    let standards = vec!["SOC2".to_string(), "ISO27001".to_string()];
-    let matrix = serde_json::json!({"compliant": true});
-
-    let result = ComplianceResult::success(
-        standards.clone(),
-        "/project",
-        "json",
-        Some("/output/matrix.json".to_string()),
-        matrix.clone(),
-    );
-
-    assert!(result.success);
-    assert_eq!(result.standards, standards);
-    assert!(result.error.is_none());
-}
-
-#[test]
-fn test_compliance_result_error() {
-    let result = ComplianceResult::error("Standard not found");
-
-    assert!(!result.success);
-    assert!(result.error.is_some());
-}
-
-#[test]
-fn test_research_result_success() {
-    let concepts = vec![ResearchConcept {
-        language: "rust".to_string(),
-        name: "Ownership".to_string(),
-        definition: "Memory management pattern".to_string(),
-    }];
-
-    let relationships = vec![ResearchRelationship {
-        from: "Ownership".to_string(),
-        relationship: "enables".to_string(),
-        to: "Borrowing".to_string(),
-    }];
-
-    let result = ResearchResult::success(
-        "What is ownership in Rust?",
-        vec!["rust".to_string()],
-        0.95,
-        concepts,
-        relationships,
-    );
-
-    assert!(result.success);
-    assert_eq!(result.confidence, 0.95);
-    assert!(result.error.is_none());
-}
-
-#[test]
-fn test_research_result_error() {
-    let result = ResearchResult::error("Query failed");
 
     assert!(!result.success);
     assert!(result.error.is_some());

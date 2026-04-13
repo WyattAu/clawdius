@@ -530,7 +530,6 @@ pub enum LlmProvider {
     OpenAi(providers::openai::OpenAIProvider),
     Ollama(providers::ollama::OllamaProvider),
     Local(providers::local::LocalLlmProvider),
-    Zai(providers::zai::ZaiProvider),
 }
 
 pub struct LlmClientWithRetry {
@@ -557,7 +556,6 @@ impl LlmClientWithRetry {
                 LlmProvider::OpenAi(p) => p.chat(messages.clone()).await,
                 LlmProvider::Ollama(p) => p.chat(messages.clone()).await,
                 LlmProvider::Local(p) => p.chat(messages.clone()).await,
-                LlmProvider::Zai(p) => p.chat(messages.clone()).await,
             }
         })
         .await
@@ -570,7 +568,6 @@ impl LlmClientWithRetry {
             LlmProvider::OpenAi(p) => p.count_tokens(text),
             LlmProvider::Ollama(p) => p.count_tokens(text),
             LlmProvider::Local(p) => p.count_tokens(text),
-            LlmProvider::Zai(p) => p.count_tokens(text),
         }
     }
 
@@ -587,7 +584,6 @@ impl LlmProvider {
             LlmProvider::OpenAi(p) => p.chat(messages).await,
             LlmProvider::Ollama(p) => p.chat(messages).await,
             LlmProvider::Local(p) => p.chat(messages).await,
-            LlmProvider::Zai(p) => p.chat(messages).await,
         }
     }
 
@@ -610,7 +606,6 @@ impl LlmProvider {
             LlmProvider::OpenAi(p) => p.count_tokens(text),
             LlmProvider::Ollama(p) => p.count_tokens(text),
             LlmProvider::Local(p) => p.count_tokens(text),
-            LlmProvider::Zai(p) => p.count_tokens(text),
         }
     }
 }
@@ -623,7 +618,6 @@ impl providers::LlmClient for LlmProvider {
             LlmProvider::OpenAi(p) => p.chat(messages).await,
             LlmProvider::Ollama(p) => p.chat(messages).await,
             LlmProvider::Local(p) => p.chat(messages).await,
-            LlmProvider::Zai(p) => p.chat(messages).await,
         }
     }
 
@@ -636,7 +630,6 @@ impl providers::LlmClient for LlmProvider {
             LlmProvider::OpenAi(p) => p.chat_stream(messages).await,
             LlmProvider::Ollama(p) => p.chat_stream(messages).await,
             LlmProvider::Local(p) => p.chat_stream(messages).await,
-            LlmProvider::Zai(p) => p.chat_stream(messages).await,
         }
     }
 
@@ -646,7 +639,6 @@ impl providers::LlmClient for LlmProvider {
             LlmProvider::OpenAi(p) => p.count_tokens(text),
             LlmProvider::Ollama(p) => p.count_tokens(text),
             LlmProvider::Local(p) => p.count_tokens(text),
-            LlmProvider::Zai(p) => p.count_tokens(text),
         }
     }
 }
@@ -694,21 +686,9 @@ pub fn create_provider(config: &LlmConfig) -> Result<LlmProvider> {
                 config.model.clone(),
             )))
         },
-        "zai" => {
-            let api_key = config.api_key.as_ref().ok_or_else(|| {
-                Error::Config(ErrorHelpers::api_key_missing("Z.AI", "ZAI_API_KEY").to_string())
-            })?;
-            Ok(LlmProvider::Zai(providers::zai::ZaiProvider::new(
-                api_key,
-                Some(&config.model),
-            )?))
-        },
         _ => Err(Error::Config(
-            ErrorHelpers::unknown_provider(
-                &config.provider,
-                &["anthropic", "openai", "ollama", "zai"],
-            )
-            .to_string(),
+            ErrorHelpers::unknown_provider(&config.provider, &["anthropic", "openai", "ollama"])
+                .to_string(),
         )),
     }
 }

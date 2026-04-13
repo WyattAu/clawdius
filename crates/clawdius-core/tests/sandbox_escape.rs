@@ -124,39 +124,6 @@ mod direct {
 }
 
 // ---------------------------------------------------------------------------
-// Firecracker backend — sync execute must always refuse
-// ---------------------------------------------------------------------------
-
-mod firecracker {
-    use super::*;
-
-    #[test]
-    fn refuses_sync_execution() {
-        let backend = backends::FirecrackerBackend::with_defaults();
-        let result = backend.execute("echo", &["hello"], &cwd());
-        assert!(result.is_err());
-        let msg = result.unwrap_err().to_string();
-        assert!(
-            msg.contains("async") || msg.contains("execute_async"),
-            "Expected async-related error, got: {msg}"
-        );
-    }
-
-    #[test]
-    fn name_is_firecracker() {
-        let backend = backends::FirecrackerBackend::with_defaults();
-        assert_eq!(backend.name(), "firecracker");
-    }
-
-    #[test]
-    fn config_defaults() {
-        let backend = backends::FirecrackerBackend::with_defaults();
-        // Just ensure construction succeeds
-        let _ = &backend;
-    }
-}
-
-// ---------------------------------------------------------------------------
 // Container backend — only run when runtime is available
 // ---------------------------------------------------------------------------
 
@@ -202,27 +169,6 @@ mod container {
 // ---------------------------------------------------------------------------
 // gVisor backend
 // ---------------------------------------------------------------------------
-
-mod gvisor {
-    use super::*;
-
-    #[test]
-    fn config_defaults() {
-        let config = backends::GVisorConfig::default();
-        assert!(config.rootless);
-        assert!(!config.network);
-    }
-
-    #[test]
-    fn is_available_does_not_panic() {
-        let _ = backends::GVisorBackend::is_available();
-    }
-
-    #[test]
-    fn construction_succeeds() {
-        let _ = backends::GVisorBackend::with_defaults();
-    }
-}
 
 // ---------------------------------------------------------------------------
 // SandboxExecutor — tier-based routing and fallback
@@ -304,20 +250,5 @@ mod detection {
     #[test]
     fn is_container_available_does_not_panic() {
         let _ = backends::is_container_available();
-    }
-
-    #[test]
-    fn is_gvisor_available_does_not_panic() {
-        let _ = backends::is_gvisor_available();
-    }
-
-    #[test]
-    fn is_firecracker_available_does_not_panic() {
-        let _ = backends::is_firecracker_available();
-    }
-
-    #[test]
-    fn is_kvm_available_does_not_panic() {
-        let _ = backends::is_kvm_available();
     }
 }

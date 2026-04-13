@@ -125,7 +125,6 @@ order = [
 
 [proof_status]
 proof_fsm = { file = "proofs/proof_fsm.lean", status = "sketch", theorems = 3 }
-proof_broker = { file = "proofs/proof_broker.lean", status = "sketch", theorems = 2 }
 proof_sandbox = { file = "proofs/proof_sandbox.lean", status = "sketch", theorems = 3 }
 
 [interface_contracts]

@@ -48,8 +48,6 @@ pub enum SandboxBackend {
     Container,
     /// Bubblewrap (Linux only)
     Bubblewrap,
-    /// gVisor runsc
-    GVisor,
     /// macOS sandbox-exec
     SandboxExec,
     /// Filtered filesystem access
@@ -138,7 +136,6 @@ impl TestExecutionStrategy {
                 SandboxBackend::Wasm => "Sandboxed (WASM)",
                 SandboxBackend::Container => "Sandboxed (Container)",
                 SandboxBackend::Bubblewrap => "Sandboxed (Bubblewrap)",
-                SandboxBackend::GVisor => "Sandboxed (gVisor)",
                 SandboxBackend::SandboxExec => "Sandboxed (macOS)",
                 SandboxBackend::Filtered => "Sandboxed (Filtered)",
             },
@@ -307,7 +304,6 @@ impl TestRunner {
                 ));
             },
             SandboxBackend::Container => self.run_container_tests(timeout, &cwd).await?,
-            SandboxBackend::GVisor => self.run_gvisor_tests(timeout, &cwd).await?,
             SandboxBackend::Bubblewrap => self.run_bubblewrap_tests(timeout, &cwd).await?,
             SandboxBackend::SandboxExec => self.run_sandbox_exec_tests(timeout, &cwd).await?,
             SandboxBackend::Filtered => self.run_filtered_tests(timeout, &cwd).await?,
@@ -332,20 +328,6 @@ impl TestRunner {
         tokio::time::timeout(
             timeout,
             container_backend.execute_async("cargo", &["test", "--color=never"], cwd),
-        )
-        .await
-        .map_err(|_| crate::error::Error::Timeout(timeout))?
-    }
-
-    async fn run_gvisor_tests(
-        &self,
-        timeout: Duration,
-        cwd: &Path,
-    ) -> crate::error::Result<std::process::Output> {
-        let gvisor_backend = crate::sandbox::backends::GVisorBackend::with_defaults();
-        tokio::time::timeout(
-            timeout,
-            gvisor_backend.execute_async("cargo", &["test", "--color=never"], cwd),
         )
         .await
         .map_err(|_| crate::error::Error::Timeout(timeout))?

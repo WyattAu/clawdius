@@ -1,7 +1,7 @@
 //! Sandbox executor
 
 use crate::error::{Error, Result};
-use crate::sandbox::backends::{ContainerBackend, GVisorBackend};
+use crate::sandbox::backends::ContainerBackend;
 use crate::sandbox::backends::{DirectBackend, FilteredBackend, SandboxBackend};
 use crate::sandbox::tiers::SandboxConfig;
 use crate::sandbox::SandboxTier;
@@ -89,12 +89,7 @@ impl SandboxExecutor {
     /// backends are unavailable, we degrade to `filtered` (blocklist) rather
     /// than running with zero protection.
     fn best_available_sandbox(config: SandboxConfig) -> Box<dyn SandboxBackend> {
-        // Priority 1: gVisor (strongest userspace isolation — intercepts all syscalls)
-        if GVisorBackend::is_available() {
-            return Box::new(GVisorBackend::with_defaults());
-        }
-
-        // Priority 2: Container (Docker/Podman with --rm --network=none)
+        // Priority 1: Container (Docker/Podman with --rm --network=none)
         if ContainerBackend::is_available() {
             return Box::new(ContainerBackend::with_defaults());
         }
@@ -116,18 +111,13 @@ impl SandboxExecutor {
         tracing::error!(
             "No sandbox isolation backend available. \
              Falling back to filtered execution (command blocklist only). \
-             Install gVisor, Docker/Podman, or bubblewrap for proper isolation."
+             Install Docker/Podman or bubblewrap for proper isolation."
         );
         Box::new(FilteredBackend::new(config))
     }
 
     #[cfg(target_os = "linux")]
     fn platform_sandbox(config: SandboxConfig) -> Result<Box<dyn SandboxBackend>> {
-        // Try gVisor first (strongest isolation without KVM)
-        if GVisorBackend::is_available() {
-            return Ok(Box::new(GVisorBackend::with_defaults()));
-        }
-
         // Try Container backend (Docker/Podman)
         if ContainerBackend::is_available() {
             return Ok(Box::new(ContainerBackend::with_defaults()));

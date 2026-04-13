@@ -4,7 +4,6 @@ pub mod anthropic;
 pub mod local;
 pub mod ollama;
 pub mod openai;
-pub mod zai;
 
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
@@ -32,7 +31,6 @@ pub enum Provider {
     DeepSeek,
     Ollama,
     Local,
-    Zai,
     /// OpenRouter provider (not yet implemented — use OpenAI-compatible API with a
     /// custom base URL pointing to `https://openrouter.ai/api/v1`)
     OpenRouter,
