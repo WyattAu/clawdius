@@ -39,6 +39,11 @@ crossterm.workspace = true
 # Syntax highlighting
 syntect.workspace = true
 
+# HTTP
+axum.workspace = true
+tower.workspace = true
+tower-http = { workspace = true, features = ["cors"] }
+
 # Utilities
 tracing.workspace = true
 tracing-subscriber.workspace = true

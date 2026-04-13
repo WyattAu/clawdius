@@ -1,11 +1,5 @@
 target/
 .git/
-.specs/
 node_modules/
-*.md
-!README.md
-tests/
-benches/
-fuzz/
-examples/
-dependency-check-results/
+.clawdius/
+deploy/

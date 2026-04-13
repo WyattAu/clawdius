@@ -2,7 +2,7 @@
 # Multi-stage build for optimized production image
 
 # Build stage
-FROM rust:1.88-slim AS builder
+FROM rust:1.93 AS builder
 
 WORKDIR /build
 
@@ -17,9 +17,7 @@ COPY Cargo.toml Cargo.lock ./
 COPY crates/clawdius-core ./crates/clawdius-core
 COPY crates/clawdius ./crates/clawdius
 COPY crates/clawdius-code ./crates/clawdius-code
-COPY crates/clawdius-server ./crates/clawdius-server
-COPY crates/clawdius-webview ./crates/clawdius-webview
-COPY src ./src
+COPY crates/clawdius-mcp ./crates/clawdius-mcp
 
 # Build release binary
 RUN cargo build --release -p clawdius --bin clawdius
@@ -53,11 +51,11 @@ COPY deploy/docker/config.toml /app/config/config.toml
 USER clawdius
 
 # Expose default port
-EXPOSE 3000
+EXPOSE 8080
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:3000/health || exit 1
+    CMD curl -f http://localhost:8080/api/v1/health || exit 1
 
 # Default configuration file path
 ENV CLAWDIUS_CONFIG=/app/config/config.toml
@@ -66,4 +64,4 @@ ENV CLAWDIUS_LOG_DIR=/app/logs
 
 # Run the server
 ENTRYPOINT ["clawdius"]
-CMD ["server", "--host", "0.0.0.0", "--port", "3000"]
+CMD ["server", "--host", "0.0.0.0", "--port", "8080"]

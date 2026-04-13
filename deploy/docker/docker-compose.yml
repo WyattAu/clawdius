@@ -4,7 +4,7 @@
 version: "3.9"
 
 services:
-  clawdius-server:
+  clawdius:
     build:
       context: ../..
       dockerfile: deploy/docker/Dockerfile
@@ -12,7 +12,7 @@ services:
     container_name: clawdius-server
     restart: unless-stopped
     ports:
-      - "${CLAWDIUS_PORT:-3000}:3000"
+      - "${CLAWDIUS_PORT:-8080}:8080"
     volumes:
       - clawdius-data:/app/data
       - clawdius-config:/app/config
@@ -27,10 +27,12 @@ services:
     depends_on:
       ollama:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     networks:
       - clawdius-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/v1/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -70,7 +72,6 @@ services:
               count: all
               capabilities: [gpu]
 
-  # Optional: Redis for caching
   redis:
     image: redis:7-alpine
     container_name: clawdius-redis
@@ -86,8 +87,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 3
-    profiles:
-      - cache
 
   # Optional: Prometheus for metrics
   prometheus:

@@ -6,6 +6,7 @@
 use axum::{
     extract::{Path, State},
     http::StatusCode,
+    middleware,
     response::Json,
     routing::{get, post},
     Router,
@@ -15,6 +16,7 @@ use std::collections::HashMap;
 use tokio::sync::{mpsc, oneshot};
 use uuid::Uuid;
 
+use crate::api::auth::{auth_middleware, ApiKeyAuth};
 use crate::api::routes::{ChatRequest, ChatResponse, HealthResponse};
 use crate::session::{Session, SessionId, SessionStore};
 
@@ -126,6 +128,7 @@ impl DbActor {
 pub struct ApiState {
     pub db: DbActor,
     pub version: String,
+    pub api_keys: HashMap<String, String>,
 }
 
 impl ApiState {
@@ -134,7 +137,13 @@ impl ApiState {
         Self {
             db: DbActor::new(session_store),
             version: env!("CARGO_PKG_VERSION").to_string(),
+            api_keys: HashMap::new(),
         }
+    }
+
+    pub fn with_api_keys(mut self, keys: HashMap<String, String>) -> Self {
+        self.api_keys = keys;
+        self
     }
 }
 
@@ -384,9 +393,13 @@ pub async fn list_marketplace_plugins() -> Json<Vec<PluginInfo>> {
 
 /// Create the REST API router
 pub fn create_router(state: ApiState) -> Router {
-    Router::new()
-        .route("/api/v1/health", get(health_endpoint))
-        .route("/api/v1/ready", get(readiness_check))
+    let auth = ApiKeyAuth::from_config(if state.api_keys.is_empty() {
+        None
+    } else {
+        Some(state.api_keys.clone())
+    });
+
+    let protected_routes = Router::new()
         .route("/api/v1/sessions", get(list_sessions).post(create_session))
         .route(
             "/api/v1/sessions/{id}",
@@ -396,6 +409,20 @@ pub fn create_router(state: ApiState) -> Router {
         .route("/api/v1/tools", get(list_tools))
         .route("/api/v1/tools/execute", post(execute_tool))
         .route("/api/v1/plugins", get(list_plugins))
-        .route("/api/v1/plugins/marketplace", get(list_marketplace_plugins))
+        .route("/api/v1/plugins/marketplace", get(list_marketplace_plugins));
+
+    let protected = if auth.is_enabled() {
+        protected_routes.layer(middleware::from_fn_with_state(
+            auth.clone(),
+            auth_middleware,
+        ))
+    } else {
+        protected_routes
+    };
+
+    Router::new()
+        .route("/api/v1/health", get(health_endpoint))
+        .route("/api/v1/ready", get(readiness_check))
+        .merge(protected)
         .with_state(state)
 }

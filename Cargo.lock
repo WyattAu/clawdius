@@ -1513,6 +1513,7 @@ version = "1.6.0"
 dependencies = [
  "anyhow",
  "async-trait",
+ "axum",
  "chrono",
  "clap",
  "clawdius-core",
@@ -1531,6 +1532,8 @@ dependencies = [
  "thiserror 2.0.18",
  "tokio",
  "toml",
+ "tower 0.5.3",
+ "tower-http",
  "tracing",
  "tracing-subscriber",
  "uuid",

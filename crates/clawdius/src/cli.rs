@@ -555,6 +555,14 @@ pub enum Commands {
         #[command(subcommand)]
         action: GitCommands,
     },
+
+    #[command(about = "Start the Clawdius HTTP server")]
+    Server {
+        #[arg(long, default_value = "0.0.0.0")]
+        host: String,
+        #[arg(short, long, default_value = "8080")]
+        port: u16,
+    },
 }
 
 #[derive(Subcommand)]
@@ -1265,7 +1273,35 @@ pub async fn handle_command(
             .await
         },
         Commands::Git { action } => handle_git(action, config_path).await,
+        Commands::Server { host, port } => handle_server(&host, port).await,
     }
+}
+
+async fn handle_server(host: &str, port: u16) -> anyhow::Result<()> {
+    use clawdius_core::api::rest::ApiState;
+    use clawdius_core::session::SessionStore;
+    use tower_http::cors::CorsLayer;
+
+    let store = SessionStore::in_memory()
+        .map_err(|e| anyhow::anyhow!("Failed to create session store: {e}"))?;
+    let state = ApiState::new(store);
+    let app = clawdius_core::api::rest::create_router(state).layer(CorsLayer::permissive());
+
+    let addr = std::net::SocketAddr::from(([0, 0, 0, 0], port));
+    let listener = tokio::net::TcpListener::bind(addr).await?;
+    println!("Clawdius server listening on {host}:{port}");
+
+    axum::serve(listener, app)
+        .with_graceful_shutdown(shutdown_signal())
+        .await?;
+
+    Ok(())
+}
+
+async fn shutdown_signal() {
+    tokio::signal::ctrl_c()
+        .await
+        .expect("Failed to install Ctrl+C handler");
 }
 
 async fn handle_git(action: GitCommands, config_path: Option<PathBuf>) -> anyhow::Result<()> {
