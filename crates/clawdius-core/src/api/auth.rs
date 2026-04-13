@@ -8,6 +8,8 @@ use axum::{
 };
 use std::collections::HashMap;
 
+use crate::api::tenant::AuthenticatedApiKey;
+
 #[derive(Clone)]
 pub struct ApiKeyAuth {
     valid_keys: HashMap<String, String>,
@@ -56,7 +58,7 @@ fn extract_bearer_token(headers: &header::HeaderMap) -> Option<String> {
 
 pub async fn auth_middleware(
     axum::extract::State(auth): axum::extract::State<ApiKeyAuth>,
-    request: Request,
+    mut request: Request,
     next: Next,
 ) -> Response {
     if !auth.enabled || should_skip(request.uri().path()) {
@@ -67,6 +69,7 @@ pub async fn auth_middleware(
         None => unauthorized_response("Missing authorization header"),
         Some(token) => {
             if auth.valid_keys.values().any(|v| v == &token) {
+                request.extensions_mut().insert(AuthenticatedApiKey(token));
                 next.run(request).await
             } else {
                 forbidden_response("Invalid API key")

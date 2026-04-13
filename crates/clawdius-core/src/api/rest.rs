@@ -4,7 +4,7 @@
 //! for thread-safe database access.
 
 use axum::{
-    extract::{Path, State},
+    extract::{Extension, Path, State},
     http::StatusCode,
     middleware,
     response::Json,
@@ -13,11 +13,16 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::sync::{Arc, RwLock};
 use tokio::sync::{mpsc, oneshot};
 use uuid::Uuid;
 
 use crate::api::auth::{auth_middleware, ApiKeyAuth};
+use crate::api::gateway::RateLimitConfig;
+use crate::api::metrics_handler;
+use crate::api::rate_limit::{rate_limit_middleware, ApiRateLimiter};
 use crate::api::routes::{ChatRequest, ChatResponse, HealthResponse};
+use crate::api::tenant::{default_tenants, AuthenticatedApiKey, TenantStore};
 use crate::session::{Session, SessionId, SessionStore};
 
 // ============================================================================
@@ -129,6 +134,8 @@ pub struct ApiState {
     pub db: DbActor,
     pub version: String,
     pub api_keys: HashMap<String, String>,
+    pub rate_limit_config: Option<RateLimitConfig>,
+    pub tenant_store: Arc<RwLock<TenantStore>>,
 }
 
 impl ApiState {
@@ -138,11 +145,18 @@ impl ApiState {
             db: DbActor::new(session_store),
             version: env!("CARGO_PKG_VERSION").to_string(),
             api_keys: HashMap::new(),
+            rate_limit_config: None,
+            tenant_store: Arc::new(RwLock::new(default_tenants())),
         }
     }
 
     pub fn with_api_keys(mut self, keys: HashMap<String, String>) -> Self {
         self.api_keys = keys;
+        self
+    }
+
+    pub fn with_rate_limit_config(mut self, config: RateLimitConfig) -> Self {
+        self.rate_limit_config = Some(config);
         self
     }
 }
@@ -388,6 +402,73 @@ pub async fn list_marketplace_plugins() -> Json<Vec<PluginInfo>> {
 }
 
 // ============================================================================
+// Usage Endpoints
+// ============================================================================
+
+#[derive(Debug, Serialize)]
+pub struct UsageResponse {
+    pub tenant_id: String,
+    pub tier: String,
+    pub llm_requests: u64,
+    pub total_tokens: u64,
+    pub sessions: u64,
+    pub quota: QuotaInfo,
+}
+
+#[derive(Debug, Serialize)]
+pub struct QuotaInfo {
+    pub tasks_hour: u64,
+    pub tasks_hour_limit: u64,
+    pub tasks_day: u64,
+    pub tasks_day_limit: u64,
+}
+
+/// GET /api/v1/usage - Usage summary for the authenticated tenant
+pub async fn usage_endpoint(
+    State(state): State<ApiState>,
+    api_key: Option<Extension<AuthenticatedApiKey>>,
+) -> Json<UsageResponse> {
+    use crate::telemetry::metrics;
+    use std::sync::atomic::Ordering;
+
+    let store = state.tenant_store.read().unwrap();
+
+    let tenant = match api_key {
+        Some(Extension(key)) => store.get_tenant_by_api_key(&key.0),
+        None => store.get_tenant("default"),
+    };
+
+    let (tenant_id, tier, hour_limit, day_limit) = match tenant {
+        Some(t) => (
+            t.id.clone(),
+            t.tier.as_str().to_string(),
+            t.tier.tasks_hour_limit(),
+            t.tier.tasks_day_limit(),
+        ),
+        None => ("default".to_string(), "free".to_string(), 10, 50),
+    };
+
+    let m = metrics();
+    let requests = m.requests_total.load(Ordering::Relaxed);
+    let tokens = m.tokens_used.load(Ordering::Relaxed);
+    let sessions = m.sessions_total.load(Ordering::Relaxed);
+
+    Json(UsageResponse {
+        tenant_id,
+        tier,
+        llm_requests: requests,
+        total_tokens: tokens,
+        sessions,
+        quota: QuotaInfo {
+            tasks_hour: requests,
+            tasks_hour_limit: hour_limit,
+            tasks_day: requests,
+            tasks_day_limit: day_limit,
+        },
+    })
+}
+
+// ============================================================================
 // Router Setup
 // ============================================================================
 
@@ -409,7 +490,8 @@ pub fn create_router(state: ApiState) -> Router {
         .route("/api/v1/tools", get(list_tools))
         .route("/api/v1/tools/execute", post(execute_tool))
         .route("/api/v1/plugins", get(list_plugins))
-        .route("/api/v1/plugins/marketplace", get(list_marketplace_plugins));
+        .route("/api/v1/plugins/marketplace", get(list_marketplace_plugins))
+        .route("/api/v1/usage", get(usage_endpoint));
 
     let protected = if auth.is_enabled() {
         protected_routes.layer(middleware::from_fn_with_state(
@@ -420,9 +502,20 @@ pub fn create_router(state: ApiState) -> Router {
         protected_routes
     };
 
-    Router::new()
+    let router = Router::new()
+        .route("/metrics", get(metrics_handler::metrics_handler))
         .route("/api/v1/health", get(health_endpoint))
         .route("/api/v1/ready", get(readiness_check))
         .merge(protected)
-        .with_state(state)
+        .with_state(state.clone());
+
+    if let Some(config) = state.rate_limit_config.clone() {
+        let limiter = ApiRateLimiter::new(config);
+        router.layer(middleware::from_fn_with_state(
+            limiter,
+            rate_limit_middleware,
+        ))
+    } else {
+        router
+    }
 }
