@@ -22,10 +22,12 @@ use crate::error::Result;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 
+pub mod openai_api;
 #[cfg(feature = "embeddings")]
 pub mod real;
 pub mod simple;
 
+pub use openai_api::OpenAiApiEmbedder;
 #[cfg(feature = "embeddings")]
 pub use real::SentenceEmbedder;
 pub use simple::SimpleEmbedder;
@@ -40,6 +42,7 @@ pub trait EmbeddingGenerator: Send + Sync {
 #[serde(rename_all = "snake_case")]
 pub enum EmbedderType {
     Simple,
+    OpenAiApi,
     #[cfg(feature = "embeddings")]
     SentenceTransformers,
 }
@@ -51,6 +54,8 @@ pub struct EmbedderConfig {
     pub model: Option<String>,
     pub model_path: Option<String>,
     pub batch_size: Option<usize>,
+    pub api_key: Option<String>,
+    pub base_url: Option<String>,
 }
 
 impl Default for EmbedderConfig {
@@ -60,6 +65,8 @@ impl Default for EmbedderConfig {
             model: None,
             model_path: None,
             batch_size: Some(32),
+            api_key: None,
+            base_url: None,
         }
     }
 }
@@ -69,6 +76,23 @@ pub fn create_embedder(config: &EmbedderConfig) -> Result<Box<dyn EmbeddingGener
         EmbedderType::Simple => {
             let dimension = 384;
             Ok(Box::new(SimpleEmbedder::new(dimension)))
+        },
+        EmbedderType::OpenAiApi => {
+            use openai_api::OpenAiApiConfig;
+            let api_config = OpenAiApiConfig {
+                api_key: config.api_key.clone().unwrap_or_default(),
+                base_url: config
+                    .base_url
+                    .clone()
+                    .unwrap_or_else(|| "https://api.openai.com/v1".to_string()),
+                model: config
+                    .model
+                    .clone()
+                    .unwrap_or_else(|| "text-embedding-3-small".to_string()),
+                dimension: None,
+                timeout_secs: 30,
+            };
+            Ok(Box::new(OpenAiApiEmbedder::new(api_config)?))
         },
         #[cfg(feature = "embeddings")]
         EmbedderType::SentenceTransformers => {
