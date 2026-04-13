@@ -36,6 +36,7 @@
 //! ```
 
 pub mod apply_workflow;
+pub mod code_parser;
 pub mod error_recovery;
 pub mod executor_agent;
 pub mod file_ops;
@@ -52,6 +53,7 @@ pub mod verifier_agent;
 pub use apply_workflow::{
     ApplyWorkflow, Checkpoint, CheckpointManager, TrustLevel, WorkflowResult,
 };
+pub use code_parser::ParsedFileChange;
 pub use error_recovery::{
     CompilationError, ErrorRecovery, ErrorRecoveryConfig, ErrorRecoveryResult,
 };
@@ -366,7 +368,80 @@ impl AgenticSystem {
                 component: "AgenticSystem".to_string(),
                 message: format!("Running tests with strategy {:?}", self.test_strategy),
             });
-            Some(self.test_runner.run_tests(&changes).await?)
+            let result = self.test_runner.run_tests(&changes).await?;
+
+            // Error recovery: if tests failed and we have an LLM, try to fix
+            if !result.passed {
+                if let Some(client) = &self.llm_client {
+                    log.push(LogEntry {
+                        timestamp: current_timestamp(),
+                        level: LogLevel::Info,
+                        component: "AgenticSystem".to_string(),
+                        message: "Tests failed, attempting error recovery".to_string(),
+                    });
+
+                    let recovery = ErrorRecovery::with_config(
+                        Arc::clone(client),
+                        ErrorRecoveryConfig::default(),
+                    );
+
+                    // Try to fix each changed file that has errors
+                    let mut fixed_changes = changes.clone();
+                    for change in &mut fixed_changes {
+                        let language = detect_language_from_path(&change.path);
+                        let errors = error_recovery::parse_compiler_output(&result.output);
+
+                        if errors.is_empty() {
+                            continue;
+                        }
+
+                        match recovery.recover(&change.new, &errors, language).await {
+                            Ok(recovery_result) if recovery_result.success => {
+                                log.push(LogEntry {
+                                    timestamp: current_timestamp(),
+                                    level: LogLevel::Info,
+                                    component: "AgenticSystem".to_string(),
+                                    message: format!(
+                                        "Error recovery fixed {} ({} attempt(s))",
+                                        change.path, recovery_result.retries_used
+                                    ),
+                                });
+                                change.new = recovery_result.fixed_code;
+                            },
+                            Ok(recovery_result) => {
+                                log.push(LogEntry {
+                                    timestamp: current_timestamp(),
+                                    level: LogLevel::Warn,
+                                    component: "AgenticSystem".to_string(),
+                                    message: format!(
+                                        "Error recovery failed for {} after {} attempt(s), {} error(s) remaining",
+                                        change.path,
+                                        recovery_result.retries_used,
+                                        recovery_result.errors_remaining.len()
+                                    ),
+                                });
+                            },
+                            Err(e) => {
+                                log.push(LogEntry {
+                                    timestamp: current_timestamp(),
+                                    level: LogLevel::Warn,
+                                    component: "AgenticSystem".to_string(),
+                                    message: format!(
+                                        "Error recovery errored for {}: {}",
+                                        change.path, e
+                                    ),
+                                });
+                            },
+                        }
+                    }
+
+                    Some(result)
+                } else {
+                    Some(result)
+                }
+            } else {
+                Some(result)
+            }
         } else {
             None
         };
@@ -735,6 +810,39 @@ fn current_timestamp() -> u64 {
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_millis() as u64)
         .unwrap_or(0)
+}
+
+/// Detects a programming language from a file path extension.
+fn detect_language_from_path(path: &str) -> &str {
+    match std::path::Path::new(path)
+        .extension()
+        .and_then(|e| e.to_str())
+    {
+        Some("rs") => "rust",
+        Some("py") => "python",
+        Some("ts") => "typescript",
+        Some("tsx") => "typescript",
+        Some("js") => "javascript",
+        Some("jsx") => "javascript",
+        Some("go") => "go",
+        Some("java") => "java",
+        Some("c") => "c",
+        Some("cpp") | Some("cc") | Some("cxx") => "cpp",
+        Some("h") | Some("hpp") => "c",
+        Some("rb") => "ruby",
+        Some("swift") => "swift",
+        Some("kt") | Some("kts") => "kotlin",
+        Some("scala") => "scala",
+        Some("sh") | Some("bash") | Some("zsh") => "bash",
+        Some("sql") => "sql",
+        Some("html") => "html",
+        Some("css") => "css",
+        Some("md") => "markdown",
+        Some("toml") => "toml",
+        Some("yaml") | Some("yml") => "yaml",
+        Some("json") => "json",
+        _ => "unknown",
+    }
 }
 
 #[cfg(test)]

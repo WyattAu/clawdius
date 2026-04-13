@@ -258,7 +258,7 @@ impl ExecutorAgent {
     async fn execute_step(
         &self,
         step: &super::TaskStep,
-        _log: &mut Vec<crate::agentic::LogEntry>,
+        log: &mut Vec<crate::agentic::LogEntry>,
     ) -> Result<StepResult> {
         let start = std::time::Instant::now();
 
@@ -313,12 +313,52 @@ impl ExecutorAgent {
 
         let duration_ms = start.elapsed().as_millis() as u64;
 
+        // For GenerateCode steps, parse the LLM output into structured file changes
+        let parsed_changes = if matches!(&step.action, super::StepAction::GenerateCode { .. }) {
+            if let Ok(ref output) = &result {
+                let parsed = super::code_parser::parse_llm_output(output);
+                if !parsed.is_empty() {
+                    log.push(crate::agentic::LogEntry {
+                        timestamp: std::time::SystemTime::now()
+                            .duration_since(std::time::UNIX_EPOCH)
+                            .map(|d| d.as_millis() as u64)
+                            .unwrap_or(0),
+                        level: crate::agentic::LogLevel::Info,
+                        component: "ExecutorAgent".to_string(),
+                        message: format!("Parsed {} file change(s) from LLM output", parsed.len()),
+                    });
+                }
+                let changes: Vec<super::FileChange> = parsed
+                    .into_iter()
+                    .map(|p| {
+                        let original = std::fs::read_to_string(&p.path).ok();
+                        super::FileChange {
+                            path: p.path,
+                            change_type: if original.is_some() {
+                                super::ChangeType::Modified
+                            } else {
+                                super::ChangeType::Created
+                            },
+                            original,
+                            new: p.content,
+                            diff: String::new(), // Will be computed if needed
+                        }
+                    })
+                    .collect();
+                Some(changes)
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+
         match result {
             Ok(output) => Ok(StepResult {
                 step_id: step.id.clone(),
                 success: true,
                 output: Some(output),
-                changes: None,
+                changes: parsed_changes,
                 duration_ms,
                 error: None,
             }),
