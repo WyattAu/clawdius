@@ -1630,6 +1630,7 @@ dependencies = [
  "clawdius-core",
  "serde",
  "serde_json",
+ "tokio",
 ]
 
 [[package]]
