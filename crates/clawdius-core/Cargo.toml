@@ -114,6 +114,10 @@ urlencoding = "2.1"
 sysinfo.workspace = true
 parking_lot.workspace = true
 
+# WASI Sandbox
+wasmtime = { workspace = true }
+wasmtime-wasi = "42"
+
 # Redis (optional, for orchestrator queue)
 redis = { version = "0.27", features = ["tokio-comp", "connection-manager"], optional = true }
 
@@ -124,6 +128,7 @@ mockall.workspace = true
 httpmock = { workspace = true }
 proptest.workspace = true
 loom = "0.7"
+wat = "1"
 
 [[bench]]
 name = "core_bench"
