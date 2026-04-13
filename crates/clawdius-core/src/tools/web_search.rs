@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use crate::error::Result;
+use crate::tools::html_compressor::HtmlCompressor;
 
 #[derive(Debug, Error)]
 pub enum WebSearchError {
@@ -296,38 +297,11 @@ impl WebSearchTool {
             .await
             .map_err(|e| WebSearchError::FetchFailed(e.to_string()))?;
 
-        Ok(self.extract_text(&html))
-    }
+        let compressed = HtmlCompressor::new()
+            .compress(&html)
+            .map_err(|e| WebSearchError::ExtractionFailed(e.to_string()))?;
 
-    fn extract_text(&self, html: &str) -> String {
-        let text = self.strip_html_tags(html);
-
-        let text = self.decode_html_entities(&text);
-
-        let whitespace_regex = Regex::new(r"\s+").expect(r"\s+ is a valid regex");
-        let text = whitespace_regex.replace_all(&text, " ").to_string();
-
-        let lines: Vec<&str> = text.lines().collect();
-        let mut result = String::new();
-        let mut prev_empty = false;
-
-        for line in &lines {
-            let trimmed = line.trim();
-            if trimmed.is_empty() {
-                if !prev_empty {
-                    result.push('\n');
-                    prev_empty = true;
-                }
-            } else {
-                if !result.is_empty() && !result.ends_with('\n') {
-                    result.push(' ');
-                }
-                result.push_str(trimmed);
-                prev_empty = false;
-            }
-        }
-
-        result.trim().to_string()
+        Ok(compressed.markdown)
     }
 
     fn strip_html_tags(&self, html: &str) -> String {
