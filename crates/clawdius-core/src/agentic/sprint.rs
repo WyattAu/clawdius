@@ -1,9 +1,12 @@
+use crate::agentic::error_recovery::parse_compiler_output;
+use crate::agentic::error_recovery::{ErrorRecovery, ErrorRecoveryConfig};
+use crate::agentic::tool_executor::{ToolExecutor, ToolRequest};
 use crate::llm::providers::LlmClient;
 use crate::llm::{ChatMessage, ChatRole};
 use crate::Result;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use thiserror::Error;
 
@@ -129,6 +132,12 @@ pub struct SprintConfig {
     pub skip_phases: Vec<SprintPhase>,
     pub max_iterations: usize,
     pub model: Option<String>,
+    /// Shell command to run for the Build phase (e.g., "cargo build 2>&1")
+    pub build_command: String,
+    /// Shell command to run for the Test phase (e.g., "cargo test --lib 2>&1")
+    pub test_command: String,
+    /// Whether to execute real build/test commands via ToolExecutor
+    pub real_execution: bool,
 }
 
 impl SprintConfig {
@@ -140,6 +149,9 @@ impl SprintConfig {
             skip_phases: Vec::new(),
             max_iterations: 3,
             model: None,
+            build_command: "cargo build 2>&1".to_string(),
+            test_command: "cargo test --lib 2>&1".to_string(),
+            real_execution: false,
         }
     }
 }
@@ -214,11 +226,22 @@ impl From<SprintError> for crate::Error {
 
 pub struct SprintEngine {
     llm: Arc<dyn LlmClient>,
+    tool_executor: Option<Arc<dyn ToolExecutor>>,
 }
 
 impl SprintEngine {
     pub fn new(llm: Arc<dyn LlmClient>) -> Self {
-        Self { llm }
+        Self {
+            llm,
+            tool_executor: None,
+        }
+    }
+
+    /// Attach a tool executor for real command execution (build, test).
+    #[must_use]
+    pub fn with_tool_executor(mut self, executor: Arc<dyn ToolExecutor>) -> Self {
+        self.tool_executor = Some(executor);
+        self
     }
 
     pub async fn run(&self, config: SprintConfig) -> Result<SprintResult> {
@@ -258,6 +281,31 @@ impl SprintEngine {
                         tokens_used: 0,
                     }
                 },
+            };
+
+            // M3: If real_execution is enabled and phase is Build or Test,
+            // run the actual command via ToolExecutor
+            let result = if state.config.real_execution
+                && self.tool_executor.is_some()
+                && (*phase == SprintPhase::Build || *phase == SprintPhase::Test)
+            {
+                match self.execute_real_phase(&state, phase, result).await {
+                    Ok(r) => r,
+                    Err(e) => {
+                        eprintln!("Real execution error in phase {phase}: {e}");
+                        PhaseResult {
+                            phase: phase.clone(),
+                            status: PhaseStatus::Failed,
+                            output: format!("Real execution failed: {e}"),
+                            duration_ms: 0,
+                            files_modified: Vec::new(),
+                            errors: vec![e.to_string()],
+                            tokens_used: 0,
+                        }
+                    },
+                }
+            } else {
+                result
             };
 
             if result.status == PhaseStatus::Failed {
@@ -357,7 +405,7 @@ impl SprintEngine {
 
     /// Create a git checkpoint (stash) before building.
     /// Returns the stash ref if successful, None if not in a git repo or on error.
-    fn create_checkpoint(project_root: &std::path::Path) -> Option<String> {
+    fn create_checkpoint(project_root: &Path) -> Option<String> {
         use std::process::Command;
 
         // Check if we're in a git repo
@@ -381,9 +429,6 @@ impl SprintEngine {
             .ok()?;
 
         if output.status.success() {
-            // Parse the stash ref from output like "Saved working directory and index state On main: clawdius-sprint-checkpoint-..."
-            let stdout = String::from_utf8_lossy(&output.stdout);
-            // The stash is available as stash@{0}
             Some(format!("stash@{{0}}"))
         } else {
             let stderr = String::from_utf8_lossy(&output.stderr);
@@ -394,7 +439,7 @@ impl SprintEngine {
 
     /// Roll back to a previously created checkpoint.
     /// Returns Ok(()) on success, Err on failure.
-    pub fn rollback(project_root: &std::path::Path, checkpoint_ref: &str) -> Result<()> {
+    pub fn rollback(project_root: &Path, checkpoint_ref: &str) -> Result<()> {
         use std::process::Command;
 
         let output = Command::new("git")
@@ -408,6 +453,216 @@ impl SprintEngine {
         } else {
             let stderr = String::from_utf8_lossy(&output.stderr);
             Err(crate::Error::Sprint(format!("Rollback failed: {stderr}")))
+        }
+    }
+
+    /// Detect a programming language from a file path extension.
+    pub fn detect_language(path: &str) -> &'static str {
+        match Path::new(path).extension().and_then(|e| e.to_str()) {
+            Some("rs") => "rust",
+            Some("py") => "python",
+            Some("ts") | Some("tsx") => "typescript",
+            Some("js") | Some("jsx") => "javascript",
+            Some("go") => "go",
+            Some("java") => "java",
+            Some("c") => "c",
+            Some("cpp") | Some("cc") | Some("cxx") => "cpp",
+            Some("h") | Some("hpp") => "c",
+            Some("rb") => "ruby",
+            Some("swift") => "swift",
+            Some("kt") | Some("kts") => "kotlin",
+            Some("scala") => "scala",
+            Some("sh") | Some("bash") | Some("zsh") => "bash",
+            _ => "unknown",
+        }
+    }
+
+    /// Get files that have been added or modified (unstaged) in the git repo.
+    /// Returns None if not in a git repo, on error, or if no changes.
+    fn get_changed_files(project_root: &Path) -> Option<Vec<String>> {
+        use std::process::Command;
+
+        let output = Command::new("git")
+            .args(["diff", "--name-only", "--diff-filter=AM"])
+            .current_dir(project_root)
+            .output()
+            .ok()?;
+
+        if !output.status.success() {
+            return None;
+        }
+
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let files: Vec<String> = stdout
+            .lines()
+            .map(|l| l.trim().to_string())
+            .filter(|l| !l.is_empty())
+            .collect();
+
+        if files.is_empty() {
+            None
+        } else {
+            Some(files)
+        }
+    }
+
+    /// Execute a real build or test command via the ToolExecutor.
+    /// On Build failure, attempts automatic error recovery via LLM.
+    async fn execute_real_phase(
+        &self,
+        state: &SprintState,
+        phase: &SprintPhase,
+        llm_result: PhaseResult,
+    ) -> Result<PhaseResult> {
+        let executor = self
+            .tool_executor
+            .as_ref()
+            .expect("tool_executor must be Some (checked by caller)");
+
+        let command = match phase {
+            SprintPhase::Build => &state.config.build_command,
+            SprintPhase::Test => &state.config.test_command,
+            _ => return Ok(llm_result),
+        };
+
+        // Run the command
+        let request = ToolRequest::new("shell")
+            .with_arg("command", serde_json::Value::String(command.clone()));
+
+        let tool_result = executor
+            .execute(request)
+            .await
+            .map_err(|e| crate::Error::Sprint(format!("Tool execution failed: {e}")))?;
+
+        let output = &tool_result.content;
+
+        if tool_result.success && !output.contains("error") {
+            // Success — track changed files
+            let files_modified =
+                Self::get_changed_files(&state.config.project_root).unwrap_or_default();
+
+            Ok(PhaseResult {
+                phase: phase.clone(),
+                status: PhaseStatus::Success,
+                output: format!("[Real execution] Command: {command}\n{output}"),
+                duration_ms: llm_result.duration_ms,
+                files_modified,
+                errors: Vec::new(),
+                tokens_used: llm_result.tokens_used,
+            })
+        } else {
+            // Build failed — attempt error recovery
+            if *phase == SprintPhase::Build {
+                if let Some(fix_output) = self
+                    .attempt_error_recovery(&state.config, &state.config.project_root, output)
+                    .await?
+                {
+                    // Error recovery produced a fix
+                    let files_modified =
+                        Self::get_changed_files(&state.config.project_root).unwrap_or_default();
+
+                    Ok(PhaseResult {
+                        phase: phase.clone(),
+                        status: PhaseStatus::Success,
+                        output: format!(
+                            "[Real execution + recovery] Command: {command}\n\n[Recovered output]\n{fix_output}"
+                        ),
+                        duration_ms: llm_result.duration_ms,
+                        files_modified,
+                        errors: Vec::new(),
+                        tokens_used: llm_result.tokens_used,
+                    })
+                } else {
+                    // Recovery failed
+                    Ok(PhaseResult {
+                        phase: phase.clone(),
+                        status: PhaseStatus::Failed,
+                        output: format!("[Real execution FAILED] Command: {command}\n\n{output}"),
+                        duration_ms: llm_result.duration_ms,
+                        files_modified: Vec::new(),
+                        errors: vec![output.clone()],
+                        tokens_used: llm_result.tokens_used,
+                    })
+                }
+            } else {
+                // Test phase failure — report it normally (retry loop handles it)
+                Ok(PhaseResult {
+                    phase: phase.clone(),
+                    status: PhaseStatus::Failed,
+                    output: format!("[Real execution FAILED] Command: {command}\n\n{output}"),
+                    duration_ms: llm_result.duration_ms,
+                    files_modified: Vec::new(),
+                    errors: vec![output.clone()],
+                    tokens_used: llm_result.tokens_used,
+                })
+            }
+        }
+    }
+
+    /// Attempt to recover from build errors using the LLM-powered ErrorRecovery.
+    /// Returns Some(fixed_output) on success, None on failure.
+    async fn attempt_error_recovery(
+        &self,
+        config: &SprintConfig,
+        project_root: &Path,
+        error_output: &str,
+    ) -> Result<Option<String>> {
+        let errors = parse_compiler_output(error_output);
+        if errors.is_empty() {
+            return Ok(None);
+        }
+
+        // Find the first file with an error
+        let target_file = errors
+            .iter()
+            .find(|e| e.file_path.is_some())
+            .map(|e| e.file_path.as_ref().unwrap().clone());
+
+        let Some(file_path) = target_file else {
+            return Ok(None);
+        };
+
+        let full_path = project_root.join(&file_path);
+        let original_code = std::fs::read_to_string(&full_path)
+            .map_err(|e| crate::Error::Sprint(format!("Failed to read {file_path}: {e}")))?;
+
+        let language = Self::detect_language(&file_path);
+        let recovery = ErrorRecovery::with_config(
+            Arc::clone(&self.llm),
+            ErrorRecoveryConfig::new(2).with_compiler_output(true),
+        );
+
+        let result = recovery.recover(&original_code, &errors, language).await?;
+
+        if !result.success {
+            return Ok(None);
+        }
+
+        // Write the fix back
+        std::fs::write(&full_path, &result.fixed_code).map_err(|e| {
+            crate::Error::Sprint(format!("Failed to write fix to {file_path}: {e}"))
+        })?;
+
+        // Re-verify by running the build command again
+        let executor = self.tool_executor.as_ref().unwrap();
+        let request = ToolRequest::new("shell").with_arg(
+            "command",
+            serde_json::Value::String(config.build_command.clone()),
+        );
+        let verify_result = executor
+            .execute(request)
+            .await
+            .map_err(|e| crate::Error::Sprint(format!("Verification build failed: {e}")))?;
+
+        if verify_result.success {
+            Ok(Some(format!(
+                "Fixed {file_path} ({} attempt(s)). Verification: passed.",
+                result.retries_used
+            )))
+        } else {
+            // Verification failed — revert the fix
+            let _ = std::fs::write(&full_path, &original_code);
+            Ok(None)
         }
     }
 
@@ -588,6 +843,7 @@ impl SprintEngine {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::agentic::tool_executor::NoOpToolExecutor;
     use crate::llm::ChatMessage;
     use async_trait::async_trait;
     use tokio::sync::mpsc;
@@ -889,12 +1145,18 @@ mod tests {
             skip_phases: vec![SprintPhase::Reflect],
             max_iterations: 5,
             model: Some("gpt-4".to_string()),
+            build_command: "cargo build 2>&1".to_string(),
+            test_command: "cargo test 2>&1".to_string(),
+            real_execution: true,
         };
         let json = serde_json::to_string(&config).unwrap();
         let parsed: SprintConfig = serde_json::from_str(&json).unwrap();
         assert_eq!(parsed.task_description, "Build X");
         assert_eq!(parsed.max_iterations, 5);
         assert!(parsed.auto_approve);
+        assert!(parsed.real_execution);
+        assert_eq!(parsed.build_command, "cargo build 2>&1");
+        assert_eq!(parsed.test_command, "cargo test 2>&1");
     }
 
     #[tokio::test]
@@ -1023,6 +1285,7 @@ mod tests {
             skip_phases: vec![SprintPhase::Build, SprintPhase::Test, SprintPhase::Ship],
             max_iterations: 1,
             model: None,
+            ..SprintConfig::new("Add a hello function to src/main.rs")
         };
 
         // Retry up to 3 times with backoff to handle free-tier rate limits
@@ -1116,5 +1379,141 @@ mod tests {
                 "Sprint did not succeed (expected with free-tier rate limits). All phases rate-limited: {all_rate_limited}"
             );
         }
+    }
+
+    // ── M3: Error Recovery & Real Execution Tests ──
+
+    #[test]
+    fn test_sprint_config_real_execution_fields() {
+        let config = SprintConfig::new("test");
+        assert_eq!(config.build_command, "cargo build 2>&1");
+        assert_eq!(config.test_command, "cargo test --lib 2>&1");
+        assert!(!config.real_execution);
+
+        let config2 = SprintConfig {
+            real_execution: true,
+            build_command: "make build".to_string(),
+            test_command: "make test".to_string(),
+            ..SprintConfig::new("test")
+        };
+        assert!(config2.real_execution);
+        assert_eq!(config2.build_command, "make build");
+        assert_eq!(config2.test_command, "make test");
+    }
+
+    #[test]
+    fn test_detect_language() {
+        assert_eq!(SprintEngine::detect_language("src/main.rs"), "rust");
+        assert_eq!(SprintEngine::detect_language("script.py"), "python");
+        assert_eq!(SprintEngine::detect_language("index.ts"), "typescript");
+        assert_eq!(SprintEngine::detect_language("index.tsx"), "typescript");
+        assert_eq!(SprintEngine::detect_language("app.js"), "javascript");
+        assert_eq!(SprintEngine::detect_language("main.go"), "go");
+        assert_eq!(SprintEngine::detect_language("unknown.xyz"), "unknown");
+        assert_eq!(SprintEngine::detect_language("noext"), "unknown");
+    }
+
+    #[tokio::test]
+    async fn test_sprint_engine_with_tool_executor() {
+        let llm = Arc::new(MockLlm::new("output"));
+        let engine = SprintEngine::new(llm).with_tool_executor(Arc::new(NoOpToolExecutor));
+        // Verify the engine was created successfully with a tool executor
+        assert!(engine.tool_executor.is_some());
+    }
+
+    #[tokio::test]
+    async fn test_real_execution_skipped_without_tool_executor() {
+        // When real_execution is true but no tool_executor, real execution should be skipped
+        let llm = Arc::new(MockLlm::new("build output"));
+        let engine = SprintEngine::new(llm); // No tool executor
+        let config = SprintConfig {
+            real_execution: true,
+            skip_phases: vec![
+                SprintPhase::Think,
+                SprintPhase::Plan,
+                SprintPhase::Review,
+                SprintPhase::Test,
+                SprintPhase::Ship,
+                SprintPhase::Reflect,
+            ],
+            ..SprintConfig::new("test task")
+        };
+
+        let result = engine.run(config).await.unwrap();
+        // Should succeed because real execution is skipped (no tool executor)
+        assert!(result.success);
+        let build = result
+            .phase_results
+            .iter()
+            .find(|r| r.phase == SprintPhase::Build)
+            .unwrap();
+        assert_eq!(build.status, PhaseStatus::Success);
+        // Output should be the LLM output, not wrapped in [Real execution]
+        assert!(!build.output.contains("[Real execution]"));
+    }
+
+    #[tokio::test]
+    async fn test_real_execution_with_noop_executor() {
+        // NoOpToolExecutor always returns success with no "error" in content,
+        // so Build should succeed with [Real execution] wrapper
+        let llm = Arc::new(MockLlm::new("build plan"));
+        let engine = SprintEngine::new(llm).with_tool_executor(Arc::new(NoOpToolExecutor));
+        let config = SprintConfig {
+            real_execution: true,
+            skip_phases: vec![
+                SprintPhase::Think,
+                SprintPhase::Plan,
+                SprintPhase::Review,
+                SprintPhase::Test,
+                SprintPhase::Ship,
+                SprintPhase::Reflect,
+            ],
+            ..SprintConfig::new("test task")
+        };
+
+        let result = engine.run(config).await.unwrap();
+        let build = result
+            .phase_results
+            .iter()
+            .find(|r| r.phase == SprintPhase::Build)
+            .unwrap();
+        // NoOpToolExecutor returns "No-op executor: tool 'shell' called..." which
+        // doesn't contain "error", so it should be treated as success
+        assert_eq!(build.status, PhaseStatus::Success);
+        assert!(build.output.contains("[Real execution]"));
+    }
+
+    #[test]
+    fn test_get_changed_files_in_git_repo() {
+        // We're inside the clawdius git repo
+        let project_root = std::env::var("CARGO_MANIFEST_DIR")
+            .map(PathBuf::from)
+            .unwrap_or_else(|_| PathBuf::from("."));
+        let result = SprintEngine::get_changed_files(&project_root);
+        // Could be Some (if there are uncommitted changes) or None (clean tree)
+        // Just verify it doesn't panic
+        match result {
+            Some(files) => assert!(!files.is_empty()),
+            None => {},
+        }
+    }
+
+    #[test]
+    fn test_get_changed_files_non_git_dir() {
+        let result = SprintEngine::get_changed_files(PathBuf::from("/tmp").as_path());
+        // /tmp is likely not a git repo, but it might be in some setups
+        // Just verify no panic
+        if let Some(files) = result {
+            for f in &files {
+                assert!(!f.is_empty());
+            }
+        }
+    }
+
+    #[test]
+    fn test_error_recovery_config_builder() {
+        let config = ErrorRecoveryConfig::new(5).with_compiler_output(true);
+        assert_eq!(config.max_retries, 5);
+        assert!(config.include_compiler_output);
     }
 }
