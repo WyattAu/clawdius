@@ -230,6 +230,10 @@ pub enum Error {
     /// Processing error
     #[error("Processing error: {0}")]
     Processing(String),
+
+    /// Sprint error
+    #[error("Sprint error: {0}")]
+    Sprint(String),
 }
 
 /// Result type alias for Clawdius

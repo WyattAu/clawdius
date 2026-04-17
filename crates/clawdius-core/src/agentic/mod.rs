@@ -44,6 +44,7 @@ pub mod generation_mode;
 pub mod incremental;
 pub mod llm_generator;
 pub mod planner_agent;
+pub mod sprint;
 pub mod streaming_generator;
 pub mod test_execution;
 pub mod tool_executor;
@@ -64,6 +65,10 @@ pub use llm_generator::{GeneratedCode, LlmCodeGenerator};
 pub use planner_agent::{
     AnalysisDepth, AnalysisScope, FileEdit, PlannerAgent, ReviewCriterion, RiskAssessment,
     StepAction, TaskPlan, TaskStep,
+};
+pub use sprint::{
+    PhaseResult, PhaseStatus, SprintConfig, SprintEngine, SprintError, SprintMetrics, SprintPhase,
+    SprintResult, SprintState,
 };
 pub use streaming_generator::{StreamChunk, StreamProcessor, StreamingCodeGenerator};
 pub use test_execution::{

@@ -315,14 +315,15 @@ impl Worker {
                 );
             },
             Ok(Err(e)) => {
+                let error_msg = format!("{}", e);
                 error!(
                     "Worker {} task {} execution error: {}",
-                    worker_id, task_id, e
+                    worker_id, task_id, error_msg
                 );
                 let _ = queue
                     .push_result(
                         &task_id,
-                        &serde_json::json!({"success": false, "error": e.to_string()}).to_string(),
+                        &serde_json::json!({"success": false, "error": error_msg}).to_string(),
                     )
                     .await;
                 let _ = queue.update_status(&task_id, TaskStatus::Failed).await;
