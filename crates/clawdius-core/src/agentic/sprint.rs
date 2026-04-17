@@ -138,6 +138,9 @@ pub struct SprintConfig {
     pub test_command: String,
     /// Whether to execute real build/test commands via ToolExecutor
     pub real_execution: bool,
+    /// Optional URL for browser-based QA during the Test phase.
+    /// When set, the Test phase prompt includes visual QA instructions.
+    pub browser_qa_url: Option<String>,
 }
 
 impl SprintConfig {
@@ -152,6 +155,7 @@ impl SprintConfig {
             build_command: "cargo build 2>&1".to_string(),
             test_command: "cargo test --lib 2>&1".to_string(),
             real_execution: false,
+            browser_qa_url: None,
         }
     }
 }
@@ -697,10 +701,27 @@ impl SprintEngine {
         let start = std::time::Instant::now();
 
         let system_prompt = Self::phase_prompt(phase);
-        let user_message = format!(
+        let mut user_message = format!(
             "Task: {}\n\nPrevious context:\n{}",
             state.config.task_description, state.context_accumulator
         );
+
+        // Append browser QA context for the Test phase when a URL is configured
+        if *phase == SprintPhase::Test {
+            if let Some(ref url) = state.config.browser_qa_url {
+                user_message.push_str(&format!(
+                    "\n\n## Browser QA\n\
+                     A browser-based QA check is available at: {url}\n\
+                     If the task involves a web application or UI, consider:\n\
+                     1. Navigate to the URL and verify the UI renders correctly\n\
+                     2. Check for console errors\n\
+                     3. Test interactive elements (buttons, forms, navigation)\n\
+                     4. Verify responsive behavior\n\
+                     5. Check accessibility basics (focus states, ARIA labels)\n\
+                     Report any visual or functional issues found."
+                ));
+            }
+        }
 
         let messages = vec![
             ChatMessage {
@@ -1156,6 +1177,7 @@ mod tests {
             build_command: "cargo build 2>&1".to_string(),
             test_command: "cargo test 2>&1".to_string(),
             real_execution: true,
+            browser_qa_url: Some("http://localhost:3000".to_string()),
         };
         let json = serde_json::to_string(&config).unwrap();
         let parsed: SprintConfig = serde_json::from_str(&json).unwrap();
