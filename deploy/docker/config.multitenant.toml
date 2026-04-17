@@ -1,0 +1,85 @@
+# Clawdius Multi-Tenant Configuration
+# For Hetzner deployment with multi-tenant isolation
+#
+# Copy to /opt/clawdius/config/clawdius.toml
+
+[project]
+name = "clawdius"
+
+# ===========================================
+# LLM Configuration
+# ===========================================
+
+[llm]
+default_provider = "openai"
+default_model = "gpt-4"
+
+[llm.providers.openai]
+# API keys are set via environment variables (CLAWDIUS_OPENAI_API_KEY)
+
+[llm.providers.anthropic]
+# API keys are set via environment variables (CLAWDIUS_ANTHROPIC_API_KEY)
+
+[llm.providers.ollama]
+base_url = "http://localhost:11434"
+default_model = "llama3"
+
+# ===========================================
+# Multi-Tenant Configuration
+# ===========================================
+
+[messaging]
+# Enable multi-tenant mode
+enabled = true
+# Default maximum sessions per tenant user
+default_max_sessions_per_user = 100
+# Shared database path for shared-tier tenants
+db_path = "/opt/clawdius/data/sessions/sessions.db"
+
+# ===========================================
+# Session Configuration
+# ===========================================
+
+[session]
+# Auto-compaction threshold (compact when 85% of context is used)
+compact_threshold = 0.85
+# Number of recent messages to preserve during compaction
+keep_recent = 4
+# Minimum messages before compaction is considered
+min_messages = 10
+# Enable automatic session saving
+auto_save = true
+
+[session.pool]
+max_size = 32
+min_idle = 4
+connection_timeout_secs = 5
+
+# ===========================================
+# Output Configuration
+# ===========================================
+
+[output]
+format = "json"
+
+# ===========================================
+# Retry Configuration
+# ===========================================
+
+[retry]
+max_retries = 3
+initial_delay_ms = 1000
+max_delay_ms = 30000
+backoff_multiplier = 2.0
+
+# ===========================================
+# Audit Configuration
+# ===========================================
+
+[audit]
+# Enable agent audit trail
+enabled = true
+# Audit log retention in days
+retention_days = 90
+# Maximum audit log entries in memory before flushing
+max_buffer_size = 1000

@@ -1,0 +1,88 @@
+# Clawdius Multi-Tenant Deployment for Hetzner
+#
+# Usage:
+#   1. Copy .env.example to .env and configure
+#   2. docker compose -f docker-compose.hetzner.yml up -d
+#
+# This configuration includes:
+#   - Clawdius server with multi-tenant support
+#   - Dedicated SQLite database volume for shared tenant data
+#   - Per-tenant database directory volume
+#   - nginx reverse proxy with SSL (Let's Encrypt)
+#   - Health checks and automatic restarts
+#   - Resource limits appropriate for Hetzner VMs
+
+services:
+  clawdius:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+    container_name: clawdius-server
+    ports:
+      - "${CLAWDIUS_PORT:-8080}:8080"
+    volumes:
+      # Shared database for shared-tier tenants
+      - clawdius-sessions:/app/data/sessions
+      # Per-tenant dedicated databases
+      - clawdius-tenants:/app/data/tenants
+      # Configuration
+      - ./config.toml:/app/clawdius.toml:ro
+    environment:
+      - RUST_LOG=${RUST_LOG:-info}
+      - CLAWDIUS_JSON_LOGS=true
+      - CLAWDIUS_DB_PATH=/app/data/sessions/sessions.db
+      - CLAWDIUS_TENANT_DB_BASE_PATH=/app/data/tenants
+      - CLAWDIUS_TENANT_ENABLED=true
+      # LLM provider keys (set in .env)
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8080/api/v1/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          cpus: "${CLAWDIUS_CPUS:-4}"
+          memory: "${CLAWDIUS_MEMORY:-4G}"
+        reservations:
+          cpus: "1"
+          memory: "1G"
+    networks:
+      - clawdius-net
+
+  # nginx reverse proxy (terminate SSL, rate limiting, static caching)
+  nginx:
+    image: nginx:bookworm-slim
+    container_name: clawdius-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - nginx-certs:/etc/nginx/certs
+      - nginx-logs:/var/log/nginx
+    depends_on:
+      clawdius:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - clawdius-net
+
+volumes:
+  clawdius-sessions:
+    driver: local
+  clawdius-tenants:
+    driver: local
+  nginx-certs:
+    driver: local
+  nginx-logs:
+    driver: local
+
+networks:
+  clawdius-net:
+    driver: bridge
