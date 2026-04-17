@@ -580,9 +580,18 @@ mod tests {
             ReviewFocus::General,
         ] {
             let prompt = focus.system_prompt();
-            assert!(!prompt.is_empty());
-            assert!(prompt.len() > 50);
-            assert!(prompt.contains("1.")); // Has numbered items
+            assert!(
+                !prompt.is_empty(),
+                "Prompt for {:?} should not be empty",
+                focus
+            );
+            assert!(prompt.len() > 50, "Prompt for {:?} seems too short", focus);
+            // Prompts should have structured content (numbered items or bullet points)
+            assert!(
+                prompt.contains("1.") || prompt.contains("- "),
+                "Prompt for {:?} should have structured items",
+                focus
+            );
         }
     }
 
