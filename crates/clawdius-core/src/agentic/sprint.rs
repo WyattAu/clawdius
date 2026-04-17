@@ -308,6 +308,14 @@ impl SprintEngine {
                 result
             };
 
+            // Replace the LLM-only result in phase_results with the real-execution result
+            // (run_phase already pushed the LLM result; execute_real_phase may have overridden it)
+            if let Some(last) = state.phase_results.last_mut() {
+                if last.phase == *phase {
+                    *last = result.clone();
+                }
+            }
+
             if result.status == PhaseStatus::Failed {
                 break;
             }
