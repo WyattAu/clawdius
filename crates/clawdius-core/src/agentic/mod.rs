@@ -36,6 +36,7 @@
 //! ```
 
 pub mod apply_workflow;
+pub mod browser_daemon;
 pub mod code_parser;
 pub mod error_recovery;
 pub mod executor_agent;
@@ -55,6 +56,10 @@ pub mod verifier_agent;
 // Re-exports
 pub use apply_workflow::{
     ApplyWorkflow, Checkpoint, CheckpointManager, TrustLevel, WorkflowResult,
+};
+pub use browser_daemon::{
+    AccessibilitySnapshot, BrowserDaemon, BrowserDaemonConfig, BrowserSession, ElementRef,
+    SessionElementMap, StubBrowserSession,
 };
 pub use code_parser::ParsedFileChange;
 pub use error_recovery::{
