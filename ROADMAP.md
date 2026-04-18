@@ -1,23 +1,38 @@
 # Clawdius Roadmap
 ## Strategic Vision & Development Plan
 
-**Current Version:** 2.4.0
-**Next:** v2.5.0 — TBD
+**Current Version:** 2.5.0
+**Next:** v2.6.0 — TBD
 **Last Updated:** 2026-04-18
 
 ---
 
 ## Executive Summary
 
-Clawdius v2.4.0 is a Rust-native agentic coding engine that **exceeds gstack's capabilities** (gstack: 73.9K stars). It replicates gstack's workflow capabilities (sprint process, skills system, browser automation, multi-model review) as an optimized, self-hosted, multi-LLM environment with Lean4 formal verification, multi-tier sandboxing, and VFS abstraction.
+Clawdius v2.5.0 is a Rust-native agentic coding engine that **exceeds gstack's capabilities** (gstack: 73.9K stars). It replicates gstack's workflow capabilities (sprint process, skills system, browser automation, multi-model review) as an optimized, self-hosted, multi-LLM environment with Lean4 formal verification, multi-tier sandboxing, and VFS abstraction. All standalone components are now **wired end-to-end** through the AgenticSystem, REST API, and CLI.
 
-### Honest Current State (v2.4.0)
+### Honest Current State (v2.5.0)
 
 | Metric | Value | Notes |
 |--------|-------|-------|
-| **Rust LOC** | ~68,000 | +6K from gstack-competitive features |
-| **Tests passing** | **720** | Up from 595 in v2.3.0 |
+| **Rust LOC** | ~70,000 | +2K from integration wiring |
+| **Tests passing** | **735** | Up from 720 in v2.4.0 |
 | **Tests failing** | 0 | |
+| **Lean4 Proofs** | 69 theorems proven | `.specs/02_architecture/proofs/` |
+| **Compiler errors** | 0 | Full workspace compiles clean |
+| **Clippy** | Pre-existing warnings | Not blocking; tracked for incremental fix |
+| **Sandbox Backends (real)** | 3 | Container, Bubblewrap, Sandbox-exec |
+| **LLM Providers** | 4 working | Anthropic, OpenAI, Ollama, **OpenRouter** |
+| **Skills** | 4 built-in + 7 markdown | LLM-powered with fallback |
+| **MCP Tools** | 12 | git_commit, grep_search, multi_file_edit, list_branches, +8 original |
+| **Sprint Engine** | 7-phase FSM | think→plan→build→review→test→ship→reflect |
+| **Error Recovery** | write→test→fix→retry | Integrated into sprint engine |
+| **Multi-Model Review** | 7 focus areas | Concurrent review with dedup & fusion |
+| **Parallel Sprints** | Session orchestration | Wired to REST API via ParallelSprintManager |
+| **Browser Daemon** | Persistent + refs | Wired into SprintEngine Test phase |
+| **Ship Pipeline** | Safety + benchmarks | Branch protection, canary, regression detection |
+| **REST API endpoints** | 7 new | sprint, ship, skills, parallel sessions |
+| **CLI commands** | 3 new | `clawdius sprint`, `clawdius ship`, `clawdius skill` |
 | **Lean4 Proofs** | 69 theorems proven | `.specs/02_architecture/proofs/` |
 | **Compiler errors** | 0 | Full workspace compiles clean |
 | **Clippy** | Pre-existing warnings | Not blocking; tracked for incremental fix |
@@ -199,6 +214,47 @@ Clawdius v2.4.0 is a Rust-native agentic coding engine that **exceeds gstack's c
 | Sprint phases | 0 | **7** | Full FSM |
 | Browser daemon | No | **Yes** | +Accessibility refs |
 | Ship pipeline | No | **Yes** | +Canary +Benchmarks |
+
+---
+
+## Integration Wiring (v2.5.0) — ALL COMPLETE
+
+> **Goal:** Wire all standalone M1-M6 components into a unified execution path through AgenticSystem, REST API, and CLI.
+
+| # | Task | Status | Details |
+|---|------|--------|---------|
+| B1 | `GenerationMode::Sprint` variant | ✅ | `agentic/generation_mode.rs` — Sprint, SprintWithExecution, AutonomousSprint |
+| B2 | SprintEngine wired into AgenticSystem | ✅ | `agentic/mod.rs` — `execute_sprint()` method dispatches to SprintEngine |
+| B3 | ErrorRecovery in sprint Build phase | ✅ | Already integrated inside SprintEngine |
+| B4 | ReviewEngine in sprint Review phase | ✅ | Already integrated inside SprintEngine |
+| B5+B9 | REST API endpoints | ✅ | `api/sprint_handler.rs` — 7 endpoints, 12 tests |
+| B6 | ParallelSprintManager wired | ✅ | `ApiState.sprint_manager` — live session management |
+| B7 | BrowserDaemon in sprint Test phase | ✅ | `SprintEngine.with_browser_daemon()` — live accessibility snapshots |
+| B8 | CLI commands | ✅ | `clawdius sprint`, `clawdius ship`, `clawdius skill` — all working |
+| B10 | Integration tests | ✅ | 4 new tests verifying Sprint mode creation and properties |
+| B11 | ROADMAP updated | ✅ | This document |
+
+### REST API Endpoints (New in v2.5.0)
+
+| Method | Path | Handler | Description |
+|--------|------|---------|-------------|
+| POST | `/api/v1/sprint` | `run_sprint` | Queue a sprint pipeline |
+| GET | `/api/v1/sprint/sessions` | `list_sprint_sessions` | List parallel sprint sessions |
+| POST | `/api/v1/sprint/sessions` | `submit_sprint_session` | Submit parallel sprint session |
+| POST | `/api/v1/ship/checks` | `run_pre_ship_checks` | Run pre-ship quality checks |
+| POST | `/api/v1/ship/commit-message` | `generate_commit_message` | Generate conventional commit message |
+| GET | `/api/v1/skills` | `list_skills` | List markdown skills in ~/.clawdius/skills/ |
+| POST | `/api/v1/skills/execute` | `execute_skill` | Queue skill execution |
+
+### CLI Commands (New in v2.5.0)
+
+| Command | Description |
+|---------|-------------|
+| `clawdius sprint <TASK>` | Run agentic sprint with flags for iterations, execution, auto-approve |
+| `clawdius ship checks` | Run pre-ship quality checks (branch protection, tests, review) |
+| `clawdius ship commit-message` | Generate conventional commit message from changed files |
+| `clawdius skill list` | List available markdown skills |
+| `clawdius skill run <NAME>` | Queue a skill for execution |
 
 ---
 
