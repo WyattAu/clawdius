@@ -1091,4 +1091,78 @@ mod tests {
         assert_eq!(state.completed_tasks, 0);
         assert_eq!(state.failed_tasks, 0);
     }
+
+    #[tokio::test]
+    async fn test_agentic_system_sprint_mode_creation() {
+        // Verify that AgenticSystem can be created with Sprint mode
+        let system = AgenticSystem::new(
+            GenerationMode::sprint(),
+            TestExecutionStrategy::Sandboxed {
+                backend: test_execution::SandboxBackend::Wasm,
+                timeout_ms: 30000,
+            },
+            ApplyWorkflow::TrustBased {
+                level: TrustLevel::High,
+                confirm_low_trust: true,
+            },
+        );
+
+        let state = system.state().await;
+        assert_eq!(state.completed_tasks, 0);
+
+        // Verify the mode name is correct
+        let mode = GenerationMode::sprint();
+        assert_eq!(mode.name(), "sprint");
+    }
+
+    #[tokio::test]
+    async fn test_agentic_system_sprint_with_execution() {
+        let system = AgenticSystem::new(
+            GenerationMode::sprint_with_execution(5),
+            TestExecutionStrategy::Sandboxed {
+                backend: test_execution::SandboxBackend::Wasm,
+                timeout_ms: 30000,
+            },
+            ApplyWorkflow::TrustBased {
+                level: TrustLevel::High,
+                confirm_low_trust: true,
+            },
+        );
+
+        let state = system.state().await;
+        assert_eq!(state.completed_tasks, 0);
+
+        let mode = GenerationMode::sprint_with_execution(5);
+        assert_eq!(mode.name(), "sprint");
+        assert_eq!(mode.max_iterations(), 5);
+    }
+
+    #[tokio::test]
+    async fn test_agentic_system_autonomous_sprint() {
+        let mode = GenerationMode::autonomous_sprint(10);
+        assert_eq!(mode.name(), "sprint");
+        assert_eq!(mode.max_iterations(), 10);
+    }
+
+    #[test]
+    fn test_sprint_task_request_serialization() {
+        let request = TaskRequest {
+            id: "sprint-1".to_string(),
+            description: "Build auth system".to_string(),
+            target_files: vec!["src/auth.rs".to_string()],
+            mode: GenerationMode::sprint_with_execution(3),
+            test_strategy: TestExecutionStrategy::Skip,
+            apply_workflow: ApplyWorkflow::TrustBased {
+                level: TrustLevel::High,
+                confirm_low_trust: false,
+            },
+            context: TaskContext::default(),
+            trust_level: TrustLevel::High,
+        };
+
+        let json = serde_json::to_string(&request).unwrap();
+        let parsed: TaskRequest = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed.id, "sprint-1");
+        assert_eq!(parsed.description, "Build auth system");
+    }
 }
