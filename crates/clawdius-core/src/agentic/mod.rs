@@ -843,7 +843,7 @@ impl AgenticSystem {
     /// This is the integration point that connects the standalone SprintEngine
     /// to the AgenticSystem execution path.
     async fn execute_sprint(
-        &self,
+        &mut self,
         request: &TaskRequest,
         max_iterations: usize,
         real_execution: bool,
