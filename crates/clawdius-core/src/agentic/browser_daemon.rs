@@ -102,33 +102,46 @@ impl AccessibilitySnapshot {
 
 // ─── Browser Session Trait ─────────────────────────────────────────────────
 
+use std::future::Future;
+use std::pin::Pin;
+
 /// Trait for browser operations, abstracting over the concrete browser implementation.
-#[allow(async_fn_in_trait)]
 pub trait BrowserSession: Send + Sync {
     /// Navigate to a URL.
-    async fn navigate(&self, url: &str) -> Result<()>;
+    fn navigate(&self, url: String) -> Pin<Box<dyn Future<Output = Result<()>> + Send + '_>>;
     /// Get the current page URL.
-    async fn current_url(&self) -> Result<String>;
+    fn current_url(&self) -> Pin<Box<dyn Future<Output = Result<String>> + Send + '_>>;
     /// Get the current page title.
-    async fn title(&self) -> Result<String>;
+    fn title(&self) -> Pin<Box<dyn Future<Output = Result<String>> + Send + '_>>;
     /// Click an element by CSS selector.
-    async fn click(&self, selector: &str) -> Result<()>;
+    fn click(&self, selector: String) -> Pin<Box<dyn Future<Output = Result<()>> + Send + '_>>;
     /// Type text into an element by CSS selector.
-    async fn type_text(&self, selector: &str, text: &str) -> Result<()>;
+    fn type_text(
+        &self,
+        selector: String,
+        text: String,
+    ) -> Pin<Box<dyn Future<Output = Result<()>> + Send + '_>>;
     /// Read the inner text of an element by CSS selector.
-    async fn read_text(&self, selector: &str) -> Result<String>;
+    fn read_text(
+        &self,
+        selector: String,
+    ) -> Pin<Box<dyn Future<Output = Result<String>> + Send + '_>>;
     /// Get the full page HTML.
-    async fn get_content(&self) -> Result<String>;
+    fn get_content(&self) -> Pin<Box<dyn Future<Output = Result<String>> + Send + '_>>;
     /// Execute JavaScript and return the result.
-    async fn evaluate(&self, js: &str) -> Result<String>;
+    fn evaluate(&self, js: String) -> Pin<Box<dyn Future<Output = Result<String>> + Send + '_>>;
     /// Take a screenshot and return PNG bytes.
-    async fn screenshot(&self) -> Result<Vec<u8>>;
+    fn screenshot(&self) -> Pin<Box<dyn Future<Output = Result<Vec<u8>>> + Send + '_>>;
     /// Wait for a selector to appear.
-    async fn wait_for_selector(&self, selector: &str, timeout_ms: u64) -> Result<()>;
+    fn wait_for_selector(
+        &self,
+        selector: String,
+        timeout_ms: u64,
+    ) -> Pin<Box<dyn Future<Output = Result<()>> + Send + '_>>;
     /// Reload the current page.
-    async fn reload(&self) -> Result<()>;
+    fn reload(&self) -> Pin<Box<dyn Future<Output = Result<()>> + Send + '_>>;
     /// Close the browser session.
-    async fn close(&self) -> Result<()>;
+    fn close(&self) -> Pin<Box<dyn Future<Output = Result<()>> + Send + '_>>;
 }
 
 // ─── Stub Browser Session (for testing without Chromium) ───────────────────
@@ -137,67 +150,83 @@ pub trait BrowserSession: Send + Sync {
 #[derive(Debug, Default)]
 pub struct StubBrowserSession {
     url: Mutex<String>,
-    title: Mutex<String>,
+    page_title: Mutex<String>,
 }
 
 impl StubBrowserSession {
     pub fn new() -> Self {
         Self {
             url: Mutex::new("about:blank".to_string()),
-            title: Mutex::new("Stub Page".to_string()),
+            page_title: Mutex::new("Stub Page".to_string()),
         }
     }
 }
 
 impl BrowserSession for StubBrowserSession {
-    async fn navigate(&self, url: &str) -> Result<()> {
-        *self.url.lock().await = url.to_string();
-        *self.title.lock().await = format!("Page: {url}");
-        Ok(())
+    fn navigate(&self, url: String) -> Pin<Box<dyn Future<Output = Result<()>> + Send + '_>> {
+        let url_clone = url.clone();
+        Box::pin(async move {
+            *self.url.lock().await = url;
+            *self.page_title.lock().await = format!("Page: {url_clone}");
+            Ok(())
+        })
     }
 
-    async fn current_url(&self) -> Result<String> {
-        Ok(self.url.lock().await.clone())
+    fn current_url(&self) -> Pin<Box<dyn Future<Output = Result<String>> + Send + '_>> {
+        let url = self.url.clone();
+        Box::pin(async move { Ok(url.lock().await.clone()) })
     }
 
-    async fn title(&self) -> Result<String> {
-        Ok(self.title.lock().await.clone())
+    fn title(&self) -> Pin<Box<dyn Future<Output = Result<String>> + Send + '_>> {
+        let title = self.page_title.clone();
+        Box::pin(async move { Ok(title.lock().await.clone()) })
     }
 
-    async fn click(&self, _selector: &str) -> Result<()> {
-        Ok(())
+    fn click(&self, _selector: String) -> Pin<Box<dyn Future<Output = Result<()>> + Send + '_>> {
+        Box::pin(async { Ok(()) })
     }
 
-    async fn type_text(&self, _selector: &str, _text: &str) -> Result<()> {
-        Ok(())
+    fn type_text(
+        &self,
+        _selector: String,
+        _text: String,
+    ) -> Pin<Box<dyn Future<Output = Result<()>> + Send + '_>> {
+        Box::pin(async { Ok(()) })
     }
 
-    async fn read_text(&self, selector: &str) -> Result<String> {
-        Ok(format!("[text from {selector}]"))
+    fn read_text(
+        &self,
+        selector: String,
+    ) -> Pin<Box<dyn Future<Output = Result<String>> + Send + '_>> {
+        Box::pin(async move { Ok(format!("[text from {selector}]")) })
     }
 
-    async fn get_content(&self) -> Result<String> {
-        Ok("<html><body>Stub content</body></html>".to_string())
+    fn get_content(&self) -> Pin<Box<dyn Future<Output = Result<String>> + Send + '_>> {
+        Box::pin(async { Ok("<html><body>Stub content</body></html>".to_string()) })
     }
 
-    async fn evaluate(&self, js: &str) -> Result<String> {
-        Ok(format!("[eval: {js}]"))
+    fn evaluate(&self, js: String) -> Pin<Box<dyn Future<Output = Result<String>> + Send + '_>> {
+        Box::pin(async move { Ok(format!("[eval: {js}]")) })
     }
 
-    async fn screenshot(&self) -> Result<Vec<u8>> {
-        Ok(vec![])
+    fn screenshot(&self) -> Pin<Box<dyn Future<Output = Result<Vec<u8>>> + Send + '_>> {
+        Box::pin(async { Ok(vec![]) })
     }
 
-    async fn wait_for_selector(&self, _selector: &str, _timeout_ms: u64) -> Result<()> {
-        Ok(())
+    fn wait_for_selector(
+        &self,
+        _selector: String,
+        _timeout_ms: u64,
+    ) -> Pin<Box<dyn Future<Output = Result<()>> + Send + '_>> {
+        Box::pin(async { Ok(()) })
     }
 
-    async fn reload(&self) -> Result<()> {
-        Ok(())
+    fn reload(&self) -> Pin<Box<dyn Future<Output = Result<()>> + Send + '_>> {
+        Box::pin(async { Ok(()) })
     }
 
-    async fn close(&self) -> Result<()> {
-        Ok(())
+    fn close(&self) -> Pin<Box<dyn Future<Output = Result<()>> + Send + '_>> {
+        Box::pin(async { Ok(()) })
     }
 }
 
@@ -292,7 +321,7 @@ impl BrowserDaemon {
         if *init {
             return Ok(());
         }
-        self.browser.navigate("about:blank").await?;
+        self.browser.navigate("about:blank".to_string()).await?;
         *init = true;
         Ok(())
     }
@@ -313,7 +342,7 @@ impl BrowserDaemon {
     /// Navigate to a URL and optionally update the accessibility snapshot.
     pub async fn navigate(&self, url: &str, session_id: Option<&str>) -> Result<()> {
         self.initialize().await?;
-        self.browser.navigate(url).await?;
+        self.browser.navigate(url.to_string()).await?;
 
         if self.config.auto_snapshot {
             if let Some(sid) = session_id {
@@ -468,7 +497,7 @@ impl BrowserDaemon {
         })()
         "#;
 
-        let result = self.browser.evaluate(js).await?;
+        let result = self.browser.evaluate(js.to_string()).await?;
         let extracted: Vec<ExtractedElement> = match serde_json::from_str(&result) {
             Ok(v) => v,
             Err(_) => Vec::new(),
@@ -537,29 +566,31 @@ impl BrowserDaemon {
     /// Click an element by ref.
     pub async fn click_ref(&self, session_id: &str, ref_str: &str) -> Result<()> {
         let selector = self.resolve_ref(session_id, ref_str).await?;
-        self.browser.click(&selector).await
+        self.browser.click(selector).await
     }
 
     /// Type text into an element by ref.
     pub async fn type_ref(&self, session_id: &str, ref_str: &str, text: &str) -> Result<()> {
         let selector = self.resolve_ref(session_id, ref_str).await?;
-        self.browser.type_text(&selector, text).await
+        self.browser.type_text(selector, text.to_string()).await
     }
 
     /// Read the text of an element by ref.
     pub async fn read_ref(&self, session_id: &str, ref_str: &str) -> Result<String> {
         let selector = self.resolve_ref(session_id, ref_str).await?;
-        self.browser.read_text(&selector).await
+        self.browser.read_text(selector).await
     }
 
     /// Click by CSS selector (direct, bypassing refs).
     pub async fn click(&self, selector: &str) -> Result<()> {
-        self.browser.click(selector).await
+        self.browser.click(selector.to_string()).await
     }
 
     /// Type by CSS selector (direct, bypassing refs).
     pub async fn type_text(&self, selector: &str, text: &str) -> Result<()> {
-        self.browser.type_text(selector, text).await
+        self.browser
+            .type_text(selector.to_string(), text.to_string())
+            .await
     }
 
     /// Get current URL.
