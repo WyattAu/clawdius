@@ -5,7 +5,7 @@
 use serde::{Deserialize, Serialize};
 
 /// Mode of code generation.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum GenerationMode {
     /// Single-pass generation: Fast, one-shot generation for simple tasks.
@@ -26,6 +26,18 @@ pub enum GenerationMode {
         max_steps: u32,
         /// Whether to allow autonomous execution without confirmation
         autonomous: bool,
+    },
+
+    /// Sprint mode: Full 7-phase workflow (Think→Plan→Build→Review→Test→Ship→Reflect).
+    /// Includes error recovery, multi-model review, and optional real execution.
+    /// Best for: Complete features requiring thorough review and testing.
+    Sprint {
+        /// Maximum retry iterations when build/test fails
+        max_iterations: usize,
+        /// Whether to run real build/test commands
+        real_execution: bool,
+        /// Whether to auto-approve phase transitions
+        auto_approve: bool,
     },
 }
 
@@ -63,12 +75,33 @@ impl GenerationMode {
         }
     }
 
-    /// Creates an autonomous agent-based mode.
+    /// Creates a sprint mode with default settings.
     #[must_use]
-    pub const fn autonomous_agent() -> Self {
-        Self::AgentBased {
-            max_steps: 20,
-            autonomous: true,
+    pub fn sprint() -> Self {
+        Self::Sprint {
+            max_iterations: 3,
+            real_execution: false,
+            auto_approve: false,
+        }
+    }
+
+    /// Creates a sprint mode with real execution enabled.
+    #[must_use]
+    pub fn sprint_with_execution(max_iterations: usize) -> Self {
+        Self::Sprint {
+            max_iterations,
+            real_execution: true,
+            auto_approve: false,
+        }
+    }
+
+    /// Creates an autonomous sprint mode (auto-approve + real execution).
+    #[must_use]
+    pub fn autonomous_sprint(max_iterations: usize) -> Self {
+        Self::Sprint {
+            max_iterations,
+            real_execution: true,
+            auto_approve: true,
         }
     }
 
@@ -90,13 +123,20 @@ impl GenerationMode {
         matches!(self, Self::AgentBased { .. })
     }
 
-    /// Returns the maximum iterations for iterative mode, or 1 for others.
+    /// Returns true if this is sprint mode.
     #[must_use]
-    pub const fn max_iterations(&self) -> u32 {
+    pub const fn is_sprint(&self) -> bool {
+        matches!(self, Self::Sprint { .. })
+    }
+
+    /// Returns the maximum iterations for iterative/sprint mode, or 1 for others.
+    #[must_use]
+    pub fn max_iterations(&self) -> usize {
         match self {
             Self::SinglePass => 1,
-            Self::Iterative { max_iterations } => *max_iterations,
-            Self::AgentBased { max_steps, .. } => *max_steps,
+            Self::Iterative { max_iterations } => *max_iterations as usize,
+            Self::AgentBased { max_steps, .. } => *max_steps as usize,
+            Self::Sprint { max_iterations, .. } => *max_iterations,
         }
     }
 
@@ -112,6 +152,7 @@ impl GenerationMode {
             Self::AgentBased {
                 autonomous: true, ..
             } => "Autonomous Agent",
+            Self::Sprint { .. } => "Sprint",
         }
     }
 
@@ -122,6 +163,7 @@ impl GenerationMode {
             Self::SinglePass => "Fast, one-shot generation for simple tasks",
             Self::Iterative { .. } => "Progressive refinement with feedback loops",
             Self::AgentBased { .. } => "Full autonomous workflow with planning and verification",
+            Self::Sprint { .. } => "7-phase sprint: Think→Plan→Build→Review→Test→Ship→Reflect",
         }
     }
 }
