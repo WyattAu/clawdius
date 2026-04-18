@@ -17,6 +17,7 @@ use std::sync::{Arc, RwLock};
 use tokio::sync::{mpsc, oneshot};
 use uuid::Uuid;
 
+use crate::agentic::ParallelSprintManager;
 use crate::api::auth::{auth_middleware, ApiKeyAuth};
 use crate::api::gateway::RateLimitConfig;
 use crate::api::metrics_handler;
@@ -172,6 +173,7 @@ pub struct ApiState {
     pub rate_limit_config: Option<RateLimitConfig>,
     pub tenant_store: Arc<RwLock<TenantStore>>,
     pub llm_client: Option<Arc<LlmProvider>>,
+    pub sprint_manager: Arc<ParallelSprintManager>,
 }
 
 impl ApiState {
@@ -184,6 +186,7 @@ impl ApiState {
             rate_limit_config: None,
             tenant_store: Arc::new(RwLock::new(default_tenants())),
             llm_client: None,
+            sprint_manager: Arc::new(ParallelSprintManager::default()),
         }
     }
 

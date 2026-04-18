@@ -11,8 +11,11 @@
 use axum::{extract::State, http::StatusCode, Json};
 use serde::{Deserialize, Serialize};
 
-use crate::agentic::{ship_pipeline::CommitMessage, GenerationMode};
+use crate::agentic::{
+    ship_pipeline::CommitMessage, GenerationMode, ParallelSprintConfig, ParallelSprintManager,
+};
 use crate::api::rest::ApiState;
+use crate::llm::LlmConfig;
 use crate::session::SessionStore;
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -198,13 +201,16 @@ pub async fn execute_skill(
 
 /// GET /api/v1/sprint/sessions — List parallel sprint sessions
 pub async fn list_sprint_sessions(
-    State(_state): State<ApiState>,
+    State(state): State<ApiState>,
 ) -> (StatusCode, Json<serde_json::Value>) {
-    let sessions: Vec<serde_json::Value> = Vec::new();
+    let sessions = state.sprint_manager.list_sessions().await;
+    let summary = state.sprint_manager.summary().await;
+
     (
         StatusCode::OK,
         Json(serde_json::json!({
             "sessions": sessions,
+            "summary": summary,
             "total": sessions.len(),
         })),
     )
@@ -212,16 +218,32 @@ pub async fn list_sprint_sessions(
 
 /// POST /api/v1/sprint/sessions — Submit a new parallel sprint session
 pub async fn submit_sprint_session(
-    State(_state): State<ApiState>,
+    State(state): State<ApiState>,
     Json(request): Json<RunSprintRequest>,
 ) -> (StatusCode, Json<serde_json::Value>) {
-    let response = serde_json::json!({
-        "success": true,
-        "message": format!("Sprint session submitted: {}", request.task),
-        "task": request.task,
-        "status": "pending",
-    });
-    (StatusCode::OK, Json(response))
+    let mut config =
+        ParallelSprintConfig::new(&request.task, LlmConfig::default()).with_name(&request.task);
+    config.real_execution = request.real_execution;
+
+    match state.sprint_manager.submit(config).await {
+        Ok(session_id) => {
+            let response = serde_json::json!({
+                "success": true,
+                "session_id": session_id.to_string(),
+                "task": request.task,
+                "status": "pending",
+                "message": format!("Sprint session {} submitted", session_id),
+            });
+            (StatusCode::CREATED, Json(response))
+        },
+        Err(e) => {
+            let response = serde_json::json!({
+                "success": false,
+                "error": format!("Failed to submit sprint session: {}", e),
+            });
+            (StatusCode::INTERNAL_SERVER_ERROR, Json(response))
+        },
+    }
 }
 
 // ─── Tests ─────────────────────────────────────────────────────────────────
@@ -306,5 +328,29 @@ mod tests {
         let (status, Json(body)) = list_skills(State(test_api_state())).await;
         assert_eq!(status, StatusCode::OK);
         assert!(body.get("skills").is_some());
+    }
+
+    #[tokio::test]
+    async fn test_list_sprint_sessions_empty() {
+        let state = test_api_state();
+        let (status, Json(body)) = list_sprint_sessions(State(state)).await;
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(body["total"], 0);
+    }
+
+    #[tokio::test]
+    async fn test_submit_sprint_session() {
+        let state = test_api_state();
+        let req = RunSprintRequest {
+            task: "Build auth system".to_string(),
+            max_iterations: 3,
+            real_execution: false,
+            auto_approve: false,
+            target_files: vec![],
+        };
+        let (status, Json(body)) = submit_sprint_session(State(state), Json(req)).await;
+        assert_eq!(status, StatusCode::CREATED);
+        assert!(body["success"].as_bool().unwrap());
+        assert!(body["session_id"].as_str().unwrap().starts_with("sprint-"));
     }
 }
