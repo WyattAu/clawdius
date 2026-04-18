@@ -794,13 +794,20 @@ impl SprintEngine {
                     let _ = daemon.initialize().await;
                     if daemon.navigate(url, Some(session_id)).await.is_ok() {
                         if let Ok(snapshot) = daemon.build_snapshot(session_id).await {
+                            let tree_lines: Vec<String> = snapshot
+                                .elements
+                                .iter()
+                                .map(|e| format!("  {} {} \"{}\"", e.ref_id, e.role, e.name))
+                                .collect();
+                            let tree_text = tree_lines.join("\n");
                             user_message.push_str(&format!(
-                                "\n\n## Browser QA — Live Snapshot (URL: {url})\n\
+                                "\n\n## Browser QA — Live Snapshot (URL: {})\n\
                                  ### Accessibility Tree\n{}\n\
                                  ### Element References\n{}\n\
                                  Use the references above (e.g. @e1, @e2) to identify specific elements.\n\
                                  Report any visual or functional issues found.",
-                                snapshot.tree_text,
+                                snapshot.url,
+                                tree_text,
                                 snapshot.to_ref_list(),
                             ));
                         } else {
