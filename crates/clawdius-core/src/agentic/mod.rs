@@ -43,7 +43,6 @@ pub mod file_ops;
 pub mod generation_mode;
 pub mod incremental;
 pub mod llm_generator;
-pub mod parallel_sprint;
 pub mod planner_agent;
 pub mod review_engine;
 pub mod sprint;
@@ -64,16 +63,12 @@ pub use executor_agent::{ExecutorAgent, StepResult};
 pub use file_ops::{FileBackup, FileOperation, FileOperationResult, FileOperations};
 pub use generation_mode::{GenerationMode, GenerationOptions, GenerationResult};
 pub use llm_generator::{GeneratedCode, LlmCodeGenerator};
-pub use parallel_sprint::{
-    ParallelSprintConfig, ParallelSprintManager, ParallelSprintSummary, SessionState,
-    SessionStatus, SprintSessionId,
-};
 pub use planner_agent::{
     AnalysisDepth, AnalysisScope, FileEdit, PlannerAgent, ReviewCriterion, RiskAssessment,
     StepAction, TaskPlan, TaskStep,
 };
 pub use review_engine::{
-    FusedReview, ReviewEngine, ReviewFinding, ReviewFocus, ReviewResult, ReviewerConfig,
+    FusedReview, ReviewEngine, ReviewFocus, ReviewFinding, ReviewResult, ReviewerConfig,
 };
 pub use sprint::{
     PhaseResult, PhaseStatus, SprintConfig, SprintEngine, SprintError, SprintMetrics, SprintPhase,
