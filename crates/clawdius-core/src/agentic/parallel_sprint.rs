@@ -33,7 +33,7 @@ impl std::fmt::Display for SprintSessionId {
 }
 
 /// Status of a parallel sprint session.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 pub enum SessionStatus {
     /// Session is queued and waiting to start
     Pending,
@@ -167,7 +167,10 @@ impl ParallelSprintManager {
     /// Submit a new sprint session for parallel execution.
     /// Returns the session ID.
     pub async fn submit(&self, config: ParallelSprintConfig) -> Result<SprintSessionId> {
-        let id = config.session_id.unwrap_or_else(SprintSessionId::new);
+        let id = config
+            .session_id
+            .clone()
+            .unwrap_or_else(SprintSessionId::new);
 
         let state = SessionState {
             id: id.clone(),
