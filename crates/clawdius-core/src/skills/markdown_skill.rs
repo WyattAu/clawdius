@@ -630,7 +630,7 @@ Stage all changes and push them.
         std::fs::write(dir.path().join("qa.md"), qa_content).unwrap();
         std::fs::write(dir.path().join("readme.txt"), "not a skill").unwrap();
 
-        let registry = super::super::SkillRegistry::new();
+        let registry = super::SkillRegistry::new();
         let loaded = registry.load_skills_from_dir(dir.path()).await.unwrap();
 
         assert_eq!(loaded.len(), 2);
@@ -648,7 +648,7 @@ Stage all changes and push them.
         let content = "---\nname: myskill\ndescription: My custom skill\nversion: 2.0.0\ntags: [custom]\nexamples:\n  - \"/myskill\"\n---\n\n# My Skill\n\nCustom instructions.\n\n## Constraints\n- Must be custom\n";
         std::fs::write(dir.path().join("myskill.md"), content).unwrap();
 
-        let registry = super::super::SkillRegistry::new();
+        let registry = super::SkillRegistry::new();
         registry.load_skills_from_dir(dir.path()).await.unwrap();
 
         let skill = registry.find("myskill").await;
@@ -669,14 +669,14 @@ Stage all changes and push them.
     #[tokio::test]
     async fn test_load_from_empty_dir() {
         let dir = tempfile::tempdir().unwrap();
-        let registry = super::super::SkillRegistry::new();
+        let registry = super::SkillRegistry::new();
         let loaded = registry.load_skills_from_dir(dir.path()).await.unwrap();
         assert!(loaded.is_empty());
     }
 
     #[tokio::test]
     async fn test_load_from_nonexistent_dir() {
-        let registry = super::super::SkillRegistry::new();
+        let registry = super::SkillRegistry::new();
         let result = registry
             .load_skills_from_dir(Path::new("/nonexistent/path/skills"))
             .await;

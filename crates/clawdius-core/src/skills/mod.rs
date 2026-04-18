@@ -32,13 +32,16 @@
 //! let result = skill.execute(context).await?;
 //! ```
 
+use crate::llm::providers::LlmClient;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use thiserror::Error;
 use tokio::sync::RwLock;
+
+pub mod markdown_skill;
 
 /// Skills system errors
 #[derive(Debug, Error)]
@@ -95,7 +98,7 @@ pub struct SkillArgument {
 }
 
 /// Skill execution context
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct SkillContext {
     /// Project root path
     pub project_root: PathBuf,
@@ -107,6 +110,21 @@ pub struct SkillContext {
     pub arguments: HashMap<String, String>,
     /// Additional context
     pub extra: HashMap<String, serde_json::Value>,
+    /// Optional LLM client for skills that need LLM execution
+    pub llm: Option<Arc<dyn LlmClient>>,
+}
+
+impl std::fmt::Debug for SkillContext {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SkillContext")
+            .field("project_root", &self.project_root)
+            .field("current_file", &self.current_file)
+            .field("selection", &self.selection.is_some())
+            .field("arguments", &self.arguments)
+            .field("extra", &self.extra)
+            .field("has_llm", &self.llm.is_some())
+            .finish()
+    }
 }
 
 impl SkillContext {
@@ -119,7 +137,15 @@ impl SkillContext {
             selection: None,
             arguments: HashMap::new(),
             extra: HashMap::new(),
+            llm: None,
         }
+    }
+
+    /// Set the LLM client for this context
+    #[must_use]
+    pub fn with_llm(mut self, llm: Arc<dyn LlmClient>) -> Self {
+        self.llm = Some(llm);
+        self
     }
 
     /// Set the current file
@@ -585,6 +611,33 @@ impl SkillRegistry {
         }
 
         Ok((skill_name, arguments))
+    }
+
+    /// Load all markdown skill files from a directory and register them.
+    /// Returns a list of skill names that were successfully loaded.
+    pub async fn load_skills_from_dir(&self, dir: &Path) -> Result<Vec<String>> {
+        let entries = match std::fs::read_dir(dir) {
+            Ok(entries) => entries,
+            Err(_) => return Ok(Vec::new()),
+        };
+
+        let mut loaded = Vec::new();
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.extension().map_or(false, |e| e == "md") {
+                match crate::skills::markdown_skill::MarkdownSkill::from_file(&path) {
+                    Ok(skill) => {
+                        let name = skill.meta().name.clone();
+                        self.register(Arc::new(skill)).await;
+                        loaded.push(name);
+                    },
+                    Err(e) => {
+                        tracing::warn!("Failed to load skill from {}: {e}", path.display());
+                    },
+                }
+            }
+        }
+        Ok(loaded)
     }
 }
 
