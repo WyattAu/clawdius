@@ -68,7 +68,7 @@ pub use planner_agent::{
     StepAction, TaskPlan, TaskStep,
 };
 pub use review_engine::{
-    FusedReview, ReviewEngine, ReviewFinding, ReviewFocus, ReviewResult, ReviewerConfig,
+    FusedReview, ReviewEngine, ReviewFocus, ReviewFinding, ReviewResult, ReviewerConfig,
 };
 pub use sprint::{
     PhaseResult, PhaseStatus, SprintConfig, SprintEngine, SprintError, SprintMetrics, SprintPhase,

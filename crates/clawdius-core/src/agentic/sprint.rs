@@ -1,5 +1,6 @@
 use crate::agentic::error_recovery::parse_compiler_output;
 use crate::agentic::error_recovery::{ErrorRecovery, ErrorRecoveryConfig};
+use crate::agentic::review_engine::{ReviewEngine, ReviewerConfig};
 use crate::agentic::tool_executor::{ToolExecutor, ToolRequest};
 use crate::llm::providers::LlmClient;
 use crate::llm::{ChatMessage, ChatRole};
@@ -141,6 +142,9 @@ pub struct SprintConfig {
     /// Optional URL for browser-based QA during the Test phase.
     /// When set, the Test phase prompt includes visual QA instructions.
     pub browser_qa_url: Option<String>,
+    /// Optional reviewer configurations for multi-model code review.
+    /// When non-empty, the Review phase uses ReviewEngine instead of a single LLM call.
+    pub reviewers: Vec<ReviewerConfig>,
 }
 
 impl SprintConfig {
@@ -156,6 +160,7 @@ impl SprintConfig {
             test_command: "cargo test --lib 2>&1".to_string(),
             real_execution: false,
             browser_qa_url: None,
+            reviewers: Vec::new(),
         }
     }
 }
@@ -319,6 +324,22 @@ impl SprintEngine {
                     *last = result.clone();
                 }
             }
+
+            // M4: If reviewers are configured and this is the Review phase,
+            // run multi-model review instead of the single-LLM review
+            let result = if *phase == SprintPhase::Review && !state.config.reviewers.is_empty() {
+                match self.run_multi_model_review(&state, result.clone()).await {
+                    Ok(r) => r,
+                    Err(e) => {
+                        eprintln!(
+                            "Multi-model review error: {e}. Falling back to single LLM review."
+                        );
+                        result // keep the single-LLM result
+                    },
+                }
+            } else {
+                result
+            };
 
             if result.status == PhaseStatus::Failed {
                 break;
@@ -676,6 +697,53 @@ impl SprintEngine {
             let _ = std::fs::write(&full_path, &original_code);
             Ok(None)
         }
+    }
+
+    /// Run a multi-model review using ReviewEngine (M4).
+    /// Returns a PhaseResult with the fused review text.
+    async fn run_multi_model_review(
+        &self,
+        state: &SprintState,
+        llm_result: PhaseResult,
+    ) -> Result<PhaseResult> {
+        let code_to_review = &state.context_accumulator;
+        let context = &state.config.task_description;
+
+        let review_engine = ReviewEngine::new(state.config.reviewers.clone());
+        let fused = review_engine.review(code_to_review, context).await?;
+
+        let review_output = format!(
+            "[Multi-Model Review — {} reviewers, avg score: {:.1}/5]\n\n\
+             {}\n\n\
+             {}",
+            fused.reviews.len(),
+            fused.average_score,
+            fused.summary,
+            if fused.has_critical_issues {
+                "⚠️ CRITICAL issues found. Address before proceeding."
+            } else {
+                "No critical issues."
+            }
+        );
+
+        Ok(PhaseResult {
+            phase: SprintPhase::Review,
+            status: if fused.has_critical_issues {
+                // Still mark as success so the sprint continues — criticals are advisory
+                PhaseStatus::Success
+            } else {
+                PhaseStatus::Success
+            },
+            output: review_output,
+            duration_ms: fused.total_duration_ms,
+            files_modified: Vec::new(),
+            errors: if fused.has_critical_issues {
+                vec!["Critical issues found in review".to_string()]
+            } else {
+                Vec::new()
+            },
+            tokens_used: fused.total_tokens,
+        })
     }
 
     pub async fn run_phase(
@@ -1178,6 +1246,7 @@ mod tests {
             test_command: "cargo test 2>&1".to_string(),
             real_execution: true,
             browser_qa_url: Some("http://localhost:3000".to_string()),
+            reviewers: Vec::new(),
         };
         let json = serde_json::to_string(&config).unwrap();
         let parsed: SprintConfig = serde_json::from_str(&json).unwrap();
@@ -1545,5 +1614,28 @@ mod tests {
         let config = ErrorRecoveryConfig::new(5).with_compiler_output(true);
         assert_eq!(config.max_retries, 5);
         assert!(config.include_compiler_output);
+    }
+
+    #[test]
+    fn test_sprint_config_reviewers_field() {
+        let config = SprintConfig::new("test");
+        assert!(config.reviewers.is_empty());
+
+        let config2 = SprintConfig {
+            reviewers: vec![ReviewerConfig {
+                name: "Quality".to_string(),
+                llm_config: crate::llm::LlmConfig {
+                    provider: "openrouter".to_string(),
+                    model: "test".to_string(),
+                    api_key: None,
+                    base_url: None,
+                    max_tokens: 100,
+                },
+                focus: crate::agentic::ReviewFocus::CodeQuality,
+            }],
+            ..SprintConfig::new("test")
+        };
+        assert_eq!(config2.reviewers.len(), 1);
+        assert_eq!(config2.reviewers[0].name, "Quality");
     }
 }
