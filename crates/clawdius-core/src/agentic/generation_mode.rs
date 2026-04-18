@@ -267,7 +267,7 @@ mod tests {
         assert!(GenerationMode::single_pass().is_single_pass());
         assert!(GenerationMode::iterative().is_iterative());
         assert!(GenerationMode::agent_based().is_agent_based());
-        assert!(GenerationMode::autonomous_agent().is_agent_based());
+        assert!(GenerationMode::sprint().is_sprint());
     }
 
     #[test]

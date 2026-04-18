@@ -917,7 +917,7 @@ impl AgenticSystem {
                 for phase_result in &result.phase_results {
                     log.push(LogEntry {
                         timestamp: current_timestamp(),
-                        level: if phase_result.status == sprint::PhaseStatus::Completed {
+                        level: if phase_result.status == sprint::PhaseStatus::Success {
                             LogLevel::Info
                         } else {
                             LogLevel::Warn
@@ -926,7 +926,7 @@ impl AgenticSystem {
                         message: format!(
                             "  Phase {:?}: {} ({})",
                             phase_result.phase,
-                            if phase_result.status == sprint::PhaseStatus::Completed {
+                            if phase_result.status == sprint::PhaseStatus::Success {
                                 "OK"
                             } else {
                                 "FAILED"
