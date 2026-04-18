@@ -1443,7 +1443,7 @@ async fn handle_sprint(
     _config_path: Option<PathBuf>,
     output_format: OutputFormat,
 ) -> anyhow::Result<()> {
-    use clawdius_core::agentic::{GenerationMode, SprintConfig};
+    use clawdius_core::agentic::GenerationMode;
 
     match output_format {
         OutputFormat::Json => {
@@ -1517,7 +1517,7 @@ async fn handle_ship(action: ShipAction, output_format: OutputFormat) -> anyhow:
                     println!("   Checks: {} total", report.checks.len());
                     for check in &report.checks {
                         let icon = if check.passed { "✅" } else { "❌" };
-                        println!("   {icon} {} ({})", check.name, check.severity);
+                        println!("   {icon} {} ({})", check.check_name, check.severity);
                         if !check.passed {
                             println!("      {}", check.message);
                         }
@@ -6067,36 +6067,6 @@ async fn handle_models(
                 },
             }
         },
-
-        // ── Sprint Command ──────────────────────────────────────────────
-        Commands::Sprint {
-            task,
-            max_iterations,
-            real_execution,
-            auto_approve,
-            provider,
-            model,
-            browser_qa_url,
-        } => {
-            handle_sprint(
-                task,
-                max_iterations,
-                real_execution,
-                auto_approve,
-                provider,
-                model,
-                browser_qa_url,
-                config_path,
-                output_format,
-            )
-            .await
-        },
-
-        // ── Ship Command ────────────────────────────────────────────────
-        Commands::Ship { action } => handle_ship(action, config_path, output_format).await,
-
-        // ── Skill Command ───────────────────────────────────────────────
-        Commands::Skill { action } => handle_skill(action, config_path, output_format).await,
     }
 
     Ok(())
