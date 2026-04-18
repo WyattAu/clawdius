@@ -33,19 +33,6 @@ Clawdius v2.5.0 is a Rust-native agentic coding engine that **exceeds gstack's c
 | **Ship Pipeline** | Safety + benchmarks | Branch protection, canary, regression detection |
 | **REST API endpoints** | 7 new | sprint, ship, skills, parallel sessions |
 | **CLI commands** | 3 new | `clawdius sprint`, `clawdius ship`, `clawdius skill` |
-| **Lean4 Proofs** | 69 theorems proven | `.specs/02_architecture/proofs/` |
-| **Compiler errors** | 0 | Full workspace compiles clean |
-| **Clippy** | Pre-existing warnings | Not blocking; tracked for incremental fix |
-| **Sandbox Backends (real)** | 3 | Container, Bubblewrap, Sandbox-exec |
-| **LLM Providers** | 4 working | Anthropic, OpenAI, Ollama, **OpenRouter** |
-| **Skills** | 4 built-in + 7 markdown | LLM-powered with fallback |
-| **MCP Tools** | 12 | git_commit, grep_search, multi_file_edit, list_branches, +8 original |
-| **Sprint Engine** | 7-phase FSM | think→plan→build→review→test→ship→reflect |
-| **Error Recovery** | write→test→fix→retry | Integrated into sprint engine |
-| **Multi-Model Review** | 7 focus areas | Concurrent review with dedup & fusion |
-| **Parallel Sprints** | Session orchestration | Concurrency-limited, priority-queued |
-| **Browser Daemon** | Persistent + refs | Accessibility-tree `@e1`, `@e2` element system |
-| **Ship Pipeline** | Safety + benchmarks | Branch protection, canary, regression detection |
 
 ---
 
@@ -202,18 +189,21 @@ Clawdius v2.5.0 is a Rust-native agentic coding engine that **exceeds gstack's c
 
 ### Engineering Quality
 
-| Metric | v2.3.0 | v2.4.0 | Delta |
-|--------|---------|---------|-------|
-| `.unwrap()` in prod | **0** | **0** | — |
-| Tests passing | 595 | **720** | +125 |
-| Lean4 proofs | 142 | 69 (consolidated) | Reorganized |
-| LLM Providers | 3 | **4** | +OpenRouter |
-| MCP Tools | 8 | **12** | +4 |
-| Skills (built-in) | 0 | **4** | +4 |
-| Skills (markdown) | 0 | **7** | +7 |
-| Sprint phases | 0 | **7** | Full FSM |
-| Browser daemon | No | **Yes** | +Accessibility refs |
-| Ship pipeline | No | **Yes** | +Canary +Benchmarks |
+| Metric | v2.3.0 | v2.4.0 | v2.5.0 | Delta |
+|--------|---------|---------|---------|-------|
+| `.unwrap()` in prod | **0** | **0** | **0** | — |
+| Rust LOC | — | ~70K | **~95K** | +25K |
+| Tests passing | 595 | **720** | **754** | +159 |
+| Lean4 proofs | 142 | 69 (consolidated) | **69** | Reorganized |
+| LLM Providers | 3 | **4** | **4** | +OpenRouter |
+| MCP Tools | 8 | **12** | — | — |
+| Skills (built-in) | 0 | **4** | **4** | +4 |
+| Skills (markdown) | 0 | **7** | **7** | +7 |
+| Sprint phases | 0 | **7** | **7** | Full FSM |
+| REST API endpoints | — | — | **7** | New |
+| CLI commands | — | — | **3** | New |
+| Browser daemon | No | **Yes** | — | +Accessibility refs |
+| Ship pipeline | No | **Yes** | — | +Canary +Benchmarks |
 
 ---
 
