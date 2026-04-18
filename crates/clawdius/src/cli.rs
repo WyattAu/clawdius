@@ -4797,7 +4797,7 @@ async fn handle_generate(
         id: uuid::Uuid::new_v4().to_string(),
         description: prompt.clone(),
         target_files,
-        mode: generation_mode,
+        mode: generation_mode.clone(),
         test_strategy: test_exec_strategy,
         apply_workflow: ApplyWorkflow::trust_based_with_level(
             trust_level,
@@ -4876,10 +4876,9 @@ async fn handle_generate(
     let apply_workflow =
         ApplyWorkflow::trust_based_with_level(trust_level, trust_level < TrustLevel::High);
 
-    let mut system =
-        AgenticSystem::new(generation_mode.clone(), test_exec_strategy, apply_workflow)
-            .with_llm_client(llm_client)
-            .with_tool_executor(tool_executor);
+    let mut system = AgenticSystem::new(generation_mode, test_exec_strategy, apply_workflow)
+        .with_llm_client(llm_client)
+        .with_tool_executor(tool_executor);
 
     // Execute the task
     if show_progress {
