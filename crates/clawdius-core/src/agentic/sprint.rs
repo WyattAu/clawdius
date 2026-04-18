@@ -1,3 +1,4 @@
+use crate::agentic::browser_daemon::BrowserDaemon;
 use crate::agentic::error_recovery::parse_compiler_output;
 use crate::agentic::error_recovery::{ErrorRecovery, ErrorRecoveryConfig};
 use crate::agentic::review_engine::{ReviewEngine, ReviewerConfig};
@@ -236,6 +237,7 @@ impl From<SprintError> for crate::Error {
 pub struct SprintEngine {
     llm: Arc<dyn LlmClient>,
     tool_executor: Option<Arc<dyn ToolExecutor>>,
+    browser_daemon: Option<Arc<BrowserDaemon>>,
 }
 
 impl SprintEngine {
@@ -243,6 +245,7 @@ impl SprintEngine {
         Self {
             llm,
             tool_executor: None,
+            browser_daemon: None,
         }
     }
 
@@ -250,6 +253,13 @@ impl SprintEngine {
     #[must_use]
     pub fn with_tool_executor(mut self, executor: Arc<dyn ToolExecutor>) -> Self {
         self.tool_executor = Some(executor);
+        self
+    }
+
+    /// Attach a browser daemon for browser-based QA in the Test phase.
+    #[must_use]
+    pub fn with_browser_daemon(mut self, daemon: Arc<BrowserDaemon>) -> Self {
+        self.browser_daemon = Some(daemon);
         self
     }
 
@@ -777,17 +787,52 @@ impl SprintEngine {
         // Append browser QA context for the Test phase when a URL is configured
         if *phase == SprintPhase::Test {
             if let Some(ref url) = state.config.browser_qa_url {
-                user_message.push_str(&format!(
-                    "\n\n## Browser QA\n\
-                     A browser-based QA check is available at: {url}\n\
-                     If the task involves a web application or UI, consider:\n\
-                     1. Navigate to the URL and verify the UI renders correctly\n\
-                     2. Check for console errors\n\
-                     3. Test interactive elements (buttons, forms, navigation)\n\
-                     4. Verify responsive behavior\n\
-                     5. Check accessibility basics (focus states, ARIA labels)\n\
-                     Report any visual or functional issues found."
-                ));
+                // If a browser daemon is available, navigate and capture a snapshot
+                if let Some(ref daemon) = self.browser_daemon {
+                    let session_id = "sprint-qa";
+                    let _ = daemon.register_session(session_id).await;
+                    let _ = daemon.initialize().await;
+                    if daemon.navigate(url, Some(session_id)).await.is_ok() {
+                        if let Ok(snapshot) = daemon.build_snapshot(session_id).await {
+                            user_message.push_str(&format!(
+                                "\n\n## Browser QA — Live Snapshot (URL: {url})\n\
+                                 ### Accessibility Tree\n{}\n\
+                                 ### Element References\n{}\n\
+                                 Use the references above (e.g. @e1, @e2) to identify specific elements.\n\
+                                 Report any visual or functional issues found.",
+                                snapshot.tree_text,
+                                snapshot.to_ref_list(),
+                            ));
+                        } else {
+                            user_message.push_str(&format!(
+                                "\n\n## Browser QA\n\
+                                 A browser-based QA check is available at: {url}\n\
+                                 (Browser daemon connected but snapshot failed.)\n\
+                                 Report any issues you can identify."
+                            ));
+                        }
+                    } else {
+                        user_message.push_str(&format!(
+                            "\n\n## Browser QA\n\
+                             A browser-based QA check is available at: {url}\n\
+                             (Browser daemon connected but navigation failed.)\n\
+                             Report any issues you can identify."
+                        ));
+                    }
+                    let _ = daemon.unregister_session(session_id).await;
+                } else {
+                    user_message.push_str(&format!(
+                        "\n\n## Browser QA\n\
+                         A browser-based QA check is available at: {url}\n\
+                         If the task involves a web application or UI, consider:\n\
+                         1. Navigate to the URL and verify the UI renders correctly\n\
+                         2. Check for console errors\n\
+                         3. Test interactive elements (buttons, forms, navigation)\n\
+                         4. Verify responsive behavior\n\
+                         5. Check accessibility basics (focus states, ARIA labels)\n\
+                         Report any visual or functional issues found."
+                    ));
+                }
             }
         }
 
