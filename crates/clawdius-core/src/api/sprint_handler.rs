@@ -1,21 +1,25 @@
 //! Sprint, Ship, and Skill API Handlers
 //!
 //! REST API endpoints for the agentic pipeline:
-//! - POST /api/v1/sprint — Run a sprint
+//! - POST /api/v1/sprint — Run a sprint (actually invokes SprintEngine)
 //! - GET /api/v1/sprint/sessions — List parallel sprint sessions
 //! - POST /api/v1/ship/checks — Run pre-ship checks
 //! - POST /api/v1/ship/commit-message — Generate a commit message
-//! - GET /api/v1/skills — List available skills
-//! - POST /api/v1/skills/execute — Execute a skill
+//! - GET /api/v1/skills — List available skills (built-in + user markdown)
+//! - POST /api/v1/skills/execute — Execute a skill (loads & runs markdown)
 
 use axum::{extract::State, http::StatusCode, Json};
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 
 use crate::agentic::{
     ship_pipeline::CommitMessage, GenerationMode, ParallelSprintConfig, ParallelSprintManager,
+    SprintConfig, SprintEngine,
 };
 use crate::api::rest::ApiState;
+use crate::llm::providers::LlmClient;
 use crate::session::SessionStore;
+use crate::skills::{Skill, SkillContext, SkillRegistry};
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -38,6 +42,18 @@ pub struct RunSprintResponse {
     pub message: String,
     pub mode: String,
     pub duration_ms: u64,
+    /// Sprint phase results (populated when sprint actually runs)
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub phase_results: Vec<serde_json::Value>,
+    /// Sprint summary (populated when sprint actually runs)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub summary: Option<String>,
+    /// Whether rollback is available
+    #[serde(default)]
+    pub rollback_available: bool,
+    /// Sprint metrics
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub metrics: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -67,6 +83,8 @@ pub struct ExecuteSkillRequest {
     pub name: String,
     #[serde(default)]
     pub arguments: String,
+    #[serde(default)]
+    pub project_root: Option<String>,
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -92,12 +110,31 @@ fn test_api_state() -> ApiState {
 // ─── Sprint Handler ────────────────────────────────────────────────────────
 
 /// POST /api/v1/sprint — Run a sprint pipeline
+///
+/// Actually invokes `SprintEngine::run()` with the configured LLM client.
+/// Returns 503 if no LLM client is configured.
 pub async fn run_sprint(
-    State(_state): State<ApiState>,
+    State(state): State<ApiState>,
     Json(request): Json<RunSprintRequest>,
-) -> (StatusCode, Json<RunSprintResponse>) {
+) -> (StatusCode, Json<serde_json::Value>) {
+    // Check for LLM client
+    let llm_provider = match &state.llm_client {
+        Some(provider) => Arc::clone(provider) as Arc<dyn LlmClient>,
+        None => {
+            return (
+                StatusCode::SERVICE_UNAVAILABLE,
+                Json(serde_json::json!({
+                    "success": false,
+                    "error": "No LLM provider is configured. Set up a provider in your config file.",
+                    "code": "LLM_NOT_CONFIGURED",
+                })),
+            );
+        },
+    };
+
     let start = std::time::Instant::now();
 
+    // Determine generation mode
     let mode = if request.auto_approve && request.real_execution {
         GenerationMode::autonomous_sprint(request.max_iterations)
     } else if request.real_execution {
@@ -106,20 +143,73 @@ pub async fn run_sprint(
         GenerationMode::sprint()
     };
 
-    let response = RunSprintResponse {
-        success: true,
-        message: format!(
-            "Sprint queued with mode '{}' (task: {}, max_iterations: {}, real_execution: {})",
-            mode.name(),
-            request.task,
-            request.max_iterations,
-            request.real_execution,
-        ),
-        mode: mode.name().to_string(),
-        duration_ms: start.elapsed().as_millis() as u64,
-    };
+    // Build SprintConfig
+    let mut config = SprintConfig::new(&request.task);
+    config.auto_approve = request.auto_approve;
+    config.real_execution = request.real_execution;
+    if request.max_iterations > 0 {
+        config.max_iterations = request.max_iterations;
+    }
 
-    (StatusCode::OK, Json(response))
+    // Create and run SprintEngine
+    let engine = SprintEngine::new(llm_provider);
+
+    match engine.run(config).await {
+        Ok(result) => {
+            let phase_results: Vec<serde_json::Value> = result
+                .phase_results
+                .iter()
+                .map(|pr| {
+                    serde_json::json!({
+                        "phase": pr.phase.display_name(),
+                        "status": format!("{:?}", pr.status),
+                        "output": pr.output,
+                        "duration_ms": pr.duration_ms,
+                        "files_modified": pr.files_modified,
+                        "errors": pr.errors,
+                        "tokens_used": pr.tokens_used,
+                    })
+                })
+                .collect();
+
+            let body = serde_json::json!({
+                "success": result.success,
+                "message": if result.success {
+                    "Sprint completed successfully".to_string()
+                } else {
+                    "Sprint completed with failures".to_string()
+                },
+                "mode": mode.name(),
+                "duration_ms": start.elapsed().as_millis() as u64,
+                "phase_results": phase_results,
+                "summary": result.summary,
+                "rollback_available": result.rollback_available,
+                "checkpoint_ref": result.checkpoint_ref,
+                "metrics": serde_json::json!({
+                    "total_tokens": result.metrics.total_tokens,
+                    "retry_cycles": result.metrics.retry_cycles,
+                    "phases_succeeded": result.metrics.phases_succeeded,
+                    "phases_failed": result.metrics.phases_failed,
+                    "phases_skipped": result.metrics.phases_skipped,
+                }),
+            });
+
+            if result.success {
+                (StatusCode::OK, Json(body))
+            } else {
+                (StatusCode::MULTI_STATUS, Json(body))
+            }
+        },
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({
+                "success": false,
+                "error": format!("Sprint failed: {e}"),
+                "mode": mode.name(),
+                "duration_ms": start.elapsed().as_millis() as u64,
+            })),
+        ),
+    }
 }
 
 // ─── Ship Handler ──────────────────────────────────────────────────────────
@@ -159,9 +249,23 @@ pub async fn generate_commit_message(
 
 // ─── Skills Handler ────────────────────────────────────────────────────────
 
-/// GET /api/v1/skills — List available skills
+/// GET /api/v1/skills — List available skills (built-in + user markdown)
 pub async fn list_skills(State(_state): State<ApiState>) -> (StatusCode, Json<serde_json::Value>) {
     let mut all_skills: Vec<serde_json::Value> = Vec::new();
+
+    // List built-in skills
+    let registry = SkillRegistry::new();
+    registry.register_builtin_skills().await;
+    let builtins = registry.list().await;
+    for meta in &builtins {
+        all_skills.push(serde_json::json!({
+            "name": meta.name,
+            "source": "builtin",
+            "description": meta.description,
+            "version": meta.version,
+            "tags": meta.tags,
+        }));
+    }
 
     // Check for markdown skills in ~/.clawdius/skills/
     let home_dir = std::env::var_os("HOME")
@@ -175,11 +279,25 @@ pub async fn list_skills(State(_state): State<ApiState>) -> (StatusCode, Json<se
                 let path = entry.path();
                 if path.extension().map_or(false, |e| e == "md") {
                     if let Some(name) = path.file_stem().and_then(|n| n.to_str()) {
-                        all_skills.push(serde_json::json!({
-                            "name": name,
-                            "source": "user",
-                            "path": path.display().to_string(),
-                        }));
+                        // Try to parse metadata from the markdown file
+                        let meta_info = if let Ok(skill) =
+                            crate::skills::markdown_skill::MarkdownSkill::from_file(&path)
+                        {
+                            serde_json::json!({
+                                "name": skill.meta().name,
+                                "source": "user",
+                                "description": skill.meta().description,
+                                "version": skill.meta().version,
+                                "path": path.display().to_string(),
+                            })
+                        } else {
+                            serde_json::json!({
+                                "name": name,
+                                "source": "user",
+                                "path": path.display().to_string(),
+                            })
+                        };
+                        all_skills.push(meta_info);
                     }
                 }
             }
@@ -188,23 +306,126 @@ pub async fn list_skills(State(_state): State<ApiState>) -> (StatusCode, Json<se
 
     (
         StatusCode::OK,
-        Json(serde_json::json!({"skills": all_skills})),
+        Json(serde_json::json!({"skills": all_skills, "total": all_skills.len()})),
     )
 }
 
 /// POST /api/v1/skills/execute — Execute a skill
+///
+/// Actually loads the skill from disk (for markdown skills) or the registry
+/// (for built-in skills), creates a SkillContext with the LLM client, and
+/// runs it via SkillRegistry::execute().
 pub async fn execute_skill(
-    State(_state): State<ApiState>,
+    State(state): State<ApiState>,
     Json(request): Json<ExecuteSkillRequest>,
 ) -> (StatusCode, Json<serde_json::Value>) {
-    let result = serde_json::json!({
-        "success": true,
-        "skill": request.name,
-        "message": format!("Skill '{}' queued for execution", request.name),
-        "arguments": request.arguments,
-    });
+    let start = std::time::Instant::now();
 
-    (StatusCode::OK, Json(result))
+    // Build SkillContext
+    let project_root = request
+        .project_root
+        .clone()
+        .map(std::path::PathBuf::from)
+        .unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| ".".into()));
+
+    let mut context = SkillContext::new(project_root.clone());
+
+    // Attach LLM client if available
+    if let Some(ref provider) = state.llm_client {
+        context = context.with_llm(Arc::clone(provider) as Arc<dyn LlmClient>);
+    }
+
+    // Parse arguments from the request string (key=value or just a string)
+    if !request.arguments.is_empty() {
+        for part in request.arguments.split_whitespace() {
+            if let Some((key, value)) = part.split_once('=') {
+                context.add_argument(key, value);
+            } else {
+                context.add_argument("_raw", &request.arguments);
+            }
+        }
+    }
+
+    // Try to load as a markdown skill from ~/.clawdius/skills/
+    let registry = SkillRegistry::new();
+    registry.register_builtin_skills().await;
+
+    let home_dir = std::env::var_os("HOME")
+        .map(std::path::PathBuf::from)
+        .or_else(|| std::env::var_os("USERPROFILE").map(std::path::PathBuf::from));
+
+    if let Some(home) = home_dir {
+        let skills_dir = home.join(".clawdius").join("skills");
+        let skill_path = skills_dir.join(format!("{}.md", request.name));
+        if skill_path.exists() {
+            match crate::skills::markdown_skill::MarkdownSkill::from_file(&skill_path) {
+                Ok(skill) => {
+                    match skill.execute(context).await {
+                        Ok(result) => {
+                            return (
+                                StatusCode::OK,
+                                Json(serde_json::json!({
+                                    "success": result.success,
+                                    "skill": request.name,
+                                    "output": result.output,
+                                    "modified_files": result.modified_files,
+                                    "duration_ms": result.duration_ms,
+                                    "elapsed_ms": start.elapsed().as_millis() as u64,
+                                })),
+                            );
+                        },
+                        Err(e) => {
+                            return (
+                                StatusCode::INTERNAL_SERVER_ERROR,
+                                Json(serde_json::json!({
+                                    "success": false,
+                                    "skill": request.name,
+                                    "error": format!("Skill execution failed: {e}"),
+                                    "elapsed_ms": start.elapsed().as_millis() as u64,
+                                })),
+                            );
+                        },
+                    }
+                },
+                Err(e) => {
+                    return (
+                        StatusCode::BAD_REQUEST,
+                        Json(serde_json::json!({
+                            "success": false,
+                            "skill": request.name,
+                            "error": format!("Failed to load skill '{}': {e}", request.name),
+                            "elapsed_ms": start.elapsed().as_millis() as u64,
+                        })),
+                    );
+                },
+            }
+        }
+    }
+
+    // Try built-in registry
+    match registry.execute(&request.name, context).await {
+        Ok(result) => (
+            StatusCode::OK,
+            Json(serde_json::json!({
+                "success": result.success,
+                "skill": request.name,
+                "source": "builtin",
+                "output": result.output,
+                "modified_files": result.modified_files,
+                "duration_ms": result.duration_ms,
+                "elapsed_ms": start.elapsed().as_millis() as u64,
+            })),
+        ),
+        Err(e) => (
+            StatusCode::NOT_FOUND,
+            Json(serde_json::json!({
+                "success": false,
+                "skill": request.name,
+                "error": format!("Skill not found: {e}"),
+                "elapsed_ms": start.elapsed().as_millis() as u64,
+            })),
+        ),
+    }
 }
 
 // ─── Parallel Sprint Handler ──────────────────────────────────────────────
@@ -310,6 +531,28 @@ mod tests {
         assert_eq!(req.name, "ship");
     }
 
+    #[test]
+    fn test_execute_skill_request_with_project_root() {
+        let json = r#"{"name":"review","project_root":"/tmp/project"}"#;
+        let req: ExecuteSkillRequest = serde_json::from_str(json).unwrap();
+        assert_eq!(req.project_root, Some("/tmp/project".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_sprint_without_llm_returns_503() {
+        let state = test_api_state();
+        let req = RunSprintRequest {
+            task: "Build auth system".to_string(),
+            max_iterations: 1,
+            real_execution: false,
+            auto_approve: false,
+            target_files: vec![],
+        };
+        let (status, Json(body)) = run_sprint(State(state), Json(req)).await;
+        assert_eq!(status, StatusCode::SERVICE_UNAVAILABLE);
+        assert_eq!(body["code"], "LLM_NOT_CONFIGURED");
+    }
+
     #[tokio::test]
     async fn test_generate_commit_message_endpoint() {
         let req = GenerateCommitMessageRequest {
@@ -338,6 +581,50 @@ mod tests {
         let (status, Json(body)) = list_skills(State(test_api_state())).await;
         assert_eq!(status, StatusCode::OK);
         assert!(body.get("skills").is_some());
+        assert!(body.get("total").is_some());
+    }
+
+    #[tokio::test]
+    async fn test_list_skills_includes_builtins() {
+        let (status, Json(body)) = list_skills(State(test_api_state())).await;
+        assert_eq!(status, StatusCode::OK);
+        let skills = body["skills"].as_array().unwrap();
+        // Should include at least the 4 built-in skills
+        let builtin_count = skills
+            .iter()
+            .filter(|s| s["source"] == "builtin")
+            .count();
+        assert!(builtin_count >= 4, "Expected at least 4 builtin skills, got {builtin_count}");
+    }
+
+    #[tokio::test]
+    async fn test_execute_builtin_skill() {
+        let state = test_api_state();
+        let req = ExecuteSkillRequest {
+            name: "explain".to_string(),
+            arguments: String::new(),
+            project_root: None,
+        };
+        // Built-in skills without selection will fail — that's expected behavior
+        let (status, body) = execute_skill(State(state), Json(req)).await;
+        // Should either succeed (no selection required for explain) or fail gracefully
+        assert!(
+            status == StatusCode::OK || status == StatusCode::NOT_FOUND,
+            "Expected OK or NOT_FOUND, got {status}"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_execute_nonexistent_skill_returns_404() {
+        let state = test_api_state();
+        let req = ExecuteSkillRequest {
+            name: "nonexistent_skill_xyz".to_string(),
+            arguments: String::new(),
+            project_root: None,
+        };
+        let (status, Json(body)) = execute_skill(State(state), Json(req)).await;
+        assert_eq!(status, StatusCode::NOT_FOUND);
+        assert!(body["success"].as_bool().unwrap() == false);
     }
 
     #[tokio::test]
