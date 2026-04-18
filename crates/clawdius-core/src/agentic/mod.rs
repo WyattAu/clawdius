@@ -47,6 +47,7 @@ pub mod llm_generator;
 pub mod parallel_sprint;
 pub mod planner_agent;
 pub mod review_engine;
+pub mod ship_pipeline;
 pub mod sprint;
 pub mod streaming_generator;
 pub mod test_execution;
@@ -79,6 +80,12 @@ pub use planner_agent::{
 };
 pub use review_engine::{
     FusedReview, ReviewEngine, ReviewFinding, ReviewFocus, ReviewResult, ReviewerConfig,
+};
+pub use ship_pipeline::{
+    BenchmarkComparison, BenchmarkReport, BenchmarkResult, BenchmarkSuite, BranchProtection,
+    BranchRule, CanaryConfig, CanaryDeployment, CanaryMetrics, CanaryStatus, CommitMessage,
+    CommitMessageStrategy, ConventionalCommitType, ShipCheckReport, ShipCheckResult,
+    ShipCheckSeverity, ShipConfig, ShipPipeline, ShipRecord, ShipStats,
 };
 pub use sprint::{
     PhaseResult, PhaseStatus, SprintConfig, SprintEngine, SprintError, SprintMetrics, SprintPhase,
