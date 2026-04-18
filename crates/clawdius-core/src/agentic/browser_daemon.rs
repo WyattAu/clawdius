@@ -147,17 +147,23 @@ pub trait BrowserSession: Send + Sync {
 // ─── Stub Browser Session (for testing without Chromium) ───────────────────
 
 /// A no-op browser session for testing and environments without Chromium.
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct StubBrowserSession {
-    url: Mutex<String>,
-    page_title: Mutex<String>,
+    url: Arc<Mutex<String>>,
+    page_title: Arc<Mutex<String>>,
+}
+
+impl Default for StubBrowserSession {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl StubBrowserSession {
     pub fn new() -> Self {
         Self {
-            url: Mutex::new("about:blank".to_string()),
-            page_title: Mutex::new("Stub Page".to_string()),
+            url: Arc::new(Mutex::new("about:blank".to_string())),
+            page_title: Arc::new(Mutex::new("Stub Page".to_string())),
         }
     }
 }
@@ -173,13 +179,19 @@ impl BrowserSession for StubBrowserSession {
     }
 
     fn current_url(&self) -> Pin<Box<dyn Future<Output = Result<String>> + Send + '_>> {
-        let url = self.url.clone();
-        Box::pin(async move { Ok(url.lock().await.clone()) })
+        let guard = self.url.clone();
+        Box::pin(async move {
+            let url = guard.lock().await;
+            Ok(url.clone())
+        })
     }
 
     fn title(&self) -> Pin<Box<dyn Future<Output = Result<String>> + Send + '_>> {
-        let title = self.page_title.clone();
-        Box::pin(async move { Ok(title.lock().await.clone()) })
+        let guard = self.page_title.clone();
+        Box::pin(async move {
+            let title = guard.lock().await;
+            Ok(title.clone())
+        })
     }
 
     fn click(&self, _selector: String) -> Pin<Box<dyn Future<Output = Result<()>> + Send + '_>> {
@@ -505,7 +517,7 @@ impl BrowserDaemon {
 
         // Build element refs
         let mut elements = Vec::new();
-        for (i, ext) in extracted.into_iter().take(self.config.max_refs) {
+        for (i, ext) in extracted.into_iter().take(self.config.max_refs).enumerate() {
             elements.push(ElementRef {
                 ref_id: format!("@e{}", i + 1),
                 role: ext.role,
@@ -610,7 +622,7 @@ impl BrowserDaemon {
 
     /// Execute JavaScript.
     pub async fn evaluate(&self, js: &str) -> Result<String> {
-        self.browser.evaluate(js).await
+        self.browser.evaluate(js.to_string()).await
     }
 
     /// Get page HTML content.
