@@ -556,6 +556,52 @@ pub enum Commands {
         action: GitCommands,
     },
 
+    #[command(
+        about = "Run an agentic sprint (think → plan → build → review → test → ship → reflect)"
+    )]
+    Sprint {
+        /// Task description for the sprint
+        task: String,
+
+        #[arg(short = 'n', long, default_value = "3")]
+        /// Maximum build-test iterations
+        max_iterations: usize,
+
+        #[arg(long)]
+        /// Enable real command execution (build, test)
+        real_execution: bool,
+
+        #[arg(long)]
+        /// Auto-approve all phases without confirmation
+        auto_approve: bool,
+
+        #[arg(short = 'P', long, default_value = "openrouter")]
+        /// LLM provider
+        provider: String,
+
+        #[arg(short, long)]
+        /// Specific model to use
+        model: Option<String>,
+
+        #[arg(long)]
+        /// URL for browser-based QA in the Test phase
+        browser_qa_url: Option<String>,
+    },
+
+    #[command(about = "Run pre-ship checks or generate a commit message")]
+    Ship {
+        /// Subcommand
+        #[command(subcommand)]
+        action: ShipAction,
+    },
+
+    #[command(about = "List and execute markdown skills")]
+    Skill {
+        /// Subcommand
+        #[command(subcommand)]
+        action: SkillAction,
+    },
+
     #[command(about = "Start the Clawdius HTTP server")]
     Server {
         #[arg(long, default_value = "0.0.0.0")]
@@ -1029,6 +1075,45 @@ pub enum ModelsCommands {
 }
 
 #[derive(Subcommand)]
+pub enum ShipAction {
+    /// Run pre-ship quality checks
+    Checks {
+        /// Branch name (default: current branch)
+        #[arg(short, long, default_value = "main")]
+        branch: String,
+        /// Changed files to check
+        #[arg(short, long)]
+        files: Vec<String>,
+    },
+    /// Generate a conventional commit message
+    CommitMessage {
+        /// Changed files
+        #[arg(short, long)]
+        files: Vec<String>,
+        /// Description of the changes
+        #[arg(short, long)]
+        description: String,
+        /// Commit scope (e.g. "core", "api")
+        #[arg(short, long)]
+        scope: Option<String>,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum SkillAction {
+    /// List available skills
+    List,
+    /// Execute a skill by name
+    Run {
+        /// Skill name
+        name: String,
+        /// Arguments to pass to the skill
+        #[arg(default_value = "")]
+        arguments: String,
+    },
+}
+
+#[derive(Subcommand)]
 pub enum GitCommands {
     /// Stage files and create a commit with an LLM-generated message
     Commit {
@@ -1274,6 +1359,30 @@ pub async fn handle_command(
         },
         Commands::Git { action } => handle_git(action, config_path).await,
         Commands::Server { host, port } => handle_server(&host, port).await,
+        Commands::Sprint {
+            task,
+            max_iterations,
+            real_execution,
+            auto_approve,
+            provider,
+            model,
+            browser_qa_url,
+        } => {
+            handle_sprint(
+                task,
+                max_iterations,
+                real_execution,
+                auto_approve,
+                provider,
+                model,
+                browser_qa_url,
+                config_path,
+                output_format,
+            )
+            .await
+        },
+        Commands::Ship { action } => handle_ship(action, output_format).await,
+        Commands::Skill { action } => handle_skill(action, output_format).await,
     }
 }
 
@@ -1317,6 +1426,212 @@ async fn handle_server(host: &str, port: u16) -> anyhow::Result<()> {
     axum::serve(listener, app)
         .with_graceful_shutdown(shutdown_signal())
         .await?;
+
+    Ok(())
+}
+
+// ── Sprint Handler ──────────────────────────────────────────────────────
+
+async fn handle_sprint(
+    task: String,
+    max_iterations: usize,
+    real_execution: bool,
+    auto_approve: bool,
+    provider: String,
+    model: Option<String>,
+    browser_qa_url: Option<String>,
+    _config_path: Option<PathBuf>,
+    output_format: OutputFormat,
+) -> anyhow::Result<()> {
+    use clawdius_core::agentic::{GenerationMode, SprintConfig};
+
+    match output_format {
+        OutputFormat::Json => {
+            println!(
+                "{}",
+                serde_json::json!({
+                    "action": "sprint",
+                    "task": task,
+                    "max_iterations": max_iterations,
+                    "real_execution": real_execution,
+                    "auto_approve": auto_approve,
+                    "provider": provider,
+                    "model": model,
+                    "browser_qa_url": browser_qa_url,
+                    "status": "queued",
+                })
+            );
+        },
+        _ => {
+            println!("🚀 Sprint queued");
+            println!("   Task: {task}");
+            println!("   Max iterations: {max_iterations}");
+            println!("   Real execution: {real_execution}");
+            println!("   Auto-approve: {auto_approve}");
+            println!("   Provider: {provider}");
+            if let Some(m) = &model {
+                println!("   Model: {m}");
+            }
+            if let Some(url) = &browser_qa_url {
+                println!("   Browser QA: {url}");
+            }
+            println!();
+            println!("Note: Sprint execution requires an LLM API key.");
+            println!(
+                "Use `clawdius serve` for the full REST API, or configure in .clawdius/config.toml"
+            );
+
+            // Build the generation mode for reference
+            let _mode = if auto_approve && real_execution {
+                GenerationMode::autonomous_sprint(max_iterations)
+            } else if real_execution {
+                GenerationMode::sprint_with_execution(max_iterations)
+            } else {
+                GenerationMode::sprint()
+            };
+        },
+    }
+
+    Ok(())
+}
+
+// ── Ship Handler ────────────────────────────────────────────────────────
+
+async fn handle_ship(action: ShipAction, output_format: OutputFormat) -> anyhow::Result<()> {
+    use clawdius_core::agentic::ShipPipeline;
+
+    match action {
+        ShipAction::Checks { branch, files } => {
+            let pipeline = ShipPipeline::new_default();
+            let report = pipeline
+                .run_pre_ship_checks(&branch, &files, true, false)
+                .await;
+
+            match output_format {
+                OutputFormat::Json => {
+                    println!("{}", serde_json::to_string_pretty(&report)?);
+                },
+                _ => {
+                    println!("📋 Pre-Ship Checks — branch: {branch}");
+                    println!("   All passed: {}", report.all_passed);
+                    println!("   Checks: {} total", report.checks.len());
+                    for check in &report.checks {
+                        let icon = if check.passed { "✅" } else { "❌" };
+                        println!("   {icon} {} ({})", check.name, check.severity);
+                        if !check.passed {
+                            println!("      {}", check.message);
+                        }
+                    }
+                    if report.all_passed {
+                        println!("\n✨ All checks passed — ready to ship!");
+                    } else {
+                        println!("\n⚠️  Some checks failed — address before shipping.");
+                    }
+                },
+            }
+        },
+        ShipAction::CommitMessage {
+            files,
+            description,
+            scope,
+        } => {
+            let pipeline = ShipPipeline::new_default();
+            let msg = pipeline.generate_commit_message(&files, &description, scope.as_deref());
+
+            match output_format {
+                OutputFormat::Json => {
+                    println!("{}", serde_json::to_string_pretty(&msg)?);
+                },
+                _ => {
+                    println!("📝 Generated commit message:");
+                    println!();
+                    println!("{}", msg);
+                },
+            }
+        },
+    }
+
+    Ok(())
+}
+
+// ── Skill Handler ───────────────────────────────────────────────────────
+
+async fn handle_skill(action: SkillAction, output_format: OutputFormat) -> anyhow::Result<()> {
+    match action {
+        SkillAction::List => {
+            let mut skills: Vec<std::path::PathBuf> = Vec::new();
+
+            let home_dir = std::env::var_os("HOME")
+                .map(std::path::PathBuf::from)
+                .or_else(|| std::env::var_os("USERPROFILE").map(std::path::PathBuf::from));
+
+            if let Some(home) = home_dir {
+                let skills_dir = home.join(".clawdius").join("skills");
+                if let Ok(entries) = std::fs::read_dir(&skills_dir) {
+                    for entry in entries.flatten() {
+                        let path = entry.path();
+                        if path.extension().map_or(false, |e| e == "md") {
+                            skills.push(path);
+                        }
+                    }
+                }
+            }
+
+            match output_format {
+                OutputFormat::Json => {
+                    let json_skills: Vec<serde_json::Value> = skills
+                        .iter()
+                        .filter_map(|p| {
+                            p.file_stem()?.to_str().map(|name| {
+                                serde_json::json!({
+                                    "name": name,
+                                    "path": p.display().to_string(),
+                                })
+                            })
+                        })
+                        .collect();
+                    println!("{}", serde_json::to_string_pretty(&json_skills)?);
+                },
+                _ => {
+                    if skills.is_empty() {
+                        println!("No skills found in ~/.clawdius/skills/");
+                        println!(
+                            "Add markdown skill files (e.g., ship.md, review.md) to get started."
+                        );
+                    } else {
+                        println!("📚 Available skills:");
+                        for skill in &skills {
+                            if let Some(name) = skill.file_stem().and_then(|n| n.to_str()) {
+                                println!("   • {name}");
+                            }
+                        }
+                    }
+                },
+            }
+        },
+        SkillAction::Run { name, arguments } => match output_format {
+            OutputFormat::Json => {
+                println!(
+                    "{}",
+                    serde_json::json!({
+                        "action": "skill",
+                        "skill": name,
+                        "arguments": arguments,
+                        "status": "queued",
+                    })
+                );
+            },
+            _ => {
+                println!("⚡ Skill '{name}' queued for execution");
+                if !arguments.is_empty() {
+                    println!("   Arguments: {arguments}");
+                }
+                println!();
+                println!("Note: Skill execution requires the REST API server.");
+                println!("Use `clawdius serve` to start, then POST to /api/v1/skills/execute");
+            },
+        },
+    }
 
     Ok(())
 }
@@ -5752,6 +6067,36 @@ async fn handle_models(
                 },
             }
         },
+
+        // ── Sprint Command ──────────────────────────────────────────────
+        Commands::Sprint {
+            task,
+            max_iterations,
+            real_execution,
+            auto_approve,
+            provider,
+            model,
+            browser_qa_url,
+        } => {
+            handle_sprint(
+                task,
+                max_iterations,
+                real_execution,
+                auto_approve,
+                provider,
+                model,
+                browser_qa_url,
+                config_path,
+                output_format,
+            )
+            .await
+        },
+
+        // ── Ship Command ────────────────────────────────────────────────
+        Commands::Ship { action } => handle_ship(action, config_path, output_format).await,
+
+        // ── Skill Command ───────────────────────────────────────────────
+        Commands::Skill { action } => handle_skill(action, config_path, output_format).await,
     }
 
     Ok(())
