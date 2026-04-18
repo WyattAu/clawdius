@@ -15,7 +15,6 @@ use crate::agentic::{
     ship_pipeline::CommitMessage, GenerationMode, ParallelSprintConfig, ParallelSprintManager,
 };
 use crate::api::rest::ApiState;
-use crate::llm::LlmConfig;
 use crate::session::SessionStore;
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -71,6 +70,17 @@ pub struct ExecuteSkillRequest {
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
+
+/// Create a minimal LlmConfig for test/stub use.
+fn stub_llm_config() -> crate::llm::LlmConfig {
+    crate::llm::LlmConfig {
+        provider: "openrouter".to_string(),
+        model: "default".to_string(),
+        api_key: None,
+        base_url: None,
+        max_tokens: 4096,
+    }
+}
 
 /// Create a minimal ApiState for test handlers.
 #[cfg(test)]
@@ -221,8 +231,8 @@ pub async fn submit_sprint_session(
     State(state): State<ApiState>,
     Json(request): Json<RunSprintRequest>,
 ) -> (StatusCode, Json<serde_json::Value>) {
-    let mut config =
-        ParallelSprintConfig::new(&request.task, LlmConfig::default()).with_name(&request.task);
+    let llm = stub_llm_config();
+    let mut config = ParallelSprintConfig::new(&request.task, llm).with_name(&request.task);
     config.real_execution = request.real_execution;
 
     match state.sprint_manager.submit(config).await {
