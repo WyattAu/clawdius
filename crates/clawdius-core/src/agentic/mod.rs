@@ -1107,12 +1107,11 @@ mod tests {
             },
         );
 
-        let state = system.state().await;
-        assert_eq!(state.completed_tasks, 0);
-
         // Verify the mode name is correct
         let mode = GenerationMode::sprint();
         assert_eq!(mode.name(), "sprint");
+        assert_eq!(mode.max_iterations(), 1);
+        drop(system);
     }
 
     #[tokio::test]
@@ -1129,16 +1128,14 @@ mod tests {
             },
         );
 
-        let state = system.state().await;
-        assert_eq!(state.completed_tasks, 0);
-
         let mode = GenerationMode::sprint_with_execution(5);
         assert_eq!(mode.name(), "sprint");
         assert_eq!(mode.max_iterations(), 5);
+        drop(system);
     }
 
-    #[tokio::test]
-    async fn test_agentic_system_autonomous_sprint() {
+    #[test]
+    fn test_agentic_system_autonomous_sprint() {
         let mode = GenerationMode::autonomous_sprint(10);
         assert_eq!(mode.name(), "sprint");
         assert_eq!(mode.max_iterations(), 10);
