@@ -36,6 +36,7 @@
 //! ```
 
 pub mod apply_workflow;
+pub mod browser_daemon;
 pub mod code_parser;
 pub mod error_recovery;
 pub mod executor_agent;
@@ -43,8 +44,10 @@ pub mod file_ops;
 pub mod generation_mode;
 pub mod incremental;
 pub mod llm_generator;
+pub mod parallel_sprint;
 pub mod planner_agent;
 pub mod review_engine;
+pub mod ship_pipeline;
 pub mod sprint;
 pub mod streaming_generator;
 pub mod test_execution;
@@ -55,6 +58,10 @@ pub mod verifier_agent;
 pub use apply_workflow::{
     ApplyWorkflow, Checkpoint, CheckpointManager, TrustLevel, WorkflowResult,
 };
+pub use browser_daemon::{
+    AccessibilitySnapshot, BrowserDaemon, BrowserDaemonConfig, BrowserSession, ElementRef,
+    SessionElementMap, StubBrowserSession,
+};
 pub use code_parser::ParsedFileChange;
 pub use error_recovery::{
     CompilationError, ErrorRecovery, ErrorRecoveryConfig, ErrorRecoveryResult,
@@ -63,12 +70,22 @@ pub use executor_agent::{ExecutorAgent, StepResult};
 pub use file_ops::{FileBackup, FileOperation, FileOperationResult, FileOperations};
 pub use generation_mode::{GenerationMode, GenerationOptions, GenerationResult};
 pub use llm_generator::{GeneratedCode, LlmCodeGenerator};
+pub use parallel_sprint::{
+    ParallelSprintConfig, ParallelSprintManager, ParallelSprintSummary, SessionState,
+    SessionStatus, SprintSessionId,
+};
 pub use planner_agent::{
     AnalysisDepth, AnalysisScope, FileEdit, PlannerAgent, ReviewCriterion, RiskAssessment,
     StepAction, TaskPlan, TaskStep,
 };
 pub use review_engine::{
-    FusedReview, ReviewEngine, ReviewFocus, ReviewFinding, ReviewResult, ReviewerConfig,
+    FusedReview, ReviewEngine, ReviewFinding, ReviewFocus, ReviewResult, ReviewerConfig,
+};
+pub use ship_pipeline::{
+    BenchmarkComparison, BenchmarkReport, BenchmarkResult, BenchmarkSuite, BranchProtection,
+    BranchRule, CanaryConfig, CanaryDeployment, CanaryMetrics, CanaryStatus, CommitMessage,
+    CommitMessageStrategy, ConventionalCommitType, ShipCheckReport, ShipCheckResult,
+    ShipCheckSeverity, ShipConfig, ShipPipeline, ShipRecord, ShipStats,
 };
 pub use sprint::{
     PhaseResult, PhaseStatus, SprintConfig, SprintEngine, SprintError, SprintMetrics, SprintPhase,
@@ -366,6 +383,20 @@ impl AgenticSystem {
             GenerationMode::AgentBased { max_steps, .. } => {
                 self.execute_agent_based(&request, max_steps, &mut log)
                     .await?
+            },
+            GenerationMode::Sprint {
+                max_iterations,
+                real_execution,
+                auto_approve,
+            } => {
+                self.execute_sprint(
+                    &request,
+                    max_iterations,
+                    real_execution,
+                    auto_approve,
+                    &mut log,
+                )
+                .await?
             },
         };
 
@@ -805,6 +836,166 @@ impl AgenticSystem {
         }
 
         Ok((changes, verification))
+    }
+
+    /// Execute a sprint using the SprintEngine (7-phase workflow).
+    ///
+    /// This is the integration point that connects the standalone SprintEngine
+    /// to the AgenticSystem execution path.
+    async fn execute_sprint(
+        &mut self,
+        request: &TaskRequest,
+        max_iterations: usize,
+        real_execution: bool,
+        auto_approve: bool,
+        log: &mut Vec<LogEntry>,
+    ) -> Result<(Vec<FileChange>, VerificationResult)> {
+        log.push(LogEntry {
+            timestamp: current_timestamp(),
+            level: LogLevel::Info,
+            component: "AgenticSystem".to_string(),
+            message: format!(
+                "Executing sprint mode (max_iterations={}, real_execution={}, auto_approve={})",
+                max_iterations, real_execution, auto_approve
+            ),
+        });
+
+        // We need an LLM client to run the sprint engine
+        let Some(llm) = self.llm_client.as_ref() else {
+            log.push(LogEntry {
+                timestamp: current_timestamp(),
+                level: LogLevel::Warn,
+                component: "AgenticSystem".to_string(),
+                message: "No LLM client configured for sprint mode — falling back to agent-based"
+                    .to_string(),
+            });
+            return self
+                .execute_agent_based(request, max_iterations as u32, log)
+                .await;
+        };
+
+        // Build SprintConfig from TaskRequest
+        let mut sprint_config = sprint::SprintConfig::new(&request.description);
+        sprint_config.max_iterations = max_iterations;
+        sprint_config.real_execution = real_execution;
+        sprint_config.auto_approve = auto_approve;
+        sprint_config.project_root =
+            std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
+
+        // Copy target files as context
+        let target_files_str = if request.target_files.is_empty() {
+            String::new()
+        } else {
+            format!("\nTarget files: {}", request.target_files.join(", "))
+        };
+
+        // Run the sprint engine
+        let mut engine = sprint::SprintEngine::new(Arc::clone(llm));
+
+        // Attach tool executor if available
+        if let Some(executor) = self.tool_executor.as_ref() {
+            engine = engine.with_tool_executor(Arc::clone(executor));
+        }
+
+        let sprint_result = engine.run(sprint_config).await;
+
+        match sprint_result {
+            Ok(result) => {
+                log.push(LogEntry {
+                    timestamp: current_timestamp(),
+                    level: LogLevel::Info,
+                    component: "AgenticSystem".to_string(),
+                    message: format!(
+                        "Sprint completed: success={}, phases={}, duration={}ms",
+                        result.success,
+                        result.phase_results.len(),
+                        result.total_duration_ms
+                    ),
+                });
+
+                // Log each phase result
+                for phase_result in &result.phase_results {
+                    log.push(LogEntry {
+                        timestamp: current_timestamp(),
+                        level: if phase_result.status == sprint::PhaseStatus::Success {
+                            LogLevel::Info
+                        } else {
+                            LogLevel::Warn
+                        },
+                        component: "SprintEngine".to_string(),
+                        message: format!(
+                            "  Phase {:?}: {} ({})",
+                            phase_result.phase,
+                            if phase_result.status == sprint::PhaseStatus::Success {
+                                "OK"
+                            } else {
+                                "FAILED"
+                            },
+                            phase_result.output.chars().take(200).collect::<String>()
+                        ),
+                    });
+                }
+
+                // Log sprint metrics if available
+                let metrics_report = result.metrics.report();
+                log.push(LogEntry {
+                    timestamp: current_timestamp(),
+                    level: LogLevel::Info,
+                    component: "SprintEngine".to_string(),
+                    message: format!("Sprint metrics:\n{metrics_report}"),
+                });
+
+                if !result.success {
+                    log.push(LogEntry {
+                        timestamp: current_timestamp(),
+                        level: LogLevel::Warn,
+                        component: "SprintEngine".to_string(),
+                        message: format!("Sprint summary: {}", result.summary),
+                    });
+                }
+
+                // Convert sprint result to FileChange + VerificationResult
+                // The sprint engine doesn't directly produce FileChanges in the same format,
+                // so we create a synthetic change from the sprint output
+                let changes = vec![FileChange {
+                    path: format!("sprint-{}", chrono::Utc::now().format("%Y%m%d-%H%M%S")),
+                    change_type: ChangeType::Created,
+                    original: None,
+                    new: result.summary.clone(),
+                    diff: result.summary,
+                }];
+
+                let verification = VerificationResult {
+                    issues: Vec::new(),
+                    passed: result.success,
+                    warnings_count: 0,
+                    errors_count: if result.success { 0 } else { 1 },
+                    verified_files: Vec::new(),
+                };
+
+                Ok((changes, verification))
+            },
+            Err(e) => {
+                log.push(LogEntry {
+                    timestamp: current_timestamp(),
+                    level: LogLevel::Error,
+                    component: "SprintEngine".to_string(),
+                    message: format!("Sprint failed: {e}"),
+                });
+
+                // Fall back to agent-based on sprint failure
+                log.push(LogEntry {
+                    timestamp: current_timestamp(),
+                    level: LogLevel::Info,
+                    component: "AgenticSystem".to_string(),
+                    message: "Falling back to agent-based execution after sprint failure"
+                        .to_string(),
+                });
+
+                self.execute_agent_based(request, max_iterations as u32, log)
+                    .await
+            },
+        }
     }
 
     /// Returns the current state of the system.
