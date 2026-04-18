@@ -10,7 +10,6 @@
 
 use axum::{extract::State, http::StatusCode, Json};
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
 
 use crate::agentic::{ship_pipeline::CommitMessage, GenerationMode};
 use crate::api::rest::ApiState;
@@ -70,18 +69,18 @@ pub struct ExecuteSkillRequest {
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
-/// Create a minimal ApiState for test handlers that don't need real state.
+/// Create a minimal ApiState for test handlers.
 #[cfg(test)]
-fn test_api_state() -> Arc<ApiState> {
+fn test_api_state() -> ApiState {
     let store = SessionStore::in_memory().unwrap();
-    Arc::new(ApiState::new(store))
+    ApiState::new(store)
 }
 
 // ─── Sprint Handler ────────────────────────────────────────────────────────
 
 /// POST /api/v1/sprint — Run a sprint pipeline
 pub async fn run_sprint(
-    State(_state): State<Arc<ApiState>>,
+    State(_state): State<ApiState>,
     Json(request): Json<RunSprintRequest>,
 ) -> (StatusCode, Json<RunSprintResponse>) {
     let start = std::time::Instant::now();
@@ -114,7 +113,7 @@ pub async fn run_sprint(
 
 /// POST /api/v1/ship/checks — Run pre-ship checks
 pub async fn run_pre_ship_checks(
-    State(_state): State<Arc<ApiState>>,
+    State(_state): State<ApiState>,
     Json(request): Json<PreShipCheckRequest>,
 ) -> (StatusCode, Json<crate::agentic::ShipCheckReport>) {
     let pipeline = crate::agentic::ShipPipeline::new_default();
@@ -132,7 +131,7 @@ pub async fn run_pre_ship_checks(
 
 /// POST /api/v1/ship/commit-message — Generate a commit message
 pub async fn generate_commit_message(
-    State(_state): State<Arc<ApiState>>,
+    State(_state): State<ApiState>,
     Json(request): Json<GenerateCommitMessageRequest>,
 ) -> (StatusCode, Json<CommitMessage>) {
     let pipeline = crate::agentic::ShipPipeline::new_default();
@@ -148,7 +147,7 @@ pub async fn generate_commit_message(
 // ─── Skills Handler ────────────────────────────────────────────────────────
 
 /// GET /api/v1/skills — List available skills
-pub async fn list_skills() -> (StatusCode, Json<serde_json::Value>) {
+pub async fn list_skills(State(_state): State<ApiState>) -> (StatusCode, Json<serde_json::Value>) {
     let mut all_skills: Vec<serde_json::Value> = Vec::new();
 
     // Check for markdown skills in ~/.clawdius/skills/
@@ -182,7 +181,7 @@ pub async fn list_skills() -> (StatusCode, Json<serde_json::Value>) {
 
 /// POST /api/v1/skills/execute — Execute a skill
 pub async fn execute_skill(
-    State(_state): State<Arc<ApiState>>,
+    State(_state): State<ApiState>,
     Json(request): Json<ExecuteSkillRequest>,
 ) -> (StatusCode, Json<serde_json::Value>) {
     let result = serde_json::json!({
@@ -199,7 +198,7 @@ pub async fn execute_skill(
 
 /// GET /api/v1/sprint/sessions — List parallel sprint sessions
 pub async fn list_sprint_sessions(
-    State(_state): State<Arc<ApiState>>,
+    State(_state): State<ApiState>,
 ) -> (StatusCode, Json<serde_json::Value>) {
     let sessions: Vec<serde_json::Value> = Vec::new();
     (
@@ -213,7 +212,7 @@ pub async fn list_sprint_sessions(
 
 /// POST /api/v1/sprint/sessions — Submit a new parallel sprint session
 pub async fn submit_sprint_session(
-    State(_state): State<Arc<ApiState>>,
+    State(_state): State<ApiState>,
     Json(request): Json<RunSprintRequest>,
 ) -> (StatusCode, Json<serde_json::Value>) {
     let response = serde_json::json!({
@@ -304,7 +303,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_list_skills_endpoint() {
-        let (status, Json(body)) = list_skills().await;
+        let (status, Json(body)) = list_skills(State(test_api_state())).await;
         assert_eq!(status, StatusCode::OK);
         assert!(body.get("skills").is_some());
     }
