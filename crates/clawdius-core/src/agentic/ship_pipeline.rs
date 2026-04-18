@@ -381,12 +381,13 @@ impl ShipPipeline {
     }
 
     /// Get the branch rules applicable to a given branch.
-    pub fn get_branch_rule(&self, branch: &str) -> &BranchRule {
+    pub fn get_branch_rule(&self, branch: &str) -> BranchRule {
         self.config
             .branch_rules
             .iter()
             .find(|r| r.matches(branch))
-            .unwrap_or(&BranchRule {
+            .cloned()
+            .unwrap_or_else(|| BranchRule {
                 pattern: "*".to_string(),
                 protection: BranchProtection::None,
                 require_pr: false,
@@ -640,7 +641,7 @@ impl Default for CanaryConfig {
 }
 
 /// Status of a canary deployment.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 pub enum CanaryStatus {
     /// Canary is being prepared
     Preparing,
@@ -877,12 +878,13 @@ impl BenchmarkSuite {
             .iter()
             .filter(|c| c.change_percent < -5.0)
             .count();
+        let total_compared = comparisons.len();
 
         BenchmarkReport {
             baseline_name: baseline.name.clone(),
             current_name: self.name.clone(),
             comparisons,
-            total_compared: comparisons.len(),
+            total_compared,
             regressions,
             improvements,
             regression_threshold,
