@@ -1197,7 +1197,7 @@ mod tests {
             metadata: HashMap::new(),
         };
         let comp = BenchmarkComparison::new(&baseline, &current, 10.0);
-        assert_eq!(comp.change_percent, 10.0);
+        assert!((comp.change_percent - 10.0).abs() < 0.001);
         assert!(!comp.is_regression); // exactly at threshold, not above
     }
 
