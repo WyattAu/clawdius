@@ -24,6 +24,10 @@ use crate::api::rate_limit::{rate_limit_middleware, ApiRateLimiter};
 use crate::api::routes::{
     AgentRequest, AgentResponse, ChatRequest, ChatResponse, HealthResponse, ToolCallInfo,
 };
+use crate::api::sprint_handler::{
+    execute_skill, generate_commit_message, list_skills, list_sprint_sessions, run_pre_ship_checks,
+    run_sprint, submit_sprint_session,
+};
 use crate::api::tenant::{default_tenants, AuthenticatedApiKey, TenantStore};
 use crate::llm::{ChatMessage, ChatRole, LlmProvider};
 use crate::mcp::McpRequest;
@@ -896,7 +900,17 @@ pub fn create_router(state: ApiState) -> Router {
         .route("/api/v1/tools/execute", post(execute_tool))
         .route("/api/v1/plugins", get(list_plugins))
         .route("/api/v1/plugins/marketplace", get(list_marketplace_plugins))
-        .route("/api/v1/usage", get(usage_endpoint));
+        .route("/api/v1/usage", get(usage_endpoint))
+        // Sprint, Ship, and Skills endpoints
+        .route("/api/v1/sprint", post(run_sprint))
+        .route(
+            "/api/v1/sprint/sessions",
+            get(list_sprint_sessions).post(submit_sprint_session),
+        )
+        .route("/api/v1/ship/checks", post(run_pre_ship_checks))
+        .route("/api/v1/ship/commit-message", post(generate_commit_message))
+        .route("/api/v1/skills", get(list_skills))
+        .route("/api/v1/skills/execute", post(execute_skill));
 
     let protected = if auth.is_enabled() {
         protected_routes.layer(middleware::from_fn_with_state(
