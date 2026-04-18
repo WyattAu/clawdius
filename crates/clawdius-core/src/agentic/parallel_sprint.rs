@@ -17,12 +17,15 @@ pub struct SprintSessionId(pub String);
 
 impl SprintSessionId {
     pub fn new() -> Self {
+        use std::sync::atomic::{AtomicU64, Ordering};
+        static COUNTER: AtomicU64 = AtomicU64::new(0);
         use std::time::{SystemTime, UNIX_EPOCH};
         let timestamp = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .map(|d| d.as_millis())
+            .map(|d| d.as_nanos())
             .unwrap_or(0);
-        Self(format!("sprint-{}", timestamp))
+        let count = COUNTER.fetch_add(1, Ordering::Relaxed);
+        Self(format!("sprint-{}-{}", timestamp, count))
     }
 }
 
