@@ -1110,7 +1110,7 @@ mod tests {
         // Verify the mode name is correct
         let mode = GenerationMode::sprint();
         assert_eq!(mode.name(), "sprint");
-        assert_eq!(mode.max_iterations(), 1);
+        assert_eq!(mode.max_iterations(), 3);
         drop(system);
     }
 
