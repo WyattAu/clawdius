@@ -226,7 +226,7 @@ pub async fn execute_skill(
 
     (
         StatusCode::OK,
-        Json(serde_json::json!({ "skills": all_skills })),
+        Json(serde_json::json!({"skills": all_skills})),
     )
 }
 
