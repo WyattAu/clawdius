@@ -1432,6 +1432,7 @@ async fn handle_server(host: &str, port: u16) -> anyhow::Result<()> {
 
 // ── Sprint Handler ──────────────────────────────────────────────────────
 
+
 async fn handle_sprint(
     task: String,
     max_iterations: usize,
@@ -1443,57 +1444,165 @@ async fn handle_sprint(
     _config_path: Option<PathBuf>,
     output_format: OutputFormat,
 ) -> anyhow::Result<()> {
-    use clawdius_core::agentic::GenerationMode;
+    use clawdius_core::agentic::sprint::{PhaseStatus, SprintConfig, SprintEngine};
+    use clawdius_core::llm::providers::LlmClient;
+    use std::sync::Arc;
+
+    let config = clawdius_core::config::Config::load_or_default();
+
+    let llm_config = match clawdius_core::llm::LlmConfig::from_config(&config.llm, &provider) {
+        Ok(cfg) => cfg,
+        Err(e) => {
+            match output_format {
+                OutputFormat::Json => {
+                    println!(
+                        "{}",
+                        serde_json::json!({
+                            "error": e.to_string(),
+                            "provider": provider,
+                        })
+                    );
+                },
+                _ => {
+                    eprintln!("Failed to create LLM config for provider '{provider}': {e}");
+                },
+            }
+            return Ok(());
+        },
+    };
+
+    let provider_instance = match clawdius_core::llm::create_provider(&llm_config) {
+        Ok(p) => p,
+        Err(e) => {
+            match output_format {
+                OutputFormat::Json => {
+                    println!(
+                        "{}",
+                        serde_json::json!({
+                            "error": e.to_string(),
+                            "provider": provider,
+                        })
+                    );
+                },
+                _ => {
+                    eprintln!("Failed to create LLM provider '{provider}': {e}");
+                    eprintln!("Ensure your API key is set (e.g., export ANTHROPIC_API_KEY=...)");
+                },
+            }
+            return Ok(());
+        },
+    };
+
+    let mut sprint_config = SprintConfig::new(&task);
+    sprint_config.max_iterations = max_iterations;
+    sprint_config.real_execution = real_execution;
+    sprint_config.auto_approve = auto_approve;
+    sprint_config.model = model.clone();
+    sprint_config.browser_qa_url = browser_qa_url;
+
+    let llm: Arc<dyn LlmClient> = Arc::new(provider_instance);
+    let engine = SprintEngine::new(llm);
+
+    if output_format == OutputFormat::Text {
+        println!("🚀 Starting sprint");
+        println!("   Task: {task}");
+        println!("   Max iterations: {max_iterations}");
+        println!("   Real execution: {real_execution}");
+        println!("   Auto-approve: {auto_approve}");
+        println!("   Provider: {provider}");
+        if let Some(m) = &model {
+            println!("   Model: {m}");
+        }
+        if let Some(url) = &sprint_config.browser_qa_url {
+            println!("   Browser QA: {url}");
+        }
+        println!();
+    }
+
+    let result = engine.run(sprint_config).await.map_err(|e| anyhow::anyhow!("{e}"))?;
 
     match output_format {
         OutputFormat::Json => {
+            let phase_results_json: Vec<serde_json::Value> = result
+                .phase_results
+                .iter()
+                .map(|pr| {
+                    serde_json::json!({
+                        "phase": pr.phase.to_string(),
+                        "status": format!("{:?}", pr.status),
+                        "duration_ms": pr.duration_ms,
+                        "tokens_used": pr.tokens_used,
+                        "output": pr.output,
+                        "files_modified": pr.files_modified,
+                        "errors": pr.errors,
+                    })
+                })
+                .collect();
+
             println!(
                 "{}",
                 serde_json::json!({
-                    "action": "sprint",
-                    "task": task,
-                    "max_iterations": max_iterations,
-                    "real_execution": real_execution,
-                    "auto_approve": auto_approve,
-                    "provider": provider,
-                    "model": model,
-                    "browser_qa_url": browser_qa_url,
-                    "status": "queued",
+                    "success": result.success,
+                    "phase_results": phase_results_json,
+                    "total_duration_ms": result.total_duration_ms,
+                    "summary": result.summary,
+                    "checkpoint_ref": result.checkpoint_ref,
+                    "rollback_available": result.rollback_available,
+                    "metrics": {
+                        "total_tokens": result.metrics.total_tokens,
+                        "retry_cycles": result.metrics.retry_cycles,
+                        "phases_succeeded": result.metrics.phases_succeeded,
+                        "phases_failed": result.metrics.phases_failed,
+                        "phases_skipped": result.metrics.phases_skipped,
+                    },
                 })
             );
         },
         _ => {
-            println!("🚀 Sprint queued");
-            println!("   Task: {task}");
-            println!("   Max iterations: {max_iterations}");
-            println!("   Real execution: {real_execution}");
-            println!("   Auto-approve: {auto_approve}");
-            println!("   Provider: {provider}");
-            if let Some(m) = &model {
-                println!("   Model: {m}");
-            }
-            if let Some(url) = &browser_qa_url {
-                println!("   Browser QA: {url}");
-            }
+            println!("{}", result.summary);
             println!();
-            println!("Note: Sprint execution requires an LLM API key.");
-            println!(
-                "Use `clawdius serve` for the full REST API, or configure in .clawdius/config.toml"
-            );
 
-            // Build the generation mode for reference
-            let _mode = if auto_approve && real_execution {
-                GenerationMode::autonomous_sprint(max_iterations)
-            } else if real_execution {
-                GenerationMode::sprint_with_execution(max_iterations)
-            } else {
-                GenerationMode::sprint()
-            };
+            for pr in &result.phase_results {
+                let status_icon = match pr.status {
+                    PhaseStatus::Success => "✅",
+                    PhaseStatus::Failed => "❌",
+                    PhaseStatus::Skipped => "⏭️",
+                };
+                println!(
+                    "  {status_icon} {} ({:.1}s, {} tokens)",
+                    pr.phase,
+                    pr.duration_ms as f64 / 1000.0,
+                    pr.tokens_used
+                );
+                if !pr.files_modified.is_empty() {
+                    for f in &pr.files_modified {
+                        println!("      {f}");
+                    }
+                }
+                if !pr.errors.is_empty() {
+                    for e in &pr.errors {
+                        println!("      error: {e}");
+                    }
+                }
+            }
+
+            println!();
+            println!("Total duration: {:.1}s", result.total_duration_ms as f64 / 1000.0);
+            if let Some(ref checkpoint) = result.checkpoint_ref {
+                println!("Checkpoint: {checkpoint}");
+            }
+            if result.rollback_available {
+                println!("Rollback available: yes");
+            }
+
+            println!();
+            println!("{}", result.metrics.report());
         },
     }
 
     Ok(())
 }
+
 
 // ── Ship Handler ────────────────────────────────────────────────────────
 
@@ -1554,24 +1663,37 @@ async fn handle_ship(action: ShipAction, output_format: OutputFormat) -> anyhow:
     Ok(())
 }
 
-// ── Skill Handler ───────────────────────────────────────────────────────
 
 async fn handle_skill(action: SkillAction, output_format: OutputFormat) -> anyhow::Result<()> {
+    use clawdius_core::llm::providers::LlmClient;
+    use clawdius_core::skills::{SkillContext, SkillRegistry};
+    use std::sync::Arc;
+
     match action {
         SkillAction::List => {
-            let mut skills: Vec<std::path::PathBuf> = Vec::new();
+            let registry = SkillRegistry::new();
+            registry.register_builtin_skills().await;
+            let builtins = registry.list().await;
 
             let home_dir = std::env::var_os("HOME")
                 .map(std::path::PathBuf::from)
                 .or_else(|| std::env::var_os("USERPROFILE").map(std::path::PathBuf::from));
 
+            let mut user_skills: Vec<serde_json::Value> = Vec::new();
             if let Some(home) = home_dir {
                 let skills_dir = home.join(".clawdius").join("skills");
-                if let Ok(entries) = std::fs::read_dir(&skills_dir) {
-                    for entry in entries.flatten() {
-                        let path = entry.path();
-                        if path.extension().map_or(false, |e| e == "md") {
-                            skills.push(path);
+                if let Ok(loaded) = registry.load_skills_from_dir(&skills_dir).await {
+                    if !loaded.is_empty() {
+                        let all_skills = registry.list().await;
+                        let builtin_names: std::collections::HashSet<&str> =
+                            builtins.iter().map(|s| s.name.as_str()).collect();
+                        for skill in &all_skills {
+                            if !builtin_names.contains(skill.name.as_str()) {
+                                user_skills.push(serde_json::json!({
+                                    "name": skill.name,
+                                    "description": skill.description,
+                                }));
+                            }
                         }
                     }
                 }
@@ -1579,62 +1701,154 @@ async fn handle_skill(action: SkillAction, output_format: OutputFormat) -> anyho
 
             match output_format {
                 OutputFormat::Json => {
-                    let json_skills: Vec<serde_json::Value> = skills
+                    let builtin_json: Vec<serde_json::Value> = builtins
                         .iter()
-                        .filter_map(|p| {
-                            p.file_stem()?.to_str().map(|name| {
-                                serde_json::json!({
-                                    "name": name,
-                                    "path": p.display().to_string(),
-                                })
+                        .map(|s| {
+                            serde_json::json!({
+                                "name": s.name,
+                                "description": s.description,
+                                "version": s.version,
+                                "source": "builtin",
                             })
                         })
                         .collect();
-                    println!("{}", serde_json::to_string_pretty(&json_skills)?);
+
+                    println!(
+                        "{}",
+                        serde_json::json!({
+                            "builtin_skills": builtin_json,
+                            "user_skills": user_skills,
+                        })
+                    );
                 },
                 _ => {
-                    if skills.is_empty() {
-                        println!("No skills found in ~/.clawdius/skills/");
+                    if builtins.is_empty() && user_skills.is_empty() {
+                        println!("No skills found.");
+                        println!("Built-in skills can be used directly.");
                         println!(
-                            "Add markdown skill files (e.g., ship.md, review.md) to get started."
+                            "Add markdown skill files to ~/.clawdius/skills/ for custom skills."
                         );
                     } else {
-                        println!("📚 Available skills:");
-                        for skill in &skills {
-                            if let Some(name) = skill.file_stem().and_then(|n| n.to_str()) {
-                                println!("   • {name}");
+                        if !builtins.is_empty() {
+                            println!("📚 Built-in skills:");
+                            for skill in &builtins {
+                                println!("   {} - {}", skill.name, skill.description);
+                            }
+                        }
+                        if !user_skills.is_empty() {
+                            println!();
+                            println!("📂 User skills (~/.clawdius/skills/):");
+                            for skill in &user_skills {
+                                let name = skill.get("name").and_then(|n| n.as_str()).unwrap_or("?");
+                                let desc = skill
+                                    .get("description")
+                                    .and_then(|d| d.as_str())
+                                    .unwrap_or("");
+                                println!("   {name} - {desc}");
                             }
                         }
                     }
                 },
             }
         },
-        SkillAction::Run { name, arguments } => match output_format {
-            OutputFormat::Json => {
-                println!(
-                    "{}",
-                    serde_json::json!({
-                        "action": "skill",
-                        "skill": name,
-                        "arguments": arguments,
-                        "status": "queued",
-                    })
-                );
-            },
-            _ => {
-                println!("⚡ Skill '{name}' queued for execution");
-                if !arguments.is_empty() {
-                    println!("   Arguments: {arguments}");
+        SkillAction::Run { name, arguments } => {
+            let config = clawdius_core::config::Config::load_or_default();
+
+            let provider_name = config
+                .llm
+                .default_provider
+                .as_deref()
+                .unwrap_or("anthropic");
+
+            let optional_llm: Option<Arc<dyn LlmClient>> =
+                match clawdius_core::llm::LlmConfig::from_config(&config.llm, provider_name)
+                    .and_then(|llm_cfg| clawdius_core::llm::create_provider(&llm_cfg))
+                {
+                    Ok(p) => Some(Arc::new(p)),
+                    Err(_) => None,
+                };
+
+            let registry = SkillRegistry::new();
+            registry.register_builtin_skills().await;
+
+            let home_dir = std::env::var_os("HOME")
+                .map(std::path::PathBuf::from)
+                .or_else(|| std::env::var_os("USERPROFILE").map(std::path::PathBuf::from));
+
+            if let Some(home) = home_dir {
+                let skills_dir = home.join(".clawdius").join("skills");
+                let _ = registry.load_skills_from_dir(&skills_dir).await;
+            }
+
+            let project_root = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+
+            let mut ctx = SkillContext::new(project_root);
+            if let Some(llm) = optional_llm {
+                ctx = ctx.with_llm(llm);
+            }
+
+            for arg in arguments.split_whitespace() {
+                if let Some((key, value)) = arg.split_once('=') {
+                    ctx.add_argument(key, value);
                 }
-                println!();
-                println!("Note: Skill execution requires the REST API server.");
-                println!("Use `clawdius serve` to start, then POST to /api/v1/skills/execute");
-            },
+            }
+
+            let result = registry.execute(&name, ctx).await;
+
+            match result {
+                Ok(skill_result) => match output_format {
+                    OutputFormat::Json => {
+                        println!(
+                            "{}",
+                            serde_json::json!({
+                                "success": skill_result.success,
+                                "output": skill_result.output,
+                                "modified_files": skill_result.modified_files,
+                                "duration_ms": skill_result.duration_ms,
+                            })
+                        );
+                    },
+                    _ => {
+                        if skill_result.success {
+                            println!("✅ Skill '{name}' completed successfully");
+                        } else {
+                            println!("❌ Skill '{name}' failed");
+                        }
+                        if !skill_result.output.is_empty() {
+                            println!();
+                            println!("{}", skill_result.output);
+                        }
+                        if !skill_result.modified_files.is_empty() {
+                            println!();
+                            println!("Files modified:");
+                            for f in &skill_result.modified_files {
+                                println!("  {f}");
+                            }
+                        }
+                    },
+                },
+                Err(e) => match output_format {
+                    OutputFormat::Json => {
+                        println!(
+                            "{}",
+                            serde_json::json!({
+                                "success": false,
+                                "error": e.to_string(),
+                                "skill": name,
+                            })
+                        );
+                    },
+                    _ => {
+                        eprintln!("Failed to execute skill '{name}': {e}");
+                    },
+                },
+            }
         },
     }
 
     Ok(())
 }
+
 
 async fn shutdown_signal() {
     tokio::signal::ctrl_c()
