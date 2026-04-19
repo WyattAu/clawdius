@@ -90,6 +90,10 @@ pub struct LspClient {
     capabilities: RwLock<Option<ServerCapabilities>>,
     /// Running flag
     running: Arc<std::sync::atomic::AtomicBool>,
+    /// Broadcast channel for publishDiagnostics notifications
+    diagnostics_tx: tokio::sync::broadcast::Sender<(String, Vec<crate::lsp::protocol::Diagnostic>)>,
+    /// Latest diagnostics snapshot per file URI
+    diagnostics_snapshot: Arc<RwLock<HashMap<String, Vec<crate::lsp::protocol::Diagnostic>>>>,
 }
 
 /// Server capabilities.
@@ -163,6 +167,22 @@ struct LspResponseError {
     code: i32,
     #[allow(dead_code)]
     message: String,
+}
+
+/// LSP notification (server-initiated, no id).
+#[derive(Debug, Clone, Deserialize)]
+struct LspNotification {
+    #[allow(dead_code)]
+    jsonrpc: String,
+    method: String,
+    params: serde_json::Value,
+}
+
+/// publishDiagnostics notification params.
+#[derive(Debug, Clone, Deserialize)]
+struct PublishDiagnosticsParams {
+    uri: String,
+    diagnostics: Vec<crate::lsp::protocol::Diagnostic>,
 }
 
 /// Initialize params.
@@ -257,6 +277,7 @@ impl LspClient {
     /// Creates a new LSP client.
     #[must_use]
     pub fn new(config: LspClientConfig) -> Self {
+        let (diagnostics_tx, _) = tokio::sync::broadcast::channel(64);
         Self {
             config,
             request_id: AtomicU64::new(1),
@@ -265,6 +286,8 @@ impl LspClient {
             pending: Arc::new(RwLock::new(HashMap::new())),
             capabilities: RwLock::new(None),
             running: Arc::new(std::sync::atomic::AtomicBool::new(false)),
+            diagnostics_tx,
+            diagnostics_snapshot: Arc::new(RwLock::new(HashMap::new())),
         }
     }
 
@@ -555,6 +578,32 @@ impl LspClient {
         Ok(())
     }
 
+    /// Subscribe to diagnostics notifications from the LSP server.
+    /// Returns a broadcast receiver that yields `(uri, diagnostics)` pairs.
+    #[must_use]
+    pub fn subscribe_diagnostics(
+        &self,
+    ) -> tokio::sync::broadcast::Receiver<(String, Vec<crate::lsp::protocol::Diagnostic>)> {
+        self.diagnostics_tx.subscribe()
+    }
+
+    /// Get the latest diagnostics snapshot for a specific file URI.
+    pub async fn get_diagnostics(&self, uri: &str) -> Vec<crate::lsp::protocol::Diagnostic> {
+        self.diagnostics_snapshot
+            .read()
+            .await
+            .get(uri)
+            .cloned()
+            .unwrap_or_default()
+    }
+
+    /// Get all current diagnostics across all files.
+    pub async fn get_all_diagnostics(
+        &self,
+    ) -> HashMap<String, Vec<crate::lsp::protocol::Diagnostic>> {
+        self.diagnostics_snapshot.read().await.clone()
+    }
+
     /// Sends a request.
     async fn send_request<T: Serialize>(&self, method: &str, params: T) -> Result<LspResponse> {
         let id = self.request_id.fetch_add(1, Ordering::SeqCst);
@@ -611,6 +660,8 @@ impl LspClient {
     fn start_reader(&self, stdout: ChildStdout) {
         let pending = Arc::clone(&self.pending);
         let running = Arc::clone(&self.running);
+        let diagnostics_tx = self.diagnostics_tx.clone();
+        let diagnostics_snapshot = Arc::clone(&self.diagnostics_snapshot);
 
         tokio::spawn(async move {
             use tokio::io::AsyncReadExt;
@@ -648,19 +699,42 @@ impl LspClient {
                 if let Some(len) = content_length {
                     let mut buffer = vec![0u8; len];
                     match reader.read_exact(&mut buffer).await {
-                        Ok(_) => match serde_json::from_slice::<LspResponse>(&buffer) {
-                            Ok(response) => {
+                        Ok(_) => {
+                            // Try parsing as a response first (has `id` field)
+                            if let Ok(response) = serde_json::from_slice::<LspResponse>(&buffer) {
                                 if let Some(tx) = pending.write().await.remove(&response.id) {
                                     let _ = tx.send(response);
                                 }
-                            },
-                            Err(e) => {
-                                tracing::debug!(
-                                    "Failed to parse LSP response: {} - content: {}",
-                                    e,
-                                    String::from_utf8_lossy(&buffer)
-                                );
-                            },
+                            } else {
+                                // Try parsing as a notification (no `id` field)
+                                if let Ok(notification) =
+                                    serde_json::from_slice::<LspNotification>(&buffer)
+                                {
+                                    // Handle publishDiagnostics
+                                    if notification.method == "textDocument/publishDiagnostics" {
+                                        if let Ok(params) =
+                                            serde_json::from_value::<PublishDiagnosticsParams>(
+                                                notification.params,
+                                            )
+                                        {
+                                            let uri = params.uri;
+                                            let diagnostics = params.diagnostics;
+                                            // Update snapshot
+                                            diagnostics_snapshot
+                                                .write()
+                                                .await
+                                                .insert(uri.clone(), diagnostics.clone());
+                                            // Broadcast to subscribers
+                                            let _ = diagnostics_tx.send((uri, diagnostics));
+                                        }
+                                    }
+                                } else {
+                                    tracing::debug!(
+                                        "Failed to parse LSP message: {}",
+                                        String::from_utf8_lossy(&buffer)
+                                    );
+                                }
+                            }
                         },
                         Err(e) => {
                             tracing::error!("LSP reader error reading content: {}", e);

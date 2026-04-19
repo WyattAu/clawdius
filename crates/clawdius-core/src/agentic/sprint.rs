@@ -239,6 +239,7 @@ pub struct SprintEngine {
     llm: Arc<dyn LlmClient>,
     tool_executor: Option<Arc<dyn ToolExecutor>>,
     browser_daemon: Option<Arc<BrowserDaemon>>,
+    lsp_client: Option<Arc<tokio::sync::Mutex<crate::lsp::LspClient>>>,
 }
 
 impl SprintEngine {
@@ -247,6 +248,7 @@ impl SprintEngine {
             llm,
             tool_executor: None,
             browser_daemon: None,
+            lsp_client: None,
         }
     }
 
@@ -261,6 +263,13 @@ impl SprintEngine {
     #[must_use]
     pub fn with_browser_daemon(mut self, daemon: Arc<BrowserDaemon>) -> Self {
         self.browser_daemon = Some(daemon);
+        self
+    }
+
+    /// Attach an LSP client for code intelligence during sprint phases.
+    #[must_use]
+    pub fn with_lsp_client(mut self, client: crate::lsp::LspClient) -> Self {
+        self.lsp_client = Some(Arc::new(tokio::sync::Mutex::new(client)));
         self
     }
 
@@ -1219,6 +1228,63 @@ impl SprintEngine {
                          5. Check accessibility basics (focus states, ARIA labels)\n\
                          Report any visual or functional issues found."
                     ));
+                }
+            }
+        }
+
+        // Inject LSP diagnostics for Build and Test phases
+        if matches!(
+            phase,
+            SprintPhase::Build | SprintPhase::Test | SprintPhase::Review
+        ) {
+            if let Some(ref lsp) = self.lsp_client {
+                // Wait briefly for diagnostics to settle (before locking)
+                tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+                let all_diags = {
+                    let mut lsp = lsp.lock().await;
+                    lsp.get_all_diagnostics().await
+                };
+                if !all_diags.is_empty() {
+                    let mut diag_text = String::from(
+                        "\n\n## LSP Diagnostics\n\
+                         The language server reported the following issues:\n",
+                    );
+                    let mut error_count = 0usize;
+                    let mut warning_count = 0usize;
+                    for (uri, diags) in &all_diags {
+                        for d in diags {
+                            use crate::lsp::protocol::DiagnosticSeverity;
+                            let severity = match d.severity {
+                                Some(DiagnosticSeverity::Error) => "ERROR",
+                                Some(DiagnosticSeverity::Warning) => "WARNING",
+                                Some(DiagnosticSeverity::Information) => "INFO",
+                                Some(DiagnosticSeverity::Hint) => "HINT",
+                                _ => "UNKNOWN",
+                            };
+                            if d.severity == Some(DiagnosticSeverity::Error) {
+                                error_count += 1;
+                            } else if d.severity == Some(DiagnosticSeverity::Warning) {
+                                warning_count += 1;
+                            }
+                            let range = format!(
+                                "L{}:C{}-L{}:C{}",
+                                d.range.start.line + 1,
+                                d.range.start.character + 1,
+                                d.range.end.line + 1,
+                                d.range.end.character + 1,
+                            );
+                            diag_text.push_str(&format!(
+                                "  [{severity}] {uri} {range}: {}\n",
+                                d.message
+                            ));
+                        }
+                    }
+                    diag_text.push_str(&format!(
+                        "\nTotal: {} errors, {} warnings\n\
+                         Use this information to fix issues before/during testing.",
+                        error_count, warning_count
+                    ));
+                    user_message.push_str(&diag_text);
                 }
             }
         }
