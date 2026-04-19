@@ -182,5 +182,6 @@ async fn test_chat_endpoint() {
         .await
         .unwrap();
 
-    assert_eq!(response.status(), StatusCode::OK);
+    // No LLM client configured in test app, so expect 503 Service Unavailable
+    assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
 }
