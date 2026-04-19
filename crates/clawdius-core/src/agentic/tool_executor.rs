@@ -175,18 +175,51 @@ impl ToolExecutor for NoOpToolExecutor {
 
 /// Commands that are blocked for safety.
 const BLOCKED_COMMANDS: &[&str] = &[
-    "rm", "rmdir", "mkfs", "dd", "shred", "wipe", "chmod", "chown", "chgrp",
-    "sudo", "su", "doas", "run0", "kill", "killall", "pkill", "shutdown",
-    "reboot", "halt", "poweroff", "passwd", "useradd", "userdel", "usermod",
-    "crontab", "at", "batch", "iptables", "nft", "ufw", "firewalld",
-    "mount", "umount", "nc", "ncat", "socat",
+    "rm",
+    "rmdir",
+    "mkfs",
+    "dd",
+    "shred",
+    "wipe",
+    "chmod",
+    "chown",
+    "chgrp",
+    "sudo",
+    "su",
+    "doas",
+    "run0",
+    "kill",
+    "killall",
+    "pkill",
+    "shutdown",
+    "reboot",
+    "halt",
+    "poweroff",
+    "passwd",
+    "useradd",
+    "userdel",
+    "usermod",
+    "crontab",
+    "at",
+    "batch",
+    "iptables",
+    "nft",
+    "ufw",
+    "firewalld",
+    "mount",
+    "umount",
+    "nc",
+    "ncat",
+    "socat",
 ];
 
 fn is_command_blocked(command: &str) -> bool {
-    let base = std::path::Path::new(command)
+    // Extract first word (the base command) to handle "sudo apt install"
+    let base = command.split_whitespace().next().unwrap_or(command);
+    let base = std::path::Path::new(base)
         .file_name()
         .and_then(|n| n.to_str())
-        .unwrap_or(command);
+        .unwrap_or(base);
     BLOCKED_COMMANDS.contains(&base)
 }
 
@@ -281,10 +314,14 @@ impl ShellToolExecutor {
                 let stdout = self.truncate_output(&stdout);
                 let stderr = self.truncate_output(&stderr);
 
-                let content = if stderr.is_empty() {
-                    stdout
+                let content = if success {
+                    if stderr.is_empty() {
+                        stdout
+                    } else {
+                        format!("{stdout}\n[stderr]\n{stderr}")
+                    }
                 } else {
-                    format!("{stdout}\n[stderr]\n{stderr}")
+                    format!("Command exited with code {exit_code}\n{stdout}\n[stderr]\n{stderr}")
                 };
 
                 Ok(ToolResult {
@@ -292,10 +329,8 @@ impl ShellToolExecutor {
                     content,
                     is_error: !success,
                 })
-            }
-            Ok(Err(e)) => Ok(ToolResult::error(format!(
-                "Command failed to execute: {e}"
-            ))),
+            },
+            Ok(Err(e)) => Ok(ToolResult::error(format!("Command failed to execute: {e}"))),
             Err(_) => Ok(ToolResult::error(format!(
                 "Command timed out after {} seconds",
                 self.timeout.as_secs()
@@ -324,7 +359,7 @@ impl ToolExecutor for ShellToolExecutor {
                     })?;
 
                 self.run_shell_command(command).await
-            }
+            },
             _ => Ok(ToolResult::error(format!(
                 "Unknown tool: '{}'. ShellToolExecutor only supports 'shell'.",
                 request.name
@@ -415,8 +450,10 @@ mod tests {
     #[tokio::test]
     async fn test_shell_echo() {
         let executor = ShellToolExecutor::new(std::env::temp_dir());
-        let request = ToolRequest::new("shell")
-            .with_arg("command", serde_json::Value::String("echo hello world".to_string()));
+        let request = ToolRequest::new("shell").with_arg(
+            "command",
+            serde_json::Value::String("echo hello world".to_string()),
+        );
         let result = executor.execute(request).await.unwrap();
         assert!(result.success);
         assert!(result.content.contains("hello world"));
@@ -490,8 +527,10 @@ mod tests {
     #[tokio::test]
     async fn test_shell_stderr_captured() {
         let executor = ShellToolExecutor::new(std::env::temp_dir());
-        let request = ToolRequest::new("shell")
-            .with_arg("command", serde_json::Value::String("echo err >&2".to_string()));
+        let request = ToolRequest::new("shell").with_arg(
+            "command",
+            serde_json::Value::String("echo err >&2".to_string()),
+        );
         let result = executor.execute(request).await.unwrap();
         assert!(result.success);
         assert!(result.content.contains("[stderr]"));
