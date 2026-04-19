@@ -33,6 +33,7 @@
 //! ```
 
 use crate::llm::providers::LlmClient;
+use crate::llm::{ChatMessage, ChatRole};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -310,7 +311,38 @@ impl Skill for CodeReviewSkill {
             .as_deref()
             .ok_or_else(|| SkillError::InvalidArguments("No code selected for review".into()))?;
 
-        // In a real implementation, this would call the LLM
+        // If LLM is available, generate a real review
+        if let Some(ref llm) = context.llm {
+            let system_prompt = format!(
+                "You are a senior code reviewer. Perform a thorough code review.\n\
+                 Focus area: {focus}\n\
+                 Provide specific, actionable suggestions.\n\
+                 Format your response with numbered findings."
+            );
+
+            let user_prompt =
+                format!("Review the following code with focus on {focus}:\n\n{selection}");
+
+            let messages = vec![
+                ChatMessage {
+                    role: ChatRole::System,
+                    content: system_prompt,
+                },
+                ChatMessage {
+                    role: ChatRole::User,
+                    content: user_prompt,
+                },
+            ];
+
+            match llm.chat(messages).await {
+                Ok(response) => return Ok(SkillResult::success(response)),
+                Err(e) => {
+                    tracing::warn!("LLM review failed, falling back to template: {e}");
+                },
+            }
+        }
+
+        // Fallback: template-based output
         let output = format!(
             "Code Review (focus: {})\n\n\
              Analyzed {} characters of code.\n\n\
@@ -382,7 +414,38 @@ impl Skill for GenerateTestsSkill {
             SkillError::InvalidArguments("No code selected for test generation".into())
         })?;
 
-        // In a real implementation, this would call the LLM
+        // If LLM is available, generate real tests
+        if let Some(ref llm) = context.llm {
+            let system_prompt = format!(
+                "You are a test generation expert. Generate unit tests.\n\
+                 Target framework: {framework}\n\
+                 Generate complete, runnable test functions.\n\
+                 Include assertions for edge cases."
+            );
+
+            let user_prompt =
+                format!("Generate {framework} tests for the following code:\n\n{selection}");
+
+            let messages = vec![
+                ChatMessage {
+                    role: ChatRole::System,
+                    content: system_prompt,
+                },
+                ChatMessage {
+                    role: ChatRole::User,
+                    content: user_prompt,
+                },
+            ];
+
+            match llm.chat(messages).await {
+                Ok(response) => return Ok(SkillResult::success(response)),
+                Err(e) => {
+                    tracing::warn!("LLM test generation failed, falling back to template: {e}");
+                },
+            }
+        }
+
+        // Fallback: template-based output
         let output = format!(
             "Generated Tests (framework: {})\n\n\
              // TODO: Generated test cases would appear here\n\
@@ -450,7 +513,38 @@ impl Skill for RefactorSkill {
             SkillError::InvalidArguments("No code selected for refactoring".into())
         })?;
 
-        // In a real implementation, this would call the LLM
+        // If LLM is available, generate real suggestions
+        if let Some(ref llm) = context.llm {
+            let system_prompt = format!(
+                "You are a refactoring expert. Suggest concrete code improvements.\n\
+                 Goal: {goal}\n\
+                 Provide specific before/after code examples when possible.\n\
+                 Focus on actionable, safe changes."
+            );
+
+            let user_prompt =
+                format!("Suggest refactoring improvements with goal: {goal}\n\n{selection}");
+
+            let messages = vec![
+                ChatMessage {
+                    role: ChatRole::System,
+                    content: system_prompt,
+                },
+                ChatMessage {
+                    role: ChatRole::User,
+                    content: user_prompt,
+                },
+            ];
+
+            match llm.chat(messages).await {
+                Ok(response) => return Ok(SkillResult::success(response)),
+                Err(e) => {
+                    tracing::warn!("LLM refactor failed, falling back to template: {e}");
+                },
+            }
+        }
+
+        // Fallback: template-based output
         let output = format!(
             "Refactoring Suggestions (goal: {})\n\n\
              Analyzed {} characters of code.\n\n\
@@ -520,7 +614,32 @@ impl Skill for ExplainSkill {
             SkillError::InvalidArguments("No code selected for explanation".into())
         })?;
 
-        // In a real implementation, this would call the LLM
+        // Try LLM-powered explanation first
+        if let Some(ref llm) = context.llm {
+            let system_prompt = format!(
+                "You are an expert code explainer. Explain the given code at the '{level}' detail level. \
+                 Be clear, concise, and educational. For 'beginner', explain concepts simply. \
+                 For 'intermediate', cover design patterns and trade-offs. \
+                 For 'advanced', discuss implementation details, edge cases, and performance implications."
+            );
+            let user_prompt = format!("Explain the following code:\n\n```{selection}```");
+            let messages = vec![
+                ChatMessage {
+                    role: ChatRole::System,
+                    content: system_prompt,
+                },
+                ChatMessage {
+                    role: ChatRole::User,
+                    content: user_prompt,
+                },
+            ];
+            match llm.chat(messages).await {
+                Ok(response) => return Ok(SkillResult::success(response)),
+                Err(e) => tracing::warn!("LLM failed for explain skill, falling back: {e}"),
+            }
+        }
+
+        // Fallback: template-based output
         let output = format!(
             "Code Explanation (level: {})\n\n\
              This code performs the following operations:\n\
