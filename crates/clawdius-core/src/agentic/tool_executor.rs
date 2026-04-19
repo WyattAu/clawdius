@@ -467,7 +467,7 @@ mod tests {
         let result = executor.execute(request).await.unwrap();
         assert!(!result.success);
         assert!(result.is_error);
-        assert!(result.content.contains("exit code 1"));
+        assert!(result.content.contains("exited with code 1"));
     }
 
     #[tokio::test]

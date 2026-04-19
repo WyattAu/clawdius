@@ -12,6 +12,7 @@ use axum::{extract::State, http::StatusCode, Json};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
+use crate::agentic::tool_executor::{ShellToolExecutor, ToolExecutor};
 use crate::agentic::{
     ship_pipeline::CommitMessage, GenerationMode, ParallelSprintConfig, ParallelSprintManager,
     SprintConfig, SprintEngine,
@@ -151,8 +152,11 @@ pub async fn run_sprint(
         config.max_iterations = request.max_iterations;
     }
 
-    // Create and run SprintEngine
-    let engine = SprintEngine::new(llm_provider);
+    // Create and run SprintEngine with real shell execution
+    let project_root = std::path::PathBuf::from(&config.project_root);
+    let tool_executor: Arc<dyn crate::agentic::tool_executor::ToolExecutor> =
+        Arc::new(ShellToolExecutor::new(project_root));
+    let engine = SprintEngine::new(llm_provider).with_tool_executor(tool_executor);
 
     match engine.run(config).await {
         Ok(result) => {
@@ -359,33 +363,31 @@ pub async fn execute_skill(
         let skill_path = skills_dir.join(format!("{}.md", request.name));
         if skill_path.exists() {
             match crate::skills::markdown_skill::MarkdownSkill::from_file(&skill_path) {
-                Ok(skill) => {
-                    match skill.execute(context).await {
-                        Ok(result) => {
-                            return (
-                                StatusCode::OK,
-                                Json(serde_json::json!({
-                                    "success": result.success,
-                                    "skill": request.name,
-                                    "output": result.output,
-                                    "modified_files": result.modified_files,
-                                    "duration_ms": result.duration_ms,
-                                    "elapsed_ms": start.elapsed().as_millis() as u64,
-                                })),
-                            );
-                        },
-                        Err(e) => {
-                            return (
-                                StatusCode::INTERNAL_SERVER_ERROR,
-                                Json(serde_json::json!({
-                                    "success": false,
-                                    "skill": request.name,
-                                    "error": format!("Skill execution failed: {e}"),
-                                    "elapsed_ms": start.elapsed().as_millis() as u64,
-                                })),
-                            );
-                        },
-                    }
+                Ok(skill) => match skill.execute(context).await {
+                    Ok(result) => {
+                        return (
+                            StatusCode::OK,
+                            Json(serde_json::json!({
+                                "success": result.success,
+                                "skill": request.name,
+                                "output": result.output,
+                                "modified_files": result.modified_files,
+                                "duration_ms": result.duration_ms,
+                                "elapsed_ms": start.elapsed().as_millis() as u64,
+                            })),
+                        );
+                    },
+                    Err(e) => {
+                        return (
+                            StatusCode::INTERNAL_SERVER_ERROR,
+                            Json(serde_json::json!({
+                                "success": false,
+                                "skill": request.name,
+                                "error": format!("Skill execution failed: {e}"),
+                                "elapsed_ms": start.elapsed().as_millis() as u64,
+                            })),
+                        );
+                    },
                 },
                 Err(e) => {
                     return (
@@ -590,11 +592,11 @@ mod tests {
         assert_eq!(status, StatusCode::OK);
         let skills = body["skills"].as_array().unwrap();
         // Should include at least the 4 built-in skills
-        let builtin_count = skills
-            .iter()
-            .filter(|s| s["source"] == "builtin")
-            .count();
-        assert!(builtin_count >= 4, "Expected at least 4 builtin skills, got {builtin_count}");
+        let builtin_count = skills.iter().filter(|s| s["source"] == "builtin").count();
+        assert!(
+            builtin_count >= 4,
+            "Expected at least 4 builtin skills, got {builtin_count}"
+        );
     }
 
     #[tokio::test]
