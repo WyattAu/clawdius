@@ -52,6 +52,7 @@ pub mod sprint;
 pub mod streaming_generator;
 pub mod test_execution;
 pub mod tool_executor;
+pub mod tool_use;
 pub mod verifier_agent;
 pub mod worktree;
 
@@ -97,6 +98,7 @@ pub use test_execution::{
     SandboxBackend, TestExecutionStrategy, TestFramework, TestResult, TestRunner,
 };
 pub use tool_executor::{NoOpToolExecutor, ToolDefinition, ToolExecutor, ToolRequest, ToolResult};
+pub use tool_use::{ToolCall, ToolExecutionResult, ToolUseRound};
 pub use verifier_agent::{
     IssueSeverity, VerificationIssue, VerificationResult, VerificationRule, VerifierAgent,
 };

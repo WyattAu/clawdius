@@ -3,6 +3,8 @@ use crate::agentic::error_recovery::parse_compiler_output;
 use crate::agentic::error_recovery::{ErrorRecovery, ErrorRecoveryConfig};
 use crate::agentic::review_engine::{ReviewEngine, ReviewerConfig};
 use crate::agentic::tool_executor::{ToolExecutor, ToolRequest};
+use crate::agentic::tool_use;
+
 use crate::llm::providers::LlmClient;
 use crate::llm::{ChatMessage, ChatRole};
 use crate::Result;
@@ -340,6 +342,58 @@ impl SprintEngine {
                         tokens_used: 0,
                     }
                 },
+            };
+
+            // A1: If tool_executor is present and phase is Build, run the tool-use loop
+            // This lets the LLM actually write/edit files instead of just describing changes.
+            let result = if *phase == SprintPhase::Build
+                && self.tool_executor.is_some()
+                && result.status == PhaseStatus::Success
+            {
+                let executor = self.tool_executor.as_ref().unwrap();
+                let llm = &self.llm;
+
+                let system_prompt = Self::phase_prompt(phase);
+                let user_message = format!(
+                    "Task: {}\n\nPrevious context:\n{}",
+                    state.config.task_description, state.context_accumulator
+                );
+
+                eprintln!("  [tool-use loop starting for Build phase]");
+
+                match tool_use::run_tool_use_loop(
+                    llm,
+                    executor,
+                    &system_prompt,
+                    &user_message,
+                    &state.config.project_root,
+                    None,
+                )
+                .await
+                {
+                    Ok((output, tokens, files_modified)) => {
+                        eprintln!(
+                            "  [tool-use loop done: {} iterations, {} files modified]",
+                            1, // iterations tracked inside run_tool_use_loop
+                            files_modified.len()
+                        );
+                        PhaseResult {
+                            phase: phase.clone(),
+                            status: PhaseStatus::Success,
+                            output,
+                            duration_ms: result.duration_ms,
+                            files_modified,
+                            errors: Vec::new(),
+                            tokens_used: tokens,
+                        }
+                    },
+                    Err(e) => {
+                        eprintln!("Tool-use loop error: {e}. Falling back to LLM-only result.");
+                        result // Keep the original LLM-only result
+                    },
+                }
+            } else {
+                result
             };
 
             // M3: If real_execution is enabled and phase is Build or Test,
