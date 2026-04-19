@@ -5,6 +5,7 @@ pub mod google;
 pub mod local;
 pub mod ollama;
 pub mod openai;
+pub mod openrouter;
 
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
@@ -31,9 +32,7 @@ pub enum Provider {
     /// DeepSeek provider (not yet implemented — use OpenAI-compatible API with a
     /// custom base URL pointing to `https://api.deepseek.com`)
     DeepSeek,
+    OpenRouter,
     Ollama,
     Local,
-    /// OpenRouter provider (not yet implemented — use OpenAI-compatible API with a
-    /// custom base URL pointing to `https://openrouter.ai/api/v1`)
-    OpenRouter,
 }

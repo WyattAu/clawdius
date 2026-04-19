@@ -1,7 +1,7 @@
 //! LLM integration with multi-provider support.
 //!
 //! This module provides a unified interface for interacting with various LLM providers,
-//! including Anthropic (Claude), `OpenAI` (GPT), Ollama (local models), and Z.AI.
+//! including Anthropic (Claude), `OpenAI` (GPT), OpenRouter, Ollama (local models), and Z.AI.
 //!
 //! # Features
 //!
@@ -48,6 +48,27 @@
 //! let messages = vec![ChatMessage {
 //!     role: ChatRole::User,
 //!     content: "Write a hello world in Rust".to_string(),
+//! }];
+//!
+//! let response = provider.chat(messages).await?;
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## OpenRouter
+//!
+//! ```rust,no_run
+//! use clawdius_core::llm::{LlmConfig, create_provider, ChatMessage, ChatRole};
+//!
+//! # #[tokio::main]
+//! # async fn main() -> clawdius_core::Result<()> {
+//! // Requires OPENROUTER_API_KEY environment variable
+//! let config = LlmConfig::from_env("openrouter")?;
+//! let provider = create_provider(&config)?;
+//!
+//! let messages = vec![ChatMessage {
+//!     role: ChatRole::User,
+//!     content: "Hello via OpenRouter!".to_string(),
 //! }];
 //!
 //! let response = provider.chat(messages).await?;
@@ -349,6 +370,17 @@ impl LlmConfig {
                 })?;
                 (Some(key), None, "gpt-4o".to_string())
             },
+            "openrouter" => {
+                let key = std::env::var("OPENROUTER_API_KEY").map_err(|_| {
+                    Error::Config(
+                        ErrorHelpers::api_key_missing("OpenRouter", "OPENROUTER_API_KEY")
+                            .to_string(),
+                    )
+                })?;
+                let model = std::env::var("OPENROUTER_MODEL")
+                    .unwrap_or_else(|_| "openai/gpt-oss-20b:free".to_string());
+                (Some(key), None, model)
+            },
             "ollama" => {
                 let url = std::env::var("OLLAMA_BASE_URL")
                     .unwrap_or_else(|_| "http://localhost:11434".into());
@@ -374,7 +406,14 @@ impl LlmConfig {
                 return Err(Error::Config(
                     ErrorHelpers::unknown_provider(
                         provider,
-                        &["anthropic", "google", "openai", "ollama", "zai"],
+                        &[
+                            "anthropic",
+                            "google",
+                            "openai",
+                            "openrouter",
+                            "ollama",
+                            "zai",
+                        ],
                     )
                     .to_string(),
                 ))
@@ -533,11 +572,32 @@ impl LlmConfig {
 
                 (model, Some(api_key), None)
             },
+            "openrouter" => {
+                let model = std::env::var("OPENROUTER_MODEL")
+                    .unwrap_or_else(|_| "openai/gpt-oss-20b:free".to_string());
+                let api_key = match std::env::var("OPENROUTER_API_KEY") {
+                    Ok(key) => key,
+                    Err(_) => {
+                        return Err(Error::Config(
+                            ErrorHelpers::api_key_missing("OpenRouter", "OPENROUTER_API_KEY")
+                                .to_string(),
+                        ))
+                    },
+                };
+                (model, Some(api_key), None)
+            },
             _ => {
                 return Err(Error::Config(
                     ErrorHelpers::unknown_provider(
                         provider,
-                        &["anthropic", "google", "openai", "ollama", "zai"],
+                        &[
+                            "anthropic",
+                            "google",
+                            "openai",
+                            "ollama",
+                            "zai",
+                            "openrouter",
+                        ],
                     )
                     .to_string(),
                 ))
@@ -558,6 +618,7 @@ pub enum LlmProvider {
     Anthropic(providers::anthropic::AnthropicProvider),
     Google(providers::google::GoogleProvider),
     OpenAi(providers::openai::OpenAIProvider),
+    OpenRouter(providers::openrouter::OpenRouterProvider),
     Ollama(providers::ollama::OllamaProvider),
     Local(providers::local::LocalLlmProvider),
 }
@@ -585,6 +646,7 @@ impl LlmClientWithRetry {
                 LlmProvider::Anthropic(p) => p.chat(messages.clone()).await,
                 LlmProvider::Google(p) => p.chat(messages.clone()).await,
                 LlmProvider::OpenAi(p) => p.chat(messages.clone()).await,
+                LlmProvider::OpenRouter(p) => p.chat(messages.clone()).await,
                 LlmProvider::Ollama(p) => p.chat(messages.clone()).await,
                 LlmProvider::Local(p) => p.chat(messages.clone()).await,
             }
@@ -598,6 +660,7 @@ impl LlmClientWithRetry {
             LlmProvider::Anthropic(p) => p.count_tokens(text),
             LlmProvider::Google(p) => p.count_tokens(text),
             LlmProvider::OpenAi(p) => p.count_tokens(text),
+            LlmProvider::OpenRouter(p) => p.count_tokens(text),
             LlmProvider::Ollama(p) => p.count_tokens(text),
             LlmProvider::Local(p) => p.count_tokens(text),
         }
@@ -615,6 +678,7 @@ impl LlmProvider {
             LlmProvider::Anthropic(p) => p.chat(messages).await,
             LlmProvider::Google(p) => p.chat(messages).await,
             LlmProvider::OpenAi(p) => p.chat(messages).await,
+            LlmProvider::OpenRouter(p) => p.chat(messages).await,
             LlmProvider::Ollama(p) => p.chat(messages).await,
             LlmProvider::Local(p) => p.chat(messages).await,
         }
@@ -638,6 +702,7 @@ impl LlmProvider {
             LlmProvider::Anthropic(p) => p.count_tokens(text),
             LlmProvider::Google(p) => p.count_tokens(text),
             LlmProvider::OpenAi(p) => p.count_tokens(text),
+            LlmProvider::OpenRouter(p) => p.count_tokens(text),
             LlmProvider::Ollama(p) => p.count_tokens(text),
             LlmProvider::Local(p) => p.count_tokens(text),
         }
@@ -651,6 +716,7 @@ impl providers::LlmClient for LlmProvider {
             LlmProvider::Anthropic(p) => p.chat(messages).await,
             LlmProvider::Google(p) => p.chat(messages).await,
             LlmProvider::OpenAi(p) => p.chat(messages).await,
+            LlmProvider::OpenRouter(p) => p.chat(messages).await,
             LlmProvider::Ollama(p) => p.chat(messages).await,
             LlmProvider::Local(p) => p.chat(messages).await,
         }
@@ -664,6 +730,7 @@ impl providers::LlmClient for LlmProvider {
             LlmProvider::Anthropic(p) => p.chat_stream(messages).await,
             LlmProvider::Google(p) => p.chat_stream(messages).await,
             LlmProvider::OpenAi(p) => p.chat_stream(messages).await,
+            LlmProvider::OpenRouter(p) => p.chat_stream(messages).await,
             LlmProvider::Ollama(p) => p.chat_stream(messages).await,
             LlmProvider::Local(p) => p.chat_stream(messages).await,
         }
@@ -674,6 +741,7 @@ impl providers::LlmClient for LlmProvider {
             LlmProvider::Anthropic(p) => p.count_tokens(text),
             LlmProvider::Google(p) => p.count_tokens(text),
             LlmProvider::OpenAi(p) => p.count_tokens(text),
+            LlmProvider::OpenRouter(p) => p.count_tokens(text),
             LlmProvider::Ollama(p) => p.count_tokens(text),
             LlmProvider::Local(p) => p.count_tokens(text),
         }
@@ -712,6 +780,16 @@ pub fn create_provider(config: &LlmConfig) -> Result<LlmProvider> {
                 Some(&config.model),
             )?))
         },
+        "openrouter" => {
+            let api_key = config.api_key.as_ref().ok_or_else(|| {
+                Error::Config(
+                    ErrorHelpers::api_key_missing("OpenRouter", "OPENROUTER_API_KEY").to_string(),
+                )
+            })?;
+            Ok(LlmProvider::OpenRouter(
+                providers::openrouter::OpenRouterProvider::new(api_key, Some(&config.model))?,
+            ))
+        },
         "ollama" => {
             let base_url = config
                 .base_url
@@ -735,7 +813,7 @@ pub fn create_provider(config: &LlmConfig) -> Result<LlmProvider> {
         _ => Err(Error::Config(
             ErrorHelpers::unknown_provider(
                 &config.provider,
-                &["anthropic", "google", "openai", "ollama"],
+                &["anthropic", "google", "openai", "openrouter", "ollama"],
             )
             .to_string(),
         )),
