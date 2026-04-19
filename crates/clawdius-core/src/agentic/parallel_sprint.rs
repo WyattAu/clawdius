@@ -1,7 +1,7 @@
 //! Parallel Sprint Manager
 //!
-//! Orchestrates multiple concurrent sprint sessions and provides a persistent
-//! browser daemon for cross-sprint browser sharing. This is the M5 milestone.
+//! Orchestrates multiple concurrent sprint sessions with isolated git worktrees
+//! for safe parallel execution. This is the M5 milestone.
 
 use crate::llm::LlmConfig;
 use crate::Result;
@@ -110,6 +110,8 @@ pub struct SessionState {
     pub completed_at: Option<chrono::DateTime<chrono::Utc>>,
     pub error: Option<String>,
     pub result_summary: Option<String>,
+    /// Path to the isolated git worktree for this session (if worktree isolation is enabled)
+    pub worktree_path: Option<PathBuf>,
 }
 
 /// Summary of all parallel sprint sessions.
@@ -148,9 +150,15 @@ impl ParallelSprintSummary {
 }
 
 /// The parallel sprint manager orchestrates multiple concurrent sprint sessions.
+///
+/// When a [`WorktreeManager`] is attached via [`with_worktree_manager`](Self::with_worktree_manager),
+/// each submitted session gets its own isolated git worktree. Worktrees are automatically
+/// cleaned up when sessions are cancelled or completed.
 pub struct ParallelSprintManager {
     sessions: RwLock<HashMap<String, SessionState>>,
     max_concurrent: usize,
+    /// Optional worktree manager for git-isolated parallel sprints
+    worktree_manager: Option<Mutex<super::worktree::WorktreeManager>>,
 }
 
 impl ParallelSprintManager {
@@ -159,6 +167,7 @@ impl ParallelSprintManager {
         Self {
             sessions: RwLock::new(HashMap::new()),
             max_concurrent,
+            worktree_manager: None,
         }
     }
 
@@ -167,13 +176,51 @@ impl ParallelSprintManager {
         Self::new(4)
     }
 
+    /// Attach a WorktreeManager for git-isolated parallel sprints.
+    ///
+    /// When attached, each submitted session will get its own git worktree,
+    /// allowing true parallel execution without file conflicts.
+    #[must_use]
+    pub fn with_worktree_manager(mut self, manager: super::worktree::WorktreeManager) -> Self {
+        self.worktree_manager = Some(Mutex::new(manager));
+        self
+    }
+
     /// Submit a new sprint session for parallel execution.
     /// Returns the session ID.
-    pub async fn submit(&self, config: ParallelSprintConfig) -> Result<SprintSessionId> {
+    ///
+    /// If a WorktreeManager is attached, a git worktree is created for the session
+    /// and the `project_root` in the session config is updated to point to the worktree.
+    pub async fn submit(&self, mut config: ParallelSprintConfig) -> Result<SprintSessionId> {
         let id = config
             .session_id
             .clone()
             .unwrap_or_else(SprintSessionId::new);
+
+        // Create an isolated worktree if worktree manager is available
+        let worktree_path = if let Some(wtm) = &self.worktree_manager {
+            let mut wtm = wtm.lock().await;
+            match wtm.create_worktree(&config.task_description) {
+                Ok(session) => {
+                    tracing::info!(
+                        "Created worktree {} for sprint session {}",
+                        session.worktree_path.display(),
+                        id
+                    );
+                    config.project_root = session.worktree_path.clone();
+                    Some(session.worktree_path)
+                },
+                Err(e) => {
+                    tracing::warn!(
+                        "Failed to create worktree for sprint session {}: {}. Continuing without isolation.",
+                        id, e
+                    );
+                    None
+                },
+            }
+        } else {
+            None
+        };
 
         let state = SessionState {
             id: id.clone(),
@@ -183,6 +230,7 @@ impl ParallelSprintManager {
             completed_at: None,
             error: None,
             result_summary: None,
+            worktree_path,
         };
 
         {
@@ -245,26 +293,93 @@ impl ParallelSprintManager {
     }
 
     /// Cancel a pending or running session.
+    ///
+    /// If the session has an associated worktree, it will be cleaned up.
     pub async fn cancel(&self, session_id: &SprintSessionId) -> Result<()> {
-        let mut sessions = self.sessions.write().await;
-        if let Some(state) = sessions.get_mut(&session_id.0) {
-            match state.status {
-                SessionStatus::Pending | SessionStatus::Running => {
-                    state.status = SessionStatus::Cancelled;
-                    state.completed_at = Some(chrono::Utc::now());
-                    Ok(())
-                },
-                _ => Err(crate::Error::Sprint(format!(
-                    "Cannot cancel session {} (status: {:?})",
-                    session_id, state.status
-                ))),
+        let worktree_path = {
+            let mut sessions = self.sessions.write().await;
+            if let Some(state) = sessions.get_mut(&session_id.0) {
+                match state.status {
+                    SessionStatus::Pending | SessionStatus::Running => {
+                        state.status = SessionStatus::Cancelled;
+                        state.completed_at = Some(chrono::Utc::now());
+                        state.worktree_path.clone()
+                    },
+                    _ => {
+                        return Err(crate::Error::Sprint(format!(
+                            "Cannot cancel session {} (status: {:?})",
+                            session_id, state.status
+                        )))
+                    },
+                }
+            } else {
+                return Err(crate::Error::Sprint(format!(
+                    "Session {} not found",
+                    session_id
+                )));
             }
-        } else {
-            Err(crate::Error::Sprint(format!(
-                "Session {} not found",
-                session_id
-            )))
+        };
+
+        // Clean up worktree outside the sessions lock
+        if let Some(wt_path) = worktree_path {
+            self.cleanup_worktree(&wt_path).await;
         }
+
+        Ok(())
+    }
+
+    /// Mark a session as completed and clean up its worktree.
+    pub async fn complete(
+        &self,
+        session_id: &SprintSessionId,
+        result_summary: Option<String>,
+    ) -> Result<()> {
+        let worktree_path = {
+            let mut sessions = self.sessions.write().await;
+            if let Some(state) = sessions.get_mut(&session_id.0) {
+                state.status = SessionStatus::Completed;
+                state.completed_at = Some(chrono::Utc::now());
+                state.result_summary = result_summary;
+                state.worktree_path.take()
+            } else {
+                return Err(crate::Error::Sprint(format!(
+                    "Session {} not found",
+                    session_id
+                )));
+            }
+        };
+
+        // Clean up worktree outside the sessions lock
+        if let Some(wt_path) = worktree_path {
+            self.cleanup_worktree(&wt_path).await;
+        }
+
+        Ok(())
+    }
+
+    /// Mark a session as failed and clean up its worktree.
+    pub async fn fail(&self, session_id: &SprintSessionId, error: String) -> Result<()> {
+        let worktree_path = {
+            let mut sessions = self.sessions.write().await;
+            if let Some(state) = sessions.get_mut(&session_id.0) {
+                state.status = SessionStatus::Failed;
+                state.completed_at = Some(chrono::Utc::now());
+                state.error = Some(error);
+                state.worktree_path.take()
+            } else {
+                return Err(crate::Error::Sprint(format!(
+                    "Session {} not found",
+                    session_id
+                )));
+            }
+        };
+
+        // Clean up worktree outside the sessions lock
+        if let Some(wt_path) = worktree_path {
+            self.cleanup_worktree(&wt_path).await;
+        }
+
+        Ok(())
     }
 
     /// Get the number of currently active (pending + running) sessions.
@@ -299,6 +414,34 @@ impl ParallelSprintManager {
                 SessionStatus::Completed | SessionStatus::Failed | SessionStatus::Cancelled
             ) {
                 state.completed_at = Some(chrono::Utc::now());
+            }
+        }
+    }
+
+    /// Clean up a worktree associated with a session.
+    async fn cleanup_worktree(&self, worktree_path: &PathBuf) {
+        if let Some(wtm) = &self.worktree_manager {
+            let mut wtm = wtm.lock().await;
+            // List worktrees to find the session matching this path
+            match wtm.list_worktrees() {
+                Ok(sessions) => {
+                    if let Some(session) =
+                        sessions.iter().find(|s| s.worktree_path == *worktree_path)
+                    {
+                        if let Err(e) = wtm.remove_worktree(session) {
+                            tracing::warn!(
+                                "Failed to clean up worktree {}: {}",
+                                worktree_path.display(),
+                                e
+                            );
+                        } else {
+                            tracing::info!("Cleaned up worktree: {}", worktree_path.display());
+                        }
+                    }
+                },
+                Err(e) => {
+                    tracing::warn!("Failed to list worktrees for cleanup: {}", e);
+                },
             }
         }
     }
@@ -536,6 +679,59 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_complete_session() {
+        let manager = ParallelSprintManager::new(2);
+        let id = manager
+            .submit(ParallelSprintConfig::new(
+                "Task",
+                crate::llm::LlmConfig {
+                    provider: "openrouter".to_string(),
+                    model: "test".to_string(),
+                    api_key: None,
+                    base_url: None,
+                    max_tokens: 100,
+                },
+            ))
+            .await
+            .unwrap();
+
+        assert!(manager
+            .complete(&id, Some("All good".to_string()))
+            .await
+            .is_ok());
+
+        let sessions = manager.list_sessions().await;
+        let session = sessions.iter().find(|s| s.id.0 == id.0).unwrap();
+        assert_eq!(session.status, SessionStatus::Completed);
+        assert_eq!(session.result_summary.as_deref(), Some("All good"));
+    }
+
+    #[tokio::test]
+    async fn test_fail_session() {
+        let manager = ParallelSprintManager::new(2);
+        let id = manager
+            .submit(ParallelSprintConfig::new(
+                "Task",
+                crate::llm::LlmConfig {
+                    provider: "openrouter".to_string(),
+                    model: "test".to_string(),
+                    api_key: None,
+                    base_url: None,
+                    max_tokens: 100,
+                },
+            ))
+            .await
+            .unwrap();
+
+        assert!(manager.fail(&id, "Build failed".to_string()).await.is_ok());
+
+        let sessions = manager.list_sessions().await;
+        let session = sessions.iter().find(|s| s.id.0 == id.0).unwrap();
+        assert_eq!(session.status, SessionStatus::Failed);
+        assert_eq!(session.error.as_deref(), Some("Build failed"));
+    }
+
+    #[tokio::test]
     async fn test_session_status_serialization() {
         let state = SessionState {
             id: SprintSessionId::new(),
@@ -554,6 +750,7 @@ mod tests {
             completed_at: None,
             error: None,
             result_summary: None,
+            worktree_path: None,
         };
         let json = serde_json::to_string(&state).unwrap();
         let parsed: SessionState = serde_json::from_str(&json).unwrap();
