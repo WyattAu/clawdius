@@ -287,7 +287,11 @@ impl SprintEngine {
                     let _ = std::io::stderr().flush();
                 }
                 eprintln!(); // newline after progress dots
-                Ok(output)
+                if output.is_empty() {
+                    Err(crate::Error::Llm("LLM returned empty response".to_string()))
+                } else {
+                    Ok(output)
+                }
             },
             Err(_) => {
                 // Streaming not supported by this provider; fall back to non-streaming
