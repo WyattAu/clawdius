@@ -1432,7 +1432,6 @@ async fn handle_server(host: &str, port: u16) -> anyhow::Result<()> {
 
 // ── Sprint Handler ──────────────────────────────────────────────────────
 
-
 async fn handle_sprint(
     task: String,
     max_iterations: usize,
@@ -1445,6 +1444,7 @@ async fn handle_sprint(
     output_format: OutputFormat,
 ) -> anyhow::Result<()> {
     use clawdius_core::agentic::sprint::{PhaseStatus, SprintConfig, SprintEngine};
+    use clawdius_core::agentic::tool_executor::{ShellToolExecutor, ToolExecutor};
     use clawdius_core::llm::providers::LlmClient;
     use std::sync::Arc;
 
@@ -1501,7 +1501,9 @@ async fn handle_sprint(
     sprint_config.browser_qa_url = browser_qa_url;
 
     let llm: Arc<dyn LlmClient> = Arc::new(provider_instance);
-    let engine = SprintEngine::new(llm);
+    let workspace_root = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
+    let tool_executor: Arc<dyn ToolExecutor> = Arc::new(ShellToolExecutor::new(workspace_root));
+    let engine = SprintEngine::new(llm).with_tool_executor(tool_executor);
 
     if output_format == OutputFormat::Text {
         println!("🚀 Starting sprint");
@@ -1519,7 +1521,10 @@ async fn handle_sprint(
         println!();
     }
 
-    let result = engine.run(sprint_config).await.map_err(|e| anyhow::anyhow!("{e}"))?;
+    let result = engine
+        .run(sprint_config)
+        .await
+        .map_err(|e| anyhow::anyhow!("{e}"))?;
 
     match output_format {
         OutputFormat::Json => {
@@ -1587,7 +1592,10 @@ async fn handle_sprint(
             }
 
             println!();
-            println!("Total duration: {:.1}s", result.total_duration_ms as f64 / 1000.0);
+            println!(
+                "Total duration: {:.1}s",
+                result.total_duration_ms as f64 / 1000.0
+            );
             if let Some(ref checkpoint) = result.checkpoint_ref {
                 println!("Checkpoint: {checkpoint}");
             }
@@ -1602,7 +1610,6 @@ async fn handle_sprint(
 
     Ok(())
 }
-
 
 // ── Ship Handler ────────────────────────────────────────────────────────
 
@@ -1662,7 +1669,6 @@ async fn handle_ship(action: ShipAction, output_format: OutputFormat) -> anyhow:
 
     Ok(())
 }
-
 
 async fn handle_skill(action: SkillAction, output_format: OutputFormat) -> anyhow::Result<()> {
     use clawdius_core::llm::providers::LlmClient;
@@ -1739,7 +1745,8 @@ async fn handle_skill(action: SkillAction, output_format: OutputFormat) -> anyho
                             println!();
                             println!("📂 User skills (~/.clawdius/skills/):");
                             for skill in &user_skills {
-                                let name = skill.get("name").and_then(|n| n.as_str()).unwrap_or("?");
+                                let name =
+                                    skill.get("name").and_then(|n| n.as_str()).unwrap_or("?");
                                 let desc = skill
                                     .get("description")
                                     .and_then(|d| d.as_str())
@@ -1848,7 +1855,6 @@ async fn handle_skill(action: SkillAction, output_format: OutputFormat) -> anyho
 
     Ok(())
 }
-
 
 async fn shutdown_signal() {
     tokio::signal::ctrl_c()
