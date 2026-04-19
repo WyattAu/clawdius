@@ -53,6 +53,7 @@ pub mod streaming_generator;
 pub mod test_execution;
 pub mod tool_executor;
 pub mod verifier_agent;
+pub mod worktree;
 
 // Re-exports
 pub use apply_workflow::{
@@ -99,6 +100,7 @@ pub use tool_executor::{NoOpToolExecutor, ToolDefinition, ToolExecutor, ToolRequ
 pub use verifier_agent::{
     IssueSeverity, VerificationIssue, VerificationResult, VerificationRule, VerifierAgent,
 };
+pub use worktree::{WorktreeError, WorktreeManager, WorktreeSession};
 
 use crate::error::Result;
 use crate::llm::LlmClient;
