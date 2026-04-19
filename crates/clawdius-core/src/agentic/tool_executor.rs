@@ -1,12 +1,14 @@
 //! Tool Executor Interface
 //!
 //! This module provides the trait for executing tools from the agentic system.
-//! The main crate implements this trait using the MCP host.
+//! Includes `ShellToolExecutor` for real command execution via tokio.
 
 use crate::error::Result;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::path::PathBuf;
+use std::time::Duration;
 
 /// A tool execution request.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -167,6 +169,195 @@ impl ToolExecutor for NoOpToolExecutor {
     }
 }
 
+// ---------------------------------------------------------------------------
+// ShellToolExecutor — real command execution for sprint Build/Test phases
+// ---------------------------------------------------------------------------
+
+/// Commands that are blocked for safety.
+const BLOCKED_COMMANDS: &[&str] = &[
+    "rm", "rmdir", "mkfs", "dd", "shred", "wipe", "chmod", "chown", "chgrp",
+    "sudo", "su", "doas", "run0", "kill", "killall", "pkill", "shutdown",
+    "reboot", "halt", "poweroff", "passwd", "useradd", "userdel", "usermod",
+    "crontab", "at", "batch", "iptables", "nft", "ufw", "firewalld",
+    "mount", "umount", "nc", "ncat", "socat",
+];
+
+fn is_command_blocked(command: &str) -> bool {
+    let base = std::path::Path::new(command)
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or(command);
+    BLOCKED_COMMANDS.contains(&base)
+}
+
+/// A real shell command executor that implements [`ToolExecutor`].
+///
+/// Used by [`SprintEngine`](crate::agentic::sprint::SprintEngine) to run
+/// build and test commands during sprint phases. Executes commands
+/// asynchronously via `tokio::process::Command` with timeout, working
+/// directory, output capture, and a safety blocklist.
+pub struct ShellToolExecutor {
+    /// Working directory for command execution.
+    working_dir: PathBuf,
+    /// Command timeout.
+    timeout: Duration,
+    /// Maximum output bytes (stdout + stderr combined).
+    max_output_bytes: usize,
+}
+
+impl ShellToolExecutor {
+    /// Creates a new executor with the given working directory.
+    #[must_use]
+    pub fn new(working_dir: impl Into<PathBuf>) -> Self {
+        Self {
+            working_dir: working_dir.into(),
+            timeout: Duration::from_secs(120),
+            max_output_bytes: 512 * 1024, // 512 KB
+        }
+    }
+
+    /// Sets the command timeout.
+    #[must_use]
+    pub fn with_timeout(mut self, timeout: Duration) -> Self {
+        self.timeout = timeout;
+        self
+    }
+
+    /// Sets the maximum output bytes.
+    #[must_use]
+    pub fn with_max_output(mut self, max_bytes: usize) -> Self {
+        self.max_output_bytes = max_bytes;
+        self
+    }
+
+    fn truncate_output(&self, output: &str) -> String {
+        if output.len() > self.max_output_bytes {
+            let end = self.max_output_bytes;
+            format!(
+                "{}\n... [truncated at {} bytes, total {}]",
+                &output[..end],
+                end,
+                output.len()
+            )
+        } else {
+            output.to_string()
+        }
+    }
+
+    async fn run_shell_command(&self, command: &str) -> Result<ToolResult> {
+        // Safety check
+        if is_command_blocked(command) {
+            return Ok(ToolResult::error(format!(
+                "Command '{}' is blocked for safety.",
+                command
+            )));
+        }
+
+        let (shell, flag) = if cfg!(target_os = "windows") {
+            ("cmd", "/C")
+        } else {
+            ("sh", "-c")
+        };
+
+        let output = tokio::time::timeout(
+            self.timeout,
+            tokio::process::Command::new(shell)
+                .arg(flag)
+                .arg(command)
+                .current_dir(&self.working_dir)
+                .stdout(std::process::Stdio::piped())
+                .stderr(std::process::Stdio::piped())
+                .output(),
+        )
+        .await;
+
+        match output {
+            Ok(Ok(output)) => {
+                let stdout = String::from_utf8_lossy(&output.stdout).to_string();
+                let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+                let exit_code = output.status.code().unwrap_or(-1);
+                let success = exit_code == 0;
+
+                let stdout = self.truncate_output(&stdout);
+                let stderr = self.truncate_output(&stderr);
+
+                let content = if stderr.is_empty() {
+                    stdout
+                } else {
+                    format!("{stdout}\n[stderr]\n{stderr}")
+                };
+
+                Ok(ToolResult {
+                    success,
+                    content,
+                    is_error: !success,
+                })
+            }
+            Ok(Err(e)) => Ok(ToolResult::error(format!(
+                "Command failed to execute: {e}"
+            ))),
+            Err(_) => Ok(ToolResult::error(format!(
+                "Command timed out after {} seconds",
+                self.timeout.as_secs()
+            ))),
+        }
+    }
+}
+
+impl Default for ShellToolExecutor {
+    fn default() -> Self {
+        Self::new(std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")))
+    }
+}
+
+#[async_trait]
+impl ToolExecutor for ShellToolExecutor {
+    async fn execute(&self, request: ToolRequest) -> Result<ToolResult> {
+        match request.name.as_str() {
+            "shell" => {
+                let command = request
+                    .arguments
+                    .get("command")
+                    .and_then(|v| v.as_str())
+                    .ok_or_else(|| {
+                        crate::Error::Tool("Missing 'command' argument for shell tool".to_string())
+                    })?;
+
+                self.run_shell_command(command).await
+            }
+            _ => Ok(ToolResult::error(format!(
+                "Unknown tool: '{}'. ShellToolExecutor only supports 'shell'.",
+                request.name
+            ))),
+        }
+    }
+
+    fn has_tool(&self, name: &str) -> bool {
+        name == "shell"
+    }
+
+    fn list_tools(&self) -> Vec<ToolDefinition> {
+        vec![ToolDefinition::new(
+            "shell",
+            "Execute a shell command. Args: command (required), cwd (optional).",
+        )
+        .with_schema(serde_json::json!({
+            "type": "object",
+            "properties": {
+                "command": {
+                    "type": "string",
+                    "description": "The shell command to execute"
+                },
+                "cwd": {
+                    "type": "string",
+                    "description": "Working directory (optional, defaults to config)"
+                }
+            },
+            "required": ["command"]
+        }))]
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -206,5 +397,104 @@ mod tests {
 
         assert!(result.success);
         assert!(result.content.contains("test_tool"));
+    }
+
+    // --- ShellToolExecutor tests ---
+
+    #[test]
+    fn test_is_command_blocked() {
+        assert!(is_command_blocked("rm"));
+        assert!(is_command_blocked("/usr/bin/rm"));
+        assert!(is_command_blocked("sudo apt install"));
+        assert!(is_command_blocked("shutdown -h now"));
+        assert!(!is_command_blocked("cargo build"));
+        assert!(!is_command_blocked("npm test"));
+        assert!(!is_command_blocked("echo hello"));
+    }
+
+    #[tokio::test]
+    async fn test_shell_echo() {
+        let executor = ShellToolExecutor::new(std::env::temp_dir());
+        let request = ToolRequest::new("shell")
+            .with_arg("command", serde_json::Value::String("echo hello world".to_string()));
+        let result = executor.execute(request).await.unwrap();
+        assert!(result.success);
+        assert!(result.content.contains("hello world"));
+    }
+
+    #[tokio::test]
+    async fn test_shell_exit_code() {
+        let executor = ShellToolExecutor::new(std::env::temp_dir());
+        let request = ToolRequest::new("shell")
+            .with_arg("command", serde_json::Value::String("exit 1".to_string()));
+        let result = executor.execute(request).await.unwrap();
+        assert!(!result.success);
+        assert!(result.is_error);
+        assert!(result.content.contains("exit code 1"));
+    }
+
+    #[tokio::test]
+    async fn test_shell_blocked_command() {
+        let executor = ShellToolExecutor::new(std::env::temp_dir());
+        let request = ToolRequest::new("shell")
+            .with_arg("command", serde_json::Value::String("rm -rf /".to_string()));
+        let result = executor.execute(request).await.unwrap();
+        assert!(!result.success);
+        assert!(result.content.contains("blocked"));
+    }
+
+    #[tokio::test]
+    async fn test_shell_missing_command() {
+        let executor = ShellToolExecutor::new(std::env::temp_dir());
+        let request = ToolRequest::new("shell");
+        let result = executor.execute(request).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_shell_unknown_tool() {
+        let executor = ShellToolExecutor::new(std::env::temp_dir());
+        let request = ToolRequest::new("nonexistent")
+            .with_arg("command", serde_json::Value::String("echo hi".to_string()));
+        let result = executor.execute(request).await.unwrap();
+        assert!(!result.success);
+        assert!(result.content.contains("Unknown tool"));
+    }
+
+    #[test]
+    fn test_shell_has_tool() {
+        let executor = ShellToolExecutor::new(std::env::temp_dir());
+        assert!(executor.has_tool("shell"));
+        assert!(!executor.has_tool("other"));
+    }
+
+    #[test]
+    fn test_shell_list_tools() {
+        let executor = ShellToolExecutor::new(std::env::temp_dir());
+        let tools = executor.list_tools();
+        assert_eq!(tools.len(), 1);
+        assert_eq!(tools[0].name, "shell");
+    }
+
+    #[tokio::test]
+    async fn test_shell_timeout() {
+        let executor =
+            ShellToolExecutor::new(std::env::temp_dir()).with_timeout(Duration::from_millis(100));
+        let request = ToolRequest::new("shell")
+            .with_arg("command", serde_json::Value::String("sleep 10".to_string()));
+        let result = executor.execute(request).await.unwrap();
+        assert!(!result.success);
+        assert!(result.content.contains("timed out"));
+    }
+
+    #[tokio::test]
+    async fn test_shell_stderr_captured() {
+        let executor = ShellToolExecutor::new(std::env::temp_dir());
+        let request = ToolRequest::new("shell")
+            .with_arg("command", serde_json::Value::String("echo err >&2".to_string()));
+        let result = executor.execute(request).await.unwrap();
+        assert!(result.success);
+        assert!(result.content.contains("[stderr]"));
+        assert!(result.content.contains("err"));
     }
 }
