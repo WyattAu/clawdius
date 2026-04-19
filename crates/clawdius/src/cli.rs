@@ -586,6 +586,10 @@ pub enum Commands {
         #[arg(long)]
         /// URL for browser-based QA in the Test phase
         browser_qa_url: Option<String>,
+
+        #[arg(long)]
+        /// Resume from the most recent saved sprint state
+        resume: bool,
     },
 
     #[command(about = "Run pre-ship checks or generate a commit message")]
@@ -1367,6 +1371,7 @@ pub async fn handle_command(
             provider,
             model,
             browser_qa_url,
+            resume,
         } => {
             handle_sprint(
                 task,
@@ -1376,6 +1381,7 @@ pub async fn handle_command(
                 provider,
                 model,
                 browser_qa_url,
+                resume,
                 config_path,
                 output_format,
             )
@@ -1440,6 +1446,7 @@ async fn handle_sprint(
     provider: String,
     model: Option<String>,
     browser_qa_url: Option<String>,
+    resume: bool,
     _config_path: Option<PathBuf>,
     output_format: OutputFormat,
 ) -> anyhow::Result<()> {
@@ -1522,7 +1529,7 @@ async fn handle_sprint(
     }
 
     let result = engine
-        .run(sprint_config)
+        .run_with_persistence(sprint_config, resume)
         .await
         .map_err(|e| anyhow::anyhow!("{e}"))?;
 

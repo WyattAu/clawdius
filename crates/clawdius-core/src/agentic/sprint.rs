@@ -477,8 +477,6 @@ impl SprintEngine {
     /// Returns the stash ref if successful, None if not in a git repo or on error.
     fn create_checkpoint(project_root: &Path) -> Option<String> {
         use std::process::Command;
-
-        // Check if we're in a git repo
         let output = Command::new("git")
             .args(["rev-parse", "--is-inside-work-tree"])
             .current_dir(project_root)
@@ -524,6 +522,361 @@ impl SprintEngine {
             let stderr = String::from_utf8_lossy(&output.stderr);
             Err(crate::Error::Sprint(format!("Rollback failed: {stderr}")))
         }
+    }
+
+    // ── Sprint State Persistence ─────────────────────────────────────────
+
+    /// Directory where sprint state files are stored (relative to project root).
+    const SPRINT_STATE_DIR: &str = ".clawdius/sprints";
+
+    /// Save sprint state to a JSON file for later resume.
+    /// Creates the `.clawdius/sprints/` directory if it doesn't exist.
+    pub fn save_state(state: &SprintState) -> Result<String> {
+        let sprint_dir = state.config.project_root.join(Self::SPRINT_STATE_DIR);
+        std::fs::create_dir_all(&sprint_dir).map_err(|e| {
+            crate::Error::Io(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                format!("Failed to create sprint state dir: {e}"),
+            ))
+        })?;
+
+        let filename = format!("sprint_{}.json", state.started_at.format("%Y%m%d-%H%M%S"));
+        let path = sprint_dir.join(&filename);
+        let json =
+            serde_json::to_string_pretty(state).map_err(|e| crate::Error::Serialization(e))?;
+        std::fs::write(&path, json).map_err(|e| {
+            crate::Error::Io(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                format!("Failed to write sprint state: {e}"),
+            ))
+        })?;
+
+        tracing::info!("Sprint state saved to {}", path.display());
+        Ok(filename)
+    }
+
+    /// Load the most recent sprint state from the project's `.clawdius/sprints/` directory.
+    pub fn load_latest_state(project_root: &Path) -> Result<Option<SprintState>> {
+        let sprint_dir = project_root.join(Self::SPRINT_STATE_DIR);
+        if !sprint_dir.exists() {
+            return Ok(None);
+        }
+
+        let mut entries: Vec<_> = std::fs::read_dir(&sprint_dir)
+            .map_err(|e| {
+                crate::Error::Io(std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    format!("Failed to read sprint state dir: {e}"),
+                ))
+            })?
+            .filter_map(|e| e.ok())
+            .filter(|e| e.path().extension().is_some_and(|ext| ext == "json"))
+            .collect();
+
+        // Sort by modification time, most recent first
+        entries.sort_by(|a, b| {
+            b.metadata()
+                .and_then(|m| m.modified())
+                .unwrap_or(std::time::SystemTime::UNIX_EPOCH)
+                .cmp(
+                    &a.metadata()
+                        .and_then(|m| m.modified())
+                        .unwrap_or(std::time::SystemTime::UNIX_EPOCH),
+                )
+        });
+
+        let Some(latest) = entries.into_iter().next() else {
+            return Ok(None);
+        };
+
+        let json = std::fs::read_to_string(latest.path()).map_err(|e| {
+            crate::Error::Io(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                format!("Failed to read sprint state file: {e}"),
+            ))
+        })?;
+
+        let state: SprintState =
+            serde_json::from_str(&json).map_err(|e| crate::Error::Serialization(e))?;
+
+        tracing::info!(
+            "Loaded sprint state from {} ({} phases completed)",
+            latest.path().display(),
+            state.phase_results.len()
+        );
+        Ok(Some(state))
+    }
+
+    /// List all saved sprint states in the project directory.
+    pub fn list_saved_states(project_root: &Path) -> Result<Vec<SprintState>> {
+        let sprint_dir = project_root.join(Self::SPRINT_STATE_DIR);
+        if !sprint_dir.exists() {
+            return Ok(Vec::new());
+        }
+
+        let entries: Vec<_> = std::fs::read_dir(&sprint_dir)
+            .map_err(|e| {
+                crate::Error::Io(std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    format!("Failed to read sprint state dir: {e}"),
+                ))
+            })?
+            .filter_map(|e| e.ok())
+            .filter(|e| e.path().extension().is_some_and(|ext| ext == "json"))
+            .collect();
+
+        let mut states = Vec::new();
+        for entry in entries {
+            let Ok(json) = std::fs::read_to_string(entry.path()) else {
+                continue;
+            };
+            if let Ok(state) = serde_json::from_str::<SprintState>(&json) {
+                states.push(state);
+            }
+        }
+
+        // Sort by started_at, most recent first
+        states.sort_by(|a, b| b.started_at.cmp(&a.started_at));
+        Ok(states)
+    }
+
+    /// Delete a saved sprint state file.
+    pub fn delete_saved_state(project_root: &Path, started_at: DateTime<Utc>) -> Result<()> {
+        let filename = format!("sprint_{}.json", started_at.format("%Y%m%d-%H%M%S"));
+        let path = project_root.join(Self::SPRINT_STATE_DIR).join(filename);
+        if path.exists() {
+            std::fs::remove_file(&path).map_err(|e| {
+                crate::Error::Io(std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    format!("Failed to delete sprint state: {e}"),
+                ))
+            })?;
+        }
+        Ok(())
+    }
+
+    /// Run a sprint with automatic state persistence after each phase.
+    /// If a previous state exists and `resume` is true, continues from where it left off.
+    pub async fn run_with_persistence(
+        &self,
+        config: SprintConfig,
+        resume: bool,
+    ) -> Result<SprintResult> {
+        let mut state = if resume {
+            match Self::load_latest_state(&config.project_root) {
+                Ok(Some(s)) => {
+                    eprintln!(
+                        "Resuming sprint from {} ({} phases already completed)",
+                        s.started_at.format("%Y-%m-%d %H:%M:%S"),
+                        s.phase_results.len()
+                    );
+                    s
+                },
+                Ok(None) => {
+                    eprintln!("No saved sprint state found, starting fresh");
+                    SprintState::new(config)
+                },
+                Err(e) => {
+                    eprintln!("Failed to load sprint state: {e}, starting fresh");
+                    SprintState::new(config)
+                },
+            }
+        } else {
+            SprintState::new(config)
+        };
+
+        let phases = state.active_phases();
+        let sprint_start = std::time::Instant::now();
+        let mut build_test_iterations = 0usize;
+
+        // Skip phases that already succeeded
+        let mut idx = state.phase_results.len();
+        if idx > 0 {
+            // Check if the last phase was Test and failed (needs retry)
+            if let Some(last) = state.phase_results.last() {
+                if last.phase == SprintPhase::Test && last.status == PhaseStatus::Failed {
+                    idx = phases
+                        .iter()
+                        .position(|p| *p == SprintPhase::Build)
+                        .unwrap_or(idx);
+                }
+            }
+        }
+
+        eprintln!(
+            "Starting from phase index {idx} ({})",
+            phases.get(idx).map_or("end", |p| p.display_name())
+        );
+
+        while idx < phases.len() {
+            let phase = &phases[idx];
+
+            if *phase == SprintPhase::Build && state.checkpoint_ref.is_none() {
+                if let Some(checkpoint) = Self::create_checkpoint(&state.config.project_root) {
+                    state.checkpoint_ref = Some(checkpoint);
+                    eprintln!(
+                        "Checkpoint created: {}",
+                        state.checkpoint_ref.as_ref().unwrap()
+                    );
+                }
+            }
+
+            let result = match self.run_phase(&mut state, phase).await {
+                Ok(r) => r,
+                Err(e) => {
+                    eprintln!("Phase {} error: {e}", phase);
+                    PhaseResult {
+                        phase: phase.clone(),
+                        status: PhaseStatus::Failed,
+                        output: format!("Phase failed: {e}"),
+                        duration_ms: 0,
+                        files_modified: Vec::new(),
+                        errors: vec![e.to_string()],
+                        tokens_used: 0,
+                    }
+                },
+            };
+
+            let result = if state.config.real_execution
+                && self.tool_executor.is_some()
+                && (*phase == SprintPhase::Build || *phase == SprintPhase::Test)
+            {
+                match self.execute_real_phase(&state, phase, result).await {
+                    Ok(r) => r,
+                    Err(e) => {
+                        eprintln!("Real execution error in phase {phase}: {e}");
+                        PhaseResult {
+                            phase: phase.clone(),
+                            status: PhaseStatus::Failed,
+                            output: format!("Real execution failed: {e}"),
+                            duration_ms: 0,
+                            files_modified: Vec::new(),
+                            errors: vec![e.to_string()],
+                            tokens_used: 0,
+                        }
+                    },
+                }
+            } else {
+                result
+            };
+
+            if let Some(last) = state.phase_results.last_mut() {
+                if last.phase == *phase {
+                    *last = result.clone();
+                }
+            }
+
+            let result = if *phase == SprintPhase::Review && !state.config.reviewers.is_empty() {
+                match self.run_multi_model_review(&state, result.clone()).await {
+                    Ok(r) => r,
+                    Err(e) => {
+                        eprintln!(
+                            "Multi-model review error: {e}. Falling back to single LLM review."
+                        );
+                        result
+                    },
+                }
+            } else {
+                result
+            };
+
+            // Save state after each phase
+            if let Err(e) = Self::save_state(&state) {
+                tracing::warn!("Failed to save sprint state: {e}");
+            }
+
+            if result.status == PhaseStatus::Failed {
+                break;
+            }
+
+            if *phase == SprintPhase::Test && result.status == PhaseStatus::Success {
+                idx += 1;
+                continue;
+            }
+
+            if *phase == SprintPhase::Test && result.status == PhaseStatus::Failed {
+                build_test_iterations += 1;
+                if build_test_iterations >= state.config.max_iterations {
+                    break;
+                }
+                state
+                    .context_accumulator
+                    .push_str("\n\n--- Test Iteration Restart ---\n");
+                state.context_accumulator.push_str(&format!(
+                    "Build/Test cycle failed (iteration {}/{}). Test errors:\n{}\n",
+                    build_test_iterations,
+                    state.config.max_iterations,
+                    result.errors.join("; ")
+                ));
+                if let Some(build_idx) = phases.iter().position(|p| *p == SprintPhase::Build) {
+                    idx = build_idx;
+                    continue;
+                }
+                break;
+            }
+
+            idx += 1;
+        }
+
+        let summary = state
+            .phase_results
+            .iter()
+            .find(|r| r.phase == SprintPhase::Reflect)
+            .map(|r| r.output.clone())
+            .unwrap_or_else(|| {
+                let passed = state
+                    .phase_results
+                    .iter()
+                    .filter(|r| r.status == PhaseStatus::Success)
+                    .count();
+                let total = state.phase_results.len();
+                format!("Sprint completed. {passed}/{total} phases succeeded.")
+            });
+
+        let success = state
+            .phase_results
+            .iter()
+            .all(|r| r.status == PhaseStatus::Success || r.status == PhaseStatus::Skipped);
+
+        let metrics = SprintMetrics {
+            total_tokens: state.phase_results.iter().map(|r| r.tokens_used).sum(),
+            phase_durations_ms: state
+                .phase_results
+                .iter()
+                .map(|r| (r.phase.display_name().to_string(), r.duration_ms))
+                .collect(),
+            phase_tokens: state
+                .phase_results
+                .iter()
+                .map(|r| (r.phase.display_name().to_string(), r.tokens_used))
+                .collect(),
+            retry_cycles: build_test_iterations,
+            phases_succeeded: state
+                .phase_results
+                .iter()
+                .filter(|r| r.status == PhaseStatus::Success)
+                .count(),
+            phases_failed: state
+                .phase_results
+                .iter()
+                .filter(|r| r.status == PhaseStatus::Failed)
+                .count(),
+            phases_skipped: state
+                .phase_results
+                .iter()
+                .filter(|r| r.status == PhaseStatus::Skipped)
+                .count(),
+        };
+
+        Ok(SprintResult {
+            success,
+            phase_results: state.phase_results,
+            total_duration_ms: sprint_start.elapsed().as_millis() as u64,
+            summary,
+            checkpoint_ref: state.checkpoint_ref.clone(),
+            rollback_available: !success && state.checkpoint_ref.is_some(),
+            metrics,
+        })
     }
 
     /// Detect a programming language from a file path extension.
