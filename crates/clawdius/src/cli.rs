@@ -590,6 +590,10 @@ pub enum Commands {
         #[arg(long)]
         /// Resume from the most recent saved sprint state
         resume: bool,
+
+        #[arg(long, value_name = "COMMAND")]
+        /// LSP server command for code intelligence (e.g., --lsp "rust-analyzer")
+        lsp: Option<String>,
     },
 
     #[command(about = "Run pre-ship checks or generate a commit message")]
@@ -1372,6 +1376,7 @@ pub async fn handle_command(
             model,
             browser_qa_url,
             resume,
+            lsp,
         } => {
             handle_sprint(
                 task,
@@ -1382,6 +1387,7 @@ pub async fn handle_command(
                 model,
                 browser_qa_url,
                 resume,
+                lsp,
                 config_path,
                 output_format,
             )
@@ -1447,6 +1453,7 @@ async fn handle_sprint(
     model: Option<String>,
     browser_qa_url: Option<String>,
     resume: bool,
+    lsp_command: Option<String>,
     _config_path: Option<PathBuf>,
     output_format: OutputFormat,
 ) -> anyhow::Result<()> {
@@ -1509,8 +1516,46 @@ async fn handle_sprint(
 
     let llm: Arc<dyn LlmClient> = Arc::new(provider_instance);
     let workspace_root = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
-    let tool_executor: Arc<dyn ToolExecutor> = Arc::new(ShellToolExecutor::new(workspace_root));
-    let engine = SprintEngine::new(llm).with_tool_executor(tool_executor);
+    let tool_executor: Arc<dyn ToolExecutor> =
+        Arc::new(ShellToolExecutor::new(workspace_root.clone()));
+    let mut engine = SprintEngine::new(llm).with_tool_executor(tool_executor);
+
+    // Attach LSP client if --lsp was specified
+    if let Some(lsp_cmd) = &lsp_command {
+        use clawdius_core::lsp::{LspClient, LspClientConfig};
+
+        let lsp_config = LspClientConfig::new(lsp_cmd.as_str())
+            .with_cwd(workspace_root.clone())
+            .with_timeout_ms(30_000);
+        let mut lsp_client = LspClient::new(lsp_config);
+
+        match lsp_client
+            .start(Some(&workspace_root.to_string_lossy()))
+            .await
+        {
+            Ok(()) => {
+                if output_format == OutputFormat::Text {
+                    println!("   LSP: {lsp_cmd} (connected)");
+                }
+                engine = engine.with_lsp_client(lsp_client);
+            },
+            Err(e) => match output_format {
+                OutputFormat::Json => {
+                    eprintln!(
+                        "{}",
+                        serde_json::json!({
+                            "warning": format!("LSP client failed to start: {e}"),
+                            "lsp_command": lsp_cmd,
+                        })
+                    );
+                },
+                _ => {
+                    eprintln!("⚠️  LSP client '{lsp_cmd}' failed to start: {e}");
+                    eprintln!("   Continuing sprint without LSP code intelligence.");
+                },
+            },
+        }
+    }
 
     if output_format == OutputFormat::Text {
         println!("🚀 Starting sprint");
