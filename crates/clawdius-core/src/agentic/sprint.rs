@@ -11,6 +11,7 @@ use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use thiserror::Error;
+use tokio::sync::mpsc;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub enum SprintPhase {
@@ -261,6 +262,32 @@ impl SprintEngine {
     pub fn with_browser_daemon(mut self, daemon: Arc<BrowserDaemon>) -> Self {
         self.browser_daemon = Some(daemon);
         self
+    }
+
+    /// Call the LLM with streaming, collecting all chunks into a single response.
+    /// Falls back to non-streaming chat if streaming fails.
+    async fn chat_collecting_stream(&self, messages: Vec<ChatMessage>) -> crate::Result<String> {
+        match self.llm.chat_stream(messages.clone()).await {
+            Ok(mut rx) => {
+                let mut output = String::new();
+                while let Some(chunk) = rx.recv().await {
+                    output.push_str(&chunk);
+                    // Emit progress dots to stderr so the user sees activity
+                    eprint!(".");
+                    use std::io::Write;
+                    let _ = std::io::stderr().flush();
+                }
+                eprintln!(); // newline after progress dots
+                Ok(output)
+            },
+            Err(_) => {
+                // Streaming not supported by this provider; fall back to non-streaming
+                self.llm
+                    .chat(messages)
+                    .await
+                    .map_err(|e| crate::Error::Llm(format!("LLM chat failed: {e}")))
+            },
+        }
     }
 
     pub async fn run(&self, config: SprintConfig) -> Result<SprintResult> {
@@ -854,7 +881,7 @@ impl SprintEngine {
             },
         ];
 
-        let result = match self.llm.chat(messages).await {
+        let result = match self.chat_collecting_stream(messages).await {
             Ok(output) => {
                 let tokens = self.llm.count_tokens(&output);
                 PhaseResult {
@@ -880,7 +907,7 @@ impl SprintEngine {
                     role: ChatRole::User,
                     content: combined,
                 }];
-                match self.llm.chat(fallback_messages).await {
+                match self.chat_collecting_stream(fallback_messages).await {
                     Ok(output) => {
                         let tokens = self.llm.count_tokens(&output);
                         PhaseResult {
