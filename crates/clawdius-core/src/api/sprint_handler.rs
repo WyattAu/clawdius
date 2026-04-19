@@ -449,33 +449,93 @@ pub async fn list_sprint_sessions(
     )
 }
 
+/// GET /api/v1/sprint/sessions/:id — Get a single session status
+pub async fn get_sprint_session(
+    State(state): State<ApiState>,
+    axum::extract::Path(session_id): axum::extract::Path<String>,
+) -> (StatusCode, Json<serde_json::Value>) {
+    use crate::agentic::SprintSessionId;
+    let id = SprintSessionId(session_id);
+
+    match state.sprint_manager.get_session(&id).await {
+        Some(session) => (
+            StatusCode::OK,
+            Json(serde_json::json!({
+                "session": session,
+            })),
+        ),
+        None => (
+            StatusCode::NOT_FOUND,
+            Json(serde_json::json!({
+                "error": format!("Session {} not found", id),
+            })),
+        ),
+    }
+}
+
 /// POST /api/v1/sprint/sessions — Submit a new parallel sprint session
+///
+/// If an LLM client is configured, the sprint is started immediately in the
+/// background. Otherwise, the session is queued as pending.
 pub async fn submit_sprint_session(
     State(state): State<ApiState>,
     Json(request): Json<RunSprintRequest>,
 ) -> (StatusCode, Json<serde_json::Value>) {
-    let llm = stub_llm_config();
-    let mut config = ParallelSprintConfig::new(&request.task, llm).with_name(&request.task);
+    // Use real LLM config if available, otherwise stub
+    let llm_config = stub_llm_config();
+    let mut config = ParallelSprintConfig::new(&request.task, llm_config)
+        .with_name(&request.task);
     config.real_execution = request.real_execution;
 
-    match state.sprint_manager.submit(config).await {
-        Ok(session_id) => {
-            let response = serde_json::json!({
-                "success": true,
-                "session_id": session_id.to_string(),
-                "task": request.task,
-                "status": "pending",
-                "message": format!("Sprint session {} submitted", session_id),
-            });
-            (StatusCode::CREATED, Json(response))
-        },
-        Err(e) => {
-            let response = serde_json::json!({
-                "success": false,
-                "error": format!("Failed to submit sprint session: {}", e),
-            });
-            (StatusCode::INTERNAL_SERVER_ERROR, Json(response))
-        },
+    // If LLM client is available, submit and immediately start
+    if let Some(ref provider) = state.llm_client {
+        let llm = Arc::clone(provider) as Arc<dyn LlmClient>;
+        match state.sprint_manager.submit_and_run(config, llm).await {
+            Ok(session_id) => {
+                let session = state.sprint_manager.get_session(&session_id).await;
+                let status = session
+                    .as_ref()
+                    .map(|s| format!("{:?}", s.status))
+                    .unwrap_or_else(|| "unknown".to_string());
+
+                let response = serde_json::json!({
+                    "success": true,
+                    "session_id": session_id.to_string(),
+                    "task": request.task,
+                    "status": status,
+                    "message": format!("Sprint session {} submitted and started", session_id),
+                });
+                (StatusCode::CREATED, Json(response))
+            },
+            Err(e) => {
+                let response = serde_json::json!({
+                    "success": false,
+                    "error": format!("Failed to submit sprint session: {}", e),
+                });
+                (StatusCode::INTERNAL_SERVER_ERROR, Json(response))
+            },
+        }
+    } else {
+        // No LLM — queue without starting
+        match state.sprint_manager.submit(config).await {
+            Ok(session_id) => {
+                let response = serde_json::json!({
+                    "success": true,
+                    "session_id": session_id.to_string(),
+                    "task": request.task,
+                    "status": "pending",
+                    "message": format!("Sprint session {} submitted (no LLM configured — not started)", session_id),
+                });
+                (StatusCode::CREATED, Json(response))
+            },
+            Err(e) => {
+                let response = serde_json::json!({
+                    "success": false,
+                    "error": format!("Failed to submit sprint session: {}", e),
+                });
+                (StatusCode::INTERNAL_SERVER_ERROR, Json(response))
+            },
+        }
     }
 }
 

@@ -26,8 +26,8 @@ use crate::api::routes::{
     AgentRequest, AgentResponse, ChatRequest, ChatResponse, HealthResponse, ToolCallInfo,
 };
 use crate::api::sprint_handler::{
-    execute_skill, generate_commit_message, list_skills, list_sprint_sessions, run_pre_ship_checks,
-    run_sprint, submit_sprint_session,
+    execute_skill, generate_commit_message, get_sprint_session, list_skills, list_sprint_sessions,
+    run_pre_ship_checks, run_sprint, submit_sprint_session,
 };
 use crate::api::tenant::{default_tenants, AuthenticatedApiKey, TenantStore};
 use crate::llm::{ChatMessage, ChatRole, LlmProvider};
@@ -910,6 +910,7 @@ pub fn create_router(state: ApiState) -> Router {
             "/api/v1/sprint/sessions",
             get(list_sprint_sessions).post(submit_sprint_session),
         )
+        .route("/api/v1/sprint/sessions/{id}", get(get_sprint_session))
         .route("/api/v1/ship/checks", post(run_pre_ship_checks))
         .route("/api/v1/ship/commit-message", post(generate_commit_message))
         .route("/api/v1/skills", get(list_skills))
