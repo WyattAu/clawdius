@@ -345,7 +345,8 @@ impl SprintEngine {
             };
 
             // A1: If tool_executor is present and phase is Build, run the tool-use loop
-            // This lets the LLM actually write/edit files instead of just describing changes.
+            // Try native tool_use first (Anthropic/OpenAI/OpenRouter), fall back to
+            // parser-based loop for other providers.
             let result = if *phase == SprintPhase::Build
                 && self.tool_executor.is_some()
                 && result.status == PhaseStatus::Success
@@ -359,9 +360,10 @@ impl SprintEngine {
                     state.config.task_description, state.context_accumulator
                 );
 
-                eprintln!("  [tool-use loop starting for Build phase]");
+                // Try native tool-use loop first (structured function calling)
+                eprintln!("  [tool-use loop starting for Build phase (trying native first)]");
 
-                match tool_use::run_tool_use_loop(
+                match tool_use::run_native_tool_use_loop(
                     llm,
                     executor,
                     &system_prompt,
@@ -373,9 +375,9 @@ impl SprintEngine {
                 {
                     Ok((output, tokens, files_modified)) => {
                         eprintln!(
-                            "  [tool-use loop done: {} iterations, {} files modified]",
-                            1, // iterations tracked inside run_tool_use_loop
-                            files_modified.len()
+                            "  [native tool loop done: {} files modified, {} tokens]",
+                            files_modified.len(),
+                            tokens
                         );
                         PhaseResult {
                             phase: phase.clone(),
@@ -387,9 +389,39 @@ impl SprintEngine {
                             tokens_used: tokens,
                         }
                     },
-                    Err(e) => {
-                        eprintln!("Tool-use loop error: {e}. Falling back to LLM-only result.");
-                        result // Keep the original LLM-only result
+                    Err(_) => {
+                        // Native tool-use not available — fall back to parser-based loop
+                        eprintln!("  [native tool-use not available, falling back to parser-based loop]");
+                        match tool_use::run_tool_use_loop(
+                            llm,
+                            executor,
+                            &system_prompt,
+                            &user_message,
+                            &state.config.project_root,
+                            None,
+                        )
+                        .await
+                        {
+                            Ok((output, tokens, files_modified)) => {
+                                eprintln!(
+                                    "  [parser tool loop done: {} files modified]",
+                                    files_modified.len()
+                                );
+                                PhaseResult {
+                                    phase: phase.clone(),
+                                    status: PhaseStatus::Success,
+                                    output,
+                                    duration_ms: result.duration_ms,
+                                    files_modified,
+                                    errors: Vec::new(),
+                                    tokens_used: tokens,
+                                }
+                            },
+                            Err(e) => {
+                                eprintln!("Tool-use loop error: {e}. Falling back to LLM-only result.");
+                                result // Keep the original LLM-only result
+                            },
+                        }
                     },
                 }
             } else {

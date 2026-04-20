@@ -5,7 +5,7 @@
 //! sees results → thinks again → calls more tools → signals done.
 
 use crate::agentic::tool_executor::{ShellToolExecutor, ToolExecutor, ToolRequest, ToolResult};
-use crate::llm::providers::LlmClient;
+use crate::llm::providers::{ChatWithToolsResult, LlmClient};
 use crate::llm::{ChatMessage, ChatRole};
 use crate::Result;
 use serde::{Deserialize, Serialize};
@@ -477,6 +477,280 @@ pub async fn run_tool_use_loop(
             role: ChatRole::User,
             content: tool_results_text,
         });
+    }
+
+    // Deduplicate files
+    all_files_modified.sort();
+    all_files_modified.dedup();
+
+    Ok((final_output, total_tokens, all_files_modified))
+}
+
+// ── Native Tool-Use Loop (for Anthropic/OpenAI/OpenRouter) ──────────────────
+
+/// Build the tool definitions for native function calling.
+///
+/// These `genai::chat::Tool` definitions are sent to Anthropic/OpenAI/OpenRouter
+/// as part of the API request. The LLM sees structured tool schemas and returns
+/// `ToolCall` responses instead of text-based tool invocations.
+pub fn native_tool_definitions() -> Vec<genai::chat::Tool> {
+    use serde_json::json;
+
+    vec![
+        genai::chat::Tool::new("write_file")
+            .with_description("Create or overwrite a file with the given content. Use for new files or complete rewrites.")
+            .with_schema(json!({
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "File path relative to the project root"
+                    },
+                    "content": {
+                        "type": "string",
+                        "description": "Full file content to write"
+                    }
+                },
+                "required": ["path", "content"]
+            })),
+        genai::chat::Tool::new("edit_file")
+            .with_description("Find and replace text in an existing file. Use for targeted changes to existing code.")
+            .with_schema(json!({
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "File path relative to the project root"
+                    },
+                    "old_text": {
+                        "type": "string",
+                        "description": "Exact text to find in the file"
+                    },
+                    "new_text": {
+                        "type": "string",
+                        "description": "Replacement text"
+                    }
+                },
+                "required": ["path", "old_text", "new_text"]
+            })),
+        genai::chat::Tool::new("shell")
+            .with_description("Run a shell command in the project directory. Use for building, testing, and git operations.")
+            .with_schema(json!({
+                "type": "object",
+                "properties": {
+                    "command": {
+                        "type": "string",
+                        "description": "Shell command to execute"
+                    }
+                },
+                "required": ["command"]
+            })),
+        genai::chat::Tool::new("read_file")
+            .with_description("Read the contents of a file. Use to inspect existing code before making changes.")
+            .with_schema(json!({
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "File path relative to the project root"
+                    }
+                },
+                "required": ["path"]
+            })),
+        genai::chat::Tool::new("list_files")
+            .with_description("List files and directories in a given path. Use to explore the project structure.")
+            .with_schema(json!({
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "Directory path relative to the project root (default: \".\")"
+                    }
+                }
+            })),
+    ]
+}
+
+/// Execute a native `ToolCall` from `genai::chat::ToolCall` via the same logic
+/// as the parser-based tool executor.
+async fn execute_native_tool_call(
+    executor: &Arc<dyn ToolExecutor>,
+    call: &genai::chat::ToolCall,
+    project_root: &std::path::Path,
+) -> ToolExecutionResult {
+    // Convert genai ToolCall to our internal ToolCall format for reuse
+    let internal_call = ToolCall {
+        tool: call.fn_name.clone(),
+        args: call.fn_arguments.clone(),
+        raw: format!(
+            "native_tool_call({}): {}",
+            call.call_id,
+            serde_json::to_string(&call.fn_arguments).unwrap_or_default()
+        ),
+    };
+    execute_tool_call(executor.as_ref(), &internal_call, project_root).await
+}
+
+/// Run the native tool-use loop using provider's structured function calling.
+///
+/// Unlike the parser-based `run_tool_use_loop`, this uses `chat_with_tools()`
+/// which sends tool definitions via the API and receives structured `ToolCall`
+/// responses. This is more reliable for Anthropic Claude and OpenAI GPT-4o.
+///
+/// Returns `Err` if the provider doesn't support `chat_with_tools` (the caller
+/// should fall back to the parser-based loop in that case).
+pub async fn run_native_tool_use_loop(
+    llm: &Arc<dyn LlmClient>,
+    executor: &Arc<dyn ToolExecutor>,
+    system_prompt: &str,
+    initial_user_message: &str,
+    project_root: &std::path::Path,
+    max_iterations: Option<usize>,
+) -> Result<(String, usize, Vec<String>)> {
+    let max_iters = max_iterations.unwrap_or(MAX_TOOL_ITERATIONS);
+    let tools = native_tool_definitions();
+
+    let native_system = format!(
+        "{}\n\nYou have access to tools for file operations and shell commands. \
+         Use them to make real changes. When done, respond with text only (no tool calls).",
+        system_prompt
+    );
+
+    let initial_messages = vec![
+        ChatMessage {
+            role: ChatRole::System,
+            content: native_system,
+        },
+        ChatMessage {
+            role: ChatRole::User,
+            content: initial_user_message.to_string(),
+        },
+    ];
+
+    let mut total_tokens = 0usize;
+    let mut all_files_modified = Vec::new();
+    let mut final_output = String::new();
+    let mut messages: Vec<ChatMessage> = initial_messages;
+
+    for iteration in 0..max_iters {
+        // Try native tool calling
+        let result: ChatWithToolsResult = llm
+            .chat_with_tools(messages.clone(), tools.clone())
+            .await
+            .map_err(|e| {
+                // If the provider doesn't support chat_with_tools, propagate
+                // the error so the caller can fall back to parser-based loop
+                crate::Error::Llm(format!("Native tool-use not available: {e}"))
+            })?;
+
+        let tokens = llm.count_tokens(&result.text);
+        total_tokens += tokens;
+
+        eprintln!(
+            "  [native tool loop iter {}/{}] {} tokens, {} tool calls",
+            iteration + 1,
+            max_iters,
+            tokens,
+            result.tool_calls.len()
+        );
+
+        // If no tool calls, we're done
+        if result.tool_calls.is_empty() {
+            final_output = result.text;
+            break;
+        }
+
+        // Execute each tool call
+        let mut tool_results = Vec::new();
+        for tc in &result.tool_calls {
+            let exec_result = execute_native_tool_call(executor, tc, project_root).await;
+            eprintln!(
+                "    [{}] {} ({})",
+                tc.fn_name,
+                if exec_result.success { "ok" } else { "FAIL" },
+                exec_result.duration_ms
+            );
+
+            // Track modified files
+            if exec_result.success {
+                if tc.fn_name == "write_file" || tc.fn_name == "edit_file" {
+                    if let Some(path) = tc.fn_arguments.get("path").and_then(|v| v.as_str()) {
+                        all_files_modified.push(path.to_string());
+                    }
+                }
+            }
+
+            // Build a ToolResponse to send back to the LLM
+            tool_results.push(genai::chat::ToolResponse {
+                call_id: tc.call_id.clone(),
+                content: exec_result.output,
+            });
+        }
+
+        // Append assistant response (with tool calls) to conversation
+        // The assistant turn contains both text and tool calls
+        let assistant_text = if result.text.is_empty() {
+            String::new()
+        } else {
+            result.text.clone()
+        };
+
+        // Clone tool_calls before moving into MessageContent
+        let tool_calls_for_output = result.tool_calls.clone();
+
+        // Add the assistant message with tool calls
+        let assistant_content = if assistant_text.is_empty() {
+            genai::chat::MessageContent::from_tool_calls(
+                result.tool_calls.clone(),
+            )
+        } else {
+            // Mix text + tool calls: start with text, append tool calls
+            let mut parts: Vec<genai::chat::ContentPart> = vec![
+                genai::chat::ContentPart::Text(assistant_text.clone()),
+            ];
+            for tc in result.tool_calls {
+                parts.push(genai::chat::ContentPart::ToolCall(tc));
+            }
+            genai::chat::MessageContent::from_parts(parts)
+        };
+
+        // We need to add assistant and tool-response messages to our ChatMessage list
+        // Since ChatMessage only has role + content string, we reconstruct from the parts
+        let assistant_str = assistant_content
+            .texts()
+            .join("\n")
+            + if !tool_calls_for_output.is_empty() {
+                "\n[Called tools — see tool results below]"
+            } else {
+                ""
+            };
+        messages.push(ChatMessage {
+            role: ChatRole::Assistant,
+            content: assistant_str,
+        });
+
+        // Add tool results as a user message
+        let mut results_text = String::from("## Tool Results\n\n");
+        for (tc, tr) in tool_calls_for_output.iter().zip(tool_results.iter()) {
+            results_text.push_str(&format!(
+                "### [{}] {} — {}\n---\n\n",
+                tc.fn_name,
+                if tr.content.to_lowercase().contains("fail")
+                    || tr.content.to_lowercase().contains("error")
+                {
+                    "FAILED"
+                } else {
+                    "OK"
+                },
+                tr.content
+            ));
+        }
+        messages.push(ChatMessage {
+            role: ChatRole::User,
+            content: results_text.clone(),
+        });
+
+        final_output = format!("{}\n{}", assistant_text, results_text);
     }
 
     // Deduplicate files
