@@ -1,0 +1,57 @@
+[package]
+name = "invoicenest"
+version = "0.1.0"
+edition = "2021"
+description = "InvoiceNest — Freelancer Invoicing SaaS Platform"
+license = "MIT"
+
+[workspace]
+members = [
+    "crates/invoicenest-core",
+    "crates/invoicenest-api",
+]
+
+[workspace.dependencies]
+# Async runtime
+tokio = { version = "1", features = ["full"] }
+# HTTP framework
+axum = { version = "0.7", features = ["macros", "multipart"] }
+axum-extra = { version = "0.9", features = ["typed-header"] }
+tower = { version = "0.4", features = ["full"] }
+tower-http = { version = "0.5", features = ["cors", "trace", "auth"] }
+# Database
+sqlx = { version = "0.7", features = ["runtime-tokio", "postgres", "uuid", "chrono", "migrate", "rust_decimal"] }
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+# Auth
+jsonwebtoken = "9"
+argon2 = "0.5"
+# Validation
+validator = { version = "0.18", features = ["derive"] }
+# Email
+lettre = "0.11"
+# Money
+rust_decimal = { version = "1", features = ["serde"] }
+# UUID
+uuid = { version = "1", features = ["v4", "serde"] }
+# Chrono
+chrono = { version = "0.4", features = ["serde"] }
+# Error handling
+thiserror = "1"
+anyhow = "1"
+# Tracing
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+# Config
+dotenvy = "0.15"
+# Rate limiting
+governor = "0.6"
+# PDF generation (stub)
+lopdf = "0.32"
+# Stripe (webhook verification only)
+stripe-rust = "0.2"
+
+[workspace.lints.clippy]
+warn = ["all"]
+allow = ["too_many_arguments", "type_complexity"]
