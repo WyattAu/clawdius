@@ -1,11 +1,15 @@
 //! Anthropic Claude provider
+//!
+//! Supports native tool_use via genai's Anthropic adapter. Claude models
+//! receive tool definitions and return structured `ToolCall` responses
+//! that can be executed and fed back as `ToolResponse`.
 
 use async_trait::async_trait;
 use futures::StreamExt;
 use genai::chat::{ChatMessage, ChatRequest};
 use tokio::sync::mpsc;
 
-use crate::llm::providers::LlmClient;
+use crate::llm::providers::{ChatWithToolsResult, LlmClient};
 use crate::llm::{ChatMessage as ClawdiusMessage, ChatRole};
 use crate::{Error, Result};
 
@@ -24,23 +28,27 @@ impl AnthropicProvider {
             .build();
         Ok(Self {
             client,
-            model: model.unwrap_or("claude-3-5-sonnet-20241022").to_string(),
+            model: model.unwrap_or("claude-sonnet-4-20250514").to_string(),
         })
     }
+}
+
+/// Helper: convert Clawdius messages to genai messages.
+fn to_genai_messages(messages: &[ClawdiusMessage]) -> Vec<ChatMessage> {
+    messages
+        .iter()
+        .map(|m| match m.role {
+            ChatRole::System => ChatMessage::system(m.content.clone()),
+            ChatRole::User => ChatMessage::user(m.content.clone()),
+            ChatRole::Assistant => ChatMessage::assistant(m.content.clone()),
+        })
+        .collect()
 }
 
 #[async_trait]
 impl LlmClient for AnthropicProvider {
     async fn chat(&self, messages: Vec<ClawdiusMessage>) -> Result<String> {
-        let genai_messages: Vec<ChatMessage> = messages
-            .into_iter()
-            .map(|m| match m.role {
-                ChatRole::System => ChatMessage::system(m.content),
-                ChatRole::User => ChatMessage::user(m.content),
-                ChatRole::Assistant => ChatMessage::assistant(m.content),
-            })
-            .collect();
-
+        let genai_messages = to_genai_messages(&messages);
         let chat_req = ChatRequest::new(genai_messages);
 
         let response = self
@@ -57,16 +65,7 @@ impl LlmClient for AnthropicProvider {
 
     async fn chat_stream(&self, messages: Vec<ClawdiusMessage>) -> Result<mpsc::Receiver<String>> {
         let (tx, rx) = mpsc::channel(100);
-
-        let genai_messages: Vec<ChatMessage> = messages
-            .into_iter()
-            .map(|m| match m.role {
-                ChatRole::System => ChatMessage::system(m.content),
-                ChatRole::User => ChatMessage::user(m.content),
-                ChatRole::Assistant => ChatMessage::assistant(m.content),
-            })
-            .collect();
-
+        let genai_messages = to_genai_messages(&messages);
         let chat_req = ChatRequest::new(genai_messages);
         let client = self.client.clone();
         let model = self.model.clone();
@@ -98,6 +97,44 @@ impl LlmClient for AnthropicProvider {
         });
 
         Ok(rx)
+    }
+
+    /// Send a chat message with tool definitions and get structured tool calls back.
+    ///
+    /// Uses genai's native Anthropic tool_use support. The Anthropic adapter
+    /// sends tools in the `/tools` parameter and parses `tool_use` content
+    /// blocks from the response.
+    async fn chat_with_tools(
+        &self,
+        messages: Vec<ClawdiusMessage>,
+        tools: Vec<genai::chat::Tool>,
+    ) -> Result<ChatWithToolsResult> {
+        let genai_messages = to_genai_messages(&messages);
+        let chat_req = ChatRequest::new(genai_messages).with_tools(tools);
+
+        let response = self
+            .client
+            .exec_chat(&self.model, chat_req, None)
+            .await
+            .map_err(|e| Error::Llm(e.to_string()))?;
+
+        // Extract text and tool calls from the response MessageContent.
+        // `response.content` is `MessageContent` (transparent wrapper over Vec<ContentPart>).
+        let text = response
+            .content
+            .first_text()
+            .unwrap_or("")
+            .to_string();
+
+        // `MessageContent::tool_calls()` returns `Vec<&ToolCall>`.
+        let tool_calls: Vec<genai::chat::ToolCall> = response
+            .content
+            .tool_calls()
+            .into_iter()
+            .cloned()
+            .collect();
+
+        Ok(ChatWithToolsResult { text, tool_calls })
     }
 
     fn count_tokens(&self, text: &str) -> usize {

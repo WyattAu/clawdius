@@ -670,9 +670,33 @@ impl LlmClientWithRetry {
     pub fn provider(&self) -> &LlmProvider {
         &self.provider
     }
+
 }
 
 impl LlmProvider {
+    /// Send a chat message with tool definitions and get structured tool calls.
+    ///
+    /// Delegates to the underlying provider's `chat_with_tools` implementation.
+    /// Providers that support tool calling (Anthropic, OpenAI, OpenRouter) will
+    /// return structured `ToolCall` responses. Others will return an error.
+    pub async fn chat_with_tools(
+        &self,
+        messages: Vec<ChatMessage>,
+        tools: Vec<providers::Tool>,
+    ) -> Result<providers::ChatWithToolsResult> {
+        match self {
+            LlmProvider::Anthropic(p) => p.chat_with_tools(messages, tools).await,
+            LlmProvider::OpenAi(p) => p.chat_with_tools(messages, tools).await,
+            LlmProvider::OpenRouter(p) => p.chat_with_tools(messages, tools).await,
+            LlmProvider::Google(_) | LlmProvider::Ollama(_) | LlmProvider::Local(_) => {
+                Err(crate::Error::Llm(
+                    "Tool calling not supported by this provider. Use Anthropic, OpenAI, or OpenRouter."
+                        .to_string(),
+                ))
+            },
+        }
+    }
+
     pub async fn chat(&self, messages: Vec<ChatMessage>) -> Result<String> {
         match self {
             LlmProvider::Anthropic(p) => p.chat(messages).await,
