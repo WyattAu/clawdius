@@ -234,6 +234,10 @@ pub enum Error {
     /// Sprint error
     #[error("Sprint error: {0}")]
     Sprint(String),
+
+    /// Network error
+    #[error("Network error: {0}")]
+    Network(String),
 }
 
 /// Result type alias for Clawdius

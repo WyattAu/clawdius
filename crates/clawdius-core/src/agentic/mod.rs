@@ -54,7 +54,9 @@ pub mod test_execution;
 pub mod tool_executor;
 pub mod tool_use;
 pub mod verifier_agent;
+pub mod web_search;
 pub mod worktree;
+pub mod sandbox;
 
 // Re-exports
 pub use apply_workflow::{
@@ -103,6 +105,13 @@ pub use verifier_agent::{
     IssueSeverity, VerificationIssue, VerificationResult, VerificationRule, VerifierAgent,
 };
 pub use worktree::{WorktreeError, WorktreeManager, WorktreeSession};
+pub use sandbox::{
+    ContainerBackend, DirectorySandbox, SandboxedExecutor, SandboxCheck, SandboxConfig,
+    SandboxLevel, SandboxStats,
+};
+pub use web_search::{
+    ScrapedPage, SearchResult, WebSearchAgent, WebSearchConfig, WebSearchStats,
+};
 
 use crate::error::Result;
 use crate::llm::LlmClient;
