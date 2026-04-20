@@ -11,6 +11,7 @@
 use axum::{extract::State, http::StatusCode, Json};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
+use tokio::sync::mpsc;
 
 use crate::agentic::tool_executor::{ShellToolExecutor, ToolExecutor};
 use crate::agentic::{
@@ -214,6 +215,302 @@ pub async fn run_sprint(
             })),
         ),
     }
+}
+
+// ─── Sprint SSE Streaming Handler ────────────────────────────────────────────
+
+/// SSE event emitted during sprint streaming.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SprintSseEvent {
+    /// Event type: "phase_start", "phase_end", "sprint_end", "error"
+    pub event: String,
+    /// Phase name (for phase_start/phase_end events)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub phase: Option<String>,
+    /// Phase status (for phase_end events): "success", "failed", "skipped"
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub status: Option<String>,
+    /// Phase output text
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub output: Option<String>,
+    /// Token count for the phase
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tokens_used: Option<usize>,
+    /// Duration in ms
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub duration_ms: Option<u64>,
+    /// Files modified in this phase
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub files_modified: Option<Vec<String>>,
+    /// Overall sprint success (for sprint_end event)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub success: Option<bool>,
+    /// Error message (for error events)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
+    /// Timestamp
+    pub timestamp: String,
+}
+
+/// GET /api/v1/sprint/stream — Run a sprint and stream phase results as SSE.
+///
+/// Accepts query parameters:
+/// - `task`: Task description (required)
+/// - `max_iterations`: Max build/test retry cycles (default: 3)
+/// - `real_execution`: Whether to actually run build/test commands (default: false)
+/// - `auto_approve`: Skip confirmation prompts (default: false)
+///
+/// Returns `text/event-stream` with events:
+/// - `phase_start` — A sprint phase is beginning
+/// - `phase_end` — A sprint phase completed (includes status, output, tokens)
+/// - `sprint_end` — The entire sprint completed (includes success, summary)
+/// - `error` — An error occurred
+pub async fn stream_sprint(
+    State(state): State<ApiState>,
+    axum::extract::Query(params): axum::extract::Query<std::collections::HashMap<String, String>>,
+) -> impl axum::response::IntoResponse {
+    use axum::response::sse::{Event, KeepAlive};
+    use axum::response::IntoResponse;
+    use futures::StreamExt;
+
+    // Create a channel for events
+    let (tx, mut rx) = mpsc::channel::<SprintSseEvent>(64);
+
+    // Check for LLM client
+    let llm_provider = match &state.llm_client {
+        Some(provider) => Arc::clone(provider) as Arc<dyn LlmClient>,
+        None => {
+            // Send a single error event and close
+            let error_event = SprintSseEvent {
+                event: "error".to_string(),
+                phase: None,
+                status: None,
+                output: None,
+                tokens_used: None,
+                duration_ms: None,
+                files_modified: None,
+                success: None,
+                error: Some("No LLM provider configured".to_string()),
+                timestamp: chrono::Utc::now().to_rfc3339(),
+            };
+            let _ = tx.send(error_event).await;
+            // Drop tx so the stream ends after this event
+            drop(tx);
+
+            let stream: std::pin::Pin<Box<dyn futures::Stream<Item = Result<Event, std::convert::Infallible>> + Send>> = Box::pin(async_stream::stream! {
+                while let Some(event) = rx.recv().await {
+                    let json = serde_json::to_string(&event).unwrap_or_default();
+                    yield Ok::<_, std::convert::Infallible>(
+                        Event::default().event(&event.event).data(json),
+                    );
+                }
+            });
+            return axum::response::sse::Sse::new(stream)
+                .keep_alive(KeepAlive::default())
+                .into_response();
+        },
+    };
+
+    // Parse query parameters
+    let task = params
+        .get("task")
+        .cloned()
+        .unwrap_or_default();
+    let max_iterations = params
+        .get("max_iterations")
+        .and_then(|v| v.parse::<usize>().ok())
+        .unwrap_or(3);
+    let real_execution = params
+        .get("real_execution")
+        .map(|v| v == "true" || v == "1")
+        .unwrap_or(false);
+    let auto_approve = params
+        .get("auto_approve")
+        .map(|v| v == "true" || v == "1")
+        .unwrap_or(false);
+
+    // Build SprintConfig
+    let mut config = SprintConfig::new(&task);
+    config.auto_approve = auto_approve;
+    config.real_execution = real_execution;
+    config.max_iterations = max_iterations;
+
+    // Spawn the sprint in the background
+    tokio::spawn(async move {
+        let project_root = std::path::PathBuf::from(&config.project_root);
+        let tool_executor: Arc<dyn crate::agentic::tool_executor::ToolExecutor> =
+            Arc::new(ShellToolExecutor::new(project_root));
+        let engine = SprintEngine::new(llm_provider).with_tool_executor(tool_executor);
+
+        // Emit phase events by running the sprint phases manually
+        let mut sprint_state = crate::agentic::SprintState::new(config);
+        let phases = sprint_state.active_phases();
+        let mut build_test_iterations = 0usize;
+
+        for phase in &phases {
+            let phase_name = phase.display_name().to_string();
+
+            // Emit phase_start
+            let _ = tx
+                .send(SprintSseEvent {
+                    event: "phase_start".to_string(),
+                    phase: Some(phase_name.clone()),
+                    status: None,
+                    output: None,
+                    tokens_used: None,
+                    duration_ms: None,
+                    files_modified: None,
+                    success: None,
+                    error: None,
+                    timestamp: chrono::Utc::now().to_rfc3339(),
+                })
+                .await;
+
+            // Run the phase
+            let result = match engine.run_phase(&mut sprint_state, phase).await {
+                Ok(r) => r,
+                Err(e) => {
+                    let _ = tx
+                        .send(SprintSseEvent {
+                            event: "error".to_string(),
+                            phase: Some(phase_name),
+                            status: None,
+                            output: None,
+                            tokens_used: None,
+                            duration_ms: None,
+                            files_modified: None,
+                            success: None,
+                            error: Some(format!("Phase {phase} error: {e}")),
+                            timestamp: chrono::Utc::now().to_rfc3339(),
+                        })
+                        .await;
+                    // Send sprint_end with failure
+                    let _ = tx
+                        .send(SprintSseEvent {
+                            event: "sprint_end".to_string(),
+                            phase: None,
+                            status: None,
+                            output: None,
+                            tokens_used: None,
+                            duration_ms: None,
+                            files_modified: None,
+                            success: Some(false),
+                            error: None,
+                            timestamp: chrono::Utc::now().to_rfc3339(),
+                        })
+                        .await;
+                    return;
+                },
+            };
+
+            let status_str = format!("{:?}", result.status).to_lowercase();
+
+            // Emit phase_end
+            let _ = tx
+                .send(SprintSseEvent {
+                    event: "phase_end".to_string(),
+                    phase: Some(phase_name.clone()),
+                    status: Some(status_str),
+                    output: Some(result.output),
+                    tokens_used: Some(result.tokens_used),
+                    duration_ms: Some(result.duration_ms),
+                    files_modified: if result.files_modified.is_empty() {
+                        None
+                    } else {
+                        Some(result.files_modified)
+                    },
+                    success: None,
+                    error: if result.errors.is_empty() {
+                        None
+                    } else {
+                        Some(result.errors.join("; "))
+                    },
+                    timestamp: chrono::Utc::now().to_rfc3339(),
+                })
+                .await;
+
+            // Handle build/test retry cycle
+            if *phase == crate::agentic::SprintPhase::Test && result.status == crate::agentic::PhaseStatus::Failed {
+                build_test_iterations += 1;
+                if build_test_iterations >= sprint_state.config.max_iterations {
+                    break;
+                }
+                // Restart from Build
+                if let Some(build_idx) = phases.iter().position(|p| *p == crate::agentic::SprintPhase::Build) {
+                    // We can't easily restart in this loop structure, so just note it
+                    let _ = tx
+                        .send(SprintSseEvent {
+                            event: "error".to_string(),
+                            phase: Some("retry".to_string()),
+                            status: None,
+                            output: None,
+                            tokens_used: None,
+                            duration_ms: None,
+                            files_modified: None,
+                            success: None,
+                            error: Some(format!(
+                                "Test failed (iteration {}/{}). Note: SSE streaming does not yet support automatic build/test retry loops.",
+                                build_test_iterations, sprint_state.config.max_iterations
+                            )),
+                            timestamp: chrono::Utc::now().to_rfc3339(),
+                        })
+                        .await;
+                    break;
+                }
+            }
+
+            if result.status == crate::agentic::PhaseStatus::Failed {
+                break;
+            }
+        }
+
+        let all_success = sprint_state.phase_results.iter().all(|r| {
+            r.status == crate::agentic::PhaseStatus::Success
+                || r.status == crate::agentic::PhaseStatus::Skipped
+        });
+
+        // Emit sprint_end
+        let _ = tx
+            .send(SprintSseEvent {
+                event: "sprint_end".to_string(),
+                phase: None,
+                status: None,
+                output: None,
+                tokens_used: Some(
+                    sprint_state
+                        .phase_results
+                        .iter()
+                        .map(|r| r.tokens_used)
+                        .sum(),
+                ),
+                duration_ms: None,
+                files_modified: None,
+                success: Some(all_success),
+                error: None,
+                timestamp: chrono::Utc::now().to_rfc3339(),
+            })
+            .await;
+    });
+
+    // Convert the channel receiver into an SSE stream
+    let stream: std::pin::Pin<Box<dyn futures::Stream<Item = Result<Event, std::convert::Infallible>> + Send>> = Box::pin(async_stream::stream! {
+        while let Some(event) = rx.recv().await {
+            let json = serde_json::to_string(&event).unwrap_or_default();
+            yield Ok::<_, std::convert::Infallible>(
+                Event::default()
+                    .event(&event.event)
+                    .data(json),
+            );
+        }
+    });
+
+    axum::response::sse::Sse::new(stream)
+        .keep_alive(
+            axum::response::sse::KeepAlive::new()
+                .interval(std::time::Duration::from_secs(15))
+                .text("keepalive"),
+        )
+        .into_response()
 }
 
 // ─── Ship Handler ──────────────────────────────────────────────────────────

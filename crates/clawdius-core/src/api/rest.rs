@@ -27,7 +27,7 @@ use crate::api::routes::{
 };
 use crate::api::sprint_handler::{
     execute_skill, generate_commit_message, get_sprint_session, list_skills, list_sprint_sessions,
-    run_pre_ship_checks, run_sprint, submit_sprint_session,
+    run_pre_ship_checks, run_sprint, stream_sprint, submit_sprint_session,
 };
 use crate::api::tenant::{default_tenants, AuthenticatedApiKey, TenantStore};
 use crate::llm::{ChatMessage, ChatRole, LlmProvider};
@@ -906,6 +906,7 @@ pub fn create_router(state: ApiState) -> Router {
         .route("/api/v1/usage", get(usage_endpoint))
         // Sprint, Ship, and Skills endpoints
         .route("/api/v1/sprint", post(run_sprint))
+        .route("/api/v1/sprint/stream", get(stream_sprint))
         .route(
             "/api/v1/sprint/sessions",
             get(list_sprint_sessions).post(submit_sprint_session),
