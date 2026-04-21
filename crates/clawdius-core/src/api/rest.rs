@@ -399,6 +399,7 @@ pub async fn delete_session(
 /// POST /api/v1/chat - Send a chat message
 pub async fn chat(
     State(state): State<ApiState>,
+    api_key: Option<Extension<AuthenticatedApiKey>>,
     Json(request): Json<ChatRequest>,
 ) -> Result<Json<ChatResponse>, (StatusCode, Json<ApiError>)> {
     use crate::session::MessageRole;
@@ -469,6 +470,15 @@ pub async fn chat(
             ))
         },
     };
+
+    // Record tenant usage if authenticated
+    if let Some(Extension(key)) = api_key {
+        let store = state.tenant_store.read().unwrap();
+        if let Some(tenant_id) = store.get_tenant_id_by_api_key(&key.0) {
+            drop(store);
+            let _ = record_tenant_task(&state, &tenant_id, 0);
+        }
+    }
 
     if let Some(ref session_id_str) = request.session_id {
         if let Ok(uuid) = Uuid::parse_str(session_id_str) {
@@ -609,6 +619,7 @@ fn execute_mcp_tool_call(name: &str, arguments: &serde_json::Value) -> String {
 /// POST /api/v1/agent - Send a message to the coding agent
 pub async fn agent_handler(
     State(state): State<ApiState>,
+    api_key: Option<Extension<AuthenticatedApiKey>>,
     Json(request): Json<AgentRequest>,
 ) -> Result<Json<AgentResponse>, (StatusCode, Json<ApiError>)> {
     use crate::session::MessageRole;
@@ -692,6 +703,15 @@ pub async fn agent_handler(
         let (tool_calls, remaining) = parse_tool_calls(&response_text);
 
         if tool_calls.is_empty() {
+            // Record tenant usage if authenticated
+            if let Some(Extension(key)) = &api_key {
+                let store = state.tenant_store.read().unwrap();
+                if let Some(tenant_id) = store.get_tenant_id_by_api_key(&key.0) {
+                    drop(store);
+                    let _ = record_tenant_task(&state, &tenant_id, 0);
+                }
+            }
+
             let session_id = request
                 .session_id
                 .clone()
@@ -752,6 +772,15 @@ pub async fn agent_handler(
                 tool_results_text
             ),
         });
+    }
+
+    // Record tenant usage if authenticated (max iterations reached)
+    if let Some(Extension(key)) = &api_key {
+        let store = state.tenant_store.read().unwrap();
+        if let Some(tenant_id) = store.get_tenant_id_by_api_key(&key.0) {
+            drop(store);
+            let _ = record_tenant_task(&state, &tenant_id, 0);
+        }
     }
 
     let session_id = request

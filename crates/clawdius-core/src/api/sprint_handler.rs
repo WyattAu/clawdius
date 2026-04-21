@@ -8,7 +8,7 @@
 //! - GET /api/v1/skills — List available skills (built-in + user markdown)
 //! - POST /api/v1/skills/execute — Execute a skill (loads & runs markdown)
 
-use axum::{extract::State, http::StatusCode, Json};
+use axum::{extract::Extension, extract::State, http::StatusCode, Json};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tokio::sync::mpsc;
@@ -19,6 +19,7 @@ use crate::agentic::{
     SprintConfig, SprintEngine,
 };
 use crate::api::rest::ApiState;
+use crate::api::tenant::AuthenticatedApiKey;
 use crate::llm::providers::LlmClient;
 use crate::session::SessionStore;
 use crate::skills::{Skill, SkillContext, SkillRegistry};
@@ -117,6 +118,7 @@ fn test_api_state() -> ApiState {
 /// Returns 503 if no LLM client is configured.
 pub async fn run_sprint(
     State(state): State<ApiState>,
+    api_key: Option<Extension<AuthenticatedApiKey>>,
     Json(request): Json<RunSprintRequest>,
 ) -> (StatusCode, Json<serde_json::Value>) {
     // Check for LLM client
@@ -176,6 +178,16 @@ pub async fn run_sprint(
                     })
                 })
                 .collect();
+
+            // Record tenant usage if authenticated
+            if let Some(Extension(key)) = api_key {
+                let store = state.tenant_store.read().unwrap();
+                if let Some(tenant_id) = store.get_tenant_id_by_api_key(&key.0) {
+                    drop(store);
+                    let total_tokens = result.metrics.total_tokens as usize;
+                    let _ = crate::api::auth_handler::record_tenant_task(&state, &tenant_id, total_tokens);
+                }
+            }
 
             let body = serde_json::json!({
                 "success": result.success,
@@ -267,6 +279,7 @@ pub struct SprintSseEvent {
 /// - `error` — An error occurred
 pub async fn stream_sprint(
     State(state): State<ApiState>,
+    api_key: Option<Extension<AuthenticatedApiKey>>,
     axum::extract::Query(params): axum::extract::Query<std::collections::HashMap<String, String>>,
 ) -> impl axum::response::IntoResponse {
     use axum::response::sse::{Event, KeepAlive};
@@ -334,6 +347,10 @@ pub async fn stream_sprint(
     config.auto_approve = auto_approve;
     config.real_execution = real_execution;
     config.max_iterations = max_iterations;
+
+    // Clone state and api_key for use in the spawned task
+    let state_clone = state.clone();
+    let key_clone = api_key.clone();
 
     // Spawn the sprint in the background
     tokio::spawn(async move {
@@ -470,19 +487,18 @@ pub async fn stream_sprint(
         });
 
         // Emit sprint_end
+        let total_tokens: usize = sprint_state
+            .phase_results
+            .iter()
+            .map(|r| r.tokens_used)
+            .sum();
         let _ = tx
             .send(SprintSseEvent {
                 event: "sprint_end".to_string(),
                 phase: None,
                 status: None,
                 output: None,
-                tokens_used: Some(
-                    sprint_state
-                        .phase_results
-                        .iter()
-                        .map(|r| r.tokens_used)
-                        .sum(),
-                ),
+                tokens_used: Some(total_tokens),
                 duration_ms: None,
                 files_modified: None,
                 success: Some(all_success),
@@ -490,6 +506,15 @@ pub async fn stream_sprint(
                 timestamp: chrono::Utc::now().to_rfc3339(),
             })
             .await;
+
+        // Record tenant usage if authenticated
+        if let Some(Extension(key)) = key_clone {
+            let store = state_clone.tenant_store.read().unwrap();
+            if let Some(tenant_id) = store.get_tenant_id_by_api_key(&key.0) {
+                drop(store);
+                let _ = crate::api::auth_handler::record_tenant_task(&state_clone, &tenant_id, total_tokens);
+            }
+        }
     });
 
     // Convert the channel receiver into an SSE stream
@@ -907,7 +932,7 @@ mod tests {
             auto_approve: false,
             target_files: vec![],
         };
-        let (status, Json(body)) = run_sprint(State(state), Json(req)).await;
+        let (status, Json(body)) = run_sprint(State(state), None, Json(req)).await;
         assert_eq!(status, StatusCode::SERVICE_UNAVAILABLE);
         assert_eq!(body["code"], "LLM_NOT_CONFIGURED");
     }
