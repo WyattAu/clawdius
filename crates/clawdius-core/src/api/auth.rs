@@ -40,7 +40,12 @@ impl ApiKeyAuth {
     }
 }
 
-const SKIP_PATHS: &[&str] = &["/api/v1/health", "/api/v1/ready"];
+const SKIP_PATHS: &[&str] = &[
+    "/api/v1/health",
+    "/api/v1/ready",
+    "/api/v1/auth/signup",
+    "/api/v1/auth/login",
+];
 
 fn should_skip(path: &str) -> bool {
     SKIP_PATHS.iter().any(|skip| path == *skip)

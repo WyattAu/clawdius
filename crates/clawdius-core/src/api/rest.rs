@@ -8,7 +8,7 @@ use axum::{
     http::StatusCode,
     middleware,
     response::Json,
-    routing::{get, post},
+    routing::{delete, get, post},
     Router,
 };
 use serde::{Deserialize, Serialize};
@@ -28,6 +28,10 @@ use crate::api::routes::{
 use crate::api::sprint_handler::{
     execute_skill, generate_commit_message, get_sprint_session, list_skills, list_sprint_sessions,
     run_pre_ship_checks, run_sprint, stream_sprint, submit_sprint_session,
+};
+use crate::api::auth_handler::{
+    create_api_key, delete_tenant, get_tenant, list_api_keys, list_tenants, login,
+    record_tenant_task, revoke_api_key, signup, update_tenant,
 };
 use crate::api::tenant::{default_tenants, AuthenticatedApiKey, TenantStore};
 use crate::llm::{ChatMessage, ChatRole, LlmProvider};
@@ -915,7 +919,21 @@ pub fn create_router(state: ApiState) -> Router {
         .route("/api/v1/ship/checks", post(run_pre_ship_checks))
         .route("/api/v1/ship/commit-message", post(generate_commit_message))
         .route("/api/v1/skills", get(list_skills))
-        .route("/api/v1/skills/execute", post(execute_skill));
+        .route("/api/v1/skills/execute", post(execute_skill))
+        // Auth endpoints (no auth required for signup/login)
+        .route("/api/v1/auth/signup", post(signup))
+        .route("/api/v1/auth/login", post(login))
+        // Tenant management endpoints
+        .route("/api/v1/tenants", get(list_tenants))
+        .route(
+            "/api/v1/tenants/{id}",
+            get(get_tenant).patch(update_tenant).delete(delete_tenant),
+        )
+        .route(
+            "/api/v1/tenants/{id}/keys",
+            get(list_api_keys).post(create_api_key),
+        )
+        .route("/api/v1/tenants/{id}/keys/{key}", delete(revoke_api_key));
 
     let protected = if auth.is_enabled() {
         protected_routes.layer(middleware::from_fn_with_state(

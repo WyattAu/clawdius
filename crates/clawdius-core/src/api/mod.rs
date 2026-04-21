@@ -1,4 +1,5 @@
 pub mod auth;
+pub mod auth_handler;
 pub mod gateway;
 pub mod metrics_handler;
 pub mod rate_limit;
@@ -8,6 +9,12 @@ pub mod sprint_handler;
 pub mod tenant;
 
 pub use auth::ApiKeyAuth;
+pub use auth_handler::{
+    create_api_key, delete_tenant, get_tenant, list_api_keys, list_tenants, login,
+    record_tenant_task, revoke_api_key, signup, update_tenant,
+    ApiKeyCreatedResponse, ApiKeyInfo, LoginRequest, LoginResponse, SignupRequest,
+    SignupResponse, TenantResponse, UpdateTenantRequest,
+};
 pub use gateway::*;
 pub use rate_limit::ApiRateLimiter;
 pub use rest::*;
