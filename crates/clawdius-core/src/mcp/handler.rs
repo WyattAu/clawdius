@@ -4,6 +4,7 @@ use crate::graph_rag::languages::{detect_language, supported_extensions};
 use crate::graph_rag::parser::CodeParser;
 use crate::graph_rag::store::GraphStore;
 use crate::llm::{ChatMessage, ChatRole, LlmConfig};
+use crate::llm::providers::LlmClient;
 use crate::tools::web_search::{SearchProvider, WebSearchTool};
 use std::sync::LazyLock;
 use walkdir::WalkDir;

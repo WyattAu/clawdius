@@ -212,6 +212,7 @@ pub mod providers;
 pub mod rate_limiter;
 
 pub use messages::{ChatMessage, ChatRole};
+pub use providers::ChatWithToolsResult;
 pub use providers::Provider;
 pub use rate_limiter::{RateLimiter, RateLimiterConfig};
 
@@ -619,6 +620,7 @@ pub enum LlmProvider {
     Google(providers::google::GoogleProvider),
     OpenAi(providers::openai::OpenAIProvider),
     OpenRouter(providers::openrouter::OpenRouterProvider),
+    Zai(providers::zai::ZaiProvider),
     Ollama(providers::ollama::OllamaProvider),
     Local(providers::local::LocalLlmProvider),
 }
@@ -647,6 +649,7 @@ impl LlmClientWithRetry {
                 LlmProvider::Google(p) => p.chat(messages.clone()).await,
                 LlmProvider::OpenAi(p) => p.chat(messages.clone()).await,
                 LlmProvider::OpenRouter(p) => p.chat(messages.clone()).await,
+                LlmProvider::Zai(p) => p.chat(messages.clone()).await,
                 LlmProvider::Ollama(p) => p.chat(messages.clone()).await,
                 LlmProvider::Local(p) => p.chat(messages.clone()).await,
             }
@@ -661,50 +664,26 @@ impl LlmClientWithRetry {
             LlmProvider::Google(p) => p.count_tokens(text),
             LlmProvider::OpenAi(p) => p.count_tokens(text),
             LlmProvider::OpenRouter(p) => p.count_tokens(text),
+            LlmProvider::Zai(p) => p.count_tokens(text),
             LlmProvider::Ollama(p) => p.count_tokens(text),
             LlmProvider::Local(p) => p.count_tokens(text),
         }
     }
 
-    #[must_use]
-    pub fn provider(&self) -> &LlmProvider {
-        &self.provider
-    }
-
-}
-
-impl LlmProvider {
-    /// Send a chat message with tool definitions and get structured tool calls.
-    ///
-    /// Delegates to the underlying provider's `chat_with_tools` implementation.
-    /// Providers that support tool calling (Anthropic, OpenAI, OpenRouter) will
-    /// return structured `ToolCall` responses. Others will return an error.
     pub async fn chat_with_tools(
-        &self,
-        messages: Vec<ChatMessage>,
-        tools: Vec<providers::Tool>,
-    ) -> Result<providers::ChatWithToolsResult> {
-        match self {
+        &self, messages: Vec<ChatMessage>, tools: Vec<genai::chat::Tool>,
+    ) -> Result<ChatWithToolsResult> {
+        match &self.provider {
             LlmProvider::Anthropic(p) => p.chat_with_tools(messages, tools).await,
             LlmProvider::OpenAi(p) => p.chat_with_tools(messages, tools).await,
             LlmProvider::OpenRouter(p) => p.chat_with_tools(messages, tools).await,
+            LlmProvider::Zai(p) => p.chat_with_tools(messages, tools).await,
             LlmProvider::Google(_) | LlmProvider::Ollama(_) | LlmProvider::Local(_) => {
                 Err(crate::Error::Llm(
-                    "Tool calling not supported by this provider. Use Anthropic, OpenAI, or OpenRouter."
+                    "Tool calling not supported by this provider. Use Anthropic, OpenAI, OpenRouter, or ZAI."
                         .to_string(),
                 ))
             },
-        }
-    }
-
-    pub async fn chat(&self, messages: Vec<ChatMessage>) -> Result<String> {
-        match self {
-            LlmProvider::Anthropic(p) => p.chat(messages).await,
-            LlmProvider::Google(p) => p.chat(messages).await,
-            LlmProvider::OpenAi(p) => p.chat(messages).await,
-            LlmProvider::OpenRouter(p) => p.chat(messages).await,
-            LlmProvider::Ollama(p) => p.chat(messages).await,
-            LlmProvider::Local(p) => p.chat(messages).await,
         }
     }
 
@@ -719,18 +698,6 @@ impl LlmProvider {
         })
         .await
     }
-
-    #[must_use]
-    pub fn count_tokens(&self, text: &str) -> usize {
-        match self {
-            LlmProvider::Anthropic(p) => p.count_tokens(text),
-            LlmProvider::Google(p) => p.count_tokens(text),
-            LlmProvider::OpenAi(p) => p.count_tokens(text),
-            LlmProvider::OpenRouter(p) => p.count_tokens(text),
-            LlmProvider::Ollama(p) => p.count_tokens(text),
-            LlmProvider::Local(p) => p.count_tokens(text),
-        }
-    }
 }
 
 #[async_trait::async_trait]
@@ -741,6 +708,7 @@ impl providers::LlmClient for LlmProvider {
             LlmProvider::Google(p) => p.chat(messages).await,
             LlmProvider::OpenAi(p) => p.chat(messages).await,
             LlmProvider::OpenRouter(p) => p.chat(messages).await,
+            LlmProvider::Zai(p) => p.chat(messages).await,
             LlmProvider::Ollama(p) => p.chat(messages).await,
             LlmProvider::Local(p) => p.chat(messages).await,
         }
@@ -755,6 +723,7 @@ impl providers::LlmClient for LlmProvider {
             LlmProvider::Google(p) => p.chat_stream(messages).await,
             LlmProvider::OpenAi(p) => p.chat_stream(messages).await,
             LlmProvider::OpenRouter(p) => p.chat_stream(messages).await,
+            LlmProvider::Zai(p) => p.chat_stream(messages).await,
             LlmProvider::Ollama(p) => p.chat_stream(messages).await,
             LlmProvider::Local(p) => p.chat_stream(messages).await,
         }
@@ -766,6 +735,7 @@ impl providers::LlmClient for LlmProvider {
             LlmProvider::Google(p) => p.count_tokens(text),
             LlmProvider::OpenAi(p) => p.count_tokens(text),
             LlmProvider::OpenRouter(p) => p.count_tokens(text),
+            LlmProvider::Zai(p) => p.count_tokens(text),
             LlmProvider::Ollama(p) => p.count_tokens(text),
             LlmProvider::Local(p) => p.count_tokens(text),
         }
@@ -814,6 +784,17 @@ pub fn create_provider(config: &LlmConfig) -> Result<LlmProvider> {
                 providers::openrouter::OpenRouterProvider::new(api_key, Some(&config.model))?,
             ))
         },
+        "zai" | "glm" => {
+            let api_key = config.api_key.as_ref().ok_or_else(|| {
+                Error::Config(
+                    ErrorHelpers::api_key_missing("ZAI", "ZAI_API_KEY").to_string(),
+                )
+            })?;
+            Ok(LlmProvider::Zai(providers::zai::ZaiProvider::new(
+                api_key,
+                Some(&config.model),
+            )?))
+        },
         "ollama" => {
             let base_url = config
                 .base_url
@@ -837,7 +818,7 @@ pub fn create_provider(config: &LlmConfig) -> Result<LlmProvider> {
         _ => Err(Error::Config(
             ErrorHelpers::unknown_provider(
                 &config.provider,
-                &["anthropic", "google", "openai", "openrouter", "ollama"],
+                &["anthropic", "google", "openai", "openrouter", "zai", "ollama"],
             )
             .to_string(),
         )),

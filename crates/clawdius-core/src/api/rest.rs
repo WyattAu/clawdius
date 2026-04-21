@@ -35,6 +35,7 @@ use crate::api::auth_handler::{
 };
 use crate::api::tenant::{default_tenants, AuthenticatedApiKey, TenantStore};
 use crate::llm::{ChatMessage, ChatRole, LlmProvider};
+use crate::llm::providers::LlmClient;
 use crate::mcp::McpRequest;
 use crate::session::{Message as SessionMessage, Session, SessionId, SessionStore};
 

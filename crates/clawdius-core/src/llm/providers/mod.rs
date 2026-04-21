@@ -11,6 +11,7 @@ pub mod local;
 pub mod ollama;
 pub mod openai;
 pub mod openrouter;
+pub mod zai;
 
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
@@ -82,6 +83,8 @@ pub enum Provider {
     /// custom base URL pointing to `https://api.deepseek.com`)
     DeepSeek,
     OpenRouter,
+    /// ZAI (ZhipuAI) GLM provider — supports glm-4.5, glm-4.6, glm-4.7, glm-5
+    Zai,
     Ollama,
     Local,
 }
