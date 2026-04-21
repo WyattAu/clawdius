@@ -3,7 +3,7 @@
 
 **Current Version:** 2.8.0
 **Next:** v2.9.0 — TBD
-**Last Updated:** 2026-04-20
+| **Last Updated:** 2026-04-21 |
 
 ---
 
@@ -15,8 +15,8 @@ Clawdius v2.8.0 is a Rust-native agentic coding engine that **exceeds gstack's c
 
 | Metric | Value | Notes |
 |--------|-------|-------|
-| **Rust LOC** | ~100,000 | +3K from v2.6.0 (native tool-use, SSE streaming, sandboxes) |
-| **Tests passing** | **820** | Up from 766 in v2.6.0 |
+| **Rust LOC** | ~102,000 | +5K from v2.7.0 (multi-tenant, auth, billing foundations) |
+| **Tests passing** | **828** | Up from 820 in v2.7.0 |
 | **Integration tests** | **9/9** | All pass |
 | **Lean4 Proofs** | 69 theorems proven | `.specs/02_architecture/proofs/` |
 | **Compiler errors** | 0 | Full workspace compiles clean |
@@ -38,7 +38,8 @@ Clawdius v2.8.0 is a Rust-native agentic coding engine that **exceeds gstack's c
 | **Parallel Sprints** | Session + worktree | WorktreeManager for isolated parallel execution |
 | **Browser Daemon** | Persistent + refs | Wired into SprintEngine Test phase |
 | **Ship Pipeline** | Safety + benchmarks | Branch protection, canary, regression detection |
-| **REST API endpoints** | 8 | sprint, sprint/stream, ship, skills, parallel sessions |
+| **Multi-tenant** | **Working** | 3 tiers (Free/Pro/Enterprise), per-tenant API keys, workspace isolation |
+| **Usage tracking** | **Working** | Per-tenant task/token/session counting, hourly/daily rate limits |
 | **CLI commands** | 3 | `clawdius sprint`, `clawdius ship`, `clawdius skill` |
 | **VSCode extension** | **Working** | REST client + sprint/skills/ship commands |
 
@@ -357,11 +358,11 @@ Total: 56.2s | 1,225 tokens | 7/0/0 (ok/fail/skip)
 | B3 | SSE streaming endpoint | ✅ | `GET /api/v1/sprint/stream` — text/event-stream with phase_start/phase_end/sprint_end events |
 | B4 | Native tool_use — OpenRouter | ✅ | `chat_with_tools()` on OpenRouterProvider, proxies to underlying model |
 | B5 | Native tool-use loop | ✅ | `run_native_tool_use_loop()` with genai::chat::Tool definitions, SprintEngine tries native first, falls back to parser |
-| B6 | Config CLI | ❌ | `clawdius config set provider/key` — not yet started |
+| B6 | Config CLI | ✅ | `clawdius config show/get/set/path/list` — dot-path config keys |
 | B7 | End-to-end demo | ❌ | Agent writes + tests a real file with Claude — needs real API key |
-| B8 | Multi-tenant workspace | ❌ | Workspace isolation per tenant — not yet started |
-| B9 | API key auth | ❌ | Signup flow, BYOK + platform keys — not yet started |
-| B10 | Usage tracking + billing | ❌ | Per-tenant token counting, billing foundations — not yet started |
+| B8 | Multi-tenant workspace | ✅ | `TenantStore` with 3 tiers, `ApiKeyEntry` struct, `TenantUsage` tracking, per-tenant workspace_root |
+| B9 | API key auth | ✅ | Signup/login endpoints, tenant CRUD, API key create/list/revoke, auth middleware skip paths |
+| B10 | Usage tracking + billing | ✅ | `record_tenant_task()` wired into chat/agent/sprint endpoints, per-tenant rate limiting |
 
 ### Native Tool Calling Architecture (v2.8.0)
 
@@ -416,8 +417,8 @@ Clawdius v2.8.0 achieves the primary goal: **exceeding gstack's capabilities** a
 5. **M5 (DONE):** Browser Daemon — persistent Chromium, accessibility-tree `@eN` refs
 6. **M6 (DONE):** Ship Pipeline — branch safety, canary deployment, benchmark regression
 
-Plus v2.7.0 additions: **real code execution**, **parallel sprints**, **sandboxing**, **web search**, and v2.8.0 additions: **native tool calling** (Claude, GPT-4o), **SSE streaming**, **5 defined tools**.
+Plus v2.7.0 additions: **real code execution**, **parallel sprints**, **sandboxing**, **web search**, and v2.8.0 additions: **native tool calling** (Claude, GPT-4o), **SSE streaming**, **5 defined tools**, **multi-tenant auth**, **API key management**, **usage tracking**.
 
-The roadmap continues with v2.9.0 priorities: end-to-end demo with Claude, config CLI, multi-tenant workspace isolation, and API key auth.
+The roadmap continues with v2.9.0 priorities: end-to-end demo with Claude, Stripe billing integration, and production deployment on Hetzner.
 
 *This roadmap is a living document. Review after each phase.*
