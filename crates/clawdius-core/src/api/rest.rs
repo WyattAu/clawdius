@@ -18,7 +18,7 @@ use tokio::sync::{mpsc, oneshot};
 use uuid::Uuid;
 
 use crate::agentic::ParallelSprintManager;
-use crate::api::auth::{auth_middleware, ApiKeyAuth};
+use crate::api::auth::{auth_middleware, tenant_aware_auth_middleware, ApiKeyAuth, AuthState};
 use crate::api::gateway::RateLimitConfig;
 use crate::api::metrics_handler;
 use crate::api::rate_limit::{rate_limit_middleware, ApiRateLimiter};
@@ -924,6 +924,9 @@ pub fn create_router(state: ApiState) -> Router {
         Some(state.api_keys.clone())
     });
 
+    // Use tenant-aware auth that checks both config keys and TenantStore keys
+    let auth_state = AuthState::new(auth.clone(), state.tenant_store.clone());
+
     let protected_routes = Router::new()
         .route("/api/v1/sessions", get(list_sessions).post(create_session))
         .route(
@@ -966,8 +969,8 @@ pub fn create_router(state: ApiState) -> Router {
 
     let protected = if auth.is_enabled() {
         protected_routes.layer(middleware::from_fn_with_state(
-            auth.clone(),
-            auth_middleware,
+            auth_state,
+            tenant_aware_auth_middleware,
         ))
     } else {
         protected_routes
