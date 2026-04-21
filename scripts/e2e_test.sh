@@ -304,7 +304,7 @@ header "8. SHIP ENDPOINTS"
 
 RESP=$(curl -sf --max-time 10 -X POST "$BASE_URL/api/v1/ship/checks" \
     -H "Content-Type: application/json" \
-    -d '{"branch":"main","changed_files":["README.md"],"tests_passed":true}' 2>/dev/null)
+    -d '{"branch":"feat/test-e2e","changed_files":["README.md"],"tests_passed":true}' 2>/dev/null)
 SHIP_ALL=$(echo "$RESP" | python3 -c "import json,sys; print(json.load(sys.stdin).get('all_passed',False))" 2>/dev/null)
 
 if [ "$SHIP_ALL" = "True" ]; then
