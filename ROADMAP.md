@@ -17,6 +17,7 @@ Clawdius v2.8.0 is a Rust-native agentic coding engine that **exceeds gstack's c
 |--------|-------|-------|
 | **Rust LOC** | ~102,000 | +5K from v2.7.0 (multi-tenant, auth, billing foundations) |
 | **Tests passing** | **828** | Up from 820 in v2.7.0 |
+| **E2E tests** | **21/32 pass** | 11 skipped (LLM rate-limited), 0 failures |
 | **Integration tests** | **9/9** | All pass |
 | **Lean4 Proofs** | 69 theorems proven | `.specs/02_architecture/proofs/` |
 | **Compiler errors** | 0 | Full workspace compiles clean |
@@ -39,6 +40,7 @@ Clawdius v2.8.0 is a Rust-native agentic coding engine that **exceeds gstack's c
 | **Browser Daemon** | Persistent + refs | Wired into SprintEngine Test phase |
 | **Ship Pipeline** | Safety + benchmarks | Branch protection, canary, regression detection |
 | **Multi-tenant** | **Working** | 3 tiers (Free/Pro/Enterprise), per-tenant API keys, workspace isolation |
+| **Auth middleware** | **Working** | Config keys + TenantStore keys, optional enforcement mode |
 | **Usage tracking** | **Working** | Per-tenant task/token/session counting, hourly/daily rate limits |
 | **CLI commands** | 3 | `clawdius sprint`, `clawdius ship`, `clawdius skill` |
 | **VSCode extension** | **Working** | REST client + sprint/skills/ship commands |
@@ -363,6 +365,29 @@ Total: 56.2s | 1,225 tokens | 7/0/0 (ok/fail/skip)
 | B8 | Multi-tenant workspace | ✅ | `TenantStore` with 3 tiers, `ApiKeyEntry` struct, `TenantUsage` tracking, per-tenant workspace_root |
 | B9 | API key auth | ✅ | Signup/login endpoints, tenant CRUD, API key create/list/revoke, auth middleware skip paths |
 | B10 | Usage tracking + billing | ✅ | `record_tenant_task()` wired into chat/agent/sprint endpoints, per-tenant rate limiting |
+| B11 | E2E test suite | ✅ | `scripts/e2e_test.sh` — 12 sections, 32 checks, rate-limit detection, auto-skip LLM tests |
+| B12 | Auth middleware → TenantStore bridge | ✅ | Tenant API keys (from signup) now validated by auth middleware; optional auth mode (validate tokens when present even without config keys) |
+
+### E2E Test Results (v2.8.0)
+
+All 21 non-LLM checks pass (11 LLM-dependent checks skipped due to OpenRouter free tier rate limiting):
+
+| Section | Tests | Result |
+|---------|-------|--------|
+| 0a. Server startup | 1 | ✅ |
+| 0b. LLM rate limit check | 1 | ⏭️ Rate-limited |
+| 1. Health & Readiness | 2 | ✅ |
+| 2. Session Management | 3 | ✅ |
+| 3. Chat (LLM) | 2 | ⏭️ Rate-limited |
+| 4. Agent (LLM) | 2 | ⏭️ Rate-limited |
+| 5. Sprint (LLM) | 1 | ⏭️ Rate-limited |
+| 6. SSE Streaming (LLM) | 1 | ⏭️ Rate-limited |
+| 7. Skills | 2 | ✅+⏭️ |
+| 8. Ship | 2 | ✅+⏭️ |
+| 9. Multi-Tenant Auth | 8+1 | ✅+⏭️ |
+| 10. Usage Tracking | 1 | ✅ |
+| 11. Sprint Sessions | 1 | ✅ |
+| 12. Tools & Plugins | 3 | ✅ |
 
 ### Native Tool Calling Architecture (v2.8.0)
 
