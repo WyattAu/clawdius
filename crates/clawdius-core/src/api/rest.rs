@@ -967,14 +967,13 @@ pub fn create_router(state: ApiState) -> Router {
         )
         .route("/api/v1/tenants/{id}/keys/{key}", delete(revoke_api_key));
 
-    let protected = if auth.is_enabled() {
-        protected_routes.layer(middleware::from_fn_with_state(
-            auth_state,
-            tenant_aware_auth_middleware,
-        ))
-    } else {
-        protected_routes
-    };
+    // Always apply the tenant-aware auth middleware.
+    // When auth is not enforced (no config keys), it still validates Bearer tokens
+    // when present, enabling tenant-scoped endpoints to identify the caller.
+    let protected = protected_routes.layer(middleware::from_fn_with_state(
+        auth_state,
+        tenant_aware_auth_middleware,
+    ));
 
     let router = Router::new()
         .route("/metrics", get(metrics_handler::metrics_handler))

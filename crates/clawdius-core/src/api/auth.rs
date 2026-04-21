@@ -68,8 +68,10 @@ impl AuthState {
         }
     }
 
-    /// Whether authentication is enabled at all.
-    /// Auth is enabled if config has keys OR there are any tenants with keys.
+    /// Whether authentication is enforced (i.e., requests without tokens are rejected).
+    /// Auth is enforced if config has keys.
+    /// Note: Even when not enforced, Bearer tokens are still validated if present,
+    /// so tenant-scoped endpoints can identify the caller.
     pub fn is_enabled(&self) -> bool {
         self.config_auth.enabled
     }
@@ -137,16 +139,24 @@ pub async fn tenant_aware_auth_middleware(
     mut request: Request,
     next: Next,
 ) -> Response {
-    if !auth_state.is_enabled() || should_skip(request.uri().path()) {
+    if should_skip(request.uri().path()) {
         return next.run(request).await;
     }
 
     let token = match extract_bearer_token(request.headers()) {
-        None => return unauthorized_response("Missing authorization header"),
+        None => {
+            // No token present
+            if auth_state.is_enabled() {
+                // Auth enforced — reject
+                return unauthorized_response("Missing authorization header");
+            }
+            // Auth not enforced — allow anonymous (will get default tenant)
+            return next.run(request).await;
+        },
         Some(token) => token,
     };
 
-    // Check config-level keys first (fast path)
+    // Token present — validate against config keys then tenant store
     let config_valid = auth_state
         .config_auth
         .valid_keys
@@ -168,6 +178,7 @@ pub async fn tenant_aware_auth_middleware(
         request.extensions_mut().insert(AuthenticatedApiKey(token));
         next.run(request).await
     } else {
+        // Token present but invalid — always reject (even if auth not enforced)
         forbidden_response("Invalid API key")
     }
 }
