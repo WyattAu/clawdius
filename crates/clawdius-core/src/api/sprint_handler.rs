@@ -151,6 +151,7 @@ pub async fn run_sprint(
     let mut config = SprintConfig::new(&request.task);
     config.auto_approve = request.auto_approve;
     config.real_execution = request.real_execution;
+    config.max_duration_secs = request.timeout_secs;
     if request.max_iterations > 0 {
         config.max_iterations = request.max_iterations;
     }
@@ -161,8 +162,12 @@ pub async fn run_sprint(
         Arc::new(ShellToolExecutor::new(project_root));
     let engine = SprintEngine::new(llm_provider).with_tool_executor(tool_executor);
 
-    match engine.run(config).await {
-        Ok(result) => {
+    // Wrap sprint execution in a timeout to prevent indefinite hangs
+    let sprint_timeout = std::time::Duration::from_secs(request.timeout_secs);
+    eprintln!("[sprint] starting with timeout={}s", request.timeout_secs);
+    match tokio::time::timeout(sprint_timeout, engine.run(config)).await {
+        Ok(Ok(result)) => {
+            eprintln!("[sprint] completed in {}ms", start.elapsed().as_millis());
             let phase_results: Vec<serde_json::Value> = result
                 .phase_results
                 .iter()
@@ -185,7 +190,11 @@ pub async fn run_sprint(
                 if let Some(tenant_id) = store.get_tenant_id_by_api_key(&key.0) {
                     drop(store);
                     let total_tokens = result.metrics.total_tokens as usize;
-                    let _ = crate::api::auth_handler::record_tenant_task(&state, &tenant_id, total_tokens);
+                    let _ = crate::api::auth_handler::record_tenant_task(
+                        &state,
+                        &tenant_id,
+                        total_tokens,
+                    );
                 }
             }
 
@@ -217,15 +226,34 @@ pub async fn run_sprint(
                 (StatusCode::MULTI_STATUS, Json(body))
             }
         },
-        Err(e) => (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(serde_json::json!({
-                "success": false,
-                "error": format!("Sprint failed: {e}"),
-                "mode": mode.name(),
-                "duration_ms": start.elapsed().as_millis() as u64,
-            })),
-        ),
+        Ok(Err(e)) => {
+            eprintln!("[sprint] engine error: {e}");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({
+                    "success": false,
+                    "error": format!("Sprint failed: {e}"),
+                    "mode": mode.name(),
+                    "duration_ms": start.elapsed().as_millis() as u64,
+                })),
+            )
+        },
+        Err(_) => {
+            eprintln!("[sprint] timed out after {}s", request.timeout_secs);
+            (
+                StatusCode::GATEWAY_TIMEOUT,
+                Json(serde_json::json!({
+                    "success": false,
+                    "error": format!(
+                        "Sprint timed out after {}s. Consider increasing timeout_secs or simplifying the task.",
+                        request.timeout_secs
+                    ),
+                    "mode": mode.name(),
+                    "duration_ms": start.elapsed().as_millis() as u64,
+                    "code": "SPRINT_TIMEOUT",
+                })),
+            )
+        },
     }
 }
 
@@ -310,7 +338,9 @@ pub async fn stream_sprint(
             // Drop tx so the stream ends after this event
             drop(tx);
 
-            let stream: std::pin::Pin<Box<dyn futures::Stream<Item = Result<Event, std::convert::Infallible>> + Send>> = Box::pin(async_stream::stream! {
+            let stream: std::pin::Pin<
+                Box<dyn futures::Stream<Item = Result<Event, std::convert::Infallible>> + Send>,
+            > = Box::pin(async_stream::stream! {
                 while let Some(event) = rx.recv().await {
                     let json = serde_json::to_string(&event).unwrap_or_default();
                     yield Ok::<_, std::convert::Infallible>(
@@ -325,10 +355,7 @@ pub async fn stream_sprint(
     };
 
     // Parse query parameters
-    let task = params
-        .get("task")
-        .cloned()
-        .unwrap_or_default();
+    let task = params.get("task").cloned().unwrap_or_default();
     let max_iterations = params
         .get("max_iterations")
         .and_then(|v| v.parse::<usize>().ok())
@@ -447,13 +474,18 @@ pub async fn stream_sprint(
                 .await;
 
             // Handle build/test retry cycle
-            if *phase == crate::agentic::SprintPhase::Test && result.status == crate::agentic::PhaseStatus::Failed {
+            if *phase == crate::agentic::SprintPhase::Test
+                && result.status == crate::agentic::PhaseStatus::Failed
+            {
                 build_test_iterations += 1;
                 if build_test_iterations >= sprint_state.config.max_iterations {
                     break;
                 }
                 // Restart from Build
-                if let Some(build_idx) = phases.iter().position(|p| *p == crate::agentic::SprintPhase::Build) {
+                if let Some(build_idx) = phases
+                    .iter()
+                    .position(|p| *p == crate::agentic::SprintPhase::Build)
+                {
                     // We can't easily restart in this loop structure, so just note it
                     let _ = tx
                         .send(SprintSseEvent {
@@ -512,13 +544,19 @@ pub async fn stream_sprint(
             let store = state_clone.tenant_store.read().unwrap();
             if let Some(tenant_id) = store.get_tenant_id_by_api_key(&key.0) {
                 drop(store);
-                let _ = crate::api::auth_handler::record_tenant_task(&state_clone, &tenant_id, total_tokens);
+                let _ = crate::api::auth_handler::record_tenant_task(
+                    &state_clone,
+                    &tenant_id,
+                    total_tokens,
+                );
             }
         }
     });
 
     // Convert the channel receiver into an SSE stream
-    let stream: std::pin::Pin<Box<dyn futures::Stream<Item = Result<Event, std::convert::Infallible>> + Send>> = Box::pin(async_stream::stream! {
+    let stream: std::pin::Pin<
+        Box<dyn futures::Stream<Item = Result<Event, std::convert::Infallible>> + Send>,
+    > = Box::pin(async_stream::stream! {
         while let Some(event) = rx.recv().await {
             let json = serde_json::to_string(&event).unwrap_or_default();
             yield Ok::<_, std::convert::Infallible>(
@@ -805,8 +843,7 @@ pub async fn submit_sprint_session(
 ) -> (StatusCode, Json<serde_json::Value>) {
     // Use real LLM config if available, otherwise stub
     let llm_config = stub_llm_config();
-    let mut config = ParallelSprintConfig::new(&request.task, llm_config)
-        .with_name(&request.task);
+    let mut config = ParallelSprintConfig::new(&request.task, llm_config).with_name(&request.task);
     config.real_execution = request.real_execution;
 
     // If LLM client is available, submit and immediately start
