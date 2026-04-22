@@ -556,9 +556,14 @@ impl LlmConfig {
             },
             "zai" => {
                 let cfg = config.zai.as_ref();
+                // Use "zai::" prefix to route to coding endpoint (api.z.ai/api/coding/paas/v4/)
+                // Regular endpoint (api.z.ai/api/paas/v4/) may have separate balance
                 let model = cfg
                     .and_then(|c| c.model.clone())
-                    .unwrap_or_else(|| "zai-default".to_string());
+                    .map(|m| {
+                        if m.starts_with("zai::") { m } else { format!("zai::{m}") }
+                    })
+                    .unwrap_or_else(|| "zai::glm-4.6".to_string());
 
                 let api_key = Self::load_api_key(
                     "ZAI_API_KEY",

@@ -1,16 +1,27 @@
 #!/bin/bash
 # Clawdius End-to-End Feature Test
-# Uses free OpenRouter models — no credits needed
+# Uses ZAI (ZhipuAI) GLM models or OpenRouter free models
 #
 # Usage:
-#   ./scripts/e2e_test.sh                     # Full test (skips LLM tests if rate-limited)
-#   OPENROUTER_API_KEY=... ./scripts/e2e_test.sh  # With explicit key
+#   ./scripts/e2e_test.sh                     # Full test (uses ZAI by default)
+#   ZAI_API_KEY=... ./scripts/e2e_test.sh     # With explicit ZAI key
+#   ./scripts/e2e_test.sh --openrouter        # Use OpenRouter instead of ZAI
 #   ./scripts/e2e_test.sh --force-llm          # Force LLM tests even if rate-limited
 #
 set -euo pipefail
 
-OPENROUTER_KEY="${OPENROUTER_API_KEY:-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}"
-MODEL="openai/gpt-oss-20b:free"  # Known working free model with tool calling
+USE_OPENROUTER=false
+[[ "${1:-}" == "--openrouter" ]] && USE_OPENROUTER=true
+
+if [ "$USE_OPENROUTER" = true ]; then
+    LLM_KEY="${OPENROUTER_API_KEY:-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}"
+    LLM_KEY_ENV="OPENROUTER_API_KEY"
+    LLM_NAME="OpenRouter"
+else
+    LLM_KEY="${ZAI_API_KEY:-bbde645c1ba646508b612cd254f07b31.i0KHCSfIKnZvcmT8}"
+    LLM_KEY_ENV="ZAI_API_KEY"
+    LLM_NAME="ZAI"
+fi
 BASE_URL="http://127.0.0.1:8471"
 PASS=0
 FAIL=0
@@ -31,40 +42,59 @@ skip()   { yellow "  ⏭️  SKIP: $1"; SKIP=$((SKIP+1)); }
 LLM_OK=false
 
 check_llm_rate_limit() {
-    header "0b. LLM RATE LIMIT CHECK"
-    local resp
-    resp=$(curl -s --max-time 15 https://openrouter.ai/api/v1/chat/completions \
-        -H "Content-Type: application/json" \
-        -H "Authorization: Bearer $OPENROUTER_KEY" \
-        -d "{\"model\":\"$MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"ping\"}],\"max_tokens\":5}" 2>/dev/null) || true
+    header "0b. LLM RATE LIMIT CHECK ($LLM_NAME)"
 
-    if echo "$resp" | grep -q '"choices"'; then
-        LLM_OK=true
-        pass "LLM is available and responding"
-    elif echo "$resp" | grep -q '429\|rate.limit\|Rate limit'; then
-        local reset_ts
-        reset_ts=$(echo "$resp" | python3 -c "
+    if [ "$USE_OPENROUTER" = true ]; then
+        local resp
+        resp=$(curl -s --max-time 15 https://openrouter.ai/api/v1/chat/completions \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer $LLM_KEY" \
+            -d "{\"model\":\"openai/gpt-oss-20b:free\",\"messages\":[{\"role\":\"user\",\"content\":\"ping\"}],\"max_tokens\":5}" 2>/dev/null) || true
+
+        if echo "$resp" | grep -q '"choices"'; then
+            LLM_OK=true
+            pass "$LLM_NAME is available and responding"
+        elif echo "$resp" | grep -q '429\|rate.limit\|Rate limit'; then
+            local reset_ts
+            reset_ts=$(echo "$resp" | python3 -c "
 import json,sys
 try:
     d=json.load(sys.stdin)
     print(d.get('error',{}).get('metadata',{}).get('headers',{}).get('X-RateLimit-Reset','unknown'))
 except: print('unknown')
 " 2>/dev/null)
-        local reset_time
-        if [ "$reset_ts" != "unknown" ] && [ "$reset_ts" != "None" ]; then
-            reset_time=$(python3 -c "import datetime; print(datetime.datetime.fromtimestamp(int($reset_ts)/1000).strftime('%Y-%m-%d %H:%M UTC'))" 2>/dev/null)
+            local reset_time
+            if [ "$reset_ts" != "unknown" ] && [ "$reset_ts" != "None" ]; then
+                reset_time=$(python3 -c "import datetime; print(datetime.datetime.fromtimestamp(int($reset_ts)/1000).strftime('%Y-%m-%d %H:%M UTC'))" 2>/dev/null)
+            else
+                reset_time="unknown"
+            fi
+            if [ "$FORCE_LLM" = true ]; then
+                yellow "  ⚠️  $LLM_NAME is rate-limited (resets: $reset_time) — forcing LLM tests anyway"
+                LLM_OK=true
+            else
+                skip "$LLM_NAME is rate-limited (resets: $reset_time) — skipping LLM-dependent tests"
+                skip "Use --force-llm to override"
+            fi
         else
-            reset_time="unknown"
-        fi
-        if [ "$FORCE_LLM" = true ]; then
-            yellow "  ⚠️  LLM is rate-limited (resets: $reset_time) — forcing LLM tests anyway"
-            LLM_OK=true
-        else
-            skip "LLM is rate-limited (resets: $reset_time) — skipping LLM-dependent tests"
-            skip "Use --force-llm to override"
+            skip "$LLM_NAME check failed (response: $(echo "$resp" | head -c 120)) — skipping LLM tests"
         fi
     else
-        skip "LLM check failed (response: $(echo "$resp" | head -c 120)) — skipping LLM tests"
+        # ZAI doesn't have a free tier rate limit like OpenRouter
+        local resp
+        resp=$(curl -s --max-time 15 https://api.z.ai/api/coding/paas/v4/chat/completions \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer $LLM_KEY" \
+            -d '{"model":"glm-4.6","messages":[{"role":"user","content":"ping"}],"max_tokens":5}' 2>/dev/null) || true
+
+        if echo "$resp" | grep -q '"choices"'; then
+            LLM_OK=true
+            pass "$LLM_NAME is available and responding"
+        elif echo "$resp" | grep -q '余额不足\|insufficient'; then
+            skip "$LLM_NAME has insufficient balance — skipping LLM-dependent tests"
+        else
+            skip "$LLM_NAME check failed (response: $(echo "$resp" | head -c 120)) — skipping LLM tests"
+        fi
     fi
 }
 
@@ -85,7 +115,11 @@ lsof -ti:8471 | xargs kill -9 2>/dev/null || true
 sleep 0.5
 
 # Start server in background
-OPENROUTER_API_KEY="$OPENROUTER_KEY" target/release/clawdius server --port 8471 > /tmp/clawdius_server.log 2>&1 &
+if [ "$USE_OPENROUTER" = true ]; then
+    OPENROUTER_API_KEY="$LLM_KEY" target/release/clawdius server --port 8471 > /tmp/clawdius_server.log 2>&1 &
+else
+    ZAI_API_KEY="$LLM_KEY" target/release/clawdius server --port 8471 > /tmp/clawdius_server.log 2>&1 &
+fi
 SERVER_PID=$!
 echo "  Server PID: $SERVER_PID"
 

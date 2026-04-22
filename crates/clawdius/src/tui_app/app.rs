@@ -16,6 +16,7 @@ use ratatui::{
 
 use clawdius_core::{
     llm::{self, ChatMessage, ChatRole},
+    llm::providers::LlmClient,
     modes::AgentMode,
     Config, FileDiff, Session, SessionManager,
 };

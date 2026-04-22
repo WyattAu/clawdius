@@ -2270,6 +2270,7 @@ async fn generate_commit_message(
     config_path: Option<&PathBuf>,
 ) -> anyhow::Result<String> {
     use clawdius_core::llm::{create_provider, ChatMessage, ChatRole, LlmConfig};
+    use clawdius_core::llm::providers::LlmClient;
 
     let config = load_config(config_path)?;
     let provider_name = config
@@ -2457,6 +2458,7 @@ async fn handle_chat(
     output_format: OutputFormat,
 ) -> anyhow::Result<()> {
     use clawdius_core::llm::{create_provider, ChatMessage, ChatRole, LlmConfig};
+    use clawdius_core::llm::providers::LlmClient;
     use clawdius_core::modes::AgentMode;
     use clawdius_core::tools::editor::ExternalEditor;
     use std::io::{self, IsTerminal, Read, Write};
@@ -2639,6 +2641,7 @@ async fn handle_auto(
     output_format: OutputFormat,
 ) -> anyhow::Result<()> {
     use clawdius_core::llm::{create_provider, ChatMessage, ChatRole, LlmConfig};
+    use clawdius_core::llm::providers::LlmClient;
     use clawdius_core::modes::AgentMode;
     use clawdius_core::output::{ActionEdit, ActionResult, OutputOptions};
     use std::io;

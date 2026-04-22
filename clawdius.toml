@@ -8,6 +8,6 @@ database_path = ".clawdius/graph/index.db"
 vector_path = ".clawdius/graph/vectors.lance"
 
 [llm]
-default_provider = "anthropic"
-model = "claude-3-5-sonnet-latest"
+default_provider = "zai"
+model = "glm-4.6"
 mcp_enabled = true
