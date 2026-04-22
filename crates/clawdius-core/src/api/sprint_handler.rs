@@ -37,6 +37,13 @@ pub struct RunSprintRequest {
     pub auto_approve: bool,
     #[serde(default)]
     pub target_files: Vec<String>,
+    /// Maximum wall-clock time for the entire sprint in seconds (default: 600)
+    #[serde(default = "default_sprint_timeout")]
+    pub timeout_secs: u64,
+}
+
+fn default_sprint_timeout() -> u64 {
+    600
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

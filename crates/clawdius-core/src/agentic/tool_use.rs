@@ -396,11 +396,14 @@ pub async fn run_tool_use_loop(
     let mut final_output = String::new();
 
     for iteration in 0..max_iters {
-        // Ask the LLM
-        let response = llm
-            .chat(messages.clone())
-            .await
-            .map_err(|e| crate::Error::Llm(format!("Tool-use loop LLM error: {e}")))?;
+        // Ask the LLM (with 60s timeout per call)
+        let response = tokio::time::timeout(
+            std::time::Duration::from_secs(60),
+            llm.chat(messages.clone()),
+        )
+        .await
+        .map_err(|_| crate::Error::Llm("Tool-use loop LLM call timed out (60s)".to_string()))?
+        .map_err(|e| crate::Error::Llm(format!("Tool-use loop LLM error: {e}")))?;
 
         let tokens = llm.count_tokens(&response);
         total_tokens += tokens;
@@ -633,15 +636,14 @@ pub async fn run_native_tool_use_loop(
     let mut messages: Vec<ChatMessage> = initial_messages;
 
     for iteration in 0..max_iters {
-        // Try native tool calling
-        let result: ChatWithToolsResult = llm
-            .chat_with_tools(messages.clone(), tools.clone())
-            .await
-            .map_err(|e| {
-                // If the provider doesn't support chat_with_tools, propagate
-                // the error so the caller can fall back to parser-based loop
-                crate::Error::Llm(format!("Native tool-use not available: {e}"))
-            })?;
+        // Try native tool calling (with 60s timeout)
+        let result: ChatWithToolsResult = tokio::time::timeout(
+            std::time::Duration::from_secs(60),
+            llm.chat_with_tools(messages.clone(), tools.clone()),
+        )
+        .await
+        .map_err(|_| crate::Error::Llm("Native tool-use LLM call timed out (60s)".to_string()))?
+        .map_err(|e| crate::Error::Llm(format!("Native tool-use not available: {e}")))?;
 
         let tokens = llm.count_tokens(&result.text);
         total_tokens += tokens;
@@ -700,14 +702,11 @@ pub async fn run_native_tool_use_loop(
 
         // Add the assistant message with tool calls
         let assistant_content = if assistant_text.is_empty() {
-            genai::chat::MessageContent::from_tool_calls(
-                result.tool_calls.clone(),
-            )
+            genai::chat::MessageContent::from_tool_calls(result.tool_calls.clone())
         } else {
             // Mix text + tool calls: start with text, append tool calls
-            let mut parts: Vec<genai::chat::ContentPart> = vec![
-                genai::chat::ContentPart::Text(assistant_text.clone()),
-            ];
+            let mut parts: Vec<genai::chat::ContentPart> =
+                vec![genai::chat::ContentPart::Text(assistant_text.clone())];
             for tc in result.tool_calls {
                 parts.push(genai::chat::ContentPart::ToolCall(tc));
             }
@@ -716,9 +715,7 @@ pub async fn run_native_tool_use_loop(
 
         // We need to add assistant and tool-response messages to our ChatMessage list
         // Since ChatMessage only has role + content string, we reconstruct from the parts
-        let assistant_str = assistant_content
-            .texts()
-            .join("\n")
+        let assistant_str = assistant_content.texts().join("\n")
             + if !tool_calls_for_output.is_empty() {
                 "\n[Called tools — see tool results below]"
             } else {

@@ -149,6 +149,10 @@ pub struct SprintConfig {
     /// Optional reviewer configurations for multi-model code review.
     /// When non-empty, the Review phase uses ReviewEngine instead of a single LLM call.
     pub reviewers: Vec<ReviewerConfig>,
+    /// Maximum total sprint duration in seconds (default: 600 = 10 min)
+    pub max_duration_secs: u64,
+    /// Maximum duration for a single phase in seconds (default: 120 = 2 min)
+    pub phase_timeout_secs: u64,
 }
 
 impl SprintConfig {
@@ -165,6 +169,8 @@ impl SprintConfig {
             real_execution: false,
             browser_qa_url: None,
             reviewers: Vec::new(),
+            max_duration_secs: 600,
+            phase_timeout_secs: 120,
         }
     }
 }
@@ -278,30 +284,33 @@ impl SprintEngine {
     /// Call the LLM with streaming, collecting all chunks into a single response.
     /// Falls back to non-streaming chat if streaming fails.
     async fn chat_collecting_stream(&self, messages: Vec<ChatMessage>) -> crate::Result<String> {
-        match self.llm.chat_stream(messages.clone()).await {
-            Ok(mut rx) => {
+        let llm_timeout = std::time::Duration::from_secs(120);
+        match tokio::time::timeout(llm_timeout, self.llm.chat_stream(messages.clone())).await {
+            Ok(Ok(mut rx)) => {
                 let mut output = String::new();
                 while let Some(chunk) = rx.recv().await {
                     output.push_str(&chunk);
-                    // Emit progress dots to stderr so the user sees activity
                     eprint!(".");
                     use std::io::Write;
                     let _ = std::io::stderr().flush();
                 }
-                eprintln!(); // newline after progress dots
+                eprintln!();
                 if output.is_empty() {
                     Err(crate::Error::Llm("LLM returned empty response".to_string()))
                 } else {
                     Ok(output)
                 }
             },
-            Err(_) => {
-                // Streaming not supported by this provider; fall back to non-streaming
+            Ok(Err(_)) => {
+                // Streaming not supported; fall back to non-streaming
                 self.llm
                     .chat(messages)
                     .await
                     .map_err(|e| crate::Error::Llm(format!("LLM chat failed: {e}")))
             },
+            Err(_) => Err(crate::Error::Llm(
+                "LLM streaming call timed out (120s)".to_string(),
+            )),
         }
     }
 
@@ -317,6 +326,28 @@ impl SprintEngine {
         while idx < phases.len() {
             let phase = &phases[idx];
 
+            // Check sprint-level timeout
+            let elapsed = sprint_start.elapsed().as_secs();
+            if elapsed > state.config.max_duration_secs {
+                eprintln!(
+                    "Sprint timeout: {}s elapsed, max {}s. Stopping.",
+                    elapsed, state.config.max_duration_secs
+                );
+                state.phase_results.push(PhaseResult {
+                    phase: phase.clone(),
+                    status: PhaseStatus::Failed,
+                    output: format!(
+                        "Sprint exceeded maximum duration of {}s (elapsed: {}s)",
+                        state.config.max_duration_secs, elapsed
+                    ),
+                    duration_ms: 0,
+                    files_modified: Vec::new(),
+                    errors: vec!["Sprint timed out".to_string()],
+                    tokens_used: 0,
+                });
+                break;
+            }
+
             // Create a git checkpoint before the Build phase
             if *phase == SprintPhase::Build && state.checkpoint_ref.is_none() {
                 if let Some(checkpoint) = Self::create_checkpoint(&state.config.project_root) {
@@ -328,9 +359,14 @@ impl SprintEngine {
                 }
             }
 
-            let result = match self.run_phase(&mut state, phase).await {
-                Ok(r) => r,
-                Err(e) => {
+            let result = match tokio::time::timeout(
+                std::time::Duration::from_secs(state.config.phase_timeout_secs),
+                self.run_phase(&mut state, phase),
+            )
+            .await
+            {
+                Ok(Ok(r)) => r,
+                Ok(Err(e)) => {
                     eprintln!("Phase {} error (will be retried or reported): {e}", phase);
                     PhaseResult {
                         phase: phase.clone(),
@@ -339,6 +375,27 @@ impl SprintEngine {
                         duration_ms: 0,
                         files_modified: Vec::new(),
                         errors: vec![e.to_string()],
+                        tokens_used: 0,
+                    }
+                },
+                Err(_) => {
+                    eprintln!(
+                        "Phase {} timed out after {}s",
+                        phase, state.config.phase_timeout_secs
+                    );
+                    PhaseResult {
+                        phase: phase.clone(),
+                        status: PhaseStatus::Failed,
+                        output: format!(
+                            "Phase {} timed out after {}s",
+                            phase, state.config.phase_timeout_secs
+                        ),
+                        duration_ms: (state.config.phase_timeout_secs * 1000) as u64,
+                        files_modified: Vec::new(),
+                        errors: vec![format!(
+                            "Phase timed out after {}s",
+                            state.config.phase_timeout_secs
+                        )],
                         tokens_used: 0,
                     }
                 },
@@ -391,7 +448,9 @@ impl SprintEngine {
                     },
                     Err(_) => {
                         // Native tool-use not available — fall back to parser-based loop
-                        eprintln!("  [native tool-use not available, falling back to parser-based loop]");
+                        eprintln!(
+                            "  [native tool-use not available, falling back to parser-based loop]"
+                        );
                         match tool_use::run_tool_use_loop(
                             llm,
                             executor,
@@ -418,7 +477,9 @@ impl SprintEngine {
                                 }
                             },
                             Err(e) => {
-                                eprintln!("Tool-use loop error: {e}. Falling back to LLM-only result.");
+                                eprintln!(
+                                    "Tool-use loop error: {e}. Falling back to LLM-only result."
+                                );
                                 result // Keep the original LLM-only result
                             },
                         }
@@ -820,9 +881,14 @@ impl SprintEngine {
                 }
             }
 
-            let result = match self.run_phase(&mut state, phase).await {
-                Ok(r) => r,
-                Err(e) => {
+            let result = match tokio::time::timeout(
+                std::time::Duration::from_secs(state.config.phase_timeout_secs),
+                self.run_phase(&mut state, phase),
+            )
+            .await
+            {
+                Ok(Ok(r)) => r,
+                Ok(Err(e)) => {
                     eprintln!("Phase {} error: {e}", phase);
                     PhaseResult {
                         phase: phase.clone(),
@@ -831,6 +897,27 @@ impl SprintEngine {
                         duration_ms: 0,
                         files_modified: Vec::new(),
                         errors: vec![e.to_string()],
+                        tokens_used: 0,
+                    }
+                },
+                Err(_) => {
+                    eprintln!(
+                        "Phase {} timed out after {}s",
+                        phase, state.config.phase_timeout_secs
+                    );
+                    PhaseResult {
+                        phase: phase.clone(),
+                        status: PhaseStatus::Failed,
+                        output: format!(
+                            "Phase {} timed out after {}s",
+                            phase, state.config.phase_timeout_secs
+                        ),
+                        duration_ms: (state.config.phase_timeout_secs * 1000) as u64,
+                        files_modified: Vec::new(),
+                        errors: vec![format!(
+                            "Phase timed out after {}s",
+                            state.config.phase_timeout_secs
+                        )],
                         tokens_used: 0,
                     }
                 },
@@ -1835,6 +1922,8 @@ mod tests {
             real_execution: true,
             browser_qa_url: Some("http://localhost:3000".to_string()),
             reviewers: Vec::new(),
+            max_duration_secs: 600,
+            phase_timeout_secs: 120,
         };
         let json = serde_json::to_string(&config).unwrap();
         let parsed: SprintConfig = serde_json::from_str(&json).unwrap();
