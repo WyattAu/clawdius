@@ -23,8 +23,8 @@ Clawdius v2.8.0 is a Rust-native agentic coding engine that **exceeds gstack's c
 | **Compiler errors** | 0 | Full workspace compiles clean |
 | **Clippy** | **0 warnings** | Suppressed crate-wide (style lints deferred) |
 | **Sandbox Backends (real)** | 3 | Container, Bubblewrap, Sandbox-exec |
-| **LLM Providers** | 5 wired | Anthropic, OpenAI, OpenRouter, Ollama, Local |
-| **Native tool calling** | **3 providers** | Anthropic Claude, OpenAI GPT-4o, OpenRouter (via genai v0.5) |
+| **LLM Providers** | 6 wired | Anthropic, OpenAI, OpenRouter, ZAI (GLM), Ollama, Local |
+| **Native tool calling** | **4 providers** | Anthropic Claude, OpenAI GPT-4o, OpenRouter, ZAI GLM-4.6 |
 | **SSE streaming** | **Working** | GET /api/v1/sprint/stream returns text/event-stream |
 | **Skills** | 4 built-in + 7 markdown | LLM-powered with fallback |
 | **MCP Tools** | 12 | git_commit, grep_search, multi_file_edit, list_branches, +8 original |
@@ -365,8 +365,9 @@ Total: 56.2s | 1,225 tokens | 7/0/0 (ok/fail/skip)
 | B8 | Multi-tenant workspace | ✅ | `TenantStore` with 3 tiers, `ApiKeyEntry` struct, `TenantUsage` tracking, per-tenant workspace_root |
 | B9 | API key auth | ✅ | Signup/login endpoints, tenant CRUD, API key create/list/revoke, auth middleware skip paths |
 | B10 | Usage tracking + billing | ✅ | `record_tenant_task()` wired into chat/agent/sprint endpoints, per-tenant rate limiting |
-| B11 | E2E test suite | ✅ | `scripts/e2e_test.sh` — 12 sections, 32 checks, rate-limit detection, auto-skip LLM tests |
+| B11 | E2E test suite | ✅ | `scripts/e2e_test.sh` — 12 sections, 32 checks, rate-limit detection, ZAI + OpenRouter support |
 | B12 | Auth middleware → TenantStore bridge | ✅ | Tenant API keys (from signup) now validated by auth middleware; optional auth mode (validate tokens when present even without config keys) |
+| B13 | ZAI (ZhipuAI) GLM provider | ✅ | `zai.rs` — native tool calling, genai v0.5.3 adapter, coding endpoint routing, glm-4.5/4.6/4.7/5/5.1 |
 
 ### E2E Test Results (v2.8.0)
 
