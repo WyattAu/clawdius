@@ -975,6 +975,7 @@ mod tests {
             real_execution: false,
             auto_approve: false,
             target_files: vec![],
+            timeout_secs: 600,
         };
         let (status, Json(body)) = run_sprint(State(state), None, Json(req)).await;
         assert_eq!(status, StatusCode::SERVICE_UNAVAILABLE);
@@ -1072,6 +1073,7 @@ mod tests {
             real_execution: false,
             auto_approve: false,
             target_files: vec![],
+            timeout_secs: 600,
         };
         let (status, Json(body)) = submit_sprint_session(State(state), Json(req)).await;
         assert_eq!(status, StatusCode::CREATED);
