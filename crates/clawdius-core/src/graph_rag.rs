@@ -127,6 +127,7 @@ pub mod ast;
 pub mod embedding;
 pub mod languages;
 pub mod parser;
+pub mod repo_map;
 pub mod store;
 
 #[cfg(feature = "vector-db")]
