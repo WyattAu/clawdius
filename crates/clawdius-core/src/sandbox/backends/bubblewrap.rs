@@ -32,26 +32,56 @@ impl SandboxBackend for BubblewrapBackend {
 
         let mut cmd = Command::new("bwrap");
 
+        // Core system mounts (read-only)
         cmd.arg("--ro-bind").arg("/usr").arg("/usr");
         cmd.arg("--ro-bind").arg("/lib").arg("/lib");
         cmd.arg("--ro-bind").arg("/lib64").arg("/lib64");
         cmd.arg("--ro-bind").arg("/bin").arg("/bin");
         cmd.arg("--ro-bind").arg("/sbin").arg("/sbin");
 
+        // Workspace directory (read-write) — the only writable mount
         cmd.arg("--bind")
             .arg(cwd_str.as_ref())
             .arg(cwd_str.as_ref());
 
+        // Pseudo-filesystems
         cmd.arg("--dev").arg("/dev");
         cmd.arg("--proc").arg("/proc");
 
+        // Namespace isolation
         cmd.arg("--unshare-all");
         cmd.arg("--die-with-parent");
 
+        // Network isolation for Hardened tier
         if !self.config.network {
             cmd.arg("--unshare-net");
         }
 
+        // Essential read-only mounts for build tools and network resolution
+        // (ported from PicoClaw's bubblewrap implementation)
+        let essential_ro_mounts: &[&str] = &[
+            "/etc/resolv.conf",
+            "/etc/hosts",
+            "/etc/nsswitch.conf",
+            "/etc/passwd",
+            "/etc/group",
+            "/etc/ssl",
+            "/etc/pki",
+            "/etc/ca-certificates",
+            "/usr/share/ca-certificates",
+            "/usr/local/share/ca-certificates",
+            "/etc/alternatives",
+            "/usr/share/zoneinfo",
+            "/etc/localtime",
+        ];
+
+        for mount in essential_ro_mounts {
+            if Path::new(mount).exists() {
+                cmd.arg("--ro-bind").arg(mount).arg(mount);
+            }
+        }
+
+        // User-configured mounts
         for mount in &self.config.mounts {
             if mount.read_only {
                 cmd.arg("--ro-bind")

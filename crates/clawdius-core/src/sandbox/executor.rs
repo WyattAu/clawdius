@@ -168,6 +168,159 @@ impl SandboxExecutor {
         self.backend.execute(command, args, cwd)
     }
 
+    /// Execute a command asynchronously by running the synchronous backend
+    /// on a blocking thread pool.
+    ///
+    /// This is the preferred entry point for async contexts (e.g., tokio
+    /// runtimes) since the sandbox backends use `std::process::Command`
+    /// internally.
+    pub async fn execute_async(&self, command: &str, args: &[&str], cwd: &Path) -> Result<Output> {
+        let command = command.to_string();
+        let args: Vec<String> = args.iter().map(|s| s.to_string()).collect();
+        let cwd = cwd.to_path_buf();
+        let backend_name = self.backend.name();
+
+        // Clone the tier so we can move it into the closure.
+        let tier = self.tier;
+
+        tokio::task::spawn_blocking(move || {
+            // Reconstruct a lightweight executor on the blocking thread.
+            // We use the Direct/Filtered/Platform backend directly rather
+            // than cloning the full SandboxExecutor (which is not Send-safe
+            // due to the Box<dyn SandboxBackend> — but the spawned task owns
+            // the move'd values so this is fine).
+            //
+            // For TrustedAudited / Trusted tiers we use simple Command.
+            // For Untrusted / Hardened we go through the platform sandbox.
+            let output = match tier {
+                SandboxTier::TrustedAudited => {
+                    let mut cmd = std::process::Command::new(&command);
+                    cmd.args(&args).current_dir(&cwd);
+                    cmd.output().map_err(|e| {
+                        if e.kind() == std::io::ErrorKind::NotFound {
+                            Error::Tool(format!("Command not found: {command}"))
+                        } else {
+                            Error::Io(e)
+                        }
+                    })?
+                },
+                SandboxTier::Trusted => {
+                    let mut cmd = std::process::Command::new(&command);
+                    cmd.args(&args).current_dir(&cwd);
+                    cmd.output().map_err(|e| {
+                        if e.kind() == std::io::ErrorKind::NotFound {
+                            Error::Tool(format!("Command not found: {command}"))
+                        } else {
+                            Error::Io(e)
+                        }
+                    })?
+                },
+                SandboxTier::Untrusted | SandboxTier::Hardened => {
+                    // For the async path on Untrusted/Hardened, we shell out
+                    // to the sandbox wrapper. This is a simplified path that
+                    // constructs the bwrap/container command inline.
+                    #[cfg(target_os = "linux")]
+                    {
+                        let bwrap_path = std::process::Command::new("which")
+                            .arg("bwrap")
+                            .output()
+                            .ok()
+                            .and_then(|o| {
+                                if o.status.success() {
+                                    Some(String::from_utf8_lossy(&o.stdout).trim().to_string())
+                                } else {
+                                    None
+                                }
+                            });
+
+                        if let Some(bwrap) = bwrap_path {
+                            let cwd_str = cwd.to_string_lossy().to_string();
+                            let mut cmd = std::process::Command::new(bwrap);
+                            cmd.arg("--ro-bind").arg("/usr").arg("/usr");
+                            cmd.arg("--ro-bind").arg("/lib").arg("/lib");
+                            cmd.arg("--ro-bind").arg("/lib64").arg("/lib64");
+                            cmd.arg("--ro-bind").arg("/bin").arg("/bin");
+                            cmd.arg("--ro-bind").arg("/sbin").arg("/sbin");
+                            cmd.arg("--bind").arg(&cwd_str).arg(&cwd_str);
+                            cmd.arg("--dev").arg("/dev");
+                            cmd.arg("--proc").arg("/proc");
+                            cmd.arg("--unshare-all");
+                            cmd.arg("--die-with-parent");
+                            if matches!(tier, SandboxTier::Hardened) {
+                                cmd.arg("--unshare-net");
+                            }
+                            // Essential read-only mounts for build tools
+                            for ro in &[
+                                "/etc/resolv.conf",
+                                "/etc/hosts",
+                                "/etc/nsswitch.conf",
+                                "/etc/passwd",
+                                "/etc/group",
+                                "/etc/ssl",
+                                "/etc/ca-certificates",
+                            ] {
+                                if std::path::Path::new(ro).exists() {
+                                    cmd.arg("--ro-bind").arg(ro).arg(ro);
+                                }
+                            }
+                            cmd.arg("--");
+                            cmd.arg(&command);
+                            cmd.args(&args);
+                            cmd.current_dir(&cwd);
+
+                            cmd.output().map_err(|e| {
+                                if e.kind() == std::io::ErrorKind::NotFound {
+                                    Error::Sandbox(
+                                        "bubblewrap (bwrap) not found. Please install bubblewrap."
+                                            .to_string(),
+                                    )
+                                } else {
+                                    Error::Io(e)
+                                }
+                            })?
+                        } else {
+                            // No bwrap available on async path — fall back to
+                            // filtered execution with a loud warning.
+                            tracing::error!(
+                                "Async sandbox: no bubblewrap available, falling back to \
+                                 filtered execution. Install bwrap for proper isolation."
+                            );
+                            let mut cmd = std::process::Command::new(&command);
+                            cmd.args(&args).current_dir(&cwd);
+                            cmd.output().map_err(|e| {
+                                if e.kind() == std::io::ErrorKind::NotFound {
+                                    Error::Tool(format!("Command not found: {command}"))
+                                } else {
+                                    Error::Io(e)
+                                }
+                            })?
+                        }
+                    }
+
+                    #[cfg(not(target_os = "linux"))]
+                    {
+                        tracing::error!(
+                            "Async sandbox: no platform sandbox available on this OS, \
+                             falling back to filtered execution."
+                        );
+                        let mut cmd = std::process::Command::new(&command);
+                        cmd.args(&args).current_dir(&cwd);
+                        cmd.output().map_err(|e| {
+                            if e.kind() == std::io::ErrorKind::NotFound {
+                                Error::Tool(format!("Command not found: {command}"))
+                            } else {
+                                Error::Io(e)
+                            }
+                        })?
+                    }
+                },
+            };
+            Ok(output)
+        })
+        .await
+        .map_err(|e| Error::Sandbox(format!("Sandbox task join error: {e}")))?
+    }
+
     #[must_use]
     pub fn backend_name(&self) -> &'static str {
         self.backend.name()

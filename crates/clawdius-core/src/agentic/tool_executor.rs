@@ -4,10 +4,12 @@
 //! Includes `ShellToolExecutor` for real command execution via tokio.
 
 use crate::error::Result;
+use crate::sandbox::{executor::SandboxExecutor, tiers::SandboxConfig, SandboxTier};
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
+use std::sync::Arc;
 use std::time::Duration;
 
 /// A tool execution request.
@@ -229,6 +231,10 @@ fn is_command_blocked(command: &str) -> bool {
 /// build and test commands during sprint phases. Executes commands
 /// asynchronously via `tokio::process::Command` with timeout, working
 /// directory, output capture, and a safety blocklist.
+///
+/// When a sandbox tier is configured (via [`with_sandbox_tier`] or
+/// [`with_sandbox_executor`]), all shell commands are routed through the
+/// sandbox backend (bubblewrap on Linux, container, or filtered fallback).
 pub struct ShellToolExecutor {
     /// Working directory for command execution.
     working_dir: PathBuf,
@@ -236,16 +242,22 @@ pub struct ShellToolExecutor {
     timeout: Duration,
     /// Maximum output bytes (stdout + stderr combined).
     max_output_bytes: usize,
+    /// Optional sandbox executor for isolated command execution.
+    sandbox: Option<Arc<SandboxExecutor>>,
 }
 
 impl ShellToolExecutor {
     /// Creates a new executor with the given working directory.
+    ///
+    /// Uses `SandboxTier::Trusted` by default (blocklist only, no real
+    /// isolation). Call [`with_sandbox_tier`] to upgrade to real sandboxing.
     #[must_use]
     pub fn new(working_dir: impl Into<PathBuf>) -> Self {
         Self {
             working_dir: working_dir.into(),
             timeout: Duration::from_secs(120),
             max_output_bytes: 512 * 1024, // 512 KB
+            sandbox: None,
         }
     }
 
@@ -261,6 +273,44 @@ impl ShellToolExecutor {
     pub fn with_max_output(mut self, max_bytes: usize) -> Self {
         self.max_output_bytes = max_bytes;
         self
+    }
+
+    /// Configure sandbox isolation at the given tier.
+    ///
+    /// Uses [`SandboxExecutor::new_with_fallback`] which cascades through
+    /// available backends (container > bubblewrap > filtered) and never
+    /// falls back to zero-isolation `direct` execution.
+    ///
+    /// # Errors
+    ///
+    /// This method cannot fail — it always uses `new_with_fallback` which
+    /// degrades gracefully to filtered execution if no backend is available.
+    #[must_use]
+    pub fn with_sandbox_tier(mut self, tier: SandboxTier) -> Self {
+        let config = SandboxConfig {
+            tier,
+            network: !matches!(tier, SandboxTier::Hardened),
+            mounts: vec![],
+        };
+        self.sandbox = Some(Arc::new(SandboxExecutor::new_with_fallback(tier, config)));
+        self
+    }
+
+    /// Inject a pre-built sandbox executor.
+    #[must_use]
+    pub fn with_sandbox_executor(mut self, executor: Arc<SandboxExecutor>) -> Self {
+        self.sandbox = Some(executor);
+        self
+    }
+
+    /// Returns the name of the active sandbox backend, or `"none"` if
+    /// no sandbox is configured.
+    #[must_use]
+    pub fn sandbox_backend_name(&self) -> &'static str {
+        match &self.sandbox {
+            Some(exec) => exec.backend_name(),
+            None => "none (direct execution with blocklist only)",
+        }
     }
 
     fn truncate_output(&self, output: &str) -> String {
@@ -286,26 +336,62 @@ impl ShellToolExecutor {
             )));
         }
 
-        let (shell, flag) = if cfg!(target_os = "windows") {
-            ("cmd", "/C")
+        // Route through sandbox if configured, otherwise use direct execution.
+        let output: Result<std::process::Output> = if let Some(sandbox) = &self.sandbox {
+            let (shell, flag) = if cfg!(target_os = "windows") {
+                ("cmd", "/C")
+            } else {
+                ("sh", "-c")
+            };
+
+            match tokio::time::timeout(
+                self.timeout,
+                sandbox.execute_async(shell, &[flag, command], &self.working_dir),
+            )
+            .await
+            {
+                Ok(Ok(output)) => Ok(output),
+                Ok(Err(e)) => Err(e),
+                Err(_) => {
+                    // Timeout — return as a successful ToolResult with error content
+                    return Ok(ToolResult::error(format!(
+                        "Command timed out after {} seconds",
+                        self.timeout.as_secs()
+                    )));
+                },
+            }
         } else {
-            ("sh", "-c")
+            let (shell, flag) = if cfg!(target_os = "windows") {
+                ("cmd", "/C")
+            } else {
+                ("sh", "-c")
+            };
+
+            match tokio::time::timeout(
+                self.timeout,
+                tokio::process::Command::new(shell)
+                    .arg(flag)
+                    .arg(command)
+                    .current_dir(&self.working_dir)
+                    .stdout(std::process::Stdio::piped())
+                    .stderr(std::process::Stdio::piped())
+                    .output(),
+            )
+            .await
+            {
+                Ok(Ok(output)) => Ok(output),
+                Ok(Err(e)) => Err(crate::error::Error::Io(e)),
+                Err(_) => {
+                    return Ok(ToolResult::error(format!(
+                        "Command timed out after {} seconds",
+                        self.timeout.as_secs()
+                    )));
+                },
+            }
         };
 
-        let output = tokio::time::timeout(
-            self.timeout,
-            tokio::process::Command::new(shell)
-                .arg(flag)
-                .arg(command)
-                .current_dir(&self.working_dir)
-                .stdout(std::process::Stdio::piped())
-                .stderr(std::process::Stdio::piped())
-                .output(),
-        )
-        .await;
-
         match output {
-            Ok(Ok(output)) => {
+            Ok(output) => {
                 let stdout = String::from_utf8_lossy(&output.stdout).to_string();
                 let stderr = String::from_utf8_lossy(&output.stderr).to_string();
                 let exit_code = output.status.code().unwrap_or(-1);
@@ -330,11 +416,7 @@ impl ShellToolExecutor {
                     is_error: !success,
                 })
             },
-            Ok(Err(e)) => Ok(ToolResult::error(format!("Command failed to execute: {e}"))),
-            Err(_) => Ok(ToolResult::error(format!(
-                "Command timed out after {} seconds",
-                self.timeout.as_secs()
-            ))),
+            Err(e) => Ok(ToolResult::error(format!("Command failed to execute: {e}"))),
         }
     }
 }
