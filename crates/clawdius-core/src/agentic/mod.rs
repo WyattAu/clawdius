@@ -895,6 +895,16 @@ impl AgenticSystem {
         sprint_config.project_root =
             std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
 
+        // Auto-generate repo map for project context grounding
+        match crate::graph_rag::repo_map::RepoMap::build(
+            sprint_config.project_root.clone(),
+        ) {
+            Ok(map) if map.tag_count() > 0 => {
+                sprint_config.extra_context = Some(map.to_string());
+            }
+            _ => {} // Skip repo map if empty or failed
+        }
+
         // Copy target files as context
         let target_files_str = if request.target_files.is_empty() {
             String::new()

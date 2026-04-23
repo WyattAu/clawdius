@@ -153,6 +153,9 @@ pub struct SprintConfig {
     pub max_duration_secs: u64,
     /// Maximum duration for a single phase in seconds (default: 120 = 2 min)
     pub phase_timeout_secs: u64,
+    /// Optional extra context to prepend to every phase's user message.
+    /// Typically a repo map or project structure summary for LLM grounding.
+    pub extra_context: Option<String>,
 }
 
 impl SprintConfig {
@@ -171,6 +174,7 @@ impl SprintConfig {
             reviewers: Vec::new(),
             max_duration_secs: 600,
             phase_timeout_secs: 120,
+            extra_context: None,
         }
     }
 }
@@ -412,10 +416,17 @@ impl SprintEngine {
                 let llm = &self.llm;
 
                 let system_prompt = Self::phase_prompt(phase);
-                let user_message = format!(
+                let mut user_message = format!(
                     "Task: {}\n\nPrevious context:\n{}",
                     state.config.task_description, state.context_accumulator
                 );
+
+                // Prepend extra context (e.g., repo map) if configured
+                if let Some(ref ctx) = state.config.extra_context {
+                    if !ctx.is_empty() {
+                        user_message = format!("{}\n\n## Project Structure\n{}", ctx, user_message);
+                    }
+                }
 
                 // Try native tool-use loop first (structured function calling)
                 eprintln!("  [tool-use loop starting for Build phase (trying native first)]");
@@ -1350,6 +1361,13 @@ impl SprintEngine {
             state.config.task_description, state.context_accumulator
         );
 
+        // Prepend extra context (e.g., repo map) if configured
+        if let Some(ref ctx) = state.config.extra_context {
+            if !ctx.is_empty() {
+                user_message = format!("{}\n\n## Project Structure\n{}", ctx, user_message);
+            }
+        }
+
         // Append browser QA context for the Test phase when a URL is configured
         if *phase == SprintPhase::Test {
             if let Some(ref url) = state.config.browser_qa_url {
@@ -1493,12 +1511,18 @@ impl SprintEngine {
             Err(_) => {
                 // Fallback: merge system prompt into user message for models
                 // that don't support system messages (e.g., Google Gemma)
-                let combined = format!(
+                let mut combined = format!(
                     "[Instructions]\n{}\n\n[Task & Context]\nTask: {}\n\nPrevious context:\n{}",
                     Self::phase_prompt(phase),
                     &state.config.task_description,
                     &state.context_accumulator
                 );
+                // Prepend extra context in fallback path too
+                if let Some(ref ctx) = state.config.extra_context {
+                    if !ctx.is_empty() {
+                        combined = format!("[Project Structure]\n{}\n\n{}", ctx, combined);
+                    }
+                }
                 let fallback_messages = vec![ChatMessage {
                     role: ChatRole::User,
                     content: combined,
@@ -1924,6 +1948,7 @@ mod tests {
             reviewers: Vec::new(),
             max_duration_secs: 600,
             phase_timeout_secs: 120,
+            extra_context: Some("test context".to_string()),
         };
         let json = serde_json::to_string(&config).unwrap();
         let parsed: SprintConfig = serde_json::from_str(&json).unwrap();

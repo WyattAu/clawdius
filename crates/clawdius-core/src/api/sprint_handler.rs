@@ -163,6 +163,14 @@ pub async fn run_sprint(
         config.max_iterations = request.max_iterations;
     }
 
+    // Auto-generate repo map for project context grounding
+    match crate::graph_rag::repo_map::RepoMap::build(config.project_root.clone()) {
+        Ok(map) if map.tag_count() > 0 => {
+            config.extra_context = Some(map.to_string());
+        }
+        _ => {}
+    }
+
     // Create and run SprintEngine with real shell execution
     let project_root = std::path::PathBuf::from(&config.project_root);
     let tool_executor: Arc<dyn crate::agentic::tool_executor::ToolExecutor> =
@@ -381,6 +389,14 @@ pub async fn stream_sprint(
     config.auto_approve = auto_approve;
     config.real_execution = real_execution;
     config.max_iterations = max_iterations;
+
+    // Auto-generate repo map for project context grounding
+    match crate::graph_rag::repo_map::RepoMap::build(config.project_root.clone()) {
+        Ok(map) if map.tag_count() > 0 => {
+            config.extra_context = Some(map.to_string());
+        }
+        _ => {}
+    }
 
     // Clone state and api_key for use in the spawned task
     let state_clone = state.clone();
