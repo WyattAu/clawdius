@@ -1559,10 +1559,68 @@ impl SprintEngine {
             result.output
         ));
 
+        // Compact context accumulator if it's growing too large
+        if let Err(e) = self.maybe_compact_context(state).await {
+            tracing::warn!("context compaction failed: {e}");
+        }
+
         state.phase_results.push(result.clone());
         state.current_phase = None;
 
         Ok(result)
+    }
+
+    /// Compact the context accumulator if it exceeds the token threshold.
+    async fn maybe_compact_context(&self, state: &mut SprintState) -> Result<()> {
+        const COMPACT_THRESHOLD_CHARS: usize = 320_000;
+        const KEEP_RECENT_CHARS: usize = 20_000;
+        if state.context_accumulator.len() <= COMPACT_THRESHOLD_CHARS {
+            return Ok(());
+        }
+        let total_len = state.context_accumulator.len();
+        if total_len <= KEEP_RECENT_CHARS {
+            return Ok(());
+        }
+        let split_point = total_len - KEEP_RECENT_CHARS;
+        let split_point = state.context_accumulator[..split_point]
+            .rfind('\n').map(|p| p + 1).unwrap_or(split_point);
+        let old_context = &state.context_accumulator[..split_point];
+        let recent_context = &state.context_accumulator[split_point..];
+        tracing::info!(total_chars = total_len, old_chars = old_context.len(), "context compaction triggered");
+        let old_for_llm = if old_context.len() > 100_000 {
+            &old_context[old_context.len() - 100_000..]
+        } else {
+            old_context
+        };
+        let system_prompt = ChatMessage {
+            role: ChatRole::System,
+            content: "You are a context compaction assistant. Summarize this sprint context preserving: task/objective, files modified (paths), key decisions, progress state, errors and fixes, code patterns. Discard verbose output. Under 1500 words.".to_string(),
+        };
+        let user_prompt = ChatMessage {
+            role: ChatRole::User,
+            content: format!("Summarize:\n\n{old_for_llm}"),
+        };
+        match self.llm.chat(vec![system_prompt, user_prompt]).await {
+            Ok(summary) => {
+                let summary = if summary.len() > 8000 {
+                    format!("{}... [truncated]", &summary[..8000])
+                } else { summary };
+                let old_len = old_context.len();
+                let new_acc = format!(
+                    "[Previous sprint context compacted]\n\n{summary}\n\n[End of compacted context]\n\n--- Recent context ---\n{recent_context}"
+                );
+                tracing::info!(old_chars = old_len, new_chars = new_acc.len(), "context compaction completed");
+                state.context_accumulator = new_acc;
+            }
+            Err(e) => {
+                tracing::warn!("LLM compaction failed, using truncation fallback: {e}");
+                let truncated = if old_context.len() > 8000 {
+                    format!("[Previous context truncated]\n...{}", &old_context[old_context.len() - 8000..])
+                } else { old_context.to_string() };
+                state.context_accumulator = format!("{truncated}\n\n--- Recent context ---\n{recent_context}");
+            }
+        }
+        Ok(())
     }
 
     pub fn phase_prompt(phase: &SprintPhase) -> String {
