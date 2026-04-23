@@ -43,7 +43,7 @@ impl fmt::Display for MatchResult {
 }
 
 /// The 5 matching strategies, tried in cascade order.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, fmt::Display)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Strategy {
     /// Exact substring match (zero tolerance).
     Exact,
@@ -55,6 +55,18 @@ pub enum Strategy {
     PrefixSuffixAnchored,
     /// Fuzzy match using Aho-Corasick + Levenshtein.
     Fuzzy,
+}
+
+impl fmt::Display for Strategy {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Exact => write!(f, "Exact"),
+            Self::WhitespaceTolerant => write!(f, "WhitespaceTolerant"),
+            Self::LineNumberAnchored => write!(f, "LineNumberAnchored"),
+            Self::PrefixSuffixAnchored => write!(f, "PrefixSuffixAnchored"),
+            Self::Fuzzy => write!(f, "Fuzzy"),
+        }
+    }
 }
 
 /// Error information when no strategy matches.
@@ -124,6 +136,7 @@ pub struct EditParams<'a> {
 }
 
 /// Result of applying the edit cascade.
+#[derive(Debug, Clone)]
 pub struct EditCascadeResult {
     /// The modified file content.
     pub new_content: String,
@@ -292,6 +305,10 @@ pub fn apply_edit_cascade_with_config(
 // =============================================================================
 
 fn try_exact(params: &EditParams<'_>) -> Option<MatchResult> {
+    if params.old_text.is_empty() {
+        return None;
+    }
+
     if params.replace_all {
         // For replace_all, we still need exact — fuzzy doesn't make sense
         if params.content.contains(params.old_text) {
@@ -805,9 +822,9 @@ mod tests {
         };
 
         let result = apply_edit_cascade(&params).unwrap();
-        // The middle line differs, but prefix/suffix match
-        assert!(result.strategy == Strategy::PrefixSuffixAnchored
-            || result.strategy == Strategy::Exact);
+        // The middle line differs (99 vs 42), so a non-exact strategy should match
+        assert_ne!(result.strategy, Strategy::Exact);
+        assert!(result.confidence > 0.5);
     }
 
     #[test]

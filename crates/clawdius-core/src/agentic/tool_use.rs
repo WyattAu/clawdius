@@ -150,36 +150,63 @@ pub async fn execute_tool_call(
 
             match std::fs::read_to_string(&full_path) {
                 Ok(original) => {
-                    if original.contains(old_text) {
-                        let replaced = original.replacen(old_text, new_text, 1);
-                        match std::fs::write(&full_path, replaced) {
-                            Ok(()) => ToolExecutionResult {
-                                success: true,
-                                output: format!(
-                                    "Edited {} (replaced {} bytes with {} bytes)",
-                                    full_path.display(),
-                                    old_text.len(),
-                                    new_text.len()
-                                ),
-                                duration_ms: start.elapsed().as_millis() as u64,
-                            },
-                            Err(e) => ToolExecutionResult {
-                                success: false,
-                                output: format!("Failed to write {}: {e}", full_path.display()),
-                                duration_ms: start.elapsed().as_millis() as u64,
-                            },
+                    // Use edit cascade for fuzzy matching fallback
+                    let cascade_params = crate::tools::edit_cascade::EditParams {
+                        content: &original,
+                        old_text,
+                        new_text,
+                        replace_all: false,
+                    };
+
+                    match crate::tools::edit_cascade::apply_edit_cascade(&cascade_params) {
+                        Ok(result) => {
+                            match std::fs::write(&full_path, &result.new_content) {
+                                Ok(()) => {
+                                    let strategy_note = if result.strategy
+                                        != crate::tools::edit_cascade::Strategy::Exact
+                                    {
+                                        format!(
+                                            " (via {} strategy, confidence {:.0}%)",
+                                            result.strategy,
+                                            result.confidence * 100.0
+                                        )
+                                    } else {
+                                        String::new()
+                                    };
+                                    ToolExecutionResult {
+                                        success: true,
+                                        output: format!(
+                                            "Edited {} (replaced {} bytes with {} bytes){}",
+                                            full_path.display(),
+                                            old_text.len(),
+                                            new_text.len(),
+                                            strategy_note
+                                        ),
+                                        duration_ms: start.elapsed().as_millis() as u64,
+                                    }
+                                }
+                                Err(e) => ToolExecutionResult {
+                                    success: false,
+                                    output: format!(
+                                        "Failed to write {}: {e}",
+                                        full_path.display()
+                                    ),
+                                    duration_ms: start.elapsed().as_millis() as u64,
+                                },
+                            }
                         }
-                    } else {
-                        ToolExecutionResult {
+                        Err(e) => ToolExecutionResult {
                             success: false,
                             output: format!(
-                                "old_text not found in {}. The file content may have changed.",
-                                full_path.display()
+                                "old_text not found in {}. The file content may have changed.\n\
+                                 Edit cascade diagnostics:\n{}",
+                                full_path.display(),
+                                e
                             ),
                             duration_ms: start.elapsed().as_millis() as u64,
-                        }
+                        },
                     }
-                },
+                }
                 Err(e) => ToolExecutionResult {
                     success: false,
                     output: format!("Failed to read {}: {e}", full_path.display()),

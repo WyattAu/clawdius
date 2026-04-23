@@ -336,15 +336,37 @@ fn tool_edit_file(args: &serde_json::Value) -> McpToolResult {
         Err(e) => return McpToolResult::error(format!("failed to read file: {e}")),
     };
 
-    if !content.contains(old_string) {
-        return McpToolResult::error("old_string not found in file");
-    }
+    // Use edit cascade for fuzzy matching fallback
+    let cascade_params = crate::tools::edit_cascade::EditParams {
+        content: &content,
+        old_text: old_string,
+        new_text: new_string,
+        replace_all: false,
+    };
 
-    let new_content = content.replacen(old_string, new_string, 1);
-
-    match std::fs::write(&resolved, new_content) {
-        Ok(()) => McpToolResult::text(format!("edited {path} successfully")),
-        Err(e) => McpToolResult::error(format!("failed to write file: {e}")),
+    match crate::tools::edit_cascade::apply_edit_cascade(&cascade_params) {
+        Ok(result) => {
+            let strategy_note = if result.strategy
+                != crate::tools::edit_cascade::Strategy::Exact
+            {
+                format!(
+                    " (via {} strategy, confidence {:.0}%)",
+                    result.strategy,
+                    result.confidence * 100.0
+                )
+            } else {
+                String::new()
+            };
+            match std::fs::write(&resolved, &result.new_content) {
+                Ok(()) => McpToolResult::text(format!(
+                    "edited {path} successfully{strategy_note}"
+                )),
+                Err(e) => McpToolResult::error(format!("failed to write file: {e}")),
+            }
+        }
+        Err(e) => McpToolResult::error(format!(
+            "old_string not found in file.\nEdit cascade diagnostics:\n{e}"
+        )),
     }
 }
 

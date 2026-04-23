@@ -194,39 +194,35 @@ impl FileTool {
 
         let content = fs::read_to_string(path)?;
 
-        if !content.contains(&params.old_string) {
-            return Ok(false);
+        // Try exact match first for replace_all (cascade only supports single replace)
+        if params.replace_all {
+            if !content.contains(&params.old_string) {
+                return Ok(false);
+            }
+            let new_content = content.replace(&params.old_string, &params.new_string);
+            fs::write(path, new_content)?;
+            return Ok(true);
         }
 
-        let new_content = if params.replace_all {
-            content.replace(&params.old_string, &params.new_string)
-        } else {
-            let mut replaced = false;
-            let mut result = String::new();
-            let mut remaining = content.as_str();
-
-            while let Some(pos) = remaining.find(&params.old_string) {
-                if replaced {
-                    result.push_str(&remaining[..pos]);
-                    result.push_str(&params.new_string);
-                    remaining = &remaining[pos + params.old_string.len()..];
-                } else {
-                    result.push_str(&remaining[..pos]);
-                    result.push_str(&params.new_string);
-                    remaining = &remaining[pos + params.old_string.len()..];
-                    #[allow(unused_assignments)]
-                    {
-                        replaced = true;
-                    }
-                    break;
-                }
-            }
-            result.push_str(remaining);
-            result
+        // Use edit cascade for single-replace (with fuzzy fallback)
+        let cascade_params = super::edit_cascade::EditParams {
+            content: &content,
+            old_text: &params.old_string,
+            new_text: &params.new_string,
+            replace_all: false,
         };
 
-        fs::write(path, new_content)?;
-        Ok(true)
+        match super::edit_cascade::apply_edit_cascade(&cascade_params) {
+            Ok(result) => {
+                fs::write(path, &result.new_content)?;
+                Ok(true)
+            }
+            Err(e) => {
+                // No strategy matched — return false (backward compatible)
+                tracing::debug!("edit cascade no match: {}", e);
+                Ok(false)
+            }
+        }
     }
 
     pub fn list(&self, params: FileListParams) -> crate::Result<Vec<String>> {

@@ -78,6 +78,7 @@
 
 #[cfg(feature = "browser")]
 pub mod browser;
+pub mod edit_cascade;
 pub mod editor;
 pub mod file;
 pub mod git;
