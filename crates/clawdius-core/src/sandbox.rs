@@ -96,6 +96,7 @@
 pub mod backends;
 pub mod executor;
 pub mod firewall;
+pub mod safety;
 pub mod tiers;
 pub mod wasi;
 

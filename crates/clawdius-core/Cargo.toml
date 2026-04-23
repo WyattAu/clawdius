@@ -67,6 +67,7 @@ blake3.workspace = true
 sha3.workspace = true
 chrono.workspace = true
 regex.workspace = true
+aho-corasick.workspace = true
 lru.workspace = true
 url = "2.5"
 which.workspace = true
