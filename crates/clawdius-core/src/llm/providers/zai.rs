@@ -79,6 +79,7 @@ impl LlmClient for ZaiProvider {
             match client.exec_chat_stream(&model, chat_req, None).await {
                 Ok(stream_response) => {
                     let mut stream = stream_response.stream;
+                    let mut had_error = false;
                     while let Some(result) = stream.next().await {
                         match result {
                             Ok(event) => {
@@ -89,14 +90,19 @@ impl LlmClient for ZaiProvider {
                                 }
                             },
                             Err(e) => {
-                                let _ = tx.send(format!("[Error: {e}]")).await;
+                                had_error = true;
+                                tracing::error!("Zai stream error for model {}: {}", model, e);
                                 break;
                             },
                         }
                     }
+                    if had_error {
+                        drop(tx);
+                    }
                 },
                 Err(e) => {
-                    let _ = tx.send(format!("[Error: {e}]")).await;
+                    tracing::error!("Zai stream init error for model {}: {}", model, e);
+                    drop(tx);
                 },
             }
         });

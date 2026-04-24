@@ -153,6 +153,8 @@ pub struct SprintConfig {
     pub max_duration_secs: u64,
     /// Maximum duration for a single phase in seconds (default: 120 = 2 min)
     pub phase_timeout_secs: u64,
+    /// Maximum tokens per LLM response (default: 4096)
+    pub max_tokens_per_phase: u32,
     /// Optional extra context to prepend to every phase's user message.
     /// Typically a repo map or project structure summary for LLM grounding.
     pub extra_context: Option<String>,
@@ -174,6 +176,7 @@ impl SprintConfig {
             reviewers: Vec::new(),
             max_duration_secs: 600,
             phase_timeout_secs: 120,
+            max_tokens_per_phase: 4096,
             extra_context: None,
         }
     }
@@ -1638,14 +1641,31 @@ impl SprintEngine {
         let result = match self.chat_collecting_stream(messages).await {
             Ok(output) => {
                 let tokens = self.llm.count_tokens(&output);
-                PhaseResult {
-                    phase: phase.clone(),
-                    status: PhaseStatus::Success,
-                    output,
-                    duration_ms: start.elapsed().as_millis() as u64,
-                    files_modified: Vec::new(),
-                    errors: Vec::new(),
-                    tokens_used: tokens,
+                let trimmed = output.trim();
+                if tokens < 10
+                    || trimmed.is_empty()
+                    || trimmed.contains("no healthy upstream")
+                    || trimmed.starts_with("[Error:")
+                {
+                    PhaseResult {
+                        phase: phase.clone(),
+                        status: PhaseStatus::Failed,
+                        output: format!("LLM returned insufficient response ({} tokens): {}", tokens, &output[..output.len().min(200)]),
+                        duration_ms: start.elapsed().as_millis() as u64,
+                        files_modified: Vec::new(),
+                        errors: vec!["Insufficient LLM response".to_string()],
+                        tokens_used: tokens,
+                    }
+                } else {
+                    PhaseResult {
+                        phase: phase.clone(),
+                        status: PhaseStatus::Success,
+                        output,
+                        duration_ms: start.elapsed().as_millis() as u64,
+                        files_modified: Vec::new(),
+                        errors: Vec::new(),
+                        tokens_used: tokens,
+                    }
                 }
             },
             Err(_) => {
@@ -2187,6 +2207,7 @@ mod tests {
             reviewers: Vec::new(),
             max_duration_secs: 600,
             phase_timeout_secs: 120,
+            max_tokens_per_phase: 4096,
             extra_context: Some("test context".to_string()),
         };
         let json = serde_json::to_string(&config).unwrap();

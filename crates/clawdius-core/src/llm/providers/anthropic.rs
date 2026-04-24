@@ -74,6 +74,7 @@ impl LlmClient for AnthropicProvider {
             match client.exec_chat_stream(&model, chat_req, None).await {
                 Ok(stream_response) => {
                     let mut stream = stream_response.stream;
+                    let mut had_error = false;
                     while let Some(result) = stream.next().await {
                         match result {
                             Ok(event) => {
@@ -84,14 +85,19 @@ impl LlmClient for AnthropicProvider {
                                 }
                             },
                             Err(e) => {
-                                let _ = tx.send(format!("[Error: {e}]")).await;
+                                had_error = true;
+                                tracing::error!("Anthropic stream error for model {}: {}", model, e);
                                 break;
                             },
                         }
                     }
+                    if had_error {
+                        drop(tx);
+                    }
                 },
                 Err(e) => {
-                    let _ = tx.send(format!("[Error: {e}]")).await;
+                    tracing::error!("Anthropic stream init error for model {}: {}", model, e);
+                    drop(tx);
                 },
             }
         });

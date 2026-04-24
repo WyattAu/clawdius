@@ -233,7 +233,8 @@ impl LlmClient for LocalLlmProvider {
                 Ok(response) => {
                     if !response.status().is_success() {
                         let status = response.status();
-                        let _ = tx.send(format!("[Error: HTTP {status}]")).await;
+                        tracing::error!("Local LLM HTTP error: {status}");
+                        drop(tx);
                         return;
                     }
 
@@ -259,14 +260,16 @@ impl LlmClient for LocalLlmProvider {
                                 }
                             },
                             Err(e) => {
-                                let _ = tx.send(format!("[Error: {e}]")).await;
+                                tracing::error!("Local LLM stream error: {e}");
+                                drop(tx);
                                 break;
                             },
                         }
                     }
                 },
                 Err(e) => {
-                    let _ = tx.send(format!("[Error: {e}]")).await;
+                    tracing::error!("Local LLM request failed: {e}");
+                    drop(tx);
                 },
             }
         });
