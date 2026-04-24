@@ -1427,6 +1427,42 @@ impl SprintEngine {
             }
         }
 
+        // Inject LSP document symbols during Plan phase
+        if *phase == SprintPhase::Plan {
+            if let Some(ref lsp) = self.lsp_client {
+                let all_mod: Vec<String> = state
+                    .phase_results
+                    .iter()
+                    .flat_map(|r| r.files_modified.clone())
+                    .collect();
+                if !all_mod.is_empty() {
+                    let syms = {
+                        let mut lsp = lsp.lock().await;
+                        let mut text = String::new();
+                        for fp in &all_mod {
+                            let uri = format!("file://{}", fp);
+                            if let Ok(syms) = lsp.document_symbols(&uri).await {
+                                if !syms.is_empty() {
+                                    text.push_str(&format!("\n### {}\n", fp));
+                                    for s in &syms {
+                                        text.push_str(&format!(
+                                            "  {} ({:?})\n",
+                                            s.name, s.kind
+                                        ));
+                                    }
+                                }
+                            }
+                        }
+                        text
+                    };
+                    if !syms.is_empty() {
+                        user_message.push_str("\n\n## Current Code Structure\n");
+                        user_message.push_str(&syms);
+                    }
+                }
+            }
+        }
+
         // Inject LSP context: sync docs + diagnostics + code actions
         if matches!(phase, SprintPhase::Build | SprintPhase::Test | SprintPhase::Review) {
             if let Some(ref lsp) = self.lsp_client {
@@ -1601,6 +1637,47 @@ impl SprintEngine {
         state.current_phase = None;
 
         Ok(result)
+    }
+
+    /// Sync modified files to the LSP server so diagnostics are fresh.
+    async fn sync_lsp_documents(&self, files: &[String]) {
+        if self.lsp_client.is_none() || files.is_empty() {
+            return;
+        }
+        let lsp = self.lsp_client.as_ref().unwrap();
+        let mut lsp = lsp.lock().await;
+        for file_path in files {
+            if file_path.contains("://") {
+                continue;
+            }
+            let path = std::path::Path::new(file_path);
+            if !path.exists() {
+                continue;
+            }
+            match std::fs::read_to_string(path) {
+                Ok(text) => {
+                    let uri = format!("file://{}", file_path);
+                    let lang_id = match path.extension().and_then(|e| e.to_str()) {
+                        Some("rs") => "rust",
+                        Some("ts") => "typescript",
+                        Some("tsx") => "typescriptreact",
+                        Some("js") => "javascript",
+                        Some("jsx") => "javascriptreact",
+                        Some("py") => "python",
+                        Some("go") => "go",
+                        Some("java") => "java",
+                        Some("c") | Some("h") => "c",
+                        Some("cpp") | Some("hpp") | Some("cc") => "cpp",
+                        Some(other) => other,
+                        None => "",
+                    };
+                    if let Err(e) = lsp.open_document(&uri, lang_id, &text).await {
+                        tracing::debug!("LSP sync failed for {}: {}", file_path, e);
+                    }
+                }
+                Err(_) => {}
+            }
+        }
     }
 
     /// Compact the context accumulator if it exceeds the token threshold.
