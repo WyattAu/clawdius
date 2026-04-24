@@ -1427,59 +1427,92 @@ impl SprintEngine {
             }
         }
 
-        // Inject LSP diagnostics for Build and Test phases
-        if matches!(
-            phase,
-            SprintPhase::Build | SprintPhase::Test | SprintPhase::Review
-        ) {
+        // Inject LSP context: sync docs + diagnostics + code actions
+        if matches!(phase, SprintPhase::Build | SprintPhase::Test | SprintPhase::Review) {
             if let Some(ref lsp) = self.lsp_client {
-                // Wait briefly for diagnostics to settle (before locking)
+                // Sync all previously modified files to LSP for fresh diagnostics
+                let all_modified: Vec<String> = state.phase_results.iter()
+                    .flat_map(|r| r.files_modified.clone()).collect();
+                self.sync_lsp_documents(&all_modified).await;
+                // Wait for diagnostics to settle
                 tokio::time::sleep(std::time::Duration::from_millis(500)).await;
-                let all_diags = {
+                let (all_diags, code_actions) = {
                     let mut lsp = lsp.lock().await;
-                    lsp.get_all_diagnostics().await
+                    let diags = lsp.get_all_diagnostics().await;
+                    // Fetch code actions for errors
+                    let mut actions = Vec::new();
+                    for (uri, file_diags) in &diags {
+                        let err_diags: Vec<crate::lsp::protocol::Diagnostic> = file_diags
+                            .iter()
+                            .filter(|d| {
+                                d.severity
+                                    == Some(crate::lsp::protocol::DiagnosticSeverity::Error)
+                            })
+                            .cloned()
+                            .collect();
+                        if !err_diags.is_empty() {
+                            if let Ok(ca) = lsp.code_actions(
+                                uri,
+                                err_diags[0].range.clone(),
+                                err_diags,
+                            )
+                            .await
+                            {
+                                actions.extend(ca);
+                            }
+                        }
+                    }
+                    (diags, actions)
                 };
                 if !all_diags.is_empty() {
                     let mut diag_text = String::from(
-                        "\n\n## LSP Diagnostics\n\
-                         The language server reported the following issues:\n",
+                        "\n\n## LSP Diagnostics\nThe language server reported:\n",
                     );
-                    let mut error_count = 0usize;
-                    let mut warning_count = 0usize;
+                    let (mut error_count, mut warning_count) = (0usize, 0usize);
                     for (uri, diags) in &all_diags {
                         for d in diags {
                             use crate::lsp::protocol::DiagnosticSeverity;
-                            let severity = match d.severity {
-                                Some(DiagnosticSeverity::Error) => "ERROR",
-                                Some(DiagnosticSeverity::Warning) => "WARNING",
+                            let sev = match d.severity {
+                                Some(DiagnosticSeverity::Error) => {
+                                    error_count += 1;
+                                    "ERROR"
+                                }
+                                Some(DiagnosticSeverity::Warning) => {
+                                    warning_count += 1;
+                                    "WARNING"
+                                }
                                 Some(DiagnosticSeverity::Information) => "INFO",
                                 Some(DiagnosticSeverity::Hint) => "HINT",
                                 _ => "UNKNOWN",
                             };
-                            if d.severity == Some(DiagnosticSeverity::Error) {
-                                error_count += 1;
-                            } else if d.severity == Some(DiagnosticSeverity::Warning) {
-                                warning_count += 1;
-                            }
-                            let range = format!(
-                                "L{}:C{}-L{}:C{}",
+                            diag_text.push_str(&format!(
+                                "  [{}] {} L{}:C{}: {}\n",
+                                sev,
+                                uri,
                                 d.range.start.line + 1,
                                 d.range.start.character + 1,
-                                d.range.end.line + 1,
-                                d.range.end.character + 1,
-                            );
-                            diag_text.push_str(&format!(
-                                "  [{severity}] {uri} {range}: {}\n",
                                 d.message
                             ));
                         }
                     }
                     diag_text.push_str(&format!(
-                        "\nTotal: {} errors, {} warnings\n\
-                         Use this information to fix issues before/during testing.",
+                        "\nTotal: {} errors, {} warnings\n",
                         error_count, warning_count
                     ));
                     user_message.push_str(&diag_text);
+                }
+                // Show LSP-suggested code actions
+                if !code_actions.is_empty() {
+                    let mut action_text =
+                        String::from("\n\n## LSP Suggested Fixes\n");
+                    for action in &code_actions {
+                        if action.is_preferred {
+                            action_text.push_str(&format!("[PREFERRED] {}\n", action.title));
+                        } else {
+                            action_text.push_str(&format!("- {}\n", action.title));
+                        }
+                    }
+                    user_message.push_str(&action_text);
                 }
             }
         }
