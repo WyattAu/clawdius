@@ -1491,11 +1491,17 @@ async fn handle_sprint(
     use clawdius_core::llm::providers::LlmClient;
     use std::sync::Arc;
 
-    let config = clawdius_core::config::Config::load_or_default();
+     let config = clawdius_core::config::Config::load_or_default();
 
     let llm_config = match clawdius_core::llm::LlmConfig::from_config(&config.llm, &provider) {
-        Ok(cfg) => cfg,
-        Err(e) => {
+         Ok(mut cfg) => {
+             // Override model if --model flag was provided
+             if let Some(ref m) = model {
+                 cfg.model = m.clone();
+             }
+             cfg
+         },
+         Err(e) => {
             match output_format {
                 OutputFormat::Json => {
                     println!(
