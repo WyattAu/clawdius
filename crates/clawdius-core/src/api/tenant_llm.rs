@@ -60,33 +60,33 @@ impl TenantLlmRegistry {
     }
 
     pub fn set_default_provider(&self, provider: LlmProvider) {
-        let mut default = self.default_provider.write().unwrap();
+        let mut default = self.default_provider.write().unwrap_or_else(|e| { tracing::error!("RwLock poisoned in tenant_llm: {}", e); e.into_inner() });
         *default = Some(Arc::new(provider));
     }
 
     pub fn register_tenant_config(&self, tenant_id: &str, config: TenantLlmConfig) {
-        let mut configs = self.configs.write().unwrap();
-        let mut providers = self.providers.write().unwrap();
+        let mut configs = self.configs.write().unwrap_or_else(|e| { tracing::error!("RwLock poisoned in tenant_llm: {}", e); e.into_inner() });
+        let mut providers = self.providers.write().unwrap_or_else(|e| { tracing::error!("RwLock poisoned in tenant_llm: {}", e); e.into_inner() });
         providers.remove(tenant_id);
         configs.insert(tenant_id.to_string(), config);
     }
 
     pub fn remove_tenant_config(&self, tenant_id: &str) {
-        let mut configs = self.configs.write().unwrap();
-        let mut providers = self.providers.write().unwrap();
+        let mut configs = self.configs.write().unwrap_or_else(|e| { tracing::error!("RwLock poisoned in tenant_llm: {}", e); e.into_inner() });
+        let mut providers = self.providers.write().unwrap_or_else(|e| { tracing::error!("RwLock poisoned in tenant_llm: {}", e); e.into_inner() });
         configs.remove(tenant_id);
         providers.remove(tenant_id);
     }
 
     #[must_use]
     pub fn get_tenant_config(&self, tenant_id: &str) -> Option<TenantLlmConfig> {
-        let configs = self.configs.read().unwrap();
+        let configs = self.configs.read().unwrap_or_else(|e| { tracing::error!("RwLock poisoned in tenant_llm: {}", e); e.into_inner() });
         configs.get(tenant_id).cloned()
     }
 
     pub fn resolve_provider(&self, tenant_id: Option<&str>) -> Result<Arc<LlmProvider>> {
         if tenant_id.is_none() {
-            let default = self.default_provider.read().unwrap();
+            let default = self.default_provider.read().unwrap_or_else(|e| { tracing::error!("RwLock poisoned in tenant_llm: {}", e); e.into_inner() });
             return default
                 .clone()
                 .ok_or_else(|| Error::Config("No default LLM provider configured".to_string()));
@@ -95,17 +95,17 @@ impl TenantLlmRegistry {
         let tid = tenant_id.unwrap();
 
         {
-            let providers = self.providers.read().unwrap();
+            let providers = self.providers.read().unwrap_or_else(|e| { tracing::error!("RwLock poisoned in tenant_llm: {}", e); e.into_inner() });
             if let Some(provider) = providers.get(tid) {
                 return Ok(Arc::clone(provider));
             }
         }
 
         {
-            let configs = self.configs.read().unwrap();
+            let configs = self.configs.read().unwrap_or_else(|e| { tracing::error!("RwLock poisoned in tenant_llm: {}", e); e.into_inner() });
             if let Some(config) = configs.get(tid) {
                 if !config.enabled {
-                    let default = self.default_provider.read().unwrap();
+                    let default = self.default_provider.read().unwrap_or_else(|e| { tracing::error!("RwLock poisoned in tenant_llm: {}", e); e.into_inner() });
                     return default.clone().ok_or_else(|| {
                         Error::Config("No default LLM provider configured".to_string())
                     });
@@ -122,20 +122,20 @@ impl TenantLlmRegistry {
                 let provider = create_provider(&llm_config)?;
                 let arc_provider = Arc::new(provider);
 
-                let mut providers = self.providers.write().unwrap();
+                let mut providers = self.providers.write().unwrap_or_else(|e| { tracing::error!("RwLock poisoned in tenant_llm: {}", e); e.into_inner() });
                 providers.insert(tid.to_string(), Arc::clone(&arc_provider));
                 return Ok(arc_provider);
             }
         }
 
-        let default = self.default_provider.read().unwrap();
+        let default = self.default_provider.read().unwrap_or_else(|e| { tracing::error!("RwLock poisoned in tenant_llm: {}", e); e.into_inner() });
         default
             .clone()
             .ok_or_else(|| Error::Config("No default LLM provider configured".to_string()))
     }
 
     pub fn record_usage(&self, tenant_id: &str, input_tokens: u32, output_tokens: u32) {
-        let mut usage_map = self.token_usage.write().unwrap();
+        let mut usage_map = self.token_usage.write().unwrap_or_else(|e| { tracing::error!("RwLock poisoned in tenant_llm: {}", e); e.into_inner() });
         let usage = usage_map
             .entry(tenant_id.to_string())
             .or_default();
@@ -150,7 +150,7 @@ impl TenantLlmRegistry {
 
     #[must_use]
     pub fn get_usage(&self, tenant_id: &str) -> TenantTokenUsage {
-        let usage_map = self.token_usage.read().unwrap();
+        let usage_map = self.token_usage.read().unwrap_or_else(|e| { tracing::error!("RwLock poisoned in tenant_llm: {}", e); e.into_inner() });
         usage_map
             .get(tenant_id)
             .map(TenantTokenUsage::snapshot)
@@ -159,7 +159,7 @@ impl TenantLlmRegistry {
 
     #[must_use]
     pub fn list_tenant_configs(&self) -> Vec<(String, TenantLlmConfig)> {
-        let configs = self.configs.read().unwrap();
+        let configs = self.configs.read().unwrap_or_else(|e| { tracing::error!("RwLock poisoned in tenant_llm: {}", e); e.into_inner() });
         configs
             .iter()
             .map(|(k, v)| (k.clone(), v.clone()))

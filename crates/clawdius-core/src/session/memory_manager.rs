@@ -73,7 +73,7 @@ impl SessionMemoryManager {
         let estimated_bytes = Self::estimate_session_size(messages);
         let message_count = messages.len();
 
-        let mut stats = self.stats.write().unwrap();
+        let mut stats = self.stats.write().unwrap_or_else(|e| { tracing::error!("RwLock poisoned in memory_manager: {}", e); e.into_inner() });
         let entry = stats.entry(session_id.to_string()).or_default();
         entry.estimated_bytes = estimated_bytes;
         entry.message_count = message_count;
@@ -83,27 +83,27 @@ impl SessionMemoryManager {
     }
 
     pub fn remove_session(&self, session_id: &str) {
-        let mut stats = self.stats.write().unwrap();
+        let mut stats = self.stats.write().unwrap_or_else(|e| { tracing::error!("RwLock poisoned in memory_manager: {}", e); e.into_inner() });
         stats.remove(session_id);
     }
 
     pub fn get_stats(&self, session_id: &str) -> Option<MemoryStats> {
-        let stats = self.stats.read().unwrap();
+        let stats = self.stats.read().unwrap_or_else(|e| { tracing::error!("RwLock poisoned in memory_manager: {}", e); e.into_inner() });
         stats.get(session_id).cloned()
     }
 
     pub fn get_all_stats(&self) -> HashMap<String, MemoryStats> {
-        let stats = self.stats.read().unwrap();
+        let stats = self.stats.read().unwrap_or_else(|e| { tracing::error!("RwLock poisoned in memory_manager: {}", e); e.into_inner() });
         stats.clone()
     }
 
     pub fn total_memory_usage(&self) -> usize {
-        let stats = self.stats.read().unwrap();
+        let stats = self.stats.read().unwrap_or_else(|e| { tracing::error!("RwLock poisoned in memory_manager: {}", e); e.into_inner() });
         stats.values().map(|s| s.estimated_bytes).sum()
     }
 
     pub fn should_compact(&self, session_id: &str) -> bool {
-        let stats = self.stats.read().unwrap();
+        let stats = self.stats.read().unwrap_or_else(|e| { tracing::error!("RwLock poisoned in memory_manager: {}", e); e.into_inner() });
         let session_stats = match stats.get(session_id) {
             Some(s) => s,
             None => return false,
@@ -129,7 +129,7 @@ impl SessionMemoryManager {
         let compacted = compact_messages(std::mem::take(messages));
         *messages = compacted;
 
-        let mut stats = self.stats.write().unwrap();
+        let mut stats = self.stats.write().unwrap_or_else(|e| { tracing::error!("RwLock poisoned in memory_manager: {}", e); e.into_inner() });
         if let Some(entry) = stats.get_mut(session_id) {
             entry.compaction_count += 1;
             entry.last_compaction = Some(Utc::now());
@@ -141,7 +141,7 @@ impl SessionMemoryManager {
     }
 
     pub fn sessions_over_budget(&self) -> Vec<String> {
-        let stats = self.stats.read().unwrap();
+        let stats = self.stats.read().unwrap_or_else(|e| { tracing::error!("RwLock poisoned in memory_manager: {}", e); e.into_inner() });
         let per_session_budget = self.per_session_budget.load(Ordering::Relaxed);
 
         if per_session_budget == 0 {

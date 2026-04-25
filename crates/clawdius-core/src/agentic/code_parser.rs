@@ -1,4 +1,6 @@
 use regex::Regex;
+use std::sync::LazyLock;
+use std::sync::LazyLock;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -13,6 +15,10 @@ struct CodeBlock {
     content: String,
     preceding_text: String,
 }
+
+static FILE_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(?im)^File:\s*(.+)").unwrap());
+static BOLD_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\*\*(.+?)\*\*\s*:?\s*$").unwrap());
+static HEADING_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(?m)^#{1,6}\s+(.+?)\s*$").unwrap());
 
 pub fn parse_llm_output(response: &str) -> Vec<ParsedFileChange> {
     let blocks = extract_code_blocks(response);
@@ -213,7 +219,7 @@ fn extract_path_from_comment(content: &str) -> Option<String> {
 }
 
 fn extract_path_from_preceding(text: &str) -> Option<String> {
-    let re_file = Regex::new(r"(?im)^File:\s*(.+)").unwrap();
+    let re_file = FILE_RE.as_ref().unwrap();
     if let Some(caps) = re_file.captures(text) {
         let path = caps[1].trim();
         if looks_like_file_path(path) {
@@ -221,7 +227,7 @@ fn extract_path_from_preceding(text: &str) -> Option<String> {
         }
     }
 
-    let re_bold = Regex::new(r"\*\*(.+?)\*\*\s*:?\s*$").unwrap();
+    let re_bold = BOLD_RE.as_ref().unwrap();
     if let Some(caps) = re_bold.captures(text) {
         let path = caps[1].trim();
         if looks_like_file_path(path) {
