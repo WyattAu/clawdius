@@ -1253,7 +1253,6 @@ impl SprintEngine {
         let error_groups = crate::agentic::error_recovery::group_errors_by_file(&all_errors);
         let mut total_attempts = 0usize;
         let mut fixed_files = Vec::new();
-        let mut any_failure = false;
 
         for (file_path, file_errors) in &error_groups {
             if *file_path == "unknown" {
@@ -1303,7 +1302,6 @@ impl SprintEngine {
                 })?;
                 fixed_files.push(file_path.to_string());
             } else {
-                any_failure = true;
                 // Revert: restore original code for files that couldn't be fixed
                 let _ = std::fs::write(&full_path, &original_code);
             }
@@ -1642,18 +1640,21 @@ impl SprintEngine {
             Ok(output) => {
                 let tokens = self.llm.count_tokens(&output);
                 let trimmed = output.trim();
-                if tokens < 10
-                    || trimmed.is_empty()
+                let trimmed = output.trim();
+                let is_provider_error = trimmed.is_empty()
                     || trimmed.contains("no healthy upstream")
+                    || trimmed.contains("503 Service Unavailable")
                     || trimmed.starts_with("[Error:")
-                {
+                    || trimmed.contains("overloaded")
+                    || (trimmed.contains("error") && tokens < 5);
+                if is_provider_error {
                     PhaseResult {
                         phase: phase.clone(),
                         status: PhaseStatus::Failed,
-                        output: format!("LLM returned insufficient response ({} tokens): {}", tokens, &output[..output.len().min(200)]),
+                        output: format!("LLM returned error response: {}", &output[..output.len().min(200)]),
                         duration_ms: start.elapsed().as_millis() as u64,
                         files_modified: Vec::new(),
-                        errors: vec!["Insufficient LLM response".to_string()],
+                        errors: vec!["LLM error response".to_string()],
                         tokens_used: tokens,
                     }
                 } else {
