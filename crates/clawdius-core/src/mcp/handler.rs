@@ -626,6 +626,20 @@ fn tool_run_tests(args: &serde_json::Value) -> McpToolResult {
         return McpToolResult::error("empty command");
     }
 
+    // Security: reject commands with shell metacharacters to prevent injection
+    let joined = parts.join(" ");
+    if joined.contains('|')
+        || joined.contains('>')
+        || joined.contains(';')
+        || joined.contains("&&")
+        || joined.contains("$(")
+        || joined.contains('`')
+    {
+        return McpToolResult::error(
+            "Shell metacharacters not allowed in test command (|, >, ;, &&, $(, `). Use a single command.".to_string(),
+        );
+    }
+
     let (cmd, cmd_args) = (parts[0].clone(), parts[1..].to_vec());
     let (tx, rx) = std::sync::mpsc::channel();
 
