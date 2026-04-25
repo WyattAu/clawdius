@@ -44,6 +44,17 @@ const BLOCKED_COMMANDS: &[&str] = &[
     "nc",
     "ncat",
     "socat",
+    "sh",
+    "bash",
+    "zsh",
+    "fish",
+    "dash",
+    "python",
+    "python3",
+    "perl",
+    "ruby",
+    "node",
+    "nodejs",
 ];
 
 fn is_command_blocked(command: &str) -> bool {
