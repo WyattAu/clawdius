@@ -58,20 +58,33 @@ pub fn parse_tool_calls(llm_output: &str) -> Vec<ToolCall> {
     // Format 1: ```tool JSON blocks
     for line_group in extract_code_blocks(llm_output, "tool") {
         if let Ok(json) = serde_json::from_str::<serde_json::Value>(&line_group) {
-            if let (Some(tool), Some(args)) = (
-                json.get("tool").and_then(|t| t.as_str()),
-                json.get("args").cloned(),
-            ) {
-                calls.push(ToolCall {
-                    tool: tool.to_string(),
-                    args,
-                    raw: line_group.clone(),
-                });
+            if let Some(tool) = extract_tool_from_json(&json) {
+                calls.push(tool);
             }
         }
     }
 
-    // Format 2: [TOOL:name] key="value" key2="value2"
+    // Format 2: ```json blocks that contain tool call objects
+    for line_group in extract_code_blocks(llm_output, "json") {
+        // Try as array of tool calls first
+        if let Ok(arr) = serde_json::from_str::<Vec<serde_json::Value>>(&line_group) {
+            for item in &arr {
+                if let Some(tool) = extract_tool_from_json(item) {
+                    calls.push(tool);
+                }
+            }
+        }
+        // Try as single tool call object
+        if let Ok(json) = serde_json::from_str::<serde_json::Value>(&line_group) {
+            if calls.is_empty() {
+                if let Some(tool) = extract_tool_from_json(&json) {
+                    calls.push(tool);
+                }
+            }
+        }
+    }
+
+    // Format 3: [TOOL:name] key="value" key2="value2"
     for line in llm_output.lines() {
         let trimmed = line.trim();
         if let Some(rest) = trimmed.strip_prefix("[TOOL:") {
@@ -96,7 +109,61 @@ pub fn parse_tool_calls(llm_output: &str) -> Vec<ToolCall> {
         }
     }
 
+    // Format 4: Bare JSON tool calls not inside code fences
+    // Looks for standalone {"tool":"...","args":{...}} or {"tool":"...", "path":"...", ...}
+    // that appear on their own line (common when LLM skips code fences)
+    if calls.is_empty() {
+        for line in llm_output.lines() {
+            let trimmed = line.trim();
+            if trimmed.starts_with('{') && trimmed.ends_with('}') {
+                if let Ok(json) = serde_json::from_str::<serde_json::Value>(trimmed) {
+                    if let Some(tool) = extract_tool_from_json(&json) {
+                        calls.push(tool);
+                    }
+                }
+            }
+        }
+    }
+
     calls
+}
+
+/// Extract a ToolCall from a JSON value if it looks like a tool invocation.
+/// Supports both {"tool":"name","args":{...}} and {"tool":"name","path":"...",...} (flat args).
+fn extract_tool_from_json(json: &serde_json::Value) -> Option<ToolCall> {
+    let tool_name = json.get("tool").and_then(|t| t.as_str())?;
+
+    // Known tool names only
+    if !matches!(
+        tool_name,
+        "write_file" | "edit_file" | "shell" | "read_file" | "list_files"
+    ) {
+        return None;
+    }
+
+    // Try nested args: {"tool":"write_file","args":{"path":"...","content":"..."}}
+    let args = if let Some(args) = json.get("args").cloned() {
+        args
+    } else {
+        // Flat format: {"tool":"write_file","path":"...","content":"..."}
+        // Collect all keys except "tool" into args
+        let mut map = serde_json::Map::new();
+        for (key, val) in json.as_object()? {
+            if key != "tool" {
+                map.insert(key.clone(), val.clone());
+            }
+        }
+        if map.is_empty() {
+            return None; // No args = not a valid tool call
+        }
+        serde_json::Value::Object(map)
+    };
+
+    Some(ToolCall {
+        tool: tool_name.to_string(),
+        args,
+        raw: json.to_string(),
+    })
 }
 
 /// Execute a parsed tool call via ShellToolExecutor.
@@ -442,17 +509,41 @@ pub async fn run_tool_use_loop(
             tokens
         );
 
-        // Check for completion
-        if is_completion(&response) {
-            final_output = response;
-            break;
-        }
+        // Check for explicit completion signals (e.g., [DONE], [COMPLETE])
+        let lower = response.to_lowercase();
+        let explicit_done = lower.contains("[done]")
+            || lower.contains("[complete]")
+            || lower.contains("[finished]")
+            || lower.contains("no more changes needed")
+            || lower.contains("all changes have been made");
 
         // Parse tool calls
         let calls = parse_tool_calls(&response);
 
+        if explicit_done {
+            final_output = response;
+            break;
+        }
+
         if calls.is_empty() {
-            // No tool calls and no completion signal — treat as done
+            if iteration == 0 {
+                // First iteration with no tool calls — the LLM may not have understood
+                // the tool format. Send a nudge to try again with the correct format.
+                eprintln!("  [tool loop: no tool calls on first iter, sending nudge]");
+                messages.push(ChatMessage {
+                    role: ChatRole::User,
+                    content: "You must use the tool format to make changes. For example:\n\
+                              ```tool\n\
+                              {\"tool\": \"write_file\", \"args\": {\"path\": \"src/main.rs\", \"content\": \"...\"}}\n\
+                              ```\n\
+                              Or:\n\
+                              [TOOL:shell] command=\"cargo build\"\n\n\
+                              Please use one of these formats to make your changes. \
+                              When finished, write [DONE].".to_string(),
+                });
+                continue;
+            }
+            // No tool calls on subsequent iterations — treat as done
             final_output = response;
             break;
         }
@@ -1045,5 +1136,83 @@ After
         let blocks = extract_code_blocks(text, "tool");
         assert_eq!(blocks.len(), 1);
         assert!(blocks[0].contains("echo hello"));
+    }
+
+    #[test]
+    fn test_parse_json_code_block_format() {
+        // Format 2: ```json blocks with tool call objects
+        let output = r#"
+I'll create the file:
+```json
+{"tool": "write_file", "args": {"path": "src/main.rs", "content": "fn main() {}\n"}}
+```
+Done.
+"#;
+        let calls = parse_tool_calls(output);
+        assert_eq!(calls.len(), 1);
+        assert_eq!(calls[0].tool, "write_file");
+        assert_eq!(calls[0].args.get("path").unwrap().as_str().unwrap(), "src/main.rs");
+    }
+
+    #[test]
+    fn test_parse_flat_args_format() {
+        // Flat format: {"tool":"write_file","path":"...","content":"..."}
+        let output = r#"
+```tool
+{"tool": "shell", "command": "cargo build"}
+```
+"#;
+        let calls = parse_tool_calls(output);
+        assert_eq!(calls.len(), 1);
+        assert_eq!(calls[0].tool, "shell");
+        assert_eq!(calls[0].args.get("command").unwrap().as_str().unwrap(), "cargo build");
+    }
+
+    #[test]
+    fn test_parse_bare_json_format() {
+        // Format 4: Bare JSON on its own line (no code fences)
+        let output = r#"I need to read a file first.
+{"tool": "read_file", "args": {"path": "Cargo.toml"}}
+Let me check the contents."#;
+        let calls = parse_tool_calls(output);
+        assert_eq!(calls.len(), 1);
+        assert_eq!(calls[0].tool, "read_file");
+    }
+
+    #[test]
+    fn test_parse_unknown_tool_rejected() {
+        // Unknown tool names should be rejected
+        let output = r#"```tool
+{"tool": "unknown_tool", "args": {"path": "test.rs"}}
+```"#;
+        let calls = parse_tool_calls(output);
+        assert!(calls.is_empty());
+    }
+
+    #[test]
+    fn test_parse_tool_no_args_rejected() {
+        // Tool with no args (nested or flat) should be rejected
+        let output = r#"```tool
+{"tool": "shell"}
+```"#;
+        let calls = parse_tool_calls(output);
+        assert!(calls.is_empty());
+    }
+
+    #[test]
+    fn test_extract_tool_from_json_array() {
+        // JSON array of tool calls in a ```json block
+        let output = r#"
+```json
+[
+  {"tool": "write_file", "args": {"path": "a.rs", "content": "fn a() {}"}},
+  {"tool": "shell", "args": {"command": "cargo build"}}
+]
+```
+"#;
+        let calls = parse_tool_calls(output);
+        assert_eq!(calls.len(), 2);
+        assert_eq!(calls[0].tool, "write_file");
+        assert_eq!(calls[1].tool, "shell");
     }
 }

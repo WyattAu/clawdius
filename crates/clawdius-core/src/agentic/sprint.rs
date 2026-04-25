@@ -434,7 +434,7 @@ impl SprintEngine {
                 // Try native tool-use loop first (structured function calling)
                 eprintln!("  [tool-use loop starting for Build phase (trying native first)]");
 
-                match tool_use::run_native_tool_use_loop(
+                let native_result = tool_use::run_native_tool_use_loop(
                     llm,
                     executor,
                     &system_prompt,
@@ -442,9 +442,11 @@ impl SprintEngine {
                     &state.config.project_root,
                     None,
                 )
-                .await
-                {
-                    Ok((output, tokens, files_modified)) => {
+                .await;
+
+                match native_result {
+                    Ok((output, tokens, files_modified)) if !files_modified.is_empty() => {
+                        // Native tool calling worked — provider returned actual tool calls
                         eprintln!(
                             "  [native tool loop done: {} files modified, {} tokens]",
                             files_modified.len(),
@@ -458,6 +460,56 @@ impl SprintEngine {
                             files_modified,
                             errors: Vec::new(),
                             tokens_used: tokens,
+                        }
+                    },
+                    Ok((output, tokens, files_modified)) => {
+                        // Native returned Ok but 0 files — provider likely doesn't support
+                        // tool calling (e.g., ZAI returns empty tool_calls). Fall through
+                        // to parser-based loop which uses text-based tool format.
+                        eprintln!(
+                            "  [native tool loop returned 0 files modified ({} tokens), \
+                             provider may not support tool calling — trying parser-based loop]",
+                            tokens
+                        );
+                        match tool_use::run_tool_use_loop(
+                            llm,
+                            executor,
+                            &system_prompt,
+                            &user_message,
+                            &state.config.project_root,
+                            None,
+                        )
+                        .await
+                        {
+                            Ok((output, tokens, files_modified)) => {
+                                eprintln!(
+                                    "  [parser tool loop done: {} files modified]",
+                                    files_modified.len()
+                                );
+                                PhaseResult {
+                                    phase: phase.clone(),
+                                    status: PhaseStatus::Success,
+                                    output,
+                                    duration_ms: result.duration_ms,
+                                    files_modified,
+                                    errors: Vec::new(),
+                                    tokens_used: tokens,
+                                }
+                            },
+                            Err(e) => {
+                                eprintln!(
+                                    "Parser tool-use loop error: {e}. Using native text result."
+                                );
+                                PhaseResult {
+                                    phase: phase.clone(),
+                                    status: PhaseStatus::Success,
+                                    output,
+                                    duration_ms: result.duration_ms,
+                                    files_modified,
+                                    errors: Vec::new(),
+                                    tokens_used: tokens,
+                                }
+                            },
                         }
                     },
                     Err(_) => {
