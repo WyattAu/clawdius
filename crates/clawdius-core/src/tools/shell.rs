@@ -4,7 +4,7 @@ use crate::config::ShellSandboxConfig;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 use std::process::{Command, Stdio};
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
 const BLOCKED_COMMANDS: &[&str] = &[
@@ -66,27 +66,46 @@ fn is_command_blocked(command: &str) -> bool {
     BLOCKED_COMMANDS.contains(&base)
 }
 
-static SHELL_CALL_COUNT: AtomicU64 = AtomicU64::new(0);
-static SHELL_WINDOW_START: std::sync::Mutex<Option<Instant>> = std::sync::Mutex::new(None);
+/// Rate-limit state: window start time and call count within that window.
+/// Protected by a single Mutex to eliminate TOCTOU races between the count
+/// check and the window check (previously used separate AtomicU64 + Mutex).
+struct RateLimitState {
+    window_start: Option<Instant>,
+    call_count: u64,
+}
+
+static SHELL_RATE_LIMIT: Mutex<RateLimitState> = Mutex::new(RateLimitState {
+    window_start: None,
+    call_count: 0,
+});
 
 fn check_shell_rate_limit() -> crate::Result<()> {
-    let now = Instant::now();
-    let mut window_start = SHELL_WINDOW_START
-        .lock()
-        .expect("shell rate-limit mutex not poisoned");
+    const MAX_CALLS_PER_WINDOW: u64 = 10;
+    const WINDOW_SECS: u64 = 60;
 
-    match *window_start {
-        Some(start) if now.duration_since(start) < Duration::from_secs(60) => {
-            let count = SHELL_CALL_COUNT.fetch_add(1, Ordering::Relaxed) + 1;
-            if count > 10 {
+    let now = Instant::now();
+    let mut state = SHELL_RATE_LIMIT
+        .lock()
+        .unwrap_or_else(|e| {
+            tracing::error!("shell rate-limit mutex poisoned: {}", e);
+            e.into_inner()
+        });
+
+    match state.window_start {
+        Some(start) if now.duration_since(start) < Duration::from_secs(WINDOW_SECS) => {
+            state.call_count += 1;
+            if state.call_count > MAX_CALLS_PER_WINDOW {
                 return Err(crate::Error::Tool(
-                    "Shell tool rate limit exceeded (max 10 calls per 60 seconds)".to_string(),
+                    format!(
+                        "Shell tool rate limit exceeded (max {} calls per {}s)",
+                        MAX_CALLS_PER_WINDOW, WINDOW_SECS
+                    ),
                 ));
             }
         },
         _ => {
-            SHELL_CALL_COUNT.store(1, Ordering::Relaxed);
-            *window_start = Some(now);
+            state.call_count = 1;
+            state.window_start = Some(now);
         },
     }
     Ok(())

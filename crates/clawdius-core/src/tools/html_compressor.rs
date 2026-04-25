@@ -14,6 +14,19 @@
 use crate::error::Result;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
+use std::sync::LazyLock;
+
+// Pre-compiled regexes for HTML noise stripping (compiled once, reused across calls)
+static RE_SCRIPT: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(?is)<script[^>]*>.*?</script>").unwrap());
+static RE_STYLE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(?is)<style[^>]*>.*?</style>").unwrap());
+static RE_COMMENT: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(?s)<!--.*?-->").unwrap());
+static RE_TAG: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"<[^>]+>").unwrap());
+static RE_MULTI_NEWLINE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"\n{3,}").unwrap());
 
 /// Result of HTML compression.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -168,12 +181,10 @@ impl HtmlCompressor {
         let mut text = html.to_string();
 
         // Remove script tags and content
-        let re = Regex::new(r"(?is)<script[^>]*>.*?</script>").unwrap();
-        text = re.replace_all(&text, "").to_string();
+        text = RE_SCRIPT.replace_all(&text, "").to_string();
 
         // Remove style tags and content
-        let re = Regex::new(r"(?is)<style[^>]*>.*?</style>").unwrap();
-        text = re.replace_all(&text, "").to_string();
+        text = RE_STYLE.replace_all(&text, "").to_string();
 
         // Remove nav, footer, header, aside, form elements
         for tag in &[
@@ -184,12 +195,10 @@ impl HtmlCompressor {
         }
 
         // Remove HTML comments
-        let re = Regex::new(r"(?s)<!--.*?-->").unwrap();
-        text = re.replace_all(&text, "").to_string();
+        text = RE_COMMENT.replace_all(&text, "").to_string();
 
         // Remove all remaining HTML tags
-        let re = Regex::new(r"<[^>]+>").unwrap();
-        text = re.replace_all(&text, "").to_string();
+        text = RE_TAG.replace_all(&text, "").to_string();
 
         // Apply extra strip patterns
         for pattern in &self.extra_strip_patterns {
@@ -222,8 +231,7 @@ impl HtmlCompressor {
         result = self.decode_entities(&result);
 
         // Remove excessive whitespace that was between tags
-        result = Regex::new(r"\n{3,}")
-            .unwrap()
+        result = RE_MULTI_NEWLINE
             .replace_all(&result, "\n\n")
             .to_string();
 
@@ -248,8 +256,7 @@ impl HtmlCompressor {
         }
 
         // Collapse multiple newlines to max 2
-        let re = Regex::new(r"\n{3,}").unwrap();
-        re.replace_all(&result, "\n\n").to_string()
+        RE_MULTI_NEWLINE.replace_all(&result, "\n\n").to_string()
     }
 
     /// Removes consecutive duplicate lines.
