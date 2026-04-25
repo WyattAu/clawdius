@@ -1,6 +1,5 @@
 use regex::Regex;
 use std::sync::LazyLock;
-use std::sync::LazyLock;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -219,7 +218,7 @@ fn extract_path_from_comment(content: &str) -> Option<String> {
 }
 
 fn extract_path_from_preceding(text: &str) -> Option<String> {
-    let re_file = FILE_RE.as_ref().unwrap();
+    let re_file = &*FILE_RE;
     if let Some(caps) = re_file.captures(text) {
         let path = caps[1].trim();
         if looks_like_file_path(path) {
@@ -227,7 +226,7 @@ fn extract_path_from_preceding(text: &str) -> Option<String> {
         }
     }
 
-    let re_bold = BOLD_RE.as_ref().unwrap();
+    let re_bold = &*BOLD_RE;
     if let Some(caps) = re_bold.captures(text) {
         let path = caps[1].trim();
         if looks_like_file_path(path) {
@@ -235,7 +234,7 @@ fn extract_path_from_preceding(text: &str) -> Option<String> {
         }
     }
 
-    let re_header = Regex::new(r"(?m)^#{1,6}\s+(.+?)\s*$").unwrap();
+    let re_header = &*HEADING_RE;
     if let Some(caps) = re_header.captures(text) {
         let path = caps[1].trim();
         if looks_like_file_path(path) {
