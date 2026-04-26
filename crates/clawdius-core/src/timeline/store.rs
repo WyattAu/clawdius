@@ -71,17 +71,17 @@ pub struct TimelineCheckpoint {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FileSnapshot {
     /// File path
-    path: PathBuf,
+    pub path: PathBuf,
     /// Content hash
-    hash: String,
+    pub hash: String,
     /// File size
-    size: usize,
+    pub size: usize,
     /// Whether the file is binary
-    is_binary: bool,
+    pub is_binary: bool,
     /// File content (stored separately)
     #[serde(skip)]
     #[allow(dead_code)]
-    content_path: Option<PathBuf>,
+    pub content_path: Option<PathBuf>,
 }
 
 /// Timeline storage backend

@@ -53,6 +53,7 @@ pub mod sandbox;
 pub mod session;
 pub mod simd;
 pub mod skills;
+pub mod storage;
 pub mod telemetry;
 pub mod timeline;
 pub mod timeout;
@@ -83,6 +84,10 @@ pub use proof::{LeanVerifier, ProofDefinition, ProofTemplate};
 pub use retry::{with_retry_and_circuit, CircuitBreaker, CircuitState};
 pub use session::{Session, SessionManager, SessionStore};
 pub use skills::{Skill, SkillContext, SkillError, SkillMeta, SkillRegistry, SkillResult};
+pub use storage::{
+    GraphRepository, InMemoryBackend, SessionRepository as StorageSessionRepository,
+    SqliteBackend, StorageBackend, TimelineRepository,
+};
 pub use telemetry::{CrashReporter, TelemetryConfig};
 pub use timeline::{CheckpointId, TimelineManager};
 #[cfg(feature = "vector-db")]
