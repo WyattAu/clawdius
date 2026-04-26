@@ -1,0 +1,585 @@
+# Clawdius Master Execution Plan
+# Topological sort of all implementation tasks
+# Format: TOML (not JSON/YAML per project convention)
+
+[metadata]
+version = "1.0.0"
+created = "2026-04-26"
+author = "Nexus"
+total_tasks = 56
+critical_path_weeks = 19
+parallel_weeks = 27
+
+# ============================================================
+# Phase A: Storage Abstraction + Multi-Codebase
+# ============================================================
+
+[[task]]
+id = "A-01"
+name = "Extract StorageBackend trait"
+phase = "A"
+effort_days = 3
+depends_on = []
+deliverable = "crates/clawdius-core/src/storage/mod.rs"
+verification = "cargo test -p clawdius-core -- storage"
+status = "pending"
+
+[[task]]
+id = "A-02"
+name = "Migrate SessionStore to trait"
+phase = "A"
+effort_days = 2
+depends_on = ["A-01"]
+deliverable = "Refactored crates/clawdius-core/src/session/store.rs"
+verification = "cargo test -p clawdius-core -- session"
+status = "pending"
+
+[[task]]
+id = "A-03"
+name = "Implement PostgresBackend"
+phase = "A"
+effort_days = 3
+depends_on = ["A-01"]
+deliverable = "crates/clawdius-core/src/storage/postgres.rs"
+verification = "cargo test -p clawdius-core -- postgres"
+status = "pending"
+
+[[task]]
+id = "A-04"
+name = "Implement MariaDbBackend"
+phase = "A"
+effort_days = 2
+depends_on = ["A-01"]
+deliverable = "crates/clawdius-core/src/storage/mariadb.rs"
+verification = "cargo test -p clawdius-core -- mariadb"
+status = "pending"
+
+[[task]]
+id = "A-05"
+name = "Add workspace/project schema"
+phase = "A"
+effort_days = 2
+depends_on = ["A-01"]
+deliverable = "Schema migrations for all backends"
+verification = "Migration tests pass for SQLite, Postgres, MariaDB"
+status = "pending"
+
+[[task]]
+id = "A-06"
+name = "Workspace + Project models"
+phase = "A"
+effort_days = 2
+depends_on = ["A-05"]
+deliverable = "crates/clawdius-core/src/workspace/"
+verification = "cargo test -p clawdius-core -- workspace"
+status = "pending"
+
+[[task]]
+id = "A-07"
+name = "Multi-repo context injection"
+phase = "A"
+effort_days = 3
+depends_on = ["A-06"]
+deliverable = "Sprint engine context builder change"
+verification = "Unit tests: N repo-maps injected correctly"
+status = "pending"
+
+[[task]]
+id = "A-08"
+name = "Tool calls with project_id"
+phase = "A"
+effort_days = 2
+depends_on = ["A-06"]
+deliverable = "Tool executor + parser changes"
+verification = "Tool calls route to correct project sandbox"
+status = "pending"
+
+[[task]]
+id = "A-09"
+name = ".clawdius.toml config"
+phase = "A"
+effort_days = 2
+depends_on = ["A-01", "A-06"]
+deliverable = "Config loading, CLI integration"
+verification = "cargo test -p clawdius-core -- config"
+status = "pending"
+
+[[task]]
+id = "A-10"
+name = "Storage integration tests"
+phase = "A"
+effort_days = 2
+depends_on = ["A-02", "A-03", "A-04"]
+deliverable = "Test suite for all backends"
+verification = "All storage tests pass"
+status = "pending"
+
+# ============================================================
+# Phase B: Messaging Gateway
+# ============================================================
+
+[[task]]
+id = "B-01"
+name = "clawdius-gateway binary scaffold"
+phase = "B"
+effort_days = 2
+depends_on = ["A-01"]
+deliverable = "crates/clawdius-gateway/"
+verification = "cargo build -p clawdius-gateway"
+status = "pending"
+
+[[task]]
+id = "B-02"
+name = "PlatformAdapter trait + types"
+phase = "B"
+effort_days = 2
+depends_on = []
+deliverable = "crates/clawdius-gateway/src/adapter.rs"
+verification = "Trait compiles, mock implementation passes"
+status = "pending"
+
+[[task]]
+id = "B-03"
+name = "Core MessageGateway router"
+phase = "B"
+effort_days = 3
+depends_on = ["B-02", "A-02"]
+deliverable = "crates/clawdius-gateway/src/gateway.rs"
+verification = "Message routing unit tests"
+status = "pending"
+
+[[task]]
+id = "B-04"
+name = "ResponseFormatter"
+phase = "B"
+effort_days = 2
+depends_on = ["B-02"]
+deliverable = "crates/clawdius-gateway/src/formatter.rs"
+verification = "Chunking tests for all platform limits"
+status = "pending"
+
+[[task]]
+id = "B-05"
+name = "RateLimiter (per-user, per-platform)"
+phase = "B"
+effort_days = 2
+depends_on = []
+deliverable = "crates/clawdius-gateway/src/rate_limit.rs"
+verification = "Rate limit unit tests"
+status = "pending"
+
+[[task]]
+id = "B-06"
+name = "Telegram adapter"
+phase = "B"
+effort_days = 4
+depends_on = ["B-03", "B-04"]
+deliverable = "crates/clawdius-gateway/src/adapters/telegram.rs"
+verification = "Integration test with mock Telegram API"
+status = "pending"
+
+[[task]]
+id = "B-07"
+name = "Discord adapter"
+phase = "B"
+effort_days = 4
+depends_on = ["B-03", "B-04"]
+deliverable = "crates/clawdius-gateway/src/adapters/discord.rs"
+verification = "Integration test with mock Discord API"
+status = "pending"
+
+[[task]]
+id = "B-08"
+name = "Slack adapter"
+phase = "B"
+effort_days = 4
+depends_on = ["B-03", "B-04"]
+deliverable = "crates/clawdius-gateway/src/adapters/slack.rs"
+verification = "Integration test with mock Slack API"
+status = "pending"
+
+[[task]]
+id = "B-09"
+name = "Matrix adapter"
+phase = "B"
+effort_days = 4
+depends_on = ["B-03", "B-04"]
+deliverable = "crates/clawdius-gateway/src/adapters/matrix.rs"
+verification = "Integration test with mock Matrix API"
+status = "pending"
+
+[[task]]
+id = "B-10"
+name = "Signal adapter"
+phase = "B"
+effort_days = 5
+depends_on = ["B-03", "B-04"]
+deliverable = "crates/clawdius-gateway/src/adapters/signal.rs"
+verification = "Integration test with mock Signal bridge"
+status = "pending"
+
+[[task]]
+id = "B-11"
+name = "Teams adapter"
+phase = "B"
+effort_days = 4
+depends_on = ["B-03", "B-04"]
+deliverable = "crates/clawdius-gateway/src/adapters/teams.rs"
+verification = "Integration test with mock Teams API"
+status = "pending"
+
+[[task]]
+id = "B-12"
+name = "WhatsApp adapter"
+phase = "B"
+effort_days = 3
+depends_on = ["B-03", "B-04"]
+deliverable = "crates/clawdius-gateway/src/adapters/whatsapp.rs"
+verification = "Integration test with mock WhatsApp API"
+status = "pending"
+
+[[task]]
+id = "B-13"
+name = "Rocket.Chat adapter"
+phase = "B"
+effort_days = 2
+depends_on = ["B-03", "B-04"]
+deliverable = "crates/clawdius-gateway/src/adapters/rocketchat.rs"
+verification = "Integration test with mock Rocket.Chat API"
+status = "pending"
+
+[[task]]
+id = "B-14"
+name = "Webhook adapter"
+phase = "B"
+effort_days = 2
+depends_on = ["B-03", "B-04"]
+deliverable = "crates/clawdius-gateway/src/adapters/webhook.rs"
+verification = "Integration test with mock webhook"
+status = "pending"
+
+[[task]]
+id = "B-15"
+name = "Mock platform for testing"
+phase = "B"
+effort_days = 2
+depends_on = ["B-02"]
+deliverable = "crates/clawdius-gateway/src/tests/mock_platform.rs"
+verification = "Mock passes adapter trait tests"
+status = "pending"
+
+[[task]]
+id = "B-16"
+name = "Integration test suite"
+phase = "B"
+effort_days = 3
+depends_on = ["B-06", "B-07", "B-08"]
+deliverable = "End-to-end adapter tests"
+verification = "All adapter tests pass"
+status = "pending"
+
+# ============================================================
+# Phase C: TUI Polish
+# ============================================================
+
+[[task]]
+id = "C-01"
+name = "ratatui app scaffold"
+phase = "C"
+effort_days = 3
+depends_on = []
+deliverable = "TUI app shell, event loop, terminal setup"
+verification = "cargo build -p clawdius --features tui"
+status = "pending"
+
+[[task]]
+id = "C-02"
+name = "Split pane layout"
+phase = "C"
+effort_days = 3
+depends_on = ["C-01"]
+deliverable = "Resizable horizontal/vertical splits"
+verification = "Manual test: panes resize with keys"
+status = "pending"
+
+[[task]]
+id = "C-03"
+name = "Chat pane component"
+phase = "C"
+effort_days = 4
+depends_on = ["C-01"]
+deliverable = "Message list, input box, scrollback"
+verification = "Manual test: messages render, input works"
+status = "pending"
+
+[[task]]
+id = "C-04"
+name = "Code pane component"
+phase = "C"
+effort_days = 4
+depends_on = ["C-01"]
+deliverable = "File viewer with syntax highlighting"
+verification = "Manual test: files render with colors"
+status = "pending"
+
+[[task]]
+id = "C-05"
+name = "Inline diff component"
+phase = "C"
+effort_days = 3
+depends_on = ["C-04"]
+deliverable = "Colored +/- diff, accept/reject"
+verification = "Manual test: diff shows, y/n works"
+status = "pending"
+
+[[task]]
+id = "C-06"
+name = "Session picker"
+phase = "C"
+effort_days = 2
+depends_on = ["C-03"]
+deliverable = "Popup list of sessions"
+verification = "Manual test: Ctrl+S opens picker"
+status = "pending"
+
+[[task]]
+id = "C-07"
+name = "Workspace switcher"
+phase = "C"
+effort_days = 2
+depends_on = ["C-03", "A-06"]
+deliverable = "Popup list of projects"
+verification = "Manual test: Ctrl+W opens switcher"
+status = "pending"
+
+[[task]]
+id = "C-08"
+name = "Status bar"
+phase = "C"
+effort_days = 2
+depends_on = ["C-01"]
+deliverable = "Model, tokens, phase, project"
+verification = "Manual test: status bar updates"
+status = "pending"
+
+[[task]]
+id = "C-09"
+name = "Vim keybindings"
+phase = "C"
+effort_days = 3
+depends_on = ["C-01"]
+deliverable = "Modal editing in input box"
+verification = "Manual test: i/Esc/Ctrl+C work"
+status = "pending"
+
+[[task]]
+id = "C-10"
+name = "Syntax highlighting"
+phase = "C"
+effort_days = 4
+depends_on = ["C-04"]
+deliverable = "tree-sitter integration"
+verification = "Rust, TS, Python, Go highlighted"
+status = "pending"
+
+[[task]]
+id = "C-11"
+name = "Mouse support"
+phase = "C"
+effort_days = 2
+depends_on = ["C-01"]
+deliverable = "Click, scroll, resize"
+verification = "Manual test: mouse works in terminal"
+status = "pending"
+
+[[task]]
+id = "C-12"
+name = "Theme system"
+phase = "C"
+effort_days = 2
+depends_on = ["C-01"]
+deliverable = "Dark/light, custom colors"
+verification = "Themes apply correctly"
+status = "pending"
+
+# ============================================================
+# Phase D: Deployment Infrastructure
+# ============================================================
+
+[[task]]
+id = "D-01"
+name = "Multi-stage Dockerfile"
+phase = "D"
+effort_days = 2
+depends_on = ["B-01"]
+deliverable = "Dockerfile, Dockerfile.gateway"
+verification = "docker build succeeds, <20MB image"
+status = "pending"
+
+[[task]]
+id = "D-02"
+name = "docker-compose.yml"
+phase = "D"
+effort_days = 1
+depends_on = ["D-01", "A-03"]
+deliverable = "Local dev stack: clawdius + Postgres + gateway"
+verification = "docker-compose up works end-to-end"
+status = "pending"
+
+[[task]]
+id = "D-03"
+name = "Helm chart"
+phase = "D"
+effort_days = 3
+depends_on = ["D-01"]
+deliverable = "helm/clawdius/"
+verification = "helm install on test cluster"
+status = "pending"
+
+[[task]]
+id = "D-04"
+name = "Terraform Hetzner module"
+phase = "D"
+effort_days = 3
+depends_on = []
+deliverable = "terraform/hetzner/"
+verification = "terraform plan/apply on Hetzner"
+status = "pending"
+
+[[task]]
+id = "D-05"
+name = "Terraform K3s module"
+phase = "D"
+effort_days = 2
+depends_on = ["D-04"]
+deliverable = "terraform/k3s/"
+verification = "K3s provisions and joins cluster"
+status = "pending"
+
+[[task]]
+id = "D-06"
+name = "Health checks + /metrics"
+phase = "D"
+effort_days = 2
+depends_on = ["B-01"]
+deliverable = "/health, /metrics endpoints"
+verification = "curl /health returns 200, /metrics returns Prometheus format"
+status = "pending"
+
+[[task]]
+id = "D-07"
+name = "0CVE baseline"
+phase = "D"
+effort_days = 2
+depends_on = ["D-01"]
+deliverable = "Pinned dependency versions, audit report"
+verification = "cargo audit shows 0 critical vulnerabilities"
+status = "pending"
+
+# ============================================================
+# Phase E: SaaS + Billing
+# ============================================================
+
+[[task]]
+id = "E-01"
+name = "Stripe integration"
+phase = "E"
+effort_days = 5
+depends_on = ["A-02", "D-02"]
+deliverable = "Subscription management, webhook handler"
+verification = "Stripe checkout creates subscription"
+status = "pending"
+
+[[task]]
+id = "E-02"
+name = "Usage metering"
+phase = "E"
+effort_days = 3
+depends_on = ["A-02"]
+deliverable = "Token counting per tenant, billing cycles"
+verification = "Usage records match actual token usage"
+status = "pending"
+
+[[task]]
+id = "E-03"
+name = "Admin REST API"
+phase = "E"
+effort_days = 5
+depends_on = ["A-02"]
+deliverable = "Tenant CRUD, usage reports, API keys"
+verification = "API endpoints tested with integration tests"
+status = "pending"
+
+[[task]]
+id = "E-04"
+name = "Web dashboard (React)"
+phase = "E"
+effort_days = 10
+depends_on = ["E-03"]
+deliverable = "Admin UI for tenant management"
+verification = "Dashboard renders, CRUD works"
+status = "pending"
+
+[[task]]
+id = "E-05"
+name = "Invoice generation"
+phase = "E"
+effort_days = 3
+depends_on = ["E-01"]
+deliverable = "PDF invoices via Stripe"
+verification = "Invoice PDF generates correctly"
+status = "pending"
+
+# ============================================================
+# Phase F: Enterprise Hardening
+# ============================================================
+
+[[task]]
+id = "F-01"
+name = "Compliance artifact generator"
+phase = "F"
+effort_days = 7
+depends_on = []
+deliverable = "Lean4 proofs → STIG/DISA/OWASP evidence"
+verification = "Generated artifacts pass manual audit"
+status = "pending"
+
+[[task]]
+id = "F-02"
+name = "Air-gapped mode"
+phase = "F"
+effort_days = 5
+depends_on = ["A-02", "D-01"]
+deliverable = "Vendored deps, local-only, no outbound"
+verification = "Runs with network disabled"
+status = "pending"
+
+[[task]]
+id = "F-03"
+name = "Encryption at rest"
+phase = "F"
+effort_days = 3
+depends_on = ["A-02"]
+deliverable = "AES-256 for sessions, messages, audit"
+verification = "Encrypted data unreadable without key"
+status = "pending"
+
+[[task]]
+id = "F-04"
+name = "SOC2 Type I prep"
+phase = "F"
+effort_days = 10
+depends_on = ["E-01", "D-06"]
+deliverable = "Access review, incident response, change management docs"
+verification = "SOC2 consultant review"
+status = "pending"
+
+[[task]]
+id = "F-05"
+name = "FedRAMP artifacts"
+phase = "F"
+effort_days = 0
+depends_on = ["F-04"]
+deliverable = "Continuous compliance documentation"
+verification = "Ongoing"
+status = "pending"
