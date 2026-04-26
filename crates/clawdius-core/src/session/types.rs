@@ -230,6 +230,31 @@ pub enum MessageRole {
     Tool,
 }
 
+impl MessageRole {
+    /// Convert to string for database storage.
+    #[must_use]
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::System => "system",
+            Self::User => "user",
+            Self::Assistant => "assistant",
+            Self::Tool => "tool",
+        }
+    }
+
+    /// Parse from string (database value).
+    #[must_use]
+    pub fn parse_role(s: &str) -> Self {
+        match s {
+            "system" => Self::System,
+            "user" => Self::User,
+            "assistant" => Self::Assistant,
+            "tool" => Self::Tool,
+            _ => Self::User,
+        }
+    }
+}
+
 /// Message content
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
