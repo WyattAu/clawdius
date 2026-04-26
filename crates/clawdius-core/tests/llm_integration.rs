@@ -9,6 +9,7 @@ use std::time::Duration;
 
 mod provider_config_tests {
     use super::*;
+    use clawdius_core::llm::LlmClient;
 
     fn create_chat_message(
         role: clawdius_core::llm::ChatRole,
