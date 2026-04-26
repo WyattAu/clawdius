@@ -3,12 +3,13 @@
 # Format: TOML (not JSON/YAML per project convention)
 
 [metadata]
-version = "1.0.0"
+version = "1.1.0"
 created = "2026-04-26"
+revised = "2026-04-26"
 author = "Nexus"
-total_tasks = 56
-critical_path_weeks = 19
-parallel_weeks = 27
+total_tasks = 59
+critical_path_weeks = 20
+parallel_weeks = 28
 
 # ============================================================
 # Phase A: Storage Abstraction + Multi-Codebase
@@ -18,17 +19,18 @@ parallel_weeks = 27
 id = "A-01"
 name = "Extract StorageBackend trait"
 phase = "A"
-effort_days = 3
+effort_days = 6
 depends_on = []
 deliverable = "crates/clawdius-core/src/storage/mod.rs"
 verification = "cargo test -p clawdius-core -- storage"
+notes = "Revised: 18 rusqlite call sites + row-to-model mapping to abstract"
 status = "pending"
 
 [[task]]
 id = "A-02"
 name = "Migrate SessionStore to trait"
 phase = "A"
-effort_days = 2
+effort_days = 3
 depends_on = ["A-01"]
 deliverable = "Refactored crates/clawdius-core/src/session/store.rs"
 verification = "cargo test -p clawdius-core -- session"
@@ -88,10 +90,11 @@ status = "pending"
 id = "A-08"
 name = "Tool calls with project_id"
 phase = "A"
-effort_days = 2
+effort_days = 3
 depends_on = ["A-06"]
 deliverable = "Tool executor + parser changes"
 verification = "Tool calls route to correct project sandbox"
+notes = "Revised: tool executor interface change is non-trivial"
 status = "pending"
 
 [[task]]
@@ -112,6 +115,28 @@ effort_days = 2
 depends_on = ["A-02", "A-03", "A-04"]
 deliverable = "Test suite for all backends"
 verification = "All storage tests pass"
+status = "pending"
+
+[[task]]
+id = "A-11"
+name = "Migrate api/ layer to storage trait"
+phase = "A"
+effort_days = 3
+depends_on = ["A-01"]
+deliverable = "REST API handlers use StorageBackend instead of HashMap"
+verification = "cargo test -p clawdius-core -- api"
+notes = "NEW: 7.5K lines api/ depends on in-memory stores; migrate to trait"
+status = "pending"
+
+[[task]]
+id = "A-12"
+name = "Clean up HFT signal_dispatch stubs"
+phase = "A"
+effort_days = 1
+depends_on = []
+deliverable = "Remove or repurpose src/signal_dispatch.rs"
+verification = "No dead code referencing HFT trading"
+notes = "NEW: 379-line HFT stub with logging-only sends"
 status = "pending"
 
 # ============================================================
@@ -402,6 +427,17 @@ deliverable = "Dark/light, custom colors"
 verification = "Themes apply correctly"
 status = "pending"
 
+[[task]]
+id = "C-13"
+name = "Clean up TODO/FIXME comments"
+phase = "C"
+effort_days = 2
+depends_on = []
+deliverable = "Resolve 60 TODOs, especially completion.rs (9)"
+verification = "rg 'TODO|FIXME' crates/ | wc -l reduced"
+notes = "NEW: technical debt cleanup, completion.rs has 9 TODOs"
+status = "pending"
+
 # ============================================================
 # Phase D: Deployment Infrastructure
 # ============================================================
@@ -582,4 +618,15 @@ effort_days = 0
 depends_on = ["F-04"]
 deliverable = "Continuous compliance documentation"
 verification = "Ongoing"
+status = "pending"
+
+[[task]]
+id = "F-06"
+name = "Air-gapped installation mode"
+phase = "F"
+effort_days = 2
+depends_on = ["D-03"]
+deliverable = "Pre-baked vendor bundle, offline activation"
+verification = "Full install with no internet access"
+notes = "NEW: enterprise requirement for classified/SCIF environments"
 status = "pending"

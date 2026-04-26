@@ -1,11 +1,19 @@
 # Clawdius Master Roadmap
 
 **Document ID:** ROADMAP-001
-**Version:** 1.0.0
-**Status:** APPROVED
+**Version:** 1.1.0
+**Status:** APPROVED (revised after codebase validation)
 **Created:** 2026-04-26
+**Revised:** 2026-04-26
 **Author:** Nexus (Principal Systems Architect)
-**Traceability:** REQ-MSG-001, BP-MSG-GATEWAY-001, MASTER_COMPETITIVE_ANALYSIS
+**Traceability:** REQ-MSG-001, BP-MSG-GATEWAY-001, COMP-MATRIX-001, VALIDATION-001
+
+### Revision History
+
+| Version | Date | Change |
+|---------|------|--------|
+| 1.0.0 | 2026-04-26 | Initial roadmap |
+| 1.1.0 | 2026-04-26 | Post-validation adjustments: A-01 +3d (rusqlite coupling deeper), A-08 +1d (tool interface), added A-11 (api/ migration), A-12 (HFT stub cleanup), C-13 (TODO cleanup), F-06 (stub audit); total +10d
 
 ---
 
@@ -297,20 +305,22 @@ signing_secret = ""
 
 #### A.5: Task Breakdown
 
-| ID | Task | Effort | Depends On | Deliverable |
-|----|------|--------|------------|-------------|
-| A-01 | Extract `StorageBackend` trait | 3d | — | `crates/clawdius-core/src/storage/mod.rs`, trait definition |
-| A-02 | Migrate `SessionStore` to trait | 2d | A-01 | Refactored session/store.rs |
-| A-03 | Implement `PostgresBackend` | 3d | A-01 | `crates/clawdius-core/src/storage/postgres.rs` |
-| A-04 | Implement `MariaDbBackend` | 2d | A-01 | `crates/clawdius-core/src/storage/mariadb.rs` |
-| A-05 | Add workspace/project schema | 2d | A-01 | Schema migrations for all backends |
-| A-06 | Workspace + Project models | 2d | A-05 | `crates/clawdius-core/src/workspace/` module |
-| A-07 | Multi-repo context injection | 3d | A-06 | Sprint engine context builder change |
-| A-08 | Tool calls with project_id | 2d | A-06 | Tool executor + parser changes |
-| A-09 | `.clawdius.toml` config | 2d | A-01, A-06 | Config loading, CLI integration |
-| A-10 | Storage integration tests | 2d | A-02, A-03, A-04 | Test suite for all backends |
+| ID | Task | Effort | Depends On | Deliverable | Notes |
+|----|------|--------|------------|-------------|-------|
+| A-01 | Extract `StorageBackend` trait | 6d | — | `crates/clawdius-core/src/storage/mod.rs`, trait definition | Revised: 18 rusqlite call sites + row mapping to abstract (validated) |
+| A-02 | Migrate `SessionStore` to trait | 3d | A-01 | Refactored session/store.rs | Revised: 3d with clean trait boundary |
+| A-03 | Implement `PostgresBackend` | 3d | A-01 | `crates/clawdius-core/src/storage/postgres.rs` | |
+| A-04 | Implement `MariaDbBackend` | 2d | A-01 | `crates/clawdius-core/src/storage/mariadb.rs` | |
+| A-05 | Add workspace/project schema | 2d | A-01 | Schema migrations for all backends | |
+| A-06 | Workspace + Project models | 2d | A-05 | `crates/clawdius-core/src/workspace/` module | |
+| A-07 | Multi-repo context injection | 3d | A-06 | Sprint engine context builder change | |
+| A-08 | Tool calls with project_id | 3d | A-06 | Tool executor + parser changes | Revised: tool executor interface change is non-trivial |
+| A-09 | `.clawdius.toml` config | 2d | A-01, A-06 | Config loading, CLI integration | |
+| A-10 | Storage integration tests | 2d | A-02, A-03, A-04 | Test suite for all backends | |
+| A-11 | Migrate api/ layer to storage trait | 3d | A-01 | REST API handlers use StorageBackend | NEW: 7.5K lines api/ depends on in-memory stores |
+| A-12 | Clean up HFT signal_dispatch stubs | 1d | — | Remove or repurpose signal_dispatch.rs | NEW: 379-line HFT stub with logging-only sends |
 
-**Total: ~21 working days (3-4 weeks)**
+**Total: ~32 working days (4-5 weeks)**
 
 ---
 
@@ -526,6 +536,7 @@ same session and chat history.
 | C-10 | Syntax highlighting | 4d | C-04 | tree-sitter integration |
 | C-11 | Mouse support | 2d | C-01 | Click, scroll, resize |
 | C-12 | Theme system | 2d | C-01 | Dark/light, custom colors |
+| C-13 | Clean up TODO/FIXME comments | 2d | — | Resolve 60 TODOs, especially completion.rs (9) |
 
 **Total: ~34 working days (3-4 weeks)**
 
@@ -639,6 +650,8 @@ Total (parallel): ~20-27 weeks
 | TUI complexity (ratatui learning curve) | Medium | Low | Start with simple layout, iterate |
 | Competitor releases similar feature | Medium | Medium | Speed via Rust performance, depth via formal verification |
 | OpenCode file reversion during development | High | Low | Git-based workflow, CI/CD, avoid concurrent agent access |
+| rusqlite coupling deeper than estimated | High | Low | A-01 revised to 6d; trait extraction is well-scoped |
+| api/ layer migration scope hidden | Medium | Medium | A-11 explicitly migrates 7.5K-line api/ module |
 
 ---
 
@@ -668,3 +681,4 @@ Total (parallel): ~20-27 weeks
 | Message routing latency (P99) | N/A | <1ms | Benchmark suite |
 | Platforms supported | 0 | 9 | Adapter count |
 | Storage backends | 1 (SQLite) | 4 (SQLite, Postgres, MariaDB, InMemory) | Backend count |
+| Total roadmap tasks | 56 | 59 | master_plan.toml |
