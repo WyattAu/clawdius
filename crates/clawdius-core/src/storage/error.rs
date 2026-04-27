@@ -62,6 +62,32 @@ impl StorageError {
     }
 }
 
+#[cfg(feature = "postgres")]
+impl From<tokio_postgres::Error> for StorageError {
+    fn from(err: tokio_postgres::Error) -> Self {
+        let msg = err.to_string();
+        if let Some(db_err) = err.as_db_error() {
+            if db_err.code() == &tokio_postgres::error::SqlState::UNIQUE_VIOLATION {
+                return Self::UniqueViolation {
+                    table: "unknown",
+                    column: "unknown",
+                    value: msg,
+                };
+            }
+            if db_err.code() == &tokio_postgres::error::SqlState::FOREIGN_KEY_VIOLATION {
+                return Self::ForeignKeyViolation {
+                    table: "unknown",
+                    references: "unknown",
+                };
+            }
+        }
+        Self::Query {
+            statement: "unknown".to_string(),
+            reason: msg,
+        }
+    }
+}
+
 impl From<rusqlite::Error> for StorageError {
     fn from(err: rusqlite::Error) -> Self {
         let msg = err.to_string();

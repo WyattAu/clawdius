@@ -25,6 +25,8 @@
 mod backend;
 mod error;
 mod in_memory;
+#[cfg(feature = "postgres")]
+mod postgres;
 mod sqlite;
 
 pub use backend::{
@@ -32,4 +34,6 @@ pub use backend::{
 };
 pub use error::StorageError;
 pub use in_memory::InMemoryBackend;
+#[cfg(feature = "postgres")]
+pub use postgres::PostgresBackend;
 pub use sqlite::SqliteBackend;
