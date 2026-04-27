@@ -1,0 +1,84 @@
+{
+  "current_phase": null,
+  "phase_results": [
+    {
+      "phase": "Think",
+      "status": "Success",
+      "output": "[Error: Web stream error for model 'openai/gpt-oss-20b:free (adapter: OpenAI)'.\nCause: HTTP error.\nStatus: 429 Too Many Requests Too Many Requests\nBody: {\"error\":{\"message\":\"Provider returned error\",\"code\":429,\"metadata\":{\"raw\":\"openai/gpt-oss-20b:free is temporarily rate-limited upstream. Please retry shortly, or add your own key to accumulate your rate limits: https://openrouter.ai/settings/integrations\",\"provider_name\":\"OpenInference\",\"is_byok\":false}},\"user_id\":\"user_3CSZpOXpg0I4vPHqxZzrcd2W2L9\"}]",
+      "duration_ms": 1834,
+      "files_modified": [],
+      "errors": [],
+      "tokens_used": 42
+    },
+    {
+      "phase": "Plan",
+      "status": "Success",
+      "output": "A sprint engine is a lightweight, automatic workflow orchestrator that transforms a collection of user‑defined atomic jobs (functions, scripts, or API calls) into a directed acyclic graph (DAG) and manages their execution. It discovers data dependencies between jobs, schedules them for parallel or sequential runs based on those dependencies, and monitors each job’s status, retries any failures, and caches intermediate results. The engine also exposes a minimal API for triggering runs, inspecting progress, and debugging, allowing teams to focus on crafting the individual jobs while the sprint engine guarantees correct, efficient, and reproducible execution of the entire pipeline.",
+      "duration_ms": 4734,
+      "files_modified": [],
+      "errors": [],
+      "tokens_used": 98
+    },
+    {
+      "phase": "Build",
+      "status": "Success",
+      "output": "A sprint engine is a lightweight, automatic workflow orchestrator that takes a set of user‑defined atomic jobs—such as functions, scripts, or API calls—and turns them into a directed acyclic graph (DAG). It automatically identifies data dependencies between those jobs, schedules them for parallel or sequential execution accordingly, and manages each job’s lifecycle: tracking status, performing retries on failure, and caching intermediate results. Additionally, the engine offers a minimal API for triggering runs, inspecting progress, and debugging, so teams can concentrate on crafting the individual jobs while the sprint engine guarantees that the entire pipeline executes correctly, efficiently, and reproducibly.",
+      "duration_ms": 6027,
+      "files_modified": [],
+      "errors": [],
+      "tokens_used": 99
+    },
+    {
+      "phase": "Review",
+      "status": "Success",
+      "output": "**Sprint Engine (one‑paragraph explanation)**  \nA sprint engine is a lightweight, automatic workflow orchestrator that takes a set of user‑defined atomic jobs—such as functions, scripts, or API calls—and turns them into a directed‑acyclic‑graph (DAG). It automatically discovers the data dependencies between those jobs, schedules them for parallel or sequential execution accordingly, and manages each job’s lifecycle: tracking status, performing retries on failure, and caching intermediate results. Additionally, the engine offers a minimal API for triggering runs, inspecting progress, and debugging, so teams can focus on crafting the individual jobs while the sprint engine guarantees that the entire pipeline executes correctly, efficiently, and reproducibly.",
+      "duration_ms": 6073,
+      "files_modified": [],
+      "errors": [],
+      "tokens_used": 102
+    },
+    {
+      "phase": "Test",
+      "status": "Success",
+      "output": "[Error: Web stream error for model 'openai/gpt-oss-20b:free (adapter: OpenAI)'.\nCause: HTTP error.\nStatus: 429 Too Many Requests Too Many Requests\nBody: {\"error\":{\"message\":\"Provider returned error\",\"code\":429,\"metadata\":{\"raw\":\"openai/gpt-oss-20b:free is temporarily rate-limited upstream. Please retry shortly, or add your own key to accumulate your rate limits: https://openrouter.ai/settings/integrations\",\"provider_name\":\"OpenInference\",\"is_byok\":false}},\"user_id\":\"user_3CSZpOXpg0I4vPHqxZzrcd2W2L9\"}]",
+      "duration_ms": 773,
+      "files_modified": [],
+      "errors": [],
+      "tokens_used": 42
+    },
+    {
+      "phase": "Ship",
+      "status": "Success",
+      "output": "A sprint engine is a lightweight, automated workflow orchestrator that turns a collection of user‑defined atomic jobs—such as functions, scripts, or API calls—into a directed acyclic graph (DAG). It automatically discovers data dependencies between these jobs, schedules them for parallel or sequential execution as appropriate, and manages each job’s lifecycle by tracking status, retrying failures, and caching intermediate results. Its minimal API exposes hooks for triggering runs, monitoring progress, and debugging, allowing teams to focus on writing the individual tasks while the engine guarantees the entire pipeline runs correctly, efficiently, and reproducibly.",
+      "duration_ms": 4860,
+      "files_modified": [],
+      "errors": [],
+      "tokens_used": 92
+    },
+    {
+      "phase": "Reflect",
+      "status": "Success",
+      "output": "[Error: Web stream error for model 'openai/gpt-oss-20b:free (adapter: OpenAI)'.\nCause: HTTP error.\nStatus: 429 Too Many Requests Too Many Requests\nBody: {\"error\":{\"message\":\"Provider returned error\",\"code\":429,\"metadata\":{\"raw\":\"openai/gpt-oss-20b:free is temporarily rate-limited upstream. Please retry shortly, or add your own key to accumulate your rate limits: https://openrouter.ai/settings/integrations\",\"provider_name\":\"OpenInference\",\"is_byok\":false}},\"user_id\":\"user_3CSZpOXpg0I4vPHqxZzrcd2W2L9\"}]",
+      "duration_ms": 796,
+      "files_modified": [],
+      "errors": [],
+      "tokens_used": 42
+    }
+  ],
+  "context_accumulator": "\n\n=== Think Phase ===\n[Error: Web stream error for model 'openai/gpt-oss-20b:free (adapter: OpenAI)'.\nCause: HTTP error.\nStatus: 429 Too Many Requests Too Many Requests\nBody: {\"error\":{\"message\":\"Provider returned error\",\"code\":429,\"metadata\":{\"raw\":\"openai/gpt-oss-20b:free is temporarily rate-limited upstream. Please retry shortly, or add your own key to accumulate your rate limits: https://openrouter.ai/settings/integrations\",\"provider_name\":\"OpenInference\",\"is_byok\":false}},\"user_id\":\"user_3CSZpOXpg0I4vPHqxZzrcd2W2L9\"}]\n\n\n=== Plan Phase ===\nA sprint engine is a lightweight, automatic workflow orchestrator that transforms a collection of user‑defined atomic jobs (functions, scripts, or API calls) into a directed acyclic graph (DAG) and manages their execution. It discovers data dependencies between jobs, schedules them for parallel or sequential runs based on those dependencies, and monitors each job’s status, retries any failures, and caches intermediate results. The engine also exposes a minimal API for triggering runs, inspecting progress, and debugging, allowing teams to focus on crafting the individual jobs while the sprint engine guarantees correct, efficient, and reproducible execution of the entire pipeline.\n\n\n=== Build Phase ===\nA sprint engine is a lightweight, automatic workflow orchestrator that takes a set of user‑defined atomic jobs—such as functions, scripts, or API calls—and turns them into a directed acyclic graph (DAG). It automatically identifies data dependencies between those jobs, schedules them for parallel or sequential execution accordingly, and manages each job’s lifecycle: tracking status, performing retries on failure, and caching intermediate results. Additionally, the engine offers a minimal API for triggering runs, inspecting progress, and debugging, so teams can concentrate on crafting the individual jobs while the sprint engine guarantees that the entire pipeline executes correctly, efficiently, and reproducibly.\n\n\n=== Review Phase ===\n**Sprint Engine (one‑paragraph explanation)**  \nA sprint engine is a lightweight, automatic workflow orchestrator that takes a set of user‑defined atomic jobs—such as functions, scripts, or API calls—and turns them into a directed‑acyclic‑graph (DAG). It automatically discovers the data dependencies between those jobs, schedules them for parallel or sequential execution accordingly, and manages each job’s lifecycle: tracking status, performing retries on failure, and caching intermediate results. Additionally, the engine offers a minimal API for triggering runs, inspecting progress, and debugging, so teams can focus on crafting the individual jobs while the sprint engine guarantees that the entire pipeline executes correctly, efficiently, and reproducibly.\n\n\n=== Test Phase ===\n[Error: Web stream error for model 'openai/gpt-oss-20b:free (adapter: OpenAI)'.\nCause: HTTP error.\nStatus: 429 Too Many Requests Too Many Requests\nBody: {\"error\":{\"message\":\"Provider returned error\",\"code\":429,\"metadata\":{\"raw\":\"openai/gpt-oss-20b:free is temporarily rate-limited upstream. Please retry shortly, or add your own key to accumulate your rate limits: https://openrouter.ai/settings/integrations\",\"provider_name\":\"OpenInference\",\"is_byok\":false}},\"user_id\":\"user_3CSZpOXpg0I4vPHqxZzrcd2W2L9\"}]\n\n\n=== Ship Phase ===\nA sprint engine is a lightweight, automated workflow orchestrator that turns a collection of user‑defined atomic jobs—such as functions, scripts, or API calls—into a directed acyclic graph (DAG). It automatically discovers data dependencies between these jobs, schedules them for parallel or sequential execution as appropriate, and manages each job’s lifecycle by tracking status, retrying failures, and caching intermediate results. Its minimal API exposes hooks for triggering runs, monitoring progress, and debugging, allowing teams to focus on writing the individual tasks while the engine guarantees the entire pipeline runs correctly, efficiently, and reproducibly.\n\n\n=== Reflect Phase ===\n[Error: Web stream error for model 'openai/gpt-oss-20b:free (adapter: OpenAI)'.\nCause: HTTP error.\nStatus: 429 Too Many Requests Too Many Requests\nBody: {\"error\":{\"message\":\"Provider returned error\",\"code\":429,\"metadata\":{\"raw\":\"openai/gpt-oss-20b:free is temporarily rate-limited upstream. Please retry shortly, or add your own key to accumulate your rate limits: https://openrouter.ai/settings/integrations\",\"provider_name\":\"OpenInference\",\"is_byok\":false}},\"user_id\":\"user_3CSZpOXpg0I4vPHqxZzrcd2W2L9\"}]\n",
+  "started_at": "2026-04-19T15:30:39.101734687Z",
+  "config": {
+    "task_description": "Explain what a sprint engine does in one paragraph",
+    "project_root": "/home/wyatt/dev/src/github.com/WyattAu/clawdius",
+    "auto_approve": false,
+    "skip_phases": [],
+    "max_iterations": 1,
+    "model": "openai/gpt-oss-20b:free",
+    "build_command": "cargo build 2>&1",
+    "test_command": "cargo test --lib 2>&1",
+    "real_execution": false,
+    "browser_qa_url": null,
+    "reviewers": []
+  },
+  "checkpoint_ref": "stash@{0}"
+}

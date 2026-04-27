@@ -1,0 +1,10 @@
+name = "clawdius"
+version = "0.1.0"
+defaultTargets = ["clawdius"]
+
+[[lean_lib]]
+name = "Clawdius"
+
+[[lean_exe]]
+name = "clawdius"
+root = "Main"

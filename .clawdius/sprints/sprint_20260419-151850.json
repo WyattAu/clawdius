@@ -1,0 +1,84 @@
+{
+  "current_phase": null,
+  "phase_results": [
+    {
+      "phase": "Think",
+      "status": "Success",
+      "output": "[Error: Web stream error for model 'google/gemma-3-4b-it:free (adapter: OpenAI)'.\nCause: HTTP error.\nStatus: 400 Bad Request Bad Request\nBody: {\"error\":{\"message\":\"Provider returned error\",\"code\":400,\"metadata\":{\"raw\":\"{\\n  \\\"error\\\": {\\n    \\\"code\\\": 400,\\n    \\\"message\\\": \\\"Developer instruction is not enabled for models/gemma-3-4b-it\\\",\\n    \\\"status\\\": \\\"INVALID_ARGUMENT\\\"\\n  }\\n}\\n\",\"provider_name\":\"Google AI Studio\",\"is_byok\":false}},\"user_id\":\"user_3CSZpOXpg0I4vPHqxZzrcd2W2L9\"}]",
+      "duration_ms": 303,
+      "files_modified": [],
+      "errors": [],
+      "tokens_used": 39
+    },
+    {
+      "phase": "Plan",
+      "status": "Success",
+      "output": "[Error: Web stream error for model 'google/gemma-3-4b-it:free (adapter: OpenAI)'.\nCause: HTTP error.\nStatus: 400 Bad Request Bad Request\nBody: {\"error\":{\"message\":\"Provider returned error\",\"code\":400,\"metadata\":{\"raw\":\"{\\n  \\\"error\\\": {\\n    \\\"code\\\": 400,\\n    \\\"message\\\": \\\"Developer instruction is not enabled for models/gemma-3-4b-it\\\",\\n    \\\"status\\\": \\\"INVALID_ARGUMENT\\\"\\n  }\\n}\\n\",\"provider_name\":\"Google AI Studio\",\"is_byok\":false}},\"user_id\":\"user_3CSZpOXpg0I4vPHqxZzrcd2W2L9\"}]",
+      "duration_ms": 296,
+      "files_modified": [],
+      "errors": [],
+      "tokens_used": 39
+    },
+    {
+      "phase": "Build",
+      "status": "Success",
+      "output": "[Error: Web stream error for model 'google/gemma-3-4b-it:free (adapter: OpenAI)'.\nCause: HTTP error.\nStatus: 400 Bad Request Bad Request\nBody: {\"error\":{\"message\":\"Provider returned error\",\"code\":400,\"metadata\":{\"raw\":\"{\\n  \\\"error\\\": {\\n    \\\"code\\\": 400,\\n    \\\"message\\\": \\\"Developer instruction is not enabled for models/gemma-3-4b-it\\\",\\n    \\\"status\\\": \\\"INVALID_ARGUMENT\\\"\\n  }\\n}\\n\",\"provider_name\":\"Google AI Studio\",\"is_byok\":false}},\"user_id\":\"user_3CSZpOXpg0I4vPHqxZzrcd2W2L9\"}]",
+      "duration_ms": 291,
+      "files_modified": [],
+      "errors": [],
+      "tokens_used": 39
+    },
+    {
+      "phase": "Review",
+      "status": "Success",
+      "output": "[Error: Web stream error for model 'google/gemma-3-4b-it:free (adapter: OpenAI)'.\nCause: HTTP error.\nStatus: 400 Bad Request Bad Request\nBody: {\"error\":{\"message\":\"Provider returned error\",\"code\":400,\"metadata\":{\"raw\":\"{\\n  \\\"error\\\": {\\n    \\\"code\\\": 400,\\n    \\\"message\\\": \\\"Developer instruction is not enabled for models/gemma-3-4b-it\\\",\\n    \\\"status\\\": \\\"INVALID_ARGUMENT\\\"\\n  }\\n}\\n\",\"provider_name\":\"Google AI Studio\",\"is_byok\":false}},\"user_id\":\"user_3CSZpOXpg0I4vPHqxZzrcd2W2L9\"}]",
+      "duration_ms": 307,
+      "files_modified": [],
+      "errors": [],
+      "tokens_used": 39
+    },
+    {
+      "phase": "Test",
+      "status": "Success",
+      "output": "[Error: Web stream error for model 'google/gemma-3-4b-it:free (adapter: OpenAI)'.\nCause: HTTP error.\nStatus: 400 Bad Request Bad Request\nBody: {\"error\":{\"message\":\"Provider returned error\",\"code\":400,\"metadata\":{\"raw\":\"{\\n  \\\"error\\\": {\\n    \\\"code\\\": 400,\\n    \\\"message\\\": \\\"Developer instruction is not enabled for models/gemma-3-4b-it\\\",\\n    \\\"status\\\": \\\"INVALID_ARGUMENT\\\"\\n  }\\n}\\n\",\"provider_name\":\"Google AI Studio\",\"is_byok\":false}},\"user_id\":\"user_3CSZpOXpg0I4vPHqxZzrcd2W2L9\"}]",
+      "duration_ms": 318,
+      "files_modified": [],
+      "errors": [],
+      "tokens_used": 39
+    },
+    {
+      "phase": "Ship",
+      "status": "Success",
+      "output": "[Error: Web stream error for model 'google/gemma-3-4b-it:free (adapter: OpenAI)'.\nCause: HTTP error.\nStatus: 400 Bad Request Bad Request\nBody: {\"error\":{\"message\":\"Provider returned error\",\"code\":400,\"metadata\":{\"raw\":\"{\\n  \\\"error\\\": {\\n    \\\"code\\\": 400,\\n    \\\"message\\\": \\\"Developer instruction is not enabled for models/gemma-3-4b-it\\\",\\n    \\\"status\\\": \\\"INVALID_ARGUMENT\\\"\\n  }\\n}\\n\",\"provider_name\":\"Google AI Studio\",\"is_byok\":false}},\"user_id\":\"user_3CSZpOXpg0I4vPHqxZzrcd2W2L9\"}]",
+      "duration_ms": 296,
+      "files_modified": [],
+      "errors": [],
+      "tokens_used": 39
+    },
+    {
+      "phase": "Reflect",
+      "status": "Success",
+      "output": "[Error: Web stream error for model 'google/gemma-3-4b-it:free (adapter: OpenAI)'.\nCause: HTTP error.\nStatus: 400 Bad Request Bad Request\nBody: {\"error\":{\"message\":\"Provider returned error\",\"code\":400,\"metadata\":{\"raw\":\"{\\n  \\\"error\\\": {\\n    \\\"code\\\": 400,\\n    \\\"message\\\": \\\"Developer instruction is not enabled for models/gemma-3-4b-it\\\",\\n    \\\"status\\\": \\\"INVALID_ARGUMENT\\\"\\n  }\\n}\\n\",\"provider_name\":\"Google AI Studio\",\"is_byok\":false}},\"user_id\":\"user_3CSZpOXpg0I4vPHqxZzrcd2W2L9\"}]",
+      "duration_ms": 390,
+      "files_modified": [],
+      "errors": [],
+      "tokens_used": 39
+    }
+  ],
+  "context_accumulator": "\n\n=== Think Phase ===\n[Error: Web stream error for model 'google/gemma-3-4b-it:free (adapter: OpenAI)'.\nCause: HTTP error.\nStatus: 400 Bad Request Bad Request\nBody: {\"error\":{\"message\":\"Provider returned error\",\"code\":400,\"metadata\":{\"raw\":\"{\\n  \\\"error\\\": {\\n    \\\"code\\\": 400,\\n    \\\"message\\\": \\\"Developer instruction is not enabled for models/gemma-3-4b-it\\\",\\n    \\\"status\\\": \\\"INVALID_ARGUMENT\\\"\\n  }\\n}\\n\",\"provider_name\":\"Google AI Studio\",\"is_byok\":false}},\"user_id\":\"user_3CSZpOXpg0I4vPHqxZzrcd2W2L9\"}]\n\n\n=== Plan Phase ===\n[Error: Web stream error for model 'google/gemma-3-4b-it:free (adapter: OpenAI)'.\nCause: HTTP error.\nStatus: 400 Bad Request Bad Request\nBody: {\"error\":{\"message\":\"Provider returned error\",\"code\":400,\"metadata\":{\"raw\":\"{\\n  \\\"error\\\": {\\n    \\\"code\\\": 400,\\n    \\\"message\\\": \\\"Developer instruction is not enabled for models/gemma-3-4b-it\\\",\\n    \\\"status\\\": \\\"INVALID_ARGUMENT\\\"\\n  }\\n}\\n\",\"provider_name\":\"Google AI Studio\",\"is_byok\":false}},\"user_id\":\"user_3CSZpOXpg0I4vPHqxZzrcd2W2L9\"}]\n\n\n=== Build Phase ===\n[Error: Web stream error for model 'google/gemma-3-4b-it:free (adapter: OpenAI)'.\nCause: HTTP error.\nStatus: 400 Bad Request Bad Request\nBody: {\"error\":{\"message\":\"Provider returned error\",\"code\":400,\"metadata\":{\"raw\":\"{\\n  \\\"error\\\": {\\n    \\\"code\\\": 400,\\n    \\\"message\\\": \\\"Developer instruction is not enabled for models/gemma-3-4b-it\\\",\\n    \\\"status\\\": \\\"INVALID_ARGUMENT\\\"\\n  }\\n}\\n\",\"provider_name\":\"Google AI Studio\",\"is_byok\":false}},\"user_id\":\"user_3CSZpOXpg0I4vPHqxZzrcd2W2L9\"}]\n\n\n=== Review Phase ===\n[Error: Web stream error for model 'google/gemma-3-4b-it:free (adapter: OpenAI)'.\nCause: HTTP error.\nStatus: 400 Bad Request Bad Request\nBody: {\"error\":{\"message\":\"Provider returned error\",\"code\":400,\"metadata\":{\"raw\":\"{\\n  \\\"error\\\": {\\n    \\\"code\\\": 400,\\n    \\\"message\\\": \\\"Developer instruction is not enabled for models/gemma-3-4b-it\\\",\\n    \\\"status\\\": \\\"INVALID_ARGUMENT\\\"\\n  }\\n}\\n\",\"provider_name\":\"Google AI Studio\",\"is_byok\":false}},\"user_id\":\"user_3CSZpOXpg0I4vPHqxZzrcd2W2L9\"}]\n\n\n=== Test Phase ===\n[Error: Web stream error for model 'google/gemma-3-4b-it:free (adapter: OpenAI)'.\nCause: HTTP error.\nStatus: 400 Bad Request Bad Request\nBody: {\"error\":{\"message\":\"Provider returned error\",\"code\":400,\"metadata\":{\"raw\":\"{\\n  \\\"error\\\": {\\n    \\\"code\\\": 400,\\n    \\\"message\\\": \\\"Developer instruction is not enabled for models/gemma-3-4b-it\\\",\\n    \\\"status\\\": \\\"INVALID_ARGUMENT\\\"\\n  }\\n}\\n\",\"provider_name\":\"Google AI Studio\",\"is_byok\":false}},\"user_id\":\"user_3CSZpOXpg0I4vPHqxZzrcd2W2L9\"}]\n\n\n=== Ship Phase ===\n[Error: Web stream error for model 'google/gemma-3-4b-it:free (adapter: OpenAI)'.\nCause: HTTP error.\nStatus: 400 Bad Request Bad Request\nBody: {\"error\":{\"message\":\"Provider returned error\",\"code\":400,\"metadata\":{\"raw\":\"{\\n  \\\"error\\\": {\\n    \\\"code\\\": 400,\\n    \\\"message\\\": \\\"Developer instruction is not enabled for models/gemma-3-4b-it\\\",\\n    \\\"status\\\": \\\"INVALID_ARGUMENT\\\"\\n  }\\n}\\n\",\"provider_name\":\"Google AI Studio\",\"is_byok\":false}},\"user_id\":\"user_3CSZpOXpg0I4vPHqxZzrcd2W2L9\"}]\n\n\n=== Reflect Phase ===\n[Error: Web stream error for model 'google/gemma-3-4b-it:free (adapter: OpenAI)'.\nCause: HTTP error.\nStatus: 400 Bad Request Bad Request\nBody: {\"error\":{\"message\":\"Provider returned error\",\"code\":400,\"metadata\":{\"raw\":\"{\\n  \\\"error\\\": {\\n    \\\"code\\\": 400,\\n    \\\"message\\\": \\\"Developer instruction is not enabled for models/gemma-3-4b-it\\\",\\n    \\\"status\\\": \\\"INVALID_ARGUMENT\\\"\\n  }\\n}\\n\",\"provider_name\":\"Google AI Studio\",\"is_byok\":false}},\"user_id\":\"user_3CSZpOXpg0I4vPHqxZzrcd2W2L9\"}]\n",
+  "started_at": "2026-04-19T15:18:50.236588296Z",
+  "config": {
+    "task_description": "Explain what a sprint engine does in one paragraph",
+    "project_root": "/home/wyatt/dev/src/github.com/WyattAu/clawdius",
+    "auto_approve": false,
+    "skip_phases": [],
+    "max_iterations": 1,
+    "model": "openai/gpt-oss-20b:free",
+    "build_command": "cargo build 2>&1",
+    "test_command": "cargo test --lib 2>&1",
+    "real_execution": false,
+    "browser_qa_url": null,
+    "reviewers": []
+  },
+  "checkpoint_ref": "stash@{0}"
+}
