@@ -12,19 +12,37 @@ use crate::storage::{SessionRepository, SqliteBackend, StorageBackend};
 
 /// Helper: run an async closure from a sync context.
 ///
-/// When inside a tokio runtime, uses `block_in_place` to poll the future
-/// without creating a nested runtime. Otherwise, creates a temporary runtime.
+/// When inside a **multi-threaded** tokio runtime, uses `block_in_place`
+/// to avoid starving the executor.  When inside a **current-thread**
+/// runtime (the default `#[tokio::test]` flavor) or outside any runtime
+/// at all, spawns a dedicated OS thread with its own runtime so we never
+/// attempt to nest `block_on` on the current thread.
 fn run_async<F>(f: F) -> F::Output
 where
     F: std::future::Future + Send,
+    F::Output: Send + 'static,
 {
     match tokio::runtime::Handle::try_current() {
         Ok(handle) => {
-            // Inside a runtime — block_in_place works on current-thread runtimes.
-            // Pin the future and use the handle's block_on which supports nesting
-            // on multi-threaded runtimes. For current-thread, we need block_in_place.
-            let mut fut = std::pin::pin!(f);
-            tokio::task::block_in_place(|| handle.block_on(&mut fut))
+            if handle.runtime_flavor() == tokio::runtime::RuntimeFlavor::MultiThread {
+                // Multi-threaded runtime: block_in_place is safe here.
+                let mut fut = std::pin::pin!(f);
+                tokio::task::block_in_place(|| handle.block_on(&mut fut))
+            } else {
+                // Current-thread runtime: cannot nest block_on, so offload
+                // to a new OS thread that owns its own runtime.
+                std::thread::scope(|s| {
+                    s.spawn(|| {
+                        let rt = tokio::runtime::Builder::new_current_thread()
+                            .enable_all()
+                            .build()
+                            .expect("failed to create tokio runtime");
+                        rt.block_on(f)
+                    })
+                    .join()
+                    .expect("run_async worker thread panicked")
+                })
+            }
         }
         Err(_) => {
             // No runtime present — create a temporary one (e.g., plain #[test])
