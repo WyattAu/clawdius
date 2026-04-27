@@ -1,7 +1,7 @@
 //! REST API Implementation using Axum
 //!
-//! Provides a comprehensive REST API for Clawdius using an actor pattern
-//! for thread-safe database access.
+//! Provides a comprehensive REST API for Clawdius with thread-safe
+//! database access via `SessionStore` (which delegates to `SqliteBackend`).
 
 use axum::{
     extract::{Extension, Path, State},
@@ -45,14 +45,15 @@ use crate::session::{Message as SessionMessage, Session, SessionId, SessionStore
 /// API state shared across handlers.
 ///
 /// Uses `SessionStore` (which delegates to `SqliteBackend` internally)
-/// for all storage operations. The `DbActor` provides async access.
+/// for all storage operations. Async helper methods provide the same
+/// interface that handlers expect.
 ///
 /// Future: When `async-trait` is stabilized or `Pin<Box<dyn Future>>`
 /// overhead is acceptable, `storage` can be made generic over `StorageBackend`.
 #[derive(Clone)]
 pub struct ApiState {
-    /// Database actor for session CRUD operations.
-    pub db: DbActor,
+    /// Thread-safe session store for CRUD operations.
+    pub store: Arc<std::sync::Mutex<SessionStore>>,
     pub version: String,
     pub api_keys: HashMap<String, String>,
     pub rate_limit_config: Option<RateLimitConfig>,
@@ -61,61 +62,11 @@ pub struct ApiState {
     pub sprint_manager: Arc<ParallelSprintManager>,
 }
 
-/// Database actor — provides async session CRUD via `SessionStore`.
-///
-/// Wraps `SessionStore` (which delegates to `SqliteBackend`) and exposes
-/// async methods matching the `StorageBackend` trait signatures.
-/// Kept for backward compatibility with `state.db.*` call sites.
-#[derive(Clone)]
-pub struct DbActor {
-    store: Arc<std::sync::Mutex<SessionStore>>,
-}
-
-impl DbActor {
-    /// Create a new database actor from a `SessionStore`.
-    pub fn new(store: SessionStore) -> Self {
-        Self {
-            store: Arc::new(std::sync::Mutex::new(store)),
-        }
-    }
-
-    /// List all sessions
-    pub async fn list_sessions(&self) -> Vec<Session> {
-        let store = self.store.lock().unwrap();
-        store.list_sessions().unwrap_or_default()
-    }
-
-    /// Create a new session
-    pub async fn create_session(&self, session: Session) -> Session {
-        let store = self.store.lock().unwrap();
-        let _ = store.create_session(&session);
-        session
-    }
-
-    /// Get a session by ID
-    pub async fn get_session(&self, id: SessionId) -> Option<Session> {
-        let store = self.store.lock().unwrap();
-        store.load_session_full(&id).unwrap_or_default()
-    }
-
-    /// Delete a session by ID
-    pub async fn delete_session(&self, id: SessionId) -> bool {
-        let store = self.store.lock().unwrap();
-        store.delete_session(&id).is_ok()
-    }
-
-    /// Add a message to a session
-    pub async fn add_message(&self, session_id: SessionId, message: SessionMessage) -> bool {
-        let store = self.store.lock().unwrap();
-        store.save_message(&session_id, &message).is_ok()
-    }
-}
-
 impl ApiState {
     /// Create new API state from a `SessionStore` (backward-compatible).
     pub fn new(session_store: SessionStore) -> Self {
         Self {
-            db: DbActor::new(session_store),
+            store: Arc::new(std::sync::Mutex::new(session_store)),
             version: env!("CARGO_PKG_VERSION").to_string(),
             api_keys: HashMap::new(),
             rate_limit_config: None,
@@ -138,6 +89,39 @@ impl ApiState {
     pub fn with_llm_client(mut self, client: LlmProvider) -> Self {
         self.llm_client = Some(Arc::new(client));
         self
+    }
+
+    // -- Async session helpers (formerly DbActor methods) --
+
+    /// List all sessions.
+    pub async fn list_sessions(&self) -> Vec<Session> {
+        let store = self.store.lock().unwrap();
+        store.list_sessions().unwrap_or_default()
+    }
+
+    /// Create a new session (persists and returns it).
+    pub async fn create_session(&self, session: Session) -> Session {
+        let store = self.store.lock().unwrap();
+        let _ = store.create_session(&session);
+        session
+    }
+
+    /// Get a session by ID (with messages).
+    pub async fn get_session(&self, id: SessionId) -> Option<Session> {
+        let store = self.store.lock().unwrap();
+        store.load_session_full(&id).unwrap_or_default()
+    }
+
+    /// Delete a session by ID.
+    pub async fn delete_session(&self, id: SessionId) -> bool {
+        let store = self.store.lock().unwrap();
+        store.delete_session(&id).is_ok()
+    }
+
+    /// Add a message to a session.
+    pub async fn add_message(&self, session_id: SessionId, message: SessionMessage) -> bool {
+        let store = self.store.lock().unwrap();
+        store.save_message(&session_id, &message).is_ok()
     }
 }
 
@@ -229,7 +213,7 @@ pub async fn readiness_check(State(state): State<ApiState>) -> Json<serde_json::
 
 /// GET /api/v1/sessions - List all sessions
 pub async fn list_sessions(State(state): State<ApiState>) -> Json<Vec<Session>> {
-    let sessions = state.db.list_sessions().await;
+    let sessions = state.list_sessions().await;
     Json(sessions)
 }
 
@@ -248,7 +232,7 @@ pub async fn create_session(
         session.meta.model = Some(model);
     }
 
-    let session = state.db.create_session(session).await;
+    let session = state.create_session(session).await;
     Json(session)
 }
 
@@ -275,7 +259,7 @@ pub async fn get_session(
         },
     };
 
-    match state.db.get_session(session_id).await {
+    match state.get_session(session_id).await {
         Some(session) => Ok(Json(session)),
         None => Err((
             StatusCode::NOT_FOUND,
@@ -310,7 +294,7 @@ pub async fn delete_session(
         },
     };
 
-    if state.db.delete_session(session_id).await {
+    if state.delete_session(session_id).await {
         Ok(StatusCode::NO_CONTENT)
     } else {
         Err((
@@ -351,7 +335,7 @@ pub async fn chat(
             },
         };
 
-        if let Some(session) = state.db.get_session(session_id).await {
+        if let Some(session) = state.get_session(session_id).await {
             for msg in &session.messages {
                 let role = match msg.role {
                     MessageRole::System => ChatRole::System,
@@ -415,9 +399,9 @@ pub async fn chat(
         if let Ok(uuid) = Uuid::parse_str(session_id_str) {
             let session_id = SessionId::from_uuid(uuid);
             let user_msg = SessionMessage::user(&request.message);
-            let _ = state.db.add_message(session_id, user_msg).await;
+            let _ = state.add_message(session_id, user_msg).await;
             let assistant_msg = SessionMessage::assistant(&response_text);
-            let _ = state.db.add_message(session_id, assistant_msg).await;
+            let _ = state.add_message(session_id, assistant_msg).await;
         }
     }
 
@@ -589,7 +573,7 @@ pub async fn agent_handler(
             },
         };
 
-        if let Some(session) = state.db.get_session(session_id).await {
+        if let Some(session) = state.get_session(session_id).await {
             for msg in &session.messages {
                 let role = match msg.role {
                     MessageRole::System => ChatRole::System,
@@ -652,11 +636,9 @@ pub async fn agent_handler(
                 if let Ok(uuid) = Uuid::parse_str(session_id_str) {
                     let sid = SessionId::from_uuid(uuid);
                     let _ = state
-                        .db
                         .add_message(sid, SessionMessage::user(&request.message))
                         .await;
                     let _ = state
-                        .db
                         .add_message(sid, SessionMessage::assistant(&response_text))
                         .await;
                 }
@@ -1011,11 +993,9 @@ mod tests {
         let session: Session = serde_json::from_slice(&body_bytes).unwrap();
 
         state
-            .db
             .add_message(session.id, SessionMessage::user("First message"))
             .await;
         state
-            .db
             .add_message(session.id, SessionMessage::assistant("First response"))
             .await;
 
@@ -1063,10 +1043,10 @@ mod tests {
 
         let user_msg = SessionMessage::user("Hello");
         let assistant_msg = SessionMessage::assistant("Hi there");
-        state.db.add_message(session.id, user_msg).await;
-        state.db.add_message(session.id, assistant_msg).await;
+        state.add_message(session.id, user_msg).await;
+        state.add_message(session.id, assistant_msg).await;
 
-        let full = state.db.get_session(session.id).await;
+        let full = state.get_session(session.id).await;
         assert!(full.is_some());
         let full = full.unwrap();
         assert_eq!(full.messages.len(), 2);
