@@ -40,6 +40,7 @@ toml.workspace = true
 rusqlite.workspace = true
 tokio-postgres = { workspace = true, optional = true }
 deadpool-postgres = { workspace = true, optional = true }
+mysql_async = { workspace = true, optional = true }
 
 # LLM
 reqwest.workspace = true
@@ -166,6 +167,7 @@ vector-db = ["dep:lancedb", "dep:arrow", "dep:arrow-array", "dep:arrow-schema"]
 orchestrator = []
 redis-queue = ["orchestrator", "dep:redis"]
 postgres = ["dep:tokio-postgres", "dep:deadpool-postgres"]
+mariadb = ["dep:mysql_async"]
 
 [lints]
 workspace = true

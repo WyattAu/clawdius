@@ -88,6 +88,17 @@ impl From<tokio_postgres::Error> for StorageError {
     }
 }
 
+#[cfg(feature = "mariadb")]
+impl From<mysql_async::Error> for StorageError {
+    fn from(err: mysql_async::Error) -> Self {
+        let msg = err.to_string();
+        Self::Query {
+            statement: "unknown".to_string(),
+            reason: msg,
+        }
+    }
+}
+
 impl From<rusqlite::Error> for StorageError {
     fn from(err: rusqlite::Error) -> Self {
         let msg = err.to_string();
