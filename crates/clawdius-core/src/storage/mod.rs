@@ -13,6 +13,8 @@
 //! Implementations:
 //! - [`SqliteBackend`] — SQLite (default, local development)
 //! - [`InMemoryBackend`] — HashMap-backed (testing, ephemeral)
+//! - [`PostgresBackend`] — PostgreSQL (feature: `postgres`)
+//! - [`MariaDbBackend`] — MariaDB/MySQL (feature: `mariadb`)
 //!
 //! # Design Principles
 //!
@@ -30,6 +32,8 @@ mod mariadb;
 #[cfg(feature = "postgres")]
 mod postgres;
 mod sqlite;
+#[cfg(test)]
+mod tests;
 
 pub use backend::{
     GraphRepository, SessionRepository, StorageBackend, TimelineRepository,
