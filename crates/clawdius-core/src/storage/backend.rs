@@ -26,37 +26,36 @@ use std::path::{Path, PathBuf};
 /// by adding async support and returning `crate::error::Result` consistently.
 /// The legacy trait is preserved for backward compatibility and will be
 /// deprecated once all consumers migrate.
-#[allow(async_fn_in_trait)]
 pub trait SessionRepository: Send + Sync + std::fmt::Debug {
     // ── Session CRUD ──
 
     /// Create a new session.
-    async fn create_session(&self, session: &Session) -> Result<()>;
+    fn create_session(&self, session: &Session) -> impl std::future::Future<Output = Result<()>> + Send;
 
     /// Load a session by ID (metadata only, no messages).
-    async fn load_session(&self, id: &SessionId) -> Result<Option<Session>>;
+    fn load_session(&self, id: &SessionId) -> impl std::future::Future<Output = Result<Option<Session>>> + Send;
 
     /// Load a session with full message history.
-    async fn load_session_full(&self, id: &SessionId) -> Result<Option<Session>>;
+    fn load_session_full(&self, id: &SessionId) -> impl std::future::Future<Output = Result<Option<Session>>> + Send;
 
     /// List all sessions, ordered by most recently updated.
-    async fn list_sessions(&self) -> Result<Vec<Session>>;
+    fn list_sessions(&self) -> impl std::future::Future<Output = Result<Vec<Session>>> + Send;
 
     /// Delete a session and all associated messages.
-    async fn delete_session(&self, id: &SessionId) -> Result<()>;
+    fn delete_session(&self, id: &SessionId) -> impl std::future::Future<Output = Result<()>> + Send;
 
     // ── Message operations ──
 
     /// Append a message to a session.
-    async fn save_message(&self, session_id: &SessionId, message: &Message) -> Result<()>;
+    fn save_message(&self, session_id: &SessionId, message: &Message) -> impl std::future::Future<Output = Result<()>> + Send;
 
     /// Search messages across all sessions (full-text search).
-    async fn search_messages(&self, query: &str) -> Result<Vec<(SessionId, Message)>>;
+    fn search_messages(&self, query: &str) -> impl std::future::Future<Output = Result<Vec<(SessionId, Message)>>> + Send;
 
     // ── Token usage ──
 
     /// Update token usage counters for a session.
-    async fn update_token_usage(&self, id: &SessionId, usage: &TokenUsage) -> Result<()>;
+    fn update_token_usage(&self, id: &SessionId, usage: &TokenUsage) -> impl std::future::Future<Output = Result<()>> + Send;
 }
 
 // ─────────────────────────────────────────────────────────
@@ -67,102 +66,101 @@ pub trait SessionRepository: Send + Sync + std::fmt::Debug {
 ///
 /// Covers the domain previously split between `TimelineStore` and
 /// `CheckpointManager`, unified under a single async trait.
-#[allow(async_fn_in_trait)]
 pub trait TimelineRepository: Send + Sync + std::fmt::Debug {
     // ── File tracking ──
 
     /// Register a file for change tracking.
-    async fn track_file(&self, path: &Path) -> Result<()>;
+    fn track_file(&self, path: &Path) -> impl std::future::Future<Output = Result<()>> + Send;
 
     /// Get the number of tracked files.
-    async fn tracked_file_count(&self) -> Result<usize>;
+    fn tracked_file_count(&self) -> impl std::future::Future<Output = Result<usize>> + Send;
 
     // ── Checkpoint CRUD ──
 
     /// Create a named checkpoint (snapshots all tracked files).
-    async fn create_checkpoint(
+    fn create_checkpoint(
         &self,
         name: &str,
         description: Option<&str>,
-    ) -> Result<CheckpointId>;
+    ) -> impl std::future::Future<Output = Result<CheckpointId>> + Send;
 
     /// List all checkpoints, ordered by timestamp descending.
-    async fn list_checkpoints(&self) -> Result<Vec<CheckpointInfo>>;
+    fn list_checkpoints(&self) -> impl std::future::Future<Output = Result<Vec<CheckpointInfo>>> + Send;
 
     /// Get a single checkpoint's metadata.
-    async fn get_checkpoint(&self, id: &CheckpointId) -> Result<Option<CheckpointInfo>>;
+    fn get_checkpoint(&self, id: &CheckpointId) -> impl std::future::Future<Output = Result<Option<CheckpointInfo>>> + Send;
 
     /// Delete a checkpoint and its file snapshots.
-    async fn delete_checkpoint(&self, id: &CheckpointId) -> Result<()>;
+    fn delete_checkpoint(&self, id: &CheckpointId) -> impl std::future::Future<Output = Result<()>> + Send;
 
     /// Get the total number of checkpoints.
-    async fn checkpoint_count(&self) -> Result<usize>;
+    fn checkpoint_count(&self) -> impl std::future::Future<Output = Result<usize>> + Send;
 
     // ── File history ──
 
     /// Get version history for a specific file.
-    async fn get_file_history(&self, path: &Path) -> Result<Vec<FileVersion>>;
+    fn get_file_history(&self, path: &Path) -> impl std::future::Future<Output = Result<Vec<FileVersion>>> + Send;
 
     /// Get a file's version at a specific checkpoint.
-    async fn get_file_version_at_checkpoint(
+    fn get_file_version_at_checkpoint(
         &self,
         path: &Path,
         checkpoint_id: &CheckpointId,
-    ) -> Result<Option<FileVersion>>;
+    ) -> impl std::future::Future<Output = Result<Option<FileVersion>>> + Send;
 
     /// Get files that changed between two checkpoints.
-    async fn get_files_changed_between(
+    fn get_files_changed_between(
         &self,
         from: &CheckpointId,
         to: &CheckpointId,
-    ) -> Result<Vec<(PathBuf, FileChangeType)>>;
+    ) -> impl std::future::Future<Output = Result<Vec<(PathBuf, FileChangeType)>>> + Send;
 
     // ── Diff ──
 
     /// Compute a diff between two checkpoints.
-    async fn diff_checkpoints(&self, from: &CheckpointId, to: &CheckpointId) -> Result<Diff>;
+    fn diff_checkpoints(&self, from: &CheckpointId, to: &CheckpointId) -> impl std::future::Future<Output = Result<Diff>> + Send;
 
     // ── Rollback ──
 
     /// Rollback the workspace to a checkpoint state.
-    async fn rollback(&self, checkpoint_id: &CheckpointId) -> Result<()>;
+    fn rollback(&self, checkpoint_id: &CheckpointId) -> impl std::future::Future<Output = Result<()>> + Send;
 
     /// Rollback specific files to a checkpoint state.
-    async fn rollback_files(&self, checkpoint_id: &CheckpointId, files: &[PathBuf]) -> Result<()>;
+    fn rollback_files(&self, checkpoint_id: &CheckpointId, files: &[PathBuf]) -> impl std::future::Future<Output = Result<()>> + Send;
 
     /// Preview what a rollback would do (dry-run).
-    async fn preview_rollback(&self, checkpoint_id: &CheckpointId) -> Result<RollbackPreview>;
+    fn preview_rollback(&self, checkpoint_id: &CheckpointId) -> impl std::future::Future<Output = Result<RollbackPreview>> + Send;
 
     // ── Queries ──
 
     /// Query checkpoints by time range.
-    async fn query_by_time_range(
+    fn query_by_time_range(
         &self,
         start: DateTime<Utc>,
         end: DateTime<Utc>,
-    ) -> Result<Vec<CheckpointInfo>>;
+    ) -> impl std::future::Future<Output = Result<Vec<CheckpointInfo>>> + Send;
 
     /// Query checkpoints by name pattern (substring match).
-    async fn query_by_name(&self, pattern: &str) -> Result<Vec<CheckpointInfo>>;
+    fn query_by_name(&self, pattern: &str) -> impl std::future::Future<Output = Result<Vec<CheckpointInfo>>> + Send;
 
     // ── Import / Export ──
 
     /// Export a checkpoint to a portable format.
-    async fn export_checkpoint(&self, checkpoint_id: &CheckpointId) -> Result<ExportedCheckpoint>;
+    fn export_checkpoint(&self, checkpoint_id: &CheckpointId) -> impl std::future::Future<Output = Result<ExportedCheckpoint>> + Send;
 
     /// Import a checkpoint from a portable format.
-    async fn import_checkpoint(&self, exported: ExportedCheckpoint) -> Result<CheckpointId>;
+    fn import_checkpoint(&self, exported: ExportedCheckpoint) -> impl std::future::Future<Output = Result<CheckpointId>> + Send;
 
     // ── Maintenance ──
 
     /// Delete old checkpoints, keeping the most recent `keep_count`.
-    async fn cleanup_old_checkpoints(&self, keep_count: usize) -> Result<usize>;
+    fn cleanup_old_checkpoints(&self, keep_count: usize) -> impl std::future::Future<Output = Result<usize>> + Send;
 
     /// Clean up orphaned snapshot files on disk.
-    async fn cleanup_snapshots(&self) -> Result<usize>;
+    fn cleanup_snapshots(&self) -> impl std::future::Future<Output = Result<usize>> + Send;
 
     /// Get storage statistics.
-    async fn storage_stats(&self) -> Result<StorageStats>;
+    fn storage_stats(&self) -> impl std::future::Future<Output = Result<StorageStats>> + Send;
 }
 
 // ─────────────────────────────────────────────────────────
@@ -173,89 +171,88 @@ pub trait TimelineRepository: Send + Sync + std::fmt::Debug {
 ///
 /// Covers the domain previously split between `GraphStore` (graph_rag)
 /// and `AstStore` (AST index), unified under a single async trait.
-#[allow(async_fn_in_trait)]
 pub trait GraphRepository: Send + Sync + std::fmt::Debug {
     // ── File operations ──
 
     /// Insert or update a file record.
-    async fn insert_file(&self, file: &FileInfo) -> Result<i64>;
+    fn insert_file(&self, file: &FileInfo) -> impl std::future::Future<Output = Result<i64>> + Send;
 
     /// Look up a file by its path.
-    async fn get_file_by_path(&self, path: &str) -> Result<Option<FileInfo>>;
+    fn get_file_by_path(&self, path: &str) -> impl std::future::Future<Output = Result<Option<FileInfo>>> + Send;
 
     /// Look up a file by its database ID.
-    async fn get_file_by_id(&self, id: i64) -> Result<Option<FileInfo>>;
+    fn get_file_by_id(&self, id: i64) -> impl std::future::Future<Output = Result<Option<FileInfo>>> + Send;
 
     /// Get a file's database ID by path.
-    async fn get_file_id(&self, path: &str) -> Result<Option<i64>>;
+    fn get_file_id(&self, path: &str) -> impl std::future::Future<Output = Result<Option<i64>>> + Send;
 
     /// Delete a file and all associated symbols/refs.
-    async fn delete_file(&self, path: &str) -> Result<bool>;
+    fn delete_file(&self, path: &str) -> impl std::future::Future<Output = Result<bool>> + Send;
 
     /// Count total indexed files.
-    async fn count_files(&self) -> Result<i64>;
+    fn count_files(&self) -> impl std::future::Future<Output = Result<i64>> + Send;
 
     // ── Symbol operations ──
 
     /// Insert a symbol (function, struct, enum, etc.).
-    async fn insert_symbol(&self, symbol: &Symbol) -> Result<i64>;
+    fn insert_symbol(&self, symbol: &Symbol) -> impl std::future::Future<Output = Result<i64>> + Send;
 
     /// Find symbols by exact name match.
-    async fn find_symbol(&self, name: &str) -> Result<Vec<Symbol>>;
+    fn find_symbol(&self, name: &str) -> impl std::future::Future<Output = Result<Vec<Symbol>>> + Send;
 
     /// Find a single symbol by database ID.
-    async fn find_symbol_by_id(&self, id: i64) -> Result<Option<Symbol>>;
+    fn find_symbol_by_id(&self, id: i64) -> impl std::future::Future<Output = Result<Option<Symbol>>> + Send;
 
     /// Find symbols by kind (Function, Struct, Enum, etc.).
-    async fn find_symbols_by_kind(&self, kind: &SymbolKind) -> Result<Vec<Symbol>>;
+    fn find_symbols_by_kind(&self, kind: &SymbolKind) -> impl std::future::Future<Output = Result<Vec<Symbol>>> + Send;
 
     /// Find all symbols in a file.
-    async fn find_symbols_in_file(&self, file_id: i64) -> Result<Vec<Symbol>>;
+    fn find_symbols_in_file(&self, file_id: i64) -> impl std::future::Future<Output = Result<Vec<Symbol>>> + Send;
 
     /// Full-text search for symbols.
-    async fn search_symbols(&self, query: &str) -> Result<Vec<Symbol>>;
+    fn search_symbols(&self, query: &str) -> impl std::future::Future<Output = Result<Vec<Symbol>>> + Send;
 
     /// Count total indexed symbols.
-    async fn count_symbols(&self) -> Result<i64>;
+    fn count_symbols(&self) -> impl std::future::Future<Output = Result<i64>> + Send;
 
     /// Delete all symbols belonging to a file.
-    async fn delete_symbols_for_file(&self, file_id: i64) -> Result<()>;
+    fn delete_symbols_for_file(&self, file_id: i64) -> impl std::future::Future<Output = Result<()>> + Send;
 
     // ── Reference operations ──
 
     /// Insert a symbol reference (usage site).
-    async fn insert_reference(&self, reference: &Reference) -> Result<()>;
+    fn insert_reference(&self, reference: &Reference) -> impl std::future::Future<Output = Result<()>> + Send;
 
     /// Find all references to a symbol.
-    async fn find_symbol_refs(&self, symbol_id: i64) -> Result<Vec<Reference>>;
+    fn find_symbol_refs(&self, symbol_id: i64) -> impl std::future::Future<Output = Result<Vec<Reference>>> + Send;
 
     /// Count total symbol references.
-    async fn count_symbol_refs(&self) -> Result<i64>;
+    fn count_symbol_refs(&self) -> impl std::future::Future<Output = Result<i64>> + Send;
 
     /// Delete all references belonging to a file.
-    async fn delete_symbol_refs_for_file(&self, file_id: i64) -> Result<()>;
+    fn delete_symbol_refs_for_file(&self, file_id: i64) -> impl std::future::Future<Output = Result<()>> + Send;
 
     // ── Relationship operations ──
 
     /// Insert a relationship between two symbols.
-    async fn insert_relationship(&self, relationship: &Relationship) -> Result<()>;
+    fn insert_relationship(&self, relationship: &Relationship) -> impl std::future::Future<Output = Result<()>> + Send;
 
     /// Find all relationships involving a symbol (any direction).
-    async fn find_relationships(&self, symbol_id: i64) -> Result<Vec<Relationship>>;
+    fn find_relationships(&self, symbol_id: i64) -> impl std::future::Future<Output = Result<Vec<Relationship>>> + Send;
 
     /// Find outgoing relationships from a symbol.
-    async fn find_outgoing_relationships(&self, symbol_id: i64) -> Result<Vec<Relationship>>;
+    fn find_outgoing_relationships(&self, symbol_id: i64) -> impl std::future::Future<Output = Result<Vec<Relationship>>> + Send;
 
     /// Find incoming relationships to a symbol.
-    async fn find_incoming_relationships(&self, symbol_id: i64) -> Result<Vec<Relationship>>;
+    fn find_incoming_relationships(&self, symbol_id: i64) -> impl std::future::Future<Output = Result<Vec<Relationship>>> + Send;
 
     /// Count total relationships.
-    async fn count_relationships(&self) -> Result<i64>;
+    fn count_relationships(&self) -> impl std::future::Future<Output = Result<i64>> + Send;
 
     // ── Bulk operations ──
 
     /// Clear all data (files, symbols, refs, relationships).
-    async fn clear(&self) -> Result<()>;
+    fn clear(&self) -> impl std::future::Future<Output = Result<()>> + Send;
 }
 
 // ─────────────────────────────────────────────────────────
@@ -292,11 +289,11 @@ pub trait StorageBackend:
     fn backend_type(&self) -> &'static str;
 
     /// Run database migrations to the latest schema version.
-    async fn migrate(&self) -> Result<()>;
+    fn migrate(&self) -> impl std::future::Future<Output = Result<()>> + Send;
 
     /// Check if the backend is healthy (connection alive, schema present).
-    async fn health_check(&self) -> Result<()>;
+    fn health_check(&self) -> impl std::future::Future<Output = Result<()>> + Send;
 
     /// Close the backend and release resources.
-    async fn close(&self) -> Result<()>;
+    fn close(&self) -> impl std::future::Future<Output = Result<()>> + Send;
 }

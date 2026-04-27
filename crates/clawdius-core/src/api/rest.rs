@@ -14,7 +14,6 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
-use tokio::sync::{mpsc, oneshot};
 use uuid::Uuid;
 
 use crate::agentic::ParallelSprintManager;
@@ -40,138 +39,19 @@ use crate::mcp::McpRequest;
 use crate::session::{Message as SessionMessage, Session, SessionId, SessionStore};
 
 // ============================================================================
-// Database Actor Pattern
-// ============================================================================
-
-/// Commands for the database actor
-enum DbCommand {
-    ListSessions {
-        reply: oneshot::Sender<Vec<Session>>,
-    },
-    CreateSession {
-        session: Box<Session>,
-        reply: oneshot::Sender<Session>,
-    },
-    GetSession {
-        id: SessionId,
-        reply: oneshot::Sender<Option<Session>>,
-    },
-    DeleteSession {
-        id: SessionId,
-        reply: oneshot::Sender<bool>,
-    },
-    AddMessage {
-        session_id: SessionId,
-        message: SessionMessage,
-        reply: oneshot::Sender<bool>,
-    },
-}
-
-/// Database actor handle
-#[derive(Clone)]
-pub struct DbActor {
-    sender: mpsc::Sender<DbCommand>,
-}
-
-impl DbActor {
-    /// Create a new database actor from a `SessionStore`
-    pub fn new(store: SessionStore) -> Self {
-        let (sender, mut receiver) = mpsc::channel::<DbCommand>(32);
-
-        // Spawn the actor task
-        tokio::spawn(async move {
-            while let Some(cmd) = receiver.recv().await {
-                match cmd {
-                    DbCommand::ListSessions { reply } => {
-                        let sessions = store.list_sessions().unwrap_or_default();
-                        let _ = reply.send(sessions);
-                    },
-                    DbCommand::CreateSession { session, reply } => {
-                        let _ = store.create_session(&session);
-                        let _ = reply.send(*session);
-                    },
-                    DbCommand::GetSession { id, reply } => {
-                        let session = store.load_session_full(&id).unwrap_or_default();
-                        let _ = reply.send(session);
-                    },
-                    DbCommand::DeleteSession { id, reply } => {
-                        let result = store.delete_session(&id).is_ok();
-                        let _ = reply.send(result);
-                    },
-                    DbCommand::AddMessage {
-                        session_id,
-                        message,
-                        reply,
-                    } => {
-                        let result = store.save_message(&session_id, &message).is_ok();
-                        let _ = reply.send(result);
-                    },
-                }
-            }
-        });
-
-        Self { sender }
-    }
-
-    /// List all sessions
-    pub async fn list_sessions(&self) -> Vec<Session> {
-        let (reply, rx) = oneshot::channel();
-        let _ = self.sender.send(DbCommand::ListSessions { reply }).await;
-        rx.await.unwrap_or_default()
-    }
-
-    /// Create a new session
-    pub async fn create_session(&self, session: Session) -> Session {
-        let (reply, rx) = oneshot::channel();
-        let _ = self
-            .sender
-            .send(DbCommand::CreateSession {
-                session: Box::new(session),
-                reply,
-            })
-            .await;
-        rx.await.unwrap_or_else(|_| Session::new())
-    }
-
-    /// Get a session by ID
-    pub async fn get_session(&self, id: SessionId) -> Option<Session> {
-        let (reply, rx) = oneshot::channel();
-        let _ = self.sender.send(DbCommand::GetSession { id, reply }).await;
-        rx.await.ok().flatten()
-    }
-
-    /// Delete a session by ID
-    pub async fn delete_session(&self, id: SessionId) -> bool {
-        let (reply, rx) = oneshot::channel();
-        let _ = self
-            .sender
-            .send(DbCommand::DeleteSession { id, reply })
-            .await;
-        rx.await.unwrap_or(false)
-    }
-
-    /// Add a message to a session
-    pub async fn add_message(&self, session_id: SessionId, message: SessionMessage) -> bool {
-        let (reply, rx) = oneshot::channel();
-        let _ = self
-            .sender
-            .send(DbCommand::AddMessage {
-                session_id,
-                message,
-                reply,
-            })
-            .await;
-        rx.await.unwrap_or(false)
-    }
-}
-
-// ============================================================================
 // API State
 // ============================================================================
 
-/// API state shared across handlers
+/// API state shared across handlers.
+///
+/// Uses `SessionStore` (which delegates to `SqliteBackend` internally)
+/// for all storage operations. The `DbActor` provides async access.
+///
+/// Future: When `async-trait` is stabilized or `Pin<Box<dyn Future>>`
+/// overhead is acceptable, `storage` can be made generic over `StorageBackend`.
 #[derive(Clone)]
 pub struct ApiState {
+    /// Database actor for session CRUD operations.
     pub db: DbActor,
     pub version: String,
     pub api_keys: HashMap<String, String>,
@@ -181,8 +61,58 @@ pub struct ApiState {
     pub sprint_manager: Arc<ParallelSprintManager>,
 }
 
+/// Database actor — provides async session CRUD via `SessionStore`.
+///
+/// Wraps `SessionStore` (which delegates to `SqliteBackend`) and exposes
+/// async methods matching the `StorageBackend` trait signatures.
+/// Kept for backward compatibility with `state.db.*` call sites.
+#[derive(Clone)]
+pub struct DbActor {
+    store: Arc<std::sync::Mutex<SessionStore>>,
+}
+
+impl DbActor {
+    /// Create a new database actor from a `SessionStore`.
+    pub fn new(store: SessionStore) -> Self {
+        Self {
+            store: Arc::new(std::sync::Mutex::new(store)),
+        }
+    }
+
+    /// List all sessions
+    pub async fn list_sessions(&self) -> Vec<Session> {
+        let store = self.store.lock().unwrap();
+        store.list_sessions().unwrap_or_default()
+    }
+
+    /// Create a new session
+    pub async fn create_session(&self, session: Session) -> Session {
+        let store = self.store.lock().unwrap();
+        let _ = store.create_session(&session);
+        session
+    }
+
+    /// Get a session by ID
+    pub async fn get_session(&self, id: SessionId) -> Option<Session> {
+        let store = self.store.lock().unwrap();
+        store.load_session_full(&id).unwrap_or_default()
+    }
+
+    /// Delete a session by ID
+    pub async fn delete_session(&self, id: SessionId) -> bool {
+        let store = self.store.lock().unwrap();
+        store.delete_session(&id).is_ok()
+    }
+
+    /// Add a message to a session
+    pub async fn add_message(&self, session_id: SessionId, message: SessionMessage) -> bool {
+        let store = self.store.lock().unwrap();
+        store.save_message(&session_id, &message).is_ok()
+    }
+}
+
 impl ApiState {
-    /// Create new API state
+    /// Create new API state from a `SessionStore` (backward-compatible).
     pub fn new(session_store: SessionStore) -> Self {
         Self {
             db: DbActor::new(session_store),

@@ -53,6 +53,7 @@ pub struct SessionStore {
     backend: SqliteBackend,
 }
 
+
 impl SessionStore {
     /// Open or create session store at path.
     pub fn open(path: &Path) -> Result<Self> {

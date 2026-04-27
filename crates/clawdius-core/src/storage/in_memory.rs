@@ -76,84 +76,100 @@ impl Default for InMemoryBackend {
 // ─────────────────────────────────────────────────────────
 
 impl SessionRepository for InMemoryBackend {
-    async fn create_session(&self, session: &Session) -> Result<()> {
-        let key = session.id.to_string();
-        self.sessions.lock().unwrap().insert(key.clone(), session.clone());
-        self.messages.lock().unwrap().insert(key, Vec::new());
-        Ok(())
+    fn create_session(&self, session: &Session) -> impl std::future::Future<Output = Result<()>> + Send {
+        async move {
+            let key = session.id.to_string();
+            self.sessions.lock().unwrap().insert(key.clone(), session.clone());
+            self.messages.lock().unwrap().insert(key, Vec::new());
+            Ok(())
+        }
     }
 
-    async fn load_session(&self, id: &SessionId) -> Result<Option<Session>> {
-        let sessions = self.sessions.lock().unwrap();
-        Ok(sessions.get(&id.to_string()).cloned())
+    fn load_session(&self, id: &SessionId) -> impl std::future::Future<Output = Result<Option<Session>>> + Send {
+        async move {
+            let sessions = self.sessions.lock().unwrap();
+            Ok(sessions.get(&id.to_string()).cloned())
+        }
     }
 
-    async fn load_session_full(&self, id: &SessionId) -> Result<Option<Session>> {
-        let sessions = self.sessions.lock().unwrap();
-        let messages = self.messages.lock().unwrap();
-        let key = id.to_string();
-        let mut session = sessions.get(&key).cloned();
-        if let Some(ref mut s) = session {
-            if let Some(msgs) = messages.get(&key) {
-                s.messages = msgs.clone();
+    fn load_session_full(&self, id: &SessionId) -> impl std::future::Future<Output = Result<Option<Session>>> + Send {
+        async move {
+            let sessions = self.sessions.lock().unwrap();
+            let messages = self.messages.lock().unwrap();
+            let key = id.to_string();
+            let mut session = sessions.get(&key).cloned();
+            if let Some(ref mut s) = session {
+                if let Some(msgs) = messages.get(&key) {
+                    s.messages = msgs.clone();
+                }
             }
+            Ok(session)
         }
-        Ok(session)
     }
 
-    async fn list_sessions(&self) -> Result<Vec<Session>> {
-        let sessions = self.sessions.lock().unwrap();
-        let mut list: Vec<Session> = sessions.values().cloned().collect();
-        list.sort_by(|a, b| b.updated_at.cmp(&a.updated_at));
-        Ok(list)
-    }
-
-    async fn delete_session(&self, id: &SessionId) -> Result<()> {
-        let key = id.to_string();
-        self.sessions.lock().unwrap().remove(&key);
-        self.messages.lock().unwrap().remove(&key);
-        Ok(())
-    }
-
-    async fn save_message(&self, session_id: &SessionId, message: &Message) -> Result<()> {
-        let key = session_id.to_string();
-        let sessions = self.sessions.lock().unwrap();
-        if !sessions.contains_key(&key) {
-            return Err(crate::error::Error::SessionNotFound {
-                id: session_id.to_string(),
-            });
+    fn list_sessions(&self) -> impl std::future::Future<Output = Result<Vec<Session>>> + Send {
+        async move {
+            let sessions = self.sessions.lock().unwrap();
+            let mut list: Vec<Session> = sessions.values().cloned().collect();
+            list.sort_by(|a, b| b.updated_at.cmp(&a.updated_at));
+            Ok(list)
         }
-        drop(sessions);
-        self.messages.lock().unwrap().entry(key).or_default().push(message.clone());
-        Ok(())
     }
 
-    async fn search_messages(&self, query: &str) -> Result<Vec<(SessionId, Message)>> {
-        let messages = self.messages.lock().unwrap();
-        let mut results = Vec::new();
-        let query_lower = query.to_lowercase();
-        for (key, msgs) in messages.iter() {
-            for msg in msgs {
-                if let Some(text) = msg.as_text() {
-                    if text.to_lowercase().contains(&query_lower) {
-                        if let Ok(uuid) = Uuid::parse_str(key) {
-                        let id = SessionId::from_uuid(uuid);
-                        results.push((id, msg.clone()));
-                    }
+    fn delete_session(&self, id: &SessionId) -> impl std::future::Future<Output = Result<()>> + Send {
+        async move {
+            let key = id.to_string();
+            self.sessions.lock().unwrap().remove(&key);
+            self.messages.lock().unwrap().remove(&key);
+            Ok(())
+        }
+    }
+
+    fn save_message(&self, session_id: &SessionId, message: &Message) -> impl std::future::Future<Output = Result<()>> + Send {
+        async move {
+            let key = session_id.to_string();
+            let sessions = self.sessions.lock().unwrap();
+            if !sessions.contains_key(&key) {
+                return Err(crate::error::Error::SessionNotFound {
+                    id: session_id.to_string(),
+                });
+            }
+            drop(sessions);
+            self.messages.lock().unwrap().entry(key).or_default().push(message.clone());
+            Ok(())
+        }
+    }
+
+    fn search_messages(&self, query: &str) -> impl std::future::Future<Output = Result<Vec<(SessionId, Message)>>> + Send {
+        async move {
+            let messages = self.messages.lock().unwrap();
+            let mut results = Vec::new();
+            let query_lower = query.to_lowercase();
+            for (key, msgs) in messages.iter() {
+                for msg in msgs {
+                    if let Some(text) = msg.as_text() {
+                        if text.to_lowercase().contains(&query_lower) {
+                            if let Ok(uuid) = Uuid::parse_str(key) {
+                            let id = SessionId::from_uuid(uuid);
+                            results.push((id, msg.clone()));
+                        }
+                        }
                     }
                 }
             }
+            Ok(results)
         }
-        Ok(results)
     }
 
-    async fn update_token_usage(&self, id: &SessionId, usage: &TokenUsage) -> Result<()> {
-        let mut sessions = self.sessions.lock().unwrap();
-        let session = sessions.get_mut(&id.to_string()).ok_or_else(|| {
-            crate::error::Error::SessionNotFound { id: id.to_string() }
-        })?;
-        session.token_usage.add(usage);
-        Ok(())
+    fn update_token_usage(&self, id: &SessionId, usage: &TokenUsage) -> impl std::future::Future<Output = Result<()>> + Send {
+        async move {
+            let mut sessions = self.sessions.lock().unwrap();
+            let session = sessions.get_mut(&id.to_string()).ok_or_else(|| {
+                crate::error::Error::SessionNotFound { id: id.to_string() }
+            })?;
+            session.token_usage.add(usage);
+            Ok(())
+        }
     }
 }
 
@@ -162,268 +178,307 @@ impl SessionRepository for InMemoryBackend {
 // ─────────────────────────────────────────────────────────
 
 impl TimelineRepository for InMemoryBackend {
-    async fn track_file(&self, path: &Path) -> Result<()> {
-        let mut files = self.tracked_files.lock().unwrap();
-        if !files.contains(&path.to_path_buf()) {
-            files.push(path.to_path_buf());
+    fn track_file(&self, path: &Path) -> impl std::future::Future<Output = Result<()>> + Send {
+        async move {
+            let mut files = self.tracked_files.lock().unwrap();
+            if !files.contains(&path.to_path_buf()) {
+                files.push(path.to_path_buf());
+            }
+            Ok(())
         }
-        Ok(())
     }
 
-    async fn tracked_file_count(&self) -> Result<usize> {
-        Ok(self.tracked_files.lock().unwrap().len())
+    fn tracked_file_count(&self) -> impl std::future::Future<Output = Result<usize>> + Send {
+        async move {
+            Ok(self.tracked_files.lock().unwrap().len())
+        }
     }
 
-    async fn create_checkpoint(
+    fn create_checkpoint(
         &self,
         name: &str,
         description: Option<&str>,
-    ) -> Result<CheckpointId> {
-        let id = CheckpointId::new();
-        let now = Utc::now();
-        let info = CheckpointInfo {
-            id: id.clone(),
-            name: name.to_string(),
-            description: description.map(|s| s.to_string()),
-            timestamp: now,
-            files_count: 0,
-            total_size: 0,
-        };
-        let checkpoint = crate::timeline::TimelineCheckpoint {
-            info,
-            files: Vec::new(),
-        };
-        self.checkpoints.lock().unwrap().insert(id.0.clone(), checkpoint);
-        Ok(id)
+    ) -> impl std::future::Future<Output = Result<CheckpointId>> + Send {
+        async move {
+            let id = CheckpointId::new();
+            let now = Utc::now();
+            let info = CheckpointInfo {
+                id: id.clone(),
+                name: name.to_string(),
+                description: description.map(|s| s.to_string()),
+                timestamp: now,
+                files_count: 0,
+                total_size: 0,
+            };
+            let checkpoint = crate::timeline::TimelineCheckpoint {
+                info,
+                files: Vec::new(),
+            };
+            self.checkpoints.lock().unwrap().insert(id.0.clone(), checkpoint);
+            Ok(id)
+        }
     }
 
-    async fn list_checkpoints(&self) -> Result<Vec<CheckpointInfo>> {
-        let checkpoints = self.checkpoints.lock().unwrap();
-        let mut list: Vec<CheckpointInfo> = checkpoints.values().map(|cp| cp.info.clone()).collect();
-        list.sort_by(|a, b| b.timestamp.cmp(&a.timestamp));
-        Ok(list)
+    fn list_checkpoints(&self) -> impl std::future::Future<Output = Result<Vec<CheckpointInfo>>> + Send {
+        async move {
+            let checkpoints = self.checkpoints.lock().unwrap();
+            let mut list: Vec<CheckpointInfo> = checkpoints.values().map(|cp| cp.info.clone()).collect();
+            list.sort_by(|a, b| b.timestamp.cmp(&a.timestamp));
+            Ok(list)
+        }
     }
 
-    async fn get_checkpoint(&self, id: &CheckpointId) -> Result<Option<CheckpointInfo>> {
-        let checkpoints = self.checkpoints.lock().unwrap();
-        Ok(checkpoints.get(&id.0).map(|cp| cp.info.clone()))
+    fn get_checkpoint(&self, id: &CheckpointId) -> impl std::future::Future<Output = Result<Option<CheckpointInfo>>> + Send {
+        async move {
+            let checkpoints = self.checkpoints.lock().unwrap();
+            Ok(checkpoints.get(&id.0).map(|cp| cp.info.clone()))
+        }
     }
 
-    async fn delete_checkpoint(&self, id: &CheckpointId) -> Result<()> {
-        self.checkpoints.lock().unwrap().remove(&id.0);
-        Ok(())
+    fn delete_checkpoint(&self, id: &CheckpointId) -> impl std::future::Future<Output = Result<()>> + Send {
+        async move {
+            self.checkpoints.lock().unwrap().remove(&id.0);
+            Ok(())
+        }
     }
 
-    async fn checkpoint_count(&self) -> Result<usize> {
-        Ok(self.checkpoints.lock().unwrap().len())
+    fn checkpoint_count(&self) -> impl std::future::Future<Output = Result<usize>> + Send {
+        async move {
+            Ok(self.checkpoints.lock().unwrap().len())
+        }
     }
 
-    async fn get_file_history(&self, path: &Path) -> Result<Vec<FileVersion>> {
-        let versions = self.file_versions.lock().unwrap();
-        Ok(versions.iter().filter(|v| v.path == path).cloned().collect())
+    fn get_file_history(&self, path: &Path) -> impl std::future::Future<Output = Result<Vec<FileVersion>>> + Send {
+        async move {
+            let versions = self.file_versions.lock().unwrap();
+            Ok(versions.iter().filter(|v| v.path == path).cloned().collect())
+        }
     }
 
-    async fn get_file_version_at_checkpoint(
+    fn get_file_version_at_checkpoint(
         &self,
         path: &Path,
         checkpoint_id: &CheckpointId,
-    ) -> Result<Option<FileVersion>> {
-        let versions = self.file_versions.lock().unwrap();
-        Ok(versions
-            .iter()
-            .find(|v| v.path == path && v.checkpoint_id == *checkpoint_id)
-            .cloned())
+    ) -> impl std::future::Future<Output = Result<Option<FileVersion>>> + Send {
+        async move {
+            let versions = self.file_versions.lock().unwrap();
+            Ok(versions
+                .iter()
+                .find(|v| v.path == path && v.checkpoint_id == *checkpoint_id)
+                .cloned())
+        }
     }
 
-    async fn get_files_changed_between(
+    fn get_files_changed_between(
         &self,
         from: &CheckpointId,
         to: &CheckpointId,
-    ) -> Result<Vec<(PathBuf, FileChangeType)>> {
-        let versions = self.file_versions.lock().unwrap();
-        let from_files: std::collections::HashSet<_> = versions
-            .iter()
-            .filter(|v| v.checkpoint_id == *from)
-            .map(|v| v.path.clone())
-            .collect();
-        let to_files: std::collections::HashSet<_> = versions
-            .iter()
-            .filter(|v| v.checkpoint_id == *to)
-            .map(|v| v.path.clone())
-            .collect();
+    ) -> impl std::future::Future<Output = Result<Vec<(PathBuf, FileChangeType)>>> + Send {
+        async move {
+            let versions = self.file_versions.lock().unwrap();
+            let from_files: std::collections::HashSet<_> = versions
+                .iter()
+                .filter(|v| v.checkpoint_id == *from)
+                .map(|v| v.path.clone())
+                .collect();
+            let to_files: std::collections::HashSet<_> = versions
+                .iter()
+                .filter(|v| v.checkpoint_id == *to)
+                .map(|v| v.path.clone())
+                .collect();
 
-        let mut changes = Vec::new();
-        for path in to_files.difference(&from_files) {
-            changes.push((path.clone(), FileChangeType::Added));
+            let mut changes = Vec::new();
+            for path in to_files.difference(&from_files) {
+                changes.push((path.clone(), FileChangeType::Added));
+            }
+            for path in from_files.difference(&to_files) {
+                changes.push((path.clone(), FileChangeType::Deleted));
+            }
+            for path in from_files.intersection(&to_files) {
+                changes.push((path.clone(), FileChangeType::Modified));
+            }
+            Ok(changes)
         }
-        for path in from_files.difference(&to_files) {
-            changes.push((path.clone(), FileChangeType::Deleted));
-        }
-        for path in from_files.intersection(&to_files) {
-            changes.push((path.clone(), FileChangeType::Modified));
-        }
-        Ok(changes)
     }
 
-    async fn diff_checkpoints(&self, from: &CheckpointId, to: &CheckpointId) -> Result<Diff> {
-        let changes = self.get_files_changed_between(from, to).await?;
-        let files_changed: Vec<FileDiff> = changes
-            .into_iter()
-            .map(|(path, change_type)| FileDiff {
-                path,
-                change_type,
-                additions: 0,
-                deletions: 0,
+    fn diff_checkpoints(&self, from: &CheckpointId, to: &CheckpointId) -> impl std::future::Future<Output = Result<Diff>> + Send {
+        async move {
+            let changes = self.get_files_changed_between(from, to).await?;
+            let files_changed: Vec<FileDiff> = changes
+                .into_iter()
+                .map(|(path, change_type)| FileDiff {
+                    path,
+                    change_type,
+                    additions: 0,
+                    deletions: 0,
+                })
+                .collect();
+            let total_additions = files_changed.iter().map(|f| f.additions).sum();
+            let total_deletions = files_changed.iter().map(|f| f.deletions).sum();
+            let total_files = files_changed.len();
+            Ok(Diff {
+                from: from.clone(),
+                to: to.clone(),
+                files_changed,
+                summary: DiffSummary {
+                    total_files,
+                    total_additions,
+                    total_deletions,
+                },
             })
-            .collect();
-        let total_additions = files_changed.iter().map(|f| f.additions).sum();
-        let total_deletions = files_changed.iter().map(|f| f.deletions).sum();
-        let total_files = files_changed.len();
-        Ok(Diff {
-            from: from.clone(),
-            to: to.clone(),
-            files_changed,
-            summary: DiffSummary {
-                total_files,
-                total_additions,
-                total_deletions,
-            },
-        })
+        }
     }
 
-    async fn rollback(&self, _checkpoint_id: &CheckpointId) -> Result<()> {
-        // In-memory backend has no filesystem to rollback
-        Ok(())
+    fn rollback(&self, _checkpoint_id: &CheckpointId) -> impl std::future::Future<Output = Result<()>> + Send {
+        async move {
+            Ok(())
+        }
     }
 
-    async fn rollback_files(
+    fn rollback_files(
         &self,
         _checkpoint_id: &CheckpointId,
         _files: &[PathBuf],
-    ) -> Result<()> {
-        Ok(())
+    ) -> impl std::future::Future<Output = Result<()>> + Send {
+        async move {
+            Ok(())
+        }
     }
 
-    async fn preview_rollback(&self, checkpoint_id: &CheckpointId) -> Result<RollbackPreview> {
-        let checkpoints = self.checkpoints.lock().unwrap();
-        let checkpoint = checkpoints.get(&checkpoint_id.0);
-        let files_to_restore: Vec<PathBuf> = checkpoint
-            .map(|cp| cp.files.iter().map(|f| f.path.clone()).collect())
-            .unwrap_or_default();
-        Ok(RollbackPreview {
-            checkpoint_id: checkpoint_id.clone(),
-            files_to_restore,
-            files_to_delete: Vec::new(),
-            files_modified: Vec::new(),
-            total_files_affected: 0,
-        })
+    fn preview_rollback(&self, checkpoint_id: &CheckpointId) -> impl std::future::Future<Output = Result<RollbackPreview>> + Send {
+        async move {
+            let checkpoints = self.checkpoints.lock().unwrap();
+            let checkpoint = checkpoints.get(&checkpoint_id.0);
+            let files_to_restore: Vec<PathBuf> = checkpoint
+                .map(|cp| cp.files.iter().map(|f| f.path.clone()).collect())
+                .unwrap_or_default();
+            Ok(RollbackPreview {
+                checkpoint_id: checkpoint_id.clone(),
+                files_to_restore,
+                files_to_delete: Vec::new(),
+                files_modified: Vec::new(),
+                total_files_affected: 0,
+            })
+        }
     }
 
-    async fn query_by_time_range(
+    fn query_by_time_range(
         &self,
         start: DateTime<Utc>,
         end: DateTime<Utc>,
-    ) -> Result<Vec<CheckpointInfo>> {
-        let checkpoints = self.checkpoints.lock().unwrap();
-        Ok(checkpoints
-            .values()
-            .filter(|cp| cp.info.timestamp >= start && cp.info.timestamp <= end)
-            .map(|cp| cp.info.clone())
-            .collect())
+    ) -> impl std::future::Future<Output = Result<Vec<CheckpointInfo>>> + Send {
+        async move {
+            let checkpoints = self.checkpoints.lock().unwrap();
+            Ok(checkpoints
+                .values()
+                .filter(|cp| cp.info.timestamp >= start && cp.info.timestamp <= end)
+                .map(|cp| cp.info.clone())
+                .collect())
+        }
     }
 
-    async fn query_by_name(&self, pattern: &str) -> Result<Vec<CheckpointInfo>> {
-        let checkpoints = self.checkpoints.lock().unwrap();
-        Ok(checkpoints
-            .values()
-            .filter(|cp| cp.info.name.contains(pattern))
-            .map(|cp| cp.info.clone())
-            .collect())
+    fn query_by_name(&self, pattern: &str) -> impl std::future::Future<Output = Result<Vec<CheckpointInfo>>> + Send {
+        async move {
+            let checkpoints = self.checkpoints.lock().unwrap();
+            Ok(checkpoints
+                .values()
+                .filter(|cp| cp.info.name.contains(pattern))
+                .map(|cp| cp.info.clone())
+                .collect())
+        }
     }
 
-    async fn export_checkpoint(&self, checkpoint_id: &CheckpointId) -> Result<ExportedCheckpoint> {
-        let checkpoints = self.checkpoints.lock().unwrap();
-        let checkpoint = checkpoints.get(&checkpoint_id.0).ok_or_else(|| {
-            crate::error::Error::Checkpoint(format!(
-                "checkpoint not found: {}",
-                checkpoint_id.0
-            ))
-        })?;
-        Ok(ExportedCheckpoint {
-            name: checkpoint.info.name.clone(),
-            description: checkpoint.info.description.clone(),
-            timestamp: checkpoint.info.timestamp,
-            files: checkpoint
-                .files
-                .iter()
-                .map(|f| ExportedFile {
-                    path: f.path.clone(),
-                    content: String::new(),
-                    is_binary: f.is_binary,
-                    hash: f.hash.clone(),
-                })
-                .collect(),
-        })
-    }
-
-    async fn import_checkpoint(&self, exported: ExportedCheckpoint) -> Result<CheckpointId> {
-        let id = CheckpointId::new();
-        let info = CheckpointInfo {
-            id: id.clone(),
-            name: exported.name,
-            description: exported.description,
-            timestamp: exported.timestamp,
-            files_count: exported.files.len(),
-            total_size: 0,
-        };
-        let files: Vec<FileSnapshot> = exported
-            .files
-            .into_iter()
-            .map(|f| FileSnapshot {
-                path: f.path,
-                hash: f.hash,
-                size: f.content.len(),
-                is_binary: f.is_binary,
-                content_path: None,
+    fn export_checkpoint(&self, checkpoint_id: &CheckpointId) -> impl std::future::Future<Output = Result<ExportedCheckpoint>> + Send {
+        async move {
+            let checkpoints = self.checkpoints.lock().unwrap();
+            let checkpoint = checkpoints.get(&checkpoint_id.0).ok_or_else(|| {
+                crate::error::Error::Checkpoint(format!(
+                    "checkpoint not found: {}",
+                    checkpoint_id.0
+                ))
+            })?;
+            Ok(ExportedCheckpoint {
+                name: checkpoint.info.name.clone(),
+                description: checkpoint.info.description.clone(),
+                timestamp: checkpoint.info.timestamp,
+                files: checkpoint
+                    .files
+                    .iter()
+                    .map(|f| ExportedFile {
+                        path: f.path.clone(),
+                        content: String::new(),
+                        is_binary: f.is_binary,
+                        hash: f.hash.clone(),
+                    })
+                    .collect(),
             })
-            .collect();
-        let checkpoint = crate::timeline::TimelineCheckpoint { info, files };
-        self.checkpoints.lock().unwrap().insert(id.0.clone(), checkpoint);
-        Ok(id)
-    }
-
-    async fn cleanup_old_checkpoints(&self, keep_count: usize) -> Result<usize> {
-        let mut checkpoints = self.checkpoints.lock().unwrap();
-        if checkpoints.len() <= keep_count {
-            return Ok(0);
         }
-        // Sort by timestamp, keep newest
-        let mut list: Vec<_> = checkpoints.iter().collect();
-        list.sort_by(|a, b| b.1.info.timestamp.cmp(&a.1.info.timestamp));
-        let to_remove: Vec<String> = list
-            .into_iter()
-            .skip(keep_count)
-            .map(|(k, _)| k.clone())
-            .collect();
-        let count = to_remove.len();
-        for key in to_remove {
-            checkpoints.remove(&key);
+    }
+
+    fn import_checkpoint(&self, exported: ExportedCheckpoint) -> impl std::future::Future<Output = Result<CheckpointId>> + Send {
+        async move {
+            let id = CheckpointId::new();
+            let info = CheckpointInfo {
+                id: id.clone(),
+                name: exported.name,
+                description: exported.description,
+                timestamp: exported.timestamp,
+                files_count: exported.files.len(),
+                total_size: 0,
+            };
+            let files: Vec<FileSnapshot> = exported
+                .files
+                .into_iter()
+                .map(|f| FileSnapshot {
+                    path: f.path,
+                    hash: f.hash,
+                    size: f.content.len(),
+                    is_binary: f.is_binary,
+                    content_path: None,
+                })
+                .collect();
+            let checkpoint = crate::timeline::TimelineCheckpoint { info, files };
+            self.checkpoints.lock().unwrap().insert(id.0.clone(), checkpoint);
+            Ok(id)
         }
-        Ok(count)
     }
 
-    async fn cleanup_snapshots(&self) -> Result<usize> {
-        // In-memory has no filesystem snapshots
-        Ok(0)
+    fn cleanup_old_checkpoints(&self, keep_count: usize) -> impl std::future::Future<Output = Result<usize>> + Send {
+        async move {
+            let mut checkpoints = self.checkpoints.lock().unwrap();
+            if checkpoints.len() <= keep_count {
+                return Ok(0);
+            }
+            let mut list: Vec<_> = checkpoints.iter().collect();
+            list.sort_by(|a, b| b.1.info.timestamp.cmp(&a.1.info.timestamp));
+            let to_remove: Vec<String> = list
+                .into_iter()
+                .skip(keep_count)
+                .map(|(k, _)| k.clone())
+                .collect();
+            let count = to_remove.len();
+            for key in to_remove {
+                checkpoints.remove(&key);
+            }
+            Ok(count)
+        }
     }
 
-    async fn storage_stats(&self) -> Result<StorageStats> {
-        Ok(StorageStats {
-            checkpoint_count: self.checkpoints.lock().unwrap().len(),
-            tracked_file_count: self.tracked_files.lock().unwrap().len(),
-            total_size_bytes: 0,
-            version_count: self.file_versions.lock().unwrap().len(),
-        })
+    fn cleanup_snapshots(&self) -> impl std::future::Future<Output = Result<usize>> + Send {
+        async move {
+            Ok(0)
+        }
+    }
+
+    fn storage_stats(&self) -> impl std::future::Future<Output = Result<StorageStats>> + Send {
+        async move {
+            Ok(StorageStats {
+                checkpoint_count: self.checkpoints.lock().unwrap().len(),
+                tracked_file_count: self.tracked_files.lock().unwrap().len(),
+                total_size_bytes: 0,
+                version_count: self.file_versions.lock().unwrap().len(),
+            })
+        }
     }
 }
 
@@ -432,153 +487,200 @@ impl TimelineRepository for InMemoryBackend {
 // ─────────────────────────────────────────────────────────
 
 impl GraphRepository for InMemoryBackend {
-    async fn insert_file(&self, file: &FileInfo) -> Result<i64> {
-        let mut next_id = self.next_file_id.lock().unwrap();
-        let id = *next_id;
-        *next_id += 1;
-        drop(next_id);
-        self.files.lock().unwrap().insert(file.path.clone(), file.clone());
-        Ok(id)
+    fn insert_file(&self, file: &FileInfo) -> impl std::future::Future<Output = Result<i64>> + Send {
+        async move {
+            let mut next_id = self.next_file_id.lock().unwrap();
+            let id = *next_id;
+            *next_id += 1;
+            drop(next_id);
+            self.files.lock().unwrap().insert(file.path.clone(), file.clone());
+            Ok(id)
+        }
     }
 
-    async fn get_file_by_path(&self, path: &str) -> Result<Option<FileInfo>> {
-        Ok(self.files.lock().unwrap().get(path).cloned())
+    fn get_file_by_path(&self, path: &str) -> impl std::future::Future<Output = Result<Option<FileInfo>>> + Send {
+        async move {
+            Ok(self.files.lock().unwrap().get(path).cloned())
+        }
     }
 
-    async fn get_file_by_id(&self, _id: i64) -> Result<Option<FileInfo>> {
-        // In-memory doesn't track ID→path mapping efficiently
-        Ok(None)
-    }
-
-    async fn get_file_id(&self, path: &str) -> Result<Option<i64>> {
-        let files = self.files.lock().unwrap();
-        if files.contains_key(path) {
-            Ok(Some(1)) // Simplified: return 1 for any existing file
-        } else {
+    fn get_file_by_id(&self, _id: i64) -> impl std::future::Future<Output = Result<Option<FileInfo>>> + Send {
+        async move {
             Ok(None)
         }
     }
 
-    async fn delete_file(&self, path: &str) -> Result<bool> {
-        Ok(self.files.lock().unwrap().remove(path).is_some())
+    fn get_file_id(&self, path: &str) -> impl std::future::Future<Output = Result<Option<i64>>> + Send {
+        async move {
+            let files = self.files.lock().unwrap();
+            if files.contains_key(path) {
+                Ok(Some(1))
+            } else {
+                Ok(None)
+            }
+        }
     }
 
-    async fn count_files(&self) -> Result<i64> {
-        Ok(self.files.lock().unwrap().len() as i64)
+    fn delete_file(&self, path: &str) -> impl std::future::Future<Output = Result<bool>> + Send {
+        async move {
+            Ok(self.files.lock().unwrap().remove(path).is_some())
+        }
     }
 
-    async fn insert_symbol(&self, symbol: &Symbol) -> Result<i64> {
-        let mut next_id = self.next_symbol_id.lock().unwrap();
-        let id = *next_id;
-        *next_id += 1;
-        drop(next_id);
-        self.symbols.lock().unwrap().insert(id, symbol.clone());
-        Ok(id)
+    fn count_files(&self) -> impl std::future::Future<Output = Result<i64>> + Send {
+        async move {
+            Ok(self.files.lock().unwrap().len() as i64)
+        }
     }
 
-    async fn find_symbol(&self, name: &str) -> Result<Vec<Symbol>> {
-        let symbols = self.symbols.lock().unwrap();
-        Ok(symbols.values().filter(|s| s.name == name).cloned().collect())
+    fn insert_symbol(&self, symbol: &Symbol) -> impl std::future::Future<Output = Result<i64>> + Send {
+        async move {
+            let mut next_id = self.next_symbol_id.lock().unwrap();
+            let id = *next_id;
+            *next_id += 1;
+            drop(next_id);
+            self.symbols.lock().unwrap().insert(id, symbol.clone());
+            Ok(id)
+        }
     }
 
-    async fn find_symbol_by_id(&self, id: i64) -> Result<Option<Symbol>> {
-        Ok(self.symbols.lock().unwrap().get(&id).cloned())
+    fn find_symbol(&self, name: &str) -> impl std::future::Future<Output = Result<Vec<Symbol>>> + Send {
+        async move {
+            let symbols = self.symbols.lock().unwrap();
+            Ok(symbols.values().filter(|s| s.name == name).cloned().collect())
+        }
     }
 
-    async fn find_symbols_by_kind(&self, kind: &SymbolKind) -> Result<Vec<Symbol>> {
-        let symbols = self.symbols.lock().unwrap();
-        Ok(symbols.values().filter(|s| &s.kind == kind).cloned().collect())
+    fn find_symbol_by_id(&self, id: i64) -> impl std::future::Future<Output = Result<Option<Symbol>>> + Send {
+        async move {
+            Ok(self.symbols.lock().unwrap().get(&id).cloned())
+        }
     }
 
-    async fn find_symbols_in_file(&self, file_id: i64) -> Result<Vec<Symbol>> {
-        let symbols = self.symbols.lock().unwrap();
-        Ok(symbols.values().filter(|s| s.file_id == file_id).cloned().collect())
+    fn find_symbols_by_kind(&self, kind: &SymbolKind) -> impl std::future::Future<Output = Result<Vec<Symbol>>> + Send {
+        async move {
+            let symbols = self.symbols.lock().unwrap();
+            Ok(symbols.values().filter(|s| &s.kind == kind).cloned().collect())
+        }
     }
 
-    async fn search_symbols(&self, query: &str) -> Result<Vec<Symbol>> {
-        let symbols = self.symbols.lock().unwrap();
-        let query_lower = query.to_lowercase();
-        Ok(symbols
-            .values()
-            .filter(|s| s.name.to_lowercase().contains(&query_lower))
-            .cloned()
-            .collect())
+    fn find_symbols_in_file(&self, file_id: i64) -> impl std::future::Future<Output = Result<Vec<Symbol>>> + Send {
+        async move {
+            let symbols = self.symbols.lock().unwrap();
+            Ok(symbols.values().filter(|s| s.file_id == file_id).cloned().collect())
+        }
     }
 
-    async fn count_symbols(&self) -> Result<i64> {
-        Ok(self.symbols.lock().unwrap().len() as i64)
+    fn search_symbols(&self, query: &str) -> impl std::future::Future<Output = Result<Vec<Symbol>>> + Send {
+        async move {
+            let symbols = self.symbols.lock().unwrap();
+            let query_lower = query.to_lowercase();
+            Ok(symbols
+                .values()
+                .filter(|s| s.name.to_lowercase().contains(&query_lower))
+                .cloned()
+                .collect())
+        }
     }
 
-    async fn delete_symbols_for_file(&self, file_id: i64) -> Result<()> {
-        let mut symbols = self.symbols.lock().unwrap();
-        symbols.retain(|_, s| s.file_id != file_id);
-        Ok(())
+    fn count_symbols(&self) -> impl std::future::Future<Output = Result<i64>> + Send {
+        async move {
+            Ok(self.symbols.lock().unwrap().len() as i64)
+        }
     }
 
-    async fn insert_reference(&self, reference: &Reference) -> Result<()> {
-        self.symbol_refs.lock().unwrap().push(reference.clone());
-        Ok(())
+    fn delete_symbols_for_file(&self, file_id: i64) -> impl std::future::Future<Output = Result<()>> + Send {
+        async move {
+            let mut symbols = self.symbols.lock().unwrap();
+            symbols.retain(|_, s| s.file_id != file_id);
+            Ok(())
+        }
     }
 
-    async fn find_symbol_refs(&self, symbol_id: i64) -> Result<Vec<Reference>> {
-        let refs = self.symbol_refs.lock().unwrap();
-        Ok(refs.iter().filter(|r| r.symbol_id == symbol_id).cloned().collect())
+    fn insert_reference(&self, reference: &Reference) -> impl std::future::Future<Output = Result<()>> + Send {
+        async move {
+            self.symbol_refs.lock().unwrap().push(reference.clone());
+            Ok(())
+        }
     }
 
-    async fn count_symbol_refs(&self) -> Result<i64> {
-        Ok(self.symbol_refs.lock().unwrap().len() as i64)
+    fn find_symbol_refs(&self, symbol_id: i64) -> impl std::future::Future<Output = Result<Vec<Reference>>> + Send {
+        async move {
+            let refs = self.symbol_refs.lock().unwrap();
+            Ok(refs.iter().filter(|r| r.symbol_id == symbol_id).cloned().collect())
+        }
     }
 
-    async fn delete_symbol_refs_for_file(&self, file_id: i64) -> Result<()> {
-        let mut refs = self.symbol_refs.lock().unwrap();
-        refs.retain(|r| r.file_id != file_id);
-        Ok(())
+    fn count_symbol_refs(&self) -> impl std::future::Future<Output = Result<i64>> + Send {
+        async move {
+            Ok(self.symbol_refs.lock().unwrap().len() as i64)
+        }
     }
 
-    async fn insert_relationship(&self, relationship: &Relationship) -> Result<()> {
-        self.relationships.lock().unwrap().push(relationship.clone());
-        Ok(())
+    fn delete_symbol_refs_for_file(&self, file_id: i64) -> impl std::future::Future<Output = Result<()>> + Send {
+        async move {
+            let mut refs = self.symbol_refs.lock().unwrap();
+            refs.retain(|r| r.file_id != file_id);
+            Ok(())
+        }
     }
 
-    async fn find_relationships(&self, symbol_id: i64) -> Result<Vec<Relationship>> {
-        let rels = self.relationships.lock().unwrap();
-        Ok(rels
-            .iter()
-            .filter(|r| r.from_symbol == symbol_id || r.to_symbol == symbol_id)
-            .cloned()
-            .collect())
+    fn insert_relationship(&self, relationship: &Relationship) -> impl std::future::Future<Output = Result<()>> + Send {
+        async move {
+            self.relationships.lock().unwrap().push(relationship.clone());
+            Ok(())
+        }
     }
 
-    async fn find_outgoing_relationships(&self, symbol_id: i64) -> Result<Vec<Relationship>> {
-        let rels = self.relationships.lock().unwrap();
-        Ok(rels
-            .iter()
-            .filter(|r| r.from_symbol == symbol_id)
-            .cloned()
-            .collect())
+    fn find_relationships(&self, symbol_id: i64) -> impl std::future::Future<Output = Result<Vec<Relationship>>> + Send {
+        async move {
+            let rels = self.relationships.lock().unwrap();
+            Ok(rels
+                .iter()
+                .filter(|r| r.from_symbol == symbol_id || r.to_symbol == symbol_id)
+                .cloned()
+                .collect())
+        }
     }
 
-    async fn find_incoming_relationships(&self, symbol_id: i64) -> Result<Vec<Relationship>> {
-        let rels = self.relationships.lock().unwrap();
-        Ok(rels
-            .iter()
-            .filter(|r| r.to_symbol == symbol_id)
-            .cloned()
-            .collect())
+    fn find_outgoing_relationships(&self, symbol_id: i64) -> impl std::future::Future<Output = Result<Vec<Relationship>>> + Send {
+        async move {
+            let rels = self.relationships.lock().unwrap();
+            Ok(rels
+                .iter()
+                .filter(|r| r.from_symbol == symbol_id)
+                .cloned()
+                .collect())
+        }
     }
 
-    async fn count_relationships(&self) -> Result<i64> {
-        Ok(self.relationships.lock().unwrap().len() as i64)
+    fn find_incoming_relationships(&self, symbol_id: i64) -> impl std::future::Future<Output = Result<Vec<Relationship>>> + Send {
+        async move {
+            let rels = self.relationships.lock().unwrap();
+            Ok(rels
+                .iter()
+                .filter(|r| r.to_symbol == symbol_id)
+                .cloned()
+                .collect())
+        }
     }
 
-    async fn clear(&self) -> Result<()> {
-        self.files.lock().unwrap().clear();
-        self.symbols.lock().unwrap().clear();
-        self.symbol_refs.lock().unwrap().clear();
-        self.relationships.lock().unwrap().clear();
-        *self.next_file_id.lock().unwrap() = 1;
-        *self.next_symbol_id.lock().unwrap() = 1;
-        Ok(())
+    fn count_relationships(&self) -> impl std::future::Future<Output = Result<i64>> + Send {
+        async move {
+            Ok(self.relationships.lock().unwrap().len() as i64)
+        }
+    }
+
+    fn clear(&self) -> impl std::future::Future<Output = Result<()>> + Send {
+        async move {
+            self.files.lock().unwrap().clear();
+            self.symbols.lock().unwrap().clear();
+            self.symbol_refs.lock().unwrap().clear();
+            self.relationships.lock().unwrap().clear();
+            *self.next_file_id.lock().unwrap() = 1;
+            *self.next_symbol_id.lock().unwrap() = 1;
+            Ok(())
+        }
     }
 }
 
@@ -591,19 +693,22 @@ impl StorageBackend for InMemoryBackend {
         "in_memory"
     }
 
-    async fn migrate(&self) -> Result<()> {
-        // No schema to migrate
-        Ok(())
+    fn migrate(&self) -> impl std::future::Future<Output = Result<()>> + Send {
+        async move {
+            Ok(())
+        }
     }
 
-    async fn health_check(&self) -> Result<()> {
-        // Always healthy
-        Ok(())
+    fn health_check(&self) -> impl std::future::Future<Output = Result<()>> + Send {
+        async move {
+            Ok(())
+        }
     }
 
-    async fn close(&self) -> Result<()> {
-        // Nothing to close
-        Ok(())
+    fn close(&self) -> impl std::future::Future<Output = Result<()>> + Send {
+        async move {
+            Ok(())
+        }
     }
 }
 
