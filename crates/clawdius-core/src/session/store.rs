@@ -10,11 +10,38 @@ use super::types::{Message, Session, SessionId, TokenUsage};
 use crate::error::Result;
 use crate::storage::{SessionRepository, SqliteBackend, StorageBackend};
 
+/// Helper: run an async closure from a sync context.
+///
+/// When inside a tokio runtime, uses `block_in_place` to poll the future
+/// without creating a nested runtime. Otherwise, creates a temporary runtime.
+fn run_async<F>(f: F) -> F::Output
+where
+    F: std::future::Future + Send,
+{
+    match tokio::runtime::Handle::try_current() {
+        Ok(handle) => {
+            // Inside a runtime — block_in_place works on current-thread runtimes.
+            // Pin the future and use the handle's block_on which supports nesting
+            // on multi-threaded runtimes. For current-thread, we need block_in_place.
+            let mut fut = std::pin::pin!(f);
+            tokio::task::block_in_place(|| handle.block_on(&mut fut))
+        }
+        Err(_) => {
+            // No runtime present — create a temporary one (e.g., plain #[test])
+            let rt = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .expect("failed to create tokio runtime");
+            rt.block_on(f)
+        }
+    }
+}
+
 /// Session storage backend.
 ///
 /// Wraps a `SqliteBackend` and exposes the synchronous API that existing
-/// consumers expect. Each method creates a minimal tokio runtime to call
-/// the async `SessionRepository` trait methods.
+/// consumers expect. Each method delegates to the async `StorageBackend`
+/// trait methods via `run_async`.
 ///
 /// # Migration Path
 ///
@@ -24,20 +51,6 @@ use crate::storage::{SessionRepository, SqliteBackend, StorageBackend};
 #[derive(Debug)]
 pub struct SessionStore {
     backend: SqliteBackend,
-}
-
-/// Helper: run an async closure on a single-threaded tokio runtime.
-/// Uses `tokio::runtime::Builder::new_current_thread()` so tests
-/// don't need a pre-existing multi-threaded runtime.
-fn run_async<F, T>(f: F) -> T
-where
-    F: std::future::Future<Output = T>,
-{
-    let rt = tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()
-        .expect("failed to create tokio runtime");
-    rt.block_on(f)
 }
 
 impl SessionStore {
@@ -103,9 +116,6 @@ impl SessionStore {
     }
 
     /// Get a reference to the underlying backend.
-    ///
-    /// Prefer using the trait methods. This is exposed for advanced use
-    /// such as accessing timeline or graph operations.
     #[must_use]
     pub fn backend(&self) -> &SqliteBackend {
         &self.backend
@@ -122,7 +132,6 @@ mod tests {
         let temp = NamedTempFile::new()?;
         let store = SessionStore::open(temp.path())?;
 
-        // Create session
         let mut session = Session::new();
         session.title = Some("Test Session".to_string());
         session.meta.provider = Some("anthropic".to_string());
@@ -130,28 +139,23 @@ mod tests {
 
         store.create_session(&session)?;
 
-        // Load session
         let loaded = store
             .load_session(&session.id)?
             .expect("session should exist");
         assert_eq!(loaded.title, Some("Test Session".to_string()));
 
-        // Add message
         let msg = Message::user("Hello, world!");
         store.save_message(&session.id, &msg)?;
 
-        // Load full session
         let full = store
             .load_session_full(&session.id)?
             .expect("session should exist");
         assert_eq!(full.messages.len(), 1);
         assert_eq!(full.messages[0].as_text(), Some("Hello, world!"));
 
-        // List sessions
         let sessions = store.list_sessions()?;
         assert_eq!(sessions.len(), 1);
 
-        // Delete session
         store.delete_session(&session.id)?;
         let sessions = store.list_sessions()?;
         assert!(sessions.is_empty());
