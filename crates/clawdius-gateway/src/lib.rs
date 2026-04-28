@@ -17,6 +17,7 @@
 //! ```
 
 pub mod adapter;
+pub mod adapters;
 pub mod error;
 pub mod formatter;
 pub mod gateway;
