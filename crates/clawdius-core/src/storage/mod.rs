@@ -36,7 +36,7 @@ mod sqlite;
 mod tests;
 
 pub use backend::{
-    GraphRepository, SessionRepository, StorageBackend, TimelineRepository,
+    GraphRepository, SessionRepository, StorageBackend, TimelineRepository, WorkspaceRepository,
 };
 pub use error::StorageError;
 pub use in_memory::InMemoryBackend;

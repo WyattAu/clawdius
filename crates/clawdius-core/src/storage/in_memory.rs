@@ -1,7 +1,7 @@
 //! In-memory storage backend (HashMap-backed, for testing and ephemeral use).
 
 use super::backend::{
-    GraphRepository, SessionRepository, StorageBackend, TimelineRepository,
+    GraphRepository, SessionRepository, StorageBackend, TimelineRepository, WorkspaceRepository,
 };
 use crate::error::Result;
 use crate::graph_rag::ast::{
@@ -13,6 +13,7 @@ use crate::timeline::{
     ExportedFile, FileChangeType, FileSnapshot, FileVersion, RollbackPreview, StorageStats,
 };
 use crate::timeline::FileDiff;
+use crate::workspace::{Project, ProjectId, Workspace, WorkspaceId};
 use chrono::{DateTime, Utc};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -43,6 +44,11 @@ pub struct InMemoryBackend {
     relationships: Mutex<Vec<Relationship>>,
     next_file_id: Mutex<i64>,
     next_symbol_id: Mutex<i64>,
+
+    // Workspace domain
+    workspaces: Mutex<HashMap<String, Workspace>>,
+    projects: Mutex<HashMap<String, Project>>,
+    workspace_projects: Mutex<HashMap<String, Vec<String>>>,
 }
 
 impl InMemoryBackend {
@@ -61,6 +67,9 @@ impl InMemoryBackend {
             relationships: Mutex::new(Vec::new()),
             next_file_id: Mutex::new(1),
             next_symbol_id: Mutex::new(1),
+            workspaces: Mutex::new(HashMap::new()),
+            projects: Mutex::new(HashMap::new()),
+            workspace_projects: Mutex::new(HashMap::new()),
         }
     }
 }
@@ -680,6 +689,158 @@ impl GraphRepository for InMemoryBackend {
             *self.next_file_id.lock().unwrap() = 1;
             *self.next_symbol_id.lock().unwrap() = 1;
             Ok(())
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────
+// WorkspaceRepository
+// ─────────────────────────────────────────────────────────
+
+impl WorkspaceRepository for InMemoryBackend {
+    fn create_workspace(&self, workspace: &Workspace) -> impl std::future::Future<Output = Result<()>> + Send {
+        async move {
+            self.workspaces.lock().unwrap().insert(workspace.id.0.clone(), workspace.clone());
+            Ok(())
+        }
+    }
+
+    fn load_workspace(&self, id: &WorkspaceId) -> impl std::future::Future<Output = Result<Option<Workspace>>> + Send {
+        async move {
+            Ok(self.workspaces.lock().unwrap().get(&id.0).cloned())
+        }
+    }
+
+    fn list_workspaces(&self) -> impl std::future::Future<Output = Result<Vec<Workspace>>> + Send {
+        async move {
+            Ok(self.workspaces.lock().unwrap().values().cloned().collect())
+        }
+    }
+
+    fn delete_workspace(&self, id: &WorkspaceId) -> impl std::future::Future<Output = Result<()>> + Send {
+        async move {
+            self.workspaces.lock().unwrap().remove(&id.0);
+            self.workspace_projects.lock().unwrap().remove(&id.0);
+            Ok(())
+        }
+    }
+
+    fn add_project(&self, project: &Project) -> impl std::future::Future<Output = Result<()>> + Send {
+        async move {
+            self.projects.lock().unwrap().insert(project.id.0.clone(), project.clone());
+            Ok(())
+        }
+    }
+
+    fn load_project(&self, id: &ProjectId) -> impl std::future::Future<Output = Result<Option<Project>>> + Send {
+        async move {
+            Ok(self.projects.lock().unwrap().get(&id.0).cloned())
+        }
+    }
+
+    fn load_project_by_path(&self, path: &Path) -> impl std::future::Future<Output = Result<Option<Project>>> + Send {
+        async move {
+            let path_str = path.to_string_lossy().to_string();
+            let projects = self.projects.lock().unwrap();
+            Ok(projects.values().find(|p| p.root_path.to_string_lossy() == path_str).cloned())
+        }
+    }
+
+    fn list_projects(&self) -> impl std::future::Future<Output = Result<Vec<Project>>> + Send {
+        async move {
+            Ok(self.projects.lock().unwrap().values().cloned().collect())
+        }
+    }
+
+    fn update_project(&self, project: &Project) -> impl std::future::Future<Output = Result<()>> + Send {
+        async move {
+            self.projects.lock().unwrap().insert(project.id.0.clone(), project.clone());
+            Ok(())
+        }
+    }
+
+    fn remove_project(&self, id: &ProjectId) -> impl std::future::Future<Output = Result<()>> + Send {
+        async move {
+            self.projects.lock().unwrap().remove(&id.0);
+            // Remove from all workspace associations
+            let mut wp = self.workspace_projects.lock().unwrap();
+            for project_ids in wp.values_mut() {
+                project_ids.retain(|pid| pid != &id.0);
+            }
+            Ok(())
+        }
+    }
+
+    fn add_project_to_workspace(
+        &self,
+        workspace_id: &WorkspaceId,
+        project_id: &ProjectId,
+    ) -> impl std::future::Future<Output = Result<()>> + Send {
+        async move {
+            let mut wp = self.workspace_projects.lock().unwrap();
+            let entry = wp.entry(workspace_id.0.clone()).or_insert_with(Vec::new);
+            if !entry.contains(&project_id.0) {
+                entry.push(project_id.0.clone());
+            }
+            Ok(())
+        }
+    }
+
+    fn remove_project_from_workspace(
+        &self,
+        workspace_id: &WorkspaceId,
+        project_id: &ProjectId,
+    ) -> impl std::future::Future<Output = Result<()>> + Send {
+        async move {
+            if let Some(project_ids) = self.workspace_projects.lock().unwrap().get_mut(&workspace_id.0) {
+                project_ids.retain(|pid| pid != &project_id.0);
+            }
+            Ok(())
+        }
+    }
+
+    fn list_workspace_projects(
+        &self,
+        workspace_id: &WorkspaceId,
+    ) -> impl std::future::Future<Output = Result<Vec<Project>>> + Send {
+        async move {
+            let project_ids = self.workspace_projects.lock().unwrap()
+                .get(&workspace_id.0)
+                .cloned()
+                .unwrap_or_default();
+            let projects = self.projects.lock().unwrap();
+            Ok(project_ids
+                .iter()
+                .filter_map(|pid| projects.get(pid).cloned())
+                .collect())
+        }
+    }
+
+    fn set_default_project(
+        &self,
+        workspace_id: &WorkspaceId,
+        project_id: &ProjectId,
+    ) -> impl std::future::Future<Output = Result<()>> + Send {
+        async move {
+            if let Some(ws) = self.workspaces.lock().unwrap().get_mut(&workspace_id.0) {
+                ws.default_project_id = Some(project_id.clone());
+            }
+            Ok(())
+        }
+    }
+
+    fn get_default_project(
+        &self,
+        workspace_id: &WorkspaceId,
+    ) -> impl std::future::Future<Output = Result<Option<Project>>> + Send {
+        async move {
+            let default_id = self.workspaces.lock().unwrap()
+                .get(&workspace_id.0)
+                .and_then(|ws| ws.default_project_id.clone());
+            let Some(default_id) = default_id else {
+                return Ok(None);
+            };
+            Ok(self.projects.lock().unwrap().get(&default_id.0).cloned())
         }
     }
 }

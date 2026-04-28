@@ -256,7 +256,102 @@ pub trait GraphRepository: Send + Sync + std::fmt::Debug {
 }
 
 // ─────────────────────────────────────────────────────────
-// Unified backend (combines all three domain traits)
+// Workspace operations (multi-repo support)
+// ─────────────────────────────────────────────────────────
+
+use crate::workspace::{Project, ProjectId, Workspace, WorkspaceId};
+
+/// Repository for workspace and project management.
+///
+/// Supports multi-repo workspaces where a single agent operates
+/// across multiple codebases simultaneously.
+pub trait WorkspaceRepository: Send + Sync + std::fmt::Debug {
+    // ── Workspace CRUD ──
+
+    /// Create a new workspace.
+    fn create_workspace(
+        &self,
+        workspace: &Workspace,
+    ) -> impl std::future::Future<Output = Result<()>> + Send;
+
+    /// Load a workspace by ID.
+    fn load_workspace(
+        &self,
+        id: &WorkspaceId,
+    ) -> impl std::future::Future<Output = Result<Option<Workspace>>> + Send;
+
+    /// List all workspaces.
+    fn list_workspaces(&self) -> impl std::future::Future<Output = Result<Vec<Workspace>>> + Send;
+
+    /// Delete a workspace and all project associations.
+    fn delete_workspace(&self, id: &WorkspaceId) -> impl std::future::Future<Output = Result<()>> + Send;
+
+    // ── Project CRUD ──
+
+    /// Add a project to the workspace.
+    fn add_project(&self, project: &Project) -> impl std::future::Future<Output = Result<()>> + Send;
+
+    /// Load a project by ID.
+    fn load_project(
+        &self,
+        id: &ProjectId,
+    ) -> impl std::future::Future<Output = Result<Option<Project>>> + Send;
+
+    /// Look up a project by its root path.
+    fn load_project_by_path(
+        &self,
+        path: &Path,
+    ) -> impl std::future::Future<Output = Result<Option<Project>>> + Send;
+
+    /// List all projects.
+    fn list_projects(&self) -> impl std::future::Future<Output = Result<Vec<Project>>> + Send;
+
+    /// Update a project's metadata.
+    fn update_project(&self, project: &Project) -> impl std::future::Future<Output = Result<()>> + Send;
+
+    /// Remove a project from all workspaces.
+    fn remove_project(&self, id: &ProjectId) -> impl std::future::Future<Output = Result<()>> + Send;
+
+    // ── Workspace ↔ Project association ──
+
+    /// Add a project to a workspace.
+    fn add_project_to_workspace(
+        &self,
+        workspace_id: &WorkspaceId,
+        project_id: &ProjectId,
+    ) -> impl std::future::Future<Output = Result<()>> + Send;
+
+    /// Remove a project from a workspace.
+    fn remove_project_from_workspace(
+        &self,
+        workspace_id: &WorkspaceId,
+        project_id: &ProjectId,
+    ) -> impl std::future::Future<Output = Result<()>> + Send;
+
+    /// List all projects in a workspace.
+    fn list_workspace_projects(
+        &self,
+        workspace_id: &WorkspaceId,
+    ) -> impl std::future::Future<Output = Result<Vec<Project>>> + Send;
+
+    // ── Default project ──
+
+    /// Set the default project for a workspace.
+    fn set_default_project(
+        &self,
+        workspace_id: &WorkspaceId,
+        project_id: &ProjectId,
+    ) -> impl std::future::Future<Output = Result<()>> + Send;
+
+    /// Get the default project for a workspace.
+    fn get_default_project(
+        &self,
+        workspace_id: &WorkspaceId,
+    ) -> impl std::future::Future<Output = Result<Option<Project>>> + Send;
+}
+
+// ─────────────────────────────────────────────────────────
+// Unified backend (combines all domain traits)
 // ─────────────────────────────────────────────────────────
 
 /// A unified storage backend that implements all domain traits.
@@ -283,7 +378,7 @@ pub trait GraphRepository: Send + Sync + std::fmt::Debug {
 /// }
 /// ```
 pub trait StorageBackend:
-    SessionRepository + TimelineRepository + GraphRepository + Send + Sync + std::fmt::Debug
+    SessionRepository + TimelineRepository + GraphRepository + WorkspaceRepository + Send + Sync + std::fmt::Debug
 {
     /// Get the backend type name (e.g., "sqlite", "postgres", "in_memory").
     fn backend_type(&self) -> &'static str;

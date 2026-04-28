@@ -7,7 +7,7 @@
 //! Enable with the `mariadb` feature flag.
 
 use super::backend::{
-    GraphRepository, SessionRepository, StorageBackend, TimelineRepository,
+    GraphRepository, SessionRepository, StorageBackend, TimelineRepository, WorkspaceRepository,
 };
 use super::error::StorageError;
 use crate::error::Result;
@@ -22,6 +22,7 @@ use crate::timeline::{
     CheckpointId, CheckpointInfo, Diff, DiffSummary, ExportedCheckpoint,
     ExportedFile, FileChangeType, FileDiff, FileVersion, RollbackPreview, StorageStats,
 };
+use crate::workspace::{Project, ProjectId, Workspace, WorkspaceId};
 use chrono::{DateTime, Utc};
 use mysql_async::prelude::*;
 use mysql_async::{Opts, Pool};
@@ -107,6 +108,7 @@ CREATE TABLE IF NOT EXISTS projects (
 CREATE TABLE IF NOT EXISTS workspaces (
     id VARCHAR(36) PRIMARY KEY,
     name TEXT NOT NULL,
+    default_project_id VARCHAR(36),
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -1396,6 +1398,288 @@ impl GraphRepository for MariaDbBackend {
             conn.query_drop("DELETE FROM graph_files")
                 .await.map_err(StorageError::from)?;
             Ok(())
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────
+// WorkspaceRepository implementation
+// ─────────────────────────────────────────────────────────
+
+impl WorkspaceRepository for MariaDbBackend {
+    fn create_workspace(&self, workspace: &Workspace) -> impl std::future::Future<Output = Result<()>> + Send {
+        async move {
+            let mut conn = self.pool.get_conn().await.map_err(StorageError::from)?;
+            conn.exec_drop(
+                r"INSERT INTO workspaces (id, name, default_project_id, created_at)
+                  VALUES (:id, :name, :default_project_id, :created_at)",
+                params! {
+                    "id" => &workspace.id.0,
+                    "name" => &workspace.name,
+                    "default_project_id" => workspace.default_project_id.as_ref().map(|pid| &pid.0),
+                    "created_at" => workspace.created_at.to_rfc3339(),
+                },
+            ).await.map_err(StorageError::from)?;
+            Ok(())
+        }
+    }
+
+    fn load_workspace(&self, id: &WorkspaceId) -> impl std::future::Future<Output = Result<Option<Workspace>>> + Send {
+        async move {
+            let mut conn = self.pool.get_conn().await.map_err(StorageError::from)?;
+            let row: Option<(String, String, Option<String>, String)> = conn.exec_first(
+                "SELECT id, name, default_project_id, created_at FROM workspaces WHERE id = :id",
+                params! { "id" => &id.0 },
+            ).await.map_err(StorageError::from)?;
+            Ok(row.map(|(id, name, default_project_id, created_at)| Workspace {
+                id: WorkspaceId(id),
+                name,
+                default_project_id: default_project_id.map(ProjectId),
+                created_at: created_at.parse::<DateTime<Utc>>().unwrap_or_else(|_| Utc::now()),
+            }))
+        }
+    }
+
+    fn list_workspaces(&self) -> impl std::future::Future<Output = Result<Vec<Workspace>>> + Send {
+        async move {
+            let mut conn = self.pool.get_conn().await.map_err(StorageError::from)?;
+            let rows: Vec<(String, String, Option<String>, String)> = conn.exec(
+                "SELECT id, name, default_project_id, created_at FROM workspaces ORDER BY created_at DESC",
+                params! {},
+            ).await.map_err(StorageError::from)?;
+            Ok(rows
+                .into_iter()
+                .map(|(id, name, default_project_id, created_at)| Workspace {
+                    id: WorkspaceId(id),
+                    name,
+                    default_project_id: default_project_id.map(ProjectId),
+                    created_at: created_at.parse::<DateTime<Utc>>().unwrap_or_else(|_| Utc::now()),
+                })
+                .collect())
+        }
+    }
+
+    fn delete_workspace(&self, id: &WorkspaceId) -> impl std::future::Future<Output = Result<()>> + Send {
+        async move {
+            let mut conn = self.pool.get_conn().await.map_err(StorageError::from)?;
+            conn.exec_drop(
+                "DELETE FROM workspace_projects WHERE workspace_id = :id",
+                params! { "id" => &id.0 },
+            ).await.map_err(StorageError::from)?;
+            conn.exec_drop(
+                "DELETE FROM workspaces WHERE id = :id",
+                params! { "id" => &id.0 },
+            ).await.map_err(StorageError::from)?;
+            Ok(())
+        }
+    }
+
+    fn add_project(&self, project: &Project) -> impl std::future::Future<Output = Result<()>> + Send {
+        async move {
+            let mut conn = self.pool.get_conn().await.map_err(StorageError::from)?;
+            conn.exec_drop(
+                r"INSERT INTO projects (id, name, root_path, created_at)
+                  VALUES (:id, :name, :root_path, :created_at)",
+                params! {
+                    "id" => &project.id.0,
+                    "name" => &project.name,
+                    "root_path" => project.root_path.to_string_lossy().as_ref(),
+                    "created_at" => project.created_at.to_rfc3339(),
+                },
+            ).await.map_err(StorageError::from)?;
+            Ok(())
+        }
+    }
+
+    fn load_project(&self, id: &ProjectId) -> impl std::future::Future<Output = Result<Option<Project>>> + Send {
+        async move {
+            let mut conn = self.pool.get_conn().await.map_err(StorageError::from)?;
+            let row: Option<(String, String, String, String)> = conn.exec_first(
+                "SELECT id, name, root_path, created_at FROM projects WHERE id = :id",
+                params! { "id" => &id.0 },
+            ).await.map_err(StorageError::from)?;
+            Ok(row.map(|(id, name, root_path, created_at)| Project {
+                id: ProjectId(id),
+                name,
+                root_path: PathBuf::from(root_path),
+                created_at: created_at.parse::<DateTime<Utc>>().unwrap_or_else(|_| Utc::now()),
+            }))
+        }
+    }
+
+    fn load_project_by_path(&self, path: &Path) -> impl std::future::Future<Output = Result<Option<Project>>> + Send {
+        async move {
+            let mut conn = self.pool.get_conn().await.map_err(StorageError::from)?;
+            let path_str = path.to_string_lossy().to_string();
+            let row: Option<(String, String, String, String)> = conn.exec_first(
+                "SELECT id, name, root_path, created_at FROM projects WHERE root_path = :root_path",
+                params! { "root_path" => &path_str },
+            ).await.map_err(StorageError::from)?;
+            Ok(row.map(|(id, name, root_path, created_at)| Project {
+                id: ProjectId(id),
+                name,
+                root_path: PathBuf::from(root_path),
+                created_at: created_at.parse::<DateTime<Utc>>().unwrap_or_else(|_| Utc::now()),
+            }))
+        }
+    }
+
+    fn list_projects(&self) -> impl std::future::Future<Output = Result<Vec<Project>>> + Send {
+        async move {
+            let mut conn = self.pool.get_conn().await.map_err(StorageError::from)?;
+            let rows: Vec<(String, String, String, String)> = conn.exec(
+                "SELECT id, name, root_path, created_at FROM projects ORDER BY created_at DESC",
+                params! {},
+            ).await.map_err(StorageError::from)?;
+            Ok(rows
+                .into_iter()
+                .map(|(id, name, root_path, created_at)| Project {
+                    id: ProjectId(id),
+                    name,
+                    root_path: PathBuf::from(root_path),
+                    created_at: created_at.parse::<DateTime<Utc>>().unwrap_or_else(|_| Utc::now()),
+                })
+                .collect())
+        }
+    }
+
+    fn update_project(&self, project: &Project) -> impl std::future::Future<Output = Result<()>> + Send {
+        async move {
+            let mut conn = self.pool.get_conn().await.map_err(StorageError::from)?;
+            conn.exec_drop(
+                r"UPDATE projects SET name = :name, root_path = :root_path WHERE id = :id",
+                params! {
+                    "id" => &project.id.0,
+                    "name" => &project.name,
+                    "root_path" => project.root_path.to_string_lossy().as_ref(),
+                },
+            ).await.map_err(StorageError::from)?;
+            Ok(())
+        }
+    }
+
+    fn remove_project(&self, id: &ProjectId) -> impl std::future::Future<Output = Result<()>> + Send {
+        async move {
+            let mut conn = self.pool.get_conn().await.map_err(StorageError::from)?;
+            conn.exec_drop(
+                "DELETE FROM workspace_projects WHERE project_id = :id",
+                params! { "id" => &id.0 },
+            ).await.map_err(StorageError::from)?;
+            conn.exec_drop(
+                "DELETE FROM projects WHERE id = :id",
+                params! { "id" => &id.0 },
+            ).await.map_err(StorageError::from)?;
+            Ok(())
+        }
+    }
+
+    fn add_project_to_workspace(
+        &self,
+        workspace_id: &WorkspaceId,
+        project_id: &ProjectId,
+    ) -> impl std::future::Future<Output = Result<()>> + Send {
+        async move {
+            let mut conn = self.pool.get_conn().await.map_err(StorageError::from)?;
+            conn.exec_drop(
+                r"INSERT IGNORE INTO workspace_projects (workspace_id, project_id)
+                  VALUES (:workspace_id, :project_id)",
+                params! {
+                    "workspace_id" => &workspace_id.0,
+                    "project_id" => &project_id.0,
+                },
+            ).await.map_err(StorageError::from)?;
+            Ok(())
+        }
+    }
+
+    fn remove_project_from_workspace(
+        &self,
+        workspace_id: &WorkspaceId,
+        project_id: &ProjectId,
+    ) -> impl std::future::Future<Output = Result<()>> + Send {
+        async move {
+            let mut conn = self.pool.get_conn().await.map_err(StorageError::from)?;
+            conn.exec_drop(
+                r"DELETE FROM workspace_projects WHERE workspace_id = :workspace_id AND project_id = :project_id",
+                params! {
+                    "workspace_id" => &workspace_id.0,
+                    "project_id" => &project_id.0,
+                },
+            ).await.map_err(StorageError::from)?;
+            Ok(())
+        }
+    }
+
+    fn list_workspace_projects(
+        &self,
+        workspace_id: &WorkspaceId,
+    ) -> impl std::future::Future<Output = Result<Vec<Project>>> + Send {
+        async move {
+            let mut conn = self.pool.get_conn().await.map_err(StorageError::from)?;
+            let rows: Vec<(String, String, String, String)> = conn.exec(
+                r"SELECT p.id, p.name, p.root_path, p.created_at
+                   FROM projects p
+                   INNER JOIN workspace_projects wp ON wp.project_id = p.id
+                   WHERE wp.workspace_id = :workspace_id
+                   ORDER BY wp.added_at DESC",
+                params! { "workspace_id" => &workspace_id.0 },
+            ).await.map_err(StorageError::from)?;
+            Ok(rows
+                .into_iter()
+                .map(|(id, name, root_path, created_at)| Project {
+                    id: ProjectId(id),
+                    name,
+                    root_path: PathBuf::from(root_path),
+                    created_at: created_at.parse::<DateTime<Utc>>().unwrap_or_else(|_| Utc::now()),
+                })
+                .collect())
+        }
+    }
+
+    fn set_default_project(
+        &self,
+        workspace_id: &WorkspaceId,
+        project_id: &ProjectId,
+    ) -> impl std::future::Future<Output = Result<()>> + Send {
+        async move {
+            let mut conn = self.pool.get_conn().await.map_err(StorageError::from)?;
+            conn.exec_drop(
+                r"UPDATE workspaces SET default_project_id = :project_id WHERE id = :workspace_id",
+                params! {
+                    "workspace_id" => &workspace_id.0,
+                    "project_id" => &project_id.0,
+                },
+            ).await.map_err(StorageError::from)?;
+            Ok(())
+        }
+    }
+
+    fn get_default_project(
+        &self,
+        workspace_id: &WorkspaceId,
+    ) -> impl std::future::Future<Output = Result<Option<Project>>> + Send {
+        async move {
+            let mut conn = self.pool.get_conn().await.map_err(StorageError::from)?;
+            let default_id: Option<String> = conn.exec_first(
+                "SELECT default_project_id FROM workspaces WHERE id = :id",
+                params! { "id" => &workspace_id.0 },
+            ).await.map_err(StorageError::from)?.flatten();
+
+            let Some(default_id) = default_id else {
+                return Ok(None);
+            };
+
+            let row: Option<(String, String, String, String)> = conn.exec_first(
+                "SELECT id, name, root_path, created_at FROM projects WHERE id = :id",
+                params! { "id" => &default_id },
+            ).await.map_err(StorageError::from)?;
+
+            Ok(row.map(|(id, name, root_path, created_at)| Project {
+                id: ProjectId(id),
+                name,
+                root_path: PathBuf::from(root_path),
+                created_at: created_at.parse::<DateTime<Utc>>().unwrap_or_else(|_| Utc::now()),
+            }))
         }
     }
 }
