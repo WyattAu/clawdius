@@ -1,0 +1,39 @@
+[package]
+name = "clawdius-gateway"
+version = "1.6.0"
+edition = "2021"
+description = "Messaging gateway for Clawdius — routes chat platform messages to the agent"
+
+[dependencies]
+clawdius-core = { path = "../clawdius-core" }
+tokio = { workspace = true, features = ["rt-multi-thread", "macros", "sync", "signal"] }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+uuid = { workspace = true, features = ["v4"] }
+chrono = { workspace = true, features = ["serde"] }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+thiserror = { workspace = true }
+clap = { workspace = true, features = ["derive", "env"] }
+async-trait = { workspace = true }
+anyhow = { workspace = true }
+
+# Platform SDKs (optional, feature-gated)
+teloxide = { version = "0.14", optional = true }
+serenity = { version = "0.12", optional = true, default-features = false, features = ["client", "gateway", "model", "rustls_backend"] }
+slack-morphism = { version = "1", optional = true }
+matrix-sdk = { version = "0.10", optional = true, default-features = false, features = ["rustls-tls"] }
+
+[dev-dependencies]
+tempfile = { workspace = true }
+
+[features]
+default = []
+telegram = ["dep:teloxide"]
+discord = ["dep:serenity"]
+slack = ["dep:slack-morphism"]
+matrix = ["dep:matrix-sdk"]
+all-platforms = ["telegram", "discord", "slack", "matrix"]
+
+[lints]
+workspace = true

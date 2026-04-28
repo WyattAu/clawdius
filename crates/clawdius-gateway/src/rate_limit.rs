@@ -1,0 +1,193 @@
+//! Per-user, per-platform rate limiting.
+//!
+//! Uses a sliding window algorithm to enforce rate limits.
+
+use std::collections::HashMap;
+use std::sync::Mutex;
+use std::time::{Duration, Instant};
+
+use crate::adapter::Platform;
+
+/// Rate limiter using a sliding window counter.
+///
+/// Thread-safe via `Mutex`. For high-throughput deployments,
+/// consider replacing with Redis-backed rate limiting.
+pub struct RateLimiter {
+    /// Maximum requests per window.
+    max_requests: usize,
+    /// Window duration.
+    window: Duration,
+    /// State: (user_id, platform) → list of request timestamps.
+    state: Mutex<HashMap<(String, String), Vec<Instant>>>,
+}
+
+impl RateLimiter {
+    /// Create a new rate limiter.
+    ///
+    /// # Arguments
+    /// * `max_requests` — Maximum number of requests allowed per window.
+    /// * `window_secs` — Duration of the sliding window in seconds.
+    #[must_use]
+    pub fn new(max_requests: usize, window_secs: u64) -> Self {
+        Self {
+            max_requests,
+            window: Duration::from_secs(window_secs),
+            state: Mutex::new(HashMap::new()),
+        }
+    }
+
+    /// Create a rate limiter with common defaults (20 requests per 60 seconds).
+    #[must_use]
+    pub fn default_limiter() -> Self {
+        Self::new(20, 60)
+    }
+
+    /// Check if a request is allowed, and record it if so.
+    ///
+    /// Returns `Ok(())` if the request is within rate limits,
+    /// or `Err` with the number of milliseconds until the next
+    /// allowed request.
+    pub fn check(&self, platform: Platform, user_id: &str) -> Result<(), RateLimitError> {
+        let key = (user_id.to_string(), platform.as_str().to_string());
+        let now = Instant::now();
+        let cutoff = now - self.window;
+
+        let mut state = self.state.lock().unwrap();
+        let timestamps = state.entry(key).or_insert_with(Vec::new);
+
+        // Remove expired entries
+        timestamps.retain(|&t| t > cutoff);
+
+        if timestamps.len() >= self.max_requests {
+            // Find when the oldest request in the window will expire
+            let oldest = timestamps
+                .first()
+                .expect("timestamps is non-empty because len >= max_requests");
+            let retry_after = oldest.duration_since(cutoff);
+            return Err(RateLimitError {
+                retry_after_ms: retry_after.as_millis() as u64,
+            });
+        }
+
+        timestamps.push(now);
+        Ok(())
+    }
+
+    /// Get the current request count for a user/platform.
+    #[must_use]
+    pub fn current_count(&self, platform: Platform, user_id: &str) -> usize {
+        let key = (user_id.to_string(), platform.as_str().to_string());
+        let now = Instant::now();
+        let cutoff = now - self.window;
+
+        let state = self.state.lock().unwrap();
+        state
+            .get(&key)
+            .map(|ts| ts.iter().filter(|&&t| t > cutoff).count())
+            .unwrap_or(0)
+    }
+
+    /// Reset rate limit state for a user/platform.
+    pub fn reset(&self, platform: Platform, user_id: &str) {
+        let key = (user_id.to_string(), platform.as_str().to_string());
+        let mut state = self.state.lock().unwrap();
+        state.remove(&key);
+    }
+
+    /// Clear all rate limit state.
+    pub fn clear_all(&self) {
+        let mut state = self.state.lock().unwrap();
+        state.clear();
+    }
+}
+
+/// Rate limit exceeded error.
+#[derive(Debug, Clone)]
+pub struct RateLimitError {
+    /// Milliseconds until the next allowed request.
+    pub retry_after_ms: u64,
+}
+
+impl std::fmt::Display for RateLimitError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "rate limit exceeded, retry after {}ms", self.retry_after_ms)
+    }
+}
+
+impl std::error::Error for RateLimitError {}
+
+// ─────────────────────────────────────────────────────────
+// Tests
+// ─────────────────────────────────────────────────────────
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_allows_within_limit() {
+        let limiter = RateLimiter::new(5, 60);
+        for _ in 0..5 {
+            assert!(limiter.check(Platform::Telegram, "user1").is_ok());
+        }
+    }
+
+    #[test]
+    fn test_rejects_over_limit() {
+        let limiter = RateLimiter::new(3, 60);
+        for _ in 0..3 {
+            assert!(limiter.check(Platform::Discord, "user1").is_ok());
+        }
+        let result = limiter.check(Platform::Discord, "user1");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().retry_after_ms > 0);
+    }
+
+    #[test]
+    fn test_separate_users_independent() {
+        let limiter = RateLimiter::new(2, 60);
+        for _ in 0..2 {
+            limiter.check(Platform::Telegram, "user1").unwrap();
+        }
+        // user2 should still be allowed
+        assert!(limiter.check(Platform::Telegram, "user2").is_ok());
+    }
+
+    #[test]
+    fn test_separate_platforms_independent() {
+        let limiter = RateLimiter::new(2, 60);
+        for _ in 0..2 {
+            limiter.check(Platform::Telegram, "user1").unwrap();
+        }
+        // Same user, different platform should be allowed
+        assert!(limiter.check(Platform::Discord, "user1").is_ok());
+    }
+
+    #[test]
+    fn test_current_count() {
+        let limiter = RateLimiter::new(5, 60);
+        assert_eq!(limiter.current_count(Platform::Telegram, "user1"), 0);
+        limiter.check(Platform::Telegram, "user1").unwrap();
+        assert_eq!(limiter.current_count(Platform::Telegram, "user1"), 1);
+    }
+
+    #[test]
+    fn test_reset() {
+        let limiter = RateLimiter::new(2, 60);
+        for _ in 0..2 {
+            limiter.check(Platform::Telegram, "user1").unwrap();
+        }
+        limiter.reset(Platform::Telegram, "user1");
+        assert!(limiter.check(Platform::Telegram, "user1").is_ok());
+    }
+
+    #[test]
+    fn test_default_limiter() {
+        let limiter = RateLimiter::default_limiter();
+        // Should allow 20 requests
+        for _ in 0..20 {
+            assert!(limiter.check(Platform::Telegram, "user1").is_ok());
+        }
+        assert!(limiter.check(Platform::Telegram, "user1").is_err());
+    }
+}
