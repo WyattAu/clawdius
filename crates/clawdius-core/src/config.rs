@@ -44,6 +44,10 @@
 //! rigor_level = "high"
 //! lifecycle_phase = "implementation"
 //!
+//! [workspace]
+//! name = "my-workspace"
+//! storage = "sqlite"
+//!
 //! [storage]
 //! database_path = ".clawdius/graph/index.db"
 //! vector_path = ".clawdius/graph/vectors.lance"
@@ -220,6 +224,9 @@ use std::path::PathBuf;
 pub struct Config {
     /// Project configuration
     pub project: ProjectConfig,
+    /// Workspace configuration
+    #[serde(default)]
+    pub workspace: WorkspaceConfig,
     /// Storage configuration
     pub storage: StorageConfig,
     /// LLM configuration
@@ -261,6 +268,66 @@ fn default_rigor() -> String {
 
 fn default_phase() -> String {
     "context_discovery".to_string()
+}
+
+/// Workspace configuration for multi-repo support.
+///
+/// ```toml
+/// [workspace]
+/// name = "my-workspace"
+/// storage = "sqlite"  # sqlite | postgres | mariadb
+/// database_path = ".clawdius/workspace.db"
+/// ```
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct WorkspaceConfig {
+    /// Workspace name.
+    #[serde(default = "default_workspace_name")]
+    pub name: String,
+
+    /// Storage backend to use for workspace data.
+    /// One of: "sqlite", "postgres", "mariadb".
+    #[serde(default = "default_workspace_storage")]
+    pub storage: String,
+
+    /// Path to workspace database (SQLite only).
+    #[serde(default = "default_workspace_db")]
+    pub database_path: PathBuf,
+
+    /// PostgreSQL connection string (when storage = "postgres").
+    #[serde(default)]
+    pub postgres_url: Option<String>,
+
+    /// MariaDB connection string (when storage = "mariadb").
+    #[serde(default)]
+    pub mariadb_url: Option<String>,
+
+    /// Per-project token budget for repo-map context injection.
+    #[serde(default = "default_per_project_tokens")]
+    pub per_project_tokens: usize,
+
+    /// Maximum total token budget for all repo-maps combined.
+    #[serde(default = "default_max_total_tokens")]
+    pub max_total_tokens: usize,
+}
+
+fn default_workspace_name() -> String {
+    "default".to_string()
+}
+
+fn default_workspace_storage() -> String {
+    "sqlite".to_string()
+}
+
+fn default_workspace_db() -> PathBuf {
+    PathBuf::from(".clawdius/workspace.db")
+}
+
+fn default_per_project_tokens() -> usize {
+    2000
+}
+
+fn default_max_total_tokens() -> usize {
+    8000
 }
 
 /// Storage configuration
@@ -1066,6 +1133,7 @@ impl Default for Config {
                 vector_path: default_vector_path(),
                 sessions_path: default_sessions_path(),
             },
+            workspace: WorkspaceConfig::default(),
             llm: LlmConfig::default(),
             session: SessionConfig::default(),
             output: OutputConfig::default(),
