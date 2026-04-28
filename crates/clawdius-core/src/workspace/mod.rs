@@ -15,13 +15,24 @@
 //!
 //! One project is designated as the "default" — tool calls without an
 //! explicit project target the default project.
+//!
+//! # Layers
+//!
+//! - **Types** ([`Project`], [`Workspace`], [`ProjectId`], [`WorkspaceId`])
+//!   are plain data structs used everywhere.
+//! - **[`WorkspaceManager`]** is the service layer that wraps a
+//!   [`WorkspaceRepository`](crate::storage::WorkspaceRepository) with
+//!   business logic (dedup, auto-naming, path resolution).
+//! - **[`ContextAggregator`]** builds per-project context for the LLM.
 
 pub mod aggregator;
+pub mod manager;
 
 #[cfg(feature = "vector-db")]
 pub mod indexer;
 
 pub use aggregator::{AggregatedContext, ContextAggregator};
+pub use manager::{WorkspaceManager, WorkspaceSummary};
 
 #[cfg(feature = "vector-db")]
 pub use indexer::{IndexStats, WorkspaceIndexer};
