@@ -26,12 +26,14 @@
 //! - **[`ContextAggregator`]** builds per-project context for the LLM.
 
 pub mod aggregator;
+pub mod context;
 pub mod manager;
 
 #[cfg(feature = "vector-db")]
 pub mod indexer;
 
 pub use aggregator::{AggregatedContext, ContextAggregator};
+pub use context::WorkspaceContextBuilder;
 pub use manager::{WorkspaceManager, WorkspaceSummary};
 
 #[cfg(feature = "vector-db")]
