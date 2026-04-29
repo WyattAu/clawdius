@@ -2,7 +2,7 @@
 
 use super::components::{ChatView, DiffView, FileList, Spinner, SyntaxHighlighter};
 use super::theme;
-use super::types::{AppMode, InputMode, Message};
+use super::types::{AppMode, InputMode, LayoutMode, Message};
 use super::vim::VimKeymap;
 
 use crossterm::event::KeyEvent;
@@ -26,6 +26,9 @@ pub struct App {
     pub session_manager: SessionManager,
     pub config: Config,
     pub mode: AppMode,
+    pub layout_mode: LayoutMode,
+    /// Secondary panel mode (only used in split layouts).
+    pub secondary_mode: AppMode,
     pub agent_mode: AgentMode,
     pub input_mode: InputMode,
     pub input: String,
@@ -50,6 +53,8 @@ impl App {
             session_manager,
             config,
             mode: AppMode::Chat,
+            layout_mode: LayoutMode::Single,
+            secondary_mode: AppMode::Diff,
             agent_mode: AgentMode::Code,
             input_mode: InputMode::Normal,
             input: String::new(),
@@ -345,7 +350,25 @@ impl App {
                 }
             },
             _ => {
-                self.error_message = Some(format!("Unknown command: {cmd}"));
+                // Split pane commands
+                if cmd == "split" || cmd == "sp" {
+                    self.layout_mode = LayoutMode::SplitHorizontal;
+                } else if cmd == "vsplit" || cmd == "vsp" {
+                    self.layout_mode = LayoutMode::SplitVertical;
+                } else if cmd == "unsplit" || cmd == "only" {
+                    self.layout_mode = LayoutMode::Single;
+                } else if cmd.starts_with("secondary") {
+                    // :secondary diff / :secondary files
+                    if parts.len() > 1 {
+                        self.secondary_mode = match parts[1].trim() {
+                            "diff" | "d" => AppMode::Diff,
+                            "files" | "f" => AppMode::FileBrowser,
+                            _ => AppMode::Diff,
+                        };
+                    }
+                } else {
+                    self.error_message = Some(format!("Unknown command: {cmd}"));
+                }
             },
         }
     }
@@ -449,20 +472,68 @@ impl App {
 
     /// Draw the TUI
     pub fn draw(&self, f: &mut Frame<'_>) {
-        let chunks = Layout::default()
+        let outer_chunks = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
-                Constraint::Length(3),
-                Constraint::Min(10),
-                Constraint::Length(3),
-                Constraint::Length(1),
+                Constraint::Length(3),   // header
+                Constraint::Min(10),     // main content
+                Constraint::Length(3),   // input
+                Constraint::Length(1),   // status
             ])
             .split(f.area());
 
-        self.draw_header(f, chunks[0]);
-        self.draw_main_content(f, chunks[1]);
-        self.draw_input(f, chunks[2]);
-        self.draw_status(f, chunks[3]);
+        self.draw_header(f, outer_chunks[0]);
+        self.draw_input(f, outer_chunks[2]);
+        self.draw_status(f, outer_chunks[3]);
+
+        // Main content — respect layout mode
+        match self.layout_mode {
+            LayoutMode::Single => {
+                self.draw_main_content(f, outer_chunks[1], self.mode);
+            }
+            LayoutMode::SplitHorizontal => {
+                let split = Layout::default()
+                    .direction(Direction::Horizontal)
+                    .constraints([
+                        Constraint::Percentage(50),
+                        Constraint::Length(1), // divider
+                        Constraint::Percentage(50),
+                    ])
+                    .split(outer_chunks[1]);
+
+                // Primary: always chat in split mode
+                self.draw_messages(f, split[0]);
+
+                // Divider line
+                let divider = Paragraph::new("│")
+                    .style(Style::default().fg(Color::DarkGray));
+                f.render_widget(divider, split[1]);
+
+                // Secondary panel
+                self.draw_main_content(f, split[2], self.secondary_mode);
+            }
+            LayoutMode::SplitVertical => {
+                let split = Layout::default()
+                    .direction(Direction::Vertical)
+                    .constraints([
+                        Constraint::Percentage(50),
+                        Constraint::Length(1), // divider
+                        Constraint::Percentage(50),
+                    ])
+                    .split(outer_chunks[1]);
+
+                // Primary: always chat
+                self.draw_messages(f, split[0]);
+
+                // Divider
+                let divider = Paragraph::new("─")
+                    .style(Style::default().fg(Color::DarkGray));
+                f.render_widget(divider, split[1]);
+
+                // Secondary
+                self.draw_main_content(f, split[2], self.secondary_mode);
+            }
+        }
 
         if let Some(ref error) = self.error_message {
             self.draw_popup(f, "Error", error);
@@ -485,10 +556,17 @@ impl App {
             "no session".to_string()
         };
 
+        let layout_text = match self.layout_mode {
+            LayoutMode::Single => "",
+            LayoutMode::SplitHorizontal => " [SPLIT]",
+            LayoutMode::SplitVertical => " [VSPLIT]",
+        };
+
         let title = Line::from(vec![
             Span::styled("CLAWDIUS", theme.title()),
             Span::raw("  "),
             Span::styled(mode_text, Style::new().fg(theme.accent)),
+            Span::styled(layout_text, Style::default().fg(Color::Cyan)),
             Span::raw("  "),
             Span::styled("|", theme.border()),
             Span::raw("  "),
@@ -503,8 +581,8 @@ impl App {
         f.render_widget(paragraph, area);
     }
 
-    fn draw_main_content(&self, f: &mut Frame<'_>, area: Rect) {
-        match self.mode {
+    fn draw_main_content(&self, f: &mut Frame<'_>, area: Rect, mode: AppMode) {
+        match mode {
             AppMode::Chat => self.draw_messages(f, area),
             AppMode::FileBrowser => self.draw_file_browser(f, area),
             AppMode::Diff => self.draw_diff(f, area),
@@ -584,6 +662,10 @@ impl App {
             Line::from("  :clear     - Clear chat"),
             Line::from("  :mode <n>  - Switch agent mode (code, architect, debug, etc.)"),
             Line::from("  :modes     - List available modes"),
+            Line::from("  :split     - Horizontal split (chat + code)"),
+            Line::from("  :vsplit    - Vertical split (chat + code)"),
+            Line::from("  :unsplit   - Return to single pane"),
+            Line::from("  :secondary <diff|files> - Set split secondary panel"),
             Line::default(),
             Line::from(Span::styled(
                 "Agent Modes:",

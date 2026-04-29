@@ -64,6 +64,18 @@ pub enum AppMode {
     Help,
 }
 
+/// TUI layout mode — single pane or split panes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum LayoutMode {
+    /// Single pane — one view at a time (default).
+    #[default]
+    Single,
+    /// Horizontal split — chat left, code/diff right.
+    SplitHorizontal,
+    /// Vertical split — chat top, code/diff bottom.
+    SplitVertical,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum InputMode {
     #[default]
