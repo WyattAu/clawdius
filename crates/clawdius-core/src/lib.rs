@@ -59,6 +59,7 @@ pub mod timeline;
 pub mod timeout;
 pub mod tokenize;
 pub mod tools;
+pub mod usage;
 pub mod watch;
 pub mod webhooks;
 pub mod workspace;
