@@ -44,6 +44,10 @@ pub struct App {
     pub error_message: Option<String>,
     /// Receiver for streaming LLM response chunks. Present while a stream is active.
     pub stream_rx: Option<mpsc::Receiver<String>>,
+    /// Workspace context (repo map) prepended to user messages. None if not available.
+    pub workspace_context: Option<String>,
+    /// Request timeout in seconds for LLM API calls.
+    pub request_timeout_secs: u64,
 }
 
 impl App {
@@ -71,7 +75,32 @@ impl App {
             syntax: SyntaxHighlighter::new(),
             error_message: None,
             stream_rx: None,
+            workspace_context: Self::build_workspace_context(),
+            request_timeout_secs: 120,
         })
+    }
+
+    /// Build workspace context from the current directory.
+    /// Returns None if the current directory doesn't look like a project.
+    fn build_workspace_context() -> Option<String> {
+        let cwd = match std::env::current_dir() {
+            Ok(d) => d,
+            Err(_) => return None,
+        };
+
+        // Only build context if there's a recognizable project marker
+        let has_project_marker = ["Cargo.toml", "package.json", "pyproject.toml", "go.mod"]
+            .iter()
+            .any(|marker| cwd.join(marker).exists());
+
+        if !has_project_marker {
+            return None;
+        }
+
+        match clawdius_core::workspace::WorkspaceContextBuilder::build_single(&cwd, None) {
+            Ok(ctx) if !ctx.trim().is_empty() => Some(ctx),
+            _ => None,
+        }
     }
 
     pub async fn handle_key(&mut self, key: KeyEvent) -> anyhow::Result<()> {
@@ -479,6 +508,17 @@ impl App {
         let provider = llm::create_provider(&llm_config)
             .map_err(|e| anyhow::anyhow!("Failed to create provider: {e}"))?;
 
+        // Build user message with optional workspace context
+        let user_content = if let Some(ref ctx) = self.workspace_context {
+            if !ctx.is_empty() {
+                format!("{}\n\n## Project Structure\n{}", ctx, message)
+            } else {
+                message.to_string()
+            }
+        } else {
+            message.to_string()
+        };
+
         let messages = vec![
             ChatMessage {
                 role: ChatRole::System,
@@ -486,14 +526,22 @@ impl App {
             },
             ChatMessage {
                 role: ChatRole::User,
-                content: message.to_string(),
+                content: user_content,
             },
         ];
 
-        let rx = provider
-            .chat_stream(messages)
-            .await
-            .map_err(|e| anyhow::anyhow!("LLM API stream failed: {e}"))?;
+        let rx = tokio::time::timeout(
+            std::time::Duration::from_secs(self.request_timeout_secs),
+            provider.chat_stream(messages),
+        )
+        .await
+        .map_err(|_| {
+            anyhow::anyhow!(
+                "LLM API timed out after {}s. Check your network connection and API key.",
+                self.request_timeout_secs
+            )
+        })?
+        .map_err(|e| anyhow::anyhow!("LLM API stream failed: {e}"))?;
 
         Ok(rx)
     }

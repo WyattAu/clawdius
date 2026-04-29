@@ -137,7 +137,7 @@ pub struct SprintConfig {
     pub skip_phases: Vec<SprintPhase>,
     pub max_iterations: usize,
     pub model: Option<String>,
-    /// Shell command to run for the Build phase (e.g., "cargo build 2>&1")
+    /// Shell command to run for the Build phase (e.g., "cargo check 2>&1")
     pub build_command: String,
     /// Shell command to run for the Test phase (e.g., "cargo test --lib 2>&1")
     pub test_command: String,
@@ -169,7 +169,7 @@ impl SprintConfig {
             skip_phases: Vec::new(),
             max_iterations: 3,
             model: None,
-            build_command: "cargo build 2>&1".to_string(),
+            build_command: "cargo check 2>&1".to_string(),
             test_command: "cargo test --lib 2>&1".to_string(),
             real_execution: false,
             browser_qa_url: None,
@@ -1159,7 +1159,7 @@ impl SprintEngine {
 
         let output = &tool_result.content;
 
-        if tool_result.success && !output.contains("error") {
+        if tool_result.success {
             // Success — track changed files
             let files_modified =
                 Self::get_changed_files(&state.config.project_root).unwrap_or_default();
@@ -2220,7 +2220,7 @@ mod tests {
         assert_eq!(parsed.max_iterations, 5);
         assert!(parsed.auto_approve);
         assert!(parsed.real_execution);
-        assert_eq!(parsed.build_command, "cargo build 2>&1");
+        assert_eq!(parsed.build_command, "cargo check 2>&1");
         assert_eq!(parsed.test_command, "cargo test 2>&1");
     }
 
@@ -2451,7 +2451,7 @@ mod tests {
     #[test]
     fn test_sprint_config_real_execution_fields() {
         let config = SprintConfig::new("test");
-        assert_eq!(config.build_command, "cargo build 2>&1");
+        assert_eq!(config.build_command, "cargo check 2>&1");
         assert_eq!(config.test_command, "cargo test --lib 2>&1");
         assert!(!config.real_execution);
 

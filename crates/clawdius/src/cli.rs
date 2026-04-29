@@ -1460,6 +1460,26 @@ async fn handle_server(host: &str, port: u16) -> anyhow::Result<()> {
 
     let app = clawdius_core::api::rest::create_router(state).layer(CorsLayer::permissive());
 
+    // Start the admin API (gateway health + billing) on port+1
+    let admin_port = port.saturating_add(1);
+    let admin_addr = std::net::SocketAddr::from(([0, 0, 0, 0], admin_port));
+    let admin_state = std::sync::Arc::new(clawdius_gateway::admin::AdminState {
+        billing: std::sync::Arc::new(clawdius_core::billing::BillingManager::new()),
+        usage: std::sync::Arc::new(clawdius_core::usage::TenantUsageTracker::new()),
+        api_key: std::env::var("CLAWDIUS_ADMIN_API_KEY").unwrap_or_else(|_| "clawdius-admin".to_string()),
+    });
+    let admin_router = clawdius_gateway::admin::admin_router(admin_state);
+    let admin_listener = tokio::net::TcpListener::bind(admin_addr).await?;
+    println!("Clawdius admin API listening on {host}:{admin_port}");
+
+    // Spawn admin server as background task
+    let admin_handle = tokio::spawn(async move {
+        if let Err(e) = axum::serve(admin_listener, admin_router).await {
+            eprintln!("Admin server error: {e}");
+        }
+    });
+
+    // Start the REST API server
     let addr = std::net::SocketAddr::from(([0, 0, 0, 0], port));
     let listener = tokio::net::TcpListener::bind(addr).await?;
     println!("Clawdius server listening on {host}:{port}");
@@ -1467,6 +1487,10 @@ async fn handle_server(host: &str, port: u16) -> anyhow::Result<()> {
     axum::serve(listener, app)
         .with_graceful_shutdown(shutdown_signal())
         .await?;
+
+    // Shutdown admin server
+    admin_handle.abort();
+    println!("Clawdius server shut down.");
 
     Ok(())
 }
@@ -1549,8 +1573,18 @@ async fn handle_sprint(
     sprint_config.model = model.clone();
     sprint_config.browser_qa_url = browser_qa_url;
 
-    let llm: Arc<dyn LlmClient> = Arc::new(provider_instance);
+    // Build workspace context if available
     let workspace_root = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
+    if let Ok(ctx) = clawdius_core::workspace::WorkspaceContextBuilder::build_single(&workspace_root, None) {
+        if !ctx.trim().is_empty() {
+            sprint_config.extra_context = Some(ctx);
+            if output_format == OutputFormat::Text {
+                println!("   Workspace context: loaded");
+            }
+        }
+    }
+
+    let llm: Arc<dyn LlmClient> = Arc::new(provider_instance);
     let tool_executor: Arc<dyn ToolExecutor> =
         Arc::new(ShellToolExecutor::new(workspace_root.clone()));
     let mut engine = SprintEngine::new(llm).with_tool_executor(tool_executor);
