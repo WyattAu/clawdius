@@ -1,26 +1,146 @@
+# Clawdius Local Development Stack
+#
+# Usage:
+#   docker compose up -d          # Start all services
+#   docker compose logs -f        # Follow logs
+#   docker compose down -v        # Tear down (with volumes)
+#
+# Services:
+#   - clawdius:     CLI tool (interactive shell)
+#   - gateway:      Messaging gateway (Telegram, Discord, Slack, etc.)
+#   - postgres:     PostgreSQL database (optional, for enterprise storage)
+#   - redis:        Redis cache (optional, for rate limiting + session cache)
+
 services:
-  clawdius:
+  # ─── PostgreSQL (optional) ───────────────────────────────
+  postgres:
+    image: postgres:17-bookworm
+    container_name: clawdius-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: clawdius
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-clawdius-dev}
+      POSTGRES_DB: clawdius
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U clawdius"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ─── Redis (optional) ───────────────────────────────────
+  redis:
+    image: redis:8-bookworm
+    container_name: clawdius-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ─── Clawdius Gateway ──────────────────────────────────
+  gateway:
     build:
       context: .
-      dockerfile: Dockerfile
-    container_name: clawdius-server
-    ports:
-      - "8080:8080"
-    volumes:
-      - clawdius-data:/app/data
-      - ./clawdius.toml:/app/clawdius.toml:ro
-    environment:
-      - RUST_LOG=info
-      - CLAWDIUS_JSON_LOGS=true
-      - CLAWDIUS_DB_PATH=/app/data/sessions.db
+      dockerfile: Dockerfile.gateway
+      args:
+        FEATURES: all-platforms
+    container_name: clawdius-gateway
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-sf", "http://localhost:8080/health"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
+    ports:
+      - "8080:8080"  # Webhook listener
+    environment:
+      # LLM Provider (choose one)
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      ZAI_API_KEY: ${ZAI_API_KEY:-}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+
+      # Default LLM settings
+      CLAWDIUS_DEFAULT_PROVIDER: ${CLAWDIUS_DEFAULT_PROVIDER:-anthropic}
+      CLAWDIUS_DEFAULT_MODEL: ${CLAWDIUS_DEFAULT_MODEL:-claude-sonnet-4-20250514}
+
+      # Storage backend
+      CLAWDIUS_STORAGE: ${CLAWDIUS_STORAGE:-sqlite}
+
+      # PostgreSQL (if CLAWDIUS_STORAGE=postgres)
+      POSTGRES_URL: postgres://clawdius:${POSTGRES_PASSWORD:-clawdius-dev}@postgres:5432/clawdius
+
+      # Redis (optional, for rate limiting)
+      REDIS_URL: redis://redis:6379
+
+      # Platform tokens (set via .env file)
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      DISCORD_BOT_TOKEN: ${DISCORD_BOT_TOKEN:-}
+      SLACK_BOT_TOKEN: ${SLACK_BOT_TOKEN:-}
+      SLACK_APP_TOKEN: ${SLACK_APP_TOKEN:-}
+      MATRIX_HOMESERVER_URL: ${MATRIX_HOMESERVER_URL:-}
+      MATRIX_ACCESS_TOKEN: ${MATRIX_ACCESS_TOKEN:-}
+      SIGNAL_ACCOUNT_NUMBER: ${SIGNAL_ACCOUNT_NUMBER:-}
+      SIGNAL_REST_URL: ${SIGNAL_REST_URL:-http://host.docker.internal:7583}
+      TEAMS_APP_ID: ${TEAMS_APP_ID:-}
+      TEAMS_APP_PASSWORD: ${TEAMS_APP_PASSWORD:-}
+      WHATSAPP_ACCESS_TOKEN: ${WHATSAPP_ACCESS_TOKEN:-}
+      WHATSAPP_PHONE_NUMBER_ID: ${WHATSAPP_PHONE_NUMBER_ID:-}
+      WHATSAPP_VERIFY_TOKEN: ${WHATSAPP_VERIFY_TOKEN:-}
+      ROCKETCHAT_SERVER_URL: ${ROCKETCHAT_SERVER_URL:-}
+      ROCKETCHAT_TOKEN: ${ROCKETCHAT_TOKEN:-}
+      ROCKETCHAT_USER_ID: ${ROCKETCHAT_USER_ID:-}
+      WEBHOOK_URL: ${WEBHOOK_URL:-}
+      WEBHOOK_SECRET: ${WEBHOOK_SECRET:-}
+
+      # Rate limiting
+      RATE_LIMIT_MAX: ${RATE_LIMIT_MAX:-20}
+      RATE_LIMIT_WINDOW: ${RATE_LIMIT_WINDOW:-60}
+
+      # Logging
+      RUST_LOG: ${RUST_LOG:-info}
+    volumes:
+      - clawdius_config:/home/clawdius/.clawdius
+      - /tmp/clawdius:/tmp/clawdius
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # ─── Clawdius CLI (development shell) ───────────────────
+  cli:
+    build:
+      context: .
+      dockerfile: Dockerfile.cli
+    container_name: clawdius-cli
+    stdin_open: true
+    tty: true
+    environment:
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      ZAI_API_KEY: ${ZAI_API_KEY:-}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      CLAWDIUS_DEFAULT_PROVIDER: ${CLAWDIUS_DEFAULT_PROVIDER:-anthropic}
+      CLAWDIUS_DEFAULT_MODEL: ${CLAWDIUS_DEFAULT_MODEL:-claude-sonnet-4-20250514}
+      CLAWDIUS_STORAGE: ${CLAWDIUS_STORAGE:-sqlite}
+      POSTGRES_URL: postgres://clawdius:${POSTGRES_PASSWORD:-clawdius-dev}@postgres:5432/clawdius
+      RUST_LOG: ${RUST_LOG:-info}
+    volumes:
+      - clawdius_config:/home/clawdius/.clawdius
+      - ${PROJECT_ROOT:-.}:/workspace  # Mount project for editing
+    working_dir: /workspace
+    depends_on:
+      postgres:
+        condition: service_healthy
 
 volumes:
-  clawdius-data:
-    driver: local
+  postgres_data:
+  redis_data:
+  clawdius_config:

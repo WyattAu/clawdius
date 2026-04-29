@@ -1,0 +1,167 @@
+# Default values for Clawdius Helm chart.
+# Override with --set or a custom values.yaml.
+
+# ─── Image ───────────────────────────────────────────────
+image:
+  repository: ghcr.io/wyattau/clawdius
+  tag: "1.6.0"
+  pullPolicy: IfNotPresent
+  pullSecrets: []
+
+# ─── Gateway Service ─────────────────────────────────────
+gateway:
+  enabled: true
+  replicas: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: "1"
+      memory: 512Mi
+  service:
+    type: ClusterIP
+    port: 8080
+  # Node selector for gateway pods
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+# ─── LLM Provider ────────────────────────────────────────
+llm:
+  provider: "anthropic"  # anthropic, openai, openrouter, zai, ollama
+  model: "claude-sonnet-4-20250514"
+
+# ─── Secrets (API Keys) ─────────────────────────────────
+# These should be set via --set or a sealed secret.
+secrets:
+  anthropicApiKey: ""
+  openaiApiKey: ""
+  openrouterApiKey: ""
+  zaiApiKey: ""
+  ollamaBaseUrl: ""
+
+# ─── Platform Tokens ─────────────────────────────────────
+platforms:
+  telegram:
+    enabled: false
+    botToken: ""
+  discord:
+    enabled: false
+    botToken: ""
+  slack:
+    enabled: false
+    botToken: ""
+    appToken: ""
+  matrix:
+    enabled: false
+    homeserverUrl: ""
+    accessToken: ""
+  signal:
+    enabled: false
+    accountNumber: ""
+    restUrl: "http://localhost:7583"
+  teams:
+    enabled: false
+    appId: ""
+    appPassword: ""
+    serviceUrl: "https://smba.trafficmanager.net/amer"
+  whatsapp:
+    enabled: false
+    accessToken: ""
+    phoneNumberId: ""
+    verifyToken: ""
+  rocketchat:
+    enabled: false
+    serverUrl: ""
+    token: ""
+    userId: ""
+  webhook:
+    enabled: false
+    url: ""
+    secret: ""
+
+# ─── Rate Limiting ───────────────────────────────────────
+rateLimit:
+  maxRequests: 20
+  windowSeconds: 60
+
+# ─── Storage ─────────────────────────────────────────────
+storage:
+  backend: "sqlite"  # sqlite, postgres
+  postgresUrl: ""
+
+# ─── Ingress ─────────────────────────────────────────────
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: clawdius.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+# ─── Resources ───────────────────────────────────────────
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: "1"
+    memory: 512Mi
+
+# ─── Node Scheduling ─────────────────────────────────────
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+# ─── Pod Security ────────────────────────────────────────
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+  readOnlyRootFilesystem: true
+
+podSecurityContext:
+  seccompProfile:
+    type: RuntimeDefault
+
+# ─── Service Account ─────────────────────────────────────
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+# ─── Health Checks ───────────────────────────────────────
+livenessProbe:
+  httpGet:
+    path: /health
+    port: 8080
+  initialDelaySeconds: 10
+  periodSeconds: 30
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /ready
+    port: 8080
+  initialDelaySeconds: 5
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+startupProbe:
+  httpGet:
+    path: /health
+    port: 8080
+  initialDelaySeconds: 5
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 30
+
+# ─── Logging ─────────────────────────────────────────────
+logLevel: "info"

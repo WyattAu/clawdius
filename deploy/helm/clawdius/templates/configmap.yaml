@@ -1,0 +1,42 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "clawdius.fullname" . }}
+  labels:
+    {{- include "clawdius.labels" . | nindent 4 }}
+data:
+  CLAWDIUS_DEFAULT_PROVIDER: "{{ .Values.llm.provider }}"
+  CLAWDIUS_DEFAULT_MODEL: "{{ .Values.llm.model }}"
+  CLAWDIUS_STORAGE: "{{ .Values.storage.backend }}"
+  RATE_LIMIT_MAX: "{{ .Values.rateLimit.maxRequests }}"
+  RATE_LIMIT_WINDOW: "{{ .Values.rateLimit.windowSeconds }}"
+  RUST_LOG: "{{ .Values.logLevel }}"
+  {{- if .Values.storage.postgresUrl }}
+  POSTGRES_URL: "{{ .Values.storage.postgresUrl }}"
+  {{- end }}
+  {{- if .Values.llm.ollamaBaseUrl }}
+  OLLAMA_BASE_URL: "{{ .Values.llm.ollamaBaseUrl }}"
+  {{- end }}
+  # Platform tokens from values
+  {{- if .Values.platforms.telegram.enabled }}
+  TELEGRAM_BOT_TOKEN: "{{ .Values.platforms.telegram.botToken }}"
+  {{- end }}
+  {{- if .Values.platforms.discord.enabled }}
+  DISCORD_BOT_TOKEN: "{{ .Values.platforms.discord.botToken }}"
+  {{- end }}
+  {{- if .Values.platforms.slack.enabled }}
+  SLACK_BOT_TOKEN: "{{ .Values.platforms.slack.botToken }}"
+  SLACK_APP_TOKEN: "{{ .Values.platforms.slack.appToken }}"
+  {{- end }}
+  {{- if .Values.platforms.matrix.enabled }}
+  MATRIX_HOMESERVER_URL: "{{ .Values.platforms.matrix.homeserverUrl }}"
+  MATRIX_ACCESS_TOKEN: "{{ .Values.platforms.matrix.accessToken }}"
+  {{- end }}
+  {{- if .Values.platforms.signal.enabled }}
+  SIGNAL_ACCOUNT_NUMBER: "{{ .Values.platforms.signal.accountNumber }}"
+  SIGNAL_REST_URL: "{{ .Values.platforms.signal.restUrl }}"
+  {{- end }}
+  {{- if .Values.platforms.webhook.enabled }}
+  WEBHOOK_URL: "{{ .Values.platforms.webhook.url }}"
+  WEBHOOK_SECRET: "{{ .Values.platforms.webhook.secret }}"
+  {{- end }}
