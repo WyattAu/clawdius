@@ -13,6 +13,7 @@ use ratatui::{
     widgets::{Block, Borders, Clear, Paragraph, Wrap},
     Frame,
 };
+use tokio::sync::mpsc;
 
 use clawdius_core::{
     llm::{self, ChatMessage, ChatRole},
@@ -41,6 +42,8 @@ pub struct App {
     pub spinner: Spinner,
     pub syntax: SyntaxHighlighter,
     pub error_message: Option<String>,
+    /// Receiver for streaming LLM response chunks. Present while a stream is active.
+    pub stream_rx: Option<mpsc::Receiver<String>>,
 }
 
 impl App {
@@ -67,6 +70,7 @@ impl App {
             spinner: Spinner::new(),
             syntax: SyntaxHighlighter::new(),
             error_message: None,
+            stream_rx: None,
         })
     }
 
@@ -398,21 +402,70 @@ impl App {
         let session = self.session_manager.get_or_create_active()?;
         self.session = Some(session);
 
+        // Add a placeholder streaming message
+        let mut stream_msg = Message::assistant("");
+        stream_msg.streaming = true;
+        self.chat_view.add_message(stream_msg);
         self.is_loading = true;
         self.spinner.tick();
 
-        let response = match self.call_llm(&context_str).await {
-            Ok(resp) => resp,
-            Err(e) => format!("Error: {e}"),
-        };
-
-        self.chat_view.add_message(Message::assistant(&response));
-        self.is_loading = false;
+        // Start streaming LLM call in background
+        match self.start_llm_stream(&context_str).await {
+            Ok(rx) => {
+                self.stream_rx = Some(rx);
+            },
+            Err(e) => {
+                // If streaming fails, show error in the message
+                self.chat_view.finish_streaming();
+                self.chat_view.append_to_last_message(&format!("Error: {e}"));
+                self.is_loading = false;
+                self.stream_rx = None;
+            },
+        }
 
         Ok(())
     }
 
-    async fn call_llm(&self, message: &str) -> anyhow::Result<String> {
+    /// Poll the stream receiver for a chunk. Call this from the event loop.
+    /// Returns `true` if a chunk was received (or stream ended).
+    pub fn poll_stream(&mut self) -> bool {
+        let rx = match &mut self.stream_rx {
+            Some(rx) => rx,
+            None => return false,
+        };
+
+        // Try to receive without blocking — if nothing available, return false.
+        // We use try_recv() which is non-blocking.
+        match rx.try_recv() {
+            Ok(chunk) => {
+                self.chat_view.append_to_last_message(&chunk);
+                true
+            },
+            Err(mpsc::error::TryRecvError::Empty) => false,
+            Err(mpsc::error::TryRecvError::Disconnected) => {
+                // Stream is done — sender dropped
+                self.chat_view.finish_streaming();
+                self.is_loading = false;
+                self.stream_rx = None;
+                true
+            },
+        }
+    }
+
+    /// Drain all available chunks from the stream receiver.
+    pub fn drain_stream(&mut self) {
+        // Drain up to 50 chunks per tick to avoid blocking the render loop
+        for _ in 0..50 {
+            if !self.poll_stream() {
+                break;
+            }
+        }
+    }
+
+    async fn start_llm_stream(
+        &self,
+        message: &str,
+    ) -> anyhow::Result<mpsc::Receiver<String>> {
         let provider_name = self
             .config
             .llm
@@ -437,12 +490,12 @@ impl App {
             },
         ];
 
-        let response = provider
-            .chat(messages)
+        let rx = provider
+            .chat_stream(messages)
             .await
-            .map_err(|e| anyhow::anyhow!("LLM API call failed: {e}"))?;
+            .map_err(|e| anyhow::anyhow!("LLM API stream failed: {e}"))?;
 
-        Ok(response)
+        Ok(rx)
     }
 
     async fn open_external_editor(&mut self) -> anyhow::Result<()> {

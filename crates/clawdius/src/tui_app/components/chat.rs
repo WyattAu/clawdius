@@ -36,6 +36,29 @@ impl ChatView {
         self.messages.push(msg);
     }
 
+    /// Append text to the last message (used for streaming responses).
+    /// Returns `true` if there was a last message to append to.
+    pub fn append_to_last_message(&mut self, text: &str) -> bool {
+        if let Some(last) = self.messages.last_mut() {
+            last.content.push_str(text);
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Mark the last message as finished streaming.
+    pub fn finish_streaming(&mut self) {
+        if let Some(last) = self.messages.last_mut() {
+            last.streaming = false;
+        }
+    }
+
+    /// Check if the last message is currently streaming.
+    pub fn is_streaming(&self) -> bool {
+        self.messages.last().map_or(false, |m| m.streaming)
+    }
+
     /// Get all messages
     pub fn messages(&self) -> &[Message] {
         &self.messages

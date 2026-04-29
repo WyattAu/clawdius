@@ -6,12 +6,41 @@
 //! # Usage
 //!
 //! ```bash
-//! clawdius-gateway --config config.toml
-//! clawdius serve  # starts both agent + gateway
+//! clawdius-gateway --platform telegram --telegram-bot-token "..."
+//! clawdius-gateway --platform discord --platform webhook --webhook-url "..."
 //! ```
 
-use clap::Parser;
+use std::collections::HashMap;
 use std::path::PathBuf;
+use std::sync::Arc;
+
+use axum::extract::State as AxumState;
+use axum::response::IntoResponse;
+use axum::routing::get;
+use axum::{Json, Router};
+use clap::Parser;
+
+use clawdius_gateway::adapter::{Platform, PlatformConfig};
+use clawdius_gateway::admin::{admin_router, AdminState};
+use clawdius_gateway::handler::ClawdiusHandler;
+use clawdius_gateway::MessageGateway;
+
+#[cfg(feature = "telegram")]
+use clawdius_gateway::adapters::telegram::TelegramAdapter;
+#[cfg(feature = "discord")]
+use clawdius_gateway::adapters::discord::DiscordAdapter;
+#[cfg(feature = "slack")]
+use clawdius_gateway::adapters::slack::SlackAdapter;
+#[cfg(feature = "matrix")]
+use clawdius_gateway::adapters::matrix::MatrixAdapter;
+use clawdius_gateway::adapters::signal::SignalAdapter;
+use clawdius_gateway::adapters::teams::TeamsAdapter;
+use clawdius_gateway::adapters::whatsapp::WhatsAppAdapter;
+use clawdius_gateway::adapters::rocketchat::RocketChatAdapter;
+use clawdius_gateway::adapters::webhook::{WebhookAdapter, WebhookConfig};
+
+use clawdius_core::billing::BillingManager;
+use clawdius_core::usage::TenantUsageTracker;
 
 /// Clawdius Messaging Gateway
 #[derive(Parser, Debug)]
@@ -37,6 +66,10 @@ struct Cli {
     #[arg(long, env = "SLACK_BOT_TOKEN")]
     slack_token: Option<String>,
 
+    /// Slack app token (for Socket Mode)
+    #[arg(long, env = "SLACK_APP_TOKEN")]
+    slack_app_token: Option<String>,
+
     /// Matrix homeserver URL
     #[arg(long, env = "MATRIX_HOMESERVER")]
     matrix_homeserver: Option<String>,
@@ -45,7 +78,59 @@ struct Cli {
     #[arg(long, env = "MATRIX_ACCESS_TOKEN")]
     matrix_token: Option<String>,
 
-    /// Webhook port
+    /// Matrix user ID
+    #[arg(long, env = "MATRIX_USER_ID")]
+    matrix_user_id: Option<String>,
+
+    /// Signal account number
+    #[arg(long, env = "SIGNAL_ACCOUNT_NUMBER")]
+    signal_account: Option<String>,
+
+    /// Signal REST API URL
+    #[arg(long, env = "SIGNAL_REST_URL")]
+    signal_url: Option<String>,
+
+    /// Teams App ID
+    #[arg(long, env = "TEAMS_APP_ID")]
+    teams_app_id: Option<String>,
+
+    /// Teams App Password
+    #[arg(long, env = "TEAMS_APP_PASSWORD")]
+    teams_app_password: Option<String>,
+
+    /// Teams Service URL
+    #[arg(long, env = "TEAMS_SERVICE_URL")]
+    teams_service_url: Option<String>,
+
+    /// WhatsApp access token
+    #[arg(long, env = "WHATSAPP_ACCESS_TOKEN")]
+    whatsapp_token: Option<String>,
+
+    /// WhatsApp phone number ID
+    #[arg(long, env = "WHATSAPP_PHONE_NUMBER_ID")]
+    whatsapp_phone_id: Option<String>,
+
+    /// Rocket.Chat server URL
+    #[arg(long, env = "ROCKETCHAT_URL")]
+    rocketchat_url: Option<String>,
+
+    /// Rocket.Chat auth token
+    #[arg(long, env = "ROCKETCHAT_TOKEN")]
+    rocketchat_token: Option<String>,
+
+    /// Rocket.Chat user ID
+    #[arg(long, env = "ROCKETCHAT_USER_ID")]
+    rocketchat_user_id: Option<String>,
+
+    /// Webhook outgoing URL
+    #[arg(long, env = "WEBHOOK_URL")]
+    webhook_url: Option<String>,
+
+    /// Webhook secret
+    #[arg(long, env = "WEBHOOK_SECRET")]
+    webhook_secret: Option<String>,
+
+    /// Webhook listen port
     #[arg(long, default_value_t = 8080)]
     port: u16,
 
@@ -60,13 +145,86 @@ struct Cli {
     /// Maximum requests per user per minute
     #[arg(long, default_value_t = 20)]
     rate_limit: usize,
+
+    /// Admin API key for authentication
+    #[arg(long, env = "CLAWDIUS_ADMIN_API_KEY")]
+    admin_api_key: Option<String>,
+
+    /// Admin HTTP server host
+    #[arg(long, default_value = "0.0.0.0")]
+    admin_host: String,
+
+    /// Admin HTTP server port
+    #[arg(long, default_value_t = 8081)]
+    admin_port: u16,
+
+    /// LLM provider override
+    #[arg(long, env = "CLAWDIUS_PROVIDER")]
+    provider: Option<String>,
+
+    /// LLM model override
+    #[arg(long, env = "CLAWDIUS_MODEL")]
+    model: Option<String>,
+}
+
+/// Shared state for the gateway health endpoint.
+struct GatewayHealthState {
+    gateway: Arc<MessageGateway>,
+}
+
+async fn gateway_health(AxumState(state): AxumState<Arc<GatewayHealthState>>) -> impl IntoResponse {
+    let health = state.gateway.health_status().await;
+    let map: HashMap<String, serde_json::Value> = health
+        .into_iter()
+        .map(|(platform, h)| {
+            (
+                platform.as_str().to_string(),
+                serde_json::json!({
+                    "healthy": h.healthy,
+                    "message": h.message,
+                    "messages_processed": h.messages_processed,
+                    "errors": h.errors,
+                    "last_message_at": h.last_message_at.map(|dt| dt.to_rfc3339()),
+                }),
+            )
+        })
+        .collect();
+    (
+        axum::http::StatusCode::OK,
+        Json(serde_json::json!({
+            "ok": true,
+            "data": map,
+            "timestamp": chrono::Utc::now().to_rfc3339(),
+        })),
+    )
+}
+
+async fn shutdown_signal() {
+    let ctrl_c = async {
+        tokio::signal::ctrl_c()
+            .await
+            .expect("failed to install Ctrl+C handler");
+    };
+    #[cfg(unix)]
+    let terminate = async {
+        tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
+            .expect("failed to install signal handler")
+            .recv()
+            .await;
+    };
+    #[cfg(not(unix))]
+    let terminate = std::future::pending::<()>();
+
+    tokio::select! {
+        _ = ctrl_c => {},
+        _ = terminate => {},
+    }
 }
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
-    // Initialize logging
     tracing_subscriber::fmt()
         .with_env_filter(
             tracing_subscriber::EnvFilter::try_from_default_env()
@@ -74,22 +232,231 @@ async fn main() -> anyhow::Result<()> {
         )
         .init();
 
-    tracing::info!("🪲 Clawdius Gateway v{}", env!("CARGO_PKG_VERSION"));
+    tracing::info!(
+        "Clawdius Gateway v{} starting up",
+        env!("CARGO_PKG_VERSION")
+    );
 
-    // Build and start the gateway
-    let gateway = clawdius_gateway::MessageGateway::with_rate_limiter(cli.rate_limit, 60);
+    let mut gateway = MessageGateway::with_rate_limiter(cli.rate_limit, 60);
 
-    tracing::info!("Registered platforms: {:?}", cli.platforms);
     tracing::info!("Rate limit: {} requests/minute", cli.rate_limit);
-    tracing::info!("Webhook: {}:{} (when configured)", cli.host, cli.port);
 
-    // The gateway will be fully wired once platform adapters are implemented.
-    // For now, report status and wait for shutdown signal.
-    tracing::info!("Gateway initialized. Waiting for platform adapter implementations...");
+    if cli.platforms.is_empty() {
+        tracing::warn!("No platforms specified via --platform. Gateway will start with no adapters.");
+    }
 
-    // Wait for Ctrl+C
-    tokio::signal::ctrl_c().await?;
-    tracing::info!("Shutting down...");
+    for platform_str in &cli.platforms {
+        let Some(platform) = Platform::from_str(platform_str) else {
+            tracing::error!("Unknown platform: '{platform_str}'. Skipping.");
+            continue;
+        };
 
+        match platform {
+            Platform::Telegram => {
+                #[cfg(feature = "telegram")]
+                {
+                    match cli.telegram_token.as_ref() {
+                        Some(token) => {
+                            let config = PlatformConfig::with_token(platform, token);
+                            gateway.register_adapter(TelegramAdapter::new(token), config).await;
+                            tracing::info!("Registered adapter for platform: {platform}");
+                        }
+                        None => tracing::warn!("Skipping telegram: TELEGRAM_BOT_TOKEN not set"),
+                    }
+                }
+                #[cfg(not(feature = "telegram"))]
+                tracing::warn!("Skipping telegram: feature not enabled (compile with --features telegram)");
+            }
+            Platform::Discord => {
+                #[cfg(feature = "discord")]
+                {
+                    match cli.discord_token.as_ref() {
+                        Some(token) => {
+                            let config = PlatformConfig::with_token(platform, token);
+                            gateway.register_adapter(DiscordAdapter::new(token), config).await;
+                            tracing::info!("Registered adapter for platform: {platform}");
+                        }
+                        None => tracing::warn!("Skipping discord: DISCORD_BOT_TOKEN not set"),
+                    }
+                }
+                #[cfg(not(feature = "discord"))]
+                tracing::warn!("Skipping discord: feature not enabled (compile with --features discord)");
+            }
+            Platform::Slack => {
+                #[cfg(feature = "slack")]
+                {
+                    match cli.slack_token.as_ref() {
+                        Some(token) => {
+                            let config = PlatformConfig::with_token(platform, token);
+                            gateway.register_adapter(SlackAdapter::new(token), config).await;
+                            tracing::info!("Registered adapter for platform: {platform}");
+                        }
+                        None => tracing::warn!("Skipping slack: SLACK_BOT_TOKEN not set"),
+                    }
+                }
+                #[cfg(not(feature = "slack"))]
+                tracing::warn!("Skipping slack: feature not enabled (compile with --features slack)");
+            }
+            Platform::Matrix => {
+                #[cfg(feature = "matrix")]
+                {
+                    match (
+                        cli.matrix_homeserver.as_ref(),
+                        cli.matrix_token.as_ref(),
+                        cli.matrix_user_id.as_ref(),
+                    ) {
+                        (Some(homeserver), Some(token), Some(user_id)) => {
+                            let config = PlatformConfig::with_token(platform, token);
+                            gateway
+                                .register_adapter(MatrixAdapter::new(homeserver, token, user_id), config)
+                                .await;
+                            tracing::info!("Registered adapter for platform: {platform}");
+                        }
+                        _ => tracing::warn!("Skipping matrix: MATRIX_HOMESERVER, MATRIX_ACCESS_TOKEN, and MATRIX_USER_ID must all be set"),
+                    }
+                }
+                #[cfg(not(feature = "matrix"))]
+                tracing::warn!("Skipping matrix: feature not enabled (compile with --features matrix)");
+            }
+            Platform::Signal => {
+                match cli.signal_account.as_ref() {
+                    Some(account) => {
+                        let url = cli.signal_url.as_deref().unwrap_or("http://localhost:7583");
+                        let config = PlatformConfig::with_token(platform, account);
+                        gateway.register_adapter(SignalAdapter::new(url, account), config).await;
+                        tracing::info!("Registered adapter for platform: {platform}");
+                    }
+                    None => tracing::warn!("Skipping signal: SIGNAL_ACCOUNT_NUMBER not set"),
+                }
+            }
+            Platform::Teams => {
+                match (
+                    cli.teams_service_url.as_ref(),
+                    cli.teams_app_id.as_ref(),
+                    cli.teams_app_password.as_ref(),
+                ) {
+                    (Some(service_url), Some(app_id), Some(app_password)) => {
+                        let config = PlatformConfig::with_token(platform, app_id);
+                        gateway
+                            .register_adapter(TeamsAdapter::new(service_url, app_id, app_password), config)
+                            .await;
+                        tracing::info!("Registered adapter for platform: {platform}");
+                    }
+                    _ => tracing::warn!("Skipping teams: TEAMS_SERVICE_URL, TEAMS_APP_ID, and TEAMS_APP_PASSWORD must all be set"),
+                }
+            }
+            Platform::WhatsApp => {
+                match (cli.whatsapp_token.as_ref(), cli.whatsapp_phone_id.as_ref()) {
+                    (Some(token), Some(phone_id)) => {
+                        let config = PlatformConfig::with_token(platform, token);
+                        gateway
+                            .register_adapter(WhatsAppAdapter::new(token, phone_id), config)
+                            .await;
+                        tracing::info!("Registered adapter for platform: {platform}");
+                    }
+                    _ => tracing::warn!("Skipping whatsapp: WHATSAPP_ACCESS_TOKEN and WHATSAPP_PHONE_NUMBER_ID must both be set"),
+                }
+            }
+            Platform::RocketChat => {
+                match (
+                    cli.rocketchat_url.as_ref(),
+                    cli.rocketchat_token.as_ref(),
+                    cli.rocketchat_user_id.as_ref(),
+                ) {
+                    (Some(server_url), Some(auth_token), Some(rc_user_id)) => {
+                        let config = PlatformConfig::with_token(platform, auth_token);
+                        gateway
+                            .register_adapter(
+                                RocketChatAdapter::new(server_url, auth_token, rc_user_id),
+                                config,
+                            )
+                            .await;
+                        tracing::info!("Registered adapter for platform: {platform}");
+                    }
+                    _ => tracing::warn!("Skipping rocketchat: ROCKETCHAT_URL, ROCKETCHAT_TOKEN, and ROCKETCHAT_USER_ID must all be set"),
+                }
+            }
+            Platform::Webhook => {
+                match cli.webhook_url.as_ref() {
+                    Some(outgoing_url) => {
+                        let webhook_config = WebhookConfig {
+                            outgoing_url: outgoing_url.clone(),
+                            secret: cli.webhook_secret.clone(),
+                            outgoing_headers: HashMap::new(),
+                            listen_port: cli.port,
+                        };
+                        let config = PlatformConfig::with_token(platform, outgoing_url);
+                        gateway.register_adapter(WebhookAdapter::new(webhook_config), config).await;
+                        tracing::info!("Registered adapter for platform: {platform}");
+                    }
+                    None => tracing::warn!("Skipping webhook: WEBHOOK_URL not set"),
+                }
+            }
+            _ => {
+                tracing::warn!("Unknown platform variant: '{platform_str}'. Skipping.");
+            }
+        }
+    }
+
+    let mut handler = ClawdiusHandler::new();
+    if let Some(ref config_path) = cli.config {
+        handler = handler.with_config_path(config_path);
+    }
+    if let Some(ref provider) = cli.provider {
+        handler = handler.with_provider(provider);
+    }
+    if let Some(ref model) = cli.model {
+        handler = handler.with_model(model);
+    }
+    gateway.set_handler(Box::new(handler)).await;
+
+    let start_results = gateway.start_all().await;
+    for (platform, result) in start_results {
+        match result {
+            Ok(()) => tracing::info!("Platform '{platform}' adapter started"),
+            Err(e) => tracing::error!("Platform '{platform}' adapter failed to start: {e}"),
+        }
+    }
+
+    let gateway = Arc::new(gateway);
+
+    let admin_state = Arc::new(AdminState {
+        billing: Arc::new(BillingManager::new()),
+        usage: Arc::new(TenantUsageTracker::new()),
+        api_key: cli
+            .admin_api_key
+            .unwrap_or_else(|| "clawdius-admin".to_string()),
+    });
+
+    let health_state = Arc::new(GatewayHealthState {
+        gateway: Arc::clone(&gateway),
+    });
+
+    let health_router = Router::new()
+        .route("/api/gateway/health", get(gateway_health))
+        .with_state(health_state);
+
+    let admin_app = admin_router(admin_state).merge(health_router);
+
+    let admin_addr = format!("{}:{}", cli.admin_host, cli.admin_port);
+    let admin_listener = tokio::net::TcpListener::bind(&admin_addr).await?;
+    tracing::info!("Admin API listening on {admin_addr}");
+
+    let admin_server = axum::serve(admin_listener, admin_app).with_graceful_shutdown(shutdown_signal());
+
+    tracing::info!("Gateway is running. Press Ctrl+C to shut down.");
+
+    admin_server.await?;
+
+    tracing::info!("Shutting down gateway...");
+    let stop_results = gateway.stop_all().await;
+    for (platform, result) in &stop_results {
+        match result {
+            Ok(()) => tracing::info!("Platform '{platform}' adapter stopped"),
+            Err(e) => tracing::warn!("Platform '{platform}' adapter stop error: {e}"),
+        }
+    }
+
+    tracing::info!("Gateway shutdown complete.");
     Ok(())
 }
