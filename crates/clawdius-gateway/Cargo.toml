@@ -19,6 +19,7 @@ async-trait = { workspace = true }
 anyhow = { workspace = true }
 reqwest = { version = "0.12", features = ["json", "rustls-tls"], default-features = false }
 hmac-sha256 = "1"
+axum = { workspace = true }
 
 # Platform SDKs (optional, feature-gated)
 teloxide = { version = "0.14", optional = true }
