@@ -110,7 +110,7 @@ impl TeamsAdapter {
             }
         }
 
-        let body = serde_json::json!({
+        let _auth_body = serde_json::json!({
             "grant_type": "client_credentials",
             "client_id": self.app_id,
             "client_secret": self.app_password,
