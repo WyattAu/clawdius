@@ -1,0 +1,77 @@
+# Clawdius CLI — Multi-stage Docker build
+#
+# Builds a minimal image with just the clawdius binary.
+# No LLM keys baked in — mount config at runtime.
+#
+# Usage:
+#   docker build -t clawdius -f Dockerfile.cli .
+#   docker run -v ~/.clawdius:/root/.clawdius clawdius chat "hello"
+#
+# Or with all platforms:
+#   docker build -t clawdius --build-arg FEATURES=all-platforms -f Dockerfile.cli .
+
+# ─── Stage 1: Build ───────────────────────────────────────
+FROM rust:1.93-bookworm AS builder
+
+ARG FEATURES=""
+ARG PROFILE=release
+
+WORKDIR /build
+
+# Copy workspace manifests first (layer cache)
+COPY Cargo.toml Cargo.lock ./
+COPY crates/clawdius/Cargo.toml crates/clawdius/Cargo.toml
+COPY crates/clawdius-core/Cargo.toml crates/clawdius-core/Cargo.toml
+
+# Create dummy source files for dependency caching
+RUN mkdir -p crates/clawdius/src && echo "fn main() {}" > crates/clawdius/src/main.rs
+RUN mkdir -p crates/clawdius-core/src && echo "" > crates/clawdius-core/src/lib.rs
+
+# Pre-build dependencies (cached unless Cargo.toml/Cargo.lock changes)
+RUN if [ -n "$FEATURES" ]; then \
+      cargo build --profile $PROFILE -p clawdius --features "$FEATURES" 2>/dev/null || true; \
+    else \
+      cargo build --profile $PROFILE -p clawdius 2>/dev/null || true; \
+    fi
+
+# Copy actual source code
+COPY crates/clawdius/ crates/clawdius/
+COPY crates/clawdius-core/ crates/clawdius-core/
+
+# Touch source files to invalidate the dummy build
+RUN touch crates/clawdius/src/main.rs crates/clawdius-core/src/lib.rs
+
+# Build the real binary
+RUN if [ -n "$FEATURES" ]; then \
+      cargo build --profile $PROFILE -p clawdius --features "$FEATURES"; \
+    else \
+      cargo build --profile $PROFILE -p clawdius; \
+    fi
+
+# ─── Stage 2: Runtime ─────────────────────────────────────
+FROM debian:bookworm-slim AS runtime
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+      ca-certificates \
+      git \
+      less \
+      && rm -rf /var/lib/apt/lists/*
+
+# Create non-root user for security
+RUN groupadd -r clawdius && useradd -r -g clawdius -d /home/clawdius clawdius
+USER clawdius
+WORKDIR /home/clawdius
+
+# Copy binary from builder
+COPY --from=builder /build/target/${PROFILE}/clawdius /usr/local/bin/clawdius
+
+# Config and data directories
+RUN mkdir -p /home/clawdius/.clawdius /home/clawdius/.config
+
+# Environment
+ENV CLAWDIUS_CONFIG=/home/clawdius/.clawdius/config.toml
+ENV CLAWDIUS_SESSIONS=/home/clawdius/.clawdius/sessions.db
+
+ENTRYPOINT ["clawdius"]
+CMD ["--help"]

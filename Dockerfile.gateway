@@ -1,0 +1,78 @@
+# Clawdius Gateway — Multi-stage Docker build
+#
+# Builds the gateway binary with all platform adapters.
+# Requires LLM keys and platform tokens at runtime.
+#
+# Usage:
+#   docker build -t clawdius-gateway -f Dockerfile.gateway .
+#   docker run -e ANTHROPIC_API_KEY=sk-... \
+#              -e TELEGRAM_BOT_TOKEN=... \
+#              -e DISCORD_BOT_TOKEN=... \
+#              -v ~/.clawdius:/root/.clawdius \
+#              clawdius-gateway serve --all
+
+# ─── Stage 1: Build ───────────────────────────────────────
+FROM rust:1.93-bookworm AS builder
+
+ARG FEATURES=all-platforms
+ARG PROFILE=release
+
+WORKDIR /build
+
+# Copy workspace manifests first (layer cache)
+COPY Cargo.toml Cargo.lock ./
+COPY crates/clawdius/Cargo.toml crates/clawdius/Cargo.toml
+COPY crates/clawdius-core/Cargo.toml crates/clawdius-core/Cargo.toml
+COPY crates/clawdius-gateway/Cargo.toml crates/clawdius-gateway/Cargo.toml
+
+# Create dummy source files for dependency caching
+RUN mkdir -p crates/clawdius/src && echo "fn main() {}" > crates/clawdius/src/main.rs
+RUN mkdir -p crates/clawdius-core/src && echo "" > crates/clawdius-core/src/lib.rs
+RUN mkdir -p crates/clawdius-gateway/src && \
+    echo "fn main() {}" > crates/clawdius-gateway/src/main.rs && \
+    echo "" > crates/clawdius-gateway/src/lib.rs
+
+# Pre-build dependencies (cached unless manifests change)
+RUN cargo build --profile $PROFILE -p clawdius-gateway --features "$FEATURES" 2>/dev/null || true
+
+# Copy actual source code
+COPY crates/clawdius/ crates/clawdius/
+COPY crates/clawdius-core/ crates/clawdius-core/
+COPY crates/clawdius-gateway/ crates/clawdius-gateway/
+
+# Touch to invalidate dummy build
+RUN touch crates/clawdius/src/main.rs crates/clawdius-core/src/lib.rs \
+    crates/clawdius-gateway/src/main.rs crates/clawdius-gateway/src/lib.rs
+
+# Build the real binary
+RUN cargo build --profile $PROFILE -p clawdius-gateway --features "$FEATURES"
+
+# ─── Stage 2: Runtime ─────────────────────────────────────
+FROM debian:bookworm-slim AS runtime
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+      ca-certificates \
+      && rm -rf /var/lib/apt/lists/*
+
+# Create non-root user for security
+RUN groupadd -r clawdius && useradd -r -g clawdius -d /home/clawdius clawdius
+USER clawdius
+WORKDIR /home/clawdius
+
+# Copy binary from builder
+COPY --from=builder /build/target/${PROFILE}/clawdius-gateway /usr/local/bin/clawdius-gateway
+
+# Config and data directories
+RUN mkdir -p /home/clawdius/.clawdius /home/clawdius/.config /tmp/clawdius
+
+# Environment defaults
+ENV CLAWDIUS_CONFIG=/home/clawdius/.clawdius/config.toml
+ENV CLAWDIUS_SESSIONS=/home/clawdius/.clawdius/sessions.db
+ENV RUST_LOG=info
+
+# Expose webhook listener port
+EXPOSE 8080
+
+ENTRYPOINT ["clawdius-gateway"]
+CMD ["serve", "--all"]
