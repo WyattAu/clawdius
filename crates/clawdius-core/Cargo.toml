@@ -125,6 +125,12 @@ parking_lot.workspace = true
 wasmtime = { workspace = true }
 wasmtime-wasi = "42"
 
+# Encryption at rest
+aes-gcm = "0.10"
+hmac = "0.12"
+sha2 = "0.10"
+getrandom = "0.2"
+
 # Redis (optional, for orchestrator queue)
 redis = { version = "0.27", features = ["tokio-comp", "connection-manager"], optional = true }
 
@@ -168,6 +174,7 @@ orchestrator = []
 redis-queue = ["orchestrator", "dep:redis"]
 postgres = ["dep:tokio-postgres", "dep:deadpool-postgres"]
 mariadb = ["dep:mysql_async"]
+stripe = []
 
 [lints]
 workspace = true
