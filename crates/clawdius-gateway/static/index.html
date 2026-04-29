@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clawdius Admin Dashboard</title>
+    <style>
+        :root {
+            --bg: #0d1117;
+            --surface: #161b22;
+            --border: #30363d;
+            --text: #e6edf3;
+            --muted: #7d8590;
+            --accent: #58a6ff;
+            --green: #3fb950;
+            --yellow: #d29922;
+            --red: #f85149;
+            --purple: #bc8cff;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+        }
+        .header {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 1rem 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .header h1 { font-size: 1.25rem; font-weight: 600; }
+        .header h1 span { color: var(--accent); }
+        .header .version { color: var(--muted); font-size: 0.875rem; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        .stat-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1.25rem;
+        }
+        .stat-card .label { color: var(--muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; }
+        .stat-card .value { font-size: 2rem; font-weight: 700; margin-top: 0.25rem; }
+        .stat-card .value.green { color: var(--green); }
+        .stat-card .value.yellow { color: var(--yellow); }
+        .stat-card .value.red { color: var(--red); }
+        .stat-card .value.accent { color: var(--accent); }
+        .section {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            margin-bottom: 2rem;
+            overflow: hidden;
+        }
+        .section-header {
+            padding: 1rem 1.25rem;
+            border-bottom: 1px solid var(--border);
+            font-weight: 600;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 0.75rem 1.25rem; text-align: left; border-bottom: 1px solid var(--border); }
+        th { color: var(--muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; }
+        tr:hover { background: rgba(255,255,255,0.02); }
+        .badge {
+            display: inline-block;
+            padding: 0.125rem 0.5rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+        .badge.active { background: rgba(63,185,80,0.15); color: var(--green); }
+        .badge.canceled { background: rgba(248,81,73,0.15); color: var(--red); }
+        .badge.past-due { background: rgba(210,153,34,0.15); color: var(--yellow); }
+        .badge.free { background: rgba(125,133,144,0.15); color: var(--muted); }
+        .badge.pro { background: rgba(88,166,255,0.15); color: var(--accent); }
+        .badge.team { background: rgba(188,140,255,0.15); color: var(--purple); }
+        .badge.enterprise { background: rgba(63,185,80,0.15); color: var(--green); }
+        .progress-bar {
+            height: 6px;
+            background: var(--border);
+            border-radius: 3px;
+            overflow: hidden;
+            min-width: 100px;
+        }
+        .progress-bar .fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.3s ease;
+        }
+        .progress-bar .fill.green { background: var(--green); }
+        .progress-bar .fill.yellow { background: var(--yellow); }
+        .progress-bar .fill.red { background: var(--red); }
+        .loading { text-align: center; padding: 3rem; color: var(--muted); }
+        .error-banner {
+            background: rgba(248,81,73,0.1);
+            border: 1px solid var(--red);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 2rem;
+            color: var(--red);
+        }
+        .actions { display: flex; gap: 0.5rem; }
+        .btn {
+            padding: 0.375rem 0.75rem;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            color: var(--text);
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+        .btn:hover { background: var(--border); }
+        .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+        .btn.primary:hover { opacity: 0.9; }
+        .btn.danger { color: var(--red); }
+        .btn.danger:hover { background: rgba(248,81,73,0.15); }
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.6);
+            z-index: 100;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 2rem;
+            min-width: 400px;
+            max-width: 500px;
+        }
+        .modal h2 { margin-bottom: 1rem; }
+        .modal label { display: block; margin-bottom: 0.25rem; color: var(--muted); font-size: 0.8rem; }
+        .modal input, .modal select {
+            width: 100%;
+            padding: 0.5rem;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            background: var(--bg);
+            color: var(--text);
+            margin-bottom: 1rem;
+        }
+        .modal .modal-actions { display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1rem; }
+        .footer {
+            text-align: center;
+            padding: 2rem;
+            color: var(--muted);
+            font-size: 0.8rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1><span>⬡</span> Clawdius Admin</h1>
+        <div class="version" id="version">Loading...</div>
+    </div>
+
+    <div class="container">
+        <div id="error-banner" class="error-banner" style="display:none;"></div>
+
+        <div class="stats" id="stats">
+            <div class="stat-card">
+                <div class="label">Total Tenants</div>
+                <div class="value accent" id="stat-tenants">—</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">Active Subscriptions</div>
+                <div class="value green" id="stat-active">—</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">Stripe Enabled</div>
+                <div class="value" id="stat-stripe">—</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">Version</div>
+                <div class="value" id="stat-version" style="font-size:1.5rem;">—</div>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-header">
+                <span>Tenants</span>
+                <div class="actions">
+                    <button class="btn primary" onclick="showCreateModal()">+ New Tenant</button>
+                    <button class="btn" onclick="refresh()">↻ Refresh</button>
+                </div>
+            </div>
+            <div id="tenants-loading" class="loading">Loading tenants...</div>
+            <table id="tenants-table" style="display:none;">
+                <thead>
+                    <tr>
+                        <th>Tenant</th>
+                        <th>Plan</th>
+                        <th>Status</th>
+                        <th>Tokens Used</th>
+                        <th>Utilization</th>
+                        <th>Period End</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="tenants-body"></tbody>
+            </table>
+        </div>
+
+        <div class="section">
+            <div class="section-header"><span>API Endpoints</span></div>
+            <table>
+                <thead><tr><th>Endpoint</th><th>Method</th><th>Description</th></tr></thead>
+                <tbody>
+                    <tr><td><code>/api/admin/tenants</code></td><td>POST</td><td>Create tenant</td></tr>
+                    <tr><td><code>/api/admin/tenants</code></td><td>GET</td><td>List tenants</td></tr>
+                    <tr><td><code>/api/admin/tenants/{id}</code></td><td>GET</td><td>Get tenant</td></tr>
+                    <tr><td><code>/api/admin/tenants/{id}</code></td><td>DELETE</td><td>Delete tenant</td></tr>
+                    <tr><td><code>/api/admin/tenants/{id}/usage</code></td><td>GET</td><td>Get usage</td></tr>
+                    <tr><td><code>/api/admin/tenants/{id}/quota</code></td><td>GET/PUT</td><td>Get/set quota</td></tr>
+                    <tr><td><code>/api/admin/tenants/{id}/subscription</code></td><td>GET</td><td>Get subscription</td></tr>
+                    <tr><td><code>/api/admin/tenants/{id}/subscription/plan</code></td><td>PUT</td><td>Change plan</td></tr>
+                    <tr><td><code>/api/admin/tenants/{id}/subscription/cancel</code></td><td>POST</td><td>Cancel subscription</td></tr>
+                    <tr><td><code>/api/admin/system/info</code></td><td>GET</td><td>System info</td></tr>
+                    <tr><td><code>/api/admin/health</code></td><td>GET</td><td>Health check</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Create Tenant Modal -->
+    <div class="modal-overlay" id="create-modal">
+        <div class="modal">
+            <h2>Create New Tenant</h2>
+            <label>Tenant ID</label>
+            <input type="text" id="new-tenant-id" placeholder="e.g., org-acme">
+            <label>Plan</label>
+            <select id="new-tenant-tier">
+                <option value="free">Free (100K tokens/month)</option>
+                <option value="pro" selected>Pro (5M tokens/month — $29/mo)</option>
+                <option value="team">Team (25M tokens/month — $99/mo)</option>
+                <option value="enterprise">Enterprise (unlimited — custom)</option>
+            </select>
+            <div class="modal-actions">
+                <button class="btn" onclick="hideCreateModal()">Cancel</button>
+                <button class="btn primary" onclick="createTenant()">Create</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        ⬡ Clawdius Admin Dashboard — <span id="footer-version"></span>
+    </div>
+
+    <script>
+        const API_BASE = window.location.origin;
+        let tenants = [];
+
+        async function api(path, options = {}) {
+            const res = await fetch(API_BASE + path, {
+                headers: { 'Content-Type': 'application/json' },
+                ...options,
+            });
+            return res.json();
+        }
+
+        function showError(msg) {
+            const el = document.getElementById('error-banner');
+            el.textContent = msg;
+            el.style.display = 'block';
+            setTimeout(() => { el.style.display = 'none'; }, 5000);
+        }
+
+        function tierBadge(tier) {
+            const t = (tier || '').toLowerCase();
+            return `<span class="badge ${t}">${t}</span>`;
+        }
+
+        function statusBadge(status) {
+            const s = (status || '').toLowerCase();
+            const cls = s === 'active' ? 'active' : s === 'canceled' ? 'canceled' : 'past-due';
+            return `<span class="badge ${cls}">${s}</span>`;
+        }
+
+        function utilizationBar(pct) {
+            const p = Math.min(100, pct);
+            const cls = p > 90 ? 'red' : p > 70 ? 'yellow' : 'green';
+            return `<div class="progress-bar"><div class="fill ${cls}" style="width:${p}%"></div></div>`;
+        }
+
+        function formatTokens(n) {
+            if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + 'M';
+            if (n >= 1_000) return (n / 1_000).toFixed(1) + 'K';
+            return n.toString();
+        }
+
+        function formatDate(d) {
+            if (!d) return '—';
+            return new Date(d).toLocaleDateString();
+        }
+
+        async function loadSystemInfo() {
+            try {
+                const res = await api('/api/admin/system/info');
+                if (res.ok) {
+                    document.getElementById('stat-tenants').textContent = res.data.total_tenants;
+                    document.getElementById('stat-active').textContent = res.data.active_subscriptions;
+                    document.getElementById('stat-stripe').textContent = res.data.stripe_enabled ? 'Yes' : 'No';
+                    document.getElementById('stat-stripe').className = 'value ' + (res.data.stripe_enabled ? 'green' : '');
+                    document.getElementById('stat-version').textContent = res.data.version;
+                    document.getElementById('version').textContent = 'v' + res.data.version;
+                    document.getElementById('footer-version').textContent = 'v' + res.data.version;
+                }
+            } catch (e) {
+                showError('Failed to load system info. Is the admin API running?');
+            }
+        }
+
+        async function loadTenants() {
+            try {
+                const res = await api('/api/admin/tenants');
+                if (res.ok) {
+                    tenants = res.data.tenants || [];
+                    renderTenants();
+                }
+            } catch (e) {
+                showError('Failed to load tenants');
+            }
+        }
+
+        function renderTenants() {
+            document.getElementById('tenants-loading').style.display = 'none';
+            const table = document.getElementById('tenants-table');
+            table.style.display = tenants.length ? 'table' : 'none';
+
+            const tbody = document.getElementById('tenants-body');
+            tbody.innerHTML = tenants.map(t => {
+                const remaining = t.tokens_remaining || 0;
+                const used = t.tokens_used || 0;
+                const total = remaining + used;
+                const pct = total > 0 ? (used / total * 100) : 0;
+                return `<tr>
+                    <td><strong>${t.tenant_id}</strong></td>
+                    <td>${tierBadge(t.tier)}</td>
+                    <td>${statusBadge(t.status)}</td>
+                    <td>${formatTokens(used)} / ${formatTokens(total)}</td>
+                    <td>${utilizationBar(pct)} ${pct.toFixed(1)}%</td>
+                    <td>${formatDate(t.period_end)}</td>
+                    <td>
+                        <button class="btn" onclick="viewUsage('${t.tenant_id}')">Usage</button>
+                        <button class="btn danger" onclick="cancelTenant('${t.tenant_id}')">Cancel</button>
+                    </td>
+                </tr>`;
+            }).join('');
+        }
+
+        function showCreateModal() {
+            document.getElementById('create-modal').classList.add('active');
+            document.getElementById('new-tenant-id').focus();
+        }
+
+        function hideCreateModal() {
+            document.getElementById('create-modal').classList.remove('active');
+        }
+
+        async function createTenant() {
+            const id = document.getElementById('new-tenant-id').value.trim();
+            const tier = document.getElementById('new-tenant-tier').value;
+            if (!id) { showError('Tenant ID is required'); return; }
+            try {
+                await api('/api/admin/tenants', {
+                    method: 'POST',
+                    body: JSON.stringify({ tenant_id: id, tier: tier }),
+                });
+                hideCreateModal();
+                document.getElementById('new-tenant-id').value = '';
+                refresh();
+            } catch (e) {
+                showError('Failed to create tenant');
+            }
+        }
+
+        async function viewUsage(id) {
+            try {
+                const res = await api(`/api/admin/tenants/${id}/usage`);
+                if (res.ok) {
+                    const d = res.data;
+                    alert(`Usage for ${id}:\nTokens: ${formatTokens(d.tokens)}\nCost: $${(d.cost_cents / 100).toFixed(2)}\nAPI Calls: ${d.api_calls}\nUtilization: ${d.utilization_pct.toFixed(1)}%`);
+                }
+            } catch (e) { showError('Failed to load usage'); }
+        }
+
+        async function cancelTenant(id) {
+            if (!confirm(`Cancel subscription for ${id}?`)) return;
+            try {
+                await api(`/api/admin/tenants/${id}/subscription/cancel`, { method: 'POST' });
+                refresh();
+            } catch (e) { showError('Failed to cancel'); }
+        }
+
+        async function refresh() {
+            await Promise.all([loadSystemInfo(), loadTenants()]);
+        }
+
+        // Init
+        refresh();
+        setInterval(refresh, 30000); // Auto-refresh every 30s
+    </script>
+</body>
+</html>

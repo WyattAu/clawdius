@@ -53,6 +53,21 @@ pub async fn run_tui() -> anyhow::Result<()> {
                 Event::Resize(_cols, _rows) => {
                     app.resize();
                 },
+                Event::Mouse(mouse) => {
+                    use crossterm::event::{MouseEvent, MouseEventKind};
+                    match mouse.kind {
+                        MouseEventKind::ScrollUp => {
+                            app.scroll_up();
+                        },
+                        MouseEventKind::ScrollDown => {
+                            app.scroll_down();
+                        },
+                        MouseEventKind::Down(_button) => {
+                            // Future: click-to-focus, context menus
+                        },
+                        _ => {},
+                    }
+                },
                 _ => {},
             }
         }

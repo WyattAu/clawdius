@@ -470,6 +470,26 @@ impl App {
     /// Handle terminal resize events
     pub fn resize(&mut self) {}
 
+    /// Handle mouse scroll up.
+    pub fn scroll_up(&mut self) {
+        match self.mode {
+            AppMode::Chat => self.chat_view.scroll_up(),
+            AppMode::FileBrowser => self.file_list.up(),
+            AppMode::Diff => self.diff_view.scroll_up(),
+            AppMode::Help => {}
+        }
+    }
+
+    /// Handle mouse scroll down.
+    pub fn scroll_down(&mut self) {
+        match self.mode {
+            AppMode::Chat => self.chat_view.scroll_down(50),
+            AppMode::FileBrowser => self.file_list.down(),
+            AppMode::Diff => self.diff_view.scroll_down(50),
+            AppMode::Help => {}
+        }
+    }
+
     /// Draw the TUI
     pub fn draw(&self, f: &mut Frame<'_>) {
         let outer_chunks = Layout::default()
