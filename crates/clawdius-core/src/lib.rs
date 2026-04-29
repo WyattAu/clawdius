@@ -24,6 +24,7 @@
 
 pub mod actions;
 pub mod agentic;
+pub mod airgap;
 pub mod agents;
 pub mod analysis;
 pub mod api;
@@ -33,6 +34,7 @@ pub mod capability;
 pub mod checkpoint;
 pub mod commands;
 pub mod completions;
+pub mod compliance;
 pub mod config;
 pub mod context;
 pub mod diff;
