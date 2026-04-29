@@ -1,4 +1,8 @@
 //! Platform adapter implementations.
+//!
+//! Each module provides a [`PlatformAdapter`](crate::adapter::PlatformAdapter)
+//! implementation for a specific chat platform. Adapters are feature-gated
+//! to avoid pulling in unnecessary dependencies.
 
 #[cfg(feature = "telegram")]
 pub mod telegram;
@@ -12,8 +16,8 @@ pub mod slack;
 #[cfg(feature = "matrix")]
 pub mod matrix;
 
-#[cfg(feature = "webhook")]
-pub mod webhook;
-
 /// Mock platform adapter for testing.
 pub mod mock;
+
+/// Generic webhook adapter (always available).
+pub mod webhook;
