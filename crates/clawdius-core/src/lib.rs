@@ -40,6 +40,7 @@ pub mod encryption;
 pub mod error;
 pub mod graph_rag;
 pub mod i18n;
+pub mod invoice;
 pub mod llm;
 pub mod lsp;
 pub mod mcp;
