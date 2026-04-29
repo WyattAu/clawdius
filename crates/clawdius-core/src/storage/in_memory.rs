@@ -39,6 +39,7 @@ pub struct InMemoryBackend {
 
     // Graph domain
     files: Mutex<HashMap<String, FileInfo>>,
+    file_id_to_path: Mutex<HashMap<i64, String>>,
     symbols: Mutex<HashMap<i64, Symbol>>,
     symbol_refs: Mutex<Vec<Reference>>,
     relationships: Mutex<Vec<Relationship>>,
@@ -62,6 +63,7 @@ impl InMemoryBackend {
             tracked_files: Mutex::new(Vec::new()),
             file_versions: Mutex::new(Vec::new()),
             files: Mutex::new(HashMap::new()),
+            file_id_to_path: Mutex::new(HashMap::new()),
             symbols: Mutex::new(HashMap::new()),
             symbol_refs: Mutex::new(Vec::new()),
             relationships: Mutex::new(Vec::new()),
@@ -503,6 +505,7 @@ impl GraphRepository for InMemoryBackend {
             *next_id += 1;
             drop(next_id);
             self.files.lock().unwrap().insert(file.path.clone(), file.clone());
+            self.file_id_to_path.lock().unwrap().insert(id, file.path.clone());
             Ok(id)
         }
     }
@@ -513,20 +516,23 @@ impl GraphRepository for InMemoryBackend {
         }
     }
 
-    fn get_file_by_id(&self, _id: i64) -> impl std::future::Future<Output = Result<Option<FileInfo>>> + Send {
+    fn get_file_by_id(&self, id: i64) -> impl std::future::Future<Output = Result<Option<FileInfo>>> + Send {
         async move {
-            Ok(None)
+            let id_to_path = self.file_id_to_path.lock().unwrap();
+            let path = id_to_path.get(&id).cloned();
+            drop(id_to_path);
+            match path {
+                Some(p) => Ok(self.files.lock().unwrap().get(&p).cloned()),
+                None => Ok(None),
+            }
         }
     }
 
     fn get_file_id(&self, path: &str) -> impl std::future::Future<Output = Result<Option<i64>>> + Send {
         async move {
-            let files = self.files.lock().unwrap();
-            if files.contains_key(path) {
-                Ok(Some(1))
-            } else {
-                Ok(None)
-            }
+            let id_to_path = self.file_id_to_path.lock().unwrap();
+            let found = id_to_path.iter().find(|(_, p)| *p == path).map(|(id, _)| *id);
+            Ok(found)
         }
     }
 
