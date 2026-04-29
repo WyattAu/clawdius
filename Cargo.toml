@@ -11,6 +11,7 @@ resolver = "2"
 members = [
     "crates/clawdius",
     "crates/clawdius-core",
+    "crates/clawdius-gateway",
     "crates/clawdius-code",
     "crates/clawdius-mcp",
 ]
