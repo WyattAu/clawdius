@@ -155,11 +155,13 @@ impl MessageGateway {
         let response = handler.handle_message(message.clone()).await?;
 
         // 5. Format and send response
+        // Reply to the incoming message (or its parent if it was a reply)
+        let reply_target = message.reply_to.as_deref().unwrap_or(&message.id);
         let messages = self.formatter.format_response(
             platform,
             &message.chat_id,
             &response,
-            message.id.as_str().into(),
+            Some(reply_target),
         );
 
         if let Some(adapter) = self.get_adapter(platform).await {
@@ -476,5 +478,234 @@ mod tests {
         let status = gateway.health_status().await;
         assert!(status.contains_key(&Platform::Telegram));
         assert!(status[&Platform::Telegram].healthy);
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // Cross-platform integration tests
+    // ─────────────────────────────────────────────────────────
+
+    /// A handler that returns platform-specific responses.
+    struct PlatformAwareHandler;
+
+    #[async_trait]
+    impl MessageHandler for PlatformAwareHandler {
+        async fn handle_message(&self, message: IncomingMessage) -> Result<String, GatewayError> {
+            Ok(format!(
+                "[{}] {} says: {}",
+                message.platform, message.user.name, message.text
+            ))
+        }
+    }
+
+    /// A handler that returns a long message to test chunking.
+    struct LongResponseHandler;
+
+    #[async_trait]
+    impl MessageHandler for LongResponseHandler {
+        async fn handle_message(&self, message: IncomingMessage) -> Result<String, GatewayError> {
+            // Return a response longer than Discord's 2000 char limit
+            Ok("X".repeat(3000))
+        }
+    }
+
+    #[tokio::test]
+    async fn test_multi_platform_routing() {
+        let mut gateway = MessageGateway::new();
+
+        // Register 3 platforms
+        let telegram = MockAdapter::new(Platform::Telegram);
+        let discord = MockAdapter::new(Platform::Discord);
+        let slack = MockAdapter::new(Platform::Slack);
+
+        let telegram_sent = telegram.sent_messages();
+        let discord_sent = discord.sent_messages();
+        let slack_sent = slack.sent_messages();
+
+        gateway
+            .register_adapter(telegram, PlatformConfig::new(Platform::Telegram))
+            .await;
+        gateway
+            .register_adapter(discord, PlatformConfig::new(Platform::Discord))
+            .await;
+        gateway
+            .register_adapter(slack, PlatformConfig::new(Platform::Slack))
+            .await;
+
+        gateway.set_handler(Box::new(PlatformAwareHandler)).await;
+
+        // Send messages from different platforms
+        let telegram_msg = make_incoming(Platform::Telegram, "u1", "hello from telegram");
+        let discord_msg = make_incoming(Platform::Discord, "u2", "hello from discord");
+        let slack_msg = make_incoming(Platform::Slack, "u3", "hello from slack");
+
+        gateway.handle_incoming(telegram_msg).await.unwrap();
+        gateway.handle_incoming(discord_msg).await.unwrap();
+        gateway.handle_incoming(slack_msg).await.unwrap();
+
+        // Verify each adapter received its own platform's response
+        let t_msgs = telegram_sent.lock().await;
+        let d_msgs = discord_sent.lock().await;
+        let s_msgs = slack_sent.lock().await;
+
+        assert_eq!(t_msgs.len(), 1);
+        assert!(t_msgs[0].text.contains("telegram"));
+        assert!(t_msgs[0].text.contains("hello from telegram"));
+
+        assert_eq!(d_msgs.len(), 1);
+        assert!(d_msgs[0].text.contains("discord"));
+        assert!(d_msgs[0].text.contains("hello from discord"));
+
+        assert_eq!(s_msgs.len(), 1);
+        assert!(s_msgs[0].text.contains("slack"));
+        assert!(s_msgs[0].text.contains("hello from slack"));
+    }
+
+    #[tokio::test]
+    async fn test_long_response_chunked_per_platform() {
+        let mut gateway = MessageGateway::new();
+
+        // Discord has 2000 char limit → should chunk
+        let discord = MockAdapter::new(Platform::Discord);
+        let discord_sent = discord.sent_messages();
+        gateway
+            .register_adapter(discord, PlatformConfig::new(Platform::Discord))
+            .await;
+
+        // Slack has 40000 char limit → should NOT chunk
+        let slack = MockAdapter::new(Platform::Slack);
+        let slack_sent = slack.sent_messages();
+        gateway
+            .register_adapter(slack, PlatformConfig::new(Platform::Slack))
+            .await;
+
+        gateway.set_handler(Box::new(LongResponseHandler)).await;
+
+        // Send same message to Discord → should be chunked
+        let discord_msg = make_incoming(Platform::Discord, "u1", "chunk me");
+        gateway.handle_incoming(discord_msg).await.unwrap();
+
+        let d_msgs = discord_sent.lock().await;
+        assert!(d_msgs.len() > 1, "Discord should chunk 3000 chars into multiple messages");
+
+        // Send same message to Slack → should NOT be chunked
+        let slack_msg = make_incoming(Platform::Slack, "u1", "chunk me");
+        gateway.handle_incoming(slack_msg).await.unwrap();
+
+        let s_msgs = slack_sent.lock().await;
+        assert_eq!(s_msgs.len(), 1, "Slack should NOT chunk 3000 chars");
+    }
+
+    #[tokio::test]
+    async fn test_rate_limit_per_platform_independent() {
+        let mut gateway = MessageGateway::with_rate_limiter(2, 60);
+
+        let telegram = MockAdapter::new(Platform::Telegram);
+        let discord = MockAdapter::new(Platform::Discord);
+
+        gateway
+            .register_adapter(telegram, PlatformConfig::new(Platform::Telegram))
+            .await;
+        gateway
+            .register_adapter(discord, PlatformConfig::new(Platform::Discord))
+            .await;
+
+        gateway.set_handler(Box::new(EchoHandler)).await;
+
+        // Exhaust Telegram rate limit
+        for _ in 0..2 {
+            let msg = make_incoming(Platform::Telegram, "u1", "hi");
+            assert!(gateway.handle_incoming(msg).await.is_ok());
+        }
+        let msg = make_incoming(Platform::Telegram, "u1", "hi");
+        assert!(gateway.handle_incoming(msg).await.is_err());
+
+        // Discord should still work (independent rate limit)
+        let msg = make_incoming(Platform::Discord, "u1", "hi");
+        assert!(gateway.handle_incoming(msg).await.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_send_to_platform_proactive() {
+        let mut gateway = MessageGateway::new();
+
+        let telegram = MockAdapter::new(Platform::Telegram);
+        let telegram_sent = telegram.sent_messages();
+        gateway
+            .register_adapter(telegram, PlatformConfig::new(Platform::Telegram))
+            .await;
+
+        // Proactively send a message without an incoming trigger
+        gateway
+            .send_to_platform(Platform::Telegram, "chat123", "Proactive alert!")
+            .await
+            .unwrap();
+
+        let msgs = telegram_sent.lock().await;
+        assert_eq!(msgs.len(), 1);
+        assert_eq!(msgs[0].text, "Proactive alert!");
+        assert_eq!(msgs[0].chat_id, "chat123");
+    }
+
+    #[tokio::test]
+    async fn test_all_nine_platforms_registered() {
+        let mut gateway = MessageGateway::new();
+
+        let platforms = [
+            Platform::Telegram,
+            Platform::Discord,
+            Platform::Slack,
+            Platform::Matrix,
+            Platform::Signal,
+            Platform::Teams,
+            Platform::WhatsApp,
+            Platform::RocketChat,
+            Platform::Webhook,
+        ];
+
+        for &platform in &platforms {
+            gateway
+                .register_adapter(MockAdapter::new(platform), PlatformConfig::new(platform))
+                .await;
+        }
+
+        let registered = gateway.registered_platforms().await;
+        assert_eq!(registered.len(), 9);
+
+        let health = gateway.health_status().await;
+        assert_eq!(health.len(), 9);
+
+        // Start all
+        let results = gateway.start_all().await;
+        assert_eq!(results.len(), 9);
+        for (_, result) in &results {
+            assert!(result.is_ok());
+        }
+
+        // Stop all
+        let results = gateway.stop_all().await;
+        assert_eq!(results.len(), 9);
+    }
+
+    #[tokio::test]
+    async fn test_reply_to_preserved_in_response() {
+        let mut gateway = MessageGateway::new();
+
+        let telegram = MockAdapter::new(Platform::Telegram);
+        let telegram_sent = telegram.sent_messages();
+        gateway
+            .register_adapter(telegram, PlatformConfig::new(Platform::Telegram))
+            .await;
+
+        gateway.set_handler(Box::new(EchoHandler)).await;
+
+        // Incoming message with reply_to
+        let mut msg = make_incoming(Platform::Telegram, "u1", "thanks!");
+        msg.reply_to = Some("parent_msg_123".to_string());
+
+        gateway.handle_incoming(msg).await.unwrap();
+
+        let sent = telegram_sent.lock().await;
+        assert_eq!(sent.len(), 1);
+        assert_eq!(sent[0].reply_to.as_deref(), Some("parent_msg_123"));
     }
 }
