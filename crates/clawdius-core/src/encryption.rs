@@ -134,9 +134,13 @@ pub fn decrypt(
     let salt = BASE64_STANDARD
         .decode(&encrypted.salt_b64)
         .map_err(|e| EncryptionError::Base64Error(e.to_string()))?;
-    let nonce = BASE64_STANDARD
+    let nonce_vec = BASE64_STANDARD
         .decode(&encrypted.nonce_b64)
         .map_err(|e| EncryptionError::Base64Error(e.to_string()))?;
+    if nonce_vec.len() != NONCE_LEN {
+        return Err(EncryptionError::DecryptionFailed);
+    }
+    let nonce: [u8; NONCE_LEN] = nonce_vec.try_into().unwrap_or([0u8; NONCE_LEN]);
     let ciphertext = BASE64_STANDARD
         .decode(&encrypted.ciphertext_b64)
         .map_err(|e| EncryptionError::Base64Error(e.to_string()))?;
@@ -292,7 +296,7 @@ fn fill_random(buf: &mut [u8]) {
     use std::time::{SystemTime, UNIX_EPOCH};
 
     // Use a simple CSPRNG based on OS randomness via getrandom
-    if let Ok(()) = getrandom::fill(buf) {
+    if getrandom::getrandom(buf).is_ok() {
         return;
     }
     // Fallback: mix system time with a counter (NOT for production, but compiles everywhere)
@@ -303,7 +307,7 @@ fn fill_random(buf: &mut [u8]) {
         .unwrap_or(0)
         .wrapping_add(COUNTER.fetch_add(1, Ordering::Relaxed));
     for (i, chunk) in buf.chunks_mut(8).enumerate() {
-        let val = seed.wrapping_mul(i as u64.wrapping_add(1)).wrapping_add(0x9e3779b97f4a7c15);
+        let val = seed.wrapping_mul((i as u64).wrapping_add(1)).wrapping_add(0x9e3779b97f4a7c15);
         for (j, byte) in chunk.iter_mut().enumerate() {
             *byte = (val >> (j * 8)) as u8;
         }
@@ -519,7 +523,7 @@ mod tests {
         let deserialized: EncryptedData = serde_json::from_str(&json).unwrap();
 
         assert_eq!(deserialized.algorithm, EncryptionAlgorithm::Aes256Gcm);
-        assert_eq!(decerialized.nonce_b64, encrypted.nonce_b64);
+        assert_eq!(deserialized.nonce_b64, encrypted.nonce_b64);
         assert_eq!(deserialized.ciphertext_b64, encrypted.ciphertext_b64);
         assert_eq!(deserialized.salt_b64, encrypted.salt_b64);
     }
