@@ -1228,16 +1228,16 @@ pub async fn handle_command(
             .await
         },
         Commands::Init { name } => handle_init(name).await,
-        Commands::Setup { quick, provider } => handle_setup(quick, provider, output_format).await,
+        Commands::Setup { quick, provider } => handle_setup(quick, provider, output_format),
         Commands::Sessions { delete, search } => {
-            handle_sessions(delete, search, config_path, output_format).await
+            handle_sessions(delete, search, config_path, output_format)
         },
         Commands::Refactor {
             from,
             to,
             path,
             dry_run,
-        } => handle_refactor(from, to, path, dry_run, output_format).await,
+        } => handle_refactor(from, to, path, dry_run, output_format),
         Commands::Action {
             action,
             file,
@@ -1255,7 +1255,6 @@ pub async fn handle_command(
                 end_column,
                 output_format,
             )
-            .await
         },
         Commands::Test {
             file,
@@ -1270,7 +1269,7 @@ pub async fn handle_command(
             inline,
         } => handle_doc(file, element, format, output, inline, output_format).await,
         Commands::Verify { proof, lean_path } => {
-            handle_verify(proof, lean_path, output_format).await
+            handle_verify(proof, lean_path, output_format)
         },
         #[cfg(feature = "keyring")]
         Commands::Auth { action } => handle_auth(action).await,
@@ -1294,7 +1293,6 @@ pub async fn handle_command(
                 config_path,
                 output_format,
             )
-            .await
         },
         #[cfg(feature = "vector-db")]
         Commands::Index { path, watch } => handle_index(path, watch, output_format).await,
@@ -1307,7 +1305,7 @@ pub async fn handle_command(
         },
         Commands::Timeline { action } => handle_timeline(action, config_path, output_format).await,
         Commands::Modes { action } => handle_modes(action, config_path, output_format).await,
-        Commands::Lang { action } => handle_lang(action, config_path, output_format).await,
+        Commands::Lang { action } => handle_lang(action, config_path, output_format),
         Commands::Edit {
             initial,
             editor,
@@ -1343,7 +1341,7 @@ pub async fn handle_command(
             .await
         },
         Commands::Lsp { action } => handle_lsp(action, output_format).await,
-        Commands::Memory { action } => handle_memory(action, config_path, output_format).await,
+        Commands::Memory { action } => handle_memory(action, config_path, output_format),
         Commands::Models { action, host, port } => {
             handle_models(action, &host, port, output_format).await
         },
@@ -1375,7 +1373,7 @@ pub async fn handle_command(
             output,
             severity,
             exclude,
-        } => handle_analyze(path, drift, debt, analyze_format, output, severity, exclude).await,
+        } => handle_analyze(path, drift, debt, analyze_format, output, severity, exclude),
         Commands::Watch {
             path,
             ignore,
@@ -1391,7 +1389,6 @@ pub async fn handle_command(
                 verbose,
                 output_format,
             )
-            .await
         },
         Commands::Git { action } => handle_git(action, config_path).await,
         Commands::Server { host, port } => handle_server(&host, port).await,
@@ -1423,7 +1420,7 @@ pub async fn handle_command(
         },
         Commands::Ship { action } => handle_ship(action, output_format).await,
         Commands::Skill { action } => handle_skill(action, output_format).await,
-        Commands::Config { action } => handle_config(action, config_path, output_format).await,
+        Commands::Config { action } => handle_config(action, config_path, output_format),
     }
 }
 
@@ -1978,7 +1975,7 @@ async fn handle_skill(action: SkillAction, output_format: OutputFormat) -> anyho
 }
 
 /// Handle `clawdius config` subcommands.
-async fn handle_config(
+fn handle_config(
     action: ConfigAction,
     config_path: Option<PathBuf>,
     _output_format: OutputFormat,
@@ -2213,8 +2210,8 @@ async fn handle_git(action: GitCommands, config_path: Option<PathBuf>) -> anyhow
         GitCommands::Commit { files, message } => {
             handle_git_commit(files, message, config_path).await
         },
-        GitCommands::Diff { staged, file } => handle_git_diff(staged, file).await,
-        GitCommands::Status => handle_git_status().await,
+        GitCommands::Diff { staged, file } => handle_git_diff(staged, file),
+        GitCommands::Status => handle_git_status(),
     }
 }
 
@@ -2347,7 +2344,7 @@ async fn generate_commit_message(
     Ok(msg)
 }
 
-async fn handle_git_diff(staged: bool, file: Option<String>) -> anyhow::Result<()> {
+fn handle_git_diff(staged: bool, file: Option<String>) -> anyhow::Result<()> {
     use std::process::Command;
 
     let cwd = std::env::current_dir()?;
@@ -2390,7 +2387,7 @@ async fn handle_git_diff(staged: bool, file: Option<String>) -> anyhow::Result<(
     Ok(())
 }
 
-async fn handle_git_status() -> anyhow::Result<()> {
+fn handle_git_status() -> anyhow::Result<()> {
     use std::process::Command;
 
     let cwd = std::env::current_dir()?;
@@ -2989,7 +2986,7 @@ You are an expert software engineer acting as a coding assistant.
 }
 
 /// Interactive setup wizard for first-time users
-async fn handle_setup(
+fn handle_setup(
     quick: bool,
     provider: Option<String>,
     output_format: OutputFormat,
@@ -3205,7 +3202,7 @@ async fn handle_setup(
     Ok(())
 }
 
-async fn handle_sessions(
+fn handle_sessions(
     delete: Option<String>,
     search: Option<String>,
     config_path: Option<PathBuf>,
@@ -3267,7 +3264,7 @@ async fn handle_sessions(
     Ok(())
 }
 
-async fn handle_refactor(
+fn handle_refactor(
     _from: String,
     _to: String,
     _path: PathBuf,
@@ -3292,7 +3289,7 @@ async fn handle_refactor(
     Ok(())
 }
 
-async fn handle_action(
+fn handle_action(
     action: String,
     file: PathBuf,
     line: Option<usize>,
@@ -3834,7 +3831,7 @@ fn extract_exports(code: &str, language: &str) -> Vec<String> {
     exports
 }
 
-async fn handle_verify(
+fn handle_verify(
     proof: PathBuf,
     lean_path: Option<PathBuf>,
     output_format: OutputFormat,
@@ -3985,7 +3982,7 @@ pub async fn run_headless(config_path: Option<PathBuf>) -> anyhow::Result<()> {
 }
 
 /// First-run experience for new users
-pub async fn first_run_experience() -> anyhow::Result<()> {
+pub fn first_run_experience() -> anyhow::Result<()> {
     clawdius_core::onboarding::print_welcome_message();
 
     let status = Onboarding::check_environment();
@@ -4031,7 +4028,7 @@ async fn handle_metrics(
     Ok(())
 }
 
-async fn handle_telemetry(
+fn handle_telemetry(
     enable: bool,
     disable: bool,
     enable_metrics: bool,
@@ -4821,7 +4818,7 @@ tools = ["file", "shell", "git"]
     Ok(())
 }
 
-async fn handle_lang(
+fn handle_lang(
     action: LangCommands,
     config_path: Option<PathBuf>,
     output_format: OutputFormat,
@@ -5997,7 +5994,7 @@ async fn handle_lsp(action: LspCommands, output_format: OutputFormat) -> anyhow:
 }
 
 /// Handle memory commands
-async fn handle_memory(
+fn handle_memory(
     action: MemoryCommands,
     config_path: Option<PathBuf>,
     output_format: OutputFormat,
@@ -6740,7 +6737,7 @@ async fn handle_complete(
 }
 
 /// Handle analyze command for architecture drift and technical debt detection
-async fn handle_analyze(
+fn handle_analyze(
     path: PathBuf,
     drift_only: bool,
     debt_only: bool,
@@ -7004,7 +7001,7 @@ fn filter_debt_by_priority(report: &DebtReport, min_level: u8) -> Vec<serde_json
 }
 
 /// Handle watch command for file monitoring with auto-analysis
-async fn handle_watch(
+fn handle_watch(
     path: PathBuf,
     ignore: Option<String>,
     auto_analyze: bool,

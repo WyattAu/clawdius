@@ -122,8 +122,8 @@ impl App {
                 return Ok(());
             },
             AppMode::Chat => self.handle_chat_key(key).await?,
-            AppMode::FileBrowser => self.handle_file_browser_key(key).await?,
-            AppMode::Diff => self.handle_diff_key(key).await?,
+            AppMode::FileBrowser => self.handle_file_browser_key(key)?,
+            AppMode::Diff => self.handle_diff_key(key)?,
         }
 
         Ok(())
@@ -196,7 +196,7 @@ impl App {
                         .modifiers
                         .contains(crossterm::event::KeyModifiers::CONTROL) =>
                 {
-                    self.open_external_editor().await?;
+                    self.open_external_editor()?;
                 },
                 KeyCode::Char(c) => {
                     self.input.push(c);
@@ -230,7 +230,7 @@ impl App {
         Ok(())
     }
 
-    async fn handle_file_browser_key(
+    fn handle_file_browser_key(
         &mut self,
         key: crossterm::event::KeyEvent,
     ) -> anyhow::Result<()> {
@@ -276,7 +276,7 @@ impl App {
         Ok(())
     }
 
-    async fn handle_diff_key(&mut self, key: crossterm::event::KeyEvent) -> anyhow::Result<()> {
+    fn handle_diff_key(&mut self, key: crossterm::event::KeyEvent) -> anyhow::Result<()> {
         use crossterm::event::KeyCode;
 
         match key.code {
@@ -546,7 +546,7 @@ impl App {
         Ok(rx)
     }
 
-    async fn open_external_editor(&mut self) -> anyhow::Result<()> {
+    fn open_external_editor(&mut self) -> anyhow::Result<()> {
         use clawdius_core::tools::editor::ExternalEditor;
 
         let editor = ExternalEditor::default_editor();
