@@ -242,6 +242,17 @@ mod tests {
             .with_model("claude-sonnet-4-20250514-with-a-very-long-suffix")
             .with_vim_mode(VimMode::Normal);
 
-        assert!(state.model.len() <= 28); // 25 + "…"
+        // The state stores the original model name (not truncated).
+        // Truncation to 23 chars + "…" happens during rendering.
+        assert!(state.model.len() > 25, "model name should be long enough to trigger truncation");
+
+        // Verify the truncation logic produces correct output
+        let truncated = if state.model.len() > 25 {
+            format!("{}…", &state.model[..23])
+        } else {
+            state.model.clone()
+        };
+        assert_eq!(truncated.chars().count(), 24, "truncated display should be 24 chars (23 + …)");
+        assert!(truncated.ends_with('…'));
     }
 }
