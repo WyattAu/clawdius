@@ -23,12 +23,12 @@ use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 
 pub mod openai_api;
-#[cfg(feature = "embeddings")]
+#[cfg(feature = "local-llm")]
 pub mod real;
 pub mod simple;
 
 pub use openai_api::OpenAiApiEmbedder;
-#[cfg(feature = "embeddings")]
+#[cfg(feature = "local-llm")]
 pub use real::SentenceEmbedder;
 pub use simple::SimpleEmbedder;
 
@@ -43,7 +43,7 @@ pub trait EmbeddingGenerator: Send + Sync {
 pub enum EmbedderType {
     Simple,
     OpenAiApi,
-    #[cfg(feature = "embeddings")]
+    #[cfg(feature = "local-llm")]
     SentenceTransformers,
 }
 
@@ -94,7 +94,7 @@ pub fn create_embedder(config: &EmbedderConfig) -> Result<Box<dyn EmbeddingGener
             };
             Ok(Box::new(OpenAiApiEmbedder::new(api_config)?))
         },
-        #[cfg(feature = "embeddings")]
+        #[cfg(feature = "local-llm")]
         EmbedderType::SentenceTransformers => {
             let model_name = config
                 .model

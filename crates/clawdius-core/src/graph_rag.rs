@@ -138,7 +138,7 @@ pub mod vector;
 
 use serde::{Deserialize, Serialize};
 
-#[cfg(feature = "embeddings")]
+#[cfg(feature = "local-llm")]
 pub use embedding::SentenceEmbedder;
 pub use embedding::{EmbeddingGenerator, SimpleEmbedder};
 

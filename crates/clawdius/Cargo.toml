@@ -75,6 +75,9 @@ default = ["mimalloc"]
 keyring = ["clawdius-core/keyring", "dep:keyring"]
 crash-reporting = ["clawdius-core/crash-reporting"]
 vector-db = ["clawdius-core/vector-db"]
+browser = ["clawdius-core/browser"]
+embeddings = ["clawdius-core/embeddings"]
+local-llm = ["clawdius-core/local-llm"]
 
 [lints]
 workspace = true
