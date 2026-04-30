@@ -2204,7 +2204,7 @@ mod tests {
             skip_phases: vec![SprintPhase::Reflect],
             max_iterations: 5,
             model: Some("gpt-4".to_string()),
-            build_command: "cargo build 2>&1".to_string(),
+            build_command: "cargo check 2>&1".to_string(),
             test_command: "cargo test 2>&1".to_string(),
             real_execution: true,
             browser_qa_url: Some("http://localhost:3000".to_string()),
