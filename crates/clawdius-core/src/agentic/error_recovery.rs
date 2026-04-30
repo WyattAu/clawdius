@@ -384,22 +384,32 @@ pub struct ErrorRecoveryResult {
 pub fn parse_compiler_output(output: &str) -> Vec<CompilationError> {
     let mut errors = Vec::new();
 
-    let rust_error_re =
+    let Ok(rust_error_re) =
         Regex::new(r"error\[([A-Z]\d+)\]: (.+?)(?:\n|$)\s*(?:.*?--> (.*?):(\d+):(\d+))?")
-            .expect("rust error regex must compile");
+    else {
+        return errors;
+        };
 
-    let rust_error_re_no_code =
+    let Ok(rust_error_re_no_code) =
         Regex::new(r"error(?:\[(.+?)\])?: (.+?)(?:\n|$)\s*(?:.*?--> (.*?):(\d+):(\d+))?")
-            .expect("rust error regex (no code) must compile");
+    else {
+        return errors;
+        };
 
-    let python_re = Regex::new(r#"File "(.*?)", line (\d+)(?:, in .+?)?\n(.+?)(?:\n|$)"#)
-        .expect("python error regex must compile");
+    let Ok(python_re) = Regex::new(r#"File "(.*?)", line (\d+)(?:, in .+?)?\n(.+?)(?:\n|$)"#)
+    else {
+        return errors;
+        };
 
-    let typescript_re = Regex::new(r"(.*?\((\d+),(\d+)\)):\s*error\s+(TS\d+):\s*(.+?)(?:\n|$)")
-        .expect("typescript error regex must compile");
+    let Ok(typescript_re) = Regex::new(r"(.*?\((\d+),(\d+)\)):\s*error\s+(TS\d+):\s*(.+?)(?:\n|$)")
+    else {
+        return errors;
+        };
 
-    let go_re = Regex::new(r"(.*?:(\d+)(?::\d+)?)\s*(.+?)(?:\n|$)")
-        .expect("go error regex must compile");
+    let Ok(go_re) = Regex::new(r"(.*?:(\d+)(?::\d+)?)\s*(.+?)(?:\n|$)")
+    else {
+        return errors;
+        };
 
     if rust_error_re.is_match(output) || rust_error_re_no_code.is_match(output) {
         for caps in rust_error_re.captures_iter(output) {
@@ -523,9 +533,11 @@ pub fn build_fix_prompt(
 }
 
 fn strip_code_block(response: &str) -> String {
-    let code_block_re =
-        Regex::new(r"```(?:\w*)\n([\s\S]*?)```").expect("code block regex must compile");
-
+    let Ok(code_block_re) =
+        Regex::new(r"```(?:\w*)\n([\s\S]*?)```")
+    else {
+        return response.to_string();
+    };
     if let Some(caps) = code_block_re.captures(response) {
         if let Some(m) = caps.get(1) {
             return m.as_str().trim().to_string();

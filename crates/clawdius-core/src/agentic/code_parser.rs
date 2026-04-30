@@ -15,9 +15,9 @@ struct CodeBlock {
     preceding_text: String,
 }
 
-static FILE_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(?im)^File:\s*(.+)").unwrap());
-static BOLD_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\*\*(.+?)\*\*\s*:?\s*$").unwrap());
-static HEADING_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(?m)^#{1,6}\s+(.+?)\s*$").unwrap());
+static FILE_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(?im)^File:\s*(.+)").expect("regex must compile"));
+static BOLD_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\*\*(.+?)\*\*\s*:?\s*$").expect("regex must compile"));
+static HEADING_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(?m)^#{1,6}\s+(.+?)\s*$").expect("regex must compile"));
 
 pub fn parse_llm_output(response: &str) -> Vec<ParsedFileChange> {
     let blocks = extract_code_blocks(response);

@@ -358,11 +358,11 @@ impl SprintEngine {
             // Create a git checkpoint before the Build phase
             if *phase == SprintPhase::Build && state.checkpoint_ref.is_none() {
                 if let Some(checkpoint) = Self::create_checkpoint(&state.config.project_root) {
-                    state.checkpoint_ref = Some(checkpoint);
                     eprintln!(
                         "Checkpoint created: {}",
-                        state.checkpoint_ref.as_ref().unwrap()
+                        checkpoint
                     );
+                    state.checkpoint_ref = Some(checkpoint);
                 }
             }
 
@@ -415,7 +415,8 @@ impl SprintEngine {
                 && self.tool_executor.is_some()
                 && result.status == PhaseStatus::Success
             {
-                let executor = self.tool_executor.as_ref().unwrap();
+                let executor = self.tool_executor.as_ref()
+                    .expect("guarded by is_some() check above");
                 let llm = &self.llm;
 
                 let system_prompt = Self::phase_prompt(phase);
@@ -887,11 +888,11 @@ impl SprintEngine {
 
             if *phase == SprintPhase::Build && state.checkpoint_ref.is_none() {
                 if let Some(checkpoint) = Self::create_checkpoint(&state.config.project_root) {
-                    state.checkpoint_ref = Some(checkpoint);
                     eprintln!(
                         "Checkpoint created: {}",
-                        state.checkpoint_ref.as_ref().unwrap()
+                        checkpoint
                     );
+                    state.checkpoint_ref = Some(checkpoint);
                 }
             }
 
@@ -1140,7 +1141,7 @@ impl SprintEngine {
         let executor = self
             .tool_executor
             .as_ref()
-            .expect("tool_executor must be Some (checked by caller)");
+            .ok_or_else(|| crate::Error::Sprint("tool_executor is required for real execution".into()))?;
 
         let command = match phase {
             SprintPhase::Build => &state.config.build_command,
@@ -1241,8 +1242,7 @@ impl SprintEngine {
             // Detect language from the first file with an error
             let first_file = all_errors
                 .iter()
-                .find(|e| e.file_path.is_some())
-                .map(|e| e.file_path.as_ref().unwrap().clone());
+                .find_map(|e| e.file_path.clone());
             let Some(file_path) = first_file else {
                 return Ok(None);
             };
@@ -1736,10 +1736,12 @@ impl SprintEngine {
 
     /// Sync modified files to the LSP server so diagnostics are fresh.
     async fn sync_lsp_documents(&self, files: &[String]) {
-        if self.lsp_client.is_none() || files.is_empty() {
+        let Some(lsp) = self.lsp_client.as_ref() else {
+            return;
+        };
+        if files.is_empty() {
             return;
         }
-        let lsp = self.lsp_client.as_ref().unwrap();
         let mut lsp = lsp.lock().await;
         for file_path in files {
             if file_path.contains("://") {
