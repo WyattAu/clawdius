@@ -1,5 +1,9 @@
-use clawdius_core::session::memory_manager::SessionMemoryManager;
-use clawdius_core::session::Message;
+//! Performance benchmarks for clawdius-core.
+//!
+//! Benchmarks key operations: tool call parsing, message creation,
+//! serialization, and session compaction checks.
+
+use clawdius_core::session::{Compactor, CompactConfig, Message, Session};
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 
 fn bench_parse_tool_calls(c: &mut Criterion) {
@@ -81,34 +85,6 @@ fn bench_message_creation(c: &mut Criterion) {
     group.finish();
 }
 
-fn bench_session_size_estimation(c: &mut Criterion) {
-    let mut group = c.benchmark_group("session_size_estimation");
-
-    let messages_100: Vec<Message> = (0..100)
-        .map(|i| Message::user(&format!("Message {i} with some content")))
-        .collect();
-
-    group.bench_function("estimate_100_messages", |b| {
-        b.iter(|| SessionMemoryManager::estimate_session_size(black_box(&messages_100)));
-    });
-
-    let messages_1000: Vec<Message> = (0..1000)
-        .map(|i| Message::user(&format!("Message {i} with some content")))
-        .collect();
-
-    group.bench_function("estimate_1000_messages", |b| {
-        b.iter(|| SessionMemoryManager::estimate_session_size(black_box(&messages_1000)));
-    });
-
-    let manager = SessionMemoryManager::new(1024 * 1024 * 100, 1024 * 1024);
-
-    group.bench_function("track_session_100_messages", |b| {
-        b.iter(|| manager.track_session(black_box("bench-session"), black_box(&messages_100)));
-    });
-
-    group.finish();
-}
-
 fn bench_message_serialization(c: &mut Criterion) {
     let mut group = c.benchmark_group("message_serialization");
 
@@ -146,25 +122,18 @@ fn bench_message_serialization(c: &mut Criterion) {
     group.finish();
 }
 
-fn bench_memory_manager_compaction(c: &mut Criterion) {
-    let mut group = c.benchmark_group("memory_manager_compaction");
+fn bench_compaction_check(c: &mut Criterion) {
+    let mut group = c.benchmark_group("compaction");
 
-    let manager = SessionMemoryManager::new(1024 * 1024 * 100, 1_000);
-
-    let messages: Vec<Message> = (0..200).map(|_| Message::user("x".repeat(200))).collect();
-
-    manager.track_session("compact-bench", &messages);
-
-    group.bench_function("should_compact_check", |b| {
-        b.iter(|| manager.should_compact(black_box("compact-bench")));
+    let compactor = Compactor::new(CompactConfig {
+        min_messages: 100,
+        ..CompactConfig::default()
     });
 
-    group.bench_function("check_and_compact", |b| {
-        b.iter_batched(
-            || messages.clone(),
-            |mut msgs| manager.check_and_compact(black_box("compact-bench"), &mut msgs),
-            criterion::BatchSize::SmallInput,
-        );
+    let session = Session::new();
+
+    group.bench_function("needs_compaction_check", |b| {
+        b.iter(|| compactor.needs_compaction(black_box(&session)));
     });
 
     group.finish();
@@ -174,8 +143,7 @@ criterion_group!(
     benches,
     bench_parse_tool_calls,
     bench_message_creation,
-    bench_session_size_estimation,
     bench_message_serialization,
-    bench_memory_manager_compaction,
+    bench_compaction_check,
 );
 criterion_main!(benches);
