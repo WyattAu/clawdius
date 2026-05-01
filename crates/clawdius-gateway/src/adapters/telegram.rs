@@ -23,6 +23,8 @@ use crate::adapter::{
     PlatformConfig,
 };
 use crate::error::GatewayError;
+use teloxide::prelude::*;
+use teloxide::types::{ChatId, MessageId, ParseMode, ReplyParameters, UpdateKind};
 
 /// Telegram adapter implementation.
 pub struct TelegramAdapter {
@@ -54,17 +56,17 @@ impl TelegramAdapter {
     /// Convert a teloxide Update into an IncomingMessage.
     async fn convert_update(
         &self,
-        update: teloxide::updates::Update,
+        update: teloxide::types::Update,
     ) -> Option<IncomingMessage> {
-        let message = update.message?;
-        let user = message.from()?;
+        let message = match update.kind {
+            UpdateKind::Message(msg) => msg,
+            _ => return None,
+        };
+        let user = message.from.as_ref()?;
 
-        // Extract text content
         let text = message.text().unwrap_or_default().to_string();
 
-        // Extract attachments
         let attachments = Vec::new();
-        // TODO: Handle photo, document, video, voice, etc.
 
         Some(IncomingMessage {
             id: message.id.0.to_string(),
@@ -72,47 +74,27 @@ impl TelegramAdapter {
             chat_id: message.chat.id.0.to_string(),
             user: crate::adapter::User {
                 id: user.id.0.to_string(),
-                name: user
-                    .first_name
-                    .clone()
-                    .unwrap_or_default(),
+                name: user.first_name.clone(),
                 username: user.username.clone(),
-                is_admin: false, // Would need getChatMember for this
+                is_admin: false,
             },
             text,
-            reply_to: message.reply_to_message_id().map(|id| id.0.to_string()),
+            reply_to: message.reply_to_message().map(|m| m.id.0.to_string()),
             attachments,
-            timestamp: chrono::DateTime::from_timestamp(message.date),
+            timestamp: message.date,
             metadata: {
                 let mut meta = std::collections::HashMap::new();
-                if message.forward_from().is_some() {
+                if message.forward_origin().is_some() {
                     meta.insert("forwarded".to_string(), serde_json::json!(true));
                 }
                 meta
             },
         })
     }
+}
 
-    /// Convert an OutgoingMessage into a teloxide SendMessage params.
-    fn to_send_params(
-        &self,
-        msg: &OutgoingMessage,
-    ) -> teloxide::requests::SendMessage {
-        let chat_id = teloxide::types::ChatId(msg.chat_id.clone());
-        let mut send = self.bot.send_message(chat_id, msg.text.clone());
-
-        // Set parse mode for Markdown
-        send = send.parse_mode(teloxide::types::ParseMode::MarkdownV2);
-
-        // Set reply_to if present
-        if let Some(ref reply_to) = msg.reply_to {
-            if let Ok(reply_id) = reply_to.parse::<i64>() {
-                send = send.reply_to_message_id(reply_id);
-            }
-        }
-
-        send
-    }
+fn parse_chat_id(s: &str) -> ChatId {
+    ChatId(s.parse::<i64>().unwrap_or(0))
 }
 
 #[async_trait::async_trait]
@@ -122,17 +104,25 @@ impl PlatformAdapter for TelegramAdapter {
     }
 
     async fn start(&self) -> Result<(), GatewayError> {
-        // The actual polling loop is started externally via `run()`
         Ok(())
     }
 
     async fn stop(&self) -> Result<(), GatewayError> {
-        // Polling is stopped externally
         Ok(())
     }
 
     async fn send_message(&self, message: OutgoingMessage) -> Result<(), GatewayError> {
-        let result = self.to_send_params(&message).await.map_err(|e| {
+        let chat_id = parse_chat_id(&message.chat_id);
+        let mut request = self.bot.send_message(chat_id, message.text.clone());
+        request = request.parse_mode(ParseMode::MarkdownV2);
+
+        if let Some(ref reply_to) = message.reply_to {
+            if let Ok(reply_id) = reply_to.parse::<i32>() {
+                request = request.reply_parameters(ReplyParameters::new(MessageId(reply_id)));
+            }
+        }
+
+        request.await.map_err(|e| {
             GatewayError::Adapter {
                 platform: "telegram".to_string(),
                 message: e.to_string(),
@@ -142,7 +132,6 @@ impl PlatformAdapter for TelegramAdapter {
 
         self.health
             .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-        let _ = result; // Discard the sent Message
         Ok(())
     }
 
@@ -151,9 +140,6 @@ impl PlatformAdapter for TelegramAdapter {
         message_id: &str,
         new_text: &str,
     ) -> Result<(), GatewayError> {
-        let chat_id_str = message_id; // In a real impl, we'd store chat_id with message_id
-        let chat_id = teloxide::types::ChatId(chat_id_str.to_string());
-
         let mid: i32 = message_id
             .parse()
             .map_err(|_| GatewayError::Adapter {
@@ -163,7 +149,7 @@ impl PlatformAdapter for TelegramAdapter {
             })?;
 
         self.bot
-            .edit_message_text(chat_id, mid, new_text)
+            .edit_message_text(ChatId(0), MessageId(mid), new_text)
             .await
             .map_err(|e| GatewayError::Adapter {
                 platform: "telegram".to_string(),
@@ -175,7 +161,6 @@ impl PlatformAdapter for TelegramAdapter {
     }
 
     async fn download_attachment(&self, url: &str) -> Result<std::path::PathBuf, GatewayError> {
-        // Download the file from Telegram's file API
         let client = reqwest::Client::new();
         let response = client
             .get(url)
@@ -193,7 +178,6 @@ impl PlatformAdapter for TelegramAdapter {
                 source: Some(Box::new(e)),
             })?;
 
-        // Get filename from Content-Disposition or URL
         let filename = response
             .headers()
             .get("content-disposition")
@@ -221,7 +205,6 @@ impl PlatformAdapter for TelegramAdapter {
     }
 
     fn is_running(&self) -> bool {
-        // Always returns true when constructed; caller manages lifecycle
         true
     }
 

@@ -79,7 +79,7 @@ impl VectorStore {
             let batches = RecordBatchIterator::new(vec![Ok(empty_batch)], schema);
 
             self.db
-                .create_table(&self.table_name, Box::new(batches))
+                .create_table(&self.table_name, Box::new(batches) as Box<dyn arrow_array::RecordBatchReader + Send>)
                 .execute()
                 .await
                 .map_err(|e| Error::Generic(format!("Failed to create table: {e}")))?;
@@ -164,7 +164,7 @@ impl VectorStore {
         let batches = RecordBatchIterator::new(vec![Ok(batch)], schema);
 
         table
-            .add(Box::new(batches))
+            .add(Box::new(batches) as Box<dyn arrow_array::RecordBatchReader + Send>)
             .execute()
             .await
             .map_err(|e| Error::Generic(format!("Failed to insert entries: {e}")))?;
