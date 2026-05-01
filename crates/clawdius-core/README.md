@@ -53,6 +53,7 @@ cargo build -p clawdius-core --features vector-db,embeddings
 
 ```rust,no_run
 use clawdius_core::llm::{LlmConfig, create_provider, ChatMessage, ChatRole};
+use clawdius_core::llm::providers::LlmClient;
 
 # #[tokio::main]
 # async fn main() -> clawdius_core::Result<()> {

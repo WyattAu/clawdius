@@ -17,6 +17,7 @@
 //!
 //! ```rust,no_run
 //! use clawdius_core::llm::{LlmConfig, create_provider, ChatMessage, ChatRole};
+//! use clawdius_core::llm::providers::LlmClient;
 //!
 //! # #[tokio::main]
 //! # async fn main() -> clawdius_core::Result<()> {
@@ -38,6 +39,7 @@
 //!
 //! ```rust,no_run
 //! use clawdius_core::llm::{LlmConfig, create_provider, ChatMessage, ChatRole};
+//! use clawdius_core::llm::providers::LlmClient;
 //!
 //! # #[tokio::main]
 //! # async fn main() -> clawdius_core::Result<()> {
@@ -59,6 +61,7 @@
 //!
 //! ```rust,no_run
 //! use clawdius_core::llm::{LlmConfig, create_provider, ChatMessage, ChatRole};
+//! use clawdius_core::llm::providers::LlmClient;
 //!
 //! # #[tokio::main]
 //! # async fn main() -> clawdius_core::Result<()> {
@@ -80,6 +83,7 @@
 //!
 //! ```rust,no_run
 //! use clawdius_core::llm::{LlmConfig, create_provider, ChatMessage, ChatRole};
+//! use clawdius_core::llm::providers::LlmClient;
 //!
 //! # #[tokio::main]
 //! # async fn main() -> clawdius_core::Result<()> {
@@ -104,6 +108,7 @@
 //! ```rust,no_run
 //! use clawdius_core::llm::{LlmConfig, create_provider_with_retry, ChatMessage, ChatRole};
 //! use clawdius_core::config::RetryConfig;
+//! use clawdius_core::llm::providers::LlmClient;
 //!
 //! # #[tokio::main]
 //! # async fn main() -> clawdius_core::Result<()> {
@@ -146,6 +151,7 @@
 //!
 //! ```rust,no_run
 //! use clawdius_core::llm::{LlmConfig, create_provider, ChatMessage, ChatRole};
+//! use clawdius_core::llm::providers::LlmClient;
 //! use clawdius_core::Error;
 //!
 //! # #[tokio::main]
@@ -179,6 +185,7 @@
 //!
 //! ```rust,no_run
 //! use clawdius_core::llm::{LlmConfig, create_provider};
+//! use clawdius_core::llm::providers::LlmClient;
 //!
 //! # fn main() -> clawdius_core::Result<()> {
 //! let config = LlmConfig::from_env("anthropic")?;
