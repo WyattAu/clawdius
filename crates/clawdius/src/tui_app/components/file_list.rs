@@ -70,7 +70,7 @@ impl FileList {
         }
     }
 
-    pub fn up(&mut self) {
+    pub const fn up(&mut self) {
         if let Some(selected) = self.state.selected() {
             if selected > 0 {
                 self.state.select(Some(selected - 1));
@@ -78,7 +78,7 @@ impl FileList {
         }
     }
 
-    pub fn down(&mut self) {
+    pub const fn down(&mut self) {
         if let Some(selected) = self.state.selected() {
             if selected + 1 < self.entries.len() {
                 self.state.select(Some(selected + 1));
@@ -116,7 +116,7 @@ impl FileList {
             .collect()
     }
 
-    pub fn current_dir(&self) -> &PathBuf {
+    pub const fn current_dir(&self) -> &PathBuf {
         &self.current_dir
     }
 
