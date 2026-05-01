@@ -56,7 +56,7 @@ impl ChatView {
 
     /// Check if the last message is currently streaming.
     pub fn is_streaming(&self) -> bool {
-        self.messages.last().map_or(false, |m| m.streaming)
+        self.messages.last().is_some_and(|m| m.streaming)
     }
 
     /// Get all messages
@@ -65,7 +65,7 @@ impl ChatView {
     }
 
     /// Scroll up by one line
-    pub fn scroll_up(&mut self) {
+    pub const fn scroll_up(&mut self) {
         self.scroll = self.scroll.saturating_sub(1);
     }
 
@@ -78,7 +78,7 @@ impl ChatView {
     }
 
     /// Scroll up by a page
-    pub fn scroll_page_up(&mut self, page_size: usize) {
+    pub const fn scroll_page_up(&mut self, page_size: usize) {
         self.scroll = self.scroll.saturating_sub(page_size);
     }
 
