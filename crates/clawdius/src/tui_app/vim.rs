@@ -72,7 +72,7 @@ impl Default for VimKeymap {
 }
 
 impl VimKeymap {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             mode: VimMode::Normal,
             pending_keys: Vec::new(),
@@ -81,11 +81,11 @@ impl VimKeymap {
         }
     }
 
-    pub fn mode(&self) -> VimMode {
+    pub const fn mode(&self) -> VimMode {
         self.mode
     }
 
-    pub fn mode_indicator(&self) -> &'static str {
+    pub const fn mode_indicator(&self) -> &'static str {
         match self.mode {
             VimMode::Normal => "-- NORMAL --",
             VimMode::Insert => "-- INSERT --",
@@ -294,7 +294,7 @@ impl VimKeymap {
         }
     }
 
-    fn execute_command(&mut self, cmd: &str) -> VimAction {
+    fn execute_command(&self, cmd: &str) -> VimAction {
         match cmd.trim() {
             "q" | "quit" | "q!" => VimAction::Quit,
             "w" | "write" | "save" | "wq" | "x" => VimAction::Save,
