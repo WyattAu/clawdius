@@ -414,6 +414,7 @@ fn parse_tier(tier: Option<&str>) -> Option<PlanTier> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use clawdius_core::billing::{BillingError, SubscriptionStatus};
 
     fn test_state() -> Arc<AdminState> {
         Arc::new(AdminState {

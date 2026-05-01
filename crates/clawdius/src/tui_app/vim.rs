@@ -72,7 +72,7 @@ impl Default for VimKeymap {
 }
 
 impl VimKeymap {
-    pub const fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             mode: VimMode::Normal,
             pending_keys: Vec::new(),
@@ -81,11 +81,11 @@ impl VimKeymap {
         }
     }
 
-    pub const fn mode(&self) -> VimMode {
+    pub fn mode(&self) -> VimMode {
         self.mode
     }
 
-    pub const fn mode_indicator(&self) -> &'static str {
+    pub fn mode_indicator(&self) -> &'static str {
         match self.mode {
             VimMode::Normal => "-- NORMAL --",
             VimMode::Insert => "-- INSERT --",
@@ -129,7 +129,14 @@ impl VimKeymap {
             KeyCode::Char('u') => VimAction::Undo,
             KeyCode::Char('p') => VimAction::Put(Placement::After),
             KeyCode::Char('P') => VimAction::Put(Placement::Before),
-            KeyCode::Char('g' | 'a' | 'o' | 'O' | 'd' | 'y' | 'r' | 'z') => {
+            KeyCode::Char('g')
+            | KeyCode::Char('a')
+            | KeyCode::Char('o')
+            | KeyCode::Char('O')
+            | KeyCode::Char('d')
+            | KeyCode::Char('y')
+            | KeyCode::Char('r')
+            | KeyCode::Char('z') => {
                 self.pending_keys.push(key);
                 VimAction::None
             },
@@ -195,7 +202,7 @@ impl VimKeymap {
                 code: KeyCode::Char('z'),
                 ..
             }] => match key.code {
-                KeyCode::Char('z' | 't') => VimAction::Scroll(ScrollDirection::HalfPageUp),
+                KeyCode::Char('z') | KeyCode::Char('t') => VimAction::Scroll(ScrollDirection::HalfPageUp),
                 KeyCode::Char('b') => VimAction::Scroll(ScrollDirection::HalfPageDown),
                 _ => VimAction::None,
             },
@@ -203,7 +210,7 @@ impl VimKeymap {
         }
     }
 
-    const fn handle_insert(&mut self, key: KeyEvent) -> VimAction {
+    fn handle_insert(&mut self, key: KeyEvent) -> VimAction {
         match key.code {
             KeyCode::Esc => {
                 self.mode = VimMode::Normal;
@@ -223,7 +230,7 @@ impl VimKeymap {
         }
     }
 
-    const fn handle_visual(&mut self, key: KeyEvent) -> VimAction {
+    fn handle_visual(&mut self, key: KeyEvent) -> VimAction {
         match key.code {
             KeyCode::Esc | KeyCode::Char('v') => {
                 self.mode = VimMode::Normal;
@@ -262,7 +269,7 @@ impl VimKeymap {
                     self.mode = VimMode::Normal;
                     cmd
                 };
-                Self::execute_command(&cmd)
+                self.execute_command(&cmd)
             },
             KeyCode::Backspace => {
                 if !self.search_buffer.is_empty() && self.search_buffer != "/" {
@@ -287,7 +294,7 @@ impl VimKeymap {
         }
     }
 
-    fn execute_command(cmd: &str) -> VimAction {
+    fn execute_command(&mut self, cmd: &str) -> VimAction {
         match cmd.trim() {
             "q" | "quit" | "q!" => VimAction::Quit,
             "w" | "write" | "save" | "wq" | "x" => VimAction::Save,
