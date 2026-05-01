@@ -124,9 +124,9 @@ similar = "2.6"
 # === Vector Database ===
 # Upgraded to 0.27.x to fix RUSTSEC-2026-0044, RUSTSEC-2026-0048, RUSTSEC-2026-0049
 lancedb = "0.27"
-arrow = "51"
-arrow-array = "51"
-arrow-schema = "51"
+arrow = "57"
+arrow-array = "57"
+arrow-schema = "57"
 
 # === ML/Embeddings ===
 candle-core = "0.4"
@@ -203,3 +203,6 @@ codegen-units = 1
 panic = "abort"
 
 # No workspace features - each crate defines its own
+
+[patch.crates-io]
+half = { path = ".cargo-vendor/half" }

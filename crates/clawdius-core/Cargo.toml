@@ -134,6 +134,9 @@ getrandom = "0.2"
 # Redis (optional, for orchestrator queue)
 redis = { version = "0.27", features = ["tokio-comp", "connection-manager"], optional = true }
 
+# Stripe (optional, for billing)
+stripe = { version = "1.0.0-rc.5", package = "async-stripe", optional = true, default-features = false, features = ["default-tls"] }
+
 [dev-dependencies]
 tempfile.workspace = true
 criterion = { workspace = true }
@@ -175,7 +178,7 @@ orchestrator = []
 redis-queue = ["orchestrator", "dep:redis"]
 postgres = ["dep:tokio-postgres", "dep:deadpool-postgres"]
 mariadb = ["dep:mysql_async"]
-stripe = []
+stripe = ["dep:stripe"]
 
 [lints]
 workspace = true
