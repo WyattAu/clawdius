@@ -39,7 +39,7 @@ impl MentionAutocomplete {
         }
     }
 
-    pub fn is_visible(&self) -> bool {
+    pub const fn is_visible(&self) -> bool {
         self.visible
     }
 
@@ -57,7 +57,7 @@ impl MentionAutocomplete {
         self.suggestions.clear();
     }
 
-    pub fn next(&mut self) {
+    pub const fn next(&mut self) {
         if !self.suggestions.is_empty() {
             let i = match self.state.selected() {
                 Some(i) => {
@@ -73,7 +73,7 @@ impl MentionAutocomplete {
         }
     }
 
-    pub fn previous(&mut self) {
+    pub const fn previous(&mut self) {
         if !self.suggestions.is_empty() {
             let i = match self.state.selected() {
                 Some(i) => {
