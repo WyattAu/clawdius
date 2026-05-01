@@ -48,7 +48,7 @@ fn main() -> anyhow::Result<()> {
                     // Check onboarding status before running TUI
                     let status = clawdius_core::Onboarding::check_environment();
                     if status != clawdius_core::OnboardingStatus::Complete {
-                        cli::first_run_experience()?;
+                        cli::first_run_experience();
                     }
                     // TUI mode
                     tui_app::run_tui().await
