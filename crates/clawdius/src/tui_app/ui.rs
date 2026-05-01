@@ -14,7 +14,7 @@ pub struct ModeIndicator {
 
 #[allow(dead_code)]
 impl ModeIndicator {
-    pub fn new(mode: VimMode) -> Self {
+    pub const fn new(mode: VimMode) -> Self {
         Self { mode }
     }
 
@@ -56,7 +56,7 @@ impl Widget for ModeIndicator {
 }
 
 #[allow(dead_code)]
-pub fn get_cursor_shape(mode: VimMode) -> &'static str {
+pub const fn get_cursor_shape(mode: VimMode) -> &'static str {
     match mode {
         VimMode::Normal | VimMode::Visual => "block",
         VimMode::Insert => "line",
