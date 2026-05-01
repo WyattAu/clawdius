@@ -61,7 +61,7 @@ impl StatusBarState {
 
     /// Set the token count.
     #[must_use]
-    pub fn with_tokens(mut self, used: usize, budget: usize) -> Self {
+    pub const fn with_tokens(mut self, used: usize, budget: usize) -> Self {
         self.tokens_used = used;
         self.token_budget = budget;
         self
@@ -83,21 +83,21 @@ impl StatusBarState {
 
     /// Set processing state.
     #[must_use]
-    pub fn with_processing(mut self, processing: bool) -> Self {
+    pub const fn with_processing(mut self, processing: bool) -> Self {
         self.processing = processing;
         self
     }
 
     /// Set vim mode.
     #[must_use]
-    pub fn with_vim_mode(mut self, mode: VimMode) -> Self {
+    pub const fn with_vim_mode(mut self, mode: VimMode) -> Self {
         self.vim_mode = mode;
         self
     }
 
     /// Set file count.
     #[must_use]
-    pub fn with_file_count(mut self, count: usize) -> Self {
+    pub const fn with_file_count(mut self, count: usize) -> Self {
         self.file_count = count;
         self
     }
@@ -118,7 +118,7 @@ pub struct StatusBar<'a> {
 
 impl<'a> StatusBar<'a> {
     /// Create a new status bar.
-    pub fn new(state: &'a StatusBarState, theme: &'a Theme) -> Self {
+    pub const fn new(state: &'a StatusBarState, theme: &'a Theme) -> Self {
         Self { state, theme }
     }
 }
@@ -161,11 +161,11 @@ impl Widget for StatusBar<'_> {
 
         let left = vec![
             Span::styled(
-                format!(" {} ", processing_indicator),
+                format!(" {processing_indicator} "),
                 self.theme.status_highlight(),
             ),
             Span::styled(
-                format!(" {} ", model_display),
+                format!(" {model_display} "),
                 self.theme.model_info(),
             ),
             Span::styled(
@@ -180,20 +180,20 @@ impl Widget for StatusBar<'_> {
                 format!(" {} ", self.state.project),
                 self.theme.file_item(),
             ),
-            if !self.state.workspace.is_empty() {
+            if self.state.workspace.is_empty() {
+                Span::raw("")
+            } else {
                 Span::styled(
                     format!(" ws:{} ", self.state.workspace),
                     self.theme.title().add_modifier(Modifier::DIM),
                 )
-            } else {
-                Span::raw("")
             },
             Span::styled(
                 format!(" {} files ", self.state.file_count),
                 self.theme.muted(),
             ),
             Span::styled(
-                format!(" {} ", session_display),
+                format!(" {session_display} "),
                 self.theme.muted(),
             ),
             Span::styled(
