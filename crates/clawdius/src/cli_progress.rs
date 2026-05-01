@@ -118,7 +118,7 @@ impl Spinner {
                 let spinner_char = SPINNER_FRAMES[current_frame % SPINNER_FRAMES.len()];
 
                 // Clear line and print spinner with message
-                let _ = write!(handle, "\r\x1B[K{} {}\x1B[0m", spinner_char, message);
+                let _ = write!(handle, "\r\x1B[K{spinner_char} {message}\x1B[0m");
                 let _ = handle.flush();
 
                 frame.store(current_frame + 1, Ordering::SeqCst);
@@ -146,7 +146,7 @@ impl Spinner {
         }
 
         if let Some(msg) = completion_message {
-            println!("✅ {}", msg);
+            println!("✅ {msg}");
         }
     }
 
@@ -159,7 +159,7 @@ impl Spinner {
             let _ = handle.join();
         }
 
-        println!("❌ {}", error_message);
+        println!("❌ {error_message}");
     }
 }
 
@@ -208,9 +208,10 @@ impl ProgressBar {
     }
 
     /// Render the progress bar.
+    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss, clippy::cast_precision_loss)]
     fn render(&self) {
         let percent = if self.total > 0 {
-            (self.current as f64 / self.total as f64 * 100.0) as usize
+            ((self.current as f64 / self.total as f64) * 100.0) as usize
         } else {
             100
         };
@@ -239,33 +240,33 @@ impl ProgressBar {
 
 /// Simple status message for one-time operations.
 pub fn status(message: &str) {
-    println!("⟳ {}", message);
+    println!("⟳ {message}");
 }
 
 /// Success message.
 pub fn success(message: &str) {
-    println!("✅ {}", message);
+    println!("✅ {message}");
 }
 
 /// Error message with optional suggestion.
 #[allow(dead_code)]
 pub fn error(message: &str, suggestion: Option<&str>) {
-    println!("❌ {}", message);
+    println!("❌ {message}");
     if let Some(suggestion) = suggestion {
-        println!("   💡 {}", suggestion);
+        println!("   💡 {suggestion}");
     }
 }
 
 /// Warning message.
 #[allow(dead_code)]
 pub fn warning(message: &str) {
-    println!("⚠️  {}", message);
+    println!("⚠️  {message}");
 }
 
 /// Info message.
 #[allow(dead_code)]
 pub fn info(message: &str) {
-    println!("ℹ️  {}", message);
+    println!("ℹ️  {message}");
 }
 
 #[cfg(test)]
