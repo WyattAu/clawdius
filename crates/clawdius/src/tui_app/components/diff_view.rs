@@ -34,11 +34,11 @@ impl DiffView {
         self.scroll = 0;
     }
 
-    pub fn has_diff(&self) -> bool {
+    pub const fn has_diff(&self) -> bool {
         self.diff.is_some()
     }
 
-    pub fn scroll_up(&mut self) {
+    pub const fn scroll_up(&mut self) {
         if self.scroll > 0 {
             self.scroll -= 1;
         }
@@ -46,14 +46,14 @@ impl DiffView {
 
     pub fn scroll_down(&mut self, max_visible: usize) {
         if let Some(diff) = &self.diff {
-            let total = self.calculate_total_lines(diff);
+            let total = Self::calculate_total_lines(diff);
             if self.scroll + max_visible < total {
                 self.scroll += 1;
             }
         }
     }
 
-    fn calculate_total_lines(&self, diff: &FileDiff) -> usize {
+    fn calculate_total_lines(diff: &FileDiff) -> usize {
         diff.hunks.iter().map(|h| h.lines.len() + 1).sum()
     }
 
