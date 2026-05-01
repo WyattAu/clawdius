@@ -185,6 +185,7 @@ impl ChatView {
     }
 
     /// Render the chat view
+    #[allow(clippy::cast_possible_truncation)]
     pub fn render(&mut self, f: &mut Frame<'_>, area: Rect) {
         let theme = theme::current();
         let mut lines: Vec<Line<'_>> = Vec::new();

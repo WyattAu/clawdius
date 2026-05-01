@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 //! Session picker popup component.
 //!
 //! Displays a list of sessions for the user to select from.
@@ -5,9 +7,9 @@
 
 use ratatui::{
     layout::Rect,
-    style::{Modifier, Style},
+    style::Modifier,
     text::{Line, Span},
-    widgets::{Block, Borders, Clear, List, ListItem, ListState, Paragraph, Widget},
+    widgets::{Block, Borders, Clear, ListItem, ListState, Paragraph, Widget},
 };
 
 use crate::tui_app::theme::Theme;
@@ -179,7 +181,7 @@ impl Widget for SessionPickerWidget<'_> {
             return;
         }
 
-        let items: Vec<ListItem> = filtered
+        let items: Vec<ListItem<'_>> = filtered
             .iter()
             .map(|entry| {
                 let active_marker = if entry.is_active { "● " } else { "  " };

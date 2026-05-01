@@ -57,6 +57,7 @@ impl DiffView {
         diff.hunks.iter().map(|h| h.lines.len() + 1).sum()
     }
 
+    #[allow(clippy::cast_possible_truncation)]
     pub fn render(&mut self, f: &mut Frame<'_>, area: Rect) {
         let theme = theme::current();
 

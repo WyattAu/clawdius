@@ -63,7 +63,7 @@ pub async fn run_tui() -> anyhow::Result<()> {
                             app.resize();
                         },
                         Event::Mouse(mouse) => {
-                            use crossterm::event::{MouseEvent, MouseEventKind};
+                            use crossterm::event::MouseEventKind;
                             match mouse.kind {
                                 MouseEventKind::ScrollUp => {
                                     app.scroll_up();

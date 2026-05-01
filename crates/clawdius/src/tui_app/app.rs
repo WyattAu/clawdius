@@ -51,6 +51,7 @@ pub struct App {
 }
 
 impl App {
+    #[allow(clippy::missing_errors_doc)]
     pub fn new() -> anyhow::Result<Self> {
         let config = Config::load_default()?;
         let session_manager = SessionManager::new(&config)?;
@@ -100,6 +101,7 @@ impl App {
         }
     }
 
+    #[allow(clippy::missing_errors_doc)]
     pub async fn handle_key(&mut self, key: KeyEvent) -> anyhow::Result<()> {
         use crossterm::event::KeyCode;
 
@@ -231,7 +233,7 @@ impl App {
         use crossterm::event::KeyCode;
 
         match key.code {
-            KeyCode::Char('q') | KeyCode::Tab | KeyCode::Char('1') => {
+            KeyCode::Char('q' | '1') | KeyCode::Tab => {
                 self.mode = AppMode::Chat;
             },
             KeyCode::Char('j') | KeyCode::Down => {
@@ -266,7 +268,7 @@ impl App {
         use crossterm::event::KeyCode;
 
         match key.code {
-            KeyCode::Char('q') | KeyCode::Esc | KeyCode::Tab | KeyCode::Char('1') => {
+            KeyCode::Char('q' | '1') | KeyCode::Esc | KeyCode::Tab => {
                 self.mode = AppMode::Chat;
             },
             KeyCode::Char('j') | KeyCode::Down => {
@@ -372,8 +374,8 @@ impl App {
                     // :secondary diff / :secondary files
                     if parts.len() > 1 {
                         self.secondary_mode = match parts[1].trim() {
-                            "diff" | "d" | _ => AppMode::Diff,
                             "files" | "f" => AppMode::FileBrowser,
+                            _ => AppMode::Diff,
                         };
                     }
                 } else {
@@ -543,7 +545,7 @@ impl App {
     pub const fn resize(&mut self) {}
 
     /// Handle mouse scroll up.
-    pub fn scroll_up(&mut self) {
+    pub const fn scroll_up(&mut self) {
         match self.mode {
             AppMode::Chat => self.chat_view.scroll_up(),
             AppMode::FileBrowser => self.file_list.up(),

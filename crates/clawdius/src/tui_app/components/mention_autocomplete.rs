@@ -93,6 +93,7 @@ impl MentionAutocomplete {
         self.state.selected().and_then(|i| self.suggestions.get(i))
     }
 
+    #[allow(clippy::too_many_lines)]
     fn get_suggestions(partial: &str, working_dir: &Path) -> Vec<MentionSuggestion> {
         let mut suggestions = Vec::new();
 
@@ -211,6 +212,7 @@ impl MentionAutocomplete {
         suggestions
     }
 
+    #[allow(clippy::cast_possible_truncation)]
     pub fn render(&mut self, f: &mut Frame<'_>, area: Rect) {
         if !self.visible || self.suggestions.is_empty() {
             return;

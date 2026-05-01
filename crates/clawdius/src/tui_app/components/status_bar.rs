@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 //! Status bar component for the TUI.
 //!
 //! Displays current model, token count, session info, project,
@@ -5,7 +7,7 @@
 
 use ratatui::{
     layout::Rect,
-    style::{Modifier, Style},
+    style::Modifier,
     text::{Line, Span},
     widgets::{Block, Paragraph, Widget},
 };
@@ -124,6 +126,7 @@ impl<'a> StatusBar<'a> {
 }
 
 impl Widget for StatusBar<'_> {
+    #[allow(clippy::cast_precision_loss, clippy::cast_possible_truncation, clippy::cast_sign_loss)]
     fn render(self, area: Rect, buf: &mut ratatui::buffer::Buffer) {
         let processing_indicator = if self.state.processing {
             " ●" // Spinning dot

@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 //! Workspace switcher popup component.
 //!
 //! Displays a list of workspaces/projects for the user to
@@ -5,7 +7,7 @@
 
 use ratatui::{
     layout::Rect,
-    style::{Modifier, Style},
+    style::Modifier,
     text::{Line, Span},
     widgets::{Block, Borders, Clear, Paragraph, Widget},
 };
@@ -44,7 +46,7 @@ pub struct WorkspaceSwitcher {
 impl WorkspaceSwitcher {
     /// Create a new workspace switcher.
     #[must_use]
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             entries: Vec::new(),
             selected: 0,
