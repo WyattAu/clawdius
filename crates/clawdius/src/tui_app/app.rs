@@ -51,6 +51,7 @@ pub struct App {
 }
 
 impl App {
+    #[allow(clippy::missing_errors_doc)]
     pub fn new() -> anyhow::Result<Self> {
         let config = Config::load_default()?;
         let session_manager = SessionManager::new(&config)?;
@@ -83,10 +84,7 @@ impl App {
     /// Build workspace context from the current directory.
     /// Returns None if the current directory doesn't look like a project.
     fn build_workspace_context() -> Option<String> {
-        let cwd = match std::env::current_dir() {
-            Ok(d) => d,
-            Err(_) => return None,
-        };
+        let Ok(cwd) = std::env::current_dir() else { return None };
 
         // Only build context if there's a recognizable project marker
         let has_project_marker = ["Cargo.toml", "package.json", "pyproject.toml", "go.mod"]
@@ -103,6 +101,7 @@ impl App {
         }
     }
 
+    #[allow(clippy::missing_errors_doc)]
     pub async fn handle_key(&mut self, key: KeyEvent) -> anyhow::Result<()> {
         use crossterm::event::KeyCode;
 
@@ -122,8 +121,8 @@ impl App {
                 return Ok(());
             },
             AppMode::Chat => self.handle_chat_key(key).await?,
-            AppMode::FileBrowser => self.handle_file_browser_key(key)?,
-            AppMode::Diff => self.handle_diff_key(key)?,
+            AppMode::FileBrowser => self.handle_file_browser_key(key),
+            AppMode::Diff => self.handle_diff_key(key),
         }
 
         Ok(())
@@ -230,11 +229,11 @@ impl App {
     fn handle_file_browser_key(
         &mut self,
         key: crossterm::event::KeyEvent,
-    ) -> anyhow::Result<()> {
+    ) {
         use crossterm::event::KeyCode;
 
         match key.code {
-            KeyCode::Char('q') | KeyCode::Tab | KeyCode::Char('1') => {
+            KeyCode::Char('q' | '1') | KeyCode::Tab => {
                 self.mode = AppMode::Chat;
             },
             KeyCode::Char('j') | KeyCode::Down => {
@@ -246,7 +245,7 @@ impl App {
             KeyCode::Enter => {
                 if let Some(path) = self.file_list.enter() {
                     if let Ok(content) = std::fs::read_to_string(&path) {
-                        let diff = FileDiff::compute(path.clone(), None, &content);
+                        let diff = FileDiff::compute(path, None, &content);
                         self.diff_view.set_diff(diff);
                         self.mode = AppMode::Diff;
                     }
@@ -263,15 +262,13 @@ impl App {
             },
             _ => {},
         }
-
-        Ok(())
     }
 
-    fn handle_diff_key(&mut self, key: crossterm::event::KeyEvent) -> anyhow::Result<()> {
+    fn handle_diff_key(&mut self, key: crossterm::event::KeyEvent) {
         use crossterm::event::KeyCode;
 
         match key.code {
-            KeyCode::Char('q') | KeyCode::Esc | KeyCode::Tab | KeyCode::Char('1') => {
+            KeyCode::Char('q' | '1') | KeyCode::Esc | KeyCode::Tab => {
                 self.mode = AppMode::Chat;
             },
             KeyCode::Char('j') | KeyCode::Down => {
@@ -301,8 +298,6 @@ impl App {
             },
             _ => {},
         }
-
-        Ok(())
     }
 
     fn execute_command(&mut self, cmd: &str) {
@@ -379,8 +374,8 @@ impl App {
                     // :secondary diff / :secondary files
                     if parts.len() > 1 {
                         self.secondary_mode = match parts[1].trim() {
-                            "diff" | "d" | _ => AppMode::Diff,
                             "files" | "f" => AppMode::FileBrowser,
+                            _ => AppMode::Diff,
                         };
                     }
                 } else {
@@ -442,10 +437,7 @@ impl App {
     /// Poll the stream receiver for a chunk. Call this from the event loop.
     /// Returns `true` if a chunk was received (or stream ended).
     pub fn poll_stream(&mut self) -> bool {
-        let rx = match &mut self.stream_rx {
-            Some(rx) => rx,
-            None => return false,
-        };
+        let Some(rx) = &mut self.stream_rx else { return false };
 
         // Try to receive without blocking — if nothing available, return false.
         // We use try_recv() which is non-blocking.
@@ -495,7 +487,7 @@ impl App {
         // Build user message with optional workspace context
         let user_content = match self.workspace_context.as_deref() {
             Some(ctx) if !ctx.is_empty() => {
-                format!("{}\n\n## Project Structure\n{}", ctx, message)
+                format!("{ctx}\n\n## Project Structure\n{message}")
             }
             _ => message.to_string(),
         };
@@ -550,10 +542,10 @@ impl App {
     }
 
     /// Handle terminal resize events
-    pub fn resize(&mut self) {}
+    pub const fn resize(&mut self) {}
 
     /// Handle mouse scroll up.
-    pub fn scroll_up(&mut self) {
+    pub const fn scroll_up(&mut self) {
         match self.mode {
             AppMode::Chat => self.chat_view.scroll_up(),
             AppMode::FileBrowser => self.file_list.up(),
@@ -638,7 +630,7 @@ impl App {
         }
 
         if let Some(ref error) = self.error_message {
-            self.draw_popup(f, "Error", error);
+            Self::draw_popup(f, "Error", error);
         }
     }
 
@@ -652,11 +644,10 @@ impl App {
             AppMode::Help => "HELP",
         };
 
-        let session_info = if let Some(session) = &self.session {
-            format!("{} msgs", session.messages.len())
-        } else {
-            "no session".to_string()
-        };
+        let session_info = self.session.as_ref().map_or_else(
+            || "no session".to_string(),
+            |s| format!("{} msgs", s.messages.len()),
+        );
 
         let layout_text = match self.layout_mode {
             LayoutMode::Single => "",
@@ -688,7 +679,7 @@ impl App {
             AppMode::Chat => self.draw_messages(f, area),
             AppMode::FileBrowser => self.draw_file_browser(f, area),
             AppMode::Diff => self.draw_diff(f, area),
-            AppMode::Help => self.draw_help(f, area),
+            AppMode::Help => Self::draw_help(f, area),
         }
     }
 
@@ -707,7 +698,7 @@ impl App {
         diff_view.render(f, area);
     }
 
-    fn draw_help(&self, f: &mut Frame<'_>, area: Rect) {
+    fn draw_help(f: &mut Frame<'_>, area: Rect) {
         let help_text = vec![
             Line::from(Span::styled(
                 "Clawdius Help",
@@ -875,7 +866,7 @@ impl App {
         f.render_widget(paragraph, area);
     }
 
-    fn draw_popup(&self, f: &mut Frame<'_>, title: &str, content: &str) {
+    fn draw_popup(f: &mut Frame<'_>, title: &str, content: &str) {
         let area = centered_rect(60, 20, f.area());
         f.render_widget(Clear, area);
 

@@ -1,8 +1,18 @@
 //! CLI argument parsing and command handling
 
+#![allow(
+    clippy::too_many_lines,
+    clippy::too_many_arguments,
+    clippy::future_not_send,
+    clippy::fn_params_excessive_bools,
+    clippy::items_after_statements,
+    clippy::ptr_arg,
+    elided_lifetimes_in_paths,
+)]
+
 use anyhow::Context;
 use clap::{Parser, Subcommand, ValueEnum};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use clawdius_core::actions::Function;
 use clawdius_core::analysis::{DebtReport, DriftReport, DriftSeverity as CoreDriftSeverity};
@@ -34,9 +44,9 @@ pub enum MetricsOutputFormat {
 impl From<OutputFormat> for CoreOutputFormat {
     fn from(format: OutputFormat) -> Self {
         match format {
-            OutputFormat::Text => CoreOutputFormat::Text,
-            OutputFormat::Json => CoreOutputFormat::Json,
-            OutputFormat::StreamJson => CoreOutputFormat::StreamJson,
+            OutputFormat::Text => Self::Text,
+            OutputFormat::Json => Self::Json,
+            OutputFormat::StreamJson => Self::StreamJson,
         }
     }
 }
@@ -44,17 +54,17 @@ impl From<OutputFormat> for CoreOutputFormat {
 impl ValueEnum for OutputFormat {
     fn value_variants<'a>() -> &'a [Self] {
         &[
-            OutputFormat::Text,
-            OutputFormat::Json,
-            OutputFormat::StreamJson,
+            Self::Text,
+            Self::Json,
+            Self::StreamJson,
         ]
     }
 
     fn to_possible_value(&self) -> Option<clap::builder::PossibleValue> {
         match self {
-            OutputFormat::Text => Some(clap::builder::PossibleValue::new("text")),
-            OutputFormat::Json => Some(clap::builder::PossibleValue::new("json")),
-            OutputFormat::StreamJson => Some(clap::builder::PossibleValue::new("stream-json")),
+            Self::Text => Some(clap::builder::PossibleValue::new("text")),
+            Self::Json => Some(clap::builder::PossibleValue::new("json")),
+            Self::StreamJson => Some(clap::builder::PossibleValue::new("stream-json")),
         }
     }
 }
@@ -1133,12 +1143,12 @@ pub enum ConfigAction {
     Show,
     /// Get a specific config value
     Get {
-        /// Config key (e.g. llm.default_provider, llm.anthropic.model)
+        /// Config key (e.g. `llm.default_provider`, llm.anthropic.model)
         key: String,
     },
     /// Set a specific config value
     Set {
-        /// Config key (e.g. llm.default_provider, llm.anthropic.model, llm.anthropic.api_key)
+        /// Config key (e.g. `llm.default_provider`, llm.anthropic.model, `llm.anthropic.api_key`)
         key: String,
         /// Value to set
         value: String,
@@ -1230,7 +1240,7 @@ pub async fn handle_command(
         Commands::Init { name } => handle_init(name).await,
         Commands::Setup { quick, provider } => handle_setup(quick, provider, output_format),
         Commands::Sessions { delete, search } => {
-            handle_sessions(delete, search, config_path, output_format)
+            handle_sessions(delete.as_deref(), search.as_deref(), config_path.as_ref(), output_format)
         },
         Commands::Refactor {
             from,
@@ -1247,8 +1257,8 @@ pub async fn handle_command(
             end_column,
         } => {
             handle_action(
-                action,
-                file,
+                &action,
+                &file,
                 line,
                 column,
                 end_line,
@@ -1269,7 +1279,7 @@ pub async fn handle_command(
             inline,
         } => handle_doc(file, element, format, output, inline, output_format).await,
         Commands::Verify { proof, lean_path } => {
-            handle_verify(proof, lean_path, output_format)
+            handle_verify(&proof, lean_path, output_format)
         },
         #[cfg(feature = "keyring")]
         Commands::Auth { action } => handle_auth(action).await,
@@ -1341,7 +1351,7 @@ pub async fn handle_command(
             .await
         },
         Commands::Lsp { action } => handle_lsp(action, output_format).await,
-        Commands::Memory { action } => handle_memory(action, config_path, output_format),
+        Commands::Memory { action } => handle_memory(action, config_path.as_ref(), output_format),
         Commands::Models { action, host, port } => {
             handle_models(action, &host, port, output_format).await
         },
@@ -1373,7 +1383,7 @@ pub async fn handle_command(
             output,
             severity,
             exclude,
-        } => handle_analyze(path, drift, debt, analyze_format, output, severity, exclude),
+        } => handle_analyze(&path, drift, debt, analyze_format, output, &severity, exclude),
         Commands::Watch {
             path,
             ignore,
@@ -1382,7 +1392,7 @@ pub async fn handle_command(
             verbose,
         } => {
             handle_watch(
-                path,
+                &path,
                 ignore,
                 auto_analyze,
                 debounce_ms,
@@ -1494,6 +1504,8 @@ async fn handle_server(host: &str, port: u16) -> anyhow::Result<()> {
 
 // ── Sprint Handler ──────────────────────────────────────────────────────
 
+/// Handle sprint command for agentic code generation
+#[allow(clippy::cast_precision_loss)]
 async fn handle_sprint(
     task: String,
     max_iterations: usize,
@@ -1517,9 +1529,9 @@ async fn handle_sprint(
     let llm_config = match clawdius_core::llm::LlmConfig::from_config(&config.llm, &provider) {
          Ok(mut cfg) => {
              // Override model if --model flag was provided
-             if let Some(ref m) = model {
-                 cfg.model = m.clone();
-             }
+              if let Some(m) = &model {
+                  cfg.model.clone_from(m);
+              }
              cfg
          },
          Err(e) => {
@@ -1544,20 +1556,17 @@ async fn handle_sprint(
     let provider_instance = match clawdius_core::llm::create_provider(&llm_config) {
         Ok(p) => p,
         Err(e) => {
-            match output_format {
-                OutputFormat::Json => {
-                    println!(
-                        "{}",
-                        serde_json::json!({
-                            "error": e.to_string(),
-                            "provider": provider,
-                        })
-                    );
-                },
-                _ => {
-                    eprintln!("Failed to create LLM provider '{provider}': {e}");
-                    eprintln!("Ensure your API key is set (e.g., export ANTHROPIC_API_KEY=...)");
-                },
+            if output_format == OutputFormat::Json {
+                println!(
+                    "{}",
+                    serde_json::json!({
+                        "error": e.to_string(),
+                        "provider": provider,
+                    })
+                );
+            } else {
+                eprintln!("Failed to create LLM provider '{provider}': {e}");
+                eprintln!("Ensure your API key is set (e.g., export ANTHROPIC_API_KEY=...)");
             }
             return Ok(());
         },
@@ -1605,20 +1614,17 @@ async fn handle_sprint(
                 }
                 engine = engine.with_lsp_client(lsp_client);
             },
-            Err(e) => match output_format {
-                OutputFormat::Json => {
-                    eprintln!(
-                        "{}",
-                        serde_json::json!({
-                            "warning": format!("LSP client failed to start: {e}"),
-                            "lsp_command": lsp_cmd,
-                        })
-                    );
-                },
-                _ => {
-                    eprintln!("⚠️  LSP client '{lsp_cmd}' failed to start: {e}");
-                    eprintln!("   Continuing sprint without LSP code intelligence.");
-                },
+            Err(e) => if output_format == OutputFormat::Json {
+                eprintln!(
+                    "{}",
+                    serde_json::json!({
+                        "warning": format!("LSP client failed to start: {e}"),
+                        "lsp_command": lsp_cmd,
+                    })
+                );
+            } else {
+                eprintln!("⚠️  LSP client '{lsp_cmd}' failed to start: {e}");
+                eprintln!("   Continuing sprint without LSP code intelligence.");
             },
         }
     }
@@ -1644,86 +1650,83 @@ async fn handle_sprint(
         .await
         .map_err(|e| anyhow::anyhow!("{e}"))?;
 
-    match output_format {
-        OutputFormat::Json => {
-            let phase_results_json: Vec<serde_json::Value> = result
-                .phase_results
-                .iter()
-                .map(|pr| {
-                    serde_json::json!({
-                        "phase": pr.phase.to_string(),
-                        "status": format!("{:?}", pr.status),
-                        "duration_ms": pr.duration_ms,
-                        "tokens_used": pr.tokens_used,
-                        "output": pr.output,
-                        "files_modified": pr.files_modified,
-                        "errors": pr.errors,
-                    })
-                })
-                .collect();
-
-            println!(
-                "{}",
+    if output_format == OutputFormat::Json {
+        let phase_results_json: Vec<serde_json::Value> = result
+            .phase_results
+            .iter()
+            .map(|pr| {
                 serde_json::json!({
-                    "success": result.success,
-                    "phase_results": phase_results_json,
-                    "total_duration_ms": result.total_duration_ms,
-                    "summary": result.summary,
-                    "checkpoint_ref": result.checkpoint_ref,
-                    "rollback_available": result.rollback_available,
-                    "metrics": {
-                        "total_tokens": result.metrics.total_tokens,
-                        "retry_cycles": result.metrics.retry_cycles,
-                        "phases_succeeded": result.metrics.phases_succeeded,
-                        "phases_failed": result.metrics.phases_failed,
-                        "phases_skipped": result.metrics.phases_skipped,
-                    },
+                    "phase": pr.phase.to_string(),
+                    "status": format!("{:?}", pr.status),
+                    "duration_ms": pr.duration_ms,
+                    "tokens_used": pr.tokens_used,
+                    "output": pr.output,
+                    "files_modified": pr.files_modified,
+                    "errors": pr.errors,
                 })
-            );
-        },
-        _ => {
-            println!("{}", result.summary);
-            println!();
+            })
+            .collect();
 
-            for pr in &result.phase_results {
-                let status_icon = match pr.status {
-                    PhaseStatus::Success => "✅",
-                    PhaseStatus::Failed => "❌",
-                    PhaseStatus::Skipped => "⏭️",
-                };
-                println!(
-                    "  {status_icon} {} ({:.1}s, {} tokens)",
-                    pr.phase,
-                    pr.duration_ms as f64 / 1000.0,
-                    pr.tokens_used
-                );
-                if !pr.files_modified.is_empty() {
-                    for f in &pr.files_modified {
-                        println!("      {f}");
-                    }
-                }
-                if !pr.errors.is_empty() {
-                    for e in &pr.errors {
-                        println!("      error: {e}");
-                    }
-                }
-            }
+        println!(
+            "{}",
+            serde_json::json!({
+                "success": result.success,
+                "phase_results": phase_results_json,
+                "total_duration_ms": result.total_duration_ms,
+                "summary": result.summary,
+                "checkpoint_ref": result.checkpoint_ref,
+                "rollback_available": result.rollback_available,
+                "metrics": {
+                    "total_tokens": result.metrics.total_tokens,
+                    "retry_cycles": result.metrics.retry_cycles,
+                    "phases_succeeded": result.metrics.phases_succeeded,
+                    "phases_failed": result.metrics.phases_failed,
+                    "phases_skipped": result.metrics.phases_skipped,
+                },
+            })
+        );
+    } else {
+        println!("{}", result.summary);
+        println!();
 
-            println!();
+        for pr in &result.phase_results {
+            let status_icon = match pr.status {
+                PhaseStatus::Success => "✅",
+                PhaseStatus::Failed => "❌",
+                PhaseStatus::Skipped => "⏭️",
+            };
             println!(
-                "Total duration: {:.1}s",
-                result.total_duration_ms as f64 / 1000.0
+                "  {status_icon} {} ({:.1}s, {} tokens)",
+                pr.phase,
+                pr.duration_ms as f64 / 1000.0,
+                pr.tokens_used
             );
-            if let Some(ref checkpoint) = result.checkpoint_ref {
-                println!("Checkpoint: {checkpoint}");
+            if !pr.files_modified.is_empty() {
+                for f in &pr.files_modified {
+                    println!("      {f}");
+                }
             }
-            if result.rollback_available {
-                println!("Rollback available: yes");
+            if !pr.errors.is_empty() {
+                for e in &pr.errors {
+                    println!("      error: {e}");
+                }
             }
+        }
 
-            println!();
-            println!("{}", result.metrics.report());
-        },
+        println!();
+        println!(
+            "Total duration: {:.1}s",
+            result.total_duration_ms as f64 / 1000.0
+        );
+        if let Some(ref checkpoint) = result.checkpoint_ref {
+            println!("Checkpoint: {checkpoint}");
+        }
+        if result.rollback_available {
+            println!("Rollback available: yes");
+        }
+
+        println!();
+        println!("{}", result.metrics.report());
     }
 
     Ok(())
@@ -1741,27 +1744,24 @@ async fn handle_ship(action: ShipAction, output_format: OutputFormat) -> anyhow:
                 .run_pre_ship_checks(&branch, &files, true, false)
                 .await;
 
-            match output_format {
-                OutputFormat::Json => {
-                    println!("{}", serde_json::to_string_pretty(&report)?);
-                },
-                _ => {
-                    println!("📋 Pre-Ship Checks — branch: {branch}");
-                    println!("   All passed: {}", report.all_passed);
-                    println!("   Checks: {} total", report.checks.len());
-                    for check in &report.checks {
-                        let icon = if check.passed { "✅" } else { "❌" };
-                        println!("   {icon} {} ({:?})", check.check_name, check.severity);
-                        if !check.passed {
-                            println!("      {}", check.message);
-                        }
+            if output_format == OutputFormat::Json {
+                println!("{}", serde_json::to_string_pretty(&report)?);
+            } else {
+                println!("📋 Pre-Ship Checks — branch: {branch}");
+                println!("   All passed: {}", report.all_passed);
+                println!("   Checks: {} total", report.checks.len());
+                for check in &report.checks {
+                    let icon = if check.passed { "✅" } else { "❌" };
+                    println!("   {icon} {} ({:?})", check.check_name, check.severity);
+                    if !check.passed {
+                        println!("      {}", check.message);
                     }
-                    if report.all_passed {
-                        println!("\n✨ All checks passed — ready to ship!");
-                    } else {
-                        println!("\n⚠️  Some checks failed — address before shipping.");
-                    }
-                },
+                }
+                if report.all_passed {
+                    println!("\n✨ All checks passed — ready to ship!");
+                } else {
+                    println!("\n⚠️  Some checks failed — address before shipping.");
+                }
             }
         },
         ShipAction::CommitMessage {
@@ -1772,15 +1772,12 @@ async fn handle_ship(action: ShipAction, output_format: OutputFormat) -> anyhow:
             let pipeline = ShipPipeline::new_default();
             let msg = pipeline.generate_commit_message(&files, &description, scope.as_deref());
 
-            match output_format {
-                OutputFormat::Json => {
-                    println!("{}", serde_json::to_string_pretty(&msg)?);
-                },
-                _ => {
-                    println!("📝 Generated commit message:");
-                    println!();
-                    println!("{}", msg);
-                },
+            if output_format == OutputFormat::Json {
+                println!("{}", serde_json::to_string_pretty(&msg)?);
+            } else {
+                println!("📝 Generated commit message:");
+                println!();
+                println!("{msg}");
             }
         },
     }
@@ -1886,12 +1883,10 @@ async fn handle_skill(action: SkillAction, output_format: OutputFormat) -> anyho
                 .unwrap_or("anthropic");
 
             let optional_llm: Option<Arc<dyn LlmClient>> =
-                match clawdius_core::llm::LlmConfig::from_config(&config.llm, provider_name)
-                    .and_then(|llm_cfg| clawdius_core::llm::create_provider(&llm_cfg))
-                {
-                    Ok(p) => Some(Arc::new(p)),
-                    Err(_) => None,
-                };
+                clawdius_core::llm::LlmConfig::from_config(&config.llm, provider_name)
+                    .ok()
+                    .and_then(|llm_cfg| clawdius_core::llm::create_provider(&llm_cfg).ok())
+                    .map(|p| Arc::new(p) as Arc<dyn LlmClient>);
 
             let registry = SkillRegistry::new();
             registry.register_builtin_skills().await;
@@ -1921,36 +1916,33 @@ async fn handle_skill(action: SkillAction, output_format: OutputFormat) -> anyho
             let result = registry.execute(&name, ctx).await;
 
             match result {
-                Ok(skill_result) => match output_format {
-                    OutputFormat::Json => {
-                        println!(
-                            "{}",
-                            serde_json::json!({
-                                "success": skill_result.success,
-                                "output": skill_result.output,
-                                "modified_files": skill_result.modified_files,
-                                "duration_ms": skill_result.duration_ms,
-                            })
-                        );
-                    },
-                    _ => {
-                        if skill_result.success {
-                            println!("✅ Skill '{name}' completed successfully");
-                        } else {
-                            println!("❌ Skill '{name}' failed");
+                Ok(skill_result) => if output_format == OutputFormat::Json {
+                    println!(
+                        "{}",
+                        serde_json::json!({
+                            "success": skill_result.success,
+                            "output": skill_result.output,
+                            "modified_files": skill_result.modified_files,
+                            "duration_ms": skill_result.duration_ms,
+                        })
+                    );
+                } else {
+                    if skill_result.success {
+                        println!("✅ Skill '{name}' completed successfully");
+                    } else {
+                        println!("❌ Skill '{name}' failed");
+                    }
+                    if !skill_result.output.is_empty() {
+                        println!();
+                        println!("{}", skill_result.output);
+                    }
+                    if !skill_result.modified_files.is_empty() {
+                        println!();
+                        println!("Files modified:");
+                        for f in &skill_result.modified_files {
+                            println!("  {f}");
                         }
-                        if !skill_result.output.is_empty() {
-                            println!();
-                            println!("{}", skill_result.output);
-                        }
-                        if !skill_result.modified_files.is_empty() {
-                            println!();
-                            println!("Files modified:");
-                            for f in &skill_result.modified_files {
-                                println!("  {f}");
-                            }
-                        }
-                    },
+                    }
                 },
                 Err(e) => match output_format {
                     OutputFormat::Json => {
@@ -1996,7 +1988,7 @@ fn handle_config(
             let toml_str = toml::to_string_pretty(&config)?;
             // Mask API keys before displaying
             let masked = mask_api_keys(&toml_str);
-            println!("{}", masked);
+            println!("{masked}");
         },
 
         ConfigAction::Get { key } => {
@@ -2006,7 +1998,7 @@ fn handle_config(
                 Config::default()
             };
             let value = get_config_value(&config, &key)?;
-            println!("{}", value);
+            println!("{value}");
         },
 
         ConfigAction::Set { key, value } => {
@@ -2026,13 +2018,7 @@ fn handle_config(
         },
 
         ConfigAction::Path => {
-            let resolved = if config_file.exists() {
-                config_file.clone()
-            } else {
-                // Show the default path even if it doesn't exist
-                config_file.clone()
-            };
-            println!("{}", resolved.display());
+            println!("{}", config_file.display());
         },
 
         ConfigAction::List => {
@@ -2063,7 +2049,7 @@ fn handle_config(
     Ok(())
 }
 
-/// Get a config value by dot-separated key path (e.g. "llm.default_provider").
+/// Get a config value by dot-separated key path (e.g. "`llm.default_provider`").
 fn get_config_value(config: &clawdius_core::config::Config, key: &str) -> anyhow::Result<String> {
     let parts: Vec<&str> = key.split('.').collect();
     match parts.as_slice() {
@@ -2078,9 +2064,7 @@ fn get_config_value(config: &clawdius_core::config::Config, key: &str) -> anyhow
         },
         ["llm", "anthropic", "api_key"] => {
             Ok(config.llm.anthropic.as_ref()
-                .and_then(|p| p.api_key.clone())
-                .map(|_| "***".to_string())
-                .unwrap_or_else(|| "(not set)".to_string()))
+                .and_then(|p| p.api_key.clone()).map_or_else(|| "(not set)".to_string(), |_| "***".to_string()))
         },
         ["llm", "anthropic", "api_key_env"] => {
             Ok(config.llm.anthropic.as_ref()
@@ -2099,9 +2083,7 @@ fn get_config_value(config: &clawdius_core::config::Config, key: &str) -> anyhow
         },
         ["llm", "openai", "api_key"] => {
             Ok(config.llm.openai.as_ref()
-                .and_then(|p| p.api_key.clone())
-                .map(|_| "***".to_string())
-                .unwrap_or_else(|| "(not set)".to_string()))
+                .and_then(|p| p.api_key.clone()).map_or_else(|| "(not set)".to_string(), |_| "***".to_string()))
         },
         ["llm", "openai", "api_key_env"] => {
             Ok(config.llm.openai.as_ref()
@@ -2119,9 +2101,7 @@ fn get_config_value(config: &clawdius_core::config::Config, key: &str) -> anyhow
                 .unwrap_or_else(|| "(not set)".to_string()))
         },
         ["llm", "ollama", "base_url"] => {
-            Ok(config.llm.ollama.as_ref()
-                .map(|p| p.base_url.clone())
-                .unwrap_or_else(|| "http://localhost:11434".to_string()))
+            Ok(config.llm.ollama.as_ref().map_or_else(|| "http://localhost:11434".to_string(), |p| p.base_url.clone()))
         },
         _ => anyhow::bail!("Unknown config key: {key}. Run 'clawdius config list' for available keys."),
     }
@@ -2140,35 +2120,35 @@ fn set_config_value(config: &mut clawdius_core::config::Config, key: &str, value
             config.llm.max_tokens = value.parse().context("max_tokens must be a number")?;
         },
         ["llm", "anthropic", "model"] => {
-            let provider = config.llm.anthropic.get_or_insert_with(|| ProviderConfig { model: None, api_key_env: None, api_key: None, base_url: None });
+            let provider = config.llm.anthropic.get_or_insert(ProviderConfig { model: None, api_key_env: None, api_key: None, base_url: None });
             provider.model = Some(value.to_string());
         },
         ["llm", "anthropic", "api_key"] => {
-            let provider = config.llm.anthropic.get_or_insert_with(|| ProviderConfig { model: None, api_key_env: None, api_key: None, base_url: None });
+            let provider = config.llm.anthropic.get_or_insert(ProviderConfig { model: None, api_key_env: None, api_key: None, base_url: None });
             provider.api_key = Some(value.to_string());
         },
         ["llm", "anthropic", "api_key_env"] => {
-            let provider = config.llm.anthropic.get_or_insert_with(|| ProviderConfig { model: None, api_key_env: None, api_key: None, base_url: None });
+            let provider = config.llm.anthropic.get_or_insert(ProviderConfig { model: None, api_key_env: None, api_key: None, base_url: None });
             provider.api_key_env = Some(value.to_string());
         },
         ["llm", "anthropic", "base_url"] => {
-            let provider = config.llm.anthropic.get_or_insert_with(|| ProviderConfig { model: None, api_key_env: None, api_key: None, base_url: None });
+            let provider = config.llm.anthropic.get_or_insert(ProviderConfig { model: None, api_key_env: None, api_key: None, base_url: None });
             provider.base_url = Some(value.to_string());
         },
         ["llm", "openai", "model"] => {
-            let provider = config.llm.openai.get_or_insert_with(|| ProviderConfig { model: None, api_key_env: None, api_key: None, base_url: None });
+            let provider = config.llm.openai.get_or_insert(ProviderConfig { model: None, api_key_env: None, api_key: None, base_url: None });
             provider.model = Some(value.to_string());
         },
         ["llm", "openai", "api_key"] => {
-            let provider = config.llm.openai.get_or_insert_with(|| ProviderConfig { model: None, api_key_env: None, api_key: None, base_url: None });
+            let provider = config.llm.openai.get_or_insert(ProviderConfig { model: None, api_key_env: None, api_key: None, base_url: None });
             provider.api_key = Some(value.to_string());
         },
         ["llm", "openai", "api_key_env"] => {
-            let provider = config.llm.openai.get_or_insert_with(|| ProviderConfig { model: None, api_key_env: None, api_key: None, base_url: None });
+            let provider = config.llm.openai.get_or_insert(ProviderConfig { model: None, api_key_env: None, api_key: None, base_url: None });
             provider.api_key_env = Some(value.to_string());
         },
         ["llm", "openai", "base_url"] => {
-            let provider = config.llm.openai.get_or_insert_with(|| ProviderConfig { model: None, api_key_env: None, api_key: None, base_url: None });
+            let provider = config.llm.openai.get_or_insert(ProviderConfig { model: None, api_key_env: None, api_key: None, base_url: None });
             provider.base_url = Some(value.to_string());
         },
         ["llm", "ollama", "model"] => {
@@ -2193,16 +2173,16 @@ fn set_config_value(config: &mut clawdius_core::config::Config, key: &str, value
 /// Mask API key values in TOML output for safe display.
 fn mask_api_keys(toml: &str) -> String {
     let mut result = toml.to_string();
-    // Mask values that look like API keys (long alphanumeric strings after api_key =)
-    let re = regex::Regex::new(r#"(api_key\s*=\s*)"([^"]{8,}")"#).unwrap();
-    result = re.replace_all(&result, "${1}***").to_string();
+    if let Ok(re) = regex::Regex::new(r#"(api_key\s*=\s*)"([^"]{8,}")"#) {
+        result = re.replace_all(&result, "${1}***").to_string();
+    }
     result
 }
 
 async fn shutdown_signal() {
     tokio::signal::ctrl_c()
         .await
-        .expect("Failed to install Ctrl+C handler");
+        .map_err(|e| anyhow::anyhow!("Failed to install Ctrl+C handler: {e}")).ok();
 }
 
 async fn handle_git(action: GitCommands, config_path: Option<PathBuf>) -> anyhow::Result<()> {
@@ -2210,7 +2190,7 @@ async fn handle_git(action: GitCommands, config_path: Option<PathBuf>) -> anyhow
         GitCommands::Commit { files, message } => {
             handle_git_commit(files, message, config_path).await
         },
-        GitCommands::Diff { staged, file } => handle_git_diff(staged, file),
+        GitCommands::Diff { staged, file } => handle_git_diff(staged, file.as_deref()),
         GitCommands::Status => handle_git_status(),
     }
 }
@@ -2227,7 +2207,7 @@ async fn handle_git_commit(
     let files_to_stage: Vec<&str> = if files.is_empty() {
         vec!["-A"]
     } else {
-        files.iter().map(|s| s.as_str()).collect()
+        files.iter().map(std::string::String::as_str).collect()
     };
 
     let add_output = Command::new("git")
@@ -2309,11 +2289,12 @@ async fn generate_commit_message(
     use clawdius_core::llm::{create_provider, ChatMessage, ChatRole, LlmConfig};
     use clawdius_core::llm::providers::LlmClient;
 
-    let config = load_config(config_path)?;
+    let config = load_config(config_path.map(PathBuf::as_path))?;
     let provider_name = config
         .llm
         .default_provider
         .clone()
+
         .unwrap_or_else(|| "anthropic".to_string());
     let llm_config = LlmConfig::from_config(&config.llm, &provider_name)?;
     let llm_client =
@@ -2344,7 +2325,7 @@ async fn generate_commit_message(
     Ok(msg)
 }
 
-fn handle_git_diff(staged: bool, file: Option<String>) -> anyhow::Result<()> {
+fn handle_git_diff(staged: bool, file: Option<&str>) -> anyhow::Result<()> {
     use std::process::Command;
 
     let cwd = std::env::current_dir()?;
@@ -2353,9 +2334,9 @@ fn handle_git_diff(staged: bool, file: Option<String>) -> anyhow::Result<()> {
     if staged {
         args.push("--cached".to_string());
     }
-    if let Some(ref f) = file {
+    if let Some(f) = file {
         args.push("--".to_string());
-        args.push(f.clone());
+        args.push(f.to_string());
     }
 
     let output = Command::new("git").args(&args).current_dir(&cwd).output();
@@ -2472,16 +2453,16 @@ fn handle_git_status() -> anyhow::Result<()> {
     Ok(())
 }
 
-fn load_config(config_path: Option<&PathBuf>) -> anyhow::Result<Config> {
-    match config_path {
-        Some(path) => Config::load(path)
-            .map_err(|e| anyhow::anyhow!("Failed to load config from {}: {}", path.display(), e)),
-        None => Config::load_default()
-            .map_err(|e| anyhow::anyhow!("Failed to load default config: {e}")),
-    }
+#[allow(elided_lifetimes_in_paths)]
+fn load_config(config_path: Option<&Path>) -> anyhow::Result<Config> {
+    config_path.map_or_else(
+        || Config::load_default().map_err(|e| anyhow::anyhow!("Failed to load default config: {e}")),
+        |path| Config::load(path).map_err(|e| anyhow::anyhow!("Failed to load config from {}: {}", path.display(), e)),
+    )
 }
 
 #[allow(clippy::too_many_arguments)]
+#[allow(clippy::cast_possible_truncation)]
 async fn handle_chat(
     prompt: Option<String>,
     model: Option<String>,
@@ -2551,7 +2532,7 @@ async fn handle_chat(
     };
     let formatter = OutputFormatter::new(options);
 
-    let config = load_config(config_path.as_ref())?;
+    let config = load_config(config_path.as_deref())?;
     let session_manager = SessionManager::new(&config)?;
     let mut session = session_manager.get_or_create_active()?;
 
@@ -2665,6 +2646,7 @@ async fn handle_chat(
 }
 
 #[allow(clippy::too_many_arguments)]
+#[allow(clippy::cast_possible_truncation)]
 async fn handle_auto(
     task: String,
     model: Option<String>,
@@ -2693,7 +2675,7 @@ async fn handle_auto(
     };
     let formatter = OutputFormatter::new(options);
 
-    let config = load_config(config_path.as_ref())?;
+    let config = load_config(config_path.as_deref())?;
     let session_manager = SessionManager::new(&config)?;
     let mut session = session_manager.get_or_create_active()?;
 
@@ -2928,7 +2910,7 @@ default = "default"
 "#
     );
 
-    let default_mode = r#"# Default Coding Assistant
+    let default_mode = r"# Default Coding Assistant
 
 You are an expert software engineer acting as a coding assistant.
 
@@ -2944,7 +2926,7 @@ You are an expert software engineer acting as a coding assistant.
 - When modifying code, show the minimal diff needed
 - Ask clarifying questions when requirements are ambiguous
 - Prefer standard library solutions over external dependencies
-"#;
+";
 
     if clawdius_dir.exists() {
         println!("  .clawdius/ directory already exists, skipping creation");
@@ -3033,17 +3015,49 @@ fn handle_setup(
 
         let choice = input.trim().parse::<u8>().unwrap_or(1);
         match choice {
-            1 | _ => "anthropic".to_string(),
             2 => "openai".to_string(),
             3 => "ollama".to_string(),
             4 => "zai".to_string(),
+            _ => "anthropic".to_string(),
         }
     };
 
     println!("\n✓ Selected provider: {selected_provider}\n");
 
     // API key configuration
-    if selected_provider != "ollama" {
+    if selected_provider == "ollama" {
+        println!("🔑 Step 2: Ollama Setup\n");
+        println!("  Ollama runs models locally. Make sure you have:");
+        println!("  1. Installed Ollama: https://ollama.ai");
+        println!("  2. Started the server: ollama serve");
+        println!("  3. Pulled a model: ollama pull codellama");
+        println!();
+
+        // Check if Ollama is running using a simple TCP check
+        use std::net::TcpStream;
+        let ollama_addr =
+            std::env::var("OLLAMA_HOST").unwrap_or_else(|_| "127.0.0.1:11434".to_string());
+
+        // Remove http:// prefix if present
+        let ollama_addr = ollama_addr
+            .trim_start_matches("http://")
+            .trim_start_matches("https://")
+            .to_string();
+
+        if TcpStream::connect_timeout(
+            &ollama_addr.parse().unwrap_or_else(|_| {
+                "127.0.0.1:11434"
+                    .parse()
+                    .unwrap_or_else(|_| std::net::SocketAddr::from(([127, 0, 0, 1], 11434)))
+            }),
+            std::time::Duration::from_secs(2),
+        ).is_ok() {
+            println!("  ✓ Ollama server is running at {ollama_addr}");
+        } else {
+            println!("  ⚠ Could not connect to Ollama at {ollama_addr}");
+            println!("    Make sure Ollama is installed and running");
+        }
+    } else {
         println!("🔑 Step 2: Configure API key\n");
 
         let env_var = format!("{}_API_KEY", selected_provider.to_uppercase());
@@ -3089,41 +3103,6 @@ fn handle_setup(
                 }
             }
         }
-    } else {
-        println!("🔑 Step 2: Ollama Setup\n");
-        println!("  Ollama runs models locally. Make sure you have:");
-        println!("  1. Installed Ollama: https://ollama.ai");
-        println!("  2. Started the server: ollama serve");
-        println!("  3. Pulled a model: ollama pull codellama");
-        println!();
-
-        // Check if Ollama is running using a simple TCP check
-        use std::net::TcpStream;
-        let ollama_addr =
-            std::env::var("OLLAMA_HOST").unwrap_or_else(|_| "127.0.0.1:11434".to_string());
-
-        // Remove http:// prefix if present
-        let ollama_addr = ollama_addr
-            .trim_start_matches("http://")
-            .trim_start_matches("https://")
-            .to_string();
-
-        match TcpStream::connect_timeout(
-            &ollama_addr.parse().unwrap_or_else(|_| {
-                "127.0.0.1:11434"
-                    .parse()
-                    .expect("hardcoded address must parse")
-            }),
-            std::time::Duration::from_secs(2),
-        ) {
-            Ok(_) => {
-                println!("  ✓ Ollama server is running at {ollama_addr}");
-            },
-            Err(_) => {
-                println!("  ⚠ Could not connect to Ollama at {ollama_addr}");
-                println!("    Make sure Ollama is installed and running");
-            },
-        }
     }
 
     println!();
@@ -3145,10 +3124,10 @@ fn handle_setup(
 
         let choice = input.trim().parse::<u8>().unwrap_or(1);
         let preset = match choice {
-            1 | _ => "Balanced",
             2 => "Security",
             3 => "Performance",
             4 => "Development",
+            _ => "Balanced",
         };
         println!("\n✓ Selected preset: {preset}\n");
     }
@@ -3199,36 +3178,38 @@ fn handle_setup(
 }
 
 fn handle_sessions(
-    delete: Option<String>,
-    search: Option<String>,
-    config_path: Option<PathBuf>,
+    delete: Option<&str>,
+    search: Option<&str>,
+    config_path: Option<&PathBuf>,
     output_format: OutputFormat,
 ) -> anyhow::Result<()> {
-    let config = load_config(config_path.as_ref())?;
+    let config = load_config(config_path.map(PathBuf::as_path))?;
     let session_manager = SessionManager::new(&config)?;
 
     if let Some(session_id) = delete {
         use std::str::FromStr;
-        let id = clawdius_core::session::SessionId::from_str(&session_id)?;
+        let id = clawdius_core::session::SessionId::from_str(session_id)?;
         session_manager.delete_session(&id)?;
         println!("✓ Deleted session: {session_id}");
         return Ok(());
     }
 
     if let Some(query) = search {
-        let results = session_manager.search_messages(&query)?;
+        let results = session_manager.search_messages(query)?;
         println!("Search results for '{query}':");
         for (session_id, msg) in results {
             let preview = msg
                 .as_text()
-                .map(|t| {
-                    if t.len() > 50 {
-                        format!("{}...", &t[..50])
-                    } else {
-                        t.to_string()
-                    }
-                })
-                .unwrap_or_else(|| "[non-text]".to_string());
+                .map_or_else(
+                    || "[non-text]".to_string(),
+                    |t| {
+                        if t.len() > 50 {
+                            format!("{}...", &t[..50])
+                        } else {
+                            t.to_string()
+                        }
+                    },
+                );
             println!("  {session_id} > {preview}");
         }
         return Ok(());
@@ -3286,8 +3267,8 @@ fn handle_refactor(
 }
 
 fn handle_action(
-    action: String,
-    file: PathBuf,
+    action: &str,
+    file: &PathBuf,
     line: Option<usize>,
     column: Option<usize>,
     end_line: Option<usize>,
@@ -3307,7 +3288,7 @@ fn handle_action(
     };
     let formatter = OutputFormatter::new(options);
 
-    let document = fs::read_to_string(&file)?;
+    let document = fs::read_to_string(file)?;
     let language = file
         .extension()
         .and_then(|ext| ext.to_str())
@@ -3350,7 +3331,7 @@ fn handle_action(
     };
 
     let context = ActionContext {
-        document: document.clone(),
+        document,
         language,
         position,
         selection,
@@ -3359,7 +3340,7 @@ fn handle_action(
 
     let registry = ActionRegistry::default();
 
-    let action_impl = match action.as_str() {
+    let action_impl = match action {
         "extract-function" => registry
             .get_applicable_actions(&context)
             .into_iter()
@@ -3410,14 +3391,14 @@ fn handle_action(
                 .collect();
 
             ActionResult::success(
-                &action,
+                action,
                 file.display().to_string(),
                 action_result.title,
                 format!("{:?}", action_result.kind),
                 edits,
             )
         },
-        Err(e) => ActionResult::error(&action, file.display().to_string(), e.to_string()),
+        Err(e) => ActionResult::error(action, file.display().to_string(), e.to_string()),
     };
 
     formatter.format_action_result(&mut io::stdout(), &result)?;
@@ -3610,8 +3591,8 @@ fn extract_function_from_code(
     };
 
     let re = regex::Regex::new(&pattern)?;
-    if let Some(_match) = re.find(code) {
-        let selection = extract_function_body(code, _match.start(), language)?;
+    if let Some(m) = re.find(code) {
+        let selection = extract_function_body(code, m.start(), language)?;
         GenerateTests::parse_function_from_selection(&selection, language)
             .map_err(|e| anyhow::anyhow!("{e}"))
     } else {
@@ -3679,8 +3660,7 @@ async fn handle_doc(
         "jsdoc" | "javascript" | "typescript" => DocFormat::JsDoc,
         "pydoc" | "python" => DocFormat::PythonDocstring,
         "markdown" | "md" => DocFormat::Markdown,
-        "auto" | _ => match language.as_str() {
-            "rs" => DocFormat::Rustdoc,
+        _ => match language.as_str() {
             "ts" | "js" => DocFormat::JsDoc,
             "py" => DocFormat::PythonDocstring,
             _ => DocFormat::Markdown,
@@ -3689,10 +3669,10 @@ async fn handle_doc(
 
     if output_format == OutputFormat::Text {
         println!("📝 Generating documentation for: {}", file.display());
-        println!("   Language: {}", language);
-        println!("   Format: {:?}", doc_format);
+        println!("   Language: {language}");
+        println!("   Format: {doc_format:?}");
         if let Some(ref elem) = element {
-            println!("   Element: {}", elem);
+            println!("   Element: {elem}");
         }
         println!();
     }
@@ -3717,14 +3697,14 @@ async fn handle_doc(
             }
 
             // Fallback to basic documentation
-            anyhow::bail!("Could not parse element: {}", element_name)
+            anyhow::bail!("Could not parse element: {element_name}")
         }
         .await
         {
             Ok(docs) => docs,
             Err(e) => {
                 if output_format == OutputFormat::Text {
-                    println!("⚠️  Could not generate LLM docs: {}", e);
+                    println!("⚠️  Could not generate LLM docs: {e}");
                     println!("   Falling back to basic documentation template");
                 }
                 return Err(e);
@@ -3740,7 +3720,7 @@ async fn handle_doc(
             Ok(docs) => docs,
             Err(e) => {
                 if output_format == OutputFormat::Text {
-                    println!("⚠️  Could not generate module docs: {}", e);
+                    println!("⚠️  Could not generate module docs: {e}");
                 }
                 return Err(e.into());
             },
@@ -3757,7 +3737,7 @@ async fn handle_doc(
             println!("✅ Documentation written to: {}", output_path.display());
         }
     } else {
-        println!("{}", formatted_docs);
+        println!("{formatted_docs}");
     }
 
     Ok(())
@@ -3827,8 +3807,9 @@ fn extract_exports(code: &str, language: &str) -> Vec<String> {
     exports
 }
 
+#[allow(clippy::cast_possible_truncation)]
 fn handle_verify(
-    proof: PathBuf,
+    proof: &Path,
     lean_path: Option<PathBuf>,
     output_format: OutputFormat,
 ) -> anyhow::Result<()> {
@@ -3874,7 +3855,7 @@ fn handle_verify(
     }
 
     let start = std::time::Instant::now();
-    let verification_result = verifier.verify(&proof)?;
+    let verification_result = verifier.verify(proof)?;
     let duration = start.elapsed();
 
     let result = if verification_result.success {
@@ -3894,7 +3875,7 @@ fn handle_verify(
             proof.display().to_string(),
             duration.as_millis() as u64,
             errors,
-            verification_result.warnings.clone(),
+            verification_result.warnings,
         )
     };
 
@@ -3946,7 +3927,7 @@ async fn handle_auth(action: AuthCommands) -> anyhow::Result<()> {
 pub async fn run_headless(config_path: Option<PathBuf>) -> anyhow::Result<()> {
     use std::io::{self, BufRead};
 
-    let config = load_config(config_path.as_ref())?;
+    let config = load_config(config_path.as_deref())?;
     let session_manager = SessionManager::new(&config)?;
     let mut session = session_manager.get_or_create_active()?;
 
@@ -3978,13 +3959,11 @@ pub async fn run_headless(config_path: Option<PathBuf>) -> anyhow::Result<()> {
 }
 
 /// First-run experience for new users
-pub fn first_run_experience() -> anyhow::Result<()> {
+pub fn first_run_experience() {
     clawdius_core::onboarding::print_welcome_message();
 
     let status = Onboarding::check_environment();
     clawdius_core::onboarding::print_onboarding_status(&status);
-
-    Ok(())
 }
 
 async fn handle_metrics(
@@ -4043,7 +4022,7 @@ fn handle_telemetry(
     };
     let formatter = OutputFormatter::new(options);
 
-    let mut config = load_config(config_path.as_ref())?;
+    let mut config = load_config(config_path.as_deref())?;
 
     if enable {
         config.telemetry.metrics_enabled = true;
@@ -4803,7 +4782,7 @@ tools = ["file", "shell", "git"]
                     description: mode.description().to_string(),
                     system_prompt: mode.system_prompt().to_string(),
                     temperature: mode.temperature(),
-                    tools: mode.tools().clone(),
+                    tools: mode.tools(),
                 }),
             Err(e) => ModesResult::error("show", e.to_string()),
         },
@@ -4843,7 +4822,7 @@ fn handle_lang(
                     // Update config
                     let config_path = config_path.unwrap_or_else(|| {
                         std::env::current_dir()
-                            .expect("failed to get current directory")
+                            .unwrap_or_else(|_| PathBuf::from("."))
                             .join(".clawdius")
                             .join("config.toml")
                     });
@@ -4859,16 +4838,16 @@ fn handle_lang(
                     if config_content.contains("language =") {
                         // Replace existing language line
                         let re =
-                            regex::Regex::new(r"^language\s*=\s*.*$").expect("regex must compile");
+                            regex::Regex::new(r"^language\s*=\s*.*$").map_err(|e| anyhow::anyhow!("regex compile error: {e}"))?;
                         config_content = re
                             .replace(&config_content, &format!("language = \"{}\"", lang.code()))
                             .to_string();
                     } else {
-                        // Add language to config
+                        use std::fmt::Write;
                         if !config_content.trim().is_empty() {
-                            config_content.push_str("[general]\n");
+                            let _ = writeln!(config_content, "[general]");
                         }
-                        config_content.push_str(&format!("language = \"{}\"\n", lang.code()));
+                        let _ = writeln!(config_content, "language = \"{}\"", lang.code());
                     }
 
                     // Write config
@@ -4917,10 +4896,7 @@ async fn handle_edit(
     use clawdius_core::tools::editor::{EditorConfig, ExternalEditor};
     use std::io::{self, Write};
 
-    let config = match editor {
-        Some(ed) => EditorConfig::with_editor(ed),
-        None => EditorConfig::default(),
-    };
+    let config = editor.map_or_else(EditorConfig::default, EditorConfig::with_editor);
 
     let external_editor = ExternalEditor::new(config);
 
@@ -5058,7 +5034,7 @@ async fn handle_webhook(
                     })
                 );
             } else {
-                println!("✓ Webhook created: {} ({})", name, id);
+                println!("✓ Webhook created: {name} ({id})");
             }
         },
 
@@ -5099,9 +5075,8 @@ async fn handle_webhook(
             use clawdius_core::webhooks::WebhookId;
             let webhook_id = WebhookId::new(&id);
 
-            let mut webhook = match manager.get(&webhook_id).await {
-                Some(w) => w,
-                None => anyhow::bail!("Webhook not found: {id}"),
+            let Some(mut webhook) = manager.get(&webhook_id).await else {
+                anyhow::bail!("Webhook not found: {id}");
             };
 
             if let Some(new_url) = url {
@@ -5144,7 +5119,7 @@ async fn handle_webhook(
                     })
                 );
             } else {
-                println!("✓ Webhook updated: {}", id);
+                println!("✓ Webhook updated: {id}");
             }
         },
 
@@ -5163,7 +5138,7 @@ async fn handle_webhook(
                     })
                 );
             } else if deleted {
-                println!("✓ Webhook deleted: {}", id);
+                println!("✓ Webhook deleted: {id}");
             } else {
                 anyhow::bail!("Webhook not found: {id}");
             }
@@ -5171,12 +5146,11 @@ async fn handle_webhook(
 
         WebhookCommands::Test { id, event } => {
             let test_event = event
-                .map(|s| match s.as_str() {
-                    "session.created" | _ => WebhookEvent::SessionCreated,
+                .map_or(WebhookEvent::SessionCreated, |s| match s.as_str() {
                     "message.sent" => WebhookEvent::MessageSent,
                     "tool.executed" => WebhookEvent::ToolExecuted,
-                })
-                .unwrap_or(WebhookEvent::SessionCreated);
+                    _ => WebhookEvent::SessionCreated,
+                });
 
             let test_data = serde_json::json!({
                 "test": true,
@@ -5196,7 +5170,7 @@ async fn handle_webhook(
                     })
                 );
             } else {
-                println!("✓ Test webhook triggered: {} ({})", id, test_event);
+                println!("✓ Test webhook triggered: {id} ({test_event})");
             }
         },
 
@@ -5226,7 +5200,7 @@ async fn handle_webhook(
                     );
                     println!("     Event: {:?}", delivery.event);
                     if let Some(ref error) = delivery.error {
-                        println!("     Error: {}", error);
+                        println!("     Error: {error}");
                     }
                     println!();
                 }
@@ -5333,11 +5307,11 @@ async fn handle_generate(
         OutputFormat::Text => {
             println!("🤖 Clawdius Generate");
             println!("Prompt: {prompt}");
-            println!("Mode: {:?}", generation_mode);
-            println!("Trust: {:?}", trust_level);
+            println!("Mode: {generation_mode:?}");
+            println!("Trust: {trust_level:?}");
             println!("Dry run: {dry_run}");
             if !target_files.is_empty() {
-                println!("Target files: {:?}", target_files);
+                println!("Target files: {target_files:?}");
             }
             println!();
         },
@@ -5391,9 +5365,9 @@ async fn handle_generate(
                 println!("[DRY RUN] Would execute task: {}", request.description);
                 println!();
                 println!("Configuration:");
-                println!("  Mode: {:?}", generation_mode);
-                println!("  Trust: {:?}", trust_level);
-                println!("  Test Strategy: {:?}", test_exec_strategy);
+                println!("  Mode: {generation_mode:?}");
+                println!("  Trust: {trust_level:?}");
+                println!("  Test Strategy: {test_exec_strategy:?}");
                 println!("  Apply Workflow: {:?}", request.apply_workflow);
                 if !request.target_files.is_empty() {
                     println!("  Target Files: {:?}", request.target_files);
@@ -5418,7 +5392,7 @@ async fn handle_generate(
     if show_progress {
         crate::cli_progress::status("Loading configuration...");
     }
-    let config = load_config(config_path.as_ref())?;
+    let config = load_config(config_path.as_deref())?;
 
     if show_progress {
         crate::cli_progress::status("Creating LLM client...");
@@ -5458,7 +5432,7 @@ async fn handle_generate(
                         "path": c.path,
                         "change_type": format!("{:?}", c.change_type),
                         "lines_added": c.new.lines().count(),
-                        "lines_removed": c.original.as_ref().map(|o| o.lines().count()).unwrap_or(0),
+                        "lines_removed": c.original.as_ref().map_or(0, |o| o.lines().count()),
                         "diff": c.diff
                     })
                 })
@@ -5525,8 +5499,7 @@ async fn handle_generate(
                         change
                             .original
                             .as_ref()
-                            .map(|o| o.lines().count())
-                            .unwrap_or(0)
+                            .map_or(0, |o| o.lines().count())
                     );
                 }
             }
@@ -5557,7 +5530,7 @@ async fn handle_generate(
             }
 
             if let Some(ref checkpoint) = task_result.rollback_checkpoint {
-                println!("\n💾 Rollback checkpoint: {}", checkpoint);
+                println!("\n💾 Rollback checkpoint: {checkpoint}");
             }
         },
         OutputFormat::StreamJson => {
@@ -5601,7 +5574,7 @@ async fn handle_lsp(action: LspCommands, output_format: OutputFormat) -> anyhow:
             // Show spinner for text output
             let spinner = if output_format == OutputFormat::Text {
                 let mut s =
-                    crate::cli_progress::Spinner::new(format!("Connecting to {}...", server));
+                    crate::cli_progress::Spinner::new(format!("Connecting to {server}..."));
                 s.start();
                 Some(s)
             } else {
@@ -5615,7 +5588,7 @@ async fn handle_lsp(action: LspCommands, output_format: OutputFormat) -> anyhow:
                 Ok(()) => {
                     // Stop spinner
                     if let Some(spinner) = spinner {
-                        spinner.stop(Some(&format!("Connected to {}", server)));
+                        spinner.stop(Some(&format!("Connected to {server}")));
                     }
 
                     let capabilities = client.capabilities().await;
@@ -5643,11 +5616,10 @@ async fn handle_lsp(action: LspCommands, output_format: OutputFormat) -> anyhow:
                         },
                         OutputFormat::Text => {
                             crate::cli_progress::success(&format!(
-                                "LSP server started: {}",
-                                server
+                                "LSP server started: {server}"
                             ));
                             if let Some(r) = &root {
-                                println!("   Root: {}", r);
+                                println!("   Root: {r}");
                             }
                             if let Some(caps) = capabilities {
                                 println!("\n   Capabilities:");
@@ -5665,7 +5637,7 @@ async fn handle_lsp(action: LspCommands, output_format: OutputFormat) -> anyhow:
                                     if triggers.is_empty() {
                                         println!("   ✓ Completions");
                                     } else {
-                                        println!("   ✓ Completions (triggers: {})", triggers);
+                                        println!("   ✓ Completions (triggers: {triggers})");
                                     }
                                 }
                                 // Hover
@@ -5724,9 +5696,9 @@ async fn handle_lsp(action: LspCommands, output_format: OutputFormat) -> anyhow:
                         );
                     },
                     OutputFormat::Text => {
-                        println!("❌ Failed to start LSP server: {}", server);
-                        println!("   Error: {}", e);
-                        println!("\n   Make sure '{}' is installed and in your PATH.", server);
+                        println!("❌ Failed to start LSP server: {server}");
+                        println!("   Error: {e}");
+                        println!("\n   Make sure '{server}' is installed and in your PATH.");
                     },
                     OutputFormat::StreamJson => {
                         println!(
@@ -5757,7 +5729,7 @@ async fn handle_lsp(action: LspCommands, output_format: OutputFormat) -> anyhow:
                 );
             },
             OutputFormat::Text => {
-                println!("Completions for {}:{}:{}", uri, line, column);
+                println!("Completions for {uri}:{line}:{column}");
                 println!("\n💡 Tip: Start an LSP server first with:");
                 println!("   clawdius lsp start rust-analyzer --root file://$(pwd)");
             },
@@ -5789,7 +5761,7 @@ async fn handle_lsp(action: LspCommands, output_format: OutputFormat) -> anyhow:
                 );
             },
             OutputFormat::Text => {
-                println!("Hover at {}:{}:{}", uri, line, column);
+                println!("Hover at {uri}:{line}:{column}");
                 println!("\n💡 Tip: Start an LSP server first with:");
                 println!("   clawdius lsp start rust-analyzer --root file://$(pwd)");
             },
@@ -5821,7 +5793,7 @@ async fn handle_lsp(action: LspCommands, output_format: OutputFormat) -> anyhow:
                 );
             },
             OutputFormat::Text => {
-                println!("Definition for {}:{}:{}", uri, line, column);
+                println!("Definition for {uri}:{line}:{column}");
                 println!("\n💡 Tip: Start an LSP server first with:");
                 println!("   clawdius lsp start rust-analyzer --root file://$(pwd)");
             },
@@ -5860,8 +5832,7 @@ async fn handle_lsp(action: LspCommands, output_format: OutputFormat) -> anyhow:
             },
             OutputFormat::Text => {
                 println!(
-                    "References for {}:{}:{} (include_declaration: {})",
-                    uri, line, column, include_declaration
+                    "References for {uri}:{line}:{column} (include_declaration: {include_declaration})"
                 );
                 println!("\n💡 Tip: Start an LSP server first with:");
                 println!("   clawdius lsp start rust-analyzer --root file://$(pwd)");
@@ -5893,7 +5864,7 @@ async fn handle_lsp(action: LspCommands, output_format: OutputFormat) -> anyhow:
                 );
             },
             OutputFormat::Text => {
-                println!("Symbols for {}", uri);
+                println!("Symbols for {uri}");
                 println!("\n💡 Tip: Start an LSP server first with:");
                 println!("   clawdius lsp start rust-analyzer --root file://$(pwd)");
             },
@@ -5922,7 +5893,7 @@ async fn handle_lsp(action: LspCommands, output_format: OutputFormat) -> anyhow:
                 );
             },
             OutputFormat::Text => {
-                println!("Diagnostics for {}", uri);
+                println!("Diagnostics for {uri}");
                 println!("\n💡 Tip: Start an LSP server first with:");
                 println!("   clawdius lsp start rust-analyzer --root file://$(pwd)");
             },
@@ -5962,8 +5933,7 @@ async fn handle_lsp(action: LspCommands, output_format: OutputFormat) -> anyhow:
             },
             OutputFormat::Text => {
                 println!(
-                    "Code actions for {} ({}:{}-{}:{})",
-                    uri, start_line, start_column, end_line, end_column
+                    "Code actions for {uri} ({start_line}:{start_column}-{end_line}:{end_column})"
                 );
                 println!("\n💡 Tip: Start an LSP server first with:");
                 println!("   clawdius lsp start rust-analyzer --root file://$(pwd)");
@@ -5991,26 +5961,22 @@ async fn handle_lsp(action: LspCommands, output_format: OutputFormat) -> anyhow:
 /// Handle memory commands
 fn handle_memory(
     action: MemoryCommands,
-    config_path: Option<PathBuf>,
+    config_path: Option<&PathBuf>,
     output_format: OutputFormat,
 ) -> anyhow::Result<()> {
     use clawdius_core::memory::ProjectMemory;
 
-    let config = load_config(config_path.as_ref())?;
+    let config = load_config(config_path.map(PathBuf::as_path))?;
     let project_root = config
         .storage
         .database_path
         .parent()
-        .map(|p| p.parent().unwrap_or(p))
-        .map(|p| p.to_path_buf())
-        .unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
+        .map(|p| p.parent().unwrap_or(p)).map_or_else(|| std::env::current_dir().unwrap_or_default(), std::path::Path::to_path_buf);
 
     match action {
         MemoryCommands::Show { instructions } => {
-            let memory = match ProjectMemory::load(&project_root) {
-                Ok(m) => m,
-                Err(_) => ProjectMemory::new(&project_root),
-            };
+            let memory = ProjectMemory::load(&project_root)
+                .unwrap_or_else(|_| ProjectMemory::new(&project_root));
 
             if instructions {
                 println!("{}", memory.to_instructions());
@@ -6071,13 +6037,13 @@ fn handle_memory(
 
                         let metadata = memory.metadata();
                         if let Some(name) = &metadata.project_name {
-                            println!("**Project:** {}", name);
+                            println!("**Project:** {name}");
                         }
                         if let Some(lang) = &metadata.primary_language {
-                            println!("**Language:** {}", lang);
+                            println!("**Language:** {lang}");
                         }
                         if let Some(fw) = &metadata.framework {
-                            println!("**Framework:** {}", fw);
+                            println!("**Framework:** {fw}");
                         }
 
                         let build_commands = memory.build_commands();
@@ -6085,9 +6051,9 @@ fn handle_memory(
                             println!("\n## Build Commands");
                             for (cmd, desc) in &build_commands {
                                 if let Some(d) = desc {
-                                    println!("  • {} - {}", cmd, d);
+                                    println!("  • {cmd} - {d}");
                                 } else {
-                                    println!("  • {}", cmd);
+                                    println!("  • {cmd}");
                                 }
                             }
                         }
@@ -6097,9 +6063,9 @@ fn handle_memory(
                             println!("\n## Test Commands");
                             for (cmd, desc) in &test_commands {
                                 if let Some(d) = desc {
-                                    println!("  • {} - {}", cmd, d);
+                                    println!("  • {cmd} - {d}");
                                 } else {
-                                    println!("  • {}", cmd);
+                                    println!("  • {cmd}");
                                 }
                             }
                         }
@@ -6108,8 +6074,8 @@ fn handle_memory(
                         if !insights.is_empty() {
                             println!("\n## Debug Insights");
                             for (issue, solution) in &insights {
-                                println!("  • Issue: {}", issue);
-                                println!("    Solution: {}", solution);
+                                println!("  • Issue: {issue}");
+                                println!("    Solution: {solution}");
                             }
                         }
 
@@ -6134,10 +6100,8 @@ fn handle_memory(
             content,
             description,
         } => {
-            let mut memory = match ProjectMemory::load(&project_root) {
-                Ok(m) => m,
-                Err(_) => ProjectMemory::new(&project_root),
-            };
+            let mut memory = ProjectMemory::load(&project_root)
+                .unwrap_or_else(|_| ProjectMemory::new(&project_root));
 
             match entry_type.to_lowercase().as_str() {
                 "build" => {
@@ -6176,8 +6140,7 @@ fn handle_memory(
                 },
                 _ => {
                     anyhow::bail!(
-                        "Unknown entry type: {}. Use: build, test, debug, pattern, preference",
-                        entry_type
+                        "Unknown entry type: {entry_type}. Use: build, test, debug, pattern, preference"
                     );
                 },
             }
@@ -6196,7 +6159,7 @@ fn handle_memory(
                     );
                 },
                 OutputFormat::Text => {
-                    println!("✅ Learned {} entry", entry_type);
+                    println!("✅ Learned {entry_type} entry");
                 },
                 OutputFormat::StreamJson => {
                     println!(
@@ -6212,10 +6175,8 @@ fn handle_memory(
         },
 
         MemoryCommands::Instructions { content } => {
-            let mut memory = match ProjectMemory::load(&project_root) {
-                Ok(m) => m,
-                Err(_) => ProjectMemory::new(&project_root),
-            };
+            let mut memory = ProjectMemory::load(&project_root)
+                .unwrap_or_else(|_| ProjectMemory::new(&project_root));
 
             let instructions = if content == "-" {
                 use std::io::{self, Read};
@@ -6255,10 +6216,8 @@ fn handle_memory(
         },
 
         MemoryCommands::List { category } => {
-            let memory = match ProjectMemory::load(&project_root) {
-                Ok(m) => m,
-                Err(_) => ProjectMemory::new(&project_root),
-            };
+            let memory = ProjectMemory::load(&project_root)
+                .unwrap_or_else(|_| ProjectMemory::new(&project_root));
 
             let entries: Vec<_> = if category == "all" {
                 memory.learned().iter().collect()
@@ -6312,10 +6271,8 @@ fn handle_memory(
                 anyhow::bail!("Use --yes to confirm clearing memory entries");
             }
 
-            let mut memory = match ProjectMemory::load(&project_root) {
-                Ok(m) => m,
-                Err(_) => ProjectMemory::new(&project_root),
-            };
+            let mut memory = ProjectMemory::load(&project_root)
+                .unwrap_or_else(|_| ProjectMemory::new(&project_root));
 
             let count = memory.learned().len();
 
@@ -6362,10 +6319,8 @@ fn handle_memory(
             language,
             framework,
         } => {
-            let mut memory = match ProjectMemory::load(&project_root) {
-                Ok(m) => m,
-                Err(_) => ProjectMemory::new(&project_root),
-            };
+            let mut memory = ProjectMemory::load(&project_root)
+                .unwrap_or_else(|_| ProjectMemory::new(&project_root));
 
             let metadata = memory.metadata_mut();
             if let Some(n) = name {
@@ -6386,13 +6341,16 @@ fn handle_memory(
                 // Add frontmatter
                 content.push_str("---\n");
                 if let Some(name) = &memory.metadata().project_name {
-                    content.push_str(&format!("project: {}\n", name));
+                    let _ = std::fmt::Write::write_fmt(&mut content, format_args!("project: {name}"));
+                    content.push('\n');
                 }
                 if let Some(lang) = &memory.metadata().primary_language {
-                    content.push_str(&format!("language: {}\n", lang));
+                    let _ = std::fmt::Write::write_fmt(&mut content, format_args!("language: {lang}"));
+                    content.push('\n');
                 }
                 if let Some(fw) = &memory.metadata().framework {
-                    content.push_str(&format!("framework: {}\n", fw));
+                    let _ = std::fmt::Write::write_fmt(&mut content, format_args!("framework: {fw}"));
+                    content.push('\n');
                 }
                 content.push_str("---\n\n");
 
@@ -6446,6 +6404,7 @@ fn handle_memory(
 }
 
 /// Handle models commands for local LLM management
+#[allow(clippy::cast_precision_loss)]
 async fn handle_models(
     action: ModelsCommands,
     host: &str,
@@ -6461,88 +6420,71 @@ async fn handle_models(
         ModelsCommands::List => match provider.list_models().await {
             Ok(models) => {
                 if models.is_empty() {
-                    match output_format {
-                        OutputFormat::Json => {
-                            println!("[]");
-                        },
-                        _ => {
-                            println!("No models found. Pull a model with:");
-                            println!("  clawdius models pull llama3.2");
-                        },
+                    if output_format == OutputFormat::Json {
+                        println!("[]");
+                    } else {
+                        println!("No models found. Pull a model with:");
+                        println!("  clawdius models pull llama3.2");
                     }
+                } else if output_format == OutputFormat::Json {
+                    println!("{}", serde_json::to_string_pretty(&models)?);
                 } else {
-                    match output_format {
-                        OutputFormat::Json => {
-                            println!("{}", serde_json::to_string_pretty(&models)?);
-                        },
-                        _ => {
-                            println!("Available models:\n");
-                            for model in &models {
-                                let size = model
-                                    .size
-                                    .map(|s| format!("{:.2} GB", s as f64 / 1_073_741_824.0))
-                                    .unwrap_or_default();
-                                println!("  🦙 {} {}", model.name, size);
-                            }
-                            println!("\nTotal: {} model(s)", models.len());
-                        },
+                    println!("Available models:\n");
+                    for model in &models {
+                        let size = model
+                            .size
+                            .map(|s| format!("{:.2} GB", s as f64 / 1_073_741_824.0))
+                            .unwrap_or_default();
+                        println!("  🦙 {} {}", model.name, size);
                     }
+                    println!("\nTotal: {} model(s)", models.len());
                 }
             },
             Err(e) => {
-                match output_format {
-                    OutputFormat::Json => {
-                        println!(
-                            "{}",
-                            serde_json::json!({
-                                "error": e.to_string(),
-                                "hint": "Ensure Ollama is running"
-                            })
-                        );
-                    },
-                    _ => {
-                        eprintln!("❌ Error: {e}");
-                        eprintln!("\n💡 Ensure Ollama is running:");
-                        eprintln!("   ollama serve");
-                    },
+                if output_format == OutputFormat::Json {
+                    println!(
+                        "{}",
+                        serde_json::json!({
+                            "error": e.to_string(),
+                            "hint": "Ensure Ollama is running"
+                        })
+                    );
+                } else {
+                    eprintln!("❌ Error: {e}");
+                    eprintln!("\n💡 Ensure Ollama is running:");
+                    eprintln!("   ollama serve");
                 }
                 return Err(anyhow::anyhow!("{e}"));
             },
         },
 
         ModelsCommands::Pull { model } => {
-            match output_format {
-                OutputFormat::Json => {
-                    println!(
-                        "{}",
-                        serde_json::json!({
-                            "status": "pulling",
-                            "model": model
-                        })
-                    );
-                },
-                _ => {
-                    println!("📦 Pulling model: {model}");
-                    println!("   This may take a while...\n");
-                },
+            if output_format == OutputFormat::Json {
+                println!(
+                    "{}",
+                    serde_json::json!({
+                        "status": "pulling",
+                        "model": model
+                    })
+                );
+            } else {
+                println!("📦 Pulling model: {model}");
+                println!("   This may take a while...\n");
             }
 
             match provider.pull_model(&model).await {
-                Ok(()) => match output_format {
-                    OutputFormat::Json => {
-                        println!(
-                            "{}",
-                            serde_json::json!({
-                                "status": "success",
-                                "model": model
-                            })
-                        );
-                    },
-                    _ => {
-                        println!("✅ Model pulled successfully: {model}");
-                        println!("\nUse it with:");
-                        println!("  clawdius chat -P ollama --model {}", model);
-                    },
+                Ok(()) => if output_format == OutputFormat::Json {
+                    println!(
+                        "{}",
+                        serde_json::json!({
+                            "status": "success",
+                            "model": model
+                        })
+                    );
+                } else {
+                    println!("✅ Model pulled successfully: {model}");
+                    println!("\nUse it with:");
+                    println!("  clawdius chat -P ollama --model {model}");
                 },
                 Err(e) => {
                     match output_format {
@@ -6564,67 +6506,55 @@ async fn handle_models(
             }
         },
 
-        ModelsCommands::Health => match provider.health_check().await {
-            Ok(true) => match output_format {
-                OutputFormat::Json => {
-                    println!(
-                        "{}",
-                        serde_json::json!({
-                            "status": "healthy",
-                            "host": host,
-                            "port": port
-                        })
-                    );
-                },
-                _ => {
-                    println!("✅ Ollama server is healthy");
-                    println!("   Host: {host}:{port}");
-                },
-            },
-            Ok(false) | Err(_) => {
-                match output_format {
-                    OutputFormat::Json => {
-                        println!(
-                            "{}",
-                            serde_json::json!({
-                                "status": "unhealthy",
-                                "host": host,
-                                "port": port
-                            })
-                        );
-                    },
-                    _ => {
-                        eprintln!("❌ Ollama server is not responding");
-                        eprintln!("\n💡 Start Ollama with:");
-                        eprintln!("   ollama serve");
-                    },
-                }
-                return Err(anyhow::anyhow!("Ollama server not responding"));
-            },
+        ModelsCommands::Health => if matches!(provider.health_check().await, Ok(true)) { if output_format == OutputFormat::Json {
+            println!(
+                "{}",
+                serde_json::json!({
+                    "status": "healthy",
+                    "host": host,
+                    "port": port
+                })
+            );
+        } else {
+            println!("✅ Ollama server is healthy");
+            println!("   Host: {host}:{port}");
+        } } else {
+            if output_format == OutputFormat::Json {
+                println!(
+                    "{}",
+                    serde_json::json!({
+                        "status": "unhealthy",
+                        "host": host,
+                        "port": port
+                    })
+                );
+            } else {
+                eprintln!("❌ Ollama server is not responding");
+                eprintln!("\n💡 Start Ollama with:");
+                eprintln!("   ollama serve");
+            }
+            return Err(anyhow::anyhow!("Ollama server not responding"));
         },
 
         ModelsCommands::Current => {
             // This would require loading from config
-            match output_format {
-                OutputFormat::Json => {
-                    println!(
-                        "{}",
-                        serde_json::json!({
-                            "model": "llama3.2",
-                            "provider": "ollama",
-                            "note": "Configure in clawdius.toml"
-                        })
-                    );
-                },
-                _ => {
-                    println!("Current model configuration:");
-                    println!("  Provider: ollama (default)");
-                    println!("  Model: llama3.2 (default)");
-                    println!("\n💡 Configure in clawdius.toml:");
-                    println!("   [llm.ollama]");
-                    println!("   model = \"mistral\"");
-                    println!("   base_url = \"http://localhost:11434\"");
-                },
+            if output_format == OutputFormat::Json {
+                println!(
+                    "{}",
+                    serde_json::json!({
+                        "model": "llama3.2",
+                        "provider": "ollama",
+                        "note": "Configure in clawdius.toml"
+                    })
+                );
+            } else {
+                println!("Current model configuration:");
+                println!("  Provider: ollama (default)");
+                println!("  Model: llama3.2 (default)");
+                println!("\n💡 Configure in clawdius.toml:");
+                println!("   [llm.ollama]");
+                println!("   model = \"mistral\"");
+                println!("   base_url = \"http://localhost:11434\"");
             }
         },
     }
@@ -6640,7 +6570,7 @@ async fn handle_complete(
     language: Option<String>,
     provider: String,
     model: Option<String>,
-    _config_path: Option<PathBuf>,
+    config_path: Option<PathBuf>,
     output_format: OutputFormat,
 ) -> anyhow::Result<()> {
     use clawdius_core::completions::{
@@ -6649,11 +6579,9 @@ async fn handle_complete(
     use clawdius_core::llm::{create_provider, LlmConfig};
     use clawdius_core::lsp::Position;
 
-    // Read file content
     let content = std::fs::read_to_string(&file)
-        .map_err(|e| anyhow::anyhow!("Failed to read file {}: {}", file, e))?;
+        .map_err(|e| anyhow::anyhow!("Failed to read file {file}: {e}"))?;
 
-    // Detect language from file extension if not specified
     let language = language.unwrap_or_else(|| {
         std::path::Path::new(&file)
             .extension()
@@ -6662,8 +6590,7 @@ async fn handle_complete(
             .to_string()
     });
 
-    // Create LLM config from config file
-    let config = load_config(_config_path.as_ref())?;
+    let config = load_config(config_path.as_deref())?;
     let mut llm_config = LlmConfig::from_config(&config.llm, &provider)?;
     if let Some(m) = model {
         llm_config.model = m;
@@ -6681,51 +6608,48 @@ async fn handle_complete(
     let request = CompletionRequest::new(&content, Position::new(line, character), &language)
         .with_file_path(&file);
 
-    match output_format {
-        OutputFormat::Json => match completion_provider.complete(&request).await {
-            Ok(response) => {
-                println!("{}", serde_json::to_string_pretty(&response)?);
-            },
-            Err(e) => {
-                println!(
-                    "{}",
-                    serde_json::json!({
-                        "error": e.to_string()
-                    })
-                );
-            },
+    if output_format == OutputFormat::Json { match completion_provider.complete(&request).await {
+        Ok(response) => {
+            println!("{}", serde_json::to_string_pretty(&response)?);
         },
-        _ => {
-            println!("🔍 Requesting completion from {}...", provider);
-            println!("   File: {}:{}", file, line);
-            println!("   Language: {}\n", language);
+        Err(e) => {
+            println!(
+                "{}",
+                serde_json::json!({
+                    "error": e.to_string()
+                })
+            );
+        },
+    } } else {
+        println!("🔍 Requesting completion from {provider}...");
+        println!("   File: {file}:{line}");
+        println!("   Language: {language}\n");
 
-            match completion_provider.complete(&request).await {
-                Ok(response) => {
-                    if response.text.is_empty() {
-                        println!("💡 No completion available");
-                    } else {
-                        println!(
-                            "✨ Completion (confidence: {:.0}%):",
-                            response.confidence * 100.0
-                        );
-                        println!();
-                        println!("    {}", response.text.replace("\n", "\n    "));
+        match completion_provider.complete(&request).await {
+            Ok(response) => {
+                if response.text.is_empty() {
+                    println!("💡 No completion available");
+                } else {
+                    println!(
+                        "✨ Completion (confidence: {:.0}%):",
+                        response.confidence * 100.0
+                    );
+                    println!();
+                    println!("    {}", response.text.replace('\n', "\n    "));
 
-                        if !response.alternatives.is_empty() {
-                            println!("\n📚 Alternatives:");
-                            for (i, alt) in response.alternatives.iter().enumerate() {
-                                println!("  {}. {}", i + 1, alt.text.lines().next().unwrap_or(""));
-                            }
+                    if !response.alternatives.is_empty() {
+                        println!("\n📚 Alternatives:");
+                        for (i, alt) in response.alternatives.iter().enumerate() {
+                            println!("  {}. {}", i + 1, alt.text.lines().next().unwrap_or(""));
                         }
                     }
-                },
-                Err(e) => {
-                    eprintln!("❌ Completion failed: {}", e);
-                    eprintln!("\n💡 Ensure your LLM provider is configured and accessible");
-                },
-            }
-        },
+                }
+            },
+            Err(e) => {
+                eprintln!("❌ Completion failed: {e}");
+                eprintln!("\n💡 Ensure your LLM provider is configured and accessible");
+            },
+        }
     }
 
     Ok(())
@@ -6733,22 +6657,22 @@ async fn handle_complete(
 
 /// Handle analyze command for architecture drift and technical debt detection
 fn handle_analyze(
-    path: PathBuf,
+    path: &PathBuf,
     drift_only: bool,
     debt_only: bool,
     format: OutputFormat,
     output_file: Option<PathBuf>,
-    min_severity: String,
+    min_severity: &str,
     exclude_patterns: Option<String>,
 ) -> anyhow::Result<()> {
     use clawdius_core::analysis::{DebtAnalyzer, DriftDetector};
 
     // Parse minimum severity filter
     let min_severity_level = match min_severity.to_lowercase().as_str() {
-        "low" | _ => 1,
         "medium" => 2,
         "high" => 3,
         "critical" => 4,
+        _ => 1,
     };
 
     // Parse exclude patterns
@@ -6760,14 +6684,14 @@ fn handle_analyze(
     let mut files: Vec<(PathBuf, String)> = Vec::new();
 
     if path.is_file() {
-        if let Ok(content) = std::fs::read_to_string(&path) {
+        if let Ok(content) = std::fs::read_to_string(path) {
             files.push((path.clone(), content));
         }
     } else if path.is_dir() {
-        for entry in walkdir::WalkDir::new(&path)
+        for entry in walkdir::WalkDir::new(path)
             .into_iter()
-            .filter_map(|e| e.ok())
-            .filter(|e| e.path().extension().map(|ext| ext == "rs").unwrap_or(false))
+            .filter_map(std::result::Result::ok)
+            .filter(|e| e.path().extension().is_some_and(|ext| ext == "rs"))
         {
             let file_path = entry.path().to_path_buf();
             let path_str = file_path.to_string_lossy();
@@ -6792,18 +6716,18 @@ fn handle_analyze(
     println!("📊 Analyzing {} files...", files.len());
 
     // Run analysis
-    let drift_report = if !debt_only {
+    let drift_report = if debt_only {
+        DriftReport::default()
+    } else {
         let detector = DriftDetector::new();
         detector.analyze_files(files.iter().map(|(p, c)| (p.clone(), c.as_str())))
-    } else {
-        DriftReport::default()
     };
 
-    let debt_report = if !drift_only {
+    let debt_report = if drift_only {
+        DebtReport::default()
+    } else {
         let analyzer = DebtAnalyzer::new();
         analyzer.analyze_files(files.iter().map(|(p, c)| (p.clone(), c.as_str())))
-    } else {
-        DebtReport::default()
     };
 
     // Generate output
@@ -6851,21 +6775,23 @@ fn format_analyze_text(
     files_analyzed: usize,
     min_severity: u8,
 ) -> String {
+    use std::fmt::Write;
     let mut output = String::new();
 
     output.push_str("╔══════════════════════════════════════════════════════════════╗\n");
     output.push_str("║                    📊 CLAWDIUS ANALYSIS                      ║\n");
     output.push_str("╠══════════════════════════════════════════════════════════════╣\n");
-    output.push_str(&format!("║  Files Analyzed: {:<43}║\n", files_analyzed));
+    let _ = writeln!(output, "║  Files Analyzed: {files_analyzed:<43}║");
     output.push_str("╚══════════════════════════════════════════════════════════════╝\n\n");
 
     // Drift Summary
     output.push_str("## 🏗️  Architecture Drift\n\n");
-    output.push_str(&format!("  Total Drifts: {}\n", drift_report.len()));
-    output.push_str(&format!(
-        "  Severity Score: {}\n",
+    let _ = writeln!(output, "  Total Drifts: {}", drift_report.len());
+    let _ = writeln!(
+        output,
+        "  Severity Score: {}",
         drift_report.total_severity_score()
-    ));
+    );
     if drift_report.has_critical() {
         output.push_str("  ⚠️  CRITICAL DRIFTS DETECTED!\n");
     }
@@ -6889,28 +6815,30 @@ fn format_analyze_text(
                 .get("file")
                 .and_then(|v| v.as_str())
                 .unwrap_or("unknown");
-            let line = drift.get("line").and_then(|v| v.as_u64()).unwrap_or(0);
+            let line = drift.get("line").and_then(serde_json::Value::as_u64).unwrap_or(0);
             let msg = drift
                 .get("message")
                 .and_then(|v| v.as_str())
                 .unwrap_or("unknown");
-            output.push_str(&format!("    {} {}:{} - {}\n", icon, file, line, msg));
+            let _ = writeln!(output, "    {icon} {file}:{line} - {msg}");
         }
     }
     output.push('\n');
 
     // Debt Summary
     output.push_str("## 💰 Technical Debt\n\n");
-    output.push_str(&format!("  Total Debt Items: {}\n", debt_report.len()));
-    output.push_str(&format!("  Debt Score: {:.2}\n", debt_report.debt_score()));
-    output.push_str(&format!(
-        "  Total Effort: {:.1} hours\n",
+    let _ = writeln!(output, "  Total Debt Items: {}", debt_report.len());
+    let _ = writeln!(output, "  Debt Score: {:.2}", debt_report.debt_score());
+    let _ = writeln!(
+        output,
+        "  Total Effort: {:.1} hours",
         debt_report.total_effort_hours
-    ));
-    output.push_str(&format!(
-        "  Blocking Items: {}\n",
+    );
+    let _ = writeln!(
+        output,
+        "  Blocking Items: {}",
         debt_report.blocking_count
-    ));
+    );
     output.push('\n');
 
     let top_debts = debt_report.top_priorities(10);
@@ -6924,13 +6852,14 @@ fn format_analyze_text(
                 9..=10 => "🔴",
                 _ => "⚪",
             };
-            output.push_str(&format!(
-                "    {} P{} | {} - {}\n",
+            let _ = writeln!(
+                output,
+                "    {} P{} | {} - {}",
                 icon,
                 debt.priority,
                 debt.file_path.to_string_lossy(),
                 debt.description
-            ));
+            );
         }
     }
 
@@ -6969,10 +6898,10 @@ fn filter_debt_by_priority(report: &DebtReport, min_level: u8) -> Vec<serde_json
         .iter()
         .filter(|d| {
             let level = match d.priority {
-                1..=3 | _ => 1,
                 4..=6 => 2,
                 7..=8 => 3,
                 9..=10 => 4,
+                _ => 1,
             };
             level >= min_level
         })
@@ -6995,7 +6924,7 @@ fn filter_debt_by_priority(report: &DebtReport, min_level: u8) -> Vec<serde_json
 
 /// Handle watch command for file monitoring with auto-analysis
 fn handle_watch(
-    path: PathBuf,
+    path: &PathBuf,
     ignore: Option<String>,
     auto_analyze: bool,
     debounce_ms: u64,
@@ -7011,7 +6940,7 @@ fn handle_watch(
         println!("🔍 Auto-analysis enabled");
     }
 
-    println!("   Debounce: {}ms", debounce_ms);
+    println!("   Debounce: {debounce_ms}ms");
     if verbose {
         println!("   Verbose output enabled");
     }
@@ -7020,7 +6949,7 @@ fn handle_watch(
     println!();
 
     // Create watch configuration
-    let mut config = WatchConfig::new(&path);
+    let mut config = WatchConfig::new(path);
 
     if let Some(ignore_patterns) = ignore {
         let patterns: Vec<String> = ignore_patterns
