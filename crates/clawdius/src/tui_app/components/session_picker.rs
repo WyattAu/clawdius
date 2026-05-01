@@ -75,7 +75,7 @@ impl SessionPicker {
     }
 
     /// Close the picker.
-    pub fn close(&mut self) {
+    pub const fn close(&mut self) {
         self.visible = false;
     }
 
@@ -140,7 +140,7 @@ pub struct SessionPickerWidget<'a> {
 }
 
 impl<'a> SessionPickerWidget<'a> {
-    pub fn new(picker: &'a SessionPicker, theme: &'a Theme) -> Self {
+    pub const fn new(picker: &'a SessionPicker, theme: &'a Theme) -> Self {
         Self { picker, theme }
     }
 }
@@ -150,8 +150,8 @@ impl Widget for SessionPickerWidget<'_> {
         // Clear the background
         Clear.render(area, buf);
 
-        let width = area.width.min(60) as u16;
-        let height = area.height.min(20) as u16;
+        let width = area.width.min(60);
+        let height = area.height.min(20);
 
         // Center the popup
         let x = area.x + (area.width.saturating_sub(width)) / 2;
@@ -160,9 +160,10 @@ impl Widget for SessionPickerWidget<'_> {
 
         let filtered: Vec<_> = self.picker.filtered_entries().collect();
 
-        let title = match self.picker.filter.is_empty() {
-            true => " Sessions ".to_string(),
-            false => format!(" Sessions (filter: {}) ", self.picker.filter),
+        let title = if self.picker.filter.is_empty() {
+            " Sessions ".to_string()
+        } else {
+            format!(" Sessions (filter: {}) ", self.picker.filter)
         };
 
         let block = Block::default()
