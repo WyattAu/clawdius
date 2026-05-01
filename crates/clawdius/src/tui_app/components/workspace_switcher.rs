@@ -69,7 +69,7 @@ impl WorkspaceSwitcher {
     }
 
     /// Close the switcher.
-    pub fn close(&mut self) {
+    pub const fn close(&mut self) {
         self.visible = false;
     }
 
@@ -137,7 +137,7 @@ pub struct WorkspaceSwitcherWidget<'a> {
 }
 
 impl<'a> WorkspaceSwitcherWidget<'a> {
-    pub fn new(switcher: &'a WorkspaceSwitcher, theme: &'a Theme) -> Self {
+    pub const fn new(switcher: &'a WorkspaceSwitcher, theme: &'a Theme) -> Self {
         Self { switcher, theme }
     }
 }
@@ -146,8 +146,8 @@ impl Widget for WorkspaceSwitcherWidget<'_> {
     fn render(self, area: Rect, buf: &mut ratatui::buffer::Buffer) {
         Clear.render(area, buf);
 
-        let width = area.width.min(65) as u16;
-        let height = area.height.min(20) as u16;
+        let width = area.width.min(65);
+        let height = area.height.min(20);
 
         let x = area.x + (area.width.saturating_sub(width)) / 2;
         let y = area.y + (area.height.saturating_sub(height)) / 2;
@@ -155,9 +155,10 @@ impl Widget for WorkspaceSwitcherWidget<'_> {
 
         let filtered: Vec<_> = self.switcher.filtered_entries().collect();
 
-        let title = match self.switcher.filter.is_empty() {
-            true => " Workspaces ".to_string(),
-            false => format!(" Workspaces (filter: {}) ", self.switcher.filter),
+        let title = if self.switcher.filter.is_empty() {
+            " Workspaces ".to_string()
+        } else {
+            format!(" Workspaces (filter: {}) ", self.switcher.filter)
         };
 
         let block = Block::default()
