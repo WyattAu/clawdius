@@ -13,6 +13,7 @@ use clawdius_core::tools::file::{
 use clawdius_core::tools::git::{GitDiffParams, GitLogParams, GitTool};
 use clawdius_core::tools::shell::{ShellParams, ShellTool};
 
+#[allow(clippy::struct_field_names)]
 pub struct CliToolExecutor {
     file_tool: Arc<FileTool>,
     shell_tool: Arc<ShellTool>,
@@ -43,6 +44,7 @@ impl CliToolExecutor {
         args.get(key).and_then(|v| v.as_str().map(String::from))
     }
 
+    #[allow(clippy::cast_possible_truncation)]
     fn get_usize_arg(
         args: &std::collections::HashMap<String, serde_json::Value>,
         key: &str,
@@ -54,13 +56,14 @@ impl CliToolExecutor {
         args: &std::collections::HashMap<String, serde_json::Value>,
         key: &str,
     ) -> bool {
-        args.get(key).and_then(|v| v.as_bool()).unwrap_or(false)
+        args.get(key).and_then(serde_json::Value::as_bool).unwrap_or(false)
     }
 
     fn get_u64_arg(args: &std::collections::HashMap<String, serde_json::Value>, key: &str) -> u64 {
-        args.get(key).and_then(|v| v.as_u64()).unwrap_or(120_000)
+        args.get(key).and_then(serde_json::Value::as_u64).unwrap_or(120_000)
     }
 
+    #[allow(clippy::too_many_lines)]
     fn tool_definitions() -> Vec<ToolDefinition> {
         vec![
             ToolDefinition::new(
@@ -178,12 +181,12 @@ impl CliToolExecutor {
 
 #[async_trait]
 impl ToolExecutor for CliToolExecutor {
+    #[allow(clippy::too_many_lines)]
     async fn execute(&self, request: ToolRequest) -> clawdius_core::error::Result<ToolResult> {
         let result = match request.name.as_str() {
             "read_file" => {
-                let path = match Self::get_string_arg(&request.arguments, "path") {
-                    Some(p) => p,
-                    None => return Ok(ToolResult::error("Missing 'path' argument")),
+                let Some(path) = Self::get_string_arg(&request.arguments, "path") else {
+                    return Ok(ToolResult::error("Missing 'path' argument"));
                 };
                 let offset = Self::get_usize_arg(&request.arguments, "offset");
                 let limit = Self::get_usize_arg(&request.arguments, "limit");
@@ -199,13 +202,11 @@ impl ToolExecutor for CliToolExecutor {
             },
 
             "write_file" => {
-                let path = match Self::get_string_arg(&request.arguments, "path") {
-                    Some(p) => p,
-                    None => return Ok(ToolResult::error("Missing 'path' argument")),
+                let Some(path) = Self::get_string_arg(&request.arguments, "path") else {
+                    return Ok(ToolResult::error("Missing 'path' argument"));
                 };
-                let content = match Self::get_string_arg(&request.arguments, "content") {
-                    Some(c) => c,
-                    None => return Ok(ToolResult::error("Missing 'content' argument")),
+                let Some(content) = Self::get_string_arg(&request.arguments, "content") else {
+                    return Ok(ToolResult::error("Missing 'content' argument"));
                 };
 
                 match self.file_tool.write(FileWriteParams { path, content }) {
@@ -215,17 +216,14 @@ impl ToolExecutor for CliToolExecutor {
             },
 
             "edit_file" => {
-                let path = match Self::get_string_arg(&request.arguments, "path") {
-                    Some(p) => p,
-                    None => return Ok(ToolResult::error("Missing 'path' argument")),
+                let Some(path) = Self::get_string_arg(&request.arguments, "path") else {
+                    return Ok(ToolResult::error("Missing 'path' argument"));
                 };
-                let old_string = match Self::get_string_arg(&request.arguments, "old_string") {
-                    Some(s) => s,
-                    None => return Ok(ToolResult::error("Missing 'old_string' argument")),
+                let Some(old_string) = Self::get_string_arg(&request.arguments, "old_string") else {
+                    return Ok(ToolResult::error("Missing 'old_string' argument"));
                 };
-                let new_string = match Self::get_string_arg(&request.arguments, "new_string") {
-                    Some(s) => s,
-                    None => return Ok(ToolResult::error("Missing 'new_string' argument")),
+                let Some(new_string) = Self::get_string_arg(&request.arguments, "new_string") else {
+                    return Ok(ToolResult::error("Missing 'new_string' argument"));
                 };
                 let replace_all = Self::get_bool_arg(&request.arguments, "replace_all");
 
@@ -242,9 +240,8 @@ impl ToolExecutor for CliToolExecutor {
             },
 
             "list_directory" => {
-                let path = match Self::get_string_arg(&request.arguments, "path") {
-                    Some(p) => p,
-                    None => return Ok(ToolResult::error("Missing 'path' argument")),
+                let Some(path) = Self::get_string_arg(&request.arguments, "path") else {
+                    return Ok(ToolResult::error("Missing 'path' argument"));
                 };
 
                 match self.file_tool.list(FileListParams { path }) {
@@ -254,9 +251,8 @@ impl ToolExecutor for CliToolExecutor {
             },
 
             "shell" | "run_command" => {
-                let command = match Self::get_string_arg(&request.arguments, "command") {
-                    Some(c) => c,
-                    None => return Ok(ToolResult::error("Missing 'command' argument")),
+                let Some(command) = Self::get_string_arg(&request.arguments, "command") else {
+                    return Ok(ToolResult::error("Missing 'command' argument"));
                 };
                 let cwd = Self::get_string_arg(&request.arguments, "cwd");
                 let timeout = if request.name == "run_command" {
@@ -294,7 +290,7 @@ impl ToolExecutor for CliToolExecutor {
             },
 
             "git_status" => {
-                let cwd = Self::get_string_arg(&request.arguments, "cwd").map(String::from);
+                let cwd = Self::get_string_arg(&request.arguments, "cwd");
 
                 match self.git_tool.status(cwd.as_deref()) {
                     Ok(output) => ToolResult::success(output),
@@ -303,7 +299,7 @@ impl ToolExecutor for CliToolExecutor {
             },
 
             "git_diff" => {
-                let cwd = Self::get_string_arg(&request.arguments, "cwd").map(String::from);
+                let cwd = Self::get_string_arg(&request.arguments, "cwd");
                 let staged = Self::get_bool_arg(&request.arguments, "staged");
                 let path = Self::get_string_arg(&request.arguments, "path");
 
@@ -317,7 +313,7 @@ impl ToolExecutor for CliToolExecutor {
             },
 
             "git_log" => {
-                let cwd = Self::get_string_arg(&request.arguments, "cwd").map(String::from);
+                let cwd = Self::get_string_arg(&request.arguments, "cwd");
                 let count = Self::get_usize_arg(&request.arguments, "count").unwrap_or(10);
                 let path = Self::get_string_arg(&request.arguments, "path");
 
