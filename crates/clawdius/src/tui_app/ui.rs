@@ -58,9 +58,8 @@ impl Widget for ModeIndicator {
 #[allow(dead_code)]
 pub fn get_cursor_shape(mode: VimMode) -> &'static str {
     match mode {
-        VimMode::Normal => "block",
+        VimMode::Normal | VimMode::Visual => "block",
         VimMode::Insert => "line",
-        VimMode::Visual => "block",
         VimMode::Command => "underscore",
     }
 }

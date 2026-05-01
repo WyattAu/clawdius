@@ -109,51 +109,34 @@ impl VimKeymap {
         }
 
         match key.code {
-            KeyCode::Char('h') => VimAction::Move(Motion::CharLeft),
-            KeyCode::Char('j') => VimAction::Move(Motion::LineDown),
-            KeyCode::Char('k') => VimAction::Move(Motion::LineUp),
-            KeyCode::Char('l') => VimAction::Move(Motion::CharRight),
+            KeyCode::Char('h') | KeyCode::Left => VimAction::Move(Motion::CharLeft),
+            KeyCode::Char('j') | KeyCode::Down => VimAction::Move(Motion::LineDown),
+            KeyCode::Char('k') | KeyCode::Up => VimAction::Move(Motion::LineUp),
+            KeyCode::Char('l') | KeyCode::Right => VimAction::Move(Motion::CharRight),
             KeyCode::Char('w') => VimAction::Move(Motion::WordForward),
             KeyCode::Char('b') => VimAction::Move(Motion::WordBackward),
             KeyCode::Char('0') => VimAction::Move(Motion::LineStart),
             KeyCode::Char('$') => VimAction::Move(Motion::LineEnd),
-            KeyCode::Char('g') => {
-                self.pending_keys.push(key);
-                VimAction::None
-            },
             KeyCode::Char('G') => VimAction::Move(Motion::FileEnd),
             KeyCode::Char('i') => VimAction::ChangeMode(VimMode::Insert),
-            KeyCode::Char('a') => {
-                self.pending_keys.push(key);
-                VimAction::None
-            },
-            KeyCode::Char('o') => {
-                self.pending_keys.push(key);
-                VimAction::None
-            },
-            KeyCode::Char('O') => {
-                self.pending_keys.push(key);
-                VimAction::None
-            },
             KeyCode::Char('d') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                 VimAction::Scroll(ScrollDirection::HalfPageDown)
             },
-            KeyCode::Char('d') => {
-                self.pending_keys.push(key);
-                VimAction::None
-            },
-            KeyCode::Char('y') => {
-                self.pending_keys.push(key);
-                VimAction::None
-            },
-            KeyCode::Char('p') => VimAction::Put(Placement::After),
-            KeyCode::Char('P') => VimAction::Put(Placement::Before),
             KeyCode::Char('u') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                 VimAction::Scroll(ScrollDirection::HalfPageUp)
             },
-            KeyCode::Char('u') => VimAction::Undo,
             KeyCode::Char('r') if key.modifiers.contains(KeyModifiers::CONTROL) => VimAction::Redo,
-            KeyCode::Char('r') => {
+            KeyCode::Char('u') => VimAction::Undo,
+            KeyCode::Char('p') => VimAction::Put(Placement::After),
+            KeyCode::Char('P') => VimAction::Put(Placement::Before),
+            KeyCode::Char('g')
+            | KeyCode::Char('a')
+            | KeyCode::Char('o')
+            | KeyCode::Char('O')
+            | KeyCode::Char('d')
+            | KeyCode::Char('y')
+            | KeyCode::Char('r')
+            | KeyCode::Char('z') => {
                 self.pending_keys.push(key);
                 VimAction::None
             },
@@ -168,15 +151,7 @@ impl VimKeymap {
                 self.search_buffer.push('/');
                 VimAction::ChangeMode(VimMode::Command)
             },
-            KeyCode::Char('z') => {
-                self.pending_keys.push(key);
-                VimAction::None
-            },
             KeyCode::Char('q') => VimAction::Quit,
-            KeyCode::Up => VimAction::Move(Motion::LineUp),
-            KeyCode::Down => VimAction::Move(Motion::LineDown),
-            KeyCode::Left => VimAction::Move(Motion::CharLeft),
-            KeyCode::Right => VimAction::Move(Motion::CharRight),
             KeyCode::PageUp => VimAction::Scroll(ScrollDirection::PageUp),
             KeyCode::PageDown => VimAction::Scroll(ScrollDirection::PageDown),
             _ => VimAction::None,
@@ -197,21 +172,7 @@ impl VimKeymap {
                 _ => VimAction::None,
             },
             [KeyEvent {
-                code: KeyCode::Char('a'),
-                ..
-            }] => {
-                self.mode = VimMode::Insert;
-                VimAction::ChangeMode(VimMode::Insert)
-            },
-            [KeyEvent {
-                code: KeyCode::Char('o'),
-                ..
-            }] => {
-                self.mode = VimMode::Insert;
-                VimAction::ChangeMode(VimMode::Insert)
-            },
-            [KeyEvent {
-                code: KeyCode::Char('O'),
+                code: KeyCode::Char('a' | 'o' | 'O'),
                 ..
             }] => {
                 self.mode = VimMode::Insert;
@@ -241,8 +202,7 @@ impl VimKeymap {
                 code: KeyCode::Char('z'),
                 ..
             }] => match key.code {
-                KeyCode::Char('z') => VimAction::Scroll(ScrollDirection::HalfPageUp),
-                KeyCode::Char('t') => VimAction::Scroll(ScrollDirection::HalfPageUp),
+                KeyCode::Char('z') | KeyCode::Char('t') => VimAction::Scroll(ScrollDirection::HalfPageUp),
                 KeyCode::Char('b') => VimAction::Scroll(ScrollDirection::HalfPageDown),
                 _ => VimAction::None,
             },
@@ -272,11 +232,7 @@ impl VimKeymap {
 
     fn handle_visual(&mut self, key: KeyEvent) -> VimAction {
         match key.code {
-            KeyCode::Esc => {
-                self.mode = VimMode::Normal;
-                VimAction::ChangeMode(VimMode::Normal)
-            },
-            KeyCode::Char('v') => {
+            KeyCode::Esc | KeyCode::Char('v') => {
                 self.mode = VimMode::Normal;
                 VimAction::ChangeMode(VimMode::Normal)
             },
@@ -340,10 +296,8 @@ impl VimKeymap {
 
     fn execute_command(&mut self, cmd: &str) -> VimAction {
         match cmd.trim() {
-            "q" | "quit" => VimAction::Quit,
-            "q!" => VimAction::Quit,
-            "w" | "write" | "save" => VimAction::Save,
-            "wq" | "x" => VimAction::Save,
+            "q" | "quit" | "q!" => VimAction::Quit,
+            "w" | "write" | "save" | "wq" | "x" => VimAction::Save,
             "visual" | "v" => VimAction::ChangeMode(VimMode::Visual),
             "insert" | "i" => VimAction::ChangeMode(VimMode::Insert),
             "normal" | "n" => VimAction::ChangeMode(VimMode::Normal),

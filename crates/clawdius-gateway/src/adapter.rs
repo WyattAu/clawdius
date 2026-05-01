@@ -209,13 +209,11 @@ impl Platform {
     pub fn max_message_length(&self) -> usize {
         match self {
             Self::Telegram => 4096,
-            Self::Discord => 2000,
+            Self::Discord | Self::Signal => 2000,
             Self::Slack => 40_000,
             Self::Matrix => 60_000,
-            Self::Signal => 2000,
-            Self::Teams => 20_000,
+            Self::Teams | Self::RocketChat => 20_000,
             Self::WhatsApp => 65_536,
-            Self::RocketChat => 20_000,
             Self::Webhook => 1_000_000,
         }
     }

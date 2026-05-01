@@ -3033,11 +3033,10 @@ fn handle_setup(
 
         let choice = input.trim().parse::<u8>().unwrap_or(1);
         match choice {
-            1 => "anthropic".to_string(),
+            1 | _ => "anthropic".to_string(),
             2 => "openai".to_string(),
             3 => "ollama".to_string(),
             4 => "zai".to_string(),
-            _ => "anthropic".to_string(),
         }
     };
 
@@ -3146,11 +3145,10 @@ fn handle_setup(
 
         let choice = input.trim().parse::<u8>().unwrap_or(1);
         let preset = match choice {
-            1 => "Balanced",
+            1 | _ => "Balanced",
             2 => "Security",
             3 => "Performance",
             4 => "Development",
-            _ => "Balanced",
         };
         println!("\n✓ Selected preset: {preset}\n");
     }
@@ -3182,10 +3180,8 @@ fn handle_setup(
             println!("⚠️  Setup incomplete: Missing API key for {provider}");
             println!("   Run: clawdius auth set-key {provider}\n");
         },
-        clawdius_core::onboarding::OnboardingStatus::MissingConfig => {
-            println!("⚠️  Setup incomplete: Run 'clawdius init' to create a project\n");
-        },
-        clawdius_core::onboarding::OnboardingStatus::FirstRun => {
+        clawdius_core::onboarding::OnboardingStatus::MissingConfig
+        | clawdius_core::onboarding::OnboardingStatus::FirstRun => {
             println!("⚠️  Setup incomplete: Run 'clawdius init' to create a project\n");
         },
     }
@@ -5176,10 +5172,9 @@ async fn handle_webhook(
         WebhookCommands::Test { id, event } => {
             let test_event = event
                 .map(|s| match s.as_str() {
-                    "session.created" => WebhookEvent::SessionCreated,
+                    "session.created" | _ => WebhookEvent::SessionCreated,
                     "message.sent" => WebhookEvent::MessageSent,
                     "tool.executed" => WebhookEvent::ToolExecuted,
-                    _ => WebhookEvent::SessionCreated,
                 })
                 .unwrap_or(WebhookEvent::SessionCreated);
 
@@ -6750,11 +6745,10 @@ fn handle_analyze(
 
     // Parse minimum severity filter
     let min_severity_level = match min_severity.to_lowercase().as_str() {
-        "low" => 1,
+        "low" | _ => 1,
         "medium" => 2,
         "high" => 3,
         "critical" => 4,
-        _ => 1,
     };
 
     // Parse exclude patterns
@@ -6975,11 +6969,10 @@ fn filter_debt_by_priority(report: &DebtReport, min_level: u8) -> Vec<serde_json
         .iter()
         .filter(|d| {
             let level = match d.priority {
-                1..=3 => 1,
+                1..=3 | _ => 1,
                 4..=6 => 2,
                 7..=8 => 3,
                 9..=10 => 4,
-                _ => 1,
             };
             level >= min_level
         })

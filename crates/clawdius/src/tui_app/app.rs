@@ -168,10 +168,7 @@ impl App {
                 KeyCode::Char('?') => {
                     self.mode = AppMode::Help;
                 },
-                KeyCode::Tab => {
-                    self.mode = AppMode::FileBrowser;
-                },
-                KeyCode::Char('2') => {
+                KeyCode::Tab | KeyCode::Char('2') => {
                     self.mode = AppMode::FileBrowser;
                 },
                 KeyCode::Char('3') => {
@@ -237,7 +234,7 @@ impl App {
         use crossterm::event::KeyCode;
 
         match key.code {
-            KeyCode::Char('q') => {
+            KeyCode::Char('q') | KeyCode::Tab | KeyCode::Char('1') => {
                 self.mode = AppMode::Chat;
             },
             KeyCode::Char('j') | KeyCode::Down => {
@@ -261,12 +258,6 @@ impl App {
             KeyCode::Char('r') => {
                 self.file_list.refresh();
             },
-            KeyCode::Tab => {
-                self.mode = AppMode::Chat;
-            },
-            KeyCode::Char('1') => {
-                self.mode = AppMode::Chat;
-            },
             KeyCode::Char('3') => {
                 self.mode = AppMode::Diff;
             },
@@ -280,7 +271,7 @@ impl App {
         use crossterm::event::KeyCode;
 
         match key.code {
-            KeyCode::Char('q') | KeyCode::Esc => {
+            KeyCode::Char('q') | KeyCode::Esc | KeyCode::Tab | KeyCode::Char('1') => {
                 self.mode = AppMode::Chat;
             },
             KeyCode::Char('j') | KeyCode::Down => {
@@ -304,12 +295,6 @@ impl App {
                 for _ in 0..20 {
                     self.diff_view.scroll_up();
                 }
-            },
-            KeyCode::Tab => {
-                self.mode = AppMode::Chat;
-            },
-            KeyCode::Char('1') => {
-                self.mode = AppMode::Chat;
             },
             KeyCode::Char('2') => {
                 self.mode = AppMode::FileBrowser;
@@ -394,9 +379,8 @@ impl App {
                     // :secondary diff / :secondary files
                     if parts.len() > 1 {
                         self.secondary_mode = match parts[1].trim() {
-                            "diff" | "d" => AppMode::Diff,
+                            "diff" | "d" | _ => AppMode::Diff,
                             "files" | "f" => AppMode::FileBrowser,
-                            _ => AppMode::Diff,
                         };
                     }
                 } else {
@@ -509,14 +493,11 @@ impl App {
             .map_err(|e| anyhow::anyhow!("Failed to create provider: {e}"))?;
 
         // Build user message with optional workspace context
-        let user_content = if let Some(ref ctx) = self.workspace_context {
-            if !ctx.is_empty() {
+        let user_content = match self.workspace_context.as_deref() {
+            Some(ctx) if !ctx.is_empty() => {
                 format!("{}\n\n## Project Structure\n{}", ctx, message)
-            } else {
-                message.to_string()
             }
-        } else {
-            message.to_string()
+            _ => message.to_string(),
         };
 
         let messages = vec![
