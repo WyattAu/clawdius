@@ -1443,9 +1443,8 @@ impl WorkspaceRepository for MariaDbBackend {
     fn list_workspaces(&self) -> impl std::future::Future<Output = Result<Vec<Workspace>>> + Send {
         async move {
             let mut conn = self.pool.get_conn().await.map_err(StorageError::from)?;
-            let rows: Vec<(String, String, Option<String>, String)> = conn.exec(
+            let rows: Vec<(String, String, Option<String>, String)> = conn.query(
                 "SELECT id, name, default_project_id, created_at FROM workspaces ORDER BY created_at DESC",
-                params! {},
             ).await.map_err(StorageError::from)?;
             Ok(rows
                 .into_iter()
@@ -1527,9 +1526,8 @@ impl WorkspaceRepository for MariaDbBackend {
     fn list_projects(&self) -> impl std::future::Future<Output = Result<Vec<Project>>> + Send {
         async move {
             let mut conn = self.pool.get_conn().await.map_err(StorageError::from)?;
-            let rows: Vec<(String, String, String, String)> = conn.exec(
+            let rows: Vec<(String, String, String, String)> = conn.query(
                 "SELECT id, name, root_path, created_at FROM projects ORDER BY created_at DESC",
-                params! {},
             ).await.map_err(StorageError::from)?;
             Ok(rows
                 .into_iter()
