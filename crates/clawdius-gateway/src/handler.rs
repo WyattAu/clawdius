@@ -8,7 +8,6 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use chrono::Utc;
 use tokio::sync::RwLock;
 
 use crate::adapter::{IncomingMessage, Platform};
@@ -23,7 +22,7 @@ explaining code. You have access to tools for file operations, shell \
 commands, and more. Be concise and helpful. When showing code, use \
 appropriate markdown formatting.";
 
-/// Session mapping: platform:chat_id → session_id.
+/// Session mapping: `platform:chat_id` → `session_id`.
 type SessionMap = HashMap<String, String>;
 
 /// Bridges the messaging gateway to the Clawdius agent engine.
@@ -46,10 +45,10 @@ pub struct ClawdiusHandler {
     /// LLM client (lazy-initialized).
     llm_client: Arc<RwLock<Option<Arc<dyn clawdius_core::llm::LlmClient>>>>,
 
-    /// Mapping from "platform:chat_id" to session_id.
+    /// Mapping from "`platform:chat_id`" to `session_id`.
     session_map: Arc<RwLock<SessionMap>>,
 
-    /// Per-session message history (chat_id → messages).
+    /// Per-session message history (`chat_id` → messages).
     /// Kept in memory for context; also persisted to session store.
     message_history: Arc<RwLock<HashMap<String, Vec<clawdius_core::llm::ChatMessage>>>>,
 
@@ -107,12 +106,12 @@ impl ClawdiusHandler {
 
     /// Set the maximum history messages.
     #[must_use]
-    pub fn with_max_history(mut self, max: usize) -> Self {
+    pub const fn with_max_history(mut self, max: usize) -> Self {
         self.max_history = max;
         self
     }
 
-    /// Get the session key for a given platform + chat_id.
+    /// Get the session key for a given platform + `chat_id`.
     fn session_key(platform: &Platform, chat_id: &str) -> String {
         format!("{platform}:{chat_id}")
     }
@@ -171,7 +170,7 @@ impl ClawdiusHandler {
         Ok(())
     }
 
-    /// Get or create a session for the given platform + chat_id.
+    /// Get or create a session for the given platform + `chat_id`.
     async fn get_or_create_session(
         &self,
         platform: &Platform,

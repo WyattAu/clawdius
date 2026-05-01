@@ -17,7 +17,7 @@ pub struct RateLimiter {
     max_requests: usize,
     /// Window duration.
     window: Duration,
-    /// State: (user_id, platform) → list of request timestamps.
+    /// State: (`user_id`, platform) → list of request timestamps.
     state: Mutex<HashMap<(String, String), Vec<Instant>>>,
 }
 
@@ -47,13 +47,22 @@ impl RateLimiter {
     /// Returns `Ok(())` if the request is within rate limits,
     /// or `Err` with the number of milliseconds until the next
     /// allowed request.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err(RateLimitError)` if the rate limit is exceeded.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the internal mutex is poisoned.
+    #[allow(clippy::expect_used)]
     pub fn check(&self, platform: Platform, user_id: &str) -> Result<(), RateLimitError> {
         let key = (user_id.to_string(), platform.as_str().to_string());
         let now = Instant::now();
-        let cutoff = now - self.window;
+        let cutoff = now.checked_sub(self.window).unwrap();
 
         let mut state = self.state.lock().unwrap();
-        let timestamps = state.entry(key).or_insert_with(Vec::new);
+        let timestamps = state.entry(key).or_default();
 
         // Remove expired entries
         timestamps.retain(|&t| t > cutoff);
@@ -65,6 +74,7 @@ impl RateLimiter {
                 .expect("timestamps is non-empty because len >= max_requests");
             let retry_after = oldest.duration_since(cutoff);
             return Err(RateLimitError {
+                #[allow(clippy::cast_possible_truncation)]
                 retry_after_ms: retry_after.as_millis() as u64,
             });
         }
@@ -74,20 +84,29 @@ impl RateLimiter {
     }
 
     /// Get the current request count for a user/platform.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the internal mutex is poisoned.
     #[must_use]
+    #[allow(clippy::expect_used)]
     pub fn current_count(&self, platform: Platform, user_id: &str) -> usize {
         let key = (user_id.to_string(), platform.as_str().to_string());
         let now = Instant::now();
-        let cutoff = now - self.window;
+        let cutoff = now.checked_sub(self.window).unwrap();
 
         let state = self.state.lock().unwrap();
         state
             .get(&key)
-            .map(|ts| ts.iter().filter(|&&t| t > cutoff).count())
-            .unwrap_or(0)
+            .map_or(0, |ts| ts.iter().filter(|&&t| t > cutoff).count())
     }
 
     /// Reset rate limit state for a user/platform.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the internal mutex is poisoned.
+    #[allow(clippy::expect_used)]
     pub fn reset(&self, platform: Platform, user_id: &str) {
         let key = (user_id.to_string(), platform.as_str().to_string());
         let mut state = self.state.lock().unwrap();
@@ -95,6 +114,11 @@ impl RateLimiter {
     }
 
     /// Clear all rate limit state.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the internal mutex is poisoned.
+    #[allow(clippy::expect_used)]
     pub fn clear_all(&self) {
         let mut state = self.state.lock().unwrap();
         state.clear();

@@ -18,7 +18,7 @@ pub struct ResponseFormatter {
 impl ResponseFormatter {
     /// Create a new formatter with default settings.
     #[must_use]
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             preserve_code_blocks: true,
         }
@@ -29,6 +29,7 @@ impl ResponseFormatter {
     ///
     /// Respects code block boundaries — chunks never split a code
     /// block in half (when `preserve_code_blocks` is true).
+    #[must_use]
     pub fn chunk_response(&self, platform: Platform, text: &str) -> Vec<String> {
         let max_len = platform.max_message_length() - CHUNK_SIZE_RESERVE;
 
@@ -44,6 +45,7 @@ impl ResponseFormatter {
     }
 
     /// Create outgoing messages from a response, properly chunked.
+    #[must_use]
     pub fn format_response(
         &self,
         platform: Platform,
@@ -69,6 +71,7 @@ impl ResponseFormatter {
     }
 
     /// Create streamed chunk messages.
+    #[must_use]
     pub fn format_stream_chunk(
         platform: Platform,
         chat_id: &str,
@@ -84,6 +87,7 @@ impl ResponseFormatter {
     }
 
     /// Chunk text while preserving code block boundaries.
+    #[allow(clippy::unused_self)]
     fn chunk_preserving_code_blocks(&self, text: &str, max_len: usize) -> Vec<String> {
         let mut chunks = Vec::new();
         let mut current = String::new();
@@ -149,6 +153,7 @@ impl ResponseFormatter {
     }
 
     /// Simple character-based chunking (fallback).
+    #[allow(clippy::unused_self)]
     fn chunk_by_chars(&self, text: &str, max_len: usize) -> Vec<String> {
         if text.is_empty() {
             return Vec::new();
@@ -163,11 +168,7 @@ impl ResponseFormatter {
             } else {
                 // Try to break at a newline within the limit
                 let candidate = &text[start..start + max_len];
-                if let Some(newline_pos) = candidate.rfind('\n') {
-                    start + newline_pos
-                } else {
-                    start + max_len
-                }
+                candidate.rfind('\n').map_or_else(|| start + max_len, |newline_pos| start + newline_pos)
             };
 
             chunks.push(text[start..end].to_string());

@@ -12,7 +12,9 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use tokio::sync::RwLock;
 
-use crate::adapter::{AdapterHealth, IncomingMessage, OutgoingMessage, Platform, PlatformAdapter, PlatformConfig};
+use crate::adapter::{AdapterHealth, IncomingMessage, Platform, PlatformAdapter, PlatformConfig};
+#[cfg(test)]
+use crate::adapter::OutgoingMessage;
 use crate::error::GatewayError;
 use crate::formatter::ResponseFormatter;
 use crate::rate_limit::RateLimiter;
@@ -114,6 +116,12 @@ impl MessageGateway {
     ///
     /// This is the main entry point called by adapters when they
     /// receive a new message.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err(GatewayError)` if the platform is not configured,
+    /// user is not authorized, rate limit is exceeded, or handler fails.
+    #[allow(clippy::significant_drop_tightening)]
     pub async fn handle_incoming(&self, message: IncomingMessage) -> Result<(), GatewayError> {
         let platform = message.platform;
 
@@ -145,14 +153,16 @@ impl MessageGateway {
         })?;
 
         // 4. Route to handler
-        let handler = self.message_handler.read().await;
-        let Some(handler) = handler.as_ref() else {
-            return Err(GatewayError::Agent(
-                "no message handler registered".to_string(),
-            ));
-        };
+        let response = {
+            let handler = self.message_handler.read().await;
+            let Some(handler) = handler.as_ref() else {
+                return Err(GatewayError::Agent(
+                    "no message handler registered".to_string(),
+                ));
+            };
 
-        let response = handler.handle_message(message.clone()).await?;
+            handler.handle_message(message.clone()).await?
+        };
 
         // 5. Format and send response
         // Reply to the incoming message (or its parent if it was a reply)
@@ -174,6 +184,10 @@ impl MessageGateway {
     }
 
     /// Send a message directly to a platform (for proactive notifications).
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err(GatewayError)` if the platform is not configured or sending fails.
     pub async fn send_to_platform(
         &self,
         platform: Platform,
@@ -194,9 +208,10 @@ impl MessageGateway {
     }
 
     /// Get health status for all registered adapters.
+    #[allow(clippy::significant_drop_tightening)]
     pub async fn health_status(&self) -> HashMap<Platform, AdapterHealth> {
         let adapters = self.adapters.read().await;
-        let mut status = HashMap::new();
+        let mut status = HashMap::with_capacity(adapters.len());
         for (&platform, adapter) in adapters.iter() {
             status.insert(platform, adapter.health());
         }
@@ -204,45 +219,45 @@ impl MessageGateway {
     }
 
     /// Start all registered adapters.
+    #[allow(clippy::significant_drop_tightening)]
     pub async fn start_all(&self) -> Vec<(Platform, Result<(), GatewayError>)> {
         let adapters = self.adapters.read().await;
-        let mut results = Vec::new();
+        let mut results = Vec::with_capacity(adapters.len());
 
         for (&platform, adapter) in adapters.iter() {
             let config = self.configs.get(&platform);
-            if config.map_or(true, |c| !c.enabled) {
+            if config.is_none_or(|c| !c.enabled) {
                 continue;
             }
 
             let result = adapter.start().await;
             results.push((platform, result));
         }
-
         results
     }
 
     /// Stop all registered adapters.
+    #[allow(clippy::significant_drop_tightening)]
     pub async fn stop_all(&self) -> Vec<(Platform, Result<(), GatewayError>)> {
         let adapters = self.adapters.read().await;
-        let mut results = Vec::new();
+        let mut results = Vec::with_capacity(adapters.len());
 
         for (&platform, adapter) in adapters.iter() {
             let result = adapter.stop().await;
             results.push((platform, result));
         }
-
         results
     }
 
     /// Get the rate limiter (for inspection/testing).
     #[must_use]
-    pub fn rate_limiter(&self) -> &Arc<RateLimiter> {
+    pub const fn rate_limiter(&self) -> &Arc<RateLimiter> {
         &self.rate_limiter
     }
 
     /// Get the formatter (for customization).
     #[must_use]
-    pub fn formatter(&self) -> &ResponseFormatter {
+    pub const fn formatter(&self) -> &ResponseFormatter {
         &self.formatter
     }
 }

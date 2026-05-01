@@ -25,7 +25,7 @@
 //!   (requires WebSocket connection, optional enhancement)
 
 use crate::adapter::{
-    AdapterHealth, IncomingMessage, OutgoingMessage, Platform, PlatformAdapter,
+    AdapterHealth, OutgoingMessage, Platform, PlatformAdapter,
     PlatformConfig,
 };
 use crate::error::GatewayError;
@@ -70,7 +70,11 @@ impl RocketChatAdapter {
         }
     }
 
-    /// Create from a PlatformConfig.
+    /// Create from a `PlatformConfig`.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err(GatewayError)` if required config fields are missing.
     pub fn from_config(config: &PlatformConfig) -> Result<Self, GatewayError> {
         let server_url = config
             .settings

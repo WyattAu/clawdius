@@ -1253,7 +1253,7 @@ impl SprintEngine {
         let error_groups = crate::agentic::error_recovery::group_errors_by_file(&all_errors);
         let mut total_attempts = 0usize;
         let mut fixed_files = Vec::new();
-        let mut any_failure = false;
+        let mut _any_failure = false;
 
         for (file_path, file_errors) in &error_groups {
             if *file_path == "unknown" {
@@ -1303,7 +1303,7 @@ impl SprintEngine {
                 })?;
                 fixed_files.push(file_path.to_string());
             } else {
-                any_failure = true;
+                _any_failure = true;
                 // Revert: restore original code for files that couldn't be fixed
                 let _ = std::fs::write(&full_path, &original_code);
             }

@@ -37,6 +37,7 @@ use crate::adapter::{
 use crate::error::GatewayError;
 
 /// Configuration for mock adapter behavior.
+#[allow(clippy::struct_excessive_bools)]
 #[derive(Debug, Clone)]
 pub struct MockConfig {
     /// Whether to simulate network latency (in milliseconds).
@@ -76,6 +77,7 @@ impl Default for MockConfig {
 }
 
 /// A recorded operation for test inspection.
+#[allow(missing_docs)]
 #[derive(Debug, Clone)]
 pub enum RecordedOp {
     /// A message was sent.

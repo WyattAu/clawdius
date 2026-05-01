@@ -37,6 +37,7 @@ pub struct WhatsAppAdapter {
     /// WhatsApp Business access token.
     access_token: String,
     /// Phone number ID for sending messages.
+    #[allow(dead_code)]
     phone_number_id: String,
     /// Verify token for webhook verification.
     verify_token: Option<String>,
@@ -69,7 +70,11 @@ impl WhatsAppAdapter {
         }
     }
 
-    /// Create from a PlatformConfig.
+    /// Create from a `PlatformConfig`.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err(GatewayError)` if required config fields are missing.
     pub fn from_config(config: &PlatformConfig) -> Result<Self, GatewayError> {
         let access_token = config
             .api_token
@@ -128,7 +133,7 @@ impl WhatsAppAdapter {
         Ok(challenge.to_string())
     }
 
-    /// Parse an incoming WhatsApp webhook payload into IncomingMessages.
+    /// Parse an incoming WhatsApp webhook payload into `IncomingMessages`.
     pub fn parse_webhook_payload(
         &self,
         body: &serde_json::Value,
@@ -136,21 +141,18 @@ impl WhatsAppAdapter {
         let mut messages = Vec::new();
 
         // Navigate the WhatsApp webhook structure
-        let entries = match body.get("entry").and_then(|e| e.as_array()) {
-            Some(e) => e,
-            None => return messages,
+        let Some(entries) = body.get("entry").and_then(|e| e.as_array()) else {
+            return messages;
         };
 
         for entry in entries {
-            let changes = match entry.get("changes").and_then(|c| c.as_array()) {
-                Some(c) => c,
-                None => continue,
+            let Some(changes) = entry.get("changes").and_then(|c| c.as_array()) else {
+                continue;
             };
 
             for change in changes {
-                let value = match change.get("value") {
-                    Some(v) => v,
-                    None => continue,
+                let Some(value) = change.get("value") else {
+                    continue;
                 };
 
                 let contacts = value
@@ -181,21 +183,23 @@ impl WhatsAppAdapter {
                     // Extract sender info from contacts
                     let (user_id, user_name) = contacts
                         .first()
-                        .map(|c| {
-                            let wa_id = c
-                                .get("wa_id")
-                                .and_then(|i| i.as_str())
-                                .unwrap_or("unknown")
-                                .to_string();
-                            let name = c
-                                .get("profile")
-                                .and_then(|p| p.get("name"))
-                                .and_then(|n| n.as_str())
-                                .unwrap_or("Unknown")
-                                .to_string();
-                            (wa_id, name)
-                        })
-                        .unwrap_or_else(|| ("unknown".to_string(), "Unknown".to_string()));
+                        .map_or_else(
+                            || ("unknown".to_string(), "Unknown".to_string()),
+                            |c| {
+                                let wa_id = c
+                                    .get("wa_id")
+                                    .and_then(|i| i.as_str())
+                                    .unwrap_or("unknown")
+                                    .to_string();
+                                let name = c
+                                    .get("profile")
+                                    .and_then(|p| p.get("name"))
+                                    .and_then(|n| n.as_str())
+                                    .unwrap_or("Unknown")
+                                    .to_string();
+                                (wa_id, name)
+                            },
+                        );
 
                     let message_id = msg
                         .get("id")

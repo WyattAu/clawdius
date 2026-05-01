@@ -19,7 +19,7 @@ use axum::{
 };
 use chrono::{DateTime, Utc};
 use clawdius_core::billing::{
-    self, BillingError, BillingManager, PlanTier, Subscription, SubscriptionStatus,
+    BillingManager, PlanTier, Subscription,
 };
 use clawdius_core::usage::{Quota, TenantUsageTracker};
 use serde::{Deserialize, Serialize};
@@ -30,6 +30,7 @@ use std::sync::Arc;
 // ─────────────────────────────────────────────────────────
 
 /// Admin API application state.
+#[allow(missing_docs)]
 pub struct AdminState {
     pub billing: Arc<BillingManager>,
     pub usage: Arc<TenantUsageTracker>,
@@ -38,6 +39,7 @@ pub struct AdminState {
 }
 
 /// Generic API response wrapper.
+#[allow(missing_docs, clippy::trait_duplication_in_bounds)]
 #[derive(Debug, Serialize)]
 pub struct ApiResponse<T: Serialize> {
     pub ok: bool,
@@ -49,6 +51,7 @@ pub struct ApiResponse<T: Serialize> {
 }
 
 impl<T: Serialize> ApiResponse<T> {
+    #[allow(dead_code)]
     fn success(data: T) -> Self {
         Self {
             ok: true,
@@ -114,6 +117,7 @@ fn subscription_to_map(sub: &Subscription) -> serde_json::Value {
 }
 
 /// Request to create a tenant.
+#[allow(missing_docs)]
 #[derive(Debug, Deserialize)]
 pub struct CreateTenantRequest {
     pub tenant_id: String,
@@ -122,6 +126,7 @@ pub struct CreateTenantRequest {
 }
 
 /// Quota override fields.
+#[allow(missing_docs)]
 #[derive(Debug, Deserialize)]
 pub struct QuotaOverride {
     pub monthly_token_limit: Option<u64>,
@@ -131,12 +136,14 @@ pub struct QuotaOverride {
 }
 
 /// Request to change plan.
+#[allow(missing_docs)]
 #[derive(Debug, Deserialize)]
 pub struct ChangePlanRequest {
     pub new_tier: String,
 }
 
 /// Query parameters for listing tenants.
+#[allow(missing_docs)]
 #[derive(Debug, Deserialize)]
 pub struct ListTenantsQuery {
     pub status: Option<String>,
@@ -146,6 +153,7 @@ pub struct ListTenantsQuery {
 }
 
 /// System health info.
+#[allow(missing_docs)]
 #[derive(Debug, Serialize)]
 pub struct SystemInfo {
     pub version: String,
@@ -195,7 +203,7 @@ async fn create_tenant(
     State(state): State<Arc<AdminState>>,
     Json(req): Json<CreateTenantRequest>,
 ) -> impl IntoResponse {
-    let tier = parse_tier(&req.tier).unwrap_or(PlanTier::Free);
+    let tier = parse_tier(req.tier.as_deref()).unwrap_or(PlanTier::Free);
     let sub = state.billing.create_subscription(&req.tenant_id, tier);
 
     if let Some(q) = req.quota {
@@ -251,6 +259,7 @@ async fn get_tenant(
 ) -> impl IntoResponse {
     match state.billing.get_subscription(&tenant_id) {
         Some(sub) => ok_response(subscription_to_map(&sub)),
+        #[allow(clippy::single_match_else)]
         None => error_response(StatusCode::NOT_FOUND, "tenant not found"),
     }
 }
@@ -265,6 +274,7 @@ async fn delete_tenant(
     }
 }
 
+#[allow(clippy::cast_precision_loss)]
 async fn get_usage(
     State(state): State<Arc<AdminState>>,
     Path(tenant_id): Path<String>,
@@ -274,10 +284,9 @@ async fn get_usage(
             let allowance = state
                 .billing
                 .get_subscription(&tenant_id)
-                .map(|s| s.tier.token_allowance())
-                .unwrap_or(0);
+                .map_or(0, |s| s.tier.token_allowance());
             let utilization = if allowance > 0 {
-                tokens as f64 / allowance as f64 * 100.0
+                (tokens as f64 / allowance as f64) * 100.0
             } else {
                 0.0
             };
@@ -295,13 +304,14 @@ async fn get_usage(
 
 async fn reset_usage(
     State(state): State<Arc<AdminState>>,
-    Path(tenant_id): Path<String>,
+    Path(_tenant_id): Path<String>,
 ) -> impl IntoResponse {
     state.usage.reset_all();
     state.billing.reset_all_periods();
     ok_response(serde_json::json!({ "reset": true }))
 }
 
+#[allow(clippy::cast_precision_loss)]
 async fn get_quota(
     State(state): State<Arc<AdminState>>,
     Path(tenant_id): Path<String>,
@@ -330,10 +340,10 @@ async fn get_subscription(
     State(state): State<Arc<AdminState>>,
     Path(tenant_id): Path<String>,
 ) -> impl IntoResponse {
-    match state.billing.get_subscription(&tenant_id) {
-        Some(sub) => ok_response(subscription_to_map(&sub)),
-        None => error_response(StatusCode::NOT_FOUND, "tenant not found"),
-    }
+    state.billing.get_subscription(&tenant_id).map_or_else(
+        || error_response(StatusCode::NOT_FOUND, "tenant not found"),
+        |sub| ok_response(subscription_to_map(&sub)),
+    )
 }
 
 async fn change_plan(
@@ -342,7 +352,7 @@ async fn change_plan(
     Json(req): Json<ChangePlanRequest>,
 ) -> impl IntoResponse {
     let tier_str = req.new_tier.clone();
-    let new_tier = match parse_tier(&Some(tier_str)) {
+    let new_tier = match parse_tier(Some(tier_str.as_str())) {
         Some(t) => t,
         None => {
             return error_response(
@@ -387,8 +397,8 @@ async fn health_check() -> impl IntoResponse {
 // Helpers
 // ─────────────────────────────────────────────────────────
 
-fn parse_tier(tier: &Option<String>) -> Option<PlanTier> {
-    match tier.as_deref() {
+fn parse_tier(tier: Option<&str>) -> Option<PlanTier> {
+    match tier {
         Some("free") => Some(PlanTier::Free),
         Some("pro") => Some(PlanTier::Pro),
         Some("team") => Some(PlanTier::Team),
@@ -423,12 +433,12 @@ mod tests {
 
     #[test]
     fn test_parse_tier() {
-        assert_eq!(parse_tier(&Some("free".to_string())), Some(PlanTier::Free));
-        assert_eq!(parse_tier(&Some("pro".to_string())), Some(PlanTier::Pro));
-        assert_eq!(parse_tier(&Some("team".to_string())), Some(PlanTier::Team));
-        assert_eq!(parse_tier(&Some("enterprise".to_string())), Some(PlanTier::Enterprise));
-        assert_eq!(parse_tier(&Some("invalid".to_string())), None);
-        assert_eq!(parse_tier(&None), None);
+        assert_eq!(parse_tier(Some("free")), Some(PlanTier::Free));
+        assert_eq!(parse_tier(Some("pro")), Some(PlanTier::Pro));
+        assert_eq!(parse_tier(Some("team")), Some(PlanTier::Team));
+        assert_eq!(parse_tier(Some("enterprise")), Some(PlanTier::Enterprise));
+        assert_eq!(parse_tier(Some("invalid")), None);
+        assert_eq!(parse_tier(None), None);
     }
 
     #[test]

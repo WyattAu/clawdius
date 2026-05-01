@@ -1,3 +1,6 @@
+#![allow(clippy::expect_used)]
+#![allow(clippy::unwrap_used)]
+
 //! Clawdius Gateway binary.
 //!
 //! Starts the messaging gateway server that connects chat platforms
@@ -102,11 +105,11 @@ struct Cli {
     #[arg(long, env = "TEAMS_SERVICE_URL")]
     teams_service_url: Option<String>,
 
-    /// WhatsApp access token
+    /// `WhatsApp` access token
     #[arg(long, env = "WHATSAPP_ACCESS_TOKEN")]
     whatsapp_token: Option<String>,
 
-    /// WhatsApp phone number ID
+    /// `WhatsApp` phone number ID
     #[arg(long, env = "WHATSAPP_PHONE_NUMBER_ID")]
     whatsapp_phone_id: Option<String>,
 
@@ -216,11 +219,12 @@ async fn shutdown_signal() {
     let terminate = std::future::pending::<()>();
 
     tokio::select! {
-        _ = ctrl_c => {},
-        _ = terminate => {},
+        () = ctrl_c => {},
+        () = terminate => {},
     }
 }
 
+#[allow(clippy::too_many_lines)]
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
@@ -319,77 +323,72 @@ async fn main() -> anyhow::Result<()> {
                 tracing::warn!("Skipping matrix: feature not enabled (compile with --features matrix)");
             }
             Platform::Signal => {
-                match cli.signal_account.as_ref() {
-                    Some(account) => {
-                        let url = cli.signal_url.as_deref().unwrap_or("http://localhost:7583");
-                        let config = PlatformConfig::with_token(platform, account);
-                        gateway.register_adapter(SignalAdapter::new(url, account), config).await;
-                        tracing::info!("Registered adapter for platform: {platform}");
-                    }
-                    None => tracing::warn!("Skipping signal: SIGNAL_ACCOUNT_NUMBER not set"),
+                if let Some(account) = cli.signal_account.as_ref() {
+                    let url = cli.signal_url.as_deref().unwrap_or("http://localhost:7583");
+                    let config = PlatformConfig::with_token(platform, account);
+                    gateway.register_adapter(SignalAdapter::new(url, account), config).await;
+                    tracing::info!("Registered adapter for platform: {platform}");
+                } else {
+                    tracing::warn!("Skipping signal: SIGNAL_ACCOUNT_NUMBER not set");
                 }
             }
             Platform::Teams => {
-                match (
+                if let (Some(service_url), Some(app_id), Some(app_password)) = (
                     cli.teams_service_url.as_ref(),
                     cli.teams_app_id.as_ref(),
                     cli.teams_app_password.as_ref(),
                 ) {
-                    (Some(service_url), Some(app_id), Some(app_password)) => {
-                        let config = PlatformConfig::with_token(platform, app_id);
-                        gateway
-                            .register_adapter(TeamsAdapter::new(service_url, app_id, app_password), config)
-                            .await;
-                        tracing::info!("Registered adapter for platform: {platform}");
-                    }
-                    _ => tracing::warn!("Skipping teams: TEAMS_SERVICE_URL, TEAMS_APP_ID, and TEAMS_APP_PASSWORD must all be set"),
+                    let config = PlatformConfig::with_token(platform, app_id);
+                    gateway
+                        .register_adapter(TeamsAdapter::new(service_url, app_id, app_password), config)
+                        .await;
+                    tracing::info!("Registered adapter for platform: {platform}");
+                } else {
+                    tracing::warn!("Skipping teams: TEAMS_SERVICE_URL, TEAMS_APP_ID, and TEAMS_APP_PASSWORD must all be set");
                 }
             }
             Platform::WhatsApp => {
-                match (cli.whatsapp_token.as_ref(), cli.whatsapp_phone_id.as_ref()) {
-                    (Some(token), Some(phone_id)) => {
-                        let config = PlatformConfig::with_token(platform, token);
-                        gateway
-                            .register_adapter(WhatsAppAdapter::new(token, phone_id), config)
-                            .await;
-                        tracing::info!("Registered adapter for platform: {platform}");
-                    }
-                    _ => tracing::warn!("Skipping whatsapp: WHATSAPP_ACCESS_TOKEN and WHATSAPP_PHONE_NUMBER_ID must both be set"),
+                if let (Some(token), Some(phone_id)) = (cli.whatsapp_token.as_ref(), cli.whatsapp_phone_id.as_ref()) {
+                    let config = PlatformConfig::with_token(platform, token);
+                    gateway
+                        .register_adapter(WhatsAppAdapter::new(token, phone_id), config)
+                        .await;
+                    tracing::info!("Registered adapter for platform: {platform}");
+                } else {
+                    tracing::warn!("Skipping whatsapp: WHATSAPP_ACCESS_TOKEN and WHATSAPP_PHONE_NUMBER_ID must both be set");
                 }
             }
             Platform::RocketChat => {
-                match (
+                if let (Some(server_url), Some(auth_token), Some(rc_user_id)) = (
                     cli.rocketchat_url.as_ref(),
                     cli.rocketchat_token.as_ref(),
                     cli.rocketchat_user_id.as_ref(),
                 ) {
-                    (Some(server_url), Some(auth_token), Some(rc_user_id)) => {
-                        let config = PlatformConfig::with_token(platform, auth_token);
-                        gateway
-                            .register_adapter(
-                                RocketChatAdapter::new(server_url, auth_token, rc_user_id),
-                                config,
-                            )
-                            .await;
-                        tracing::info!("Registered adapter for platform: {platform}");
-                    }
-                    _ => tracing::warn!("Skipping rocketchat: ROCKETCHAT_URL, ROCKETCHAT_TOKEN, and ROCKETCHAT_USER_ID must all be set"),
+                    let config = PlatformConfig::with_token(platform, auth_token);
+                    gateway
+                        .register_adapter(
+                            RocketChatAdapter::new(server_url, auth_token, rc_user_id),
+                            config,
+                        )
+                        .await;
+                    tracing::info!("Registered adapter for platform: {platform}");
+                } else {
+                    tracing::warn!("Skipping rocketchat: ROCKETCHAT_URL, ROCKETCHAT_TOKEN, and ROCKETCHAT_USER_ID must all be set");
                 }
             }
             Platform::Webhook => {
-                match cli.webhook_url.as_ref() {
-                    Some(outgoing_url) => {
-                        let webhook_config = WebhookConfig {
-                            outgoing_url: outgoing_url.clone(),
-                            secret: cli.webhook_secret.clone(),
-                            outgoing_headers: HashMap::new(),
-                            listen_port: cli.port,
-                        };
-                        let config = PlatformConfig::with_token(platform, outgoing_url);
-                        gateway.register_adapter(WebhookAdapter::new(webhook_config), config).await;
-                        tracing::info!("Registered adapter for platform: {platform}");
-                    }
-                    None => tracing::warn!("Skipping webhook: WEBHOOK_URL not set"),
+                if let Some(outgoing_url) = cli.webhook_url.as_ref() {
+                    let webhook_config = WebhookConfig {
+                        outgoing_url: outgoing_url.clone(),
+                        secret: cli.webhook_secret.clone(),
+                        outgoing_headers: HashMap::new(),
+                        listen_port: cli.port,
+                    };
+                    let config = PlatformConfig::with_token(platform, outgoing_url);
+                    gateway.register_adapter(WebhookAdapter::new(webhook_config), config).await;
+                    tracing::info!("Registered adapter for platform: {platform}");
+                } else {
+                    tracing::warn!("Skipping webhook: WEBHOOK_URL not set");
                 }
             }
             _ => {

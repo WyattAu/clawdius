@@ -25,7 +25,7 @@
 //! - Requires Azure infrastructure for production use
 
 use crate::adapter::{
-    AdapterHealth, IncomingMessage, OutgoingMessage, Platform, PlatformAdapter,
+    AdapterHealth, OutgoingMessage, Platform, PlatformAdapter,
     PlatformConfig,
 };
 use crate::error::GatewayError;

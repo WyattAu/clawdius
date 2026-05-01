@@ -23,7 +23,7 @@
 //! - Rate limited by signal-cli's internal throttling
 
 use crate::adapter::{
-    AdapterHealth, IncomingMessage, OutgoingMessage, Platform, PlatformAdapter,
+    AdapterHealth, OutgoingMessage, Platform, PlatformAdapter,
     PlatformConfig,
 };
 use crate::error::GatewayError;
@@ -33,6 +33,7 @@ pub struct SignalAdapter {
     /// Base URL of the signal-cli REST API.
     rest_url: String,
     /// The phone number registered with signal-cli.
+    #[allow(dead_code)]
     account_number: String,
     /// Counter of messages successfully processed.
     messages_processed: std::sync::atomic::AtomicU64,

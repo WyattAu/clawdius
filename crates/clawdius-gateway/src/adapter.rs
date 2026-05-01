@@ -159,6 +159,7 @@ pub struct Attachment {
 /// Supported chat platforms.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash)]
 #[non_exhaustive]
+#[allow(missing_docs)]
 pub enum Platform {
     Telegram,
     Discord,
@@ -189,6 +190,7 @@ impl Platform {
     }
 
     /// Parse a platform identifier string.
+    #[allow(clippy::should_implement_trait)]
     pub fn from_str(s: &str) -> Option<Self> {
         match s.to_lowercase().as_str() {
             "telegram" => Some(Self::Telegram),

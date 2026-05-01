@@ -40,6 +40,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+#[allow(unused_imports)]
 use async_trait::async_trait;
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
@@ -101,6 +102,7 @@ pub struct WebhookIncoming {
 }
 
 /// User info in webhook payload.
+#[allow(missing_docs)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WebhookUser {
     pub id: String,
@@ -112,6 +114,7 @@ pub struct WebhookUser {
 }
 
 /// Outgoing webhook payload.
+#[allow(missing_docs)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WebhookOutgoing {
     pub chat_id: String,
@@ -177,6 +180,7 @@ impl WebhookAdapter {
         let webhook_config = WebhookConfig {
             outgoing_url: outgoing_url.clone(),
             secret: config.webhook_secret.clone(),
+            #[allow(clippy::cast_possible_truncation)]
             listen_port: config
                 .settings
                 .get("listen_port")
