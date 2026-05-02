@@ -85,14 +85,15 @@ impl TenantLlmRegistry {
     }
 
     pub fn resolve_provider(&self, tenant_id: Option<&str>) -> Result<Arc<LlmProvider>> {
-        if tenant_id.is_none() {
-            let default = self.default_provider.read().unwrap_or_else(|e| { tracing::error!("RwLock poisoned in tenant_llm: {}", e); e.into_inner() });
-            return default
-                .clone()
-                .ok_or_else(|| Error::Config("No default LLM provider configured".to_string()));
-        }
-
-        let tid = tenant_id.unwrap();
+        let tid = match tenant_id {
+            Some(id) => id,
+            None => {
+                let default = self.default_provider.read().unwrap_or_else(|e| { tracing::error!("RwLock poisoned in tenant_llm: {}", e); e.into_inner() });
+                return default
+                    .clone()
+                    .ok_or_else(|| Error::Config("No default LLM provider configured".to_string()));
+            }
+        };
 
         {
             let providers = self.providers.read().unwrap_or_else(|e| { tracing::error!("RwLock poisoned in tenant_llm: {}", e); e.into_inner() });

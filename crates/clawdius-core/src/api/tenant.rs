@@ -189,7 +189,7 @@ impl TenantStore {
         if let Some(workspace_root) = workspace_root {
             tenant.workspace_root = Some(workspace_root.to_string());
         }
-        Some(self.tenants.get(id).unwrap())
+        Some(self.tenants.get(id).expect("tenant exists — verified by get_mut above"))
     }
 
     pub fn add_api_key(&mut self, tenant_id: &str, label: &str) -> Option<ApiKeyEntry> {

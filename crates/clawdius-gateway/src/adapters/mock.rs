@@ -169,18 +169,18 @@ impl MockPlatformAdapter {
 
     /// Update the mock configuration.
     pub fn set_config(&self, config: MockConfig) {
-        *self.config.write().unwrap() = config;
+        *self.config.write().expect("lock poisoned") = config;
     }
 
     /// Get a copy of the current mock configuration.
     #[must_use]
     pub fn get_config(&self) -> MockConfig {
-        self.config.read().unwrap().clone()
+        self.config.read().expect("lock poisoned").clone()
     }
 
     /// Simulate latency if configured.
     async fn simulate_latency(&self) {
-        let latency = self.config.read().unwrap().simulated_latency_ms;
+        let latency = self.config.read().expect("lock poisoned").simulated_latency_ms;
         if latency > 0 {
             tokio::time::sleep(std::time::Duration::from_millis(latency)).await;
         }
@@ -349,7 +349,7 @@ impl PlatformAdapter for MockPlatformAdapter {
         self.simulate_latency().await;
 
         let (send_fails, error_message, max_messages) = {
-            let config = self.config.read().unwrap();
+            let config = self.config.read().expect("lock poisoned");
             (config.send_fails, config.error_message.clone(), config.max_messages)
         };
 
@@ -388,7 +388,7 @@ impl PlatformAdapter for MockPlatformAdapter {
         self.simulate_latency().await;
 
         let (edit_fails, error_message) = {
-            let config = self.config.read().unwrap();
+            let config = self.config.read().expect("lock poisoned");
             (config.edit_fails, config.error_message.clone())
         };
 
@@ -415,7 +415,7 @@ impl PlatformAdapter for MockPlatformAdapter {
         self.simulate_latency().await;
 
         let (download_fails, error_message) = {
-            let config = self.config.read().unwrap();
+            let config = self.config.read().expect("lock poisoned");
             (config.download_fails, config.error_message.clone())
         };
 
@@ -444,7 +444,7 @@ impl PlatformAdapter for MockPlatformAdapter {
     }
 
     fn health(&self) -> AdapterHealth {
-        let config = self.config.read().unwrap();
+        let config = self.config.read().expect("lock poisoned");
         AdapterHealth {
             healthy: !config.force_unhealthy,
             message: if config.force_unhealthy {

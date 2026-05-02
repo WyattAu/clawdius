@@ -277,7 +277,7 @@ impl TenantUsageTracker {
         }
 
         let meters = self.meters.read();
-        let meter = meters.get(tenant_id).unwrap();
+        let meter = meters.get(tenant_id).expect("meter just inserted above");
 
         // Check token quota
         let quotas = self.quotas.read();

@@ -95,13 +95,10 @@ impl<R: WorkspaceRepository> WorkspaceManager<R> {
     /// If multiple workspaces exist, returns the first one.
     pub async fn get_or_create_default_workspace(&self) -> Result<Workspace> {
         let workspaces = self.repo.list_workspaces().await?;
-        match workspaces.len() {
-            0 => self.create_workspace("default").await,
-            1 => Ok(workspaces.into_iter().next().unwrap()),
-            _ => {
-                // Return the first one; caller should use explicit selection
-                Ok(workspaces.into_iter().next().unwrap())
-            }
+        if workspaces.is_empty() {
+            self.create_workspace("default").await
+        } else {
+            Ok(workspaces.into_iter().next().expect("workspaces is non-empty"))
         }
     }
 

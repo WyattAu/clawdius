@@ -59,9 +59,9 @@ impl RateLimiter {
     pub fn check(&self, platform: Platform, user_id: &str) -> Result<(), RateLimitError> {
         let key = (user_id.to_string(), platform.as_str().to_string());
         let now = Instant::now();
-        let cutoff = now.checked_sub(self.window).unwrap();
+        let cutoff = now.checked_sub(self.window).expect("time window overflow");
 
-        let mut state = self.state.lock().unwrap();
+        let mut state = self.state.lock().expect("lock poisoned");
         let timestamps = state.entry(key).or_default();
 
         // Remove expired entries
@@ -93,9 +93,9 @@ impl RateLimiter {
     pub fn current_count(&self, platform: Platform, user_id: &str) -> usize {
         let key = (user_id.to_string(), platform.as_str().to_string());
         let now = Instant::now();
-        let cutoff = now.checked_sub(self.window).unwrap();
+        let cutoff = now.checked_sub(self.window).expect("time window overflow");
 
-        let state = self.state.lock().unwrap();
+        let state = self.state.lock().expect("lock poisoned");
         state
             .get(&key)
             .map_or(0, |ts| ts.iter().filter(|&&t| t > cutoff).count())
@@ -109,7 +109,7 @@ impl RateLimiter {
     #[allow(clippy::expect_used)]
     pub fn reset(&self, platform: Platform, user_id: &str) {
         let key = (user_id.to_string(), platform.as_str().to_string());
-        let mut state = self.state.lock().unwrap();
+        let mut state = self.state.lock().expect("lock poisoned");
         state.remove(&key);
     }
 
@@ -120,7 +120,7 @@ impl RateLimiter {
     /// Panics if the internal mutex is poisoned.
     #[allow(clippy::expect_used)]
     pub fn clear_all(&self) {
-        let mut state = self.state.lock().unwrap();
+        let mut state = self.state.lock().expect("lock poisoned");
         state.clear();
     }
 }

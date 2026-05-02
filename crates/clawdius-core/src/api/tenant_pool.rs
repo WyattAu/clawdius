@@ -51,8 +51,8 @@ impl Drop for ConnectionPermit {
                 .unwrap_or(0);
             if count <= 1 {
                 inner.tenant_connections.remove(&self.tenant_id);
-            } else {
-                *inner.tenant_connections.get_mut(&self.tenant_id).unwrap() = count - 1;
+            } else if let Some(count_ref) = inner.tenant_connections.get_mut(&self.tenant_id) {
+                *count_ref = count - 1;
                 inner
                     .tenant_activity
                     .insert(self.tenant_id.clone(), Instant::now());

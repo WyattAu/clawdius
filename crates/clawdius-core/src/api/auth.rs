@@ -170,7 +170,7 @@ pub async fn tenant_aware_auth_middleware(
 
     // Check tenant store keys (fallback) — lock is scoped to this block
     let tenant_valid = {
-        let store = auth_state.tenant_store.read().unwrap();
+        let store = auth_state.tenant_store.read().expect("tenant_store lock poisoned");
         store.get_tenant_by_api_key(&token).is_some()
     }; // RwLockReadGuard dropped here
 

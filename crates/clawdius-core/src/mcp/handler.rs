@@ -591,9 +591,10 @@ fn tool_codebase_search(args: &serde_json::Value) -> McpToolResult {
             sig,
         ));
         if !doc.is_empty() {
-            let last = results.last_mut().unwrap();
-            let doc_preview: String = doc.lines().take(3).collect::<Vec<_>>().join("\n       ");
-            last.push_str(&format!("\n  doc: {}", doc_preview));
+            if let Some(last) = results.last_mut() {
+                let doc_preview: String = doc.lines().take(3).collect::<Vec<_>>().join("\n       ");
+                last.push_str(&format!("\n  doc: {}", doc_preview));
+            }
         }
     }
 

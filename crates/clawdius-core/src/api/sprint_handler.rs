@@ -201,7 +201,7 @@ pub async fn run_sprint(
 
             // Record tenant usage if authenticated
             if let Some(Extension(key)) = api_key {
-                let store = state.tenant_store.read().unwrap();
+                let store = state.tenant_store.read().expect("tenant_store lock poisoned");
                 if let Some(tenant_id) = store.get_tenant_id_by_api_key(&key.0) {
                     drop(store);
                     let total_tokens = result.metrics.total_tokens as usize;
@@ -564,7 +564,7 @@ pub async fn stream_sprint(
 
         // Record tenant usage if authenticated
         if let Some(Extension(key)) = key_clone {
-            let store = state_clone.tenant_store.read().unwrap();
+            let store = state_clone.tenant_store.read().expect("tenant_store lock poisoned");
             if let Some(tenant_id) = store.get_tenant_id_by_api_key(&key.0) {
                 drop(store);
                 let _ = crate::api::auth_handler::record_tenant_task(
