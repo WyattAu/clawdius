@@ -26,7 +26,7 @@ clap.workspace = true
 tokio = { workspace = true, features = ["rt-multi-thread", "macros", "sync", "io-util", "process"] }
 
 # JSON-RPC
-jsonrpsee = { version = "0.24", features = ["server", "client-core", "ws-client"] }
+jsonrpsee.workspace = true
 
 # Serialization
 serde.workspace = true

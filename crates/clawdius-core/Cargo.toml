@@ -84,7 +84,7 @@ tiktoken-rs.workspace = true
 similar.workspace = true
 
 # Encoding
-base64 = "0.22"
+base64.workspace = true
 hex = { workspace = true }
 
 # Vector Database (optional)
