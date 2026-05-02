@@ -134,17 +134,20 @@ fn parse_frontmatter_lines(raw: &str) -> Vec<FrontmatterLine> {
                         .trim_end_matches('"')
                         .to_string();
 
-                    if indent >= 2 && current_list_index.is_some() {
-                        lines.push(FrontmatterLine::NestedListItem {
-                            index: current_list_index.unwrap(),
-                            item_index: current_item_index,
-                            key,
-                            value,
-                        });
-                    } else {
-                        current_list_index = Some(lines.len());
-                        current_item_index = 0;
-                        lines.push(FrontmatterLine::Scalar { key, value });
+                    match (indent >= 2, current_list_index) {
+                        (true, Some(index)) => {
+                            lines.push(FrontmatterLine::NestedListItem {
+                                index,
+                                item_index: current_item_index,
+                                key,
+                                value,
+                            });
+                        },
+                        _ => {
+                            current_list_index = Some(lines.len());
+                            current_item_index = 0;
+                            lines.push(FrontmatterLine::Scalar { key, value });
+                        },
                     }
                 } else {
                     // It's a plain list item that happens to contain a colon
