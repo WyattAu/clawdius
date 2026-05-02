@@ -723,4 +723,166 @@ mod tests {
         assert_eq!(sent.len(), 1);
         assert_eq!(sent[0].reply_to.as_deref(), Some("parent_msg_123"));
     }
+
+    #[tokio::test]
+    async fn test_disabled_platform_ignored() {
+        let mut gateway = MessageGateway::new();
+        let mut config = PlatformConfig::new(Platform::Telegram);
+        config.enabled = false;
+        gateway.register_adapter(MockAdapter::new(Platform::Telegram), config).await;
+        gateway.set_handler(Box::new(EchoHandler)).await;
+
+        let msg = make_incoming(Platform::Telegram, "user1", "hello");
+        let result = gateway.handle_incoming(msg).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_send_to_unconfigured_platform() {
+        let gateway = MessageGateway::new();
+        let result = gateway.send_to_platform(Platform::Discord, "chat1", "hi").await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_health_status_empty_gateway() {
+        let gateway = MessageGateway::new();
+        let status = gateway.health_status().await;
+        assert!(status.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_start_all_empty_gateway() {
+        let gateway = MessageGateway::new();
+        let results = gateway.start_all().await;
+        assert!(results.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_stop_all_empty_gateway() {
+        let gateway = MessageGateway::new();
+        let results = gateway.stop_all().await;
+        assert!(results.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_gateway_with_rate_limiter_custom() {
+        let gateway = MessageGateway::with_rate_limiter(100, 300);
+        assert_eq!(gateway.rate_limiter().current_count(Platform::Telegram, "u1"), 0);
+    }
+
+    #[tokio::test]
+    async fn test_default_formatter_accessible() {
+        let gateway = MessageGateway::new();
+        assert!(gateway.formatter().preserve_code_blocks);
+    }
+
+    /// A handler that always fails.
+    struct FailHandler;
+
+    #[async_trait]
+    impl MessageHandler for FailHandler {
+        async fn handle_message(&self, _message: IncomingMessage) -> Result<String, GatewayError> {
+            Err(GatewayError::Agent("handler failure".to_string()))
+        }
+    }
+
+    #[tokio::test]
+    async fn test_handler_error_propagates() {
+        let mut gateway = MessageGateway::new();
+        gateway
+            .register_adapter(MockAdapter::new(Platform::Telegram), PlatformConfig::new(Platform::Telegram))
+            .await;
+        gateway.set_handler(Box::new(FailHandler)).await;
+
+        let msg = make_incoming(Platform::Telegram, "user1", "hello");
+        let result = gateway.handle_incoming(msg).await;
+        assert!(result.is_err());
+    }
+
+    /// A handler that returns an empty response.
+    struct EmptyHandler;
+
+    #[async_trait]
+    impl MessageHandler for EmptyHandler {
+        async fn handle_message(&self, _message: IncomingMessage) -> Result<String, GatewayError> {
+            Ok(String::new())
+        }
+    }
+
+    #[tokio::test]
+    async fn test_empty_response_still_sent() {
+        let mut gateway = MessageGateway::new();
+        let adapter = MockAdapter::new(Platform::Telegram);
+        let sent = adapter.sent_messages();
+        gateway
+            .register_adapter(adapter, PlatformConfig::new(Platform::Telegram))
+            .await;
+        gateway.set_handler(Box::new(EmptyHandler)).await;
+
+        let msg = make_incoming(Platform::Telegram, "user1", "trigger");
+        gateway.handle_incoming(msg).await.unwrap();
+
+        let messages = sent.lock().await;
+        assert_eq!(messages.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn test_start_all_skips_disabled() {
+        let mut gateway = MessageGateway::new();
+        let mut config = PlatformConfig::new(Platform::Telegram);
+        config.enabled = false;
+        gateway.register_adapter(MockAdapter::new(Platform::Telegram), config).await;
+        gateway
+            .register_adapter(MockAdapter::new(Platform::Discord), PlatformConfig::new(Platform::Discord))
+            .await;
+
+        let results = gateway.start_all().await;
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].0, Platform::Discord);
+    }
+
+    #[tokio::test]
+    async fn test_multiple_users_independent_rate_limits() {
+        let mut gateway = MessageGateway::with_rate_limiter(1, 60);
+        gateway
+            .register_adapter(MockAdapter::new(Platform::Telegram), PlatformConfig::new(Platform::Telegram))
+            .await;
+        gateway.set_handler(Box::new(EchoHandler)).await;
+
+        let msg1 = make_incoming(Platform::Telegram, "user_a", "hi");
+        assert!(gateway.handle_incoming(msg1).await.is_ok());
+
+        let msg2 = make_incoming(Platform::Telegram, "user_a", "hi again");
+        assert!(gateway.handle_incoming(msg2).await.is_err());
+
+        let msg3 = make_incoming(Platform::Telegram, "user_b", "hello");
+        assert!(gateway.handle_incoming(msg3).await.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_replace_handler() {
+        let mut gateway = MessageGateway::new();
+        let adapter = MockAdapter::new(Platform::Telegram);
+        let sent = adapter.sent_messages();
+        gateway
+            .register_adapter(adapter, PlatformConfig::new(Platform::Telegram))
+            .await;
+
+        gateway.set_handler(Box::new(EchoHandler)).await;
+        let msg = make_incoming(Platform::Telegram, "u1", "first");
+        gateway.handle_incoming(msg).await.unwrap();
+        {
+            let msgs = sent.lock().await;
+            assert!(msgs[0].text.contains("Echo: first"));
+        }
+
+        gateway.set_handler(Box::new(PlatformAwareHandler)).await;
+        let msg = make_incoming(Platform::Telegram, "u1", "second");
+        gateway.handle_incoming(msg).await.unwrap();
+        {
+            let msgs = sent.lock().await;
+            assert!(msgs[1].text.contains("[telegram]"));
+        }
+    }
 }

@@ -557,4 +557,118 @@ mod tests {
         let result = state.usage.record_usage("org1", 1, 0);
         assert!(result.is_err());
     }
+
+    #[test]
+    fn test_create_tenant_request_minimal() {
+        let json = r#"{"tenant_id":"org1"}"#;
+        let req: CreateTenantRequest = serde_json::from_str(json).unwrap();
+        assert_eq!(req.tenant_id, "org1");
+        assert!(req.tier.is_none());
+        assert!(req.quota.is_none());
+    }
+
+    #[test]
+    fn test_change_plan_request_deserialize() {
+        let json = r#"{"new_tier":"team"}"#;
+        let req: ChangePlanRequest = serde_json::from_str(json).unwrap();
+        assert_eq!(req.new_tier, "team");
+    }
+
+    #[test]
+    fn test_list_tenants_query_default() {
+        let query = ListTenantsQuery {
+            status: None,
+            tier: None,
+            limit: None,
+            offset: None,
+        };
+        assert!(query.status.is_none());
+        assert!(query.tier.is_none());
+        assert!(query.limit.is_none());
+        assert!(query.offset.is_none());
+    }
+
+    #[test]
+    fn test_subscription_to_map_canceled() {
+        let mut sub = Subscription::new("org1", PlanTier::Pro);
+        sub.status = SubscriptionStatus::Canceled;
+        sub.cancel_at_period_end = true;
+        let map = subscription_to_map(&sub);
+        assert_eq!(map["status"], "canceled");
+        assert_eq!(map["cancel_at_period_end"], true);
+    }
+
+    #[test]
+    fn test_usage_tracking_multiple_tenants() {
+        let state = test_state();
+        state.billing.create_subscription("org1", PlanTier::Pro);
+        state.billing.create_subscription("org2", PlanTier::Free);
+        state.usage.register_tenant("org1", Quota::default());
+        state.usage.register_tenant("org2", Quota::default());
+
+        state.usage.record_usage("org1", 100_000, 10).unwrap();
+        state.usage.record_usage("org2", 50_000, 5).unwrap();
+
+        let (t1, _, _) = state.usage.get_usage("org1").unwrap();
+        let (t2, _, _) = state.usage.get_usage("org2").unwrap();
+        assert_eq!(t1, 100_000);
+        assert_eq!(t2, 50_000);
+    }
+
+    #[test]
+    fn test_tenant_creation_with_all_tiers() {
+        let state = test_state();
+        for tier in [PlanTier::Free, PlanTier::Pro, PlanTier::Team] {
+            let sub = state.billing.create_subscription(&format!("org_{:?}", tier), tier);
+            assert_eq!(sub.tier, tier);
+        }
+        assert_eq!(state.billing.list_subscriptions().len(), 3);
+    }
+
+    #[test]
+    fn test_system_info_no_tenants() {
+        let state = test_state();
+        let subs = state.billing.list_subscriptions();
+        assert_eq!(subs.len(), 0);
+        assert!(!state.billing.is_stripe_enabled());
+    }
+
+    #[test]
+    fn test_quota_override_full() {
+        let json = r#"{"monthly_token_limit":5000000,"per_request_token_limit":50000,"monthly_cost_limit":25.0,"rate_limit_per_minute":30}"#;
+        let quota: QuotaOverride = serde_json::from_str(json).unwrap();
+        assert_eq!(quota.monthly_token_limit, Some(5_000_000));
+        assert_eq!(quota.per_request_token_limit, Some(50_000));
+        assert!((quota.monthly_cost_limit.unwrap() - 25.0).abs() < 0.01);
+        assert_eq!(quota.rate_limit_per_minute, Some(30));
+    }
+
+    #[test]
+    fn test_usage_reset_restores_zero() {
+        let state = test_state();
+        state.billing.create_subscription("org1", PlanTier::Pro);
+        state.usage.register_tenant("org1", Quota::default());
+        state.usage.record_usage("org1", 500_000, 50).unwrap();
+
+        state.usage.reset_all();
+        state.billing.reset_all_periods();
+
+        let (tokens, cost, calls) = state.usage.get_usage("org1").unwrap();
+        assert_eq!(tokens, 0);
+        assert_eq!(cost, 0);
+        assert_eq!(calls, 0);
+
+        let sub = state.billing.get_subscription("org1").unwrap();
+        assert_eq!(sub.tokens_used, 0);
+    }
+
+    #[test]
+    fn test_duplicate_tenant_creation() {
+        let state = test_state();
+        state.billing.create_subscription("org1", PlanTier::Free);
+        let sub2 = state.billing.create_subscription("org1", PlanTier::Pro);
+        assert_eq!(sub2.tier, PlanTier::Pro);
+        let current = state.billing.get_subscription("org1").unwrap();
+        assert_eq!(current.tier, PlanTier::Pro);
+    }
 }

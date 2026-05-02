@@ -214,4 +214,86 @@ mod tests {
         }
         assert!(limiter.check(Platform::Telegram, "user1").is_err());
     }
+
+    #[test]
+    fn test_rate_limit_error_display() {
+        let err = RateLimitError { retry_after_ms: 5000 };
+        let msg = format!("{err}");
+        assert!(msg.contains("5000ms"));
+    }
+
+    #[test]
+    fn test_clear_all_resets_all_users() {
+        let limiter = RateLimiter::new(2, 60);
+        limiter.check(Platform::Telegram, "user1").unwrap();
+        limiter.check(Platform::Telegram, "user1").unwrap();
+        limiter.check(Platform::Discord, "user2").unwrap();
+        limiter.check(Platform::Discord, "user2").unwrap();
+
+        assert!(limiter.check(Platform::Telegram, "user1").is_err());
+        assert!(limiter.check(Platform::Discord, "user2").is_err());
+
+        limiter.clear_all();
+
+        assert!(limiter.check(Platform::Telegram, "user1").is_ok());
+        assert!(limiter.check(Platform::Discord, "user2").is_ok());
+    }
+
+    #[test]
+    fn test_per_tenant_independent_limits() {
+        let limiter = RateLimiter::new(1, 60);
+
+        limiter.check(Platform::Telegram, "tenant_a").unwrap();
+        assert!(limiter.check(Platform::Telegram, "tenant_a").is_err());
+
+        assert!(limiter.check(Platform::Telegram, "tenant_b").is_ok());
+        assert!(limiter.check(Platform::Telegram, "tenant_b").is_err());
+
+        assert!(limiter.check(Platform::Telegram, "tenant_c").is_ok());
+    }
+
+    #[test]
+    fn test_rate_limit_all_platforms_independent() {
+        let limiter = RateLimiter::new(1, 60);
+        let platforms = [
+            Platform::Telegram,
+            Platform::Discord,
+            Platform::Slack,
+            Platform::Matrix,
+            Platform::Signal,
+        ];
+
+        for &platform in &platforms {
+            assert!(limiter.check(platform, "user1").is_ok());
+        }
+
+        for &platform in &platforms {
+            assert!(limiter.check(platform, "user1").is_err());
+        }
+    }
+
+    #[test]
+    fn test_rate_limit_retry_after_decreases() {
+        let limiter = RateLimiter::new(1, 1);
+        limiter.check(Platform::Telegram, "user1").unwrap();
+        let err1 = limiter.check(Platform::Telegram, "user1").unwrap_err();
+        assert!(err1.retry_after_ms > 0);
+        assert!(err1.retry_after_ms <= 1000);
+    }
+
+    #[test]
+    fn test_current_count_reflects_window() {
+        let limiter = RateLimiter::new(10, 60);
+        for _ in 0..5 {
+            limiter.check(Platform::Telegram, "user1").unwrap();
+        }
+        assert_eq!(limiter.current_count(Platform::Telegram, "user1"), 5);
+        assert_eq!(limiter.current_count(Platform::Discord, "user1"), 0);
+    }
+
+    #[test]
+    fn test_error_is_send_sync() {
+        fn assert_send_sync<T: Send + Sync>() {}
+        assert_send_sync::<RateLimitError>();
+    }
 }

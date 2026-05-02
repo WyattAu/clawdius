@@ -266,4 +266,110 @@ mod tests {
         let chunks = formatter.chunk_response(Platform::Slack, &text);
         assert_eq!(chunks.len(), 1);
     }
+
+    #[test]
+    fn test_empty_message() {
+        let formatter = ResponseFormatter::new();
+        let chunks = formatter.chunk_response(Platform::Discord, "");
+        assert_eq!(chunks.len(), 1);
+        assert_eq!(chunks[0], "");
+    }
+
+    #[test]
+    fn test_no_code_block_preservation() {
+        let mut formatter = ResponseFormatter::new();
+        formatter.preserve_code_blocks = false;
+        let text = "```rust\nfn main() {}\n```";
+        let chunks = formatter.chunk_response(Platform::Telegram, text);
+        assert_eq!(chunks.len(), 1);
+    }
+
+    #[test]
+    fn test_code_block_chunked_across_boundary() {
+        let formatter = ResponseFormatter::new();
+        let mut text = String::new();
+        text.push_str("```rust\n");
+        for i in 0..200 {
+            text.push_str(&format!("let x{} = {};\n", i, i));
+        }
+        text.push_str("```\n");
+        text.push_str("Some trailing text.");
+
+        let chunks = formatter.chunk_response(Platform::Discord, &text);
+        assert!(chunks.len() > 1, "should produce multiple chunks for large code block");
+
+        let full: String = chunks.join("");
+        assert!(full.contains("```rust"));
+        assert!(full.contains("Some trailing text."));
+    }
+
+    #[test]
+    fn test_format_response_no_reply() {
+        let formatter = ResponseFormatter::new();
+        let msgs = formatter.format_response(Platform::Telegram, "chat1", "hello", None);
+        assert_eq!(msgs.len(), 1);
+        assert!(msgs[0].reply_to.is_none());
+    }
+
+    #[test]
+    fn test_format_stream_chunk_no_reply() {
+        let msg = ResponseFormatter::format_stream_chunk(
+            Platform::Discord,
+            "chat1",
+            "partial",
+            0,
+            None,
+        );
+        assert!(msg.is_chunk);
+        assert_eq!(msg.stream_position, Some(0));
+        assert!(msg.reply_to.is_none());
+    }
+
+    #[test]
+    fn test_multi_chunk_reply_only_on_first() {
+        let formatter = ResponseFormatter::new();
+        let long_text = "word ".repeat(1000);
+        let msgs = formatter.format_response(Platform::Discord, "chat1", &long_text, Some("orig"));
+
+        assert!(msgs.len() > 1);
+        assert_eq!(msgs[0].reply_to.as_deref(), Some("orig"));
+        for msg in &msgs[1..] {
+            assert!(msg.reply_to.is_none());
+        }
+    }
+
+    #[test]
+    fn test_all_platforms_have_message_limits() {
+        let platforms = [
+            Platform::Telegram,
+            Platform::Discord,
+            Platform::Slack,
+            Platform::Matrix,
+            Platform::Signal,
+            Platform::Teams,
+            Platform::WhatsApp,
+            Platform::RocketChat,
+            Platform::Webhook,
+        ];
+        for platform in &platforms {
+            assert!(platform.max_message_length() > 0);
+        }
+    }
+
+    #[test]
+    fn test_chunk_by_chars_breaks_at_newline() {
+        let formatter = ResponseFormatter::new();
+        let text = "line1\n".repeat(500);
+        let chunks = formatter.chunk_response(Platform::Discord, &text);
+        assert!(chunks.len() > 1);
+        for chunk in &chunks {
+            assert!(chunk.len() <= Platform::Discord.max_message_length() - CHUNK_SIZE_RESERVE);
+        }
+    }
+
+    #[test]
+    fn test_formatter_default() {
+        let formatter = ResponseFormatter::default();
+        assert!(formatter.preserve_code_blocks);
+    }
 }
