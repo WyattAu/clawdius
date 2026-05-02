@@ -1,50 +1,37 @@
-# Build stage
-FROM rust:1.93 AS builder
-
+# Stage 1: Build
+FROM rust:1.83-bookworm AS builder
 WORKDIR /app
 
-# Copy workspace manifests
-COPY Cargo.toml Cargo.lock ./
-COPY crates/clawdius/Cargo.toml crates/clawdius/
-COPY crates/clawdius-code/Cargo.toml crates/clawdius-code/
-COPY crates/clawdius-core/Cargo.toml crates/clawdius-core/
-COPY crates/clawdius-mcp/Cargo.toml crates/clawdius-mcp/
-
-# Create dummy source files to cache dependency compilation
-RUN mkdir -p crates/clawdius/src && echo "" > crates/clawdius/src/main.rs
-RUN mkdir -p crates/clawdius-code/src && echo "" > crates/clawdius-code/src/lib.rs
-RUN mkdir -p crates/clawdius-core/src && echo "" > crates/clawdius-core/src/lib.rs
-RUN mkdir -p crates/clawdius-mcp/src && echo "" > crates/clawdius-mcp/src/lib.rs
-
-# Build dependencies only (this layer is cached)
-RUN cargo build --release -p clawdius 2>/dev/null || true
-
-# Copy actual source code for all workspace members
-COPY crates/clawdius/src/ crates/clawdius/src/
-COPY crates/clawdius-code/src/ crates/clawdius-code/src/
-COPY crates/clawdius-core/src/ crates/clawdius-core/src/
-COPY crates/clawdius-mcp/src/ crates/clawdius-mcp/src/
-
-# Touch source files to invalidate the cache
-RUN touch crates/clawdius/src/main.rs crates/clawdius-code/src/lib.rs crates/clawdius-core/src/lib.rs crates/clawdius-mcp/src/lib.rs
-
-# Build the actual binary
-RUN cargo build --release -p clawdius
-
-# Runtime stage
-FROM debian:bookworm-slim
-
+# Install build dependencies
 RUN apt-get update && apt-get install -y \
-    ca-certificates \
+    pkg-config libssl-dev protobuf-compiler \
     && rm -rf /var/lib/apt/lists/*
 
-WORKDIR /app
+# Copy manifests
+COPY Cargo.toml Cargo.lock ./
+COPY crates/ crates/
+COPY .cargo-vendor/ .cargo-vendor/
 
-COPY --from=builder /app/target/release/clawdius /usr/local/bin/clawdius
+# Create .cargo/config.toml for vendored deps
+RUN mkdir -p .cargo && echo '[source.crates-io]\nreplace-with = "vendored-sources"\n\n[source.vendored-sources]\ndirectory = ".cargo-vendor"' > .cargo/config.toml
 
-ENV RUST_LOG=info
+# Build release binaries
+RUN cargo build --release -p clawdius -p clawdius-gateway 2>&1 | tail -5
 
-EXPOSE 8080
+# Stage 2: Runtime
+FROM debian:bookworm-slim AS runtime
+RUN apt-get update && apt-get install -y \
+    ca-certificates libssl3 \
+    && rm -rf /var/lib/apt/lists/* \
+    && useradd -r -s /bin/false clawdius
 
-ENTRYPOINT ["/usr/local/bin/clawdius"]
-CMD ["generate", "--help"]
+COPY --from=builder /app/target/release/clawdius /usr/local/bin/
+COPY --from=builder /app/target/release/clawdius-gateway /usr/local/bin/
+
+USER clawdius
+WORKDIR /home/clawdius
+
+EXPOSE 8080 8081
+
+ENTRYPOINT ["clawdius"]
+CMD ["serve", "--host", "0.0.0.0", "--port", "8080"]
