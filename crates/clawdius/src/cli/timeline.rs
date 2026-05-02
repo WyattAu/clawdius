@@ -1,6 +1,6 @@
 use super::{OutputFormat, TimelineCommands};
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 pub(super) async fn handle_timeline(
     action: TimelineCommands,

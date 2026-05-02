@@ -1,6 +1,7 @@
 use super::OutputFormat;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
+#[allow(clippy::cast_precision_loss)]
 pub(super) async fn handle_sprint(
     task: String,
     max_iterations: usize,

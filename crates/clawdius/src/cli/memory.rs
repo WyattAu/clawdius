@@ -1,6 +1,6 @@
 use super::{OutputFormat, MemoryCommands, load_config};
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 pub(super) fn handle_memory(
     action: MemoryCommands,

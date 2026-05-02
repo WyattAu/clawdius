@@ -1,7 +1,5 @@
 use super::{OutputFormat, LspCommands};
 
-use std::path::{Path, PathBuf};
-
 pub(super) async fn handle_lsp(action: LspCommands, output_format: OutputFormat) -> anyhow::Result<()> {
     use clawdius_core::lsp::{LspClient, LspClientConfig};
 

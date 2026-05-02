@@ -7,7 +7,7 @@
 
 use clap::Parser;
 
-mod cli;
+pub(crate) mod cli;
 mod cli_progress;
 mod tool_executor;
 mod tui_app;

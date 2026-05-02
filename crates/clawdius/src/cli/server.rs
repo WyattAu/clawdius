@@ -1,5 +1,3 @@
-use std::path::{Path, PathBuf};
-
 pub(super) async fn handle_server(host: &str, port: u16) -> anyhow::Result<()> {
     use clawdius_core::api::rest::ApiState;
     use clawdius_core::session::SessionStore;

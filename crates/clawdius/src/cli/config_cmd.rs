@@ -1,6 +1,6 @@
 use super::{OutputFormat, ConfigAction};
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use anyhow::Context;
 
 pub(super) fn handle_config(

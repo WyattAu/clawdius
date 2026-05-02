@@ -1,6 +1,6 @@
 use super::{OutputFormat, load_config};
 use anyhow::Context;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use clawdius_core::output::{OutputFormat as CoreOutputFormat, OutputFormatter, OutputOptions};
 use clawdius_core::SessionManager;
 use clawdius_core::MentionResolver;

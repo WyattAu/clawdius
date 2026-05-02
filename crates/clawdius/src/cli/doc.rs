@@ -1,7 +1,7 @@
 use super::{OutputFormat, load_config};
 use crate::cli::test_cmd::extract_function_from_code;
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use clawdius_core::output::{OutputFormat as CoreOutputFormat, OutputFormatter, OutputOptions};
 
 pub(super) async fn handle_doc(

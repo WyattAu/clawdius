@@ -1,8 +1,7 @@
 use super::OutputFormat;
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use clawdius_core::analysis::{DebtReport, DriftReport, DriftSeverity as CoreDriftSeverity};
-use anyhow::Context;
 
 pub(super) fn handle_analyze(
     path: &PathBuf,

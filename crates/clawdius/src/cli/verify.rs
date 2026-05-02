@@ -1,9 +1,10 @@
 use super::OutputFormat;
 
 use std::path::{Path, PathBuf};
-use clawdius_core::output::{OutputFormat as CoreOutputFormat, OutputFormatter, OutputOptions};
+use clawdius_core::output::{OutputFormat as CoreOutputFormat, OutputFormatter};
 use clawdius_core::proof::LeanVerifier;
 
+#[allow(clippy::cast_possible_truncation)]
 pub(super) fn handle_verify(
     proof: &Path,
     lean_path: Option<PathBuf>,

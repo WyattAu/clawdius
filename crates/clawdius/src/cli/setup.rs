@@ -1,7 +1,5 @@
 use super::OutputFormat;
 
-use std::path::{Path, PathBuf};
-
 pub(super) async fn handle_init(name: Option<String>) -> anyhow::Result<()> {
     let project_name = name.unwrap_or_else(|| {
         std::env::current_dir()

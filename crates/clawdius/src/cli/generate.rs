@@ -1,6 +1,5 @@
 use super::{OutputFormat, load_config};
 
-use std::path::{Path, PathBuf};
 use anyhow::Context;
 
 pub(super) async fn handle_generate(

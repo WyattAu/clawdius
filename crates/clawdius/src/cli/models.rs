@@ -1,7 +1,6 @@
 use super::{OutputFormat, ModelsCommands};
 
-use std::path::{Path, PathBuf};
-
+#[allow(clippy::cast_precision_loss)]
 pub(super) async fn handle_models(
     action: ModelsCommands,
     host: &str,

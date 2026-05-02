@@ -1,7 +1,7 @@
-use super::{OutputFormat, load_config};
+use super::OutputFormat;
 
-use std::path::{Path, PathBuf};
-use clawdius_core::output::{OutputFormat as CoreOutputFormat, OutputFormatter, OutputOptions};
+use std::path::PathBuf;
+use clawdius_core::output::{OutputFormat as CoreOutputFormat, OutputFormatter};
 use clawdius_core::actions::Function;
 use clawdius_core::output::TestCaseInfo;
 

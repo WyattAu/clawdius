@@ -1,7 +1,5 @@
 use super::OutputFormat;
 
-use std::path::{Path, PathBuf};
-
 pub(super) async fn handle_edit(
     initial: Option<String>,
     editor: Option<String>,

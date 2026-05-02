@@ -1,6 +1,6 @@
 use super::{GitCommands, load_config};
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 pub(super) async fn handle_git(action: GitCommands, config_path: Option<PathBuf>) -> anyhow::Result<()> {
     match action {

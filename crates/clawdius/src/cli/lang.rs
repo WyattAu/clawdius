@@ -1,5 +1,5 @@
 use super::{OutputFormat, LangCommands};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use clawdius_core::i18n::Language;
 use clawdius_core::output::OutputFormat as CoreOutputFormat;
 

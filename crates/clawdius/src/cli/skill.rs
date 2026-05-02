@@ -1,6 +1,6 @@
 use super::{OutputFormat, SkillAction};
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 pub(super) async fn handle_skill(action: SkillAction, output_format: OutputFormat) -> anyhow::Result<()> {
     use clawdius_core::llm::providers::LlmClient;

@@ -1168,38 +1168,38 @@ pub enum GitCommands {
     Status,
 }
 
-pub(crate) mod action;
-pub(crate) mod analyze;
-pub(crate) mod auth;
-pub(crate) mod auto;
-pub(crate) mod chat;
-pub(crate) mod checkpoint;
-pub(crate) mod complete;
-pub(crate) mod config_cmd;
-pub(crate) mod doc;
-pub(crate) mod edit;
-pub(crate) mod generate;
-pub(crate) mod git;
-pub(crate) mod index;
-pub(crate) mod lang;
-pub(crate) mod lsp;
-pub(crate) mod memory;
-pub(crate) mod metrics;
-pub(crate) mod modes;
-pub(crate) mod models;
-pub(crate) mod server;
-pub(crate) mod sessions;
-pub(crate) mod setup;
-pub(crate) mod ship;
-pub(crate) mod skill;
-pub(crate) mod sprint;
-pub(crate) mod test_cmd;
-pub(crate) mod timeline;
-pub(crate) mod verify;
-pub(crate) mod webhook;
+pub mod action;
+pub mod analyze;
+pub mod auth;
+pub mod auto;
+pub mod chat;
+pub mod checkpoint;
+pub mod complete;
+pub mod config_cmd;
+pub mod doc;
+pub mod edit;
+pub mod generate;
+pub mod git;
+pub mod index;
+pub mod lang;
+pub mod lsp;
+pub mod memory;
+pub mod metrics;
+pub mod modes;
+pub mod models;
+pub mod server;
+pub mod sessions;
+pub mod setup;
+pub mod ship;
+pub mod skill;
+pub mod sprint;
+pub mod test_cmd;
+pub mod timeline;
+pub mod verify;
+pub mod webhook;
 
 /// Handle a command
-pub(crate) async fn handle_command(
+pub async fn handle_command(
     cmd: Commands,
     config_path: Option<PathBuf>,
     output_format: OutputFormat,
@@ -1452,7 +1452,7 @@ pub(crate) async fn handle_command(
 }
 
 #[allow(elided_lifetimes_in_paths)]
-pub(crate) fn load_config(config_path: Option<&Path>) -> anyhow::Result<Config> {
+pub fn load_config(config_path: Option<&Path>) -> anyhow::Result<Config> {
     config_path.map_or_else(
         || Config::load_default().map_err(|e| anyhow::anyhow!("Failed to load default config: {e}")),
         |path| Config::load(path).map_err(|e| anyhow::anyhow!("Failed to load config from {}: {}", path.display(), e)),
