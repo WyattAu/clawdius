@@ -4,8 +4,10 @@
 //! Provides per-cycle aggregation and quota enforcement.
 
 use chrono::{DateTime, Utc};
+use rusqlite::params;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::path::Path;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 
@@ -213,6 +215,13 @@ impl UsageMeter {
         self.current_cost.store(0, Ordering::Relaxed);
         self.current_calls.store(0, Ordering::Relaxed);
     }
+
+    /// Restore meter state from persisted values.
+    pub fn restore(&self, tokens: u64, cost_cents: u64, calls: u64) {
+        self.current_tokens.store(tokens, Ordering::Relaxed);
+        self.current_cost.store(cost_cents, Ordering::Relaxed);
+        self.current_calls.store(calls, Ordering::Relaxed);
+    }
 }
 
 impl Default for UsageMeter {
@@ -308,6 +317,144 @@ impl TenantUsageTracker {
     #[must_use]
     pub fn list_tenants(&self) -> Vec<String> {
         self.meters.read().keys().cloned().collect()
+    }
+
+    /// Serialize current usage and quotas to SQLite.
+    pub fn save_to_sqlite(&self, conn: &rusqlite::Connection) -> Result<(), rusqlite::Error> {
+        conn.execute_batch(
+            "CREATE TABLE IF NOT EXISTS usage_meters (
+                tenant_id TEXT PRIMARY KEY,
+                tokens INTEGER NOT NULL DEFAULT 0,
+                cost_cents INTEGER NOT NULL DEFAULT 0,
+                calls INTEGER NOT NULL DEFAULT 0
+            );
+            CREATE TABLE IF NOT EXISTS usage_quotas (
+                tenant_id TEXT PRIMARY KEY,
+                monthly_token_limit INTEGER NOT NULL DEFAULT 10000000,
+                per_request_token_limit INTEGER NOT NULL DEFAULT 100000,
+                monthly_cost_limit REAL NOT NULL DEFAULT 100.0,
+                rate_limit_per_minute INTEGER NOT NULL DEFAULT 60
+            );",
+        )?;
+
+        let meters = self.meters.read();
+        let quotas = self.quotas.read();
+
+        let mut meter_stmt = conn.prepare(
+            "INSERT OR REPLACE INTO usage_meters (tenant_id, tokens, cost_cents, calls) VALUES (?1, ?2, ?3, ?4)",
+        )?;
+        let mut quota_stmt = conn.prepare(
+            "INSERT OR REPLACE INTO usage_quotas (tenant_id, monthly_token_limit, per_request_token_limit, monthly_cost_limit, rate_limit_per_minute) VALUES (?1, ?2, ?3, ?4, ?5)",
+        )?;
+
+        for (tenant_id, meter) in meters.iter() {
+            meter_stmt.execute(params![
+                tenant_id,
+                meter.tokens() as i64,
+                meter.cost_cents() as i64,
+                meter.calls() as i64,
+            ])?;
+
+            let quota = quotas.get(tenant_id).cloned().unwrap_or_default();
+            quota_stmt.execute(params![
+                tenant_id,
+                quota.monthly_token_limit as i64,
+                quota.per_request_token_limit as i64,
+                quota.monthly_cost_limit,
+                quota.rate_limit_per_minute as i64,
+            ])?;
+        }
+
+        Ok(())
+    }
+
+    /// Deserialize usage and quotas from SQLite.
+    pub fn load_from_sqlite(conn: &rusqlite::Connection) -> Result<Self, rusqlite::Error> {
+        conn.execute_batch(
+            "CREATE TABLE IF NOT EXISTS usage_meters (
+                tenant_id TEXT PRIMARY KEY,
+                tokens INTEGER NOT NULL DEFAULT 0,
+                cost_cents INTEGER NOT NULL DEFAULT 0,
+                calls INTEGER NOT NULL DEFAULT 0
+            );
+            CREATE TABLE IF NOT EXISTS usage_quotas (
+                tenant_id TEXT PRIMARY KEY,
+                monthly_token_limit INTEGER NOT NULL DEFAULT 10000000,
+                per_request_token_limit INTEGER NOT NULL DEFAULT 100000,
+                monthly_cost_limit REAL NOT NULL DEFAULT 100.0,
+                rate_limit_per_minute INTEGER NOT NULL DEFAULT 60
+            );",
+        )?;
+
+        let mut tracker = Self::new();
+
+        {
+            let mut stmt =
+                conn.prepare("SELECT tenant_id, tokens, cost_cents, calls FROM usage_meters")?;
+            let rows = stmt.query_map([], |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get::<_, i64>(1)?,
+                    row.get::<_, i64>(2)?,
+                    row.get::<_, i64>(3)?,
+                ))
+            })?;
+
+            for row in rows {
+                let (tenant_id, tokens, cost_cents, calls) = row?;
+                let meter = UsageMeter::new();
+                meter.restore(
+                    tokens.max(0) as u64,
+                    cost_cents.max(0) as u64,
+                    calls.max(0) as u64,
+                );
+                tracker
+                    .meters
+                    .write()
+                    .insert(tenant_id, meter);
+            }
+        }
+
+        {
+            let mut stmt = conn.prepare(
+                "SELECT tenant_id, monthly_token_limit, per_request_token_limit, monthly_cost_limit, rate_limit_per_minute FROM usage_quotas",
+            )?;
+            let rows = stmt.query_map([], |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get::<_, i64>(1)?,
+                    row.get::<_, i64>(2)?,
+                    row.get::<_, f64>(3)?,
+                    row.get::<_, i64>(4)?,
+                ))
+            })?;
+
+            for row in rows {
+                let (tenant_id, monthly_tokens, per_request, cost_limit, rate_limit) = row?;
+                let quota = Quota {
+                    monthly_token_limit: monthly_tokens.max(0) as u64,
+                    per_request_token_limit: per_request.max(0) as u64,
+                    monthly_cost_limit: cost_limit,
+                    rate_limit_per_minute: rate_limit.max(0) as u32,
+                };
+                tracker.quotas.write().insert(tenant_id, quota);
+            }
+        }
+
+        Ok(tracker)
+    }
+
+    /// Save to a SQLite file (convenience).
+    pub fn persist_to_file(&self, path: &Path) -> Result<(), rusqlite::Error> {
+        let conn = rusqlite::Connection::open(path)?;
+        self.save_to_sqlite(&conn)?;
+        Ok(())
+    }
+
+    /// Load from a SQLite file (convenience).
+    pub fn load_from_file(path: &Path) -> Result<Self, rusqlite::Error> {
+        let conn = rusqlite::Connection::open(path)?;
+        Self::load_from_sqlite(&conn)
     }
 }
 
@@ -501,5 +648,53 @@ mod tests {
         assert_eq!(quota.monthly_token_limit, 10_000_000);
         assert_eq!(quota.per_request_token_limit, 100_000);
         assert!((quota.monthly_cost_limit - 100.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_usage_persistence_roundtrip() {
+        let tracker = TenantUsageTracker::new();
+        tracker.register_tenant(
+            "org1",
+            Quota {
+                monthly_token_limit: 5_000_000,
+                per_request_token_limit: 50_000,
+                monthly_cost_limit: 50.0,
+                rate_limit_per_minute: 30,
+            },
+        );
+        tracker.register_tenant("org2", Quota::default());
+        tracker.record_usage("org1", 500_000, 25).unwrap();
+        tracker.record_usage("org1", 300_000, 15).unwrap();
+        tracker.record_usage("org2", 100_000, 10).unwrap();
+
+        let conn = rusqlite::Connection::open_in_memory().unwrap();
+        tracker.save_to_sqlite(&conn).unwrap();
+
+        let loaded = TenantUsageTracker::load_from_sqlite(&conn).unwrap();
+
+        let (t1_tokens, t1_cost, t1_calls) = loaded.get_usage("org1").unwrap();
+        assert_eq!(t1_tokens, 800_000);
+        assert_eq!(t1_cost, 40);
+        assert_eq!(t1_calls, 2);
+
+        let (t2_tokens, t2_cost, t2_calls) = loaded.get_usage("org2").unwrap();
+        assert_eq!(t2_tokens, 100_000);
+        assert_eq!(t2_cost, 10);
+        assert_eq!(t2_calls, 1);
+
+        assert_eq!(loaded.list_tenants().len(), 2);
+    }
+
+    #[test]
+    fn test_usage_meter_restore() {
+        let meter = UsageMeter::new();
+        meter.record(1000, 50);
+        assert_eq!(meter.tokens(), 1000);
+        assert_eq!(meter.calls(), 1);
+
+        meter.restore(5000, 250, 5);
+        assert_eq!(meter.tokens(), 5000);
+        assert_eq!(meter.cost_cents(), 250);
+        assert_eq!(meter.calls(), 5);
     }
 }

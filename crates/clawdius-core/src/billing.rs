@@ -6,8 +6,10 @@
 //! suitable for self-hosted / air-gapped deployments.
 
 use chrono::{DateTime, Utc};
+use rusqlite::params;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::path::Path;
 use std::sync::Arc;
 
 // ─────────────────────────────────────────────────────────
@@ -490,6 +492,168 @@ impl BillingManager {
     pub fn is_stripe_enabled(&self) -> bool {
         self.stripe_enabled
     }
+
+    /// Serialize subscriptions and usage to SQLite.
+    pub fn save_to_sqlite(&self, conn: &rusqlite::Connection) -> Result<(), rusqlite::Error> {
+        conn.execute_batch(
+            "CREATE TABLE IF NOT EXISTS subscriptions (
+                tenant_id TEXT PRIMARY KEY,
+                plan TEXT NOT NULL,
+                status TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS usage_records (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                tenant_id TEXT NOT NULL,
+                period_start TEXT NOT NULL,
+                input_tokens INTEGER NOT NULL DEFAULT 0,
+                output_tokens INTEGER NOT NULL DEFAULT 0,
+                total_tokens INTEGER NOT NULL DEFAULT 0,
+                requests INTEGER NOT NULL DEFAULT 0,
+                UNIQUE(tenant_id, period_start)
+            );",
+        )?;
+
+        let subs = self.subscriptions.read();
+
+        {
+            let mut stmt = conn.prepare(
+                "INSERT OR REPLACE INTO subscriptions (tenant_id, plan, status, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5)",
+            )?;
+            for sub in subs.values() {
+                stmt.execute(params![
+                    sub.tenant_id,
+                    sub.tier.to_string(),
+                    format!("{:?}", sub.status).to_lowercase(),
+                    sub.current_period_start.to_rfc3339(),
+                    sub.current_period_end.to_rfc3339(),
+                ])?;
+            }
+        }
+
+        {
+            let mut stmt = conn.prepare(
+                "INSERT OR REPLACE INTO usage_records (tenant_id, period_start, input_tokens, output_tokens, total_tokens, requests) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+            )?;
+            for sub in subs.values() {
+                stmt.execute(params![
+                    sub.tenant_id,
+                    sub.current_period_start.to_rfc3339(),
+                    0i64,
+                    0i64,
+                    sub.tokens_used as i64,
+                    1i64,
+                ])?;
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Deserialize subscriptions and usage from SQLite.
+    pub fn load_from_sqlite(conn: &rusqlite::Connection) -> Result<Self, rusqlite::Error> {
+        conn.execute_batch(
+            "CREATE TABLE IF NOT EXISTS subscriptions (
+                tenant_id TEXT PRIMARY KEY,
+                plan TEXT NOT NULL,
+                status TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS usage_records (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                tenant_id TEXT NOT NULL,
+                period_start TEXT NOT NULL,
+                input_tokens INTEGER NOT NULL DEFAULT 0,
+                output_tokens INTEGER NOT NULL DEFAULT 0,
+                total_tokens INTEGER NOT NULL DEFAULT 0,
+                requests INTEGER NOT NULL DEFAULT 0,
+                UNIQUE(tenant_id, period_start)
+            );",
+        )?;
+
+        let mut mgr = Self::new();
+        let mut subs = HashMap::new();
+
+        {
+            let mut stmt = conn.prepare(
+                "SELECT tenant_id, plan, status, created_at, updated_at FROM subscriptions",
+            )?;
+            let rows = stmt.query_map([], |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get::<_, String>(1)?,
+                    row.get::<_, String>(2)?,
+                    row.get::<_, String>(3)?,
+                    row.get::<_, String>(4)?,
+                ))
+            })?;
+
+            for row in rows {
+                let (tenant_id, plan_str, status_str, created_at_str, updated_at_str) = row?;
+                let tier = match plan_str.as_str() {
+                    "Free" => PlanTier::Free,
+                    "Pro" => PlanTier::Pro,
+                    "Team" => PlanTier::Team,
+                    "Enterprise" => PlanTier::Enterprise,
+                    _ => continue,
+                };
+                let status = match status_str.as_str() {
+                    "active" => SubscriptionStatus::Active,
+                    "past_due" => SubscriptionStatus::PastDue,
+                    "canceled" => SubscriptionStatus::Canceled,
+                    "trialing" => SubscriptionStatus::Trialing,
+                    "unpaid" => SubscriptionStatus::Unpaid,
+                    "paused" => SubscriptionStatus::Paused,
+                    _ => continue,
+                };
+                let period_start = DateTime::parse_from_rfc3339(&created_at_str)
+                    .map(|d| d.with_timezone(&Utc))
+                    .unwrap_or_else(|_| Utc::now());
+                let period_end = DateTime::parse_from_rfc3339(&updated_at_str)
+                    .map(|d| d.with_timezone(&Utc))
+                    .unwrap_or_else(|_| Utc::now() + chrono::Duration::days(30));
+
+                let mut sub = Subscription::new(&tenant_id, tier);
+                sub.status = status;
+                sub.current_period_start = period_start;
+                sub.current_period_end = period_end;
+                subs.insert(tenant_id, sub);
+            }
+        }
+
+        {
+            let mut usage_stmt =
+                conn.prepare("SELECT tenant_id, total_tokens FROM usage_records")?;
+            let usage_rows = usage_stmt.query_map([], |row| {
+                Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?))
+            })?;
+
+            for row in usage_rows {
+                let (tenant_id, total_tokens) = row?;
+                if let Some(sub) = subs.get_mut(&tenant_id) {
+                    sub.tokens_used = total_tokens.max(0) as u64;
+                }
+            }
+        }
+
+        *mgr.subscriptions.write() = subs;
+        Ok(mgr)
+    }
+
+    /// Save to a SQLite file (convenience).
+    pub fn persist_to_file(&self, path: &Path) -> Result<(), rusqlite::Error> {
+        let conn = rusqlite::Connection::open(path)?;
+        self.save_to_sqlite(&conn)?;
+        Ok(())
+    }
+
+    /// Load from a SQLite file (convenience).
+    pub fn load_from_file(path: &Path) -> Result<Self, rusqlite::Error> {
+        let conn = rusqlite::Connection::open(path)?;
+        Self::load_from_sqlite(&conn)
+    }
 }
 
 impl Default for BillingManager {
@@ -677,5 +841,56 @@ mod tests {
         let mgr = BillingManager::new();
         assert!(mgr.get_price(PlanTier::Pro, BillingCycle::Monthly).is_some());
         assert!(mgr.get_price(PlanTier::Enterprise, BillingCycle::Monthly).is_none());
+    }
+
+    #[test]
+    fn test_billing_persistence_roundtrip() {
+        let mgr = BillingManager::new();
+        mgr.create_subscription("org1", PlanTier::Pro);
+        mgr.create_subscription("org2", PlanTier::Team);
+        mgr.record_usage("org1", 500_000, 100).unwrap();
+        mgr.cancel_subscription("org2").unwrap();
+
+        let conn = rusqlite::Connection::open_in_memory().unwrap();
+        mgr.save_to_sqlite(&conn).unwrap();
+
+        let loaded = BillingManager::load_from_sqlite(&conn).unwrap();
+
+        let sub1 = loaded.get_subscription("org1").unwrap();
+        assert_eq!(sub1.tier, PlanTier::Pro);
+        assert_eq!(sub1.status, SubscriptionStatus::Active);
+        assert_eq!(sub1.tokens_used, 500_000);
+
+        let sub2 = loaded.get_subscription("org2").unwrap();
+        assert_eq!(sub2.tier, PlanTier::Team);
+        assert_eq!(sub2.status, SubscriptionStatus::Canceled);
+
+        assert!(loaded.get_subscription("org1").is_some());
+        assert!(loaded.get_subscription("org2").is_some());
+    }
+
+    #[test]
+    fn test_billing_persistence_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("billing.db");
+
+        let mgr = BillingManager::new();
+        mgr.create_subscription("org1", PlanTier::Free);
+        mgr.create_subscription("org2", PlanTier::Pro);
+        mgr.record_usage("org1", 30_000, 10).unwrap();
+        mgr.record_usage("org2", 1_000_000, 200).unwrap();
+
+        mgr.persist_to_file(&path).unwrap();
+
+        let loaded = BillingManager::load_from_file(&path).unwrap();
+        assert_eq!(loaded.list_subscriptions().len(), 2);
+
+        let sub1 = loaded.get_subscription("org1").unwrap();
+        assert_eq!(sub1.tier, PlanTier::Free);
+        assert_eq!(sub1.tokens_used, 30_000);
+
+        let sub2 = loaded.get_subscription("org2").unwrap();
+        assert_eq!(sub2.tier, PlanTier::Pro);
+        assert_eq!(sub2.tokens_used, 1_000_000);
     }
 }
