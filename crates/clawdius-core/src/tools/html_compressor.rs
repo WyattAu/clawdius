@@ -18,15 +18,15 @@ use std::sync::LazyLock;
 
 // Pre-compiled regexes for HTML noise stripping (compiled once, reused across calls)
 static RE_SCRIPT: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"(?is)<script[^>]*>.*?</script>").unwrap());
+    LazyLock::new(|| Regex::new(r"(?is)<script[^>]*>.*?</script>").expect("valid regex"));
 static RE_STYLE: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"(?is)<style[^>]*>.*?</style>").unwrap());
+    LazyLock::new(|| Regex::new(r"(?is)<style[^>]*>.*?</style>").expect("valid regex"));
 static RE_COMMENT: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"(?s)<!--.*?-->").unwrap());
+    LazyLock::new(|| Regex::new(r"(?s)<!--.*?-->").expect("valid regex"));
 static RE_TAG: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"<[^>]+>").unwrap());
+    LazyLock::new(|| Regex::new(r"<[^>]+>").expect("valid regex"));
 static RE_MULTI_NEWLINE: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"\n{3,}").unwrap());
+    LazyLock::new(|| Regex::new(r"\n{3,}").expect("valid regex"));
 
 /// Result of HTML compression.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -190,7 +190,7 @@ impl HtmlCompressor {
         for tag in &[
             "nav", "footer", "header", "aside", "form", "iframe", "noscript", "svg",
         ] {
-            let re = Regex::new(&format!(r"(?is)<{}[^>]*>.*?</{}>", tag, tag)).unwrap();
+            let re = Regex::new(&format!(r"(?is)<{}[^>]*>.*?</{}>", tag, tag)).expect("valid regex");
             text = re.replace_all(&text, "").to_string();
         }
 
