@@ -95,32 +95,32 @@ impl ApiState {
 
     /// List all sessions.
     pub async fn list_sessions(&self) -> Vec<Session> {
-        let store = self.store.lock().unwrap();
+        let store = self.store.lock().expect("session store lock poisoned");
         store.list_sessions().unwrap_or_default()
     }
 
     /// Create a new session (persists and returns it).
     pub async fn create_session(&self, session: Session) -> Session {
-        let store = self.store.lock().unwrap();
+        let store = self.store.lock().expect("session store lock poisoned");
         let _ = store.create_session(&session);
         session
     }
 
     /// Get a session by ID (with messages).
     pub async fn get_session(&self, id: SessionId) -> Option<Session> {
-        let store = self.store.lock().unwrap();
+        let store = self.store.lock().expect("session store lock poisoned");
         store.load_session_full(&id).unwrap_or_default()
     }
 
     /// Delete a session by ID.
     pub async fn delete_session(&self, id: SessionId) -> bool {
-        let store = self.store.lock().unwrap();
+        let store = self.store.lock().expect("session store lock poisoned");
         store.delete_session(&id).is_ok()
     }
 
     /// Add a message to a session.
     pub async fn add_message(&self, session_id: SessionId, message: SessionMessage) -> bool {
-        let store = self.store.lock().unwrap();
+        let store = self.store.lock().expect("session store lock poisoned");
         store.save_message(&session_id, &message).is_ok()
     }
 }
@@ -388,7 +388,7 @@ pub async fn chat(
 
     // Record tenant usage if authenticated
     if let Some(Extension(key)) = api_key {
-        let store = state.tenant_store.read().unwrap();
+        let store = state.tenant_store.read().expect("tenant_store read lock poisoned");
         if let Some(tenant_id) = store.get_tenant_id_by_api_key(&key.0) {
             drop(store);
             let _ = record_tenant_task(&state, &tenant_id, 0);
@@ -620,7 +620,7 @@ pub async fn agent_handler(
         if tool_calls.is_empty() {
             // Record tenant usage if authenticated
             if let Some(Extension(key)) = &api_key {
-                let store = state.tenant_store.read().unwrap();
+                let store = state.tenant_store.read().expect("tenant_store read lock poisoned");
                 if let Some(tenant_id) = store.get_tenant_id_by_api_key(&key.0) {
                     drop(store);
                     let _ = record_tenant_task(&state, &tenant_id, 0);
@@ -689,7 +689,7 @@ pub async fn agent_handler(
 
     // Record tenant usage if authenticated (max iterations reached)
     if let Some(Extension(key)) = &api_key {
-        let store = state.tenant_store.read().unwrap();
+        let store = state.tenant_store.read().expect("tenant_store read lock poisoned");
         if let Some(tenant_id) = store.get_tenant_id_by_api_key(&key.0) {
             drop(store);
             let _ = record_tenant_task(&state, &tenant_id, 0);
@@ -788,7 +788,7 @@ pub async fn usage_endpoint(
     use crate::telemetry::metrics;
     use std::sync::atomic::Ordering;
 
-    let store = state.tenant_store.read().unwrap();
+    let store = state.tenant_store.read().expect("tenant_store read lock poisoned");
 
     let tenant = match api_key {
         Some(Extension(key)) => store.get_tenant_by_api_key(&key.0),
