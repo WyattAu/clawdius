@@ -90,7 +90,7 @@ pub struct Cli {
 }
 
 /// Available commands
-#[derive(Subcommand)]
+#[derive(Debug, Subcommand)]
 pub enum Commands {
     #[command(about = "Send a chat message to the LLM")]
     Chat {
@@ -622,7 +622,7 @@ pub enum Commands {
     },
 }
 
-#[derive(Subcommand)]
+#[derive(Debug, Subcommand)]
 pub enum CheckpointCommands {
     #[command(about = "Create a checkpoint")]
     Create {
@@ -691,7 +691,7 @@ pub enum CheckpointCommands {
     },
 }
 
-#[derive(Subcommand)]
+#[derive(Debug, Subcommand)]
 pub enum TimelineCommands {
     #[command(about = "Create a timeline checkpoint")]
     Create {
@@ -756,7 +756,7 @@ pub enum TimelineCommands {
     },
 }
 
-#[derive(Subcommand)]
+#[derive(Debug, Subcommand)]
 #[cfg(feature = "keyring")]
 pub enum AuthCommands {
     #[command(about = "Store API key in keyring")]
@@ -778,7 +778,7 @@ pub enum AuthCommands {
     },
 }
 
-#[derive(Subcommand)]
+#[derive(Debug, Subcommand)]
 pub enum ModeCommands {
     #[command(about = "List all available modes")]
     List,
@@ -800,7 +800,7 @@ pub enum ModeCommands {
     },
 }
 
-#[derive(Subcommand)]
+#[derive(Debug, Subcommand)]
 pub enum LangCommands {
     #[command(about = "List supported languages")]
     List,
@@ -815,7 +815,7 @@ pub enum LangCommands {
     Show,
 }
 
-#[derive(Subcommand)]
+#[derive(Debug, Subcommand)]
 pub enum WebhookCommands {
     #[command(about = "List all webhooks")]
     List,
@@ -895,7 +895,7 @@ pub enum WebhookCommands {
     Stats,
 }
 
-#[derive(Subcommand)]
+#[derive(Debug, Subcommand)]
 pub enum LspCommands {
     #[command(about = "Start an LSP server for a language")]
     Start {
@@ -1005,7 +1005,7 @@ pub enum LspCommands {
     },
 }
 
-#[derive(Subcommand)]
+#[derive(Debug, Subcommand)]
 pub enum MemoryCommands {
     #[command(about = "Show project memory (CLAUDE.md + learned entries)")]
     Show {
@@ -1067,7 +1067,7 @@ pub enum MemoryCommands {
     },
 }
 
-#[derive(Subcommand)]
+#[derive(Debug, Subcommand)]
 pub enum ModelsCommands {
     #[command(about = "List available local models")]
     List,
@@ -1085,7 +1085,7 @@ pub enum ModelsCommands {
     Current,
 }
 
-#[derive(Subcommand)]
+#[derive(Debug, Subcommand)]
 pub enum ShipAction {
     /// Run pre-ship quality checks
     Checks {
@@ -1110,7 +1110,7 @@ pub enum ShipAction {
     },
 }
 
-#[derive(Subcommand)]
+#[derive(Debug, Subcommand)]
 pub enum SkillAction {
     /// List available skills
     List,
@@ -1124,7 +1124,7 @@ pub enum SkillAction {
     },
 }
 
-#[derive(Subcommand)]
+#[derive(Debug, Subcommand)]
 pub enum ConfigAction {
     /// Show current configuration (masks API keys)
     Show,
@@ -1146,7 +1146,7 @@ pub enum ConfigAction {
     List,
 }
 
-#[derive(Subcommand)]
+#[derive(Debug, Subcommand)]
 pub enum GitCommands {
     /// Stage files and create a commit with an LLM-generated message
     Commit {

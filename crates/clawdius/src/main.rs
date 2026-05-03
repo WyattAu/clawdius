@@ -7,12 +7,10 @@
 
 use clap::Parser;
 
-pub(crate) mod cli;
-mod cli_progress;
-mod tool_executor;
+use clawdius::cli;
 mod tui_app;
 
-pub use cli::{Cli, Commands};
+pub use clawdius::cli::{Cli, Commands};
 pub use tui_app::App as TuiApp;
 
 #[cfg(feature = "mimalloc")]
