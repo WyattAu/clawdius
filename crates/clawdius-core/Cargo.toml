@@ -73,7 +73,7 @@ regex.workspace = true
 aho-corasick.workspace = true
 petgraph.workspace = true
 lru.workspace = true
-url = "2.5"
+url.workspace = true
 which.workspace = true
 tempfile.workspace = true
 
@@ -115,7 +115,7 @@ walkdir.workspace = true
 glob-match.workspace = true
 
 # URL encoding
-urlencoding = "2.1"
+urlencoding.workspace = true
 
 # System information
 sysinfo.workspace = true
@@ -123,13 +123,13 @@ parking_lot.workspace = true
 
 # WASI Sandbox
 wasmtime = { workspace = true }
-wasmtime-wasi = "42"
+wasmtime-wasi.workspace = true
 
 # Encryption at rest
-aes-gcm = "0.10"
-hmac = "0.12"
-sha2 = "0.10"
-getrandom = "0.2"
+aes-gcm.workspace = true
+hmac.workspace = true
+sha2.workspace = true
+getrandom.workspace = true
 
 # Redis (optional, for orchestrator queue)
 redis = { version = "0.27", features = ["tokio-comp", "connection-manager"], optional = true }

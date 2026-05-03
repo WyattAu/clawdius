@@ -1,6 +1,6 @@
 [package]
 name = "clawdius-gateway"
-version = "1.6.0"
+version.workspace = true
 edition = "2021"
 description = "Messaging gateway for Clawdius — routes chat platform messages to the agent"
 
@@ -18,7 +18,7 @@ clap = { workspace = true, features = ["derive", "env"] }
 async-trait = { workspace = true }
 anyhow = { workspace = true }
 reqwest.workspace = true
-hmac-sha256 = "1"
+hmac-sha256.workspace = true
 axum = { workspace = true }
 
 # Platform SDKs (optional, feature-gated)

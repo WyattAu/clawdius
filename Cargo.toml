@@ -17,7 +17,7 @@ members = [
 ]
 
 [workspace.package]
-version = "1.6.0"
+version = "1.0.0-rc.1"
 edition = "2021"
 authors = ["Clawdius Team <team@clawdius.dev>"]
 license = "Apache-2.0"
@@ -115,6 +115,22 @@ async-trait = "0.1"
 # Fix RUSTSEC-2026-0002 (unsound IterMut) - upgrade to 0.16+
 lru = "0.16"
 
+# === Crypto (encryption at rest) ===
+aes-gcm = "0.10"
+hmac = "0.12"
+sha2 = "0.10"
+hmac-sha256 = "1"
+
+# === Randomness ===
+getrandom = "0.2"
+
+# === URL Handling ===
+url = "2.5"
+urlencoding = "2.1"
+
+# === WASM Runtime (additional crates) ===
+wasmtime-wasi = "42"
+
 # === Token Counting ===
 tiktoken-rs = "0.5"
 
@@ -203,6 +219,25 @@ codegen-units = 1
 panic = "abort"
 
 # No workspace features - each crate defines its own
+
+# Transitive dependency duplicates (documented for reference):
+# These are semver-incompatible versions pulled by different upstream crates
+# and cannot be unified without [patch] overrides, which would risk breaking
+# upstream compatibility.
+#
+# - hashbrown 0.15/0.16/0.17 — wasmtime, indexmap
+# - getrandom 0.3/0.4 — rand 0.9, wasmtime (our direct dep: 0.2)
+# - reqwest 0.13 — genai 0.5 (our direct dep: 0.12)
+# - rand 0.8/0.9 — proptest, criterion (different semver requirements)
+# - thiserror 1.0 — httpmock (our direct dep: 2.0)
+# - base64 0.21 — transitive (our direct dep: 0.22)
+# - petgraph 0.6 — wasmtime (our direct dep: 0.7)
+# - tower 0.4 — reqwest 0.12 (our direct dep: 0.5)
+# - toml 0.9 — wasmtime (our direct dep: 1.0)
+# - arrow-* — lancedb internal deps (our direct dep: 57)
+# - itertools 0.10/0.11/0.14 — various upstream crates
+# - socket2 0.5/0.6 — tokio vs mio
+# - rustix 0.38/1.x — tokio vs tempfile
 
 [patch.crates-io]
 half = { path = ".cargo-vendor/half" }
