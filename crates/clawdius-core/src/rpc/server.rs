@@ -14,8 +14,6 @@ use crate::error::Result;
 /// RPC server for handling JSON-RPC requests
 pub struct RpcServer {
     handlers: Arc<RwLock<HashMap<String, Arc<dyn Handler>>>>,
-    #[allow(dead_code)]
-    next_id: Arc<RwLock<i64>>,
 }
 
 impl RpcServer {
@@ -24,7 +22,6 @@ impl RpcServer {
     pub fn new() -> Self {
         Self {
             handlers: Arc::new(RwLock::new(HashMap::new())),
-            next_id: Arc::new(RwLock::new(0)),
         }
     }
 
@@ -32,14 +29,6 @@ impl RpcServer {
     pub async fn register_handler(&self, method: impl Into<String>, handler: Arc<dyn Handler>) {
         let mut handlers = self.handlers.write().await;
         handlers.insert(method.into(), handler);
-    }
-
-    /// Get next request ID
-    #[allow(dead_code)]
-    async fn next_id(&self) -> Id {
-        let mut id = self.next_id.write().await;
-        *id += 1;
-        Id::number(*id)
     }
 
     /// Handle a single request

@@ -80,9 +80,6 @@ pub struct ResourceUsage {
 struct TaskAllocation {
     /// Task ID
     task_id: String,
-    /// When the allocation was made (unix millis)
-    #[allow(dead_code)]
-    allocated_at: u64,
 }
 
 /// Multi-tenant resource governor.
@@ -242,7 +239,6 @@ impl ResourceGovernor {
                 .or_default()
                 .push(TaskAllocation {
                     task_id: task_id.to_string(),
-                    allocated_at: now,
                 });
         }
 

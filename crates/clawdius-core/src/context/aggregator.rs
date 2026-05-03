@@ -11,8 +11,6 @@ use tokio::sync::RwLock;
 
 const DEFAULT_MAX_TOKENS: usize = 50_000;
 const VECTOR_SEARCH_LIMIT: usize = 20;
-#[allow(dead_code)]
-const SYMBOL_EXPANSION_DEPTH: usize = 2;
 
 #[derive(Debug, Clone)]
 pub struct AggregatedContext {

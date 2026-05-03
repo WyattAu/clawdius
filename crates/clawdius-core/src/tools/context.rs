@@ -98,8 +98,9 @@ impl ToolContextResolver {
             return ToolContext::for_single_project(cwd);
         }
 
-        // TODO: When SprintConfig gains workspace_id, this will use
-        // WorkspaceManager to resolve. For now, use cwd.
+        // Workspace-based routing is planned: once SprintConfig carries a workspace_id
+        // field, this will delegate to WorkspaceManager to resolve the target project.
+        // For now, fall back to the current working directory.
         let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
         ToolContext::for_single_project(cwd)
     }

@@ -330,12 +330,6 @@ impl TimelineStore {
         })
     }
 
-    /// Hash file content (string)
-    #[allow(dead_code)]
-    fn hash_content(&self, content: &str) -> String {
-        self.hash_bytes(content.as_bytes())
-    }
-
     /// Hash bytes
     fn hash_bytes(&self, content: &[u8]) -> String {
         let mut hasher = Sha3_256::new();
@@ -1451,9 +1445,9 @@ mod tests {
         let db_path = temp_dir.path().join("timeline.db");
         let store = TimelineStore::new(&db_path, temp_dir.path().to_path_buf()).unwrap();
 
-        let hash1 = store.hash_content("test content");
-        let hash2 = store.hash_content("test content");
-        let hash3 = store.hash_content("different content");
+        let hash1 = store.hash_bytes("test content".as_bytes());
+        let hash2 = store.hash_bytes("test content".as_bytes());
+        let hash3 = store.hash_bytes("different content".as_bytes());
 
         assert_eq!(hash1, hash2);
         assert_ne!(hash1, hash3);

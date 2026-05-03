@@ -108,8 +108,6 @@ pub struct Metrics {
     pub sessions_active: AtomicU64,
     pub messages_total: AtomicU64,
     pub errors_total: AtomicU64,
-    #[allow(dead_code)]
-    start_time: Instant,
     system: RwLock<System>,
 }
 
@@ -138,7 +136,6 @@ impl Metrics {
             sessions_active: AtomicU64::new(0),
             messages_total: AtomicU64::new(0),
             errors_total: AtomicU64::new(0),
-            start_time: Instant::now(),
             system: RwLock::new(System::new()),
         }
     }
