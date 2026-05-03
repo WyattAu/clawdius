@@ -351,11 +351,10 @@ impl serenity::client::EventHandler for DiscordEventHandler {
             user: crate::adapter::User {
                 id: new_message.author.id.get().to_string(),
                 name: new_message.author.name.clone(),
-                username: Some(format!(
-                    "{}#{}",
-                    new_message.author.name,
-                    new_message.author.discriminator
-                )),
+                username: match new_message.author.discriminator {
+                    Some(d) => Some(format!("{}#{}", new_message.author.name, d)),
+                    None => Some(new_message.author.name.clone()),
+                },
                 is_admin,
             },
             text: new_message.content.clone(),
@@ -364,7 +363,10 @@ impl serenity::client::EventHandler for DiscordEventHandler {
                 .as_ref()
                 .map(|rm| rm.id.get().to_string()),
             attachments,
-            timestamp: new_message.id.created_at(),
+            timestamp: chrono::DateTime::from_timestamp(
+                new_message.id.created_at().unix_timestamp(),
+                0,
+            ).unwrap_or_else(chrono::Utc::now),
             metadata: {
                 let mut meta = std::collections::HashMap::new();
                 if let Some(guild_id) = new_message.guild_id {
