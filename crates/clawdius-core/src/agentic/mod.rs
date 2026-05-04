@@ -415,40 +415,83 @@ impl AgenticSystem {
 
         // Run tests if changes were made
         let test_result = if !changes.is_empty() {
-            log.push(LogEntry {
-                timestamp: current_timestamp(),
-                level: LogLevel::Info,
-                component: "AgenticSystem".to_string(),
-                message: format!("Running tests with strategy {:?}", self.test_strategy),
-            });
-            let result = self.test_runner.run_tests(&changes).await?;
+            Some(self.run_tests_with_recovery(&changes, &mut log).await?)
+        } else {
+            None
+        };
 
-            // Error recovery: if tests failed and we have an LLM, try to fix
-            if !result.passed {
-                if let Some(client) = &self.llm_client {
-                    log.push(LogEntry {
-                        timestamp: current_timestamp(),
-                        level: LogLevel::Info,
-                        component: "AgenticSystem".to_string(),
-                        message: "Tests failed, attempting error recovery".to_string(),
-                    });
+        // Determine success
+        let tests_passed = test_result.as_ref().map_or(true, |t| t.passed);
+        let verification_passed = verification.issues.iter().all(|i| !i.is_blocking());
+        let success = tests_passed && verification_passed;
 
-                    let recovery = ErrorRecovery::with_config(
-                        Arc::clone(client),
-                        ErrorRecoveryConfig::default(),
-                    );
+        // Apply changes based on workflow
+        if success && !changes.is_empty() {
+            self.apply_changes(&changes, &request.apply_workflow, &mut log);
+        }
 
-                    // Try to fix each changed file that has errors
-                    let mut fixed_changes = changes.clone();
-                    for change in &mut fixed_changes {
-                        let language = detect_language_from_path(&change.path);
-                        let errors = error_recovery::parse_compiler_output(&result.output);
+        // Update state
+        {
+            let mut state = self.state.write().await;
+            state.current_task = None;
+            if success {
+                state.completed_tasks += 1;
+            } else {
+                state.failed_tasks += 1;
+            }
+            state.total_time_ms += start.elapsed().as_millis() as u64;
+        }
 
-                        if errors.is_empty() {
-                            continue;
-                        }
+        Ok(TaskResult {
+            id: request.id,
+            success,
+            changes,
+            test_result,
+            verification,
+            rollback_checkpoint,
+            log,
+            duration_ms: start.elapsed().as_millis() as u64,
+        })
+    }
 
-                        match recovery.recover(&change.new, &errors, language).await {
+    /// Run tests with automatic error recovery if an LLM client is available.
+    async fn run_tests_with_recovery(
+        &self,
+        changes: &[FileChange],
+        log: &mut Vec<LogEntry>,
+    ) -> Result<TestResult> {
+        log.push(LogEntry {
+            timestamp: current_timestamp(),
+            level: LogLevel::Info,
+            component: "AgenticSystem".to_string(),
+            message: format!("Running tests with strategy {:?}", self.test_strategy),
+        });
+        let result = self.test_runner.run_tests(changes).await?;
+
+        if !result.passed {
+            if let Some(client) = &self.llm_client {
+                log.push(LogEntry {
+                    timestamp: current_timestamp(),
+                    level: LogLevel::Info,
+                    component: "AgenticSystem".to_string(),
+                    message: "Tests failed, attempting error recovery".to_string(),
+                });
+
+                let recovery = ErrorRecovery::with_config(
+                    Arc::clone(client),
+                    ErrorRecoveryConfig::default(),
+                );
+
+                let language = changes
+                    .first()
+                    .map(|c| detect_language_from_path(&c.path))
+                    .unwrap_or(None);
+                let errors = error_recovery::parse_compiler_output(&result.output);
+
+                if !errors.is_empty() {
+                    for change in changes {
+                        let change_language = language.or_else(|| detect_language_from_path(&change.path));
+                        match recovery.recover(&change.new, &errors, change_language).await {
                             Ok(recovery_result) if recovery_result.success => {
                                 log.push(LogEntry {
                                     timestamp: current_timestamp(),
@@ -459,7 +502,6 @@ impl AgenticSystem {
                                         change.path, recovery_result.retries_used
                                     ),
                                 });
-                                change.new = recovery_result.fixed_code;
                             },
                             Ok(recovery_result) => {
                                 log.push(LogEntry {
@@ -487,116 +529,85 @@ impl AgenticSystem {
                             },
                         }
                     }
-
-                    Some(result)
-                } else {
-                    Some(result)
                 }
-            } else {
-                Some(result)
             }
-        } else {
-            None
-        };
+        }
 
-        // Determine success
-        let tests_passed = test_result.as_ref().map_or(true, |t| t.passed);
-        let verification_passed = verification.issues.iter().all(|i| !i.is_blocking());
-        let success = tests_passed && verification_passed;
+        Ok(result)
+    }
 
-        // Apply changes based on workflow
-        if success && !changes.is_empty() {
-            match &request.apply_workflow {
-                ApplyWorkflow::PreviewOnly => {
+    /// Apply file changes to disk based on the configured workflow.
+    fn apply_changes(
+        &self,
+        changes: &[FileChange],
+        workflow: &ApplyWorkflow,
+        log: &mut Vec<LogEntry>,
+    ) {
+        match workflow {
+            ApplyWorkflow::PreviewOnly => {
+                log.push(LogEntry {
+                    timestamp: current_timestamp(),
+                    level: LogLevel::Info,
+                    component: "AgenticSystem".to_string(),
+                    message: format!(
+                        "Preview mode — {} change(s) would be applied:\n{}",
+                        changes.len(),
+                        changes
+                            .iter()
+                            .map(|c| format!("  [{:?}] {}", c.change_type, c.path))
+                            .collect::<Vec<_>>()
+                            .join("\n")
+                    ),
+                });
+            },
+            _ => {
+                let mut applied = 0;
+                let mut failed = Vec::new();
+                for change in changes {
+                    if let Some(parent) = std::path::Path::new(&change.path).parent() {
+                        if let Err(e) = std::fs::create_dir_all(parent) {
+                            failed.push(format!("{}: mkdir {}", change.path, e));
+                            continue;
+                        }
+                    }
+                    match std::fs::write(&change.path, &change.new) {
+                        Ok(()) => {
+                            applied += 1;
+                            log.push(LogEntry {
+                                timestamp: current_timestamp(),
+                                level: LogLevel::Info,
+                                component: "AgenticSystem".to_string(),
+                                message: format!(
+                                    "Applied [{:?}] {}",
+                                    change.change_type, change.path
+                                ),
+                            });
+                        },
+                        Err(e) => {
+                            failed.push(format!("{}: {}", change.path, e));
+                        },
+                    }
+                }
+                if !failed.is_empty() {
                     log.push(LogEntry {
                         timestamp: current_timestamp(),
-                        level: LogLevel::Info,
+                        level: LogLevel::Warn,
                         component: "AgenticSystem".to_string(),
                         message: format!(
-                            "Preview mode — {} change(s) would be applied:\n{}",
-                            changes.len(),
-                            changes
-                                .iter()
-                                .map(|c| format!("  [{:?}] {}", c.change_type, c.path))
-                                .collect::<Vec<_>>()
-                                .join("\n")
+                            "Failed to apply {} change(s): {}",
+                            failed.len(),
+                            failed.join("; ")
                         ),
                     });
-                },
-                _ => {
-                    // Actually write changes to disk
-                    let mut applied = 0;
-                    let mut failed = Vec::new();
-                    for change in &changes {
-                        // Create parent directories if needed
-                        if let Some(parent) = std::path::Path::new(&change.path).parent() {
-                            if let Err(e) = std::fs::create_dir_all(parent) {
-                                failed.push(format!("{}: mkdir {}", change.path, e));
-                                continue;
-                            }
-                        }
-                        match std::fs::write(&change.path, &change.new) {
-                            Ok(()) => {
-                                applied += 1;
-                                log.push(LogEntry {
-                                    timestamp: current_timestamp(),
-                                    level: LogLevel::Info,
-                                    component: "AgenticSystem".to_string(),
-                                    message: format!(
-                                        "Applied [{:?}] {}",
-                                        change.change_type, change.path
-                                    ),
-                                });
-                            },
-                            Err(e) => {
-                                failed.push(format!("{}: {}", change.path, e));
-                            },
-                        }
-                    }
-                    if !failed.is_empty() {
-                        log.push(LogEntry {
-                            timestamp: current_timestamp(),
-                            level: LogLevel::Warn,
-                            component: "AgenticSystem".to_string(),
-                            message: format!(
-                                "Failed to apply {} change(s): {}",
-                                failed.len(),
-                                failed.join("; ")
-                            ),
-                        });
-                    }
-                    log.push(LogEntry {
-                        timestamp: current_timestamp(),
-                        level: LogLevel::Info,
-                        component: "AgenticSystem".to_string(),
-                        message: format!("Applied {}/{} change(s) to disk", applied, changes.len()),
-                    });
-                },
-            }
+                }
+                log.push(LogEntry {
+                    timestamp: current_timestamp(),
+                    level: LogLevel::Info,
+                    component: "AgenticSystem".to_string(),
+                    message: format!("Applied {}/{} change(s) to disk", applied, changes.len()),
+                });
+            },
         }
-
-        // Update state
-        {
-            let mut state = self.state.write().await;
-            state.current_task = None;
-            if success {
-                state.completed_tasks += 1;
-            } else {
-                state.failed_tasks += 1;
-            }
-            state.total_time_ms += start.elapsed().as_millis() as u64;
-        }
-
-        Ok(TaskResult {
-            id: request.id,
-            success,
-            changes,
-            test_result,
-            verification,
-            rollback_checkpoint,
-            log,
-            duration_ms: start.elapsed().as_millis() as u64,
-        })
     }
 
     async fn execute_single_pass(
