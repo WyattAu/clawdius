@@ -410,6 +410,14 @@ impl LlmConfig {
                 })?;
                 (Some(key), None, "zai-default".to_string())
             },
+            "deepseek" => {
+                let key = std::env::var("DEEPSEEK_API_KEY").map_err(|_| {
+                    Error::Config(
+                        ErrorHelpers::api_key_missing("DeepSeek", "DEEPSEEK_API_KEY").to_string(),
+                    )
+                })?;
+                (Some(key), None, "deepseek-chat".to_string())
+            },
             _ => {
                 return Err(Error::Config(
                     ErrorHelpers::unknown_provider(
@@ -419,6 +427,7 @@ impl LlmConfig {
                             "google",
                             "openai",
                             "openrouter",
+                            "deepseek",
                             "ollama",
                             "zai",
                         ],
@@ -586,6 +595,27 @@ impl LlmConfig {
 
                 (model, Some(api_key), None)
             },
+            "deepseek" => {
+                let cfg = config.deepseek.as_ref();
+                let model = cfg
+                    .and_then(|c| c.model.clone())
+                    .unwrap_or_else(|| "deepseek-chat".to_string());
+
+                let api_key = Self::load_api_key(
+                    "DEEPSEEK_API_KEY",
+                    "deepseek",
+                    &cfg.and_then(|c| c.api_key.clone()),
+                    &cfg.and_then(|c| c.api_key_env.clone()),
+                )?;
+
+                let api_key = api_key.ok_or_else(|| {
+                    Error::Config(
+                        ErrorHelpers::api_key_missing("DeepSeek", "DEEPSEEK_API_KEY").to_string(),
+                    )
+                })?;
+
+                (model, Some(api_key), None)
+            },
             "openrouter" => {
                 let model = std::env::var("OPENROUTER_MODEL")
                     .unwrap_or_else(|_| "openai/gpt-oss-20b:free".to_string());
@@ -609,6 +639,7 @@ impl LlmConfig {
                             "google",
                             "openai",
                             "ollama",
+                            "deepseek",
                             "zai",
                             "openrouter",
                         ],

@@ -377,6 +377,9 @@ pub struct LlmConfig {
     /// ZAI provider settings
     #[serde(default)]
     pub zai: Option<ProviderConfig>,
+    /// DeepSeek provider settings
+    #[serde(default)]
+    pub deepseek: Option<ProviderConfig>,
     /// Maximum tokens for responses (global default)
     #[serde(default = "default_max_tokens")]
     pub max_tokens: usize,
