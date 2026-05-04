@@ -633,6 +633,7 @@ pub enum LlmProvider {
     Google(providers::google::GoogleProvider),
     OpenAi(providers::openai::OpenAIProvider),
     OpenRouter(providers::openrouter::OpenRouterProvider),
+    DeepSeek(providers::deepseek::DeepSeekProvider),
     Zai(providers::zai::ZaiProvider),
     Ollama(providers::ollama::OllamaProvider),
     Local(providers::local::LocalLlmProvider),
@@ -662,6 +663,7 @@ impl LlmClientWithRetry {
                 LlmProvider::Google(p) => p.chat(messages.clone()).await,
                 LlmProvider::OpenAi(p) => p.chat(messages.clone()).await,
                 LlmProvider::OpenRouter(p) => p.chat(messages.clone()).await,
+                LlmProvider::DeepSeek(p) => p.chat(messages.clone()).await,
                 LlmProvider::Zai(p) => p.chat(messages.clone()).await,
                 LlmProvider::Ollama(p) => p.chat(messages.clone()).await,
                 LlmProvider::Local(p) => p.chat(messages.clone()).await,
@@ -677,6 +679,7 @@ impl LlmClientWithRetry {
             LlmProvider::Google(p) => p.count_tokens(text),
             LlmProvider::OpenAi(p) => p.count_tokens(text),
             LlmProvider::OpenRouter(p) => p.count_tokens(text),
+            LlmProvider::DeepSeek(p) => p.count_tokens(text),
             LlmProvider::Zai(p) => p.count_tokens(text),
             LlmProvider::Ollama(p) => p.count_tokens(text),
             LlmProvider::Local(p) => p.count_tokens(text),
@@ -690,10 +693,11 @@ impl LlmClientWithRetry {
             LlmProvider::Anthropic(p) => p.chat_with_tools(messages, tools).await,
             LlmProvider::OpenAi(p) => p.chat_with_tools(messages, tools).await,
             LlmProvider::OpenRouter(p) => p.chat_with_tools(messages, tools).await,
+            LlmProvider::DeepSeek(p) => p.chat_with_tools(messages, tools).await,
             LlmProvider::Zai(p) => p.chat_with_tools(messages, tools).await,
             LlmProvider::Google(_) | LlmProvider::Ollama(_) | LlmProvider::Local(_) => {
                 Err(crate::Error::Llm(
-                    "Tool calling not supported by this provider. Use Anthropic, OpenAI, OpenRouter, or ZAI."
+                    "Tool calling not supported by this provider. Use Anthropic, OpenAI, OpenRouter, DeepSeek, or ZAI."
                         .to_string(),
                 ))
             },
@@ -721,6 +725,7 @@ impl providers::LlmClient for LlmProvider {
             LlmProvider::Google(p) => p.chat(messages).await,
             LlmProvider::OpenAi(p) => p.chat(messages).await,
             LlmProvider::OpenRouter(p) => p.chat(messages).await,
+            LlmProvider::DeepSeek(p) => p.chat(messages).await,
             LlmProvider::Zai(p) => p.chat(messages).await,
             LlmProvider::Ollama(p) => p.chat(messages).await,
             LlmProvider::Local(p) => p.chat(messages).await,
@@ -736,6 +741,7 @@ impl providers::LlmClient for LlmProvider {
             LlmProvider::Google(p) => p.chat_stream(messages).await,
             LlmProvider::OpenAi(p) => p.chat_stream(messages).await,
             LlmProvider::OpenRouter(p) => p.chat_stream(messages).await,
+            LlmProvider::DeepSeek(p) => p.chat_stream(messages).await,
             LlmProvider::Zai(p) => p.chat_stream(messages).await,
             LlmProvider::Ollama(p) => p.chat_stream(messages).await,
             LlmProvider::Local(p) => p.chat_stream(messages).await,
@@ -748,6 +754,7 @@ impl providers::LlmClient for LlmProvider {
             LlmProvider::Google(p) => p.count_tokens(text),
             LlmProvider::OpenAi(p) => p.count_tokens(text),
             LlmProvider::OpenRouter(p) => p.count_tokens(text),
+            LlmProvider::DeepSeek(p) => p.count_tokens(text),
             LlmProvider::Zai(p) => p.count_tokens(text),
             LlmProvider::Ollama(p) => p.count_tokens(text),
             LlmProvider::Local(p) => p.count_tokens(text),
@@ -808,6 +815,16 @@ pub fn create_provider(config: &LlmConfig) -> Result<LlmProvider> {
                 Some(&config.model),
             )?))
         },
+        "deepseek" => {
+            let api_key = config.api_key.as_ref().ok_or_else(|| {
+                Error::Config(
+                    ErrorHelpers::api_key_missing("DeepSeek", "DEEPSEEK_API_KEY").to_string(),
+                )
+            })?;
+            Ok(LlmProvider::DeepSeek(
+                providers::deepseek::DeepSeekProvider::new(api_key, Some(&config.model))?,
+            ))
+        },
         "ollama" => {
             let base_url = config
                 .base_url
@@ -831,7 +848,7 @@ pub fn create_provider(config: &LlmConfig) -> Result<LlmProvider> {
         _ => Err(Error::Config(
             ErrorHelpers::unknown_provider(
                 &config.provider,
-                &["anthropic", "google", "openai", "openrouter", "zai", "ollama"],
+                &["anthropic", "google", "openai", "openrouter", "deepseek", "zai", "ollama"],
             )
             .to_string(),
         )),

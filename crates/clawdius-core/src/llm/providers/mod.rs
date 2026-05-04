@@ -6,6 +6,7 @@
 //! tools format.
 
 pub mod anthropic;
+pub mod deepseek;
 pub mod google;
 pub mod local;
 pub mod ollama;
