@@ -21,6 +21,7 @@ pub struct CliToolExecutor {
 }
 
 impl CliToolExecutor {
+    #[must_use]
     pub fn new(workspace_root: PathBuf) -> Self {
         let sandbox_config = ShellSandboxConfig::default();
         let file_tool = Arc::new(FileTool::with_workspace_root(&workspace_root));

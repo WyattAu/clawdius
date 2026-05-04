@@ -1199,6 +1199,7 @@ pub mod verify;
 pub mod webhook;
 
 /// Handle a command
+#[allow(clippy::missing_errors_doc)]
 pub async fn handle_command(
     cmd: Commands,
     config_path: Option<PathBuf>,
@@ -1451,7 +1452,7 @@ pub async fn handle_command(
     }
 }
 
-#[allow(elided_lifetimes_in_paths)]
+#[allow(elided_lifetimes_in_paths, clippy::missing_errors_doc)]
 pub fn load_config(config_path: Option<&Path>) -> anyhow::Result<Config> {
     config_path.map_or_else(
         || Config::load_default().map_err(|e| anyhow::anyhow!("Failed to load default config: {e}")),
@@ -1460,6 +1461,7 @@ pub fn load_config(config_path: Option<&Path>) -> anyhow::Result<Config> {
 }
 
 /// Run in headless mode (read from stdin)
+#[allow(clippy::missing_errors_doc)]
 pub async fn run_headless(config_path: Option<PathBuf>) -> anyhow::Result<()> {
     use std::io::{self, BufRead};
 
