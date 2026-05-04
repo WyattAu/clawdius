@@ -482,16 +482,12 @@ impl AgenticSystem {
                     ErrorRecoveryConfig::default(),
                 );
 
-                let language = changes
-                    .first()
-                    .map(|c| detect_language_from_path(&c.path))
-                    .unwrap_or(None);
                 let errors = error_recovery::parse_compiler_output(&result.output);
 
                 if !errors.is_empty() {
                     for change in changes {
-                        let change_language = language.or_else(|| detect_language_from_path(&change.path));
-                        match recovery.recover(&change.new, &errors, change_language).await {
+                        let change_language = detect_language_from_path(&change.path);
+                        match recovery.recover(&change.new, &errors, Some(change_language)).await {
                             Ok(recovery_result) if recovery_result.success => {
                                 log.push(LogEntry {
                                     timestamp: current_timestamp(),
