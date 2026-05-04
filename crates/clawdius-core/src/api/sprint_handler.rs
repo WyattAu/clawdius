@@ -307,6 +307,76 @@ pub struct SprintSseEvent {
     pub timestamp: String,
 }
 
+impl SprintSseEvent {
+    fn phase_start(phase: &str) -> Self {
+        Self {
+            event: "phase_start".to_string(),
+            phase: Some(phase.to_string()),
+            status: None,
+            output: None,
+            tokens_used: None,
+            duration_ms: None,
+            files_modified: None,
+            success: None,
+            error: None,
+            timestamp: chrono::Utc::now().to_rfc3339(),
+        }
+    }
+
+    fn phase_end(result: &crate::agentic::PhaseResult) -> Self {
+        Self {
+            event: "phase_end".to_string(),
+            phase: Some(result.phase.display_name().to_string()),
+            status: Some(format!("{:?}", result.status).to_lowercase()),
+            output: Some(result.output.clone()),
+            tokens_used: Some(result.tokens_used),
+            duration_ms: Some(result.duration_ms),
+            files_modified: if result.files_modified.is_empty() {
+                None
+            } else {
+                Some(result.files_modified.clone())
+            },
+            success: None,
+            error: if result.errors.is_empty() {
+                None
+            } else {
+                Some(result.errors.join("; "))
+            },
+            timestamp: chrono::Utc::now().to_rfc3339(),
+        }
+    }
+
+    fn error(phase: Option<&str>, message: impl Into<String>) -> Self {
+        Self {
+            event: "error".to_string(),
+            phase: phase.map(|s| s.to_string()),
+            status: None,
+            output: None,
+            tokens_used: None,
+            duration_ms: None,
+            files_modified: None,
+            success: None,
+            error: Some(message.into()),
+            timestamp: chrono::Utc::now().to_rfc3339(),
+        }
+    }
+
+    fn sprint_end(success: bool, total_tokens: usize) -> Self {
+        Self {
+            event: "sprint_end".to_string(),
+            phase: None,
+            status: None,
+            output: None,
+            tokens_used: Some(total_tokens),
+            duration_ms: None,
+            files_modified: None,
+            success: Some(success),
+            error: None,
+            timestamp: chrono::Utc::now().to_rfc3339(),
+        }
+    }
+}
+
 /// GET /api/v1/sprint/stream — Run a sprint and stream phase results as SSE.
 ///
 /// Accepts query parameters:
@@ -336,21 +406,7 @@ pub async fn stream_sprint(
     let llm_provider = match &state.llm_client {
         Some(provider) => Arc::clone(provider) as Arc<dyn LlmClient>,
         None => {
-            // Send a single error event and close
-            let error_event = SprintSseEvent {
-                event: "error".to_string(),
-                phase: None,
-                status: None,
-                output: None,
-                tokens_used: None,
-                duration_ms: None,
-                files_modified: None,
-                success: None,
-                error: Some("No LLM provider configured".to_string()),
-                timestamp: chrono::Utc::now().to_rfc3339(),
-            };
-            let _ = tx.send(error_event).await;
-            // Drop tx so the stream ends after this event
+            let _ = tx.send(SprintSseEvent::error(None, "No LLM provider configured")).await;
             drop(tx);
 
             let stream: std::pin::Pin<
@@ -418,83 +474,20 @@ pub async fn stream_sprint(
             let phase_name = phase.display_name().to_string();
 
             // Emit phase_start
-            let _ = tx
-                .send(SprintSseEvent {
-                    event: "phase_start".to_string(),
-                    phase: Some(phase_name.clone()),
-                    status: None,
-                    output: None,
-                    tokens_used: None,
-                    duration_ms: None,
-                    files_modified: None,
-                    success: None,
-                    error: None,
-                    timestamp: chrono::Utc::now().to_rfc3339(),
-                })
-                .await;
+            let _ = tx.send(SprintSseEvent::phase_start(&phase_name)).await;
 
             // Run the phase
             let result = match engine.run_phase(&mut sprint_state, phase).await {
                 Ok(r) => r,
                 Err(e) => {
-                    let _ = tx
-                        .send(SprintSseEvent {
-                            event: "error".to_string(),
-                            phase: Some(phase_name),
-                            status: None,
-                            output: None,
-                            tokens_used: None,
-                            duration_ms: None,
-                            files_modified: None,
-                            success: None,
-                            error: Some(format!("Phase {phase} error: {e}")),
-                            timestamp: chrono::Utc::now().to_rfc3339(),
-                        })
-                        .await;
-                    // Send sprint_end with failure
-                    let _ = tx
-                        .send(SprintSseEvent {
-                            event: "sprint_end".to_string(),
-                            phase: None,
-                            status: None,
-                            output: None,
-                            tokens_used: None,
-                            duration_ms: None,
-                            files_modified: None,
-                            success: Some(false),
-                            error: None,
-                            timestamp: chrono::Utc::now().to_rfc3339(),
-                        })
-                        .await;
+                    let _ = tx.send(SprintSseEvent::error(Some(&phase_name), format!("Phase {phase} error: {e}"))).await;
+                    let _ = tx.send(SprintSseEvent::sprint_end(false, 0)).await;
                     return;
                 },
             };
 
-            let status_str = format!("{:?}", result.status).to_lowercase();
-
             // Emit phase_end
-            let _ = tx
-                .send(SprintSseEvent {
-                    event: "phase_end".to_string(),
-                    phase: Some(phase_name.clone()),
-                    status: Some(status_str),
-                    output: Some(result.output),
-                    tokens_used: Some(result.tokens_used),
-                    duration_ms: Some(result.duration_ms),
-                    files_modified: if result.files_modified.is_empty() {
-                        None
-                    } else {
-                        Some(result.files_modified)
-                    },
-                    success: None,
-                    error: if result.errors.is_empty() {
-                        None
-                    } else {
-                        Some(result.errors.join("; "))
-                    },
-                    timestamp: chrono::Utc::now().to_rfc3339(),
-                })
-                .await;
+            let _ = tx.send(SprintSseEvent::phase_end(&result)).await;
 
             // Handle build/test retry cycle
             if *phase == crate::agentic::SprintPhase::Test
@@ -509,24 +502,13 @@ pub async fn stream_sprint(
                     .iter()
                     .position(|p| *p == crate::agentic::SprintPhase::Build)
                 {
-                    // We can't easily restart in this loop structure, so just note it
-                    let _ = tx
-                        .send(SprintSseEvent {
-                            event: "error".to_string(),
-                            phase: Some("retry".to_string()),
-                            status: None,
-                            output: None,
-                            tokens_used: None,
-                            duration_ms: None,
-                            files_modified: None,
-                            success: None,
-                            error: Some(format!(
-                                "Test failed (iteration {}/{}). Note: SSE streaming does not yet support automatic build/test retry loops.",
-                                build_test_iterations, sprint_state.config.max_iterations
-                            )),
-                            timestamp: chrono::Utc::now().to_rfc3339(),
-                        })
-                        .await;
+                    let _ = tx.send(SprintSseEvent::error(
+                        Some("retry"),
+                        format!(
+                            "Test failed (iteration {}/{}). Note: SSE streaming does not yet support automatic build/test retry loops.",
+                            build_test_iterations, sprint_state.config.max_iterations
+                        ),
+                    )).await;
                     break;
                 }
             }
@@ -547,20 +529,7 @@ pub async fn stream_sprint(
             .iter()
             .map(|r| r.tokens_used)
             .sum();
-        let _ = tx
-            .send(SprintSseEvent {
-                event: "sprint_end".to_string(),
-                phase: None,
-                status: None,
-                output: None,
-                tokens_used: Some(total_tokens),
-                duration_ms: None,
-                files_modified: None,
-                success: Some(all_success),
-                error: None,
-                timestamp: chrono::Utc::now().to_rfc3339(),
-            })
-            .await;
+        let _ = tx.send(SprintSseEvent::sprint_end(all_success, total_tokens)).await;
 
         // Record tenant usage if authenticated
         if let Some(Extension(key)) = key_clone {

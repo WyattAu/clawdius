@@ -159,6 +159,161 @@ impl AgentLoop {
         }
     }
 
+    /// Build a budget-exhausted result.
+    fn budget_exhausted_result(
+        &self,
+        total_usage: &TokenUsage,
+        iter_num: usize,
+        all_tool_calls: &[ToolCallResult],
+    ) -> AgentLoopResult {
+        AgentLoopResult {
+            text: format!(
+                "(Token budget exhausted after {} tokens, budget: {})",
+                total_usage.total(),
+                self.config.max_total_tokens
+            ),
+            tool_calls: all_tool_calls.to_vec(),
+            total_usage: total_usage.clone(),
+            iterations: iter_num,
+            termination_reason: AgentTerminationReason::TokenBudgetExhausted {
+                tokens_used: total_usage.total(),
+                budget: self.config.max_total_tokens,
+            },
+        }
+    }
+
+    /// Execute a single tool call and emit events.
+    async fn execute_single_tool(
+        &self,
+        tc: &ParsedToolCall,
+        event_tx: &Option<mpsc::Sender<AgentEvent>>,
+    ) -> (ToolCallResult, String) {
+        if let Some(tx) = event_tx {
+            let _ = tx
+                .send(AgentEvent::ToolCall {
+                    name: tc.name.clone(),
+                    arguments: tc.arguments.clone(),
+                })
+                .await;
+        }
+
+        let result = execute_mcp_tool_call(&tc.name, &tc.arguments);
+        let is_error = result.is_error;
+        let truncated_result = truncate_result(&result.result, self.config.max_tool_result_size);
+
+        if let Some(tx) = event_tx {
+            let _ = tx
+                .send(AgentEvent::ToolResult {
+                    name: tc.name.clone(),
+                    result: truncated_result.clone(),
+                    is_error,
+                })
+                .await;
+        }
+
+        let tool_result = ToolCallResult {
+            name: tc.name.clone(),
+            arguments: tc.arguments.clone(),
+            result: truncated_result.clone(),
+            is_error,
+        };
+
+        let text = format!("Tool {} result:\n{}\n\n", tc.name, truncated_result);
+        (tool_result, text)
+    }
+
+    /// Execute multiple tool calls concurrently and emit events.
+    async fn execute_concurrent_tools(
+        &self,
+        tool_calls: &[ParsedToolCall],
+        event_tx: &Option<mpsc::Sender<AgentEvent>>,
+    ) -> (Vec<ToolCallResult>, String) {
+        let mut join_set = tokio::task::JoinSet::new();
+
+        for tc in tool_calls {
+            if let Some(tx) = event_tx {
+                let _ = tx
+                    .send(AgentEvent::ToolCall {
+                        name: tc.name.clone(),
+                        arguments: tc.arguments.clone(),
+                    })
+                    .await;
+            }
+            let name = tc.name.clone();
+            let arguments = tc.arguments.clone();
+            join_set.spawn_blocking(move || {
+                let result = execute_mcp_tool_call(&name, &arguments);
+                (name, result)
+            });
+        }
+
+        // Collect results in deterministic order
+        let mut ordered_results: Vec<Option<(String, McpToolResultInner)>> =
+            (0..tool_calls.len()).map(|_| None).collect();
+
+        while let Some(result) = join_set.join_next().await {
+            match result {
+                Ok((name, tool_result)) => {
+                    let idx = tool_calls.iter().position(|tc| tc.name == name);
+                    if let Some(idx) = idx {
+                        let actual_idx = if ordered_results[idx].is_some() {
+                            ordered_results
+                                .iter()
+                                .position(std::option::Option::is_none)
+                                .unwrap_or(idx)
+                        } else {
+                            idx
+                        };
+                        ordered_results[actual_idx] = Some((name, tool_result));
+                    }
+                },
+                Err(e) => {
+                    if let Some(tx) = event_tx {
+                        let _ = tx
+                            .send(AgentEvent::ToolResult {
+                                name: "concurrent_error".to_string(),
+                                result: format!("Task join error: {e}"),
+                                is_error: true,
+                            })
+                            .await;
+                    }
+                },
+            }
+        }
+
+        // Emit and collect results in original order
+        let mut all_results = Vec::with_capacity(tool_calls.len());
+        let mut text = String::new();
+        for (tc, maybe_result) in tool_calls.iter().zip(ordered_results) {
+            let (result_str, is_error) = match maybe_result {
+                Some((_, inner)) => (inner.result, inner.is_error),
+                None => ("Tool execution failed: no result".to_string(), true),
+            };
+            let truncated = truncate_result(&result_str, self.config.max_tool_result_size);
+
+            if let Some(tx) = event_tx {
+                let _ = tx
+                    .send(AgentEvent::ToolResult {
+                        name: tc.name.clone(),
+                        result: truncated.clone(),
+                        is_error,
+                    })
+                    .await;
+            }
+
+            all_results.push(ToolCallResult {
+                name: tc.name.clone(),
+                arguments: tc.arguments.clone(),
+                result: truncated.clone(),
+                is_error,
+            });
+
+            text.push_str(&format!("Tool {} result:\n{}\n\n", tc.name, truncated));
+        }
+
+        (all_results, text)
+    }
+
     async fn run_inner(
         &self,
         messages: Vec<ChatMessage>,
@@ -183,20 +338,7 @@ impl AgentLoop {
             let iter_num = iteration + 1;
 
             if total_usage.total() >= self.config.max_total_tokens {
-                return Ok(AgentLoopResult {
-                    text: format!(
-                        "(Token budget exhausted after {} tokens, budget: {})",
-                        total_usage.total(),
-                        self.config.max_total_tokens
-                    ),
-                    tool_calls: all_tool_calls,
-                    total_usage: total_usage.clone(),
-                    iterations: iter_num,
-                    termination_reason: AgentTerminationReason::TokenBudgetExhausted {
-                        tokens_used: total_usage.total(),
-                        budget: self.config.max_total_tokens,
-                    },
-                });
+                return Ok(self.budget_exhausted_result(&total_usage, iter_num, &all_tool_calls));
             }
 
             if let Some(ref tx) = event_tx {
@@ -213,20 +355,7 @@ impl AgentLoop {
             total_usage.add(&response.usage);
 
             if total_usage.total() > self.config.max_total_tokens {
-                return Ok(AgentLoopResult {
-                    text: format!(
-                        "(Token budget exhausted after {} tokens, budget: {})",
-                        total_usage.total(),
-                        self.config.max_total_tokens
-                    ),
-                    tool_calls: all_tool_calls,
-                    total_usage: total_usage.clone(),
-                    iterations: iter_num,
-                    termination_reason: AgentTerminationReason::TokenBudgetExhausted {
-                        tokens_used: total_usage.total(),
-                        budget: self.config.max_total_tokens,
-                    },
-                });
+                return Ok(self.budget_exhausted_result(&total_usage, iter_num, &all_tool_calls));
             }
 
             // Prefer native tool calls from the provider API over text-parsed ones.
@@ -282,134 +411,16 @@ impl AgentLoop {
                 content: response.text.clone(),
             });
 
+            // Execute tool calls (single fast-path or concurrent)
             let mut tool_results_text = String::new();
-
-            // Execute tool calls concurrently when there are multiple.
-            // Results are merged in deterministic (original) order.
             if tool_calls.len() == 1 {
-                // Fast path: single tool call, execute directly.
-                let tc = &tool_calls[0];
-                if let Some(ref tx) = event_tx {
-                    let _ = tx
-                        .send(AgentEvent::ToolCall {
-                            name: tc.name.clone(),
-                            arguments: tc.arguments.clone(),
-                        })
-                        .await;
-                }
-
-                let result = execute_mcp_tool_call(&tc.name, &tc.arguments);
-                let is_error = result.is_error;
-                let truncated_result =
-                    truncate_result(&result.result, self.config.max_tool_result_size);
-
-                if let Some(ref tx) = event_tx {
-                    let _ = tx
-                        .send(AgentEvent::ToolResult {
-                            name: tc.name.clone(),
-                            result: truncated_result.clone(),
-                            is_error,
-                        })
-                        .await;
-                }
-
-                all_tool_calls.push(ToolCallResult {
-                    name: tc.name.clone(),
-                    arguments: tc.arguments.clone(),
-                    result: truncated_result.clone(),
-                    is_error,
-                });
-
-                tool_results_text.push_str(&format!(
-                    "Tool {} result:\n{}\n\n",
-                    tc.name, truncated_result
-                ));
+                let (result, text) = self.execute_single_tool(&tool_calls[0], &event_tx).await;
+                all_tool_calls.push(result);
+                tool_results_text.push_str(&text);
             } else {
-                // Concurrent path: spawn all tool calls, collect in order.
-                let mut join_set = tokio::task::JoinSet::new();
-                for tc in &tool_calls {
-                    if let Some(ref tx) = event_tx {
-                        let _ = tx
-                            .send(AgentEvent::ToolCall {
-                                name: tc.name.clone(),
-                                arguments: tc.arguments.clone(),
-                            })
-                            .await;
-                    }
-                    let name = tc.name.clone();
-                    let arguments = tc.arguments.clone();
-                    // Tool execution is CPU-bound (file I/O, process spawning).
-                    // Use spawn_blocking to avoid starving the async runtime.
-                    join_set.spawn_blocking(move || {
-                        let result = execute_mcp_tool_call(&name, &arguments);
-                        (name, result)
-                    });
-                }
-
-                // Collect results in deterministic order using task indices.
-                let mut ordered_results: Vec<Option<(String, McpToolResultInner)>> =
-                    (0..tool_calls.len()).map(|_| None).collect();
-
-                while let Some(result) = join_set.join_next().await {
-                    match result {
-                        Ok((name, tool_result)) => {
-                            // Find the original index by name (handles duplicates by order).
-                            let idx = tool_calls.iter().position(|tc| tc.name == name);
-                            if let Some(idx) = idx {
-                                // If there are duplicate names, find the first unfilled slot.
-                                let actual_idx = if ordered_results[idx].is_some() {
-                                    ordered_results
-                                        .iter()
-                                        .position(std::option::Option::is_none)
-                                        .unwrap_or(idx)
-                                } else {
-                                    idx
-                                };
-                                ordered_results[actual_idx] = Some((name, tool_result));
-                            }
-                        },
-                        Err(e) => {
-                            if let Some(ref tx) = event_tx {
-                                let _ = tx
-                                    .send(AgentEvent::ToolResult {
-                                        name: "concurrent_error".to_string(),
-                                        result: format!("Task join error: {e}"),
-                                        is_error: true,
-                                    })
-                                    .await;
-                            }
-                        },
-                    }
-                }
-
-                // Emit results in original order.
-                for (tc, maybe_result) in tool_calls.iter().zip(ordered_results) {
-                    let (result_str, is_error) = match maybe_result {
-                        Some((_, inner)) => (inner.result, inner.is_error),
-                        None => ("Tool execution failed: no result".to_string(), true),
-                    };
-                    let truncated = truncate_result(&result_str, self.config.max_tool_result_size);
-
-                    if let Some(ref tx) = event_tx {
-                        let _ = tx
-                            .send(AgentEvent::ToolResult {
-                                name: tc.name.clone(),
-                                result: truncated.clone(),
-                                is_error,
-                            })
-                            .await;
-                    }
-
-                    all_tool_calls.push(ToolCallResult {
-                        name: tc.name.clone(),
-                        arguments: tc.arguments.clone(),
-                        result: truncated.clone(),
-                        is_error,
-                    });
-
-                    tool_results_text
-                        .push_str(&format!("Tool {} result:\n{}\n\n", tc.name, truncated));
-                }
+                let (results, text) = self.execute_concurrent_tools(&tool_calls, &event_tx).await;
+                all_tool_calls.extend(results);
+                tool_results_text.push_str(&text);
             }
 
             messages.push(ChatMessage {
