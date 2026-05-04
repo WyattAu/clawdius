@@ -225,6 +225,7 @@ async fn shutdown_signal() {
 }
 
 /// Register a single platform adapter on the gateway.
+#[allow(clippy::too_many_lines)]
 async fn register_platform(gateway: &mut MessageGateway, platform: &Platform, cli: &Cli) {
     match platform {
         Platform::Telegram => {

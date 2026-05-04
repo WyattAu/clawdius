@@ -1,69 +1,11 @@
 //! CLI Progress Indicators
 //!
 //! Simple text-based progress indicators for CLI operations.
-
-//!
-//! ## Usage
-//!
-//! ```rust
-//! use crate::cli_progress::{ProgressBar, Spinner};
-//!
-//! // Create a spinner for long operations
-//! let mut spinner = Spinner::new("Loading...");
-//! spinner.start();
-//!
-//! // Do some work...
-//! std::thread::sleep(std::time::Duration::from_secs(2));
-//!
-//! // Stop with success message
-//! spinner.stop(Some("Done!"));
-//!
-//! // Create a progress bar for multi-step operations
-//! let mut progress = ProgressBar::new(10, "Processing items");
-//! for i in 0..10 {
-//!     progress.inc();
-//!     // Do work...
-//! }
-//! progress.finish("Complete!");
-//! ```
-
-//!
-//! ## Output Format Support
-//!
-//! Both component supports JSON output via the `--format json` flag.
-//! In JSON mode, the spinner will output JSON progress events.
-
 //!
 //! ## Thread Safety
 //!
 //! All components are designed to work in a single-threaded context.
 //! For multi-threaded use, wrap them in Arc<Mutex<...>>.
-
-//!
-//! ## Example: Integration with LSP
-//!
-//! ```rust
-//! use crate::cli_progress::Spinner;
-//!
-//! async fn connect_to_lsp(server: &str) -> Result<()> {
-//!     let mut spinner = Spinner::new(format!("Connecting to {}...", server));
-//!     spinner.start();
-//!
-//!     // Attempt connection
-//!     let result = attempt_connection().await;
-//!
-//!     match result {
-//!         Ok(_) => {
-//!             spinner.stop(Some(&format!("Connected to {}", server)));
-//!             Ok(())
-//!         }
-//!         Err(e) => {
-//!             spinner.stop_with_error(&format!("Failed to connect: {}", e));
-//!             Err(e)
-//!         }
-//!     }
-//! }
-//! ```
 
 use std::io::{self, Write};
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
