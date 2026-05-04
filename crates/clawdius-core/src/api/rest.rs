@@ -36,7 +36,7 @@ use crate::api::tenant::{default_tenants, AuthenticatedApiKey, TenantStore};
 use crate::llm::{ChatMessage, ChatRole, LlmProvider};
 use crate::llm::providers::LlmClient;
 use crate::mcp::McpRequest;
-use crate::session::{Message as SessionMessage, Session, SessionId, SessionStore};
+use crate::session::{Message as SessionMessage, MessageRole, Session, SessionId, SessionStore};
 
 // ============================================================================
 // API State
@@ -532,6 +532,78 @@ fn execute_mcp_tool_call(name: &str, arguments: &serde_json::Value) -> String {
 }
 
 /// POST /api/v1/agent - Send a message to the coding agent
+/// Resolve and load session history into chat messages.
+async fn load_session_messages(
+    state: &ApiState,
+    session_id_str: &str,
+    base_messages: &mut Vec<ChatMessage>,
+) -> Result<(), (StatusCode, Json<ApiError>)> {
+    let session_id = match Uuid::parse_str(session_id_str) {
+        Ok(uuid) => SessionId::from_uuid(uuid),
+        Err(e) => {
+            return Err((
+                StatusCode::BAD_REQUEST,
+                Json(ApiError {
+                    code: "BAD_REQUEST".to_string(),
+                    message: format!("Invalid session ID: {e}"),
+                }),
+            ))
+        },
+    };
+
+    if let Some(session) = state.get_session(session_id).await {
+        for msg in &session.messages {
+            let role = match msg.role {
+                MessageRole::System => ChatRole::System,
+                MessageRole::User => ChatRole::User,
+                MessageRole::Assistant => ChatRole::Assistant,
+                MessageRole::Tool => continue,
+            };
+            if let Some(text) = msg.as_text() {
+                base_messages.push(ChatMessage {
+                    role,
+                    content: text.to_string(),
+                });
+            }
+        }
+    }
+
+    Ok(())
+}
+
+/// Record tenant usage and persist session messages if authenticated.
+async fn finalize_agent_session(
+    state: &ApiState,
+    api_key: &Option<Extension<AuthenticatedApiKey>>,
+    request: &AgentRequest,
+    response_text: &str,
+) -> String {
+    // Record tenant usage if authenticated
+    if let Some(Extension(key)) = api_key {
+        let store = state.tenant_store.read().expect("tenant_store read lock poisoned");
+        if let Some(tenant_id) = store.get_tenant_id_by_api_key(&key.0) {
+            drop(store);
+            let _ = record_tenant_task(state, &tenant_id, 0);
+        }
+    }
+
+    let session_id = request
+        .session_id
+        .clone()
+        .unwrap_or_else(|| Uuid::new_v4().to_string());
+
+    // Persist messages to session
+    if let Some(ref session_id_str) = request.session_id {
+        if let Ok(uuid) = Uuid::parse_str(session_id_str) {
+            let sid = SessionId::from_uuid(uuid);
+            let _ = state.add_message(sid, SessionMessage::user(&request.message)).await;
+            let _ = state.add_message(sid, SessionMessage::assistant(response_text)).await;
+        }
+    }
+
+    session_id
+}
+
 pub async fn agent_handler(
     State(state): State<ApiState>,
     api_key: Option<Extension<AuthenticatedApiKey>>,
@@ -560,34 +632,8 @@ pub async fn agent_handler(
     }];
 
     if let Some(ref session_id_str) = request.session_id {
-        let session_id = match Uuid::parse_str(session_id_str) {
-            Ok(uuid) => SessionId::from_uuid(uuid),
-            Err(e) => {
-                return Err((
-                    StatusCode::BAD_REQUEST,
-                    Json(ApiError {
-                        code: "BAD_REQUEST".to_string(),
-                        message: format!("Invalid session ID: {e}"),
-                    }),
-                ))
-            },
-        };
-
-        if let Some(session) = state.get_session(session_id).await {
-            for msg in &session.messages {
-                let role = match msg.role {
-                    MessageRole::System => ChatRole::System,
-                    MessageRole::User => ChatRole::User,
-                    MessageRole::Assistant => ChatRole::Assistant,
-                    MessageRole::Tool => continue,
-                };
-                if let Some(text) = msg.as_text() {
-                    messages.push(ChatMessage {
-                        role,
-                        content: text.to_string(),
-                    });
-                }
-            }
+        if let Err(e) = load_session_messages(&state, session_id_str, &mut messages).await {
+            return Err(e);
         }
     }
 
@@ -618,38 +664,15 @@ pub async fn agent_handler(
         let (tool_calls, remaining) = parse_tool_calls(&response_text);
 
         if tool_calls.is_empty() {
-            // Record tenant usage if authenticated
-            if let Some(Extension(key)) = &api_key {
-                let store = state.tenant_store.read().expect("tenant_store read lock poisoned");
-                if let Some(tenant_id) = store.get_tenant_id_by_api_key(&key.0) {
-                    drop(store);
-                    let _ = record_tenant_task(&state, &tenant_id, 0);
-                }
-            }
-
-            let session_id = request
-                .session_id
-                .clone()
-                .unwrap_or_else(|| Uuid::new_v4().to_string());
-
-            if let Some(ref session_id_str) = request.session_id {
-                if let Ok(uuid) = Uuid::parse_str(session_id_str) {
-                    let sid = SessionId::from_uuid(uuid);
-                    let _ = state
-                        .add_message(sid, SessionMessage::user(&request.message))
-                        .await;
-                    let _ = state
-                        .add_message(sid, SessionMessage::assistant(&response_text))
-                        .await;
-                }
-            }
+            let final_text = if remaining.is_empty() {
+                response_text.clone()
+            } else {
+                remaining
+            };
+            let session_id = finalize_agent_session(&state, &api_key, &request, &final_text).await;
 
             return Ok(Json(AgentResponse {
-                response: if remaining.is_empty() {
-                    response_text
-                } else {
-                    remaining
-                },
+                response: final_text,
                 session_id,
                 tool_calls: all_tool_calls,
                 iterations,
@@ -687,20 +710,7 @@ pub async fn agent_handler(
         });
     }
 
-    // Record tenant usage if authenticated (max iterations reached)
-    if let Some(Extension(key)) = &api_key {
-        let store = state.tenant_store.read().expect("tenant_store read lock poisoned");
-        if let Some(tenant_id) = store.get_tenant_id_by_api_key(&key.0) {
-            drop(store);
-            let _ = record_tenant_task(&state, &tenant_id, 0);
-        }
-    }
-
-    let session_id = request
-        .session_id
-        .clone()
-        .unwrap_or_else(|| Uuid::new_v4().to_string());
-
+    // Max iterations reached
     let last_msg = messages
         .iter()
         .rev()
@@ -708,12 +718,15 @@ pub async fn agent_handler(
         .map(|m| m.content.clone())
         .unwrap_or_else(|| "Agent stopped after max iterations.".to_string());
 
+    let response_text = format!(
+        "(Reached max iterations after {} tool calls) {}",
+        all_tool_calls.len(),
+        last_msg
+    );
+    let session_id = finalize_agent_session(&state, &api_key, &request, &response_text).await;
+
     Ok(Json(AgentResponse {
-        response: format!(
-            "(Reached max iterations after {} tool calls) {}",
-            all_tool_calls.len(),
-            last_msg
-        ),
+        response: response_text,
         session_id,
         tool_calls: all_tool_calls,
         iterations,

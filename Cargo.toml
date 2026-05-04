@@ -221,8 +221,8 @@ panic = "abort"
 # No workspace features - each crate defines its own
 
 # Transitive dependency duplicates (documented for reference):
-# These are semver-incompatible versions pulled by different upstream crates
-# and cannot be unified without [patch] overrides, which would risk breaking
+# These are semver-incompatible versions pulled by different upstream crates.
+# They cannot be unified without [patch] overrides, which would risk breaking
 # upstream compatibility.
 #
 # - hashbrown 0.15/0.16/0.17 — wasmtime, indexmap
@@ -236,8 +236,10 @@ panic = "abort"
 # - toml 0.9 — wasmtime (our direct dep: 1.0)
 # - arrow-* — lancedb internal deps (our direct dep: 57)
 # - itertools 0.10/0.11/0.14 — various upstream crates
+# - bitflags 2.x — two identical versions from different feature sets
 # - socket2 0.5/0.6 — tokio vs mio
 # - rustix 0.38/1.x — tokio vs tempfile
+# - event-listener 2.x/5.x — async-std vs async-channel
 
 [patch.crates-io]
 half = { path = ".cargo-vendor/half" }
