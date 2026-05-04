@@ -73,239 +73,253 @@ pub fn phase_prompt(phase: &SprintPhase) -> String {
     }
 }
 
-pub async fn run_phase(
-    engine: &SprintEngine,
-    state: &mut SprintState,
-    phase: &SprintPhase,
-) -> Result<PhaseResult> {
-    if state.config.skip_phases.contains(phase) {
-        let result = PhaseResult {
-            phase: phase.clone(),
-            status: PhaseStatus::Skipped,
-            output: String::new(),
-            duration_ms: 0,
-            files_modified: Vec::new(),
-            errors: Vec::new(),
-            tokens_used: 0,
-        };
-        state.phase_results.push(result.clone());
-        return Ok(result);
-    }
-
-    state.current_phase = Some(phase.clone());
-    let start = std::time::Instant::now();
-
-    let system_prompt = phase_prompt(phase);
+/// Build the base user message with task description, context, and optional project structure.
+fn build_base_user_message(state: &SprintState) -> String {
     let mut user_message = format!(
         "Task: {}\n\nPrevious context:\n{}",
         state.config.task_description, state.context_accumulator
     );
-
     if let Some(ref ctx) = state.config.extra_context {
         if !ctx.is_empty() {
             user_message = format!("{}\n\n## Project Structure\n{}", ctx, user_message);
         }
     }
+    user_message
+}
 
-    if *phase == SprintPhase::Test {
-        if let Some(ref url) = state.config.browser_qa_url {
-            if let Some(ref daemon) = engine.browser_daemon {
-                let session_id = "sprint-qa";
-                let _ = daemon.register_session(session_id).await;
-                let _ = daemon.initialize().await;
-                if daemon.navigate(url, Some(session_id)).await.is_ok() {
-                    if let Ok(snapshot) = daemon.build_snapshot(session_id).await {
-                        let tree_lines: Vec<String> = snapshot
-                            .elements
-                            .iter()
-                            .map(|e| format!("  {} {} \"{}\"", e.ref_id, e.role, e.name))
-                            .collect();
-                        let tree_text = tree_lines.join("\n");
-                        user_message.push_str(&format!(
-                            "\n\n## Browser QA — Live Snapshot (URL: {})\n\
-                             ### Accessibility Tree\n{}\n\
-                             ### Element References\n{}\n\
-                             Use the references above (e.g. @e1, @e2) to identify specific elements.\n\
-                             Report any visual or functional issues found.",
-                            snapshot.url,
-                            tree_text,
-                            snapshot.to_ref_list(),
-                        ));
-                    } else {
-                        user_message.push_str(&format!(
-                            "\n\n## Browser QA\n\
-                             A browser-based QA check is available at: {url}\n\
-                             (Browser daemon connected but snapshot failed.)\n\
-                             Report any issues you can identify."
-                        ));
-                    }
-                } else {
-                    user_message.push_str(&format!(
-                        "\n\n## Browser QA\n\
-                         A browser-based QA check is available at: {url}\n\
-                         (Browser daemon connected but navigation failed.)\n\
-                         Report any issues you can identify."
-                    ));
-                }
-                let _ = daemon.unregister_session(session_id).await;
+/// Attempt to attach browser QA snapshot context for the Test phase.
+async fn attach_browser_qa_context(engine: &SprintEngine, state: &SprintState, user_message: &mut String) {
+    let Some(ref url) = state.config.browser_qa_url else {
+        return;
+    };
+
+    if let Some(ref daemon) = engine.browser_daemon {
+        let session_id = "sprint-qa";
+        let _ = daemon.register_session(session_id).await;
+        let _ = daemon.initialize().await;
+
+        if daemon.navigate(url, Some(session_id)).await.is_ok() {
+            if let Ok(snapshot) = daemon.build_snapshot(session_id).await {
+                let tree_lines: Vec<String> = snapshot
+                    .elements
+                    .iter()
+                    .map(|e| format!("  {} {} \"{}\"", e.ref_id, e.role, e.name))
+                    .collect();
+                let tree_text = tree_lines.join("\n");
+                user_message.push_str(&format!(
+                    "\n\n## Browser QA — Live Snapshot (URL: {})\n\
+                     ### Accessibility Tree\n{}\n\
+                     ### Element References\n{}\n\
+                     Use the references above (e.g. @e1, @e2) to identify specific elements.\n\
+                     Report any visual or functional issues found.",
+                    snapshot.url,
+                    tree_text,
+                    snapshot.to_ref_list(),
+                ));
             } else {
                 user_message.push_str(&format!(
                     "\n\n## Browser QA\n\
                      A browser-based QA check is available at: {url}\n\
-                     If the task involves a web application or UI, consider:\n\
-                     1. Navigate to the URL and verify the UI renders correctly\n\
-                     2. Check for console errors\n\
-                     3. Test interactive elements (buttons, forms, navigation)\n\
-                     4. Verify responsive behavior\n\
-                     5. Check accessibility basics (focus states, ARIA labels)\n\
-                     Report any visual or functional issues found."
+                     (Browser daemon connected but snapshot failed.)\n\
+                     Report any issues you can identify."
                 ));
             }
+        } else {
+            user_message.push_str(&format!(
+                "\n\n## Browser QA\n\
+                 A browser-based QA check is available at: {url}\n\
+                 (Browser daemon connected but navigation failed.)\n\
+                 Report any issues you can identify."
+            ));
         }
+        let _ = daemon.unregister_session(session_id).await;
+    } else {
+        user_message.push_str(&format!(
+            "\n\n## Browser QA\n\
+             A browser-based QA check is available at: {url}\n\
+             If the task involves a web application or UI, consider:\n\
+             1. Navigate to the URL and verify the UI renders correctly\n\
+             2. Check for console errors\n\
+             3. Test interactive elements (buttons, forms, navigation)\n\
+             4. Verify responsive behavior\n\
+             5. Check accessibility basics (focus states, ARIA labels)\n\
+             Report any visual or functional issues found."
+        ));
+    }
+}
+
+/// Attach LSP document symbols for the Plan phase.
+async fn attach_lsp_symbols(engine: &SprintEngine, state: &SprintState, user_message: &mut String) {
+    let Some(ref lsp) = engine.lsp_client else {
+        return;
+    };
+
+    let all_mod: Vec<String> = state
+        .phase_results
+        .iter()
+        .flat_map(|r| r.files_modified.clone())
+        .collect();
+
+    if all_mod.is_empty() {
+        return;
     }
 
-    if *phase == SprintPhase::Plan {
-        if let Some(ref lsp) = engine.lsp_client {
-            let all_mod: Vec<String> = state
-                .phase_results
-                .iter()
-                .flat_map(|r| r.files_modified.clone())
-                .collect();
-            if !all_mod.is_empty() {
-                let syms = {
-                    let mut lsp = lsp.lock().await;
-                    let mut text = String::new();
-                    for fp in &all_mod {
-                        let uri = format!("file://{}", fp);
-                        if let Ok(syms) = lsp.document_symbols(&uri).await {
-                            if !syms.is_empty() {
-                                text.push_str(&format!("\n### {}\n", fp));
-                                for s in &syms {
-                                    text.push_str(&format!(
-                                        "  {} ({:?})\n",
-                                        s.name, s.kind
-                                    ));
-                                }
-                            }
-                        }
-                    }
-                    text
-                };
+    let syms = {
+        let mut lsp = lsp.lock().await;
+        let mut text = String::new();
+        for fp in &all_mod {
+            let uri = format!("file://{}", fp);
+            if let Ok(syms) = lsp.document_symbols(&uri).await {
                 if !syms.is_empty() {
-                    user_message.push_str("\n\n## Current Code Structure\n");
-                    user_message.push_str(&syms);
+                    text.push_str(&format!("\n### {}\n", fp));
+                    for s in &syms {
+                        text.push_str(&format!("  {} ({:?})\n", s.name, s.kind));
+                    }
                 }
             }
         }
-    }
+        text
+    };
 
-    if matches!(phase, SprintPhase::Build | SprintPhase::Test | SprintPhase::Review) {
-        if let Some(ref lsp) = engine.lsp_client {
-            let all_modified: Vec<String> = state.phase_results.iter()
-                .flat_map(|r| r.files_modified.clone()).collect();
-            sync_lsp_documents(engine, &all_modified).await;
-            tokio::time::sleep(std::time::Duration::from_millis(500)).await;
-            let (all_diags, code_actions) = {
-                let mut lsp = lsp.lock().await;
-                let diags = lsp.get_all_diagnostics().await;
-                let mut actions = Vec::new();
-                for (uri, file_diags) in &diags {
-                    let err_diags: Vec<crate::lsp::protocol::Diagnostic> = file_diags
-                        .iter()
-                        .filter(|d| {
-                            d.severity
-                                == Some(crate::lsp::protocol::DiagnosticSeverity::Error)
-                        })
-                        .cloned()
-                        .collect();
-                    if !err_diags.is_empty() {
-                        if let Ok(ca) = lsp.code_actions(
-                            uri,
-                            err_diags[0].range.clone(),
-                            err_diags,
-                        )
-                        .await
-                        {
-                            actions.extend(ca);
-                        }
-                    }
+    if !syms.is_empty() {
+        user_message.push_str("\n\n## Current Code Structure\n");
+        user_message.push_str(&syms);
+    }
+}
+
+/// Attach LSP diagnostics and code actions for Build/Test/Review phases.
+async fn attach_lsp_diagnostics(engine: &SprintEngine, state: &SprintState, user_message: &mut String) {
+    let Some(ref lsp) = engine.lsp_client else {
+        return;
+    };
+
+    let all_modified: Vec<String> = state
+        .phase_results
+        .iter()
+        .flat_map(|r| r.files_modified.clone())
+        .collect();
+
+    sync_lsp_documents(engine, &all_modified).await;
+    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+
+    let (all_diags, code_actions) = {
+        let mut lsp = lsp.lock().await;
+        let diags = lsp.get_all_diagnostics().await;
+        let mut actions = Vec::new();
+        for (uri, file_diags) in &diags {
+            let err_diags: Vec<crate::lsp::protocol::Diagnostic> = file_diags
+                .iter()
+                .filter(|d| {
+                    d.severity
+                        == Some(crate::lsp::protocol::DiagnosticSeverity::Error)
+                })
+                .cloned()
+                .collect();
+            if !err_diags.is_empty() {
+                if let Ok(ca) =
+                    lsp.code_actions(uri, err_diags[0].range.clone(), err_diags).await
+                {
+                    actions.extend(ca);
                 }
-                (diags, actions)
-            };
-            if !all_diags.is_empty() {
-                let mut diag_text = String::from(
-                    "\n\n## LSP Diagnostics\nThe language server reported:\n",
-                );
-                let (mut error_count, mut warning_count) = (0usize, 0usize);
-                for (uri, diags) in &all_diags {
-                    for d in diags {
-                        use crate::lsp::protocol::DiagnosticSeverity;
-                        let sev = match d.severity {
-                            Some(DiagnosticSeverity::Error) => {
-                                error_count += 1;
-                                "ERROR"
-                            }
-                            Some(DiagnosticSeverity::Warning) => {
-                                warning_count += 1;
-                                "WARNING"
-                            }
-                            Some(DiagnosticSeverity::Information) => "INFO",
-                            Some(DiagnosticSeverity::Hint) => "HINT",
-                            _ => "UNKNOWN",
-                        };
-                        diag_text.push_str(&format!(
-                            "  [{}] {} L{}:C{}: {}\n",
-                            sev,
-                            uri,
-                            d.range.start.line + 1,
-                            d.range.start.character + 1,
-                            d.message
-                        ));
+            }
+        }
+        (diags, actions)
+    };
+
+    if !all_diags.is_empty() {
+        let mut diag_text =
+            String::from("\n\n## LSP Diagnostics\nThe language server reported:\n");
+        let (mut error_count, mut warning_count) = (0usize, 0usize);
+        for (uri, diags) in &all_diags {
+            for d in diags {
+                use crate::lsp::protocol::DiagnosticSeverity;
+                let sev = match d.severity {
+                    Some(DiagnosticSeverity::Error) => {
+                        error_count += 1;
+                        "ERROR"
                     }
-                }
+                    Some(DiagnosticSeverity::Warning) => {
+                        warning_count += 1;
+                        "WARNING"
+                    }
+                    Some(DiagnosticSeverity::Information) => "INFO",
+                    Some(DiagnosticSeverity::Hint) => "HINT",
+                    _ => "UNKNOWN",
+                };
                 diag_text.push_str(&format!(
-                    "\nTotal: {} errors, {} warnings\n",
-                    error_count, warning_count
+                    "  [{}] {} L{}:C{}: {}\n",
+                    sev,
+                    uri,
+                    d.range.start.line + 1,
+                    d.range.start.character + 1,
+                    d.message
                 ));
-                user_message.push_str(&diag_text);
-            }
-            if !code_actions.is_empty() {
-                let mut action_text =
-                    String::from("\n\n## LSP Suggested Fixes\n");
-                for action in &code_actions {
-                    if action.is_preferred {
-                        action_text.push_str(&format!("[PREFERRED] {}\n", action.title));
-                    } else {
-                        action_text.push_str(&format!("- {}\n", action.title));
-                    }
-                }
-                user_message.push_str(&action_text);
             }
         }
+        diag_text.push_str(&format!(
+            "\nTotal: {} errors, {} warnings\n",
+            error_count, warning_count
+        ));
+        user_message.push_str(&diag_text);
     }
 
+    if !code_actions.is_empty() {
+        let mut action_text = String::from("\n\n## LSP Suggested Fixes\n");
+        for action in &code_actions {
+            if action.is_preferred {
+                action_text.push_str(&format!("[PREFERRED] {}\n", action.title));
+            } else {
+                action_text.push_str(&format!("- {}\n", action.title));
+            }
+        }
+        user_message.push_str(&action_text);
+    }
+}
+
+/// Detect whether an LLM response is a provider error rather than real content.
+fn is_provider_error(output: &str, tokens: usize) -> bool {
+    let trimmed = output.trim();
+    trimmed.is_empty()
+        || trimmed.contains("no healthy upstream")
+        || trimmed.contains("503 Service Unavailable")
+        || trimmed.starts_with("[Error:")
+        || trimmed.contains("overloaded")
+        || (trimmed.contains("error") && tokens < 5)
+}
+
+/// Build a fallback combined message for retry when system-prompt chat fails.
+fn build_fallback_message(phase: &SprintPhase, state: &SprintState) -> String {
+    let mut combined = format!(
+        "[Instructions]\n{}\n\n[Task & Context]\nTask: {}\n\nPrevious context:\n{}",
+        phase_prompt(phase),
+        &state.config.task_description,
+        &state.context_accumulator
+    );
+    if let Some(ref ctx) = state.config.extra_context {
+        if !ctx.is_empty() {
+            combined = format!("[Project Structure]\n{}\n\n{}", ctx, combined);
+        }
+    }
+    combined
+}
+
+/// Execute the primary LLM call and handle fallback on failure.
+async fn call_llm_with_fallback(
+    engine: &SprintEngine,
+    phase: &SprintPhase,
+    state: &SprintState,
+    start: std::time::Instant,
+) -> PhaseResult {
+    let system_prompt = phase_prompt(phase);
     let messages = vec![
-        ChatMessage {
-            role: ChatRole::System,
-            content: system_prompt,
-        },
-        ChatMessage {
-            role: ChatRole::User,
-            content: user_message,
-        },
+        ChatMessage { role: ChatRole::System, content: system_prompt },
+        ChatMessage { role: ChatRole::User, content: build_base_user_message(state) },
     ];
 
-    let result = match engine.chat_collecting_stream(messages).await {
+    match engine.chat_collecting_stream(messages).await {
         Ok(output) => {
             let tokens = engine.llm.count_tokens(&output);
-            let trimmed = output.trim();
-            let is_provider_error = trimmed.is_empty()
-                || trimmed.contains("no healthy upstream")
-                || trimmed.contains("503 Service Unavailable")
-                || trimmed.starts_with("[Error:")
-                || trimmed.contains("overloaded")
-                || (trimmed.contains("error") && tokens < 5);
-            if is_provider_error {
+            if is_provider_error(&output, tokens) {
                 PhaseResult {
                     phase: phase.clone(),
                     status: PhaseStatus::Failed,
@@ -328,22 +342,12 @@ pub async fn run_phase(
             }
         },
         Err(_) => {
-            let mut combined = format!(
-                "[Instructions]\n{}\n\n[Task & Context]\nTask: {}\n\nPrevious context:\n{}",
-                phase_prompt(phase),
-                &state.config.task_description,
-                &state.context_accumulator
-            );
-            if let Some(ref ctx) = state.config.extra_context {
-                if !ctx.is_empty() {
-                    combined = format!("[Project Structure]\n{}\n\n{}", ctx, combined);
-                }
-            }
-            let fallback_messages = vec![ChatMessage {
+            // Retry without system prompt (some providers reject it)
+            let fallback = vec![ChatMessage {
                 role: ChatRole::User,
-                content: combined,
+                content: build_fallback_message(phase, state),
             }];
-            match engine.chat_collecting_stream(fallback_messages).await {
+            match engine.chat_collecting_stream(fallback).await {
                 Ok(output) => {
                     let tokens = engine.llm.count_tokens(&output);
                     PhaseResult {
@@ -367,7 +371,46 @@ pub async fn run_phase(
                 },
             }
         },
-    };
+    }
+}
+
+pub async fn run_phase(
+    engine: &SprintEngine,
+    state: &mut SprintState,
+    phase: &SprintPhase,
+) -> Result<PhaseResult> {
+    if state.config.skip_phases.contains(phase) {
+        let result = PhaseResult {
+            phase: phase.clone(),
+            status: PhaseStatus::Skipped,
+            output: String::new(),
+            duration_ms: 0,
+            files_modified: Vec::new(),
+            errors: Vec::new(),
+            tokens_used: 0,
+        };
+        state.phase_results.push(result.clone());
+        return Ok(result);
+    }
+
+    state.current_phase = Some(phase.clone());
+    let start = std::time::Instant::now();
+
+    // Build user message with phase-specific context
+    let mut user_message = build_base_user_message(state);
+
+    if *phase == SprintPhase::Test {
+        attach_browser_qa_context(engine, state, &mut user_message).await;
+    }
+    if *phase == SprintPhase::Plan {
+        attach_lsp_symbols(engine, state, &mut user_message).await;
+    }
+    if matches!(phase, SprintPhase::Build | SprintPhase::Test | SprintPhase::Review) {
+        attach_lsp_diagnostics(engine, state, &mut user_message).await;
+    }
+
+    // Run the LLM call
+    let result = call_llm_with_fallback(engine, phase, state, start).await;
 
     state.context_accumulator.push_str(&format!(
         "\n\n=== {} Phase ===\n{}\n",
