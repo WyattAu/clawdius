@@ -341,16 +341,15 @@ pub(super) fn handle_watch(
                             })
                         );
                     } else {
-                            let icon = match event {
-                                clawdius_core::watch::WatchEvent::Created { .. } => "✨",
-                                clawdius_core::watch::WatchEvent::Modified { .. } => "✏️ ",
-                                clawdius_core::watch::WatchEvent::Deleted { .. } => "🗑️ ",
-                                clawdius_core::watch::WatchEvent::Renamed { .. } => "🔄",
-                            };
-                            println!("  {icon} {} {}", event.label(), event.path().display());
-                            if verbose {
-                                println!("     (debounced batch of {} events)", events.len());
-                            }
+                        let icon = match event {
+                            clawdius_core::watch::WatchEvent::Created { .. } => "✨",
+                            clawdius_core::watch::WatchEvent::Modified { .. } => "✏️ ",
+                            clawdius_core::watch::WatchEvent::Deleted { .. } => "🗑️ ",
+                            clawdius_core::watch::WatchEvent::Renamed { .. } => "🔄",
+                        };
+                        println!("  {icon} {} {}", event.label(), event.path().display());
+                        if verbose {
+                            println!("     (debounced batch of {} events)", events.len());
                         }
                     }
                 }
