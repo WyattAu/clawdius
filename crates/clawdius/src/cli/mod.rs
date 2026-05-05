@@ -449,7 +449,7 @@ pub enum Commands {
         action: LspCommands,
     },
 
-    #[command(about = "Manage project memory (CLAUDE.md)")]
+    #[command(about = "Manage project memory (CLAWDIUS.md)")]
     Memory {
         #[command(subcommand)]
         action: MemoryCommands,
@@ -1007,7 +1007,7 @@ pub enum LspCommands {
 
 #[derive(Debug, Subcommand)]
 pub enum MemoryCommands {
-    #[command(about = "Show project memory (CLAUDE.md + learned entries)")]
+    #[command(about = "Show project memory (CLAWDIUS.md + learned entries)")]
     Show {
         #[arg(short, long)]
         #[arg(help = "Show as LLM-ready instructions")]
@@ -1051,7 +1051,7 @@ pub enum MemoryCommands {
         yes: bool,
     },
 
-    #[command(about = "Create or update CLAUDE.md file")]
+    #[command(about = "Create or update CLAWDIUS.md file")]
     Init {
         #[arg(short, long)]
         #[arg(help = "Project name")]

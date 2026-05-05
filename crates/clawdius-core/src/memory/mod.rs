@@ -1,7 +1,7 @@
 //! Project Memory System
 //!
-//! This module implements a CLAUDE.md-style memory system that:
-//! - Reads project instructions from CLAUDE.md files
+//! This module implements a CLAWDIUS.md-style memory system that:
+//! - Reads project instructions from CLAWDIUS.md files (with CLAUDE.md fallback)
 //! - Auto-learns from interactions (build commands, debugging insights)
 //! - Stores project-specific context persistently
 //!
@@ -137,13 +137,13 @@ impl MemoryEntry {
     }
 }
 
-/// Project memory stored in CLAUDE.md
+/// Project memory stored in CLAWDIUS.md
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProjectMemory {
     /// Project root path
     #[serde(skip)]
     project_root: PathBuf,
-    /// Manual instructions from CLAUDE.md
+    /// Manual instructions from CLAWDIUS.md
     instructions: String,
     /// Auto-learned entries
     learned: Vec<MemoryEntry>,
@@ -180,16 +180,24 @@ impl ProjectMemory {
     }
 
     /// Load project memory from a project root
+    /// Reads from CLAWDIUS.md (preferred) or CLAUDE.md (fallback for compatibility).
     pub fn load(project_root: impl Into<PathBuf>) -> Result<Self> {
         let project_root = project_root.into();
+        let clawdius_md_path = project_root.join("CLAWDIUS.md");
         let claude_md_path = project_root.join("CLAUDE.md");
         let memory_json_path = project_root.join(".clawdius/memory.json");
 
         let mut memory = Self::new(project_root);
 
-        // Load manual instructions from CLAUDE.md
-        if claude_md_path.exists() {
-            let content = std::fs::read_to_string(&claude_md_path)?;
+        // Load manual instructions from CLAWDIUS.md (or CLAUDE.md as fallback)
+        let instructions_path = if clawdius_md_path.exists() {
+            clawdius_md_path
+        } else {
+            claude_md_path
+        };
+
+        if instructions_path.exists() {
+            let content = std::fs::read_to_string(&instructions_path)?;
             memory.instructions = Self::parse_instructions(&content);
             memory.extract_metadata(&content);
         }
@@ -205,7 +213,7 @@ impl ProjectMemory {
         Ok(memory)
     }
 
-    /// Parse instructions from CLAUDE.md content
+    /// Parse instructions from CLAWDIUS.md content
     fn parse_instructions(content: &str) -> String {
         // Remove frontmatter if present
         let content = if let Some(stripped) = content.strip_prefix("---") {
@@ -222,7 +230,7 @@ impl ProjectMemory {
         }
     }
 
-    /// Extract metadata from CLAUDE.md frontmatter
+    /// Extract metadata from CLAWDIUS.md frontmatter
     fn extract_metadata(&mut self, content: &str) {
         if !content.starts_with("---") {
             return;

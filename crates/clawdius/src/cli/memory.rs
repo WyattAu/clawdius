@@ -376,9 +376,16 @@ pub(super) fn handle_memory(
                 metadata.framework = Some(f);
             }
 
-            // Create CLAUDE.md if it doesn't exist
+            // Create CLAWDIUS.md if it doesn't exist (also check CLAUDE.md for compat)
+            let clawdius_md_path = project_root.join("CLAWDIUS.md");
             let claude_md_path = project_root.join("CLAUDE.md");
-            if !claude_md_path.exists() {
+            let md_path = if clawdius_md_path.exists() || !claude_md_path.exists() {
+                &clawdius_md_path
+            } else {
+                &claude_md_path
+            };
+
+            if !md_path.exists() && !clawdius_md_path.exists() {
                 let mut content = String::new();
 
                 // Add frontmatter
@@ -404,7 +411,7 @@ pub(super) fn handle_memory(
                 content.push_str("- Follow the project's style guide\n");
                 content.push_str("- Add tests for new functionality\n");
 
-                std::fs::write(&claude_md_path, content)?;
+                std::fs::write(&clawdius_md_path, content)?;
             }
 
             memory.save()?;
@@ -415,15 +422,17 @@ pub(super) fn handle_memory(
                         "{}",
                         serde_json::json!({
                             "status": "initialized",
-                            "claude_md": claude_md_path.exists(),
+                            "memory_file": md_path.display().to_string(),
                             "metadata": memory.metadata()
                         })
                     );
                 },
                 OutputFormat::Text => {
                     println!("✅ Memory initialized");
-                    if claude_md_path.exists() {
-                        println!("   Created: {}", claude_md_path.display());
+                    if clawdius_md_path.exists() || !md_path.exists() {
+                        println!("   Memory file: {}", clawdius_md_path.display());
+                    } else {
+                        println!("   Memory file: {}", claude_md_path.display());
                     }
                     println!(
                         "   Storage: {}/.clawdius/memory.json",
