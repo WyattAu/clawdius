@@ -8,7 +8,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use super::components;
-use super::components::{ChatView, DiffView, FileList, SessionEntry, SessionPicker, Spinner, SyntaxHighlighter, WorkspaceEntry, WorkspaceSwitcher};
+use super::components::{ChatView, DiffView, FileList, SessionEntry, SessionPicker, Spinner, SyntaxHighlighter, WorkspaceSwitcher};
 use super::theme;
 use super::types::{AppMode, InputMode, LayoutMode, Message, TuiEvent};
 use super::vim::VimKeymap;
