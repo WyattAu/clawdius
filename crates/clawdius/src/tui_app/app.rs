@@ -1,8 +1,15 @@
 //! TUI App state
+//!
+//! Supports full agentic tool-use loop: LLM responses with tool calls are
+//! detected, executed, and results fed back to the LLM automatically.
+
+use std::collections::HashMap;
+use std::path::PathBuf;
+use std::sync::Arc;
 
 use super::components::{ChatView, DiffView, FileList, Spinner, SyntaxHighlighter};
 use super::theme;
-use super::types::{AppMode, InputMode, LayoutMode, Message};
+use super::types::{AppMode, InputMode, LayoutMode, Message, TuiEvent};
 use super::vim::VimKeymap;
 
 use crossterm::event::KeyEvent;
@@ -16,11 +23,169 @@ use ratatui::{
 use tokio::sync::mpsc;
 
 use clawdius_core::{
+    config::ShellSandboxConfig,
     llm::{self, ChatMessage, ChatRole},
-    llm::providers::LlmClient,
+    llm::providers::{LlmClient, Tool},
     modes::AgentMode,
+    tools::file::{FileEditParams, FileListParams, FileReadParams, FileTool, FileWriteParams},
+    tools::git::{GitDiffParams, GitLogParams, GitTool},
+    tools::shell::{ShellParams, ShellTool},
     Config, FileDiff, Session, SessionManager,
 };
+
+/// Built-in tool executor for the TUI. Uses clawdius-core tools directly
+/// (FileTool, ShellTool, GitTool) to handle tool calls from the LLM.
+pub struct TuiToolExecutor {
+    file_tool: Arc<FileTool>,
+    shell_tool: Arc<ShellTool>,
+    git_tool: Arc<GitTool>,
+}
+
+impl TuiToolExecutor {
+    pub fn new(workspace_root: PathBuf) -> Self {
+        let sandbox_config = ShellSandboxConfig::default();
+        let file_tool = Arc::new(FileTool::with_workspace_root(&workspace_root));
+        let shell_tool = Arc::new(ShellTool::new(
+            sandbox_config.clone(),
+            workspace_root.clone(),
+        ));
+        let git_tool = Arc::new(GitTool::new(sandbox_config, workspace_root));
+
+        Self {
+            file_tool,
+            shell_tool,
+            git_tool,
+        }
+    }
+
+    /// Get tool definitions for sending to the LLM.
+    pub fn tool_definitions() -> Vec<Tool> {
+        vec![
+            Tool::new("read_file")
+                .with_description("Read file contents. Args: { path: string, offset?: number, limit?: number }"),
+            Tool::new("write_file")
+                .with_description("Write content to a file. Args: { path: string, content: string }"),
+            Tool::new("edit_file")
+                .with_description("Edit a section of a file. Args: { path: string, old_string: string, new_string: string }"),
+            Tool::new("list_directory")
+                .with_description("List files in a directory. Args: { path: string, recursive?: boolean }"),
+            Tool::new("shell")
+                .with_description("Run a shell command. Args: { command: string, timeout?: number }"),
+            Tool::new("git_status")
+                .with_description("Show git working tree status. Args: {}"),
+            Tool::new("git_diff")
+                .with_description("Show git diff. Args: { staged?: boolean, file?: string }"),
+            Tool::new("git_log")
+                .with_description("Show git commit log. Args: { count?: number, file?: string }"),
+        ]
+    }
+
+    /// Execute a tool call by name. Returns (output, is_error).
+    pub fn execute_tool(&self, name: &str, arguments: &str) -> (String, bool) {
+        let args: HashMap<String, serde_json::Value> =
+            serde_json::from_str(arguments).unwrap_or_default();
+
+        match name {
+            "read_file" => {
+                let path = args.get("path").and_then(|v| v.as_str()).unwrap_or("").to_string();
+                let offset = args.get("offset").and_then(|v| v.as_u64()).map(|n| n as usize);
+                let limit = args.get("limit").and_then(|v| v.as_u64()).map(|n| n as usize);
+                let params = FileReadParams { path, offset, limit };
+                match self.file_tool.read(params) {
+                    Ok(content) => (content, false),
+                    Err(e) => (format!("Error: {e}"), true),
+                }
+            },
+            "write_file" => {
+                let path = args.get("path").and_then(|v| v.as_str()).unwrap_or("").to_string();
+                let content = args.get("content").and_then(|v| v.as_str()).unwrap_or("").to_string();
+                let params = FileWriteParams { path, content };
+                match self.file_tool.write(params) {
+                    Ok(()) => ("File written successfully".to_string(), false),
+                    Err(e) => (format!("Error: {e}"), true),
+                }
+            },
+            "edit_file" => {
+                let path = args.get("path").and_then(|v| v.as_str()).unwrap_or("").to_string();
+                let old_string = args.get("old_string").and_then(|v| v.as_str()).unwrap_or("").to_string();
+                let new_string = args.get("new_string").and_then(|v| v.as_str()).unwrap_or("").to_string();
+                let replace_all = args.get("replace_all").and_then(|v| v.as_bool()).unwrap_or(false);
+                let params = FileEditParams { path, old_string, new_string, replace_all };
+                match self.file_tool.edit(params) {
+                    Ok(changed) => {
+                        if changed {
+                            ("File edited successfully".to_string(), false)
+                        } else {
+                            ("No changes made (old_string not found)".to_string(), true)
+                        }
+                    },
+                    Err(e) => (format!("Error: {e}"), true),
+                }
+            },
+            "list_directory" => {
+                let path = args.get("path").and_then(|v| v.as_str()).unwrap_or(".").to_string();
+                let params = FileListParams { path };
+                match self.file_tool.list(params) {
+                    Ok(entries) => (entries.join("\n"), false),
+                    Err(e) => (format!("Error: {e}"), true),
+                }
+            },
+            "shell" | "run_command" => {
+                let command = args.get("command").and_then(|v| v.as_str()).unwrap_or("").to_string();
+                let timeout = args
+                    .get("timeout")
+                    .and_then(|v| v.as_u64())
+                    .unwrap_or(120_000);
+                let params = ShellParams {
+                    command,
+                    timeout,
+                    cwd: None,
+                };
+                match self.shell_tool.execute(params) {
+                    Ok(result) => {
+                        let output = if result.stdout.is_empty() {
+                            result.stderr
+                        } else if result.stderr.is_empty() {
+                            result.stdout
+                        } else {
+                            format!("{}\n{}", result.stdout, result.stderr)
+                        };
+                        (output, result.exit_code != 0)
+                    },
+                    Err(e) => (format!("Error: {e}"), true),
+                }
+            },
+            "git_status" => {
+                match self.git_tool.status(None) {
+                    Ok(output) => (output, false),
+                    Err(e) => (format!("Error: {e}"), true),
+                }
+            },
+            "git_diff" => {
+                let staged = args.get("staged").and_then(|v| v.as_bool()).unwrap_or(false);
+                let path = args.get("path").or(args.get("file")).and_then(|v| v.as_str()).map(String::from);
+                let params = GitDiffParams { staged, path };
+                match self.git_tool.diff(params, None) {
+                    Ok(output) => (output, false),
+                    Err(e) => (format!("Error: {e}"), true),
+                }
+            },
+            "git_log" => {
+                let count = args.get("count").and_then(|v| v.as_u64()).unwrap_or(20) as usize;
+                let path = args.get("path").or(args.get("file")).and_then(|v| v.as_str()).map(String::from);
+                let params = GitLogParams { count, path };
+                match self.git_tool.log(params, None) {
+                    Ok(output) => (output, false),
+                    Err(e) => (format!("Error: {e}"), true),
+                }
+            },
+            _ => (format!("Unknown tool: {name}"), true),
+        }
+    }
+}
+
+/// Maximum number of agentic iterations (tool-call loops) per user message.
+const MAX_ITERATIONS: usize = 50;
 
 pub struct App {
     pub session: Option<Session>,
@@ -42,12 +207,20 @@ pub struct App {
     pub spinner: Spinner,
     pub syntax: SyntaxHighlighter,
     pub error_message: Option<String>,
-    /// Receiver for streaming LLM response chunks. Present while a stream is active.
-    pub stream_rx: Option<mpsc::Receiver<String>>,
+    /// Receiver for structured events from the agentic loop.
+    pub stream_rx: Option<mpsc::Receiver<TuiEvent>>,
     /// Workspace context (repo map) prepended to user messages. None if not available.
     pub workspace_context: Option<String>,
     /// Request timeout in seconds for LLM API calls.
     pub request_timeout_secs: u64,
+    /// Tool executor for handling tool calls from the LLM.
+    tool_executor: Arc<TuiToolExecutor>,
+    /// Conversation history accumulated across the session (for multi-turn context).
+    conversation_history: Vec<ChatMessage>,
+    /// Whether tools are enabled (toggled via :tools command).
+    pub tools_enabled: bool,
+    /// Current iteration count for the agentic loop (displayed in status).
+    pub iteration_count: usize,
 }
 
 impl App {
@@ -55,6 +228,7 @@ impl App {
     pub fn new() -> anyhow::Result<Self> {
         let config = Config::load_default()?;
         let session_manager = SessionManager::new(&config)?;
+        let workspace_root = std::env::current_dir().unwrap_or_default();
 
         Ok(Self {
             session: None,
@@ -78,6 +252,10 @@ impl App {
             stream_rx: None,
             workspace_context: Self::build_workspace_context(),
             request_timeout_secs: 120,
+            tool_executor: Arc::new(TuiToolExecutor::new(workspace_root)),
+            conversation_history: Vec::new(),
+            tools_enabled: true,
+            iteration_count: 0,
         })
     }
 
@@ -99,6 +277,26 @@ impl App {
             Ok(ctx) if !ctx.trim().is_empty() => Some(ctx),
             _ => None,
         }
+    }
+
+    /// Create the LLM provider from current config.
+    fn create_provider(&self) -> anyhow::Result<llm::LlmProvider> {
+        let provider_name = self
+            .config
+            .llm
+            .default_provider
+            .as_deref()
+            .unwrap_or("deepseek");
+
+        let llm_config = llm::LlmConfig::from_config(&self.config.llm, provider_name).map_err(|e| {
+            anyhow::anyhow!(
+                "Failed to create LLM config: {e}. Set the appropriate API key \
+                 (e.g., DEEPSEEK_API_KEY, ANTHROPIC_API_KEY, OPENAI_API_KEY)."
+            )
+        })?;
+
+        llm::create_provider(&llm_config)
+            .map_err(|e| anyhow::anyhow!("Failed to create provider: {e}"))
     }
 
     #[allow(clippy::missing_errors_doc)]
@@ -226,10 +424,7 @@ impl App {
         Ok(())
     }
 
-    fn handle_file_browser_key(
-        &mut self,
-        key: crossterm::event::KeyEvent,
-    ) {
+    fn handle_file_browser_key(&mut self, key: crossterm::event::KeyEvent) {
         use crossterm::event::KeyCode;
 
         match key.code {
@@ -319,6 +514,105 @@ impl App {
             },
             "clear" => {
                 self.chat_view = ChatView::new();
+                self.conversation_history.clear();
+            },
+            "tools" => {
+                let enabled = !self.tools_enabled;
+                self.tools_enabled = enabled;
+                self.chat_view.add_message(Message::system(format!(
+                    "Tool execution {}",
+                    if enabled { "enabled" } else { "disabled" }
+                )));
+            },
+            "compact" => {
+                // Keep only the last N messages in history to reduce context
+                let keep = 20;
+                let len = self.conversation_history.len();
+                if len > keep {
+                    let start = len - keep;
+                    self.conversation_history = self.conversation_history[start..].to_vec();
+                    // Keep the system prompt
+                    if let Some(sys) = self
+                        .conversation_history
+                        .first()
+                        .filter(|m| matches!(m.role, ChatRole::System))
+                    {
+                        let mut new_history = vec![sys.clone()];
+                        new_history.extend(self.conversation_history.iter().skip(1).cloned());
+                        self.conversation_history = new_history;
+                    }
+                    self.chat_view.add_message(Message::system(format!(
+                        "Compacted conversation history to last {keep} messages"
+                    )));
+                } else {
+                    self.chat_view
+                        .add_message(Message::system("Conversation history already compact".to_string()));
+                }
+            },
+            "sessions" => {
+                match self.session_manager.list_sessions() {
+                    Ok(sessions) => {
+                        let list: Vec<String> = sessions
+                            .iter()
+                            .take(10)
+                            .map(|s| {
+                                format!(
+                                    "  {} | {} msgs | {} tokens | {}",
+                                    &s.id.to_string()[..8],
+                                    s.messages.len(),
+                                    s.total_tokens(),
+                                    s.meta
+                                        .provider
+                                        .as_deref()
+                                        .unwrap_or("unknown")
+                                )
+                            })
+                            .collect();
+                        self.error_message = Some(format!("Sessions:\n{}", list.join("\n")));
+                    },
+                    Err(e) => {
+                        self.error_message = Some(format!("Failed to list sessions: {e}"));
+                    },
+                }
+            },
+            "session" => {
+                if parts.len() > 1 {
+                    let id_str = parts[1].trim();
+                    // Parse UUID from the ID string
+                    let uuid = id_str.parse::<uuid::Uuid>();
+                    if let Ok(uuid) = uuid {
+                        let session_id = clawdius_core::session::SessionId(uuid);
+                        match self.session_manager.load_session(&session_id) {
+                            Ok(Some(session)) => {
+                                self.session = Some(session);
+                                self.chat_view.add_message(Message::system(format!(
+                                    "Switched to session {}",
+                                    &id_str[..id_str.len().min(8)]
+                                )));
+                            },
+                            Ok(None) => {
+                                self.error_message =
+                                    Some(format!("Session '{id_str}' not found"));
+                            },
+                            Err(e) => {
+                                self.error_message =
+                                    Some(format!("Failed to load session: {e}"));
+                            },
+                        }
+                    } else {
+                        self.error_message =
+                            Some(format!("Invalid session ID: '{id_str}'"));
+                    }
+                } else {
+                    self.error_message = Some("Usage: :session <uuid>".to_string());
+                }
+            },
+            "new" | "newsession" => {
+                self.chat_view = ChatView::new();
+                self.conversation_history.clear();
+                self.session = None;
+                self.chat_view
+                    .add_message(Message::system("Started new session".to_string()));
             },
             "mode" => {
                 if parts.len() > 1 {
@@ -362,6 +656,44 @@ impl App {
                     self.error_message = Some("Failed to list modes".to_string());
                 }
             },
+            "git" => {
+                let git_cmd = parts.get(1).map(|s| *s).unwrap_or("status");
+                self.run_git_command(git_cmd);
+            },
+            "provider" => {
+                if parts.len() > 1 {
+                    let provider_name = parts[1].trim();
+                    self.config.llm.default_provider = Some(provider_name.to_string());
+                    self.chat_view.add_message(Message::system(format!(
+                        "Switched provider to {provider_name}"
+                    )));
+                } else {
+                    let current = self
+                        .config
+                        .llm
+                        .default_provider
+                        .as_deref()
+                        .unwrap_or("none");
+                    self.error_message = Some(format!(
+                        "Current provider: {current}\nUsage: :provider <deepseek|anthropic|openai|google|ollama|zai|openrouter>"
+                    ));
+                }
+            },
+            "timeout" => {
+                if parts.len() > 1 {
+                    if let Ok(secs) = parts[1].trim().parse::<u64>() {
+                        self.request_timeout_secs = secs;
+                        self.chat_view.add_message(Message::system(format!(
+                            "Request timeout set to {secs}s"
+                        )));
+                    } else {
+                        self.error_message = Some("Usage: :timeout <seconds>".to_string());
+                    }
+                } else {
+                    self.error_message =
+                        Some(format!("Current timeout: {}s", self.request_timeout_secs));
+                }
+            },
             _ => {
                 // Split pane commands
                 if cmd == "split" || cmd == "sp" {
@@ -385,9 +717,47 @@ impl App {
         }
     }
 
+    /// Run a git command and display the result in the chat.
+    fn run_git_command(&mut self, cmd: &str) {
+        let output = match cmd {
+            "status" => std::process::Command::new("git")
+                .args(["status", "--short"])
+                .output(),
+            "log" => std::process::Command::new("git")
+                .args(["log", "--oneline", "-10"])
+                .output(),
+            "diff" => std::process::Command::new("git")
+                .args(["diff", "--stat"])
+                .output(),
+            _ => {
+                self.error_message = Some(format!(
+                    "Unknown git command: {cmd}\nAvailable: status, log, diff"
+                ));
+                return;
+            },
+        };
+
+        match output {
+            Ok(out) => {
+                let stdout = String::from_utf8_lossy(&out.stdout).to_string();
+                let stderr = String::from_utf8_lossy(&out.stderr).to_string();
+                let result = if stdout.trim().is_empty() {
+                    stderr
+                } else {
+                    stdout
+                };
+                self.chat_view.add_message(Message::tool(result.trim()));
+            },
+            Err(e) => {
+                self.error_message = Some(format!("Failed to run git {cmd}: {e}"));
+            },
+        }
+    }
+
     async fn send_message(&mut self) -> anyhow::Result<()> {
         let message: String = self.input.drain(..).collect();
 
+        // Resolve @mentions (files, URLs, etc.)
         let resolver = clawdius_core::MentionResolver::new(std::env::current_dir()?);
         let context_items = resolver.resolve_all(&message).await?;
 
@@ -405,10 +775,24 @@ impl App {
             )
         };
 
+        // Add user message to chat view
         self.chat_view.add_message(Message::user(&message));
 
+        // Get or create session
         let session = self.session_manager.get_or_create_active()?;
         self.session = Some(session);
+
+        // Build user content with workspace context
+        let user_content = match self.workspace_context.as_deref() {
+            Some(ctx) if !ctx.is_empty() => {
+                format!("{ctx}\n\n## Project Structure\n{context_str}")
+            }
+            _ => context_str,
+        };
+
+        // Add user message to conversation history
+        self.conversation_history
+            .push(ChatMessage { role: ChatRole::User, content: user_content });
 
         // Add a placeholder streaming message
         let mut stream_msg = Message::assistant("");
@@ -416,107 +800,116 @@ impl App {
         self.chat_view.add_message(stream_msg);
         self.is_loading = true;
         self.spinner.tick();
+        self.iteration_count = 0;
 
-        // Start streaming LLM call in background
-        match self.start_llm_stream(&context_str).await {
-            Ok(rx) => {
-                self.stream_rx = Some(rx);
-            },
-            Err(e) => {
-                // If streaming fails, show error in the message
-                self.chat_view.finish_streaming();
-                self.chat_view.append_to_last_message(&format!("Error: {e}"));
-                self.is_loading = false;
-                self.stream_rx = None;
-            },
-        }
+        // Start the agentic loop in background
+        let (tx, rx) = mpsc::channel::<TuiEvent>(256);
+        self.stream_rx = Some(rx);
+
+        let provider = self.create_provider()?;
+        let tools = if self.tools_enabled {
+            TuiToolExecutor::tool_definitions()
+        } else {
+            Vec::new()
+        };
+        let tool_executor = Arc::clone(&self.tool_executor);
+        let messages = self.conversation_history.clone();
+        let system_prompt = self.agent_mode.system_prompt().to_string();
+        let timeout_secs = self.request_timeout_secs;
+
+        tokio::spawn(async move {
+            run_agentic_loop(
+                provider,
+                messages,
+                system_prompt,
+                tools,
+                tool_executor,
+                tx,
+                timeout_secs,
+            )
+            .await;
+        });
 
         Ok(())
     }
 
-    /// Poll the stream receiver for a chunk. Call this from the event loop.
-    /// Returns `true` if a chunk was received (or stream ended).
+    /// Poll the stream receiver for a structured event. Call this from the event loop.
+    /// Returns `true` if an event was received (or stream ended).
     pub fn poll_stream(&mut self) -> bool {
         let Some(rx) = &mut self.stream_rx else { return false };
 
-        // Try to receive without blocking — if nothing available, return false.
-        // We use try_recv() which is non-blocking.
         match rx.try_recv() {
-            Ok(chunk) => {
-                self.chat_view.append_to_last_message(&chunk);
+            Ok(event) => {
+                match event {
+                    TuiEvent::Chunk(text) => {
+                        self.chat_view.append_to_last_message(&text);
+                    },
+                    TuiEvent::ToolCall { name, arguments } => {
+                        // Finalize the current streaming message (the assistant's text before tool call)
+                        self.chat_view.finish_streaming();
+                        // Show the tool call as a tool message
+                        let display_args = if arguments.len() > 200 {
+                            format!("{}...", &arguments[..200])
+                        } else {
+                            arguments.clone()
+                        };
+                        self.chat_view
+                            .add_message(Message::tool(format!("⏳ {name}({display_args})")));
+                        // Start a new streaming placeholder for what comes after the tool call
+                        let mut stream_msg = Message::assistant("");
+                        stream_msg.streaming = true;
+                        self.chat_view.add_message(stream_msg);
+                    },
+                    TuiEvent::ToolResult { name, output, is_error } => {
+                        let prefix = if is_error { "❌" } else { "✅" };
+                        let display_output = if output.len() > 500 {
+                            format!("{}...\n[{} bytes total]", &output[..500], output.len())
+                        } else {
+                            output
+                        };
+                        self.chat_view
+                            .add_message(Message::tool(format!("{prefix} {name}: {display_output}")));
+                        // Refresh file list after file edits
+                        if matches!(name.as_str(), "write_file" | "edit_file") && !is_error {
+                            self.file_list.refresh();
+                        }
+                    },
+                    TuiEvent::Done => {
+                        self.chat_view.finish_streaming();
+                        self.is_loading = false;
+                        self.iteration_count = 0;
+                        self.stream_rx = None;
+                    },
+                    TuiEvent::Error(e) => {
+                        self.chat_view.finish_streaming();
+                        self.chat_view.append_to_last_message(&format!("\nError: {e}"));
+                        self.is_loading = false;
+                        self.iteration_count = 0;
+                        self.stream_rx = None;
+                    },
+                }
                 true
             },
             Err(mpsc::error::TryRecvError::Empty) => false,
             Err(mpsc::error::TryRecvError::Disconnected) => {
-                // Stream is done — sender dropped
+                // Stream ended without Done event — finalize gracefully
                 self.chat_view.finish_streaming();
                 self.is_loading = false;
+                self.iteration_count = 0;
                 self.stream_rx = None;
                 true
             },
         }
     }
 
-    /// Drain all available chunks from the stream receiver.
+    /// Drain all available events from the stream receiver.
     pub fn drain_stream(&mut self) {
-        // Drain up to 50 chunks per tick to avoid blocking the render loop
+        // Drain up to 50 events per tick to avoid blocking the render loop
         for _ in 0..50 {
             if !self.poll_stream() {
                 break;
             }
         }
-    }
-
-    async fn start_llm_stream(
-        &self,
-        message: &str,
-    ) -> anyhow::Result<mpsc::Receiver<String>> {
-        let provider_name = self
-            .config
-            .llm
-            .default_provider
-            .as_deref()
-            .unwrap_or("anthropic");
-
-        let llm_config = llm::LlmConfig::from_config(&self.config.llm, provider_name)
-            .map_err(|e| anyhow::anyhow!("Failed to create LLM config: {e}. Make sure the appropriate API key is set (e.g., ANTHROPIC_API_KEY, OPENAI_API_KEY, or OLLAMA_BASE_URL)."))?;
-
-        let provider = llm::create_provider(&llm_config)
-            .map_err(|e| anyhow::anyhow!("Failed to create provider: {e}"))?;
-
-        // Build user message with optional workspace context
-        let user_content = match self.workspace_context.as_deref() {
-            Some(ctx) if !ctx.is_empty() => {
-                format!("{ctx}\n\n## Project Structure\n{message}")
-            }
-            _ => message.to_string(),
-        };
-
-        let messages = vec![
-            ChatMessage {
-                role: ChatRole::System,
-                content: self.agent_mode.system_prompt().to_string(),
-            },
-            ChatMessage {
-                role: ChatRole::User,
-                content: user_content,
-            },
-        ];
-
-        let rx = tokio::time::timeout(
-            std::time::Duration::from_secs(self.request_timeout_secs),
-            provider.chat_stream(messages),
-        )
-        .await
-        .map_err(|_| {
-            anyhow::anyhow!(
-                "LLM API timed out after {}s. Check your network connection and API key.",
-                self.request_timeout_secs
-            )
-        })?
-        .map_err(|e| anyhow::anyhow!("LLM API stream failed: {e}"))?;
-
-        Ok(rx)
     }
 
     fn open_external_editor(&mut self) -> anyhow::Result<()> {
@@ -655,11 +1048,25 @@ impl App {
             LayoutMode::SplitVertical => " [VSPLIT]",
         };
 
+        let tools_indicator = if self.tools_enabled {
+            "🔧"
+        } else {
+            ""
+        };
+
+        let iteration_text = if self.iteration_count > 0 {
+            format!(" [iter {}]", self.iteration_count)
+        } else {
+            String::new()
+        };
+
         let title = Line::from(vec![
             Span::styled("CLAWDIUS", theme.title()),
             Span::raw("  "),
             Span::styled(mode_text, Style::new().fg(theme.accent)),
             Span::styled(layout_text, Style::default().fg(Color::Cyan)),
+            Span::raw(tools_indicator),
+            Span::raw(&iteration_text),
             Span::raw("  "),
             Span::styled("|", theme.border()),
             Span::raw("  "),
@@ -729,32 +1136,30 @@ impl App {
             Line::from("  :          - Enter command mode"),
             Line::default(),
             Line::from(Span::styled(
-                "File Browser:",
+                "Agentic Commands:",
                 Style::default().fg(Color::Yellow),
             )),
-            Line::from("  j/k        - Move up/down"),
-            Line::from("  Enter      - Enter directory / View file"),
-            Line::from("  Space      - Toggle file selection"),
-            Line::from("  r          - Refresh directory"),
+            Line::from("  :tools     - Toggle tool execution (file edit, shell, git)"),
+            Line::from("  :compact   - Compact conversation history to last 20 msgs"),
+            Line::from("  :git status/log/diff - Run git commands"),
+            Line::from("  :provider <name> - Switch LLM provider"),
+            Line::from("  :timeout <secs>     - Set API timeout"),
             Line::default(),
             Line::from(Span::styled(
-                "Diff View:",
+                "Session Commands:",
                 Style::default().fg(Color::Yellow),
             )),
-            Line::from("  j/k        - Scroll diff"),
-            Line::from("  Ctrl+d/u   - Page down/up"),
+            Line::from("  :sessions  - List recent sessions"),
+            Line::from("  :session <id> - Switch to a session"),
+            Line::from("  :new       - Start new session (clears history)"),
             Line::default(),
             Line::from(Span::styled(
-                "Commands:",
+                "Layout Commands:",
                 Style::default().fg(Color::Yellow),
             )),
-            Line::from("  :q         - Quit"),
-            Line::from("  :help      - Show help"),
             Line::from("  :files     - Open file browser"),
             Line::from("  :diff      - Open diff view"),
             Line::from("  :clear     - Clear chat"),
-            Line::from("  :mode <n>  - Switch agent mode (code, architect, debug, etc.)"),
-            Line::from("  :modes     - List available modes"),
             Line::from("  :split     - Horizontal split (chat + code)"),
             Line::from("  :vsplit    - Vertical split (chat + code)"),
             Line::from("  :unsplit   - Return to single pane"),
@@ -764,6 +1169,8 @@ impl App {
                 "Agent Modes:",
                 Style::default().fg(Color::Yellow),
             )),
+            Line::from("  :mode <n>  - Switch agent mode"),
+            Line::from("  :modes     - List available modes"),
             Line::from("  code       - Code generation and editing (default)"),
             Line::from("  architect  - Design and structure planning"),
             Line::from("  ask        - Quick answers and explanations"),
@@ -856,6 +1263,17 @@ impl App {
         if self.is_loading {
             status_parts.push(Span::styled(" │ ", theme.border()));
             status_parts.push(self.spinner.render());
+            if self.iteration_count > 0 {
+                status_parts.push(Span::styled(
+                    format!(" iter:{}", self.iteration_count),
+                    theme.muted(),
+                ));
+            }
+        }
+
+        if self.tools_enabled {
+            status_parts.push(Span::styled(" │ ", theme.border()));
+            status_parts.push(Span::styled("tools:on", theme.user_message()));
         }
 
         status_parts.push(Span::styled(" │ ", theme.border()));
@@ -880,6 +1298,287 @@ impl App {
             .wrap(Wrap { trim: false });
         f.render_widget(paragraph, area);
     }
+}
+
+/// The agentic loop: send messages to LLM, detect tool calls, execute them,
+/// feed results back, repeat until done or max iterations reached.
+///
+/// This runs as a background tokio task and sends `TuiEvent`s to the TUI
+/// via the provided channel.
+async fn run_agentic_loop(
+    provider: llm::LlmProvider,
+    mut messages: Vec<ChatMessage>,
+    system_prompt: String,
+    tools: Vec<Tool>,
+    tool_executor: Arc<TuiToolExecutor>,
+    tx: mpsc::Sender<TuiEvent>,
+    timeout_secs: u64,
+) {
+    // Ensure system prompt is present
+    if messages.is_empty() || !matches!(messages[0].role, ChatRole::System) {
+        messages.insert(
+            0,
+            ChatMessage {
+                role: ChatRole::System,
+                content: system_prompt,
+            },
+        );
+    }
+
+    for iteration in 0..MAX_ITERATIONS {
+        // Send iteration event
+        let _ = tx
+            .send(TuiEvent::Chunk(format!("\n[iteration {}/{}]\n", iteration + 1, MAX_ITERATIONS)))
+            .await;
+
+        // Call LLM (with tools if available)
+        let response = if tools.is_empty() {
+            match tokio::time::timeout(
+                std::time::Duration::from_secs(timeout_secs),
+                provider.chat(messages.clone()),
+            )
+            .await
+            {
+                Ok(Ok(text)) => (text, Vec::new()),
+                Ok(Err(e)) => {
+                    let _ = tx.send(TuiEvent::Error(e.to_string())).await;
+                    return;
+                },
+                Err(_) => {
+                    let _ = tx
+                        .send(TuiEvent::Error(format!(
+                            "LLM timed out after {timeout_secs}s"
+                        )))
+                        .await;
+                    return;
+                },
+            }
+        } else {
+            match tokio::time::timeout(
+                std::time::Duration::from_secs(timeout_secs),
+                provider.chat_with_tools(messages.clone(), tools.clone()),
+            )
+            .await
+            {
+                Ok(Ok(result)) => (result.text, result.tool_calls),
+                Ok(Err(_e)) => {
+                    // Fall back to non-tool call
+                    match tokio::time::timeout(
+                        std::time::Duration::from_secs(timeout_secs),
+                        provider.chat(messages.clone()),
+                    )
+                    .await
+                    {
+                        Ok(Ok(text)) => (text, Vec::new()),
+                        Ok(Err(e2)) => {
+                            let _ = tx.send(TuiEvent::Error(e2.to_string())).await;
+                            return;
+                        },
+                        Err(_) => {
+                            let _ = tx
+                                .send(TuiEvent::Error(format!(
+                                    "LLM timed out after {timeout_secs}s"
+                                )))
+                                .await;
+                            return;
+                        },
+                    }
+                },
+                Err(_) => {
+                    // Timeout — fall back to non-tool call
+                    match tokio::time::timeout(
+                        std::time::Duration::from_secs(timeout_secs),
+                        provider.chat(messages.clone()),
+                    )
+                    .await
+                    {
+                        Ok(Ok(text)) => (text, Vec::new()),
+                        Ok(Err(e)) => {
+                            let _ = tx.send(TuiEvent::Error(e.to_string())).await;
+                            return;
+                        },
+                        Err(_) => {
+                            let _ = tx
+                                .send(TuiEvent::Error(format!(
+                                    "LLM timed out after {timeout_secs}s"
+                                )))
+                                .await;
+                            return;
+                        },
+                    }
+                },
+            }
+        };
+
+        let (text, tool_calls) = response;
+
+        // Send the text chunk
+        if !text.is_empty() {
+            let _ = tx.send(TuiEvent::Chunk(text.clone())).await;
+        }
+
+        // If no tool calls, we're done
+        if tool_calls.is_empty() {
+            // Also try parsing text-based tool calls
+            let text_tool_calls = parse_text_tool_calls(&text);
+            if text_tool_calls.is_empty() {
+                let _ = tx.send(TuiEvent::Done).await;
+                return;
+            }
+
+            // Process text-based tool calls
+            for (name, arguments) in text_tool_calls {
+                let _ = tx
+                    .send(TuiEvent::ToolCall {
+                        name: name.clone(),
+                        arguments: arguments.clone(),
+                    })
+                    .await;
+
+                let (output, is_error) = tool_executor.execute_tool(&name, &arguments);
+
+                let _ = tx
+                    .send(TuiEvent::ToolResult {
+                        name: name.clone(),
+                        output: output.clone(),
+                        is_error,
+                    })
+                    .await;
+
+                // Add assistant message and tool result to conversation
+                messages.push(ChatMessage {
+                    role: ChatRole::Assistant,
+                    content: format!("[TOOL_CALL] {{\"name\": \"{}\", \"arguments\": {}}} [/TOOL_CALL]", name, arguments),
+                });
+                messages.push(ChatMessage {
+                    role: ChatRole::User,
+                    content: format!("[TOOL_RESULT] {output} [/TOOL_RESULT]"),
+                });
+            }
+        } else {
+            // Process native tool calls
+            for tc in &tool_calls {
+                let name = tc.fn_name.clone();
+                let arguments = tc.fn_arguments.to_string();
+
+                let _ = tx
+                    .send(TuiEvent::ToolCall {
+                        name: name.clone(),
+                        arguments: arguments.clone(),
+                    })
+                    .await;
+
+                let (output, is_error) = tool_executor.execute_tool(&name, &arguments);
+
+                let _ = tx
+                    .send(TuiEvent::ToolResult {
+                        name,
+                        output,
+                        is_error,
+                    })
+                    .await;
+            }
+
+            // Add assistant message with tool calls to conversation
+            let tool_calls_json: String = tool_calls
+                .iter()
+                .map(|tc| {
+                    format!(
+                        "[TOOL_CALL] {{\"name\": \"{}\", \"arguments\": {}}} [/TOOL_CALL]",
+                        tc.fn_name, tc.fn_arguments
+                    )
+                })
+                .collect::<Vec<_>>()
+                .join("\n");
+
+            messages.push(ChatMessage {
+                role: ChatRole::Assistant,
+                content: if text.is_empty() {
+                    tool_calls_json
+                } else {
+                    format!("{text}\n{tool_calls_json}")
+                },
+            });
+
+            // Build tool results for conversation history
+            let mut results_text: Vec<String> = Vec::new();
+            for tc in &tool_calls {
+                let args_str = tc.fn_arguments.to_string();
+                let (output, _) = tool_executor.execute_tool(&tc.fn_name, &args_str);
+                results_text.push(format!(
+                    "[TOOL_RESULT] {} {} [/TOOL_RESULT]",
+                    tc.fn_name, output
+                ));
+            }
+
+            messages.push(ChatMessage {
+                role: ChatRole::User,
+                content: results_text.join("\n"),
+            });
+        }
+    }
+
+    // Max iterations reached
+    let _ = tx
+        .send(TuiEvent::Error(format!(
+            "Reached maximum iterations ({MAX_ITERATIONS})"
+        )))
+        .await;
+}
+
+/// Parse text-based tool calls from the LLM response.
+/// Supports formats:
+///   [TOOL_CALL] {"name": "...", "arguments": {...}} [/TOOL_CALL]
+///   ant:invoke:tool_name{"param": "value"}ant:invoke:end
+fn parse_text_tool_calls(text: &str) -> Vec<(String, String)> {
+    let mut results = Vec::new();
+
+    // Format 1: [TOOL_CALL]...[/TOOL_CALL]
+    for cap in text
+        .split("[TOOL_CALL]")
+        .skip(1)
+        .filter_map(|s| s.split("[/TOOL_CALL]").next())
+    {
+        let trimmed = cap.trim();
+        if let Ok(val) = serde_json::from_str::<serde_json::Value>(trimmed) {
+            let name = val
+                .get("name")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string();
+            let arguments = val
+                .get("arguments")
+                .cloned()
+                .unwrap_or(serde_json::Value::Null);
+            if !name.is_empty() {
+                results.push((name, arguments.to_string()));
+            }
+        }
+    }
+
+    if !results.is_empty() {
+        return results;
+    }
+
+    // Format 2: ant:invoke:tool_name{...}ant:invoke:end
+    for cap in text
+        .split("ant:invoke:")
+        .skip(1)
+        .filter_map(|s| s.split("ant:invoke:end").next())
+    {
+        let trimmed = cap.trim();
+        if let Some((name, args_str)) = trimmed.split_once('{') {
+            let name = name.to_string();
+            let args_str = format!("{{{args_str}");
+            if let Ok(val) = serde_json::from_str::<serde_json::Value>(&args_str) {
+                results.push((name, val.to_string()));
+            } else {
+                results.push((name, args_str));
+            }
+        }
+    }
+
+    results
 }
 
 fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {

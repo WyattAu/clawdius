@@ -55,6 +55,21 @@ impl Message {
     }
 }
 
+/// Structured events from the agentic LLM loop, sent over a channel to the TUI.
+#[derive(Debug, Clone)]
+pub enum TuiEvent {
+    /// A text chunk from the LLM stream (to be appended to the current message).
+    Chunk(String),
+    /// The LLM wants to call a tool.
+    ToolCall { name: String, arguments: String },
+    /// A tool execution completed.
+    ToolResult { name: String, output: String, is_error: bool },
+    /// The agentic loop finished (no more tool calls).
+    Done,
+    /// An error occurred.
+    Error(String),
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum AppMode {
     #[default]
