@@ -83,6 +83,7 @@ impl TuiToolExecutor {
     }
 
     /// Execute a tool call by name. Returns `(output, is_error)`.
+    #[allow(clippy::cast_possible_truncation)]
     pub fn execute_tool(&self, name: &str, arguments: &str) -> (String, bool) {
         let args: HashMap<String, serde_json::Value> =
             serde_json::from_str(arguments).unwrap_or_default();
@@ -90,8 +91,8 @@ impl TuiToolExecutor {
         match name {
             "read_file" => {
                 let path = args.get("path").and_then(|v| v.as_str()).unwrap_or("").to_string();
-                let offset = args.get("offset").and_then(serde_json::Value::as_u64).map(|n| n as usize);
-                let limit = args.get("limit").and_then(serde_json::Value::as_u64).map(|n| n as usize);
+                let offset = args.get("offset").and_then(serde_json::Value::as_u64).map(|n| n as usize); // safe: target pointer width >= 32
+                let limit = args.get("limit").and_then(serde_json::Value::as_u64).map(|n| n as usize); // safe: target pointer width >= 32
                 let params = FileReadParams { path, offset, limit };
                 match self.file_tool.read(params) {
                     Ok(content) => (content, false),
@@ -173,7 +174,7 @@ impl TuiToolExecutor {
                 }
             },
             "git_log" => {
-                let count = args.get("count").and_then(serde_json::Value::as_u64).unwrap_or(20) as usize;
+                let count = args.get("count").and_then(serde_json::Value::as_u64).unwrap_or(20) as usize; // safe: target pointer width >= 32
                 let path = args.get("path").or_else(|| args.get("file")).and_then(|v| v.as_str()).map(String::from);
                 let params = GitLogParams { count, path };
                 match self.git_tool.log(params, None) {
@@ -1073,7 +1074,7 @@ impl App {
                         let display_args = if arguments.len() > 200 {
                             format!("{}...", &arguments[..200])
                         } else {
-                            arguments.to_string()
+                            arguments
                         };
                         self.chat_view
                             .add_message(Message::tool(format!("⏳ {name}({display_args})")));
@@ -1177,8 +1178,10 @@ impl App {
                             event
                                 .path()
                                 .file_name()
-                                .map(|n| n.to_string_lossy().to_string())
-                                .unwrap_or_else(|| event.path().to_string_lossy().to_string())
+                                .map_or_else(
+                                    || event.path().to_string_lossy().to_string(),
+                                    |n| n.to_string_lossy().to_string(),
+                                )
                         )));
                     }
                 },
