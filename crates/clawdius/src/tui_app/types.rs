@@ -64,10 +64,26 @@ pub enum TuiEvent {
     ToolCall { name: String, arguments: String },
     /// A tool execution completed.
     ToolResult { name: String, output: String, is_error: bool },
+    /// A sprint/generate phase started or completed.
+    Phase {
+        name: String,
+        status: PhaseStatus,
+        detail: String,
+    },
     /// The agentic loop finished (no more tool calls).
     Done,
     /// An error occurred.
     Error(String),
+}
+
+/// Status of a long-running phase.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum PhaseStatus {
+    Started,
+    Progress(String),
+    Completed(String),
+    Failed(String),
+    Skipped,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]

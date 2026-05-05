@@ -784,6 +784,106 @@ impl App {
                         Some(format!("Current timeout: {}s", self.request_timeout_secs));
                 }
             },
+            "sprint" => {
+                if parts.len() > 1 {
+                    let task = parts[1..].join(" ");
+                    self.start_sprint(task);
+                } else {
+                    self.error_message =
+                        Some("Usage: :sprint <task description>".to_string());
+                }
+            },
+            "auto" => {
+                if parts.len() > 1 {
+                    let task = parts[1..].join(" ");
+                    self.start_auto(task);
+                } else {
+                    self.error_message =
+                        Some("Usage: :auto <task description>".to_string());
+                }
+            },
+            "generate" | "gen" => {
+                if parts.len() > 1 {
+                    let task = parts[1..].join(" ");
+                    self.start_generate(task);
+                } else {
+                    self.error_message =
+                        Some("Usage: :generate <task description>".to_string());
+                }
+            },
+            "test" => {
+                if parts.len() > 1 {
+                    let file = parts[1].trim();
+                    self.run_quick_command(&format!("cargo test --lib -- {file} 2>&1 | head -50"));
+                } else {
+                    self.run_quick_command("cargo test --lib 2>&1 | tail -30");
+                }
+            },
+            "build" | "check" => {
+                self.run_quick_command("cargo check 2>&1 | tail -20");
+            },
+            "doc" => {
+                if parts.len() > 1 {
+                    let file = parts[1].trim();
+                    self.chat_view.add_message(Message::system(format!(
+                        "Generating docs for {file}... (use CLI: clawdius doc {file})"
+                    )));
+                } else {
+                    self.chat_view.add_message(Message::system(
+                        "Usage: :doc <file>\nFor full doc generation, use: clawdius doc <file>".to_string(),
+                    ));
+                }
+            },
+            "verify" => {
+                if parts.len() > 1 {
+                    let proof = parts[1].trim();
+                    self.run_quick_command(&format!("clawdius verify {proof} 2>&1"));
+                } else {
+                    self.chat_view.add_message(Message::system(
+                        "Usage: :verify <proof-file>\nFor Lean4 proof verification, use: clawdius verify <file>".to_string(),
+                    ));
+                }
+            },
+            "checkpoint" => {
+                self.run_quick_command("clawdius checkpoint list 2>&1 | tail -15");
+            },
+            "timeline" => {
+                self.run_quick_command("clawdius timeline list 2>&1 | tail -15");
+            },
+            "memory" => {
+                self.run_quick_command("clawdius memory show 2>&1 | tail -30");
+            },
+            "analyze" => {
+                if parts.len() > 1 {
+                    let path = parts[1].trim();
+                    self.run_quick_command(&format!("clawdius analyze {path} 2>&1 | tail -40"));
+                } else {
+                    self.run_quick_command("clawdius analyze . 2>&1 | tail -40");
+                }
+            },
+            "config" => {
+                if parts.len() > 1 {
+                    let sub = parts[1].trim();
+                    match sub {
+                        "show" | "s" => {
+                            let provider = self.config.llm.default_provider.as_deref().unwrap_or("none");
+                            self.error_message = Some(format!(
+                                "Provider: {provider}\nTimeout: {}s\nTools: {}\nMode: {}",
+                                self.request_timeout_secs,
+                                if self.tools_enabled { "on" } else { "off" },
+                                self.agent_mode.name()
+                            ));
+                        },
+                        _ => {
+                            self.error_message = Some(
+                                "Usage: :config show\nSubcommands: show".to_string(),
+                            );
+                        },
+                    }
+                } else {
+                    self.error_message = Some("Usage: :config show".to_string());
+                }
+            },
             _ => {
                 // Split pane commands
                 if cmd == "split" || cmd == "sp" {
@@ -964,6 +1064,27 @@ impl App {
                             self.file_list.refresh();
                         }
                     },
+                    TuiEvent::Phase { name, status, detail } => {
+                        use super::types::PhaseStatus;
+                        let icon = match status {
+                            PhaseStatus::Started => "▶",
+                            PhaseStatus::Progress(_) => "…",
+                            PhaseStatus::Completed(_) => "✓",
+                            PhaseStatus::Failed(_) => "✗",
+                            PhaseStatus::Skipped => "⊘",
+                        };
+                        let msg = match &status {
+                            PhaseStatus::Started => format!("{icon} {name}"),
+                            PhaseStatus::Progress(s) => format!("{icon} {name}: {s}"),
+                            PhaseStatus::Completed(s) => format!("{icon} {name}: {s}"),
+                            PhaseStatus::Failed(s) => format!("{icon} {name} FAILED: {s}"),
+                            PhaseStatus::Skipped => format!("{icon} {name}: skipped"),
+                        };
+                        self.chat_view.add_message(Message::system(msg));
+                        if !detail.is_empty() && matches!(&status, PhaseStatus::Failed(_)) {
+                            self.chat_view.add_message(Message::system(detail));
+                        }
+                    },
                     TuiEvent::Done => {
                         self.chat_view.finish_streaming();
                         self.is_loading = false;
@@ -999,6 +1120,320 @@ impl App {
             if !self.poll_stream() {
                 break;
             }
+        }
+    }
+
+    /// Start a sprint workflow in the background.
+    fn start_sprint(&mut self, task: String) {
+        self.chat_view.add_message(Message::user(&task));
+        self.chat_view.add_message(Message::system(format!("🚀 Starting sprint: {task}")));
+        self.is_loading = true;
+        self.spinner.tick();
+
+        let (tx, rx) = mpsc::channel::<TuiEvent>(256);
+        self.stream_rx = Some(rx);
+
+        let provider_name = self
+            .config
+            .llm
+            .default_provider
+            .as_deref()
+            .unwrap_or("deepseek")
+            .to_string();
+        let config_clone = self.config.clone();
+        let cwd = std::env::current_dir().unwrap_or_default();
+
+        tokio::spawn(async move {
+            // Create provider
+            let llm_config = match clawdius_core::llm::LlmConfig::from_config(
+                &config_clone.llm,
+                &provider_name,
+            ) {
+                Ok(c) => c,
+                Err(e) => {
+                    let _ = tx.send(TuiEvent::Error(format!("Config error: {e}"))).await;
+                    let _ = tx.send(TuiEvent::Done).await;
+                    return;
+                },
+            };
+            let provider = match clawdius_core::llm::create_provider(&llm_config) {
+                Ok(p) => p,
+                Err(e) => {
+                    let _ = tx.send(TuiEvent::Error(format!("Provider error: {e}"))).await;
+                    let _ = tx.send(TuiEvent::Done).await;
+                    return;
+                },
+            };
+            let llm = std::sync::Arc::new(provider);
+
+            // Build sprint config
+            let mut sprint_config =
+                clawdius_core::agentic::sprint::SprintConfig::new(&task);
+            sprint_config.project_root = cwd;
+            sprint_config.auto_approve = true;
+            sprint_config.real_execution = true;
+            sprint_config.max_iterations = 3;
+            sprint_config.build_command = "cargo check 2>&1".to_string();
+            sprint_config.test_command = "cargo test --lib 2>&1".to_string();
+
+            let engine = clawdius_core::agentic::sprint::SprintEngine::new(llm);
+            let result = engine.run(sprint_config).await;
+
+            match result {
+                Ok(sprint_result) => {
+                    let _ = tx
+                        .send(TuiEvent::Phase {
+                            name: "Sprint Complete".to_string(),
+                            status: super::types::PhaseStatus::Completed(
+                                if sprint_result.success {
+                                    "All phases passed".to_string()
+                                } else {
+                                    "Some phases failed".to_string()
+                                },
+                            ),
+                            detail: sprint_result.summary,
+                        })
+                        .await;
+                    for phase in &sprint_result.phase_results {
+                        let status = match phase.status {
+                            clawdius_core::agentic::sprint::PhaseStatus::Success => {
+                                super::types::PhaseStatus::Completed(format!(
+                                    "{} ({}ms)",
+                                    phase.output.chars().take(80).collect::<String>(),
+                                    phase.duration_ms
+                                ))
+                            },
+                            clawdius_core::agentic::sprint::PhaseStatus::Failed => {
+                                super::types::PhaseStatus::Failed(
+                                    phase.errors.join("; ").chars().take(100).collect(),
+                                )
+                            },
+                            clawdius_core::agentic::sprint::PhaseStatus::Skipped => {
+                                super::types::PhaseStatus::Skipped
+                            },
+                        };
+                        let _ = tx
+                            .send(TuiEvent::Phase {
+                                name: format!("{:?}", phase.phase),
+                                status,
+                                detail: String::new(),
+                            })
+                            .await;
+                    }
+                },
+                Err(e) => {
+                    let _ = tx.send(TuiEvent::Error(format!("Sprint failed: {e}"))).await;
+                },
+            }
+            let _ = tx.send(TuiEvent::Done).await;
+        });
+    }
+
+    /// Start an auto (single LLM call + optional test/commit) in the background.
+    fn start_auto(&mut self, task: String) {
+        self.chat_view.add_message(Message::user(&task));
+        self.chat_view.add_message(Message::system("🤖 Auto mode: processing task..."));
+        self.is_loading = true;
+        self.spinner.tick();
+
+        let (tx, rx) = mpsc::channel::<TuiEvent>(256);
+        self.stream_rx = Some(rx);
+
+        let provider_name = self
+            .config
+            .llm
+            .default_provider
+            .as_deref()
+            .unwrap_or("deepseek")
+            .to_string();
+        let config_clone = self.config.clone();
+
+        tokio::spawn(async move {
+            let llm_config = match clawdius_core::llm::LlmConfig::from_config(
+                &config_clone.llm,
+                &provider_name,
+            ) {
+                Ok(c) => c,
+                Err(e) => {
+                    let _ = tx.send(TuiEvent::Error(format!("Config error: {e}"))).await;
+                    let _ = tx.send(TuiEvent::Done).await;
+                    return;
+                },
+            };
+            let provider = match clawdius_core::llm::create_provider(&llm_config) {
+                Ok(p) => p,
+                Err(e) => {
+                    let _ = tx.send(TuiEvent::Error(format!("Provider error: {e}"))).await;
+                    let _ = tx.send(TuiEvent::Done).await;
+                    return;
+                },
+            };
+
+            // Single LLM call
+            let messages = vec![
+                clawdius_core::llm::ChatMessage {
+                    role: clawdius_core::llm::ChatRole::System,
+                    content: "You are an autonomous coding assistant. Complete the task concisely. \
+                             Make real file changes using [TOOL_CALL] blocks when needed.".to_string(),
+                },
+                clawdius_core::llm::ChatMessage {
+                    role: clawdius_core::llm::ChatRole::User,
+                    content: task,
+                },
+            ];
+
+            match provider.chat(messages).await {
+                Ok(response) => {
+                    let _ = tx.send(TuiEvent::Chunk(response)).await;
+                },
+                Err(e) => {
+                    let _ = tx.send(TuiEvent::Error(format!("Auto failed: {e}"))).await;
+                },
+            }
+            let _ = tx.send(TuiEvent::Done).await;
+        });
+    }
+
+    /// Start a generate (AgenticSystem) workflow in the background.
+    fn start_generate(&mut self, task: String) {
+        self.chat_view.add_message(Message::user(&task));
+        self.chat_view.add_message(Message::system("⚡ Generate mode: agentic code generation..."));
+        self.is_loading = true;
+        self.spinner.tick();
+
+        let (tx, rx) = mpsc::channel::<TuiEvent>(256);
+        self.stream_rx = Some(rx);
+
+        let provider_name = self
+            .config
+            .llm
+            .default_provider
+            .as_deref()
+            .unwrap_or("deepseek")
+            .to_string();
+        let config_clone = self.config.clone();
+
+        tokio::spawn(async move {
+            let llm_config = match clawdius_core::llm::LlmConfig::from_config(
+                &config_clone.llm,
+                &provider_name,
+            ) {
+                Ok(c) => c,
+                Err(e) => {
+                    let _ = tx.send(TuiEvent::Error(format!("Config error: {e}"))).await;
+                    let _ = tx.send(TuiEvent::Done).await;
+                    return;
+                },
+            };
+            let provider = match clawdius_core::llm::create_provider(&llm_config) {
+                Ok(p) => p,
+                Err(e) => {
+                    let _ = tx.send(TuiEvent::Error(format!("Provider error: {e}"))).await;
+                    let _ = tx.send(TuiEvent::Done).await;
+                    return;
+                },
+            };
+            let llm = std::sync::Arc::new(provider);
+
+            let request = clawdius_core::agentic::TaskRequest {
+                                id: uuid::Uuid::new_v4().to_string(),
+                description: task.clone(),
+                target_files: Vec::new(),
+                mode: clawdius_core::agentic::GenerationMode::iterative_with_max(3),
+                test_strategy: clawdius_core::agentic::TestExecutionStrategy::Skip,
+                apply_workflow: clawdius_core::agentic::ApplyWorkflow::Direct,
+                context: clawdius_core::agentic::TaskContext {
+                    related_files: Vec::new(),
+                    conversation_history: Vec::new(),
+                    project_language: None,
+                    project_framework: None,
+                    constraints: Vec::new(),
+                },
+                trust_level: clawdius_core::agentic::TrustLevel::Medium,
+            };
+
+            let mut system =
+                clawdius_core::agentic::AgenticSystem::new(
+                    request.mode.clone(),
+                    request.test_strategy.clone(),
+                    request.apply_workflow.clone(),
+                )
+                .with_llm_client(llm);
+
+            match system.execute(request).await {
+                Ok(result) => {
+                    let _ = tx
+                        .send(TuiEvent::Phase {
+                            name: "Generate".to_string(),
+                            status: super::types::PhaseStatus::Completed(
+                                if result.success {
+                                    format!(
+                                        "{} files changed in {}ms",
+                                        result.changes.len(),
+                                        result.duration_ms
+                                    )
+                                } else {
+                                    "Generation failed".to_string()
+                                },
+                            ),
+                            detail: format!(
+                                "Files: {}",
+                                result
+                                    .changes
+                                    .iter()
+                                    .map(|c| c.path.clone())
+                                    .collect::<Vec<_>>()
+                                    .join(", ")
+                            ),
+                        })
+                        .await;
+                    if !result.changes.is_empty() {
+                        for change in &result.changes {
+                            let _ = tx
+                                .send(TuiEvent::Chunk(format!(
+                                    "  {} {}",
+                                    match change.change_type {
+                                        clawdius_core::agentic::ChangeType::Created => "+",
+                                        clawdius_core::agentic::ChangeType::Modified => "~",
+                                        clawdius_core::agentic::ChangeType::Deleted => "-",
+                                    },
+                                    change.path
+                                )))
+                                .await;
+                        }
+                    }
+                },
+                Err(e) => {
+                    let _ = tx.send(TuiEvent::Error(format!("Generate failed: {e}"))).await;
+                },
+            }
+            let _ = tx.send(TuiEvent::Done).await;
+        });
+    }
+
+    /// Run a quick shell command and display the result in the chat.
+    fn run_quick_command(&mut self, command: &str) {
+        self.chat_view
+            .add_message(Message::system(format!("Running: {command}")));
+        let output = std::process::Command::new("sh")
+            .arg("-c")
+            .arg(command)
+            .output();
+
+        match output {
+            Ok(out) => {
+                let stdout = String::from_utf8_lossy(&out.stdout).to_string();
+                let stderr = String::from_utf8_lossy(&out.stderr).to_string();
+                let result = if stdout.trim().is_empty() {
+                    stderr
+                } else {
+                    stdout
+                };
+                self.chat_view.add_message(Message::tool(result.trim().to_string()));
+            },
+            Err(e) => {
+                self.error_message = Some(format!("Failed to run command: {e}"));
+            },
         }
     }
 
@@ -1246,11 +1681,28 @@ impl App {
                 "Agentic Commands:",
                 Style::default().fg(Color::Yellow),
             )),
+            Line::from("  :sprint <task>  - Run multi-phase sprint (think→plan→build→test→ship)"),
+            Line::from("  :auto <task>    - Single LLM call with optional test/commit"),
+            Line::from("  :generate <task> - Iterative agentic code generation"),
             Line::from("  :tools     - Toggle tool execution (file edit, shell, git)"),
             Line::from("  :compact   - Compact conversation history to last 20 msgs"),
             Line::from("  :git status/log/diff - Run git commands"),
             Line::from("  :provider <name> - Switch LLM provider"),
             Line::from("  :timeout <secs>     - Set API timeout"),
+            Line::default(),
+            Line::from(Span::styled(
+                "Quick Actions:",
+                Style::default().fg(Color::Yellow),
+            )),
+            Line::from("  :build / :check  - Run cargo check"),
+            Line::from("  :test <file>    - Run cargo test"),
+            Line::from("  :analyze [path] - Analyze code for drift/debt"),
+            Line::from("  :checkpoint   - Show file checkpoints"),
+            Line::from("  :timeline    - Show file version history"),
+            Line::from("  :memory      - Show project memory (CLAWDIUS.md)"),
+            Line::from("  :config show  - Show current configuration"),
+            Line::from("  :doc <file>   - Generate documentation (CLI)"),
+            Line::from("  :verify <file> - Verify Lean4 proof (CLI)"),
             Line::default(),
             Line::from(Span::styled(
                 "Session Commands:",
