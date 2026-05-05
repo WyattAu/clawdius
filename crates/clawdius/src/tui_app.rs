@@ -46,6 +46,9 @@ pub async fn run_tui() -> anyhow::Result<()> {
         // Drain any available streaming chunks
         app.drain_stream();
 
+        // Poll file watcher for change events
+        app.poll_file_watcher();
+
         // Use select to handle either terminal events or tick timeouts
         tokio::select! {
             // Terminal events (keyboard, mouse, resize)

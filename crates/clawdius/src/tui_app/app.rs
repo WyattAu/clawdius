@@ -226,6 +226,11 @@ pub struct App {
     session_picker: SessionPicker,
     /// Workspace switcher popup.
     workspace_switcher: WorkspaceSwitcher,
+    /// File watcher for live file change detection.
+    file_watcher: Option<clawdius_core::watch::FileWatcher>,
+    /// Receiver for file watcher events.
+    file_watcher_rx:
+        Option<std::sync::mpsc::Receiver<Vec<clawdius_core::watch::WatchEvent>>>,
 }
 
 impl App {
@@ -263,6 +268,8 @@ impl App {
             iteration_count: 0,
             session_picker: SessionPicker::new(),
             workspace_switcher: WorkspaceSwitcher::new(),
+            file_watcher: None,
+            file_watcher_rx: None,
         })
     }
 
@@ -884,6 +891,30 @@ impl App {
                     self.error_message = Some("Usage: :config show".to_string());
                 }
             },
+            "watch" => {
+                if self.file_watcher.is_some() {
+                    self.file_watcher = None;
+                    self.file_watcher_rx = None;
+                    self.chat_view
+                        .add_message(Message::system("👀 File watcher stopped".to_string()));
+                } else {
+                    let cwd = std::env::current_dir().unwrap_or_default();
+                    let config = clawdius_core::watch::WatchConfig::new(&cwd).debounce(300);
+                    match clawdius_core::watch::FileWatcher::start_with_channel(config) {
+                        Ok((watcher, rx)) => {
+                            self.file_watcher_rx = Some(rx);
+                            self.file_watcher = Some(watcher);
+                            self.chat_view.add_message(Message::system(format!(
+                                "👀 Watching {} for changes...\n  :watch to stop",
+                                cwd.display()
+                            )));
+                        },
+                        Err(e) => {
+                            self.error_message = Some(format!("Failed to start watcher: {e}"));
+                        },
+                    }
+                }
+            },
             _ => {
                 // Split pane commands
                 if cmd == "split" || cmd == "sp" {
@@ -1119,6 +1150,47 @@ impl App {
         for _ in 0..50 {
             if !self.poll_stream() {
                 break;
+            }
+        }
+    }
+
+    /// Poll the file watcher for change events and display them in chat.
+    pub fn poll_file_watcher(&mut self) {
+        let rx = match &self.file_watcher_rx {
+            Some(rx) => rx,
+            None => return,
+        };
+
+        for _ in 0..20 {
+            match rx.try_recv() {
+                Ok(events) => {
+                    for event in &events {
+                        let icon = match event {
+                            clawdius_core::watch::WatchEvent::Created { .. } => "✨",
+                            clawdius_core::watch::WatchEvent::Modified { .. } => "✏️ ",
+                            clawdius_core::watch::WatchEvent::Deleted { .. } => "🗑️ ",
+                            clawdius_core::watch::WatchEvent::Renamed { .. } => "🔄",
+                        };
+                        self.chat_view.add_message(Message::system(format!(
+                            "{icon} {} {}",
+                            event.label(),
+                            event
+                                .path()
+                                .file_name()
+                                .map(|n| n.to_string_lossy().to_string())
+                                .unwrap_or_else(|| event.path().to_string_lossy().to_string())
+                        )));
+                    }
+                },
+                Err(std::sync::mpsc::TryRecvError::Empty) => break,
+                Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                    self.file_watcher = None;
+                    self.file_watcher_rx = None;
+                    self.chat_view.add_message(Message::system(
+                        "👀 File watcher disconnected".to_string(),
+                    ));
+                    break;
+                },
             }
         }
     }
