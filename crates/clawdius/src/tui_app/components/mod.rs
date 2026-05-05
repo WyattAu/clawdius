@@ -11,5 +11,7 @@ pub mod workspace_switcher;
 pub use chat::ChatView;
 pub use diff_view::DiffView;
 pub use file_list::FileList;
+pub use session_picker::{SessionEntry, SessionPicker};
 pub use spinner::Spinner;
 pub use syntax::SyntaxHighlighter;
+pub use workspace_switcher::{WorkspaceEntry, WorkspaceSwitcher};

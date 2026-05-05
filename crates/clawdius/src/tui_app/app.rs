@@ -7,7 +7,8 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use super::components::{ChatView, DiffView, FileList, Spinner, SyntaxHighlighter};
+use super::components;
+use super::components::{ChatView, DiffView, FileList, SessionEntry, SessionPicker, Spinner, SyntaxHighlighter, WorkspaceEntry, WorkspaceSwitcher};
 use super::theme;
 use super::types::{AppMode, InputMode, LayoutMode, Message, TuiEvent};
 use super::vim::VimKeymap;
@@ -221,6 +222,10 @@ pub struct App {
     pub tools_enabled: bool,
     /// Current iteration count for the agentic loop (displayed in status).
     pub iteration_count: usize,
+    /// Session picker popup.
+    session_picker: SessionPicker,
+    /// Workspace switcher popup.
+    workspace_switcher: WorkspaceSwitcher,
 }
 
 impl App {
@@ -256,6 +261,8 @@ impl App {
             conversation_history: Vec::new(),
             tools_enabled: true,
             iteration_count: 0,
+            session_picker: SessionPicker::new(),
+            workspace_switcher: WorkspaceSwitcher::new(),
         })
     }
 
@@ -305,6 +312,76 @@ impl App {
 
         if self.error_message.is_some() {
             self.error_message = None;
+            return Ok(());
+        }
+
+        // Route to session picker if visible
+        if self.session_picker.visible {
+            match key.code {
+                KeyCode::Esc | KeyCode::Char('q') => {
+                    self.session_picker.close();
+                },
+                KeyCode::Char('j') | KeyCode::Down => {
+                    self.session_picker.move_down();
+                },
+                KeyCode::Char('k') | KeyCode::Up => {
+                    self.session_picker.move_up();
+                },
+                KeyCode::Enter => {
+                    if let Some(id) = self.session_picker.selected_id().map(String::from) {
+                        let session_id = clawdius_core::session::SessionId(
+                            id.parse::<uuid::Uuid>().unwrap_or_default(),
+                        );
+                        if let Ok(Some(session)) =
+                            self.session_manager.load_session(&session_id)
+                        {
+                            self.session = Some(session);
+                            self.chat_view.add_message(Message::system(format!(
+                                "Switched to session {}",
+                                &id[..id.len().min(8)]
+                            )));
+                        }
+                    }
+                    self.session_picker.close();
+                },
+                KeyCode::Backspace => {
+                    self.session_picker.backspace();
+                },
+                KeyCode::Char(c) => {
+                    self.session_picker.type_char(c);
+                },
+                _ => {},
+            }
+            return Ok(());
+        }
+
+        // Route to workspace switcher if visible
+        if self.workspace_switcher.visible {
+            match key.code {
+                KeyCode::Esc | KeyCode::Char('q') => {
+                    self.workspace_switcher.close();
+                },
+                KeyCode::Char('j') | KeyCode::Down => {
+                    self.workspace_switcher.move_down();
+                },
+                KeyCode::Char('k') | KeyCode::Up => {
+                    self.workspace_switcher.move_up();
+                },
+                KeyCode::Enter => {
+                    if let Some(_id) = self.workspace_switcher.selected_id() {
+                        self.chat_view
+                            .add_message(Message::system("Workspace switched".to_string()));
+                    }
+                    self.workspace_switcher.close();
+                },
+                KeyCode::Backspace => {
+                    self.workspace_switcher.backspace();
+                },
+                KeyCode::Char(c) => {
+                    self.workspace_switcher.type_char(c);
+                },
+                _ => {},
+            }
             return Ok(());
         }
 
@@ -552,23 +629,36 @@ impl App {
             "sessions" => {
                 match self.session_manager.list_sessions() {
                     Ok(sessions) => {
-                        let list: Vec<String> = sessions
+                        let entries: Vec<SessionEntry> = sessions
                             .iter()
-                            .take(10)
                             .map(|s| {
-                                format!(
-                                    "  {} | {} msgs | {} tokens | {}",
-                                    &s.id.to_string()[..8],
-                                    s.messages.len(),
-                                    s.total_tokens(),
-                                    s.meta
-                                        .provider
-                                        .as_deref()
-                                        .unwrap_or("unknown")
-                                )
+                                let title_text = s
+                                    .title
+                                    .as_deref()
+                                    .or_else(|| {
+                                        s.messages.first().and_then(|m| match &m.content {
+                                            clawdius_core::session::MessageContent::Text(t) => {
+                                                t.lines().next()
+                                            },
+                                            _ => None,
+                                        })
+                                    })
+                                    .unwrap_or("(empty)");
+                                SessionEntry {
+                                    id: s.id.to_string(),
+                                    title: title_text.chars().take(60).collect(),
+                                    message_count: s.messages.len(),
+                                    last_active: s.created_at.format("%Y-%m-%d %H:%M").to_string(),
+                                    tokens_used: s.total_tokens(),
+                                    is_active: self
+                                        .session
+                                        .as_ref()
+                                        .is_some_and(|cur| cur.id == s.id),
+                                }
                             })
                             .collect();
-                        self.error_message = Some(format!("Sessions:\n{}", list.join("\n")));
+                        self.session_picker.set_entries(entries);
+                        self.session_picker.open();
                     },
                     Err(e) => {
                         self.error_message = Some(format!("Failed to list sessions: {e}"));
@@ -1024,6 +1114,23 @@ impl App {
 
         if let Some(ref error) = self.error_message {
             Self::draw_popup(f, "Error", error);
+        }
+
+        // Render session picker popup on top
+        if self.session_picker.visible {
+            let theme = theme::current();
+            let widget = components::session_picker::SessionPickerWidget::new(&self.session_picker, theme);
+            f.render_widget(widget, f.area());
+        }
+
+        // Render workspace switcher popup on top
+        if self.workspace_switcher.visible {
+            let theme = theme::current();
+            let widget = components::workspace_switcher::WorkspaceSwitcherWidget::new(
+                &self.workspace_switcher,
+                theme,
+            );
+            f.render_widget(widget, f.area());
         }
     }
 
