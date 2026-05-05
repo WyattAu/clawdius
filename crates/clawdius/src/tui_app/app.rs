@@ -1775,6 +1775,7 @@ impl App {
             Line::from("  :config show  - Show current configuration"),
             Line::from("  :doc <file>   - Generate documentation (CLI)"),
             Line::from("  :verify <file> - Verify Lean4 proof (CLI)"),
+            Line::from("  :watch     - Toggle file watcher (live change feed)"),
             Line::default(),
             Line::from(Span::styled(
                 "Session Commands:",
