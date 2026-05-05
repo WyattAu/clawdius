@@ -299,7 +299,7 @@ pub(super) fn handle_watch(
     // Build watch configuration
     let mut config = WatchConfig::new(path);
     if let Some(ignore_patterns) = ignore {
-        for pattern in ignore_patterns.split(',').map(|s| s.trim()) {
+        for pattern in ignore_patterns.split(',').map(str::trim) {
             if !pattern.is_empty() {
                 config = config.exclude(pattern);
             }
@@ -332,17 +332,15 @@ pub(super) fn handle_watch(
         match rx.recv_timeout(std::time::Duration::from_secs(1)) {
             Ok(events) => {
                 for event in &events {
-                    match output_format {
-                        OutputFormat::Json => {
-                            println!(
-                                "{}",
-                                serde_json::json!({
-                                    "event": event.label(),
-                                    "path": event.path().to_string_lossy(),
-                                })
-                            );
-                        },
-                        _ => {
+                    if output_format == OutputFormat::Json {
+                        println!(
+                            "{}",
+                            serde_json::json!({
+                                "event": event.label(),
+                                "path": event.path().to_string_lossy(),
+                            })
+                        );
+                    } else {
                             let icon = match event {
                                 clawdius_core::watch::WatchEvent::Created { .. } => "✨",
                                 clawdius_core::watch::WatchEvent::Modified { .. } => "✏️ ",
@@ -353,7 +351,7 @@ pub(super) fn handle_watch(
                             if verbose {
                                 println!("     (debounced batch of {} events)", events.len());
                             }
-                        },
+                        }
                     }
                 }
 
@@ -416,8 +414,7 @@ fn run_auto_analysis(files: &[PathBuf], verbose: bool) {
 
     if drift_count > 0 || debt_count > 0 {
         println!(
-            "  📊 Analysis: {} drift(s), {} debt item(s)",
-            drift_count, debt_count
+            "  📊 Analysis: {drift_count} drift(s), {debt_count} debt item(s)",
         );
     } else if verbose {
         println!("  ✅ No new drift or debt detected");

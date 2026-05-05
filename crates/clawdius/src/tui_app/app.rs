@@ -35,7 +35,8 @@ use clawdius_core::{
 };
 
 /// Built-in tool executor for the TUI. Uses clawdius-core tools directly
-/// (FileTool, ShellTool, GitTool) to handle tool calls from the LLM.
+/// (`FileTool`, `ShellTool`, `GitTool`) to handle tool calls from the LLM.
+#[allow(clippy::struct_field_names)]
 pub struct TuiToolExecutor {
     file_tool: Arc<FileTool>,
     shell_tool: Arc<ShellTool>,
@@ -81,7 +82,7 @@ impl TuiToolExecutor {
         ]
     }
 
-    /// Execute a tool call by name. Returns (output, is_error).
+    /// Execute a tool call by name. Returns `(output, is_error)`.
     pub fn execute_tool(&self, name: &str, arguments: &str) -> (String, bool) {
         let args: HashMap<String, serde_json::Value> =
             serde_json::from_str(arguments).unwrap_or_default();
@@ -89,8 +90,8 @@ impl TuiToolExecutor {
         match name {
             "read_file" => {
                 let path = args.get("path").and_then(|v| v.as_str()).unwrap_or("").to_string();
-                let offset = args.get("offset").and_then(|v| v.as_u64()).map(|n| n as usize);
-                let limit = args.get("limit").and_then(|v| v.as_u64()).map(|n| n as usize);
+                let offset = args.get("offset").and_then(serde_json::Value::as_u64).map(|n| n as usize);
+                let limit = args.get("limit").and_then(serde_json::Value::as_u64).map(|n| n as usize);
                 let params = FileReadParams { path, offset, limit };
                 match self.file_tool.read(params) {
                     Ok(content) => (content, false),
@@ -110,7 +111,7 @@ impl TuiToolExecutor {
                 let path = args.get("path").and_then(|v| v.as_str()).unwrap_or("").to_string();
                 let old_string = args.get("old_string").and_then(|v| v.as_str()).unwrap_or("").to_string();
                 let new_string = args.get("new_string").and_then(|v| v.as_str()).unwrap_or("").to_string();
-                let replace_all = args.get("replace_all").and_then(|v| v.as_bool()).unwrap_or(false);
+                let replace_all = args.get("replace_all").and_then(serde_json::Value::as_bool).unwrap_or(false);
                 let params = FileEditParams { path, old_string, new_string, replace_all };
                 match self.file_tool.edit(params) {
                     Ok(changed) => {
@@ -135,7 +136,7 @@ impl TuiToolExecutor {
                 let command = args.get("command").and_then(|v| v.as_str()).unwrap_or("").to_string();
                 let timeout = args
                     .get("timeout")
-                    .and_then(|v| v.as_u64())
+                    .and_then(serde_json::Value::as_u64)
                     .unwrap_or(120_000);
                 let params = ShellParams {
                     command,
@@ -163,8 +164,8 @@ impl TuiToolExecutor {
                 }
             },
             "git_diff" => {
-                let staged = args.get("staged").and_then(|v| v.as_bool()).unwrap_or(false);
-                let path = args.get("path").or(args.get("file")).and_then(|v| v.as_str()).map(String::from);
+                let staged = args.get("staged").and_then(serde_json::Value::as_bool).unwrap_or(false);
+                let path = args.get("path").or_else(|| args.get("file")).and_then(|v| v.as_str()).map(String::from);
                 let params = GitDiffParams { staged, path };
                 match self.git_tool.diff(params, None) {
                     Ok(output) => (output, false),
@@ -172,8 +173,8 @@ impl TuiToolExecutor {
                 }
             },
             "git_log" => {
-                let count = args.get("count").and_then(|v| v.as_u64()).unwrap_or(20) as usize;
-                let path = args.get("path").or(args.get("file")).and_then(|v| v.as_str()).map(String::from);
+                let count = args.get("count").and_then(serde_json::Value::as_u64).unwrap_or(20) as usize;
+                let path = args.get("path").or_else(|| args.get("file")).and_then(|v| v.as_str()).map(String::from);
                 let params = GitLogParams { count, path };
                 match self.git_tool.log(params, None) {
                     Ok(output) => (output, false),
@@ -578,6 +579,7 @@ impl App {
         }
     }
 
+    #[allow(clippy::too_many_lines)]
     fn execute_command(&mut self, cmd: &str) {
         let cmd = cmd.trim_start_matches(':').trim();
         let parts: Vec<&str> = cmd.splitn(2, ' ').collect();
@@ -646,7 +648,7 @@ impl App {
                                             clawdius_core::session::MessageContent::Text(t) => {
                                                 t.lines().next()
                                             },
-                                            _ => None,
+                                            clawdius_core::session::MessageContent::MultiPart(_) => None,
                                         })
                                     })
                                     .unwrap_or("(empty)");
@@ -753,7 +755,7 @@ impl App {
                 }
             },
             "git" => {
-                let git_cmd = parts.get(1).map(|s| *s).unwrap_or("status");
+                let git_cmd = parts.get(1).copied().unwrap_or("status");
                 self.run_git_command(git_cmd);
             },
             "provider" => {
@@ -1071,7 +1073,7 @@ impl App {
                         let display_args = if arguments.len() > 200 {
                             format!("{}...", &arguments[..200])
                         } else {
-                            arguments.clone()
+                            arguments.to_string()
                         };
                         self.chat_view
                             .add_message(Message::tool(format!("⏳ {name}({display_args})")));
@@ -1105,8 +1107,7 @@ impl App {
                         };
                         let msg = match &status {
                             PhaseStatus::Started => format!("{icon} {name}"),
-                            PhaseStatus::Progress(s) => format!("{icon} {name}: {s}"),
-                            PhaseStatus::Completed(s) => format!("{icon} {name}: {s}"),
+                            PhaseStatus::Progress(s) | PhaseStatus::Completed(s) => format!("{icon} {name}: {s}"),
                             PhaseStatus::Failed(s) => format!("{icon} {name} FAILED: {s}"),
                             PhaseStatus::Skipped => format!("{icon} {name}: skipped"),
                         };
@@ -1155,9 +1156,8 @@ impl App {
 
     /// Poll the file watcher for change events and display them in chat.
     pub fn poll_file_watcher(&mut self) {
-        let rx = match &self.file_watcher_rx {
-            Some(rx) => rx,
-            None => return,
+        let Some(rx) = &self.file_watcher_rx else {
+            return;
         };
 
         // Non-blocking poll — drain up to 20 batches per tick
@@ -1365,7 +1365,8 @@ impl App {
         });
     }
 
-    /// Start a generate (AgenticSystem) workflow in the background.
+    /// Start a generate (`AgenticSystem`) workflow in the background.
+    #[allow(clippy::too_many_lines)]
     fn start_generate(&mut self, task: String) {
         self.chat_view.add_message(Message::user(&task));
         self.chat_view.add_message(Message::system("⚡ Generate mode: agentic code generation..."));
@@ -1426,7 +1427,7 @@ impl App {
             let mut system =
                 clawdius_core::agentic::AgenticSystem::new(
                     request.mode.clone(),
-                    request.test_strategy.clone(),
+                    request.test_strategy,
                     request.apply_workflow.clone(),
                 )
                 .with_llm_client(llm);
@@ -1936,6 +1937,7 @@ impl App {
 ///
 /// This runs as a background tokio task and sends `TuiEvent`s to the TUI
 /// via the provided channel.
+#[allow(clippy::too_many_lines)]
 async fn run_agentic_loop(
     provider: llm::LlmProvider,
     mut messages: Vec<ChatMessage>,
@@ -2079,7 +2081,7 @@ async fn run_agentic_loop(
                 // Add assistant message and tool result to conversation
                 messages.push(ChatMessage {
                     role: ChatRole::Assistant,
-                    content: format!("[TOOL_CALL] {{\"name\": \"{}\", \"arguments\": {}}} [/TOOL_CALL]", name, arguments),
+                    content: format!("[TOOL_CALL] {{\"name\": \"{name}\", \"arguments\": {arguments}}} [/TOOL_CALL]"),
                 });
                 messages.push(ChatMessage {
                     role: ChatRole::User,
@@ -2159,8 +2161,8 @@ async fn run_agentic_loop(
 
 /// Parse text-based tool calls from the LLM response.
 /// Supports formats:
-///   [TOOL_CALL] {"name": "...", "arguments": {...}} [/TOOL_CALL]
-///   ant:invoke:tool_name{"param": "value"}ant:invoke:end
+///   `[TOOL_CALL]` {"name": "...", "arguments": {...}} `[/TOOL_CALL]`
+///   `ant:invoke:tool_name{"param": "value"}ant:invoke:end`
 fn parse_text_tool_calls(text: &str) -> Vec<(String, String)> {
     let mut results = Vec::new();
 

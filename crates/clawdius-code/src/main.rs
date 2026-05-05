@@ -14,6 +14,7 @@ fn main() -> anyhow::Result<()> {
     rt.block_on(async { run_server().await })
 }
 
+#[allow(clippy::too_many_lines)]
 async fn run_server() -> anyhow::Result<()> {
     use clawdius_core::rpc::{
         handlers::{
@@ -121,10 +122,10 @@ async fn run_server() -> anyhow::Result<()> {
         .await;
 
     // Register completion handler (with LLM client)
-    let completion_handler = match llm_client {
-        Some(ref client) => CompletionHandler::with_llm(Arc::clone(client)),
-        None => CompletionHandler::new(),
-    };
+    let completion_handler = llm_client.as_ref().map_or_else(
+        CompletionHandler::new,
+        |client| CompletionHandler::with_llm(Arc::clone(client)),
+    );
     server
         .register_handler("completion/inline", Arc::new(completion_handler))
         .await;
