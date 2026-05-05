@@ -269,7 +269,11 @@ fn filter_debt_by_priority(report: &DebtReport, min_level: u8) -> Vec<serde_json
         .collect()
 }
 
-/// Handle watch command for file monitoring with auto-analysis
+/// Handle watch command for file monitoring with auto-analysis.
+///
+/// Starts a real file watcher using the `notify` crate. Events are debounced
+/// and printed to stdout. When `--auto-analyze` is passed, a drift + debt
+/// analysis is run on every batch of changes.
 pub(super) fn handle_watch(
     path: &PathBuf,
     ignore: Option<String>,
@@ -278,15 +282,12 @@ pub(super) fn handle_watch(
     verbose: bool,
     output_format: OutputFormat,
 ) -> anyhow::Result<()> {
-    use clawdius_core::watch::handlers::{ContextUpdateHandler, DiagnosticHandler};
     use clawdius_core::watch::{FileWatcher, WatchConfig};
 
     println!("👀 Watching {} for changes...", path.display());
-
     if auto_analyze {
         println!("🔍 Auto-analysis enabled");
     }
-
     println!("   Debounce: {debounce_ms}ms");
     if verbose {
         println!("   Verbose output enabled");
@@ -295,36 +296,24 @@ pub(super) fn handle_watch(
     println!("Press Ctrl+C to stop watching...");
     println!();
 
-    // Create watch configuration
+    // Build watch configuration
     let mut config = WatchConfig::new(path);
-
     if let Some(ignore_patterns) = ignore {
-        let patterns: Vec<String> = ignore_patterns
-            .split(',')
-            .map(|s| s.trim().to_string())
-            .collect();
-        for pattern in patterns {
-            config = config.exclude(pattern);
+        for pattern in ignore_patterns.split(',').map(|s| s.trim()) {
+            if !pattern.is_empty() {
+                config = config.exclude(pattern);
+            }
         }
     }
-
     config = config.debounce(debounce_ms);
 
-    // Create handlers (placeholder for future async integration)
-    let _context_handler = ContextUpdateHandler::new(vec!["**/*.rs".to_string()]);
-    let _diagnostic_handler = DiagnosticHandler::new();
+    // Start the real watcher with a channel for debounced events
+    let (_watcher, rx) = FileWatcher::start_with_channel(config)?;
 
-    // Create watcher
-    let mut watcher = FileWatcher::new(config)?;
-    watcher.start()?;
-
-    // Simulate watching (in a real implementation, this would be async with notify)
-    println!("📁 File watcher started successfully");
+    println!("📁 File watcher started");
     println!("   Watching for: **/*.rs, **/*.toml");
-    println!("   Ignoring: target/, .git/, node_modules/");
-
-    // In a real implementation, we would integrate with notify crate
-    // For now, this is a placeholder that demonstrates the feature
+    println!("   Ignoring: target/, .git/, node_modules/, .clawdius/");
+    println!();
 
     if output_format == OutputFormat::Json {
         println!(
@@ -338,5 +327,99 @@ pub(super) fn handle_watch(
         );
     }
 
+    // Event loop — block on receiver, Ctrl+C will break it
+    loop {
+        match rx.recv_timeout(std::time::Duration::from_secs(1)) {
+            Ok(events) => {
+                for event in &events {
+                    match output_format {
+                        OutputFormat::Json => {
+                            println!(
+                                "{}",
+                                serde_json::json!({
+                                    "event": event.label(),
+                                    "path": event.path().to_string_lossy(),
+                                })
+                            );
+                        },
+                        _ => {
+                            let icon = match event {
+                                clawdius_core::watch::WatchEvent::Created { .. } => "✨",
+                                clawdius_core::watch::WatchEvent::Modified { .. } => "✏️ ",
+                                clawdius_core::watch::WatchEvent::Deleted { .. } => "🗑️ ",
+                                clawdius_core::watch::WatchEvent::Renamed { .. } => "🔄",
+                            };
+                            println!("  {icon} {} {}", event.label(), event.path().display());
+                            if verbose {
+                                println!("     (debounced batch of {} events)", events.len());
+                            }
+                        },
+                    }
+                }
+
+                // Run auto-analysis on the changed files if requested
+                if auto_analyze {
+                    let changed_paths: Vec<PathBuf> =
+                        events.iter().map(|e| e.path().to_path_buf()).collect();
+                    run_auto_analysis(&changed_paths, verbose);
+                }
+            },
+            Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {
+                // Heartbeat — just keep looping
+            },
+            Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => {
+                eprintln!("\n⚠️  Watcher channel disconnected. Stopping.");
+                break;
+            },
+        }
+    }
+
     Ok(())
+}
+
+/// Run drift + debt analysis on the given files.
+fn run_auto_analysis(files: &[PathBuf], verbose: bool) {
+    use clawdius_core::analysis::{DebtAnalyzer, DriftDetector};
+
+    let source_files: Vec<(PathBuf, String)> = files
+        .iter()
+        .filter(|p| {
+            p.extension()
+                .is_some_and(|ext| ext == "rs")
+        })
+        .filter_map(|p| {
+            let content = std::fs::read_to_string(p).ok()?;
+            Some((p.clone(), content))
+        })
+        .collect();
+
+    if source_files.is_empty() {
+        return;
+    }
+
+    if verbose {
+        println!("  🔍 Analyzing {} changed file(s)...", source_files.len());
+    }
+
+    let detector = DriftDetector::new();
+    let drift = detector.analyze_files(
+        source_files.iter().map(|(p, c)| (p.clone(), c.as_str())),
+    );
+
+    let analyzer = DebtAnalyzer::new();
+    let debt = analyzer.analyze_files(
+        source_files.iter().map(|(p, c)| (p.clone(), c.as_str())),
+    );
+
+    let drift_count = drift.len();
+    let debt_count = debt.len();
+
+    if drift_count > 0 || debt_count > 0 {
+        println!(
+            "  📊 Analysis: {} drift(s), {} debt item(s)",
+            drift_count, debt_count
+        );
+    } else if verbose {
+        println!("  ✅ No new drift or debt detected");
+    }
 }

@@ -1,12 +1,20 @@
 //! File watcher with debouncing and pattern filtering
+//!
+//! Uses the `notify` crate for cross-platform file system watching.
+//! Events are debounced to coalesce rapid changes (e.g., save-with-backup).
 
-use std::collections::HashSet;
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+use std::sync::mpsc as std_mpsc;
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
-use notify::{EventKind, Watcher as NotifyWatcher};
+use notify::{Event, EventKind, RecursiveMode, Watcher as NotifyWatcher};
+use notify::RecommendedWatcher;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
+
+use super::debounce::{DebouncedEvent, DebouncedEventKind, EventDebouncer};
 
 /// File watcher error
 #[derive(Debug, Error)]
@@ -20,6 +28,9 @@ pub enum WatchError {
     /// Path not found
     #[error("Path not found: {0}")]
     PathNotFound(PathBuf),
+    /// Channel send error
+    #[error("Channel error: {0}")]
+    Channel(String),
 }
 
 /// Watch configuration
@@ -144,94 +155,164 @@ impl WatchEvent {
             Self::Renamed { to, .. } => to,
         }
     }
+
+    /// Get a short label for the event type
+    #[must_use]
+    pub fn label(&self) -> &'static str {
+        match self {
+            Self::Created { .. } => "CREATED",
+            Self::Modified { .. } => "MODIFIED",
+            Self::Deleted { .. } => "DELETED",
+            Self::Renamed { .. } => "RENAMED",
+        }
+    }
 }
 
 /// File watcher
+///
+/// Wraps `notify::RecommendedWatcher` and provides:
+/// - Pattern-based filtering (include/exclude globs)
+/// - Debounced events via internal `EventDebouncer`
+/// - Channel-based event delivery
 pub struct FileWatcher {
     config: WatchConfig,
-    watcher: Option<Box<dyn NotifyWatcher>>,
-    pending_events: HashSet<PathBuf>,
-    last_event_time: Option<Instant>,
+    watcher: Option<RecommendedWatcher>,
+    /// Maps paths to their last known state to detect renames
+    known_paths: HashMap<PathBuf, Instant>,
 }
 
 impl FileWatcher {
-    /// Create a new file watcher
+    /// Create a new file watcher (does not start watching).
     pub fn new(config: WatchConfig) -> Result<Self, WatchError> {
         Ok(Self {
             config,
             watcher: None,
-            pending_events: HashSet::new(),
-            last_event_time: None,
+            known_paths: HashMap::new(),
         })
     }
 
-    /// Start watching
-    pub fn start(&mut self) -> Result<(), WatchError> {
-        // Validate paths
-        for path in &self.config.paths {
-            if !path.exists() {
-                return Err(WatchError::PathNotFound(path.clone()));
+    /// Start watching and return a receiver for debounced events.
+    ///
+    /// The returned `std::sync::mpsc::Receiver` yields batches of
+    /// `WatchEvent` after debouncing. The caller should poll in a loop
+    /// (e.g., `recv()` or `recv_timeout()`).
+    ///
+    /// Returns `(watcher, receiver)`. The watcher must be kept alive;
+    /// dropping it stops watching.
+    pub fn start_with_channel(
+        config: WatchConfig,
+    ) -> Result<(Self, std_mpsc::Receiver<Vec<WatchEvent>>), WatchError> {
+        let (out_tx, out_rx) = std_mpsc::channel::<Vec<WatchEvent>>();
+
+        // Shared state: debouncer + flush timer, protected by Mutex for the notify callback
+        let state = Arc::new(Mutex::new(DebounceState::new(config.clone())));
+
+        let state_for_callback = Arc::clone(&state);
+        let out_tx_for_callback = out_tx.clone();
+
+        // The notify callback runs on a background thread managed by notify.
+        // It accumulates events into the debouncer and sends batches via out_tx.
+        let callback = move |res: Result<Event, notify::Error>| {
+            let Ok(event) = res else {
+                return;
+            };
+
+            let mut state = state_for_callback.lock().unwrap_or_else(|e| e.into_inner());
+
+            for path in event.paths {
+                if !state.config.should_watch(&path) {
+                    continue;
+                }
+
+                let kind = match event.kind {
+                    EventKind::Create(_) => DebouncedEventKind::Created,
+                    EventKind::Modify(_) => DebouncedEventKind::Modified,
+                    EventKind::Remove(_) => DebouncedEventKind::Deleted,
+                    _ => continue,
+                };
+
+                state.debouncer.add(path, kind);
             }
+
+            // Flush if we've accumulated enough events
+            if state.debouncer.should_flush() {
+                let batch = flush_to_watch_events(&mut state.debouncer);
+                if !batch.is_empty() {
+                    // Ignore send error — receiver may have been dropped
+                    let _ = out_tx_for_callback.send(batch);
+                }
+            }
+        };
+
+        // Create the notify watcher
+        let mut watcher = notify::recommended_watcher(callback)?;
+
+        // Register all configured paths
+        for path in &config.paths {
+            let canonical = if path.exists() {
+                path.canonicalize()
+                    .map_err(|_| WatchError::PathNotFound(path.clone()))?
+            } else {
+                return Err(WatchError::PathNotFound(path.clone()));
+            };
+
+            let mode = if config.recursive {
+                RecursiveMode::Recursive
+            } else {
+                RecursiveMode::NonRecursive
+            };
+
+            watcher.watch(&canonical, mode)?;
+            tracing::debug!(path = ?canonical, "Watching path");
         }
 
-        Ok(())
+        // Spawn a timer thread that periodically flushes the debouncer.
+        // This ensures events are delivered even if no new events arrive.
+        let debounce_ms = config.debounce_ms;
+        let state_for_timer = Arc::clone(&state);
+        let out_tx_for_timer = out_tx;
+
+        std::thread::Builder::new()
+            .name("clawdius-watch-flush".to_string())
+            .spawn(move || {
+                loop {
+                    std::thread::sleep(Duration::from_millis(debounce_ms));
+
+                    let mut state = match state_for_timer.lock() {
+                        Ok(s) => s,
+                        Err(e) => e.into_inner(),
+                    };
+
+                    if state.debouncer.pending_count() > 0 {
+                        let batch = flush_to_watch_events(&mut state.debouncer);
+                        if !batch.is_empty() {
+                            if out_tx_for_timer.send(batch).is_err() {
+                                // Receiver dropped — stop the timer
+                                return;
+                            }
+                        }
+                    }
+                }
+            })
+            .map_err(|e| WatchError::Channel(e.to_string()))?;
+
+        Ok((
+            Self {
+                config,
+                watcher: Some(watcher),
+                known_paths: HashMap::new(),
+            },
+            out_rx,
+        ))
     }
 
     /// Stop watching
     pub fn stop(&mut self) {
-        self.watcher = None;
-    }
-
-    /// Process events with debouncing
-    pub fn process_events(&mut self, events: Vec<notify::Event>) -> Vec<WatchEvent> {
-        let now = Instant::now();
-        let debounce_duration = Duration::from_millis(self.config.debounce_ms);
-
-        // Check if enough time has passed since last event
-        if let Some(last_time) = self.last_event_time {
-            if now.duration_since(last_time) < debounce_duration {
-                // Still debouncing, accumulate paths
-                for event in events {
-                    for path in event.paths {
-                        if self.config.should_watch(&path) {
-                            self.pending_events.insert(path);
-                        }
-                    }
-                }
-                return Vec::new();
+        if let Some(mut w) = self.watcher.take() {
+            for path in &self.config.paths {
+                let _ = w.unwatch(path);
             }
         }
-
-        // Process accumulated events
-        let mut watch_events = Vec::new();
-
-        for path in &self.pending_events {
-            if path.exists() {
-                watch_events.push(WatchEvent::Modified { path: path.clone() });
-            } else {
-                watch_events.push(WatchEvent::Deleted { path: path.clone() });
-            }
-        }
-
-        // Process new events
-        for event in events {
-            for path in event.paths {
-                if self.config.should_watch(&path) {
-                    let watch_event = match event.kind {
-                        EventKind::Create(_) => WatchEvent::Created { path: path.clone() },
-                        EventKind::Modify(_) => WatchEvent::Modified { path: path.clone() },
-                        EventKind::Remove(_) => WatchEvent::Deleted { path: path.clone() },
-                        _ => continue,
-                    };
-                    watch_events.push(watch_event);
-                }
-            }
-        }
-
-        self.pending_events.clear();
-        self.last_event_time = Some(now);
-
-        watch_events
     }
 
     /// Get the configuration
@@ -239,12 +320,62 @@ impl FileWatcher {
     pub fn config(&self) -> &WatchConfig {
         &self.config
     }
+
+    /// Get the number of currently tracked paths
+    #[must_use]
+    pub fn tracked_count(&self) -> usize {
+        self.known_paths.len()
+    }
 }
 
 impl Drop for FileWatcher {
     fn drop(&mut self) {
         self.stop();
     }
+}
+
+/// Internal state shared between the notify callback and the flush timer.
+struct DebounceState {
+    config: WatchConfig,
+    debouncer: EventDebouncer,
+}
+
+impl DebounceState {
+    fn new(config: WatchConfig) -> Self {
+        Self {
+            debouncer: EventDebouncer::new(super::debounce::DebounceConfig {
+                min_interval_ms: config.debounce_ms / 2,
+                max_wait_ms: config.debounce_ms,
+                max_batch_size: 100,
+            }),
+            config,
+        }
+    }
+}
+
+/// Convert debounced events into `WatchEvent` batch and flush the debouncer.
+fn flush_to_watch_events(debouncer: &mut EventDebouncer) -> Vec<WatchEvent> {
+    let debounced = debouncer.flush();
+
+    let mut events = Vec::with_capacity(debounced.len());
+    for de in debounced {
+        let event = match de.kind {
+            DebouncedEventKind::Created => WatchEvent::Created { path: de.path },
+            DebouncedEventKind::Modified => WatchEvent::Modified { path: de.path },
+            DebouncedEventKind::Deleted => WatchEvent::Deleted { path: de.path },
+            DebouncedEventKind::Any => {
+                // Determine actual state: if path exists now, it was modified; otherwise deleted
+                if de.path.exists() {
+                    WatchEvent::Modified { path: de.path }
+                } else {
+                    WatchEvent::Deleted { path: de.path }
+                }
+            },
+        };
+        events.push(event);
+    }
+
+    events
 }
 
 #[cfg(test)]
@@ -272,5 +403,64 @@ mod tests {
 
         assert!(!config.should_watch(Path::new("target/debug/main.rs")));
         assert!(!config.should_watch(Path::new("crates/foo/target/debug/lib.rs")));
+    }
+
+    #[test]
+    fn test_watch_event_path() {
+        let created = WatchEvent::Created {
+            path: PathBuf::from("/tmp/foo.rs"),
+        };
+        assert_eq!(created.path(), Path::new("/tmp/foo.rs"));
+
+        let renamed = WatchEvent::Renamed {
+            from: PathBuf::from("/tmp/old.rs"),
+            to: PathBuf::from("/tmp/new.rs"),
+        };
+        assert_eq!(renamed.path(), Path::new("/tmp/new.rs"));
+    }
+
+    #[test]
+    fn test_watch_event_label() {
+        assert_eq!(
+            WatchEvent::Created {
+                path: PathBuf::from("a.rs")
+            }
+            .label(),
+            "CREATED"
+        );
+        assert_eq!(
+            WatchEvent::Modified {
+                path: PathBuf::from("a.rs")
+            }
+            .label(),
+            "MODIFIED"
+        );
+        assert_eq!(
+            WatchEvent::Deleted {
+                path: PathBuf::from("a.rs")
+            }
+            .label(),
+            "DELETED"
+        );
+        assert_eq!(
+            WatchEvent::Renamed {
+                from: PathBuf::from("a.rs"),
+                to: PathBuf::from("b.rs")
+            }
+            .label(),
+            "RENAMED"
+        );
+    }
+
+    #[test]
+    fn test_flush_to_watch_events() {
+        let mut debouncer = EventDebouncer::default();
+        debouncer.add(
+            PathBuf::from("existing.rs"),
+            DebouncedEventKind::Modified,
+        );
+
+        let events = flush_to_watch_events(&mut debouncer);
+        assert_eq!(events.len(), 1);
     }
 }
