@@ -229,8 +229,7 @@ pub struct App {
     /// File watcher for live file change detection.
     file_watcher: Option<clawdius_core::watch::FileWatcher>,
     /// Receiver for file watcher events.
-    file_watcher_rx:
-        Option<std::sync::mpsc::Receiver<Vec<clawdius_core::watch::WatchEvent>>>,
+    file_watcher_rx: Option<std::sync::mpsc::Receiver<Vec<clawdius_core::watch::WatchEvent>>>,
 }
 
 impl App {
@@ -1161,6 +1160,7 @@ impl App {
             None => return,
         };
 
+        // Non-blocking poll — drain up to 20 batches per tick
         for _ in 0..20 {
             match rx.try_recv() {
                 Ok(events) => {
@@ -1186,9 +1186,8 @@ impl App {
                 Err(std::sync::mpsc::TryRecvError::Disconnected) => {
                     self.file_watcher = None;
                     self.file_watcher_rx = None;
-                    self.chat_view.add_message(Message::system(
-                        "👀 File watcher disconnected".to_string(),
-                    ));
+                    self.chat_view
+                        .add_message(Message::system("👀 File watcher disconnected".to_string()));
                     break;
                 },
             }
