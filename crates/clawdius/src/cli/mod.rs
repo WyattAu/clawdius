@@ -572,7 +572,7 @@ pub enum Commands {
         /// Auto-approve all phases without confirmation
         auto_approve: bool,
 
-        #[arg(short = 'P', long, default_value = "openrouter")]
+        #[arg(short = 'P', long, default_value = "deepseek")]
         /// LLM provider
         provider: String,
 
