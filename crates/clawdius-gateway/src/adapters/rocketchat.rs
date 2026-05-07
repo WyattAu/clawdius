@@ -24,8 +24,10 @@
 //! - **Real-Time API (DDP)**: Used for receiving messages in real-time
 //!   (requires WebSocket connection, optional enhancement)
 
+use std::sync::Arc;
+
 use crate::adapter::{
-    AdapterHealth, OutgoingMessage, Platform, PlatformAdapter,
+    AdapterHealth, MessageCallback, OutgoingMessage, Platform, PlatformAdapter,
     PlatformConfig,
 };
 use crate::error::GatewayError;
@@ -48,6 +50,7 @@ pub struct RocketChatAdapter {
     running: std::sync::atomic::AtomicBool,
     /// Shared HTTP client.
     http: std::sync::OnceLock<reqwest::Client>,
+    message_callback: Arc<tokio::sync::Mutex<Option<MessageCallback>>>,
 }
 
 impl RocketChatAdapter {
@@ -67,6 +70,7 @@ impl RocketChatAdapter {
             error_count: std::sync::atomic::AtomicU64::new(0),
             running: std::sync::atomic::AtomicBool::new(false),
             http: std::sync::OnceLock::new(),
+            message_callback: Arc::new(tokio::sync::Mutex::new(None)),
         }
     }
 
@@ -174,6 +178,14 @@ impl RocketChatAdapter {
 impl PlatformAdapter for RocketChatAdapter {
     fn platform(&self) -> Platform {
         Platform::RocketChat
+    }
+
+    fn set_message_callback(&self, callback: MessageCallback) {
+        let guard = self.message_callback.clone();
+        tokio::spawn(async move {
+            let mut cb = guard.lock().await;
+            *cb = Some(callback);
+        });
     }
 
     async fn start(&self) -> Result<(), GatewayError> {

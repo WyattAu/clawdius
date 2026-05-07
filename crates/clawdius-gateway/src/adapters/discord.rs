@@ -18,8 +18,10 @@
 //! - Markdown formatting (Discord-flavored)
 //! - Role-based admin detection
 
+use std::sync::Arc;
+
 use crate::adapter::{
-    AdapterHealth, IncomingMessage, OutgoingMessage, Platform, PlatformAdapter,
+    AdapterHealth, IncomingMessage, MessageCallback, OutgoingMessage, Platform, PlatformAdapter,
     PlatformConfig,
 };
 use crate::error::GatewayError;
@@ -40,6 +42,7 @@ pub struct DiscordAdapter {
     running: std::sync::atomic::AtomicBool,
     /// HTTP client for attachment downloads and direct REST calls.
     http: std::sync::OnceLock<reqwest::Client>,
+    message_callback: Arc<tokio::sync::Mutex<Option<MessageCallback>>>,
 }
 
 impl DiscordAdapter {
@@ -52,6 +55,7 @@ impl DiscordAdapter {
             error_count: std::sync::atomic::AtomicU64::new(0),
             running: std::sync::atomic::AtomicBool::new(false),
             http: std::sync::OnceLock::new(),
+            message_callback: Arc::new(tokio::sync::Mutex::new(None)),
         }
     }
 
@@ -96,6 +100,14 @@ impl DiscordAdapter {
 impl PlatformAdapter for DiscordAdapter {
     fn platform(&self) -> Platform {
         Platform::Discord
+    }
+
+    fn set_message_callback(&self, callback: MessageCallback) {
+        let guard = self.message_callback.clone();
+        tokio::spawn(async move {
+            let mut cb = guard.lock().await;
+            *cb = Some(callback);
+        });
     }
 
     async fn start(&self) -> Result<(), GatewayError> {

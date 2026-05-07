@@ -149,7 +149,7 @@ impl ClawdiusHandler {
             .provider
             .as_deref()
             .or(config.llm.default_provider.as_deref())
-            .unwrap_or("anthropic");
+            .unwrap_or("deepseek");
 
         let mut llm_config = clawdius_core::llm::LlmConfig::from_config(&config.llm, provider_name)
             .map_err(|e| GatewayError::Agent(format!("LLM config failed: {e}")))?;

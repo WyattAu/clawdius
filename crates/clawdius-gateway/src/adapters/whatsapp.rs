@@ -24,8 +24,10 @@
 //! - Messages must be responded to within 24 hours (window policy)
 //! - Rate limited by Meta's API tier
 
+use std::sync::Arc;
+
 use crate::adapter::{
-    AdapterHealth, IncomingMessage, OutgoingMessage, Platform, PlatformAdapter,
+    AdapterHealth, IncomingMessage, MessageCallback, OutgoingMessage, Platform, PlatformAdapter,
     PlatformConfig,
 };
 use crate::error::GatewayError;
@@ -49,6 +51,7 @@ pub struct WhatsAppAdapter {
     running: std::sync::atomic::AtomicBool,
     /// Shared HTTP client.
     http: std::sync::OnceLock<reqwest::Client>,
+    message_callback: Arc<tokio::sync::Mutex<Option<MessageCallback>>>,
 }
 
 impl WhatsAppAdapter {
@@ -67,6 +70,7 @@ impl WhatsAppAdapter {
             error_count: std::sync::atomic::AtomicU64::new(0),
             running: std::sync::atomic::AtomicBool::new(false),
             http: std::sync::OnceLock::new(),
+            message_callback: Arc::new(tokio::sync::Mutex::new(None)),
         }
     }
 
@@ -246,6 +250,14 @@ impl WhatsAppAdapter {
 impl PlatformAdapter for WhatsAppAdapter {
     fn platform(&self) -> Platform {
         Platform::WhatsApp
+    }
+
+    fn set_message_callback(&self, callback: MessageCallback) {
+        let guard = self.message_callback.clone();
+        tokio::spawn(async move {
+            let mut cb = guard.lock().await;
+            *cb = Some(callback);
+        });
     }
 
     async fn start(&self) -> Result<(), GatewayError> {

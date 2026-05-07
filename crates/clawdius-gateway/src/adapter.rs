@@ -9,6 +9,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use crate::error::GatewayError;
 
@@ -313,6 +314,9 @@ impl PlatformConfig {
 // PlatformAdapter trait
 // ─────────────────────────────────────────────────────────
 
+/// Callback type for delivering incoming messages from adapters to the gateway.
+pub type MessageCallback = Arc<dyn Fn(IncomingMessage) -> std::pin::Pin<Box<dyn std::future::Future<Output = ()> + Send>> + Send + Sync>;
+
 /// Trait for connecting Clawdius to a chat platform.
 ///
 /// Each platform (Telegram, Discord, Slack, etc.) implements this trait
@@ -321,7 +325,7 @@ impl PlatformConfig {
 /// # Lifecycle
 ///
 /// ```text
-/// new(config) → start() → [receive messages, send responses] → stop()
+/// new(config) → set_message_callback(cb) → start() → [receive messages, send responses] → stop()
 /// ```
 ///
 /// # Implementation
@@ -330,17 +334,30 @@ impl PlatformConfig {
 /// use the platform's SDK to receive webhooks or poll for updates.
 /// The adapter translates platform-specific formats to/from the
 /// unified [`IncomingMessage`]/[`OutgoingMessage`] types.
+///
+/// When an incoming message is received, the adapter must call the
+/// message callback set via [`set_message_callback`](PlatformAdapter::set_message_callback)
+/// to deliver it to the gateway for processing.
 #[async_trait]
 pub trait PlatformAdapter: Send + Sync {
     /// The platform this adapter handles.
     fn platform(&self) -> Platform;
+
+    /// Set the callback for delivering incoming messages to the gateway.
+    ///
+    /// The gateway calls this before [`start`](PlatformAdapter::start).
+    /// Adapters must call this callback for each incoming message.
+    ///
+    /// Uses interior mutability so it can be called through `Arc<dyn>`.
+    fn set_message_callback(&self, callback: MessageCallback);
 
     /// Start the adapter's event loop.
     ///
     /// This should block (or run in a loop) until [`stop`] is called
     /// or a fatal error occurs.
     ///
-    /// Incoming messages are delivered via `on_message`.
+    /// Incoming messages are delivered via the callback set by
+    /// [`set_message_callback`](PlatformAdapter::set_message_callback).
     async fn start(&self) -> Result<(), GatewayError>;
 
     /// Stop the adapter's event loop.

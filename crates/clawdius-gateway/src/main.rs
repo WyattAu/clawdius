@@ -401,6 +401,8 @@ async fn main() -> anyhow::Result<()> {
         register_platform(&mut gateway, &platform, &cli).await;
     }
 
+    let gateway = Arc::new(gateway);
+
     // Configure the Clawdius handler
     let mut handler = ClawdiusHandler::new();
     if let Some(ref config_path) = cli.config {
@@ -414,16 +416,14 @@ async fn main() -> anyhow::Result<()> {
     }
     gateway.set_handler(Box::new(handler)).await;
 
-    // Start all adapters
-    let start_results = gateway.start_all().await;
+    // Start all adapters (uses Arc to pass callback without raw pointers)
+    let start_results = gateway.start_all_arc().await;
     for (platform, result) in start_results {
         match result {
             Ok(()) => tracing::info!("Platform '{platform}' adapter started"),
             Err(e) => tracing::error!("Platform '{platform}' adapter failed to start: {e}"),
         }
     }
-
-    let gateway = Arc::new(gateway);
 
     // Build admin API state and router
     let admin_state = Arc::new(AdminState {

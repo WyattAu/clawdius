@@ -32,7 +32,7 @@ use async_trait::async_trait;
 use chrono::Utc;
 
 use crate::adapter::{
-    AdapterHealth, IncomingMessage, OutgoingMessage, Platform, PlatformAdapter,
+    AdapterHealth, IncomingMessage, MessageCallback, OutgoingMessage, Platform, PlatformAdapter,
 };
 use crate::error::GatewayError;
 
@@ -116,6 +116,7 @@ pub struct MockPlatformAdapter {
             >,
         >,
     >,
+    message_callback: Arc<tokio::sync::Mutex<Option<MessageCallback>>>,
 }
 
 impl MockPlatformAdapter {
@@ -131,6 +132,7 @@ impl MockPlatformAdapter {
             all_ops: Arc::new(tokio::sync::Mutex::new(Vec::new())),
             config: Arc::new(std::sync::RwLock::new(MockConfig::default())),
             on_incoming: tokio::sync::Mutex::new(None),
+            message_callback: Arc::new(tokio::sync::Mutex::new(None)),
         }
     }
 
@@ -331,6 +333,14 @@ impl MockPlatformAdapter {
 impl PlatformAdapter for MockPlatformAdapter {
     fn platform(&self) -> Platform {
         self.platform
+    }
+
+    fn set_message_callback(&self, callback: MessageCallback) {
+        let guard = self.message_callback.clone();
+        tokio::spawn(async move {
+            let mut cb = guard.lock().await;
+            *cb = Some(callback);
+        });
     }
 
     async fn start(&self) -> Result<(), GatewayError> {

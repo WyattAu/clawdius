@@ -24,8 +24,10 @@
 //!   Teams doesn't notify users of edits)
 //! - Requires Azure infrastructure for production use
 
+use std::sync::Arc;
+
 use crate::adapter::{
-    AdapterHealth, OutgoingMessage, Platform, PlatformAdapter,
+    AdapterHealth, MessageCallback, OutgoingMessage, Platform, PlatformAdapter,
     PlatformConfig,
 };
 use crate::error::GatewayError;
@@ -48,6 +50,7 @@ pub struct TeamsAdapter {
     token: tokio::sync::Mutex<Option<String>>,
     /// Shared HTTP client.
     http: std::sync::OnceLock<reqwest::Client>,
+    message_callback: Arc<tokio::sync::Mutex<Option<MessageCallback>>>,
 }
 
 impl TeamsAdapter {
@@ -67,6 +70,7 @@ impl TeamsAdapter {
             running: std::sync::atomic::AtomicBool::new(false),
             token: tokio::sync::Mutex::new(None),
             http: std::sync::OnceLock::new(),
+            message_callback: Arc::new(tokio::sync::Mutex::new(None)),
         }
     }
 
@@ -166,6 +170,14 @@ impl TeamsAdapter {
 impl PlatformAdapter for TeamsAdapter {
     fn platform(&self) -> Platform {
         Platform::Teams
+    }
+
+    fn set_message_callback(&self, callback: MessageCallback) {
+        let guard = self.message_callback.clone();
+        tokio::spawn(async move {
+            let mut cb = guard.lock().await;
+            *cb = Some(callback);
+        });
     }
 
     async fn start(&self) -> Result<(), GatewayError> {

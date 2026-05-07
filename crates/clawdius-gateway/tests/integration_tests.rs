@@ -1,6 +1,7 @@
 use std::collections::HashMap;
+use std::sync::Arc;
 
-use clawdius_gateway::adapter::{AdapterHealth, Platform, PlatformConfig, PlatformAdapter};
+use clawdius_gateway::adapter::{AdapterHealth, MessageCallback, Platform, PlatformConfig, PlatformAdapter};
 use clawdius_gateway::gateway::MessageGateway;
 use clawdius_gateway::rate_limit::RateLimiter;
 
@@ -191,11 +192,15 @@ fn test_rate_limiter_default() {
 
 struct MockAdapter {
     platform: Platform,
+    message_callback: Arc<tokio::sync::Mutex<Option<MessageCallback>>>,
 }
 
 impl MockAdapter {
     fn new(platform: Platform) -> Self {
-        Self { platform }
+        Self {
+            platform,
+            message_callback: Arc::new(tokio::sync::Mutex::new(None)),
+        }
     }
 }
 
@@ -204,6 +209,15 @@ impl PlatformAdapter for MockAdapter {
     fn platform(&self) -> Platform {
         self.platform
     }
+
+    fn set_message_callback(&self, callback: MessageCallback) {
+        let guard = self.message_callback.clone();
+        tokio::spawn(async move {
+            let mut cb = guard.lock().await;
+            *cb = Some(callback);
+        });
+    }
+
     async fn start(&self) -> Result<(), clawdius_gateway::GatewayError> {
         Ok(())
     }

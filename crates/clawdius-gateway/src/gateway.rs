@@ -12,7 +12,7 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use tokio::sync::RwLock;
 
-use crate::adapter::{AdapterHealth, IncomingMessage, Platform, PlatformAdapter, PlatformConfig};
+use crate::adapter::{AdapterHealth, IncomingMessage, MessageCallback, Platform, PlatformAdapter, PlatformConfig};
 #[cfg(test)]
 use crate::adapter::OutgoingMessage;
 use crate::error::GatewayError;
@@ -219,6 +219,11 @@ impl MessageGateway {
     }
 
     /// Start all registered adapters.
+    ///
+    /// For each adapter, sets a no-op message callback then calls [`start`].
+    /// To wire up the full routing callback, use [`start_all_arc`] instead.
+    ///
+    /// **Prefer [`start_all_arc`] when you have an `Arc<MessageGateway>`.**
     #[allow(clippy::significant_drop_tightening)]
     pub async fn start_all(&self) -> Vec<(Platform, Result<(), GatewayError>)> {
         let adapters = self.adapters.read().await;
@@ -229,6 +234,47 @@ impl MessageGateway {
             if config.is_none_or(|c| !c.enabled) {
                 continue;
             }
+
+            let callback: MessageCallback = Arc::new(|_msg: IncomingMessage| {
+                Box::pin(std::future::ready(()))
+            });
+
+            adapter.set_message_callback(callback);
+
+            let result = adapter.start().await;
+            results.push((platform, result));
+        }
+        results
+    }
+
+    /// Start all registered adapters using an `Arc` reference.
+    ///
+    /// This is the preferred method when you hold an `Arc<MessageGateway>`,
+    /// as it avoids raw pointer usage.
+    pub async fn start_all_arc(self: &Arc<Self>) -> Vec<(Platform, Result<(), GatewayError>)> {
+        let gateway = Arc::clone(self);
+        let adapters = self.adapters.read().await;
+        let mut results = Vec::with_capacity(adapters.len());
+
+        for (&platform, adapter) in adapters.iter() {
+            let config = self.configs.get(&platform);
+            if config.is_none_or(|c| !c.enabled) {
+                continue;
+            }
+
+            let callback: MessageCallback = Arc::new({
+                let gateway = Arc::clone(&gateway);
+                move |msg: IncomingMessage| {
+                    let gw = Arc::clone(&gateway);
+                    Box::pin(async move {
+                        if let Err(e) = gw.handle_incoming(msg).await {
+                            tracing::error!(platform = %platform, error = %e, "handle_incoming failed");
+                        }
+                    })
+                }
+            });
+
+            adapter.set_message_callback(callback);
 
             let result = adapter.start().await;
             results.push((platform, result));
@@ -292,6 +338,7 @@ mod tests {
         platform: Platform,
         running: std::sync::atomic::AtomicBool,
         sent_messages: Arc<tokio::sync::Mutex<Vec<OutgoingMessage>>>,
+        message_callback: Arc<tokio::sync::Mutex<Option<MessageCallback>>>,
     }
 
     impl MockAdapter {
@@ -300,6 +347,7 @@ mod tests {
                 platform,
                 running: std::sync::atomic::AtomicBool::new(false),
                 sent_messages: Arc::new(tokio::sync::Mutex::new(Vec::new())),
+                message_callback: Arc::new(tokio::sync::Mutex::new(None)),
             }
         }
 
@@ -312,6 +360,14 @@ mod tests {
     impl PlatformAdapter for MockAdapter {
         fn platform(&self) -> Platform {
             self.platform
+        }
+
+        fn set_message_callback(&self, callback: MessageCallback) {
+            let guard = self.message_callback.clone();
+            tokio::spawn(async move {
+                let mut cb = guard.lock().await;
+                *cb = Some(callback);
+            });
         }
 
         async fn start(&self) -> Result<(), GatewayError> {

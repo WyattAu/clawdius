@@ -46,7 +46,7 @@ use chrono::Utc;
 use serde::{Deserialize, Serialize};
 
 use crate::adapter::{
-    AdapterHealth, IncomingMessage, OutgoingMessage, Platform, PlatformAdapter,
+    AdapterHealth, IncomingMessage, MessageCallback, OutgoingMessage, Platform, PlatformAdapter,
     PlatformConfig,
 };
 use crate::error::GatewayError;
@@ -152,6 +152,7 @@ pub struct WebhookAdapter {
             >,
         >,
     >,
+    message_callback: Arc<tokio::sync::Mutex<Option<MessageCallback>>>,
 }
 
 impl WebhookAdapter {
@@ -165,6 +166,7 @@ impl WebhookAdapter {
             running: std::sync::atomic::AtomicBool::new(false),
             http: std::sync::OnceLock::new(),
             on_message: tokio::sync::Mutex::new(None),
+            message_callback: Arc::new(tokio::sync::Mutex::new(None)),
         }
     }
 
@@ -300,6 +302,14 @@ impl WebhookAdapter {
 impl PlatformAdapter for WebhookAdapter {
     fn platform(&self) -> Platform {
         Platform::Webhook
+    }
+
+    fn set_message_callback(&self, callback: MessageCallback) {
+        let guard = self.message_callback.clone();
+        tokio::spawn(async move {
+            let mut cb = guard.lock().await;
+            *cb = Some(callback);
+        });
     }
 
     async fn start(&self) -> Result<(), GatewayError> {
