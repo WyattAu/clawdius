@@ -7,7 +7,10 @@ use std::path::{Path, PathBuf};
 use tokio_postgres::types::ToSql;
 
 impl WorkspaceRepository for PostgresBackend {
-    fn create_workspace(&self, workspace: &Workspace) -> impl std::future::Future<Output = Result<()>> + Send {
+    fn create_workspace(
+        &self,
+        workspace: &Workspace,
+    ) -> impl std::future::Future<Output = Result<()>> + Send {
         async move {
             let client = self.get_client().await?;
             client
@@ -29,7 +32,10 @@ impl WorkspaceRepository for PostgresBackend {
         }
     }
 
-    fn load_workspace(&self, id: &WorkspaceId) -> impl std::future::Future<Output = Result<Option<Workspace>>> + Send {
+    fn load_workspace(
+        &self,
+        id: &WorkspaceId,
+    ) -> impl std::future::Future<Output = Result<Option<Workspace>>> + Send {
         async move {
             let client = self.get_client().await?;
             let row = client
@@ -76,11 +82,17 @@ impl WorkspaceRepository for PostgresBackend {
         }
     }
 
-    fn delete_workspace(&self, id: &WorkspaceId) -> impl std::future::Future<Output = Result<()>> + Send {
+    fn delete_workspace(
+        &self,
+        id: &WorkspaceId,
+    ) -> impl std::future::Future<Output = Result<()>> + Send {
         async move {
             let client = self.get_client().await?;
             client
-                .execute("DELETE FROM workspaces WHERE id = $1", &[&id.0 as &(dyn ToSql + Sync)])
+                .execute(
+                    "DELETE FROM workspaces WHERE id = $1",
+                    &[&id.0 as &(dyn ToSql + Sync)],
+                )
                 .await
                 .map_err(|e| StorageError::Query {
                     statement: "DELETE FROM workspaces".to_string(),
@@ -90,7 +102,10 @@ impl WorkspaceRepository for PostgresBackend {
         }
     }
 
-    fn add_project(&self, project: &Project) -> impl std::future::Future<Output = Result<()>> + Send {
+    fn add_project(
+        &self,
+        project: &Project,
+    ) -> impl std::future::Future<Output = Result<()>> + Send {
         async move {
             let client = self.get_client().await?;
             client
@@ -112,7 +127,10 @@ impl WorkspaceRepository for PostgresBackend {
         }
     }
 
-    fn load_project(&self, id: &ProjectId) -> impl std::future::Future<Output = Result<Option<Project>>> + Send {
+    fn load_project(
+        &self,
+        id: &ProjectId,
+    ) -> impl std::future::Future<Output = Result<Option<Project>>> + Send {
         async move {
             let client = self.get_client().await?;
             let row = client
@@ -134,7 +152,10 @@ impl WorkspaceRepository for PostgresBackend {
         }
     }
 
-    fn load_project_by_path(&self, path: &Path) -> impl std::future::Future<Output = Result<Option<Project>>> + Send {
+    fn load_project_by_path(
+        &self,
+        path: &Path,
+    ) -> impl std::future::Future<Output = Result<Option<Project>>> + Send {
         async move {
             let client = self.get_client().await?;
             let path_str = path.to_string_lossy().to_string();
@@ -182,7 +203,10 @@ impl WorkspaceRepository for PostgresBackend {
         }
     }
 
-    fn update_project(&self, project: &Project) -> impl std::future::Future<Output = Result<()>> + Send {
+    fn update_project(
+        &self,
+        project: &Project,
+    ) -> impl std::future::Future<Output = Result<()>> + Send {
         async move {
             let client = self.get_client().await?;
             client
@@ -203,11 +227,17 @@ impl WorkspaceRepository for PostgresBackend {
         }
     }
 
-    fn remove_project(&self, id: &ProjectId) -> impl std::future::Future<Output = Result<()>> + Send {
+    fn remove_project(
+        &self,
+        id: &ProjectId,
+    ) -> impl std::future::Future<Output = Result<()>> + Send {
         async move {
             let client = self.get_client().await?;
             client
-                .execute("DELETE FROM projects WHERE id = $1", &[&id.0 as &(dyn ToSql + Sync)])
+                .execute(
+                    "DELETE FROM projects WHERE id = $1",
+                    &[&id.0 as &(dyn ToSql + Sync)],
+                )
                 .await
                 .map_err(|e| StorageError::Query {
                     statement: "DELETE FROM projects".to_string(),

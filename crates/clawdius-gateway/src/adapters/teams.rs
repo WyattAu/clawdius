@@ -27,8 +27,7 @@
 use std::sync::Arc;
 
 use crate::adapter::{
-    AdapterHealth, MessageCallback, OutgoingMessage, Platform, PlatformAdapter,
-    PlatformConfig,
+    AdapterHealth, MessageCallback, OutgoingMessage, Platform, PlatformAdapter, PlatformConfig,
 };
 use crate::error::GatewayError;
 
@@ -85,9 +84,7 @@ impl TeamsAdapter {
             .settings
             .get("app_password")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| {
-                GatewayError::Config("TEAMS_APP_PASSWORD not set".to_string())
-            })?;
+            .ok_or_else(|| GatewayError::Config("TEAMS_APP_PASSWORD not set".to_string()))?;
 
         let service_url = config
             .settings
@@ -127,9 +124,7 @@ impl TeamsAdapter {
             .header("Content-Type", "application/x-www-form-urlencoded")
             .body(format!(
                 "grant_type=client_credentials&client_id={}&client_secret={}&scope={}",
-                self.app_id,
-                self.app_password,
-                "https://api.botframework.com/.default"
+                self.app_id, self.app_password, "https://api.botframework.com/.default"
             ))
             .send()
             .await
@@ -139,14 +134,11 @@ impl TeamsAdapter {
                 source: Some(Box::new(e)),
             })?;
 
-        let json: serde_json::Value = response
-            .json()
-            .await
-            .map_err(|e| GatewayError::Adapter {
-                platform: "teams".to_string(),
-                message: format!("failed to parse auth response: {e}"),
-                source: Some(Box::new(e)),
-            })?;
+        let json: serde_json::Value = response.json().await.map_err(|e| GatewayError::Adapter {
+            platform: "teams".to_string(),
+            message: format!("failed to parse auth response: {e}"),
+            source: Some(Box::new(e)),
+        })?;
 
         let token = json
             .get("access_token")
@@ -198,7 +190,10 @@ impl PlatformAdapter for TeamsAdapter {
         // message_id format: "service_url:conversation_id"
         let (service_url, conversation_id) = if message.metadata.contains_key("service_url") {
             (
-                message.metadata["service_url"].as_str().unwrap_or(&self.service_url).to_string(),
+                message.metadata["service_url"]
+                    .as_str()
+                    .unwrap_or(&self.service_url)
+                    .to_string(),
                 message.chat_id.clone(),
             )
         } else {
@@ -255,11 +250,7 @@ impl PlatformAdapter for TeamsAdapter {
         Ok(())
     }
 
-    async fn edit_message(
-        &self,
-        message_id: &str,
-        new_text: &str,
-    ) -> Result<(), GatewayError> {
+    async fn edit_message(&self, message_id: &str, new_text: &str) -> Result<(), GatewayError> {
         // message_id format: "service_url:conversation_id:activity_id"
         let parts: Vec<&str> = message_id.splitn(3, ':').collect();
         if parts.len() != 3 {
@@ -272,14 +263,12 @@ impl PlatformAdapter for TeamsAdapter {
             });
         }
 
-        let (service_url, conversation_id, activity_id) =
-            (parts[0], parts[1], parts[2]);
+        let (service_url, conversation_id, activity_id) = (parts[0], parts[1], parts[2]);
 
         let token = self.get_access_token().await?;
 
-        let url = format!(
-            "{service_url}/v3/conversations/{conversation_id}/activities/{activity_id}"
-        );
+        let url =
+            format!("{service_url}/v3/conversations/{conversation_id}/activities/{activity_id}");
 
         let body = serde_json::json!({
             "type": "message",
@@ -373,9 +362,7 @@ impl PlatformAdapter for TeamsAdapter {
             messages_processed: self
                 .messages_processed
                 .load(std::sync::atomic::Ordering::Relaxed),
-            errors: self
-                .error_count
-                .load(std::sync::atomic::Ordering::Relaxed),
+            errors: self.error_count.load(std::sync::atomic::Ordering::Relaxed),
             last_message_at: None,
         }
     }

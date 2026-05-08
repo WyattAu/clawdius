@@ -158,9 +158,10 @@ impl ClawdiusHandler {
             llm_config.model = model.clone();
         }
 
-        let client: Arc<dyn clawdius_core::llm::LlmClient> =
-            Arc::new(clawdius_core::llm::create_provider(&llm_config)
-                .map_err(|e| GatewayError::Agent(format!("LLM provider creation failed: {e}")))?);
+        let client: Arc<dyn clawdius_core::llm::LlmClient> = Arc::new(
+            clawdius_core::llm::create_provider(&llm_config)
+                .map_err(|e| GatewayError::Agent(format!("LLM provider creation failed: {e}")))?,
+        );
 
         {
             let mut llm = self.llm_client.write().await;
@@ -205,10 +206,7 @@ impl ClawdiusHandler {
         // Initialize empty history
         {
             let mut history = self.message_history.write().await;
-            history.insert(
-                Self::session_key(platform, chat_id),
-                Vec::new(),
-            );
+            history.insert(Self::session_key(platform, chat_id), Vec::new());
         }
 
         Ok(())
@@ -224,9 +222,7 @@ impl ClawdiusHandler {
         let key = Self::session_key(platform, chat_id);
 
         let mut history = self.message_history.write().await;
-        let history = history
-            .entry(key.clone())
-            .or_insert_with(Vec::new);
+        let history = history.entry(key.clone()).or_insert_with(Vec::new);
 
         // Build messages: system prompt + history (truncated) + new user message
         let mut messages = Vec::new();
@@ -238,11 +234,7 @@ impl ClawdiusHandler {
         });
 
         // Add platform context to the first user message
-        let platform_context = format!(
-            "[Message from {} via {}]",
-            chat_id,
-            platform.as_str()
-        );
+        let platform_context = format!("[Message from {} via {}]", chat_id, platform.as_str());
 
         // Add history (limited)
         let start = if history.len() > self.max_history {

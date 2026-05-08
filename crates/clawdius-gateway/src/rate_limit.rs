@@ -134,7 +134,11 @@ pub struct RateLimitError {
 
 impl std::fmt::Display for RateLimitError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "rate limit exceeded, retry after {}ms", self.retry_after_ms)
+        write!(
+            f,
+            "rate limit exceeded, retry after {}ms",
+            self.retry_after_ms
+        )
     }
 }
 
@@ -217,7 +221,9 @@ mod tests {
 
     #[test]
     fn test_rate_limit_error_display() {
-        let err = RateLimitError { retry_after_ms: 5000 };
+        let err = RateLimitError {
+            retry_after_ms: 5000,
+        };
         let msg = format!("{err}");
         assert!(msg.contains("5000ms"));
     }

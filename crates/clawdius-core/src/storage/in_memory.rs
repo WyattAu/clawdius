@@ -4,15 +4,13 @@ use super::backend::{
     GraphRepository, SessionRepository, StorageBackend, TimelineRepository, WorkspaceRepository,
 };
 use crate::error::Result;
-use crate::graph_rag::ast::{
-    FileInfo, Reference, Relationship, Symbol, SymbolKind,
-};
+use crate::graph_rag::ast::{FileInfo, Reference, Relationship, Symbol, SymbolKind};
 use crate::session::types::{Message, Session, SessionId, TokenUsage};
-use crate::timeline::{
-    CheckpointId, CheckpointInfo, Diff, DiffSummary, ExportedCheckpoint,
-    ExportedFile, FileChangeType, FileSnapshot, FileVersion, RollbackPreview, StorageStats,
-};
 use crate::timeline::FileDiff;
+use crate::timeline::{
+    CheckpointId, CheckpointInfo, Diff, DiffSummary, ExportedCheckpoint, ExportedFile,
+    FileChangeType, FileSnapshot, FileVersion, RollbackPreview, StorageStats,
+};
 use crate::workspace::{Project, ProjectId, Workspace, WorkspaceId};
 use chrono::{DateTime, Utc};
 use std::collections::HashMap;
@@ -87,23 +85,38 @@ impl Default for InMemoryBackend {
 // ─────────────────────────────────────────────────────────
 
 impl SessionRepository for InMemoryBackend {
-    fn create_session(&self, session: &Session) -> impl std::future::Future<Output = Result<()>> + Send {
+    fn create_session(
+        &self,
+        session: &Session,
+    ) -> impl std::future::Future<Output = Result<()>> + Send {
         async move {
             let key = session.id.to_string();
-            self.sessions.lock().expect("lock poisoned").insert(key.clone(), session.clone());
-            self.messages.lock().expect("lock poisoned").insert(key, Vec::new());
+            self.sessions
+                .lock()
+                .expect("lock poisoned")
+                .insert(key.clone(), session.clone());
+            self.messages
+                .lock()
+                .expect("lock poisoned")
+                .insert(key, Vec::new());
             Ok(())
         }
     }
 
-    fn load_session(&self, id: &SessionId) -> impl std::future::Future<Output = Result<Option<Session>>> + Send {
+    fn load_session(
+        &self,
+        id: &SessionId,
+    ) -> impl std::future::Future<Output = Result<Option<Session>>> + Send {
         async move {
             let sessions = self.sessions.lock().expect("lock poisoned");
             Ok(sessions.get(&id.to_string()).cloned())
         }
     }
 
-    fn load_session_full(&self, id: &SessionId) -> impl std::future::Future<Output = Result<Option<Session>>> + Send {
+    fn load_session_full(
+        &self,
+        id: &SessionId,
+    ) -> impl std::future::Future<Output = Result<Option<Session>>> + Send {
         async move {
             let sessions = self.sessions.lock().expect("lock poisoned");
             let messages = self.messages.lock().expect("lock poisoned");
@@ -127,7 +140,10 @@ impl SessionRepository for InMemoryBackend {
         }
     }
 
-    fn delete_session(&self, id: &SessionId) -> impl std::future::Future<Output = Result<()>> + Send {
+    fn delete_session(
+        &self,
+        id: &SessionId,
+    ) -> impl std::future::Future<Output = Result<()>> + Send {
         async move {
             let key = id.to_string();
             self.sessions.lock().expect("lock poisoned").remove(&key);
@@ -136,7 +152,11 @@ impl SessionRepository for InMemoryBackend {
         }
     }
 
-    fn save_message(&self, session_id: &SessionId, message: &Message) -> impl std::future::Future<Output = Result<()>> + Send {
+    fn save_message(
+        &self,
+        session_id: &SessionId,
+        message: &Message,
+    ) -> impl std::future::Future<Output = Result<()>> + Send {
         async move {
             let key = session_id.to_string();
             let sessions = self.sessions.lock().expect("lock poisoned");
@@ -146,12 +166,20 @@ impl SessionRepository for InMemoryBackend {
                 });
             }
             drop(sessions);
-            self.messages.lock().expect("lock poisoned").entry(key).or_default().push(message.clone());
+            self.messages
+                .lock()
+                .expect("lock poisoned")
+                .entry(key)
+                .or_default()
+                .push(message.clone());
             Ok(())
         }
     }
 
-    fn search_messages(&self, query: &str) -> impl std::future::Future<Output = Result<Vec<(SessionId, Message)>>> + Send {
+    fn search_messages(
+        &self,
+        query: &str,
+    ) -> impl std::future::Future<Output = Result<Vec<(SessionId, Message)>>> + Send {
         async move {
             let messages = self.messages.lock().expect("lock poisoned");
             let mut results = Vec::new();
@@ -161,9 +189,9 @@ impl SessionRepository for InMemoryBackend {
                     if let Some(text) = msg.as_text() {
                         if text.to_lowercase().contains(&query_lower) {
                             if let Ok(uuid) = Uuid::parse_str(key) {
-                            let id = SessionId::from_uuid(uuid);
-                            results.push((id, msg.clone()));
-                        }
+                                let id = SessionId::from_uuid(uuid);
+                                results.push((id, msg.clone()));
+                            }
                         }
                     }
                 }
@@ -172,12 +200,16 @@ impl SessionRepository for InMemoryBackend {
         }
     }
 
-    fn update_token_usage(&self, id: &SessionId, usage: &TokenUsage) -> impl std::future::Future<Output = Result<()>> + Send {
+    fn update_token_usage(
+        &self,
+        id: &SessionId,
+        usage: &TokenUsage,
+    ) -> impl std::future::Future<Output = Result<()>> + Send {
         async move {
             let mut sessions = self.sessions.lock().expect("lock poisoned");
-            let session = sessions.get_mut(&id.to_string()).ok_or_else(|| {
-                crate::error::Error::SessionNotFound { id: id.to_string() }
-            })?;
+            let session = sessions
+                .get_mut(&id.to_string())
+                .ok_or_else(|| crate::error::Error::SessionNotFound { id: id.to_string() })?;
             session.token_usage.add(usage);
             Ok(())
         }
@@ -200,9 +232,7 @@ impl TimelineRepository for InMemoryBackend {
     }
 
     fn tracked_file_count(&self) -> impl std::future::Future<Output = Result<usize>> + Send {
-        async move {
-            Ok(self.tracked_files.lock().expect("lock poisoned").len())
-        }
+        async move { Ok(self.tracked_files.lock().expect("lock poisoned").len()) }
     }
 
     fn create_checkpoint(
@@ -225,44 +255,64 @@ impl TimelineRepository for InMemoryBackend {
                 info,
                 files: Vec::new(),
             };
-            self.checkpoints.lock().expect("lock poisoned").insert(id.0.clone(), checkpoint);
+            self.checkpoints
+                .lock()
+                .expect("lock poisoned")
+                .insert(id.0.clone(), checkpoint);
             Ok(id)
         }
     }
 
-    fn list_checkpoints(&self) -> impl std::future::Future<Output = Result<Vec<CheckpointInfo>>> + Send {
+    fn list_checkpoints(
+        &self,
+    ) -> impl std::future::Future<Output = Result<Vec<CheckpointInfo>>> + Send {
         async move {
             let checkpoints = self.checkpoints.lock().expect("lock poisoned");
-            let mut list: Vec<CheckpointInfo> = checkpoints.values().map(|cp| cp.info.clone()).collect();
+            let mut list: Vec<CheckpointInfo> =
+                checkpoints.values().map(|cp| cp.info.clone()).collect();
             list.sort_by(|a, b| b.timestamp.cmp(&a.timestamp));
             Ok(list)
         }
     }
 
-    fn get_checkpoint(&self, id: &CheckpointId) -> impl std::future::Future<Output = Result<Option<CheckpointInfo>>> + Send {
+    fn get_checkpoint(
+        &self,
+        id: &CheckpointId,
+    ) -> impl std::future::Future<Output = Result<Option<CheckpointInfo>>> + Send {
         async move {
             let checkpoints = self.checkpoints.lock().expect("lock poisoned");
             Ok(checkpoints.get(&id.0).map(|cp| cp.info.clone()))
         }
     }
 
-    fn delete_checkpoint(&self, id: &CheckpointId) -> impl std::future::Future<Output = Result<()>> + Send {
+    fn delete_checkpoint(
+        &self,
+        id: &CheckpointId,
+    ) -> impl std::future::Future<Output = Result<()>> + Send {
         async move {
-            self.checkpoints.lock().expect("lock poisoned").remove(&id.0);
+            self.checkpoints
+                .lock()
+                .expect("lock poisoned")
+                .remove(&id.0);
             Ok(())
         }
     }
 
     fn checkpoint_count(&self) -> impl std::future::Future<Output = Result<usize>> + Send {
-        async move {
-            Ok(self.checkpoints.lock().expect("lock poisoned").len())
-        }
+        async move { Ok(self.checkpoints.lock().expect("lock poisoned").len()) }
     }
 
-    fn get_file_history(&self, path: &Path) -> impl std::future::Future<Output = Result<Vec<FileVersion>>> + Send {
+    fn get_file_history(
+        &self,
+        path: &Path,
+    ) -> impl std::future::Future<Output = Result<Vec<FileVersion>>> + Send {
         async move {
             let versions = self.file_versions.lock().expect("lock poisoned");
-            Ok(versions.iter().filter(|v| v.path == path).cloned().collect())
+            Ok(versions
+                .iter()
+                .filter(|v| v.path == path)
+                .cloned()
+                .collect())
         }
     }
 
@@ -312,7 +362,11 @@ impl TimelineRepository for InMemoryBackend {
         }
     }
 
-    fn diff_checkpoints(&self, from: &CheckpointId, to: &CheckpointId) -> impl std::future::Future<Output = Result<Diff>> + Send {
+    fn diff_checkpoints(
+        &self,
+        from: &CheckpointId,
+        to: &CheckpointId,
+    ) -> impl std::future::Future<Output = Result<Diff>> + Send {
         async move {
             let changes = self.get_files_changed_between(from, to).await?;
             let files_changed: Vec<FileDiff> = changes
@@ -340,10 +394,11 @@ impl TimelineRepository for InMemoryBackend {
         }
     }
 
-    fn rollback(&self, _checkpoint_id: &CheckpointId) -> impl std::future::Future<Output = Result<()>> + Send {
-        async move {
-            Ok(())
-        }
+    fn rollback(
+        &self,
+        _checkpoint_id: &CheckpointId,
+    ) -> impl std::future::Future<Output = Result<()>> + Send {
+        async move { Ok(()) }
     }
 
     fn rollback_files(
@@ -351,12 +406,13 @@ impl TimelineRepository for InMemoryBackend {
         _checkpoint_id: &CheckpointId,
         _files: &[PathBuf],
     ) -> impl std::future::Future<Output = Result<()>> + Send {
-        async move {
-            Ok(())
-        }
+        async move { Ok(()) }
     }
 
-    fn preview_rollback(&self, checkpoint_id: &CheckpointId) -> impl std::future::Future<Output = Result<RollbackPreview>> + Send {
+    fn preview_rollback(
+        &self,
+        checkpoint_id: &CheckpointId,
+    ) -> impl std::future::Future<Output = Result<RollbackPreview>> + Send {
         async move {
             let checkpoints = self.checkpoints.lock().expect("lock poisoned");
             let checkpoint = checkpoints.get(&checkpoint_id.0);
@@ -388,7 +444,10 @@ impl TimelineRepository for InMemoryBackend {
         }
     }
 
-    fn query_by_name(&self, pattern: &str) -> impl std::future::Future<Output = Result<Vec<CheckpointInfo>>> + Send {
+    fn query_by_name(
+        &self,
+        pattern: &str,
+    ) -> impl std::future::Future<Output = Result<Vec<CheckpointInfo>>> + Send {
         async move {
             let checkpoints = self.checkpoints.lock().expect("lock poisoned");
             Ok(checkpoints
@@ -399,7 +458,10 @@ impl TimelineRepository for InMemoryBackend {
         }
     }
 
-    fn export_checkpoint(&self, checkpoint_id: &CheckpointId) -> impl std::future::Future<Output = Result<ExportedCheckpoint>> + Send {
+    fn export_checkpoint(
+        &self,
+        checkpoint_id: &CheckpointId,
+    ) -> impl std::future::Future<Output = Result<ExportedCheckpoint>> + Send {
         async move {
             let checkpoints = self.checkpoints.lock().expect("lock poisoned");
             let checkpoint = checkpoints.get(&checkpoint_id.0).ok_or_else(|| {
@@ -426,7 +488,10 @@ impl TimelineRepository for InMemoryBackend {
         }
     }
 
-    fn import_checkpoint(&self, exported: ExportedCheckpoint) -> impl std::future::Future<Output = Result<CheckpointId>> + Send {
+    fn import_checkpoint(
+        &self,
+        exported: ExportedCheckpoint,
+    ) -> impl std::future::Future<Output = Result<CheckpointId>> + Send {
         async move {
             let id = CheckpointId::new();
             let info = CheckpointInfo {
@@ -449,12 +514,18 @@ impl TimelineRepository for InMemoryBackend {
                 })
                 .collect();
             let checkpoint = crate::timeline::TimelineCheckpoint { info, files };
-            self.checkpoints.lock().expect("lock poisoned").insert(id.0.clone(), checkpoint);
+            self.checkpoints
+                .lock()
+                .expect("lock poisoned")
+                .insert(id.0.clone(), checkpoint);
             Ok(id)
         }
     }
 
-    fn cleanup_old_checkpoints(&self, keep_count: usize) -> impl std::future::Future<Output = Result<usize>> + Send {
+    fn cleanup_old_checkpoints(
+        &self,
+        keep_count: usize,
+    ) -> impl std::future::Future<Output = Result<usize>> + Send {
         async move {
             let mut checkpoints = self.checkpoints.lock().expect("lock poisoned");
             if checkpoints.len() <= keep_count {
@@ -476,9 +547,7 @@ impl TimelineRepository for InMemoryBackend {
     }
 
     fn cleanup_snapshots(&self) -> impl std::future::Future<Output = Result<usize>> + Send {
-        async move {
-            Ok(0)
-        }
+        async move { Ok(0) }
     }
 
     fn storage_stats(&self) -> impl std::future::Future<Output = Result<StorageStats>> + Send {
@@ -498,25 +567,38 @@ impl TimelineRepository for InMemoryBackend {
 // ─────────────────────────────────────────────────────────
 
 impl GraphRepository for InMemoryBackend {
-    fn insert_file(&self, file: &FileInfo) -> impl std::future::Future<Output = Result<i64>> + Send {
+    fn insert_file(
+        &self,
+        file: &FileInfo,
+    ) -> impl std::future::Future<Output = Result<i64>> + Send {
         async move {
             let mut next_id = self.next_file_id.lock().expect("lock poisoned");
             let id = *next_id;
             *next_id += 1;
             drop(next_id);
-            self.files.lock().expect("lock poisoned").insert(file.path.clone(), file.clone());
-            self.file_id_to_path.lock().expect("lock poisoned").insert(id, file.path.clone());
+            self.files
+                .lock()
+                .expect("lock poisoned")
+                .insert(file.path.clone(), file.clone());
+            self.file_id_to_path
+                .lock()
+                .expect("lock poisoned")
+                .insert(id, file.path.clone());
             Ok(id)
         }
     }
 
-    fn get_file_by_path(&self, path: &str) -> impl std::future::Future<Output = Result<Option<FileInfo>>> + Send {
-        async move {
-            Ok(self.files.lock().expect("lock poisoned").get(path).cloned())
-        }
+    fn get_file_by_path(
+        &self,
+        path: &str,
+    ) -> impl std::future::Future<Output = Result<Option<FileInfo>>> + Send {
+        async move { Ok(self.files.lock().expect("lock poisoned").get(path).cloned()) }
     }
 
-    fn get_file_by_id(&self, id: i64) -> impl std::future::Future<Output = Result<Option<FileInfo>>> + Send {
+    fn get_file_by_id(
+        &self,
+        id: i64,
+    ) -> impl std::future::Future<Output = Result<Option<FileInfo>>> + Send {
         async move {
             let id_to_path = self.file_id_to_path.lock().expect("lock poisoned");
             let path = id_to_path.get(&id).cloned();
@@ -528,65 +610,112 @@ impl GraphRepository for InMemoryBackend {
         }
     }
 
-    fn get_file_id(&self, path: &str) -> impl std::future::Future<Output = Result<Option<i64>>> + Send {
+    fn get_file_id(
+        &self,
+        path: &str,
+    ) -> impl std::future::Future<Output = Result<Option<i64>>> + Send {
         async move {
             let id_to_path = self.file_id_to_path.lock().expect("lock poisoned");
-            let found = id_to_path.iter().find(|(_, p)| *p == path).map(|(id, _)| *id);
+            let found = id_to_path
+                .iter()
+                .find(|(_, p)| *p == path)
+                .map(|(id, _)| *id);
             Ok(found)
         }
     }
 
     fn delete_file(&self, path: &str) -> impl std::future::Future<Output = Result<bool>> + Send {
         async move {
-            Ok(self.files.lock().expect("lock poisoned").remove(path).is_some())
+            Ok(self
+                .files
+                .lock()
+                .expect("lock poisoned")
+                .remove(path)
+                .is_some())
         }
     }
 
     fn count_files(&self) -> impl std::future::Future<Output = Result<i64>> + Send {
-        async move {
-            Ok(self.files.lock().expect("lock poisoned").len() as i64)
-        }
+        async move { Ok(self.files.lock().expect("lock poisoned").len() as i64) }
     }
 
-    fn insert_symbol(&self, symbol: &Symbol) -> impl std::future::Future<Output = Result<i64>> + Send {
+    fn insert_symbol(
+        &self,
+        symbol: &Symbol,
+    ) -> impl std::future::Future<Output = Result<i64>> + Send {
         async move {
             let mut next_id = self.next_symbol_id.lock().expect("lock poisoned");
             let id = *next_id;
             *next_id += 1;
             drop(next_id);
-            self.symbols.lock().expect("lock poisoned").insert(id, symbol.clone());
+            self.symbols
+                .lock()
+                .expect("lock poisoned")
+                .insert(id, symbol.clone());
             Ok(id)
         }
     }
 
-    fn find_symbol(&self, name: &str) -> impl std::future::Future<Output = Result<Vec<Symbol>>> + Send {
+    fn find_symbol(
+        &self,
+        name: &str,
+    ) -> impl std::future::Future<Output = Result<Vec<Symbol>>> + Send {
         async move {
             let symbols = self.symbols.lock().expect("lock poisoned");
-            Ok(symbols.values().filter(|s| s.name == name).cloned().collect())
+            Ok(symbols
+                .values()
+                .filter(|s| s.name == name)
+                .cloned()
+                .collect())
         }
     }
 
-    fn find_symbol_by_id(&self, id: i64) -> impl std::future::Future<Output = Result<Option<Symbol>>> + Send {
+    fn find_symbol_by_id(
+        &self,
+        id: i64,
+    ) -> impl std::future::Future<Output = Result<Option<Symbol>>> + Send {
         async move {
-            Ok(self.symbols.lock().expect("lock poisoned").get(&id).cloned())
+            Ok(self
+                .symbols
+                .lock()
+                .expect("lock poisoned")
+                .get(&id)
+                .cloned())
         }
     }
 
-    fn find_symbols_by_kind(&self, kind: &SymbolKind) -> impl std::future::Future<Output = Result<Vec<Symbol>>> + Send {
+    fn find_symbols_by_kind(
+        &self,
+        kind: &SymbolKind,
+    ) -> impl std::future::Future<Output = Result<Vec<Symbol>>> + Send {
         async move {
             let symbols = self.symbols.lock().expect("lock poisoned");
-            Ok(symbols.values().filter(|s| &s.kind == kind).cloned().collect())
+            Ok(symbols
+                .values()
+                .filter(|s| &s.kind == kind)
+                .cloned()
+                .collect())
         }
     }
 
-    fn find_symbols_in_file(&self, file_id: i64) -> impl std::future::Future<Output = Result<Vec<Symbol>>> + Send {
+    fn find_symbols_in_file(
+        &self,
+        file_id: i64,
+    ) -> impl std::future::Future<Output = Result<Vec<Symbol>>> + Send {
         async move {
             let symbols = self.symbols.lock().expect("lock poisoned");
-            Ok(symbols.values().filter(|s| s.file_id == file_id).cloned().collect())
+            Ok(symbols
+                .values()
+                .filter(|s| s.file_id == file_id)
+                .cloned()
+                .collect())
         }
     }
 
-    fn search_symbols(&self, query: &str) -> impl std::future::Future<Output = Result<Vec<Symbol>>> + Send {
+    fn search_symbols(
+        &self,
+        query: &str,
+    ) -> impl std::future::Future<Output = Result<Vec<Symbol>>> + Send {
         async move {
             let symbols = self.symbols.lock().expect("lock poisoned");
             let query_lower = query.to_lowercase();
@@ -599,12 +728,13 @@ impl GraphRepository for InMemoryBackend {
     }
 
     fn count_symbols(&self) -> impl std::future::Future<Output = Result<i64>> + Send {
-        async move {
-            Ok(self.symbols.lock().expect("lock poisoned").len() as i64)
-        }
+        async move { Ok(self.symbols.lock().expect("lock poisoned").len() as i64) }
     }
 
-    fn delete_symbols_for_file(&self, file_id: i64) -> impl std::future::Future<Output = Result<()>> + Send {
+    fn delete_symbols_for_file(
+        &self,
+        file_id: i64,
+    ) -> impl std::future::Future<Output = Result<()>> + Send {
         async move {
             let mut symbols = self.symbols.lock().expect("lock poisoned");
             symbols.retain(|_, s| s.file_id != file_id);
@@ -612,27 +742,41 @@ impl GraphRepository for InMemoryBackend {
         }
     }
 
-    fn insert_reference(&self, reference: &Reference) -> impl std::future::Future<Output = Result<()>> + Send {
+    fn insert_reference(
+        &self,
+        reference: &Reference,
+    ) -> impl std::future::Future<Output = Result<()>> + Send {
         async move {
-            self.symbol_refs.lock().expect("lock poisoned").push(reference.clone());
+            self.symbol_refs
+                .lock()
+                .expect("lock poisoned")
+                .push(reference.clone());
             Ok(())
         }
     }
 
-    fn find_symbol_refs(&self, symbol_id: i64) -> impl std::future::Future<Output = Result<Vec<Reference>>> + Send {
+    fn find_symbol_refs(
+        &self,
+        symbol_id: i64,
+    ) -> impl std::future::Future<Output = Result<Vec<Reference>>> + Send {
         async move {
             let refs = self.symbol_refs.lock().expect("lock poisoned");
-            Ok(refs.iter().filter(|r| r.symbol_id == symbol_id).cloned().collect())
+            Ok(refs
+                .iter()
+                .filter(|r| r.symbol_id == symbol_id)
+                .cloned()
+                .collect())
         }
     }
 
     fn count_symbol_refs(&self) -> impl std::future::Future<Output = Result<i64>> + Send {
-        async move {
-            Ok(self.symbol_refs.lock().expect("lock poisoned").len() as i64)
-        }
+        async move { Ok(self.symbol_refs.lock().expect("lock poisoned").len() as i64) }
     }
 
-    fn delete_symbol_refs_for_file(&self, file_id: i64) -> impl std::future::Future<Output = Result<()>> + Send {
+    fn delete_symbol_refs_for_file(
+        &self,
+        file_id: i64,
+    ) -> impl std::future::Future<Output = Result<()>> + Send {
         async move {
             let mut refs = self.symbol_refs.lock().expect("lock poisoned");
             refs.retain(|r| r.file_id != file_id);
@@ -640,14 +784,23 @@ impl GraphRepository for InMemoryBackend {
         }
     }
 
-    fn insert_relationship(&self, relationship: &Relationship) -> impl std::future::Future<Output = Result<()>> + Send {
+    fn insert_relationship(
+        &self,
+        relationship: &Relationship,
+    ) -> impl std::future::Future<Output = Result<()>> + Send {
         async move {
-            self.relationships.lock().expect("lock poisoned").push(relationship.clone());
+            self.relationships
+                .lock()
+                .expect("lock poisoned")
+                .push(relationship.clone());
             Ok(())
         }
     }
 
-    fn find_relationships(&self, symbol_id: i64) -> impl std::future::Future<Output = Result<Vec<Relationship>>> + Send {
+    fn find_relationships(
+        &self,
+        symbol_id: i64,
+    ) -> impl std::future::Future<Output = Result<Vec<Relationship>>> + Send {
         async move {
             let rels = self.relationships.lock().expect("lock poisoned");
             Ok(rels
@@ -658,7 +811,10 @@ impl GraphRepository for InMemoryBackend {
         }
     }
 
-    fn find_outgoing_relationships(&self, symbol_id: i64) -> impl std::future::Future<Output = Result<Vec<Relationship>>> + Send {
+    fn find_outgoing_relationships(
+        &self,
+        symbol_id: i64,
+    ) -> impl std::future::Future<Output = Result<Vec<Relationship>>> + Send {
         async move {
             let rels = self.relationships.lock().expect("lock poisoned");
             Ok(rels
@@ -669,7 +825,10 @@ impl GraphRepository for InMemoryBackend {
         }
     }
 
-    fn find_incoming_relationships(&self, symbol_id: i64) -> impl std::future::Future<Output = Result<Vec<Relationship>>> + Send {
+    fn find_incoming_relationships(
+        &self,
+        symbol_id: i64,
+    ) -> impl std::future::Future<Output = Result<Vec<Relationship>>> + Send {
         async move {
             let rels = self.relationships.lock().expect("lock poisoned");
             Ok(rels
@@ -681,9 +840,7 @@ impl GraphRepository for InMemoryBackend {
     }
 
     fn count_relationships(&self) -> impl std::future::Future<Output = Result<i64>> + Send {
-        async move {
-            Ok(self.relationships.lock().expect("lock poisoned").len() as i64)
-        }
+        async move { Ok(self.relationships.lock().expect("lock poisoned").len() as i64) }
     }
 
     fn clear(&self) -> impl std::future::Future<Output = Result<()>> + Send {
@@ -704,68 +861,129 @@ impl GraphRepository for InMemoryBackend {
 // ─────────────────────────────────────────────────────────
 
 impl WorkspaceRepository for InMemoryBackend {
-    fn create_workspace(&self, workspace: &Workspace) -> impl std::future::Future<Output = Result<()>> + Send {
+    fn create_workspace(
+        &self,
+        workspace: &Workspace,
+    ) -> impl std::future::Future<Output = Result<()>> + Send {
         async move {
-            self.workspaces.lock().expect("lock poisoned").insert(workspace.id.0.clone(), workspace.clone());
+            self.workspaces
+                .lock()
+                .expect("lock poisoned")
+                .insert(workspace.id.0.clone(), workspace.clone());
             Ok(())
         }
     }
 
-    fn load_workspace(&self, id: &WorkspaceId) -> impl std::future::Future<Output = Result<Option<Workspace>>> + Send {
+    fn load_workspace(
+        &self,
+        id: &WorkspaceId,
+    ) -> impl std::future::Future<Output = Result<Option<Workspace>>> + Send {
         async move {
-            Ok(self.workspaces.lock().expect("lock poisoned").get(&id.0).cloned())
+            Ok(self
+                .workspaces
+                .lock()
+                .expect("lock poisoned")
+                .get(&id.0)
+                .cloned())
         }
     }
 
     fn list_workspaces(&self) -> impl std::future::Future<Output = Result<Vec<Workspace>>> + Send {
         async move {
-            Ok(self.workspaces.lock().expect("lock poisoned").values().cloned().collect())
+            Ok(self
+                .workspaces
+                .lock()
+                .expect("lock poisoned")
+                .values()
+                .cloned()
+                .collect())
         }
     }
 
-    fn delete_workspace(&self, id: &WorkspaceId) -> impl std::future::Future<Output = Result<()>> + Send {
+    fn delete_workspace(
+        &self,
+        id: &WorkspaceId,
+    ) -> impl std::future::Future<Output = Result<()>> + Send {
         async move {
             self.workspaces.lock().expect("lock poisoned").remove(&id.0);
-            self.workspace_projects.lock().expect("lock poisoned").remove(&id.0);
+            self.workspace_projects
+                .lock()
+                .expect("lock poisoned")
+                .remove(&id.0);
             Ok(())
         }
     }
 
-    fn add_project(&self, project: &Project) -> impl std::future::Future<Output = Result<()>> + Send {
+    fn add_project(
+        &self,
+        project: &Project,
+    ) -> impl std::future::Future<Output = Result<()>> + Send {
         async move {
-            self.projects.lock().expect("lock poisoned").insert(project.id.0.clone(), project.clone());
+            self.projects
+                .lock()
+                .expect("lock poisoned")
+                .insert(project.id.0.clone(), project.clone());
             Ok(())
         }
     }
 
-    fn load_project(&self, id: &ProjectId) -> impl std::future::Future<Output = Result<Option<Project>>> + Send {
+    fn load_project(
+        &self,
+        id: &ProjectId,
+    ) -> impl std::future::Future<Output = Result<Option<Project>>> + Send {
         async move {
-            Ok(self.projects.lock().expect("lock poisoned").get(&id.0).cloned())
+            Ok(self
+                .projects
+                .lock()
+                .expect("lock poisoned")
+                .get(&id.0)
+                .cloned())
         }
     }
 
-    fn load_project_by_path(&self, path: &Path) -> impl std::future::Future<Output = Result<Option<Project>>> + Send {
+    fn load_project_by_path(
+        &self,
+        path: &Path,
+    ) -> impl std::future::Future<Output = Result<Option<Project>>> + Send {
         async move {
             let path_str = path.to_string_lossy().to_string();
             let projects = self.projects.lock().expect("lock poisoned");
-            Ok(projects.values().find(|p| p.root_path.to_string_lossy() == path_str).cloned())
+            Ok(projects
+                .values()
+                .find(|p| p.root_path.to_string_lossy() == path_str)
+                .cloned())
         }
     }
 
     fn list_projects(&self) -> impl std::future::Future<Output = Result<Vec<Project>>> + Send {
         async move {
-            Ok(self.projects.lock().expect("lock poisoned").values().cloned().collect())
+            Ok(self
+                .projects
+                .lock()
+                .expect("lock poisoned")
+                .values()
+                .cloned()
+                .collect())
         }
     }
 
-    fn update_project(&self, project: &Project) -> impl std::future::Future<Output = Result<()>> + Send {
+    fn update_project(
+        &self,
+        project: &Project,
+    ) -> impl std::future::Future<Output = Result<()>> + Send {
         async move {
-            self.projects.lock().expect("lock poisoned").insert(project.id.0.clone(), project.clone());
+            self.projects
+                .lock()
+                .expect("lock poisoned")
+                .insert(project.id.0.clone(), project.clone());
             Ok(())
         }
     }
 
-    fn remove_project(&self, id: &ProjectId) -> impl std::future::Future<Output = Result<()>> + Send {
+    fn remove_project(
+        &self,
+        id: &ProjectId,
+    ) -> impl std::future::Future<Output = Result<()>> + Send {
         async move {
             self.projects.lock().expect("lock poisoned").remove(&id.0);
             // Remove from all workspace associations
@@ -798,7 +1016,12 @@ impl WorkspaceRepository for InMemoryBackend {
         project_id: &ProjectId,
     ) -> impl std::future::Future<Output = Result<()>> + Send {
         async move {
-            if let Some(project_ids) = self.workspace_projects.lock().expect("lock poisoned").get_mut(&workspace_id.0) {
+            if let Some(project_ids) = self
+                .workspace_projects
+                .lock()
+                .expect("lock poisoned")
+                .get_mut(&workspace_id.0)
+            {
                 project_ids.retain(|pid| pid != &project_id.0);
             }
             Ok(())
@@ -810,7 +1033,10 @@ impl WorkspaceRepository for InMemoryBackend {
         workspace_id: &WorkspaceId,
     ) -> impl std::future::Future<Output = Result<Vec<Project>>> + Send {
         async move {
-            let project_ids = self.workspace_projects.lock().expect("lock poisoned")
+            let project_ids = self
+                .workspace_projects
+                .lock()
+                .expect("lock poisoned")
                 .get(&workspace_id.0)
                 .cloned()
                 .unwrap_or_default();
@@ -828,7 +1054,12 @@ impl WorkspaceRepository for InMemoryBackend {
         project_id: &ProjectId,
     ) -> impl std::future::Future<Output = Result<()>> + Send {
         async move {
-            if let Some(ws) = self.workspaces.lock().expect("lock poisoned").get_mut(&workspace_id.0) {
+            if let Some(ws) = self
+                .workspaces
+                .lock()
+                .expect("lock poisoned")
+                .get_mut(&workspace_id.0)
+            {
                 ws.default_project_id = Some(project_id.clone());
             }
             Ok(())
@@ -840,13 +1071,21 @@ impl WorkspaceRepository for InMemoryBackend {
         workspace_id: &WorkspaceId,
     ) -> impl std::future::Future<Output = Result<Option<Project>>> + Send {
         async move {
-            let default_id = self.workspaces.lock().expect("lock poisoned")
+            let default_id = self
+                .workspaces
+                .lock()
+                .expect("lock poisoned")
                 .get(&workspace_id.0)
                 .and_then(|ws| ws.default_project_id.clone());
             let Some(default_id) = default_id else {
                 return Ok(None);
             };
-            Ok(self.projects.lock().expect("lock poisoned").get(&default_id.0).cloned())
+            Ok(self
+                .projects
+                .lock()
+                .expect("lock poisoned")
+                .get(&default_id.0)
+                .cloned())
         }
     }
 }
@@ -861,21 +1100,15 @@ impl StorageBackend for InMemoryBackend {
     }
 
     fn migrate(&self) -> impl std::future::Future<Output = Result<()>> + Send {
-        async move {
-            Ok(())
-        }
+        async move { Ok(()) }
     }
 
     fn health_check(&self) -> impl std::future::Future<Output = Result<()>> + Send {
-        async move {
-            Ok(())
-        }
+        async move { Ok(()) }
     }
 
     fn close(&self) -> impl std::future::Future<Output = Result<()>> + Send {
-        async move {
-            Ok(())
-        }
+        async move { Ok(()) }
     }
 }
 
@@ -924,7 +1157,10 @@ mod tests {
     async fn test_checkpoint_crud() {
         let backend = InMemoryBackend::new();
 
-        let cp = backend.create_checkpoint("test-cp", Some("desc")).await.unwrap();
+        let cp = backend
+            .create_checkpoint("test-cp", Some("desc"))
+            .await
+            .unwrap();
         assert_eq!(backend.checkpoint_count().await.unwrap(), 1);
 
         let loaded = backend.get_checkpoint(&cp).await.unwrap();

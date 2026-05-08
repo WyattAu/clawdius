@@ -1,4 +1,4 @@
-use super::{OutputFormat, load_config};
+use super::{load_config, OutputFormat};
 
 use anyhow::Context;
 
@@ -268,10 +268,7 @@ pub(super) async fn handle_generate(
                     println!(
                         "    +{} -{}",
                         change.new.lines().count(),
-                        change
-                            .original
-                            .as_ref()
-                            .map_or(0, |o| o.lines().count())
+                        change.original.as_ref().map_or(0, |o| o.lines().count())
                     );
                 }
             }

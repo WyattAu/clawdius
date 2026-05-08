@@ -10,10 +10,9 @@ pub async fn execute_real_phase(
     phase: &SprintPhase,
     llm_result: PhaseResult,
 ) -> Result<PhaseResult> {
-    let executor = engine
-        .tool_executor
-        .as_ref()
-        .ok_or_else(|| crate::Error::Sprint("tool_executor is required for real execution".into()))?;
+    let executor = engine.tool_executor.as_ref().ok_or_else(|| {
+        crate::Error::Sprint("tool_executor is required for real execution".into())
+    })?;
 
     let command = match phase {
         SprintPhase::Build => &state.config.build_command,
@@ -21,8 +20,8 @@ pub async fn execute_real_phase(
         _ => return Ok(llm_result),
     };
 
-    let request = ToolRequest::new("shell")
-        .with_arg("command", serde_json::Value::String(command.clone()));
+    let request =
+        ToolRequest::new("shell").with_arg("command", serde_json::Value::String(command.clone()));
 
     let tool_result = executor
         .execute(request)
@@ -32,8 +31,7 @@ pub async fn execute_real_phase(
     let output = &tool_result.content;
 
     if tool_result.success {
-        let files_modified =
-            get_changed_files(&state.config.project_root).unwrap_or_default();
+        let files_modified = get_changed_files(&state.config.project_root).unwrap_or_default();
 
         Ok(PhaseResult {
             phase: phase.clone(),
@@ -46,13 +44,9 @@ pub async fn execute_real_phase(
         })
     } else {
         if *phase == SprintPhase::Build {
-            if let Some(fix_output) = attempt_error_recovery(
-                engine,
-                &state.config,
-                &state.config.project_root,
-                output,
-            )
-            .await?
+            if let Some(fix_output) =
+                attempt_error_recovery(engine, &state.config, &state.config.project_root, output)
+                    .await?
             {
                 let files_modified =
                     get_changed_files(&state.config.project_root).unwrap_or_default();
@@ -99,8 +93,8 @@ pub async fn attempt_error_recovery(
     project_root: &Path,
     error_output: &str,
 ) -> Result<Option<String>> {
-    use crate::agentic::error_recovery::{self, ErrorRecovery, ErrorRecoveryConfig};
     use super::detect_language;
+    use crate::agentic::error_recovery::{self, ErrorRecovery, ErrorRecoveryConfig};
 
     let all_errors = error_recovery::parse_compiler_output(error_output);
     if all_errors.is_empty() {
@@ -108,9 +102,7 @@ pub async fn attempt_error_recovery(
     }
 
     let language = {
-        let first_file = all_errors
-            .iter()
-            .find_map(|e| e.file_path.clone());
+        let first_file = all_errors.iter().find_map(|e| e.file_path.clone());
         let Some(file_path) = first_file else {
             return Ok(None);
         };
@@ -139,17 +131,12 @@ pub async fn attempt_error_recovery(
         );
 
         let result = recovery
-            .recover_with_verification(
-                &original_code,
-                error_output,
-                language,
-                |code| async {
-                    if let Some(executor) = engine.tool_executor.as_ref() {
-                        let _ = (code, executor);
-                    }
-                    String::new()
-                },
-            )
+            .recover_with_verification(&original_code, error_output, language, |code| async {
+                if let Some(executor) = engine.tool_executor.as_ref() {
+                    let _ = (code, executor);
+                }
+                String::new()
+            })
             .await?;
 
         total_attempts += result.retries_used;

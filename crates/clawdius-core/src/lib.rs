@@ -7,7 +7,6 @@
     html_logo_url = "https://github.com/clawdius/clawdius/raw/main/docs/logo.png",
     html_favicon_url = "https://github.com/clawdius/clawdius/raw/main/docs/favicon.ico"
 )]
-
 // Clippy: allow all warnings crate-wide.
 // The codebase prioritizes correctness, safety, and feature completeness over lint adherence.
 // Individual modules may opt back into specific lints where beneficial.
@@ -24,8 +23,8 @@
 
 pub mod actions;
 pub mod agentic;
-pub mod airgap;
 pub mod agents;
+pub mod airgap;
 pub mod analysis;
 pub mod api;
 pub mod audit;
@@ -48,8 +47,8 @@ pub mod lsp;
 pub mod mcp;
 pub mod memory;
 pub mod modes;
-pub mod orchestrator;
 pub mod onboarding;
+pub mod orchestrator;
 pub mod output;
 pub mod proof;
 pub mod retry;
@@ -91,8 +90,8 @@ pub use retry::{with_retry_and_circuit, CircuitBreaker, CircuitState};
 pub use session::{Session, SessionManager, SessionStore};
 pub use skills::{Skill, SkillContext, SkillError, SkillMeta, SkillRegistry, SkillResult};
 pub use storage::{
-    GraphRepository, InMemoryBackend, SessionRepository as StorageSessionRepository,
-    SqliteBackend, StorageBackend, TimelineRepository,
+    GraphRepository, InMemoryBackend, SessionRepository as StorageSessionRepository, SqliteBackend,
+    StorageBackend, TimelineRepository,
 };
 pub use telemetry::{CrashReporter, TelemetryConfig};
 pub use timeline::{CheckpointId, TimelineManager};

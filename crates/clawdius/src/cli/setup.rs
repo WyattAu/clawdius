@@ -182,7 +182,9 @@ pub(super) fn handle_setup(
                     .unwrap_or_else(|_| std::net::SocketAddr::from(([127, 0, 0, 1], 11434)))
             }),
             std::time::Duration::from_secs(2),
-        ).is_ok() {
+        )
+        .is_ok()
+        {
             println!("  ✓ Ollama server is running at {ollama_addr}");
         } else {
             println!("  ⚠ Could not connect to Ollama at {ollama_addr}");

@@ -1,8 +1,8 @@
 use super::OutputFormat;
 
-use std::path::{Path, PathBuf};
 use clawdius_core::output::{OutputFormat as CoreOutputFormat, OutputFormatter};
 use clawdius_core::proof::LeanVerifier;
+use std::path::{Path, PathBuf};
 
 #[allow(clippy::cast_possible_truncation)]
 pub(super) fn handle_verify(

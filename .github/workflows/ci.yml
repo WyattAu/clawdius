@@ -97,6 +97,15 @@ jobs:
         run: |
           echo "clawdius: $(du -h target/release/clawdius | cut -f1)"
           echo "clawdius-gateway: $(du -h target/release/clawdius-gateway | cut -f1)"
+      - name: Smoke test CLI commands
+        run: |
+          ./target/release/clawdius --version
+          ./target/release/clawdius --help
+          ./target/release/clawdius chat --help
+          ./target/release/clawdius sprint --help
+          ./target/release/clawdius watch --help
+          ./target/release/clawdius analyze --help
+          ./target/release/clawdius-gateway --help
       - uses: actions/upload-artifact@v4
         with:
           name: release-binaries

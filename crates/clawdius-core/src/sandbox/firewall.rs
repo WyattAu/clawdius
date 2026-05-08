@@ -510,7 +510,7 @@ mod tests {
     }
 
     #[test]
-    fn test_iptables_rules_saaS() {
+    fn test_iptables_rules_saas() {
         let firewall = Firewall::new(EgressConfig::saas_defaults());
         let rules = firewall.iptables_rules("sess-123");
 

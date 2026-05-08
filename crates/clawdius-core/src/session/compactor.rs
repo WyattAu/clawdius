@@ -110,7 +110,10 @@ impl Compactor {
     /// Perform compaction on session
     pub async fn compact(&self, session: &mut Session) -> Result<CompactSummary> {
         let tokens_before = self.count_tokens(session);
-        let keep_from = session.messages.len().saturating_sub(self.config.keep_recent);
+        let keep_from = session
+            .messages
+            .len()
+            .saturating_sub(self.config.keep_recent);
         if keep_from == 0 {
             return Ok(CompactSummary {
                 summarized_count: 0,
@@ -158,9 +161,15 @@ impl Compactor {
     }
 
     fn count_tokens(&self, session: &Session) -> usize {
-        session.messages.iter().map(|msg| {
-            self.tokenizer.encode_with_special_tokens(msg.as_text().unwrap_or("")).len()
-        }).sum()
+        session
+            .messages
+            .iter()
+            .map(|msg| {
+                self.tokenizer
+                    .encode_with_special_tokens(msg.as_text().unwrap_or(""))
+                    .len()
+            })
+            .sum()
     }
 
     fn get_context_limit(&self, session: &Session) -> usize {
@@ -179,8 +188,16 @@ impl Compactor {
         let formatted = Self::format_messages_for_summary(messages);
         if let Some(ref llm) = self.llm {
             match self.summarize_with_llm(llm, &formatted).await {
-                Ok(summary) => return Ok(SummaryResult { text: summary, used_llm: true }),
-                Err(e) => tracing::warn!("LLM summarization failed: {}, falling back to extractive", e),
+                Ok(summary) => {
+                    return Ok(SummaryResult {
+                        text: summary,
+                        used_llm: true,
+                    })
+                },
+                Err(e) => tracing::warn!(
+                    "LLM summarization failed: {}, falling back to extractive",
+                    e
+                ),
             }
         }
         Ok(SummaryResult {
@@ -190,24 +207,42 @@ impl Compactor {
     }
 
     fn format_messages_for_summary(messages: &[&Message]) -> Vec<FormattedMessage> {
-        messages.iter().filter_map(|msg| {
-            let role = match msg.role {
-                MessageRole::User => "User",
-                MessageRole::Assistant => "Assistant",
-                MessageRole::System => "System",
-                MessageRole::Tool => "Tool",
-            };
-            let content = msg.as_text()?;
-            if content.trim().len() < 2 { return None; }
-            let truncated = if content.len() > 2000 {
-                format!("{}... [truncated at 2000 chars]", &content[..2000])
-            } else { content.to_string() };
-            Some(FormattedMessage { role: role.to_string(), content: truncated })
-        }).collect()
+        messages
+            .iter()
+            .filter_map(|msg| {
+                let role = match msg.role {
+                    MessageRole::User => "User",
+                    MessageRole::Assistant => "Assistant",
+                    MessageRole::System => "System",
+                    MessageRole::Tool => "Tool",
+                };
+                let content = msg.as_text()?;
+                if content.trim().len() < 2 {
+                    return None;
+                }
+                let truncated = if content.len() > 2000 {
+                    format!("{}... [truncated at 2000 chars]", &content[..2000])
+                } else {
+                    content.to_string()
+                };
+                Some(FormattedMessage {
+                    role: role.to_string(),
+                    content: truncated,
+                })
+            })
+            .collect()
     }
 
-    async fn summarize_with_llm(&self, llm: &Arc<dyn LlmClient>, formatted: &[FormattedMessage]) -> Result<String> {
-        let conversation_text = formatted.iter().map(|m| format!("{}: {}", m.role, m.content)).collect::<Vec<_>>().join("\n\n");
+    async fn summarize_with_llm(
+        &self,
+        llm: &Arc<dyn LlmClient>,
+        formatted: &[FormattedMessage],
+    ) -> Result<String> {
+        let conversation_text = formatted
+            .iter()
+            .map(|m| format!("{}: {}", m.role, m.content))
+            .collect::<Vec<_>>()
+            .join("\n\n");
         let system_prompt = crate::llm::ChatMessage {
             role: crate::llm::ChatRole::System,
             content: r#"You are a context compaction assistant. Summarize this conversation, preserving ALL critical info: task/objective, files modified, key decisions, progress state, errors and fixes, code patterns. Discard verbose output. Under 2000 words."#.to_string(),
@@ -217,7 +252,11 @@ impl Compactor {
             content: format!("Summarize:\n\n{conversation_text}"),
         };
         let response = llm.chat(vec![system_prompt, user_prompt]).await?;
-        Ok(if response.len() > 6000 { format!("{}... [truncated]", &response[..6000]) } else { response })
+        Ok(if response.len() > 6000 {
+            format!("{}... [truncated]", &response[..6000])
+        } else {
+            response
+        })
     }
 
     fn extractive_summary(formatted: &[FormattedMessage], max_chars: usize) -> String {
@@ -233,17 +272,33 @@ impl Compactor {
         }
         parts.reverse();
         if parts.len() < msg_count {
-            parts.insert(0, format!("[Oldest {} of {} messages omitted]", msg_count - parts.len(), msg_count));
+            parts.insert(
+                0,
+                format!(
+                    "[Oldest {} of {} messages omitted]",
+                    msg_count - parts.len(),
+                    msg_count
+                ),
+            );
         }
         let mut result = parts.join("\n\n");
-        if result.len() > max_chars { result.truncate(max_chars); result.push_str("\n\n[truncated]"); }
+        if result.len() > max_chars {
+            result.truncate(max_chars);
+            result.push_str("\n\n[truncated]");
+        }
         result
     }
 }
 
 #[derive(Debug, Clone)]
-struct FormattedMessage { role: String, content: String }
-struct SummaryResult { text: String, used_llm: bool }
+struct FormattedMessage {
+    role: String,
+    content: String,
+}
+struct SummaryResult {
+    text: String,
+    used_llm: bool,
+}
 
 #[cfg(test)]
 mod tests {
@@ -252,8 +307,11 @@ mod tests {
     #[test]
     fn test_needs_compaction() {
         let compactor = Compactor::new(CompactConfig {
-            threshold_percent: 0.5, keep_recent: 2, min_messages: 3,
-            summary_model: None, extractive_max_chars: 4000,
+            threshold_percent: 0.5,
+            keep_recent: 2,
+            min_messages: 3,
+            summary_model: None,
+            extractive_max_chars: 4000,
         });
         let mut session = Session::new();
         session.meta.model = Some("claude-3-5-sonnet".to_string());
@@ -268,8 +326,14 @@ mod tests {
     #[test]
     fn test_extractive_summary_basic() {
         let messages = vec![
-            FormattedMessage { role: "User".into(), content: "Please create a hello world function".into() },
-            FormattedMessage { role: "Assistant".into(), content: "fn hello() { println!(\"Hello\"); }".into() },
+            FormattedMessage {
+                role: "User".into(),
+                content: "Please create a hello world function".into(),
+            },
+            FormattedMessage {
+                role: "Assistant".into(),
+                content: "fn hello() { println!(\"Hello\"); }".into(),
+            },
         ];
         let summary = Compactor::extractive_summary(&messages, 500);
         assert!(summary.contains("hello world"));
@@ -289,12 +353,17 @@ mod tests {
     #[test]
     fn test_compact_preserves_recent() {
         let compactor = Compactor::new(CompactConfig {
-            threshold_percent: 0.01, keep_recent: 2, min_messages: 3,
-            summary_model: None, extractive_max_chars: 4000,
+            threshold_percent: 0.01,
+            keep_recent: 2,
+            min_messages: 3,
+            summary_model: None,
+            extractive_max_chars: 4000,
         });
         let mut session = Session::new();
         session.meta.model = Some("claude-3-5-sonnet".to_string());
-        for i in 0..5 { session.add_message(Message::user(format!("Message {i}"))); }
+        for i in 0..5 {
+            session.add_message(Message::user(format!("Message {i}")));
+        }
         let rt = tokio::runtime::Runtime::new().unwrap();
         let result = rt.block_on(compactor.compact(&mut session)).unwrap();
         assert_eq!(result.summarized_count, 3);

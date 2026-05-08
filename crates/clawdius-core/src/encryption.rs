@@ -82,11 +82,7 @@ const SALT_LEN: usize = 32;
 ///
 /// # Errors
 /// Returns `EncryptionError::InvalidKeyLength` if key is not 32 bytes.
-pub fn encrypt(
-    plaintext: &[u8],
-    master_key: &[u8],
-    aad: Option<&[u8]>,
-) -> Result<EncryptedData> {
+pub fn encrypt(plaintext: &[u8], master_key: &[u8], aad: Option<&[u8]>) -> Result<EncryptedData> {
     if master_key.len() != KEY_LEN {
         return Err(EncryptionError::InvalidKeyLength {
             expected: KEY_LEN,
@@ -196,8 +192,9 @@ pub fn load_key_from_env(var_name: &str) -> Result<[u8; KEY_LEN]> {
     let hex_str = std::env::var(var_name)
         .map_err(|e| EncryptionError::KeyLoadError(format!("env var {var_name}: {e}")))?;
     let mut key = [0u8; KEY_LEN];
-    hex::decode_to_slice(hex_str.trim(), &mut key)
-        .map_err(|e| EncryptionError::KeyLoadError(format!("invalid hex in env var {var_name}: {e}")))?;
+    hex::decode_to_slice(hex_str.trim(), &mut key).map_err(|e| {
+        EncryptionError::KeyLoadError(format!("invalid hex in env var {var_name}: {e}"))
+    })?;
     Ok(key)
 }
 
@@ -287,8 +284,8 @@ impl std::fmt::Display for MasterKey {
 // Internal crypto primitives
 // ─────────────────────────────────────────────────────────
 
-use base64::Engine;
 use base64::engine::general_purpose::STANDARD as BASE64_STANDARD;
+use base64::Engine;
 
 /// Fill a buffer with cryptographically secure random bytes.
 fn fill_random(buf: &mut [u8]) {
@@ -307,7 +304,9 @@ fn fill_random(buf: &mut [u8]) {
         .unwrap_or(0)
         .wrapping_add(COUNTER.fetch_add(1, Ordering::Relaxed));
     for (i, chunk) in buf.chunks_mut(8).enumerate() {
-        let val = seed.wrapping_mul((i as u64).wrapping_add(1)).wrapping_add(0x9e3779b97f4a7c15);
+        let val = seed
+            .wrapping_mul((i as u64).wrapping_add(1))
+            .wrapping_add(0x9e3779b97f4a7c15);
         for (j, byte) in chunk.iter_mut().enumerate() {
             *byte = (val >> (j * 8)) as u8;
         }
@@ -353,7 +352,13 @@ fn aes256gcm_encrypt(
     let cipher = Aes256Gcm::new_from_slice(key).expect("valid key length");
     let nonce = Nonce::from_slice(nonce);
     cipher
-        .encrypt(nonce, aes_gcm::aead::Payload { msg: plaintext, aad })
+        .encrypt(
+            nonce,
+            aes_gcm::aead::Payload {
+                msg: plaintext,
+                aad,
+            },
+        )
         .expect("encryption failure")
 }
 
@@ -371,7 +376,13 @@ fn aes256gcm_decrypt(
     let cipher = Aes256Gcm::new_from_slice(key).expect("valid key length");
     let nonce = Nonce::from_slice(nonce);
     cipher
-        .decrypt(nonce, aes_gcm::aead::Payload { msg: ciphertext, aad })
+        .decrypt(
+            nonce,
+            aes_gcm::aead::Payload {
+                msg: ciphertext,
+                aad,
+            },
+        )
         .ok()
 }
 
@@ -426,7 +437,10 @@ mod tests {
     fn test_invalid_key_length() {
         let short_key = [0u8; 16];
         let result = encrypt(b"data", &short_key, None);
-        assert!(matches!(result, Err(EncryptionError::InvalidKeyLength { .. })));
+        assert!(matches!(
+            result,
+            Err(EncryptionError::InvalidKeyLength { .. })
+        ));
     }
 
     #[test]

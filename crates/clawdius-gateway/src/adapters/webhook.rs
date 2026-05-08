@@ -146,7 +146,10 @@ pub struct WebhookAdapter {
     on_message: tokio::sync::Mutex<
         Option<
             Arc<
-                dyn Fn(IncomingMessage) -> std::pin::Pin<Box<dyn std::future::Future<Output = ()> + Send>>
+                dyn Fn(
+                        IncomingMessage,
+                    )
+                        -> std::pin::Pin<Box<dyn std::future::Future<Output = ()> + Send>>
                     + Send
                     + Sync,
             >,
@@ -175,9 +178,7 @@ impl WebhookAdapter {
         let outgoing_url = config
             .webhook_url
             .as_ref()
-            .ok_or_else(|| {
-                GatewayError::Config("WEBHOOK_URL not set".to_string())
-            })?;
+            .ok_or_else(|| GatewayError::Config("WEBHOOK_URL not set".to_string()))?;
 
         let webhook_config = WebhookConfig {
             outgoing_url: outgoing_url.clone(),
@@ -207,7 +208,10 @@ impl WebhookAdapter {
     pub async fn set_message_handler(
         &self,
         handler: Arc<
-            dyn Fn(IncomingMessage) -> std::pin::Pin<Box<dyn std::future::Future<Output = ()> + Send>>
+            dyn Fn(
+                    IncomingMessage,
+                )
+                    -> std::pin::Pin<Box<dyn std::future::Future<Output = ()> + Send>>
                 + Send
                 + Sync,
         >,
@@ -223,9 +227,7 @@ impl WebhookAdapter {
 
     /// Convert a WebhookIncoming payload into an IncomingMessage.
     pub fn convert_payload(&self, payload: WebhookIncoming) -> IncomingMessage {
-        let chat_id = payload
-            .chat_id
-            .unwrap_or_else(|| "default".to_string());
+        let chat_id = payload.chat_id.unwrap_or_else(|| "default".to_string());
         let user = payload.user.unwrap_or(WebhookUser {
             id: "anonymous".to_string(),
             name: "Anonymous".to_string(),
@@ -271,13 +273,14 @@ impl WebhookAdapter {
     /// Spawns a background task that listens on the configured port.
     pub async fn start_listener(&self) -> Result<(), GatewayError> {
         let addr = format!("0.0.0.0:{}", self.config.listen_port);
-        let listener = tokio::net::TcpListener::bind(&addr).await.map_err(|e| {
-            GatewayError::Adapter {
-                platform: "webhook".to_string(),
-                message: format!("failed to bind to {addr}: {e}"),
-                source: Some(Box::new(e)),
-            }
-        })?;
+        let listener =
+            tokio::net::TcpListener::bind(&addr)
+                .await
+                .map_err(|e| GatewayError::Adapter {
+                    platform: "webhook".to_string(),
+                    message: format!("failed to bind to {addr}: {e}"),
+                    source: Some(Box::new(e)),
+                })?;
 
         self.running
             .store(true, std::sync::atomic::Ordering::Relaxed);
@@ -381,11 +384,7 @@ impl PlatformAdapter for WebhookAdapter {
         Ok(())
     }
 
-    async fn edit_message(
-        &self,
-        message_id: &str,
-        new_text: &str,
-    ) -> Result<(), GatewayError> {
+    async fn edit_message(&self, message_id: &str, new_text: &str) -> Result<(), GatewayError> {
         // Webhook edits send a new message with the edit flag
         let outgoing = WebhookOutgoing {
             chat_id: "default".to_string(), // Would need to track chat_id per message
@@ -478,9 +477,7 @@ impl PlatformAdapter for WebhookAdapter {
             messages_processed: self
                 .messages_processed
                 .load(std::sync::atomic::Ordering::Relaxed),
-            errors: self
-                .error_count
-                .load(std::sync::atomic::Ordering::Relaxed),
+            errors: self.error_count.load(std::sync::atomic::Ordering::Relaxed),
             last_message_at: None,
         }
     }

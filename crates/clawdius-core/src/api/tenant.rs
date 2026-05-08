@@ -159,8 +159,7 @@ impl TenantStore {
 
     #[must_use]
     pub fn get_tenant_id_by_api_key(&self, key: &str) -> Option<String> {
-        self.get_tenant_by_api_key(key)
-            .map(|t| t.id.clone())
+        self.get_tenant_by_api_key(key).map(|t| t.id.clone())
     }
 
     #[must_use]
@@ -189,7 +188,11 @@ impl TenantStore {
         if let Some(workspace_root) = workspace_root {
             tenant.workspace_root = Some(workspace_root.to_string());
         }
-        Some(self.tenants.get(id).expect("tenant exists — verified by get_mut above"))
+        Some(
+            self.tenants
+                .get(id)
+                .expect("tenant exists — verified by get_mut above"),
+        )
     }
 
     pub fn add_api_key(&mut self, tenant_id: &str, label: &str) -> Option<ApiKeyEntry> {
@@ -409,7 +412,10 @@ mod tests {
     #[test]
     fn test_api_key_generation() {
         let key = generate_api_key();
-        assert!(key.starts_with("ck_"), "key should start with ck_ prefix: {key}");
+        assert!(
+            key.starts_with("ck_"),
+            "key should start with ck_ prefix: {key}"
+        );
         assert!(key.len() > 10, "key should be long enough: {key}");
 
         let key2 = generate_api_key();
@@ -427,7 +433,10 @@ mod tests {
         };
         let masked = entry.masked();
         assert!(masked.contains("..."), "masked key should contain '...'");
-        assert!(!masked.contains("ck_abcdef1234567890"), "masked key should not contain full key");
+        assert!(
+            !masked.contains("ck_abcdef1234567890"),
+            "masked key should not contain full key"
+        );
     }
 
     #[test]
@@ -448,10 +457,19 @@ mod tests {
         for _ in 0..10 {
             assert!(store.record_task("free-tenant", 100));
         }
-        assert!(!store.record_task("free-tenant", 100), "11th task should be rate limited");
+        assert!(
+            !store.record_task("free-tenant", 100),
+            "11th task should be rate limited"
+        );
 
-        assert_eq!(store.get_tenant("free-tenant").unwrap().usage.tasks_total, 10);
-        assert_eq!(store.get_tenant("free-tenant").unwrap().usage.tasks_hour, 10);
+        assert_eq!(
+            store.get_tenant("free-tenant").unwrap().usage.tasks_total,
+            10
+        );
+        assert_eq!(
+            store.get_tenant("free-tenant").unwrap().usage.tasks_hour,
+            10
+        );
     }
 
     #[test]
@@ -523,7 +541,10 @@ mod tests {
         assert!(store.get_tenant("t1").is_some());
         assert!(store.delete_tenant("t1"));
         assert!(store.get_tenant("t1").is_none());
-        assert!(!store.delete_tenant("t1"), "deleting non-existent should return false");
+        assert!(
+            !store.delete_tenant("t1"),
+            "deleting non-existent should return false"
+        );
     }
 
     #[test]
@@ -560,8 +581,14 @@ mod tests {
         assert_eq!(TenantTier::from_str_opt("FREE"), Some(TenantTier::Free));
         assert_eq!(TenantTier::from_str_opt("pro"), Some(TenantTier::Pro));
         assert_eq!(TenantTier::from_str_opt("Pro"), Some(TenantTier::Pro));
-        assert_eq!(TenantTier::from_str_opt("enterprise"), Some(TenantTier::Enterprise));
-        assert_eq!(TenantTier::from_str_opt("Enterprise"), Some(TenantTier::Enterprise));
+        assert_eq!(
+            TenantTier::from_str_opt("enterprise"),
+            Some(TenantTier::Enterprise)
+        );
+        assert_eq!(
+            TenantTier::from_str_opt("Enterprise"),
+            Some(TenantTier::Enterprise)
+        );
         assert_eq!(TenantTier::from_str_opt("unknown"), None);
         assert_eq!(TenantTier::from_str_opt(""), None);
 

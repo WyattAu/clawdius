@@ -1,7 +1,7 @@
-use super::{OutputFormat, ModeCommands};
+use super::{ModeCommands, OutputFormat};
 
-use std::path::PathBuf;
 use clawdius_core::output::{OutputFormat as CoreOutputFormat, OutputFormatter};
+use std::path::PathBuf;
 
 pub(super) async fn handle_modes(
     action: ModeCommands,

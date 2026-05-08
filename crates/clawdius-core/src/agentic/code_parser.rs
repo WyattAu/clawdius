@@ -1,6 +1,6 @@
 use regex::Regex;
-use std::sync::LazyLock;
 use serde::{Deserialize, Serialize};
+use std::sync::LazyLock;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ParsedFileChange {
@@ -15,9 +15,12 @@ struct CodeBlock {
     preceding_text: String,
 }
 
-static FILE_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(?im)^File:\s*(.+)").expect("regex must compile"));
-static BOLD_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\*\*(.+?)\*\*\s*:?\s*$").expect("regex must compile"));
-static HEADING_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(?m)^#{1,6}\s+(.+?)\s*$").expect("regex must compile"));
+static FILE_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(?im)^File:\s*(.+)").expect("regex must compile"));
+static BOLD_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"\*\*(.+?)\*\*\s*:?\s*$").expect("regex must compile"));
+static HEADING_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(?m)^#{1,6}\s+(.+?)\s*$").expect("regex must compile"));
 
 pub fn parse_llm_output(response: &str) -> Vec<ParsedFileChange> {
     let blocks = extract_code_blocks(response);

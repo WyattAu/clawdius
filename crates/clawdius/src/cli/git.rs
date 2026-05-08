@@ -1,8 +1,11 @@
-use super::{GitCommands, load_config};
+use super::{load_config, GitCommands};
 
 use std::path::PathBuf;
 
-pub(super) async fn handle_git(action: GitCommands, config_path: Option<PathBuf>) -> anyhow::Result<()> {
+pub(super) async fn handle_git(
+    action: GitCommands,
+    config_path: Option<PathBuf>,
+) -> anyhow::Result<()> {
     match action {
         GitCommands::Commit { files, message } => {
             handle_git_commit(files, message, config_path).await
@@ -103,15 +106,14 @@ async fn generate_commit_message(
     diff: &str,
     config_path: Option<&PathBuf>,
 ) -> anyhow::Result<String> {
-    use clawdius_core::llm::{create_provider, ChatMessage, ChatRole, LlmConfig};
     use clawdius_core::llm::providers::LlmClient;
+    use clawdius_core::llm::{create_provider, ChatMessage, ChatRole, LlmConfig};
 
     let config = load_config(config_path.map(PathBuf::as_path))?;
     let provider_name = config
         .llm
         .default_provider
         .clone()
-
         .unwrap_or_else(|| "anthropic".to_string());
     let llm_config = LlmConfig::from_config(&config.llm, &provider_name)?;
     let llm_client =

@@ -86,7 +86,11 @@ impl LlmClient for AnthropicProvider {
                             },
                             Err(e) => {
                                 had_error = true;
-                                tracing::error!("Anthropic stream error for model {}: {}", model, e);
+                                tracing::error!(
+                                    "Anthropic stream error for model {}: {}",
+                                    model,
+                                    e
+                                );
                                 break;
                             },
                         }
@@ -126,19 +130,11 @@ impl LlmClient for AnthropicProvider {
 
         // Extract text and tool calls from the response MessageContent.
         // `response.content` is `MessageContent` (transparent wrapper over Vec<ContentPart>).
-        let text = response
-            .content
-            .first_text()
-            .unwrap_or("")
-            .to_string();
+        let text = response.content.first_text().unwrap_or("").to_string();
 
         // `MessageContent::tool_calls()` returns `Vec<&ToolCall>`.
-        let tool_calls: Vec<genai::chat::ToolCall> = response
-            .content
-            .tool_calls()
-            .into_iter()
-            .cloned()
-            .collect();
+        let tool_calls: Vec<genai::chat::ToolCall> =
+            response.content.tool_calls().into_iter().cloned().collect();
 
         Ok(ChatWithToolsResult { text, tool_calls })
     }

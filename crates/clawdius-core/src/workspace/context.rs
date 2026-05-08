@@ -94,15 +94,13 @@ impl WorkspaceContextBuilder {
         project_name: Option<&str>,
         token_budget: usize,
     ) -> Result<String> {
-        let name = project_name
-            .map(|n| n.to_string())
-            .unwrap_or_else(|| {
-                project_root
-                    .file_name()
-                    .and_then(|n| n.to_str())
-                    .unwrap_or("project")
-                    .to_string()
-            });
+        let name = project_name.map(|n| n.to_string()).unwrap_or_else(|| {
+            project_root
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or("project")
+                .to_string()
+        });
 
         let repo_map = RepoMapBuilder::new(project_root.to_path_buf())
             .token_budget(token_budget)
@@ -169,7 +167,7 @@ impl WorkspaceContextBuilder {
                         project.name, e
                     );
                     continue;
-                }
+                },
             };
 
             let header = format!(
@@ -239,7 +237,10 @@ pub fn add(a: i32, b: i32) -> i32 {
         .unwrap();
 
         let ws = manager.create_workspace("test-workspace").await.unwrap();
-        manager.add_project_by_path(&ws.id, &proj_dir).await.unwrap();
+        manager
+            .add_project_by_path(&ws.id, &proj_dir)
+            .await
+            .unwrap();
 
         (manager, ws.id, dir)
     }
@@ -277,8 +278,7 @@ version = "0.1.0"
         )
         .unwrap();
 
-        let ctx = WorkspaceContextBuilder::build_single(&proj_dir, Some("single-proj"))
-            .unwrap();
+        let ctx = WorkspaceContextBuilder::build_single(&proj_dir, Some("single-proj")).unwrap();
 
         assert!(ctx.contains("## Project: single-proj"));
         assert!(ctx.contains("greet"));
@@ -310,8 +310,7 @@ version = "0.1.0"
         .unwrap();
         std::fs::write(proj_dir.join("src/lib.rs"), "pub fn hello() {}\n").unwrap();
 
-        let ctx = WorkspaceContextBuilder::build_single(&proj_dir, None)
-            .unwrap();
+        let ctx = WorkspaceContextBuilder::build_single(&proj_dir, None).unwrap();
 
         // Should use directory name
         assert!(ctx.contains("my-proj"));

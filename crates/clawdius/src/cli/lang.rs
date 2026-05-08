@@ -1,7 +1,7 @@
-use super::{OutputFormat, LangCommands};
-use std::path::PathBuf;
+use super::{LangCommands, OutputFormat};
 use clawdius_core::i18n::Language;
 use clawdius_core::output::OutputFormat as CoreOutputFormat;
+use std::path::PathBuf;
 
 pub(super) fn handle_lang(
     action: LangCommands,
@@ -47,8 +47,8 @@ pub(super) fn handle_lang(
                     // Update or add language setting
                     if config_content.contains("language =") {
                         // Replace existing language line
-                        let re =
-                            regex::Regex::new(r"^language\s*=\s*.*$").map_err(|e| anyhow::anyhow!("regex compile error: {e}"))?;
+                        let re = regex::Regex::new(r"^language\s*=\s*.*$")
+                            .map_err(|e| anyhow::anyhow!("regex compile error: {e}"))?;
                         config_content = re
                             .replace(&config_content, &format!("language = \"{}\"", lang.code()))
                             .to_string();

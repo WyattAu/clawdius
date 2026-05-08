@@ -196,12 +196,11 @@ pub(super) async fn handle_webhook(
         },
 
         WebhookCommands::Test { id, event } => {
-            let test_event = event
-                .map_or(WebhookEvent::SessionCreated, |s| match s.as_str() {
-                    "message.sent" => WebhookEvent::MessageSent,
-                    "tool.executed" => WebhookEvent::ToolExecuted,
-                    _ => WebhookEvent::SessionCreated,
-                });
+            let test_event = event.map_or(WebhookEvent::SessionCreated, |s| match s.as_str() {
+                "message.sent" => WebhookEvent::MessageSent,
+                "tool.executed" => WebhookEvent::ToolExecuted,
+                _ => WebhookEvent::SessionCreated,
+            });
 
             let test_data = serde_json::json!({
                 "test": true,

@@ -188,7 +188,12 @@ impl Widget for WorkspaceSwitcherWidget<'_> {
         };
 
         let mut lines = Vec::with_capacity(total_lines);
-        for (i, entry) in filtered.iter().enumerate().skip(scroll_offset).take(total_lines) {
+        for (i, entry) in filtered
+            .iter()
+            .enumerate()
+            .skip(scroll_offset)
+            .take(total_lines)
+        {
             let is_selected = i == self.switcher.selected;
             let active_marker = if entry.is_active { "● " } else { "  " };
 
@@ -234,10 +239,7 @@ impl Widget for WorkspaceSwitcherWidget<'_> {
 
             lines.push(Line::from(vec![
                 Span::styled("    ", style),
-                Span::styled(
-                    path,
-                    self.theme.muted().add_modifier(Modifier::DIM),
-                ),
+                Span::styled(path, self.theme.muted().add_modifier(Modifier::DIM)),
             ]));
         }
 

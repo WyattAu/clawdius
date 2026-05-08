@@ -8,7 +8,10 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use super::components;
-use super::components::{ChatView, DiffView, FileList, SessionEntry, SessionPicker, Spinner, SyntaxHighlighter, WorkspaceSwitcher};
+use super::components::{
+    ChatView, DiffView, FileList, SessionEntry, SessionPicker, Spinner, SyntaxHighlighter,
+    WorkspaceSwitcher,
+};
 use super::theme;
 use super::types::{AppMode, InputMode, LayoutMode, Message, TuiEvent};
 use super::vim::VimKeymap;
@@ -25,8 +28,8 @@ use tokio::sync::mpsc;
 
 use clawdius_core::{
     config::ShellSandboxConfig,
-    llm::{self, ChatMessage, ChatRole},
     llm::providers::{LlmClient, Tool},
+    llm::{self, ChatMessage, ChatRole},
     modes::AgentMode,
     tools::file::{FileEditParams, FileListParams, FileReadParams, FileTool, FileWriteParams},
     tools::git::{GitDiffParams, GitLogParams, GitTool},
@@ -90,18 +93,40 @@ impl TuiToolExecutor {
 
         match name {
             "read_file" => {
-                let path = args.get("path").and_then(|v| v.as_str()).unwrap_or("").to_string();
-                let offset = args.get("offset").and_then(serde_json::Value::as_u64).map(|n| n as usize); // safe: target pointer width >= 32
-                let limit = args.get("limit").and_then(serde_json::Value::as_u64).map(|n| n as usize); // safe: target pointer width >= 32
-                let params = FileReadParams { path, offset, limit };
+                let path = args
+                    .get("path")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .to_string();
+                let offset = args
+                    .get("offset")
+                    .and_then(serde_json::Value::as_u64)
+                    .map(|n| n as usize); // safe: target pointer width >= 32
+                let limit = args
+                    .get("limit")
+                    .and_then(serde_json::Value::as_u64)
+                    .map(|n| n as usize); // safe: target pointer width >= 32
+                let params = FileReadParams {
+                    path,
+                    offset,
+                    limit,
+                };
                 match self.file_tool.read(params) {
                     Ok(content) => (content, false),
                     Err(e) => (format!("Error: {e}"), true),
                 }
             },
             "write_file" => {
-                let path = args.get("path").and_then(|v| v.as_str()).unwrap_or("").to_string();
-                let content = args.get("content").and_then(|v| v.as_str()).unwrap_or("").to_string();
+                let path = args
+                    .get("path")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .to_string();
+                let content = args
+                    .get("content")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .to_string();
                 let params = FileWriteParams { path, content };
                 match self.file_tool.write(params) {
                     Ok(()) => ("File written successfully".to_string(), false),
@@ -109,11 +134,31 @@ impl TuiToolExecutor {
                 }
             },
             "edit_file" => {
-                let path = args.get("path").and_then(|v| v.as_str()).unwrap_or("").to_string();
-                let old_string = args.get("old_string").and_then(|v| v.as_str()).unwrap_or("").to_string();
-                let new_string = args.get("new_string").and_then(|v| v.as_str()).unwrap_or("").to_string();
-                let replace_all = args.get("replace_all").and_then(serde_json::Value::as_bool).unwrap_or(false);
-                let params = FileEditParams { path, old_string, new_string, replace_all };
+                let path = args
+                    .get("path")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .to_string();
+                let old_string = args
+                    .get("old_string")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .to_string();
+                let new_string = args
+                    .get("new_string")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .to_string();
+                let replace_all = args
+                    .get("replace_all")
+                    .and_then(serde_json::Value::as_bool)
+                    .unwrap_or(false);
+                let params = FileEditParams {
+                    path,
+                    old_string,
+                    new_string,
+                    replace_all,
+                };
                 match self.file_tool.edit(params) {
                     Ok(changed) => {
                         if changed {
@@ -126,7 +171,11 @@ impl TuiToolExecutor {
                 }
             },
             "list_directory" => {
-                let path = args.get("path").and_then(|v| v.as_str()).unwrap_or(".").to_string();
+                let path = args
+                    .get("path")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or(".")
+                    .to_string();
                 let params = FileListParams { path };
                 match self.file_tool.list(params) {
                     Ok(entries) => (entries.join("\n"), false),
@@ -134,7 +183,11 @@ impl TuiToolExecutor {
                 }
             },
             "shell" | "run_command" => {
-                let command = args.get("command").and_then(|v| v.as_str()).unwrap_or("").to_string();
+                let command = args
+                    .get("command")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .to_string();
                 let timeout = args
                     .get("timeout")
                     .and_then(serde_json::Value::as_u64)
@@ -158,15 +211,20 @@ impl TuiToolExecutor {
                     Err(e) => (format!("Error: {e}"), true),
                 }
             },
-            "git_status" => {
-                match self.git_tool.status(None) {
-                    Ok(output) => (output, false),
-                    Err(e) => (format!("Error: {e}"), true),
-                }
+            "git_status" => match self.git_tool.status(None) {
+                Ok(output) => (output, false),
+                Err(e) => (format!("Error: {e}"), true),
             },
             "git_diff" => {
-                let staged = args.get("staged").and_then(serde_json::Value::as_bool).unwrap_or(false);
-                let path = args.get("path").or_else(|| args.get("file")).and_then(|v| v.as_str()).map(String::from);
+                let staged = args
+                    .get("staged")
+                    .and_then(serde_json::Value::as_bool)
+                    .unwrap_or(false);
+                let path = args
+                    .get("path")
+                    .or_else(|| args.get("file"))
+                    .and_then(|v| v.as_str())
+                    .map(String::from);
                 let params = GitDiffParams { staged, path };
                 match self.git_tool.diff(params, None) {
                     Ok(output) => (output, false),
@@ -174,8 +232,15 @@ impl TuiToolExecutor {
                 }
             },
             "git_log" => {
-                let count = args.get("count").and_then(serde_json::Value::as_u64).unwrap_or(20) as usize; // safe: target pointer width >= 32
-                let path = args.get("path").or_else(|| args.get("file")).and_then(|v| v.as_str()).map(String::from);
+                let count = args
+                    .get("count")
+                    .and_then(serde_json::Value::as_u64)
+                    .unwrap_or(20) as usize; // safe: target pointer width >= 32
+                let path = args
+                    .get("path")
+                    .or_else(|| args.get("file"))
+                    .and_then(|v| v.as_str())
+                    .map(String::from);
                 let params = GitLogParams { count, path };
                 match self.git_tool.log(params, None) {
                     Ok(output) => (output, false),
@@ -277,7 +342,9 @@ impl App {
     /// Build workspace context from the current directory.
     /// Returns None if the current directory doesn't look like a project.
     fn build_workspace_context() -> Option<String> {
-        let Ok(cwd) = std::env::current_dir() else { return None };
+        let Ok(cwd) = std::env::current_dir() else {
+            return None;
+        };
 
         // Only build context if there's a recognizable project marker
         let has_project_marker = ["Cargo.toml", "package.json", "pyproject.toml", "go.mod"]
@@ -303,12 +370,13 @@ impl App {
             .as_deref()
             .unwrap_or("deepseek");
 
-        let llm_config = llm::LlmConfig::from_config(&self.config.llm, provider_name).map_err(|e| {
-            anyhow::anyhow!(
-                "Failed to create LLM config: {e}. Set the appropriate API key \
+        let llm_config =
+            llm::LlmConfig::from_config(&self.config.llm, provider_name).map_err(|e| {
+                anyhow::anyhow!(
+                    "Failed to create LLM config: {e}. Set the appropriate API key \
                  (e.g., DEEPSEEK_API_KEY, ANTHROPIC_API_KEY, OPENAI_API_KEY)."
-            )
-        })?;
+                )
+            })?;
 
         llm::create_provider(&llm_config)
             .map_err(|e| anyhow::anyhow!("Failed to create provider: {e}"))
@@ -340,9 +408,7 @@ impl App {
                         let session_id = clawdius_core::session::SessionId(
                             id.parse::<uuid::Uuid>().unwrap_or_default(),
                         );
-                        if let Ok(Some(session)) =
-                            self.session_manager.load_session(&session_id)
-                        {
+                        if let Ok(Some(session)) = self.session_manager.load_session(&session_id) {
                             self.session = Some(session);
                             self.chat_view.add_message(Message::system(format!(
                                 "Switched to session {}",
@@ -631,48 +697,46 @@ impl App {
                         "Compacted conversation history to last {keep} messages"
                     )));
                 } else {
-                    self.chat_view
-                        .add_message(Message::system("Conversation history already compact".to_string()));
+                    self.chat_view.add_message(Message::system(
+                        "Conversation history already compact".to_string(),
+                    ));
                 }
             },
-            "sessions" => {
-                match self.session_manager.list_sessions() {
-                    Ok(sessions) => {
-                        let entries: Vec<SessionEntry> = sessions
-                            .iter()
-                            .map(|s| {
-                                let title_text = s
-                                    .title
-                                    .as_deref()
-                                    .or_else(|| {
-                                        s.messages.first().and_then(|m| match &m.content {
-                                            clawdius_core::session::MessageContent::Text(t) => {
-                                                t.lines().next()
-                                            },
-                                            clawdius_core::session::MessageContent::MultiPart(_) => None,
-                                        })
+            "sessions" => match self.session_manager.list_sessions() {
+                Ok(sessions) => {
+                    let entries: Vec<SessionEntry> = sessions
+                        .iter()
+                        .map(|s| {
+                            let title_text = s
+                                .title
+                                .as_deref()
+                                .or_else(|| {
+                                    s.messages.first().and_then(|m| match &m.content {
+                                        clawdius_core::session::MessageContent::Text(t) => {
+                                            t.lines().next()
+                                        },
+                                        clawdius_core::session::MessageContent::MultiPart(_) => {
+                                            None
+                                        },
                                     })
-                                    .unwrap_or("(empty)");
-                                SessionEntry {
-                                    id: s.id.to_string(),
-                                    title: title_text.chars().take(60).collect(),
-                                    message_count: s.messages.len(),
-                                    last_active: s.created_at.format("%Y-%m-%d %H:%M").to_string(),
-                                    tokens_used: s.total_tokens(),
-                                    is_active: self
-                                        .session
-                                        .as_ref()
-                                        .is_some_and(|cur| cur.id == s.id),
-                                }
-                            })
-                            .collect();
-                        self.session_picker.set_entries(entries);
-                        self.session_picker.open();
-                    },
-                    Err(e) => {
-                        self.error_message = Some(format!("Failed to list sessions: {e}"));
-                    },
-                }
+                                })
+                                .unwrap_or("(empty)");
+                            SessionEntry {
+                                id: s.id.to_string(),
+                                title: title_text.chars().take(60).collect(),
+                                message_count: s.messages.len(),
+                                last_active: s.created_at.format("%Y-%m-%d %H:%M").to_string(),
+                                tokens_used: s.total_tokens(),
+                                is_active: self.session.as_ref().is_some_and(|cur| cur.id == s.id),
+                            }
+                        })
+                        .collect();
+                    self.session_picker.set_entries(entries);
+                    self.session_picker.open();
+                },
+                Err(e) => {
+                    self.error_message = Some(format!("Failed to list sessions: {e}"));
+                },
             },
             "session" => {
                 if parts.len() > 1 {
@@ -690,17 +754,14 @@ impl App {
                                 )));
                             },
                             Ok(None) => {
-                                self.error_message =
-                                    Some(format!("Session '{id_str}' not found"));
+                                self.error_message = Some(format!("Session '{id_str}' not found"));
                             },
                             Err(e) => {
-                                self.error_message =
-                                    Some(format!("Failed to load session: {e}"));
+                                self.error_message = Some(format!("Failed to load session: {e}"));
                             },
                         }
                     } else {
-                        self.error_message =
-                            Some(format!("Invalid session ID: '{id_str}'"));
+                        self.error_message = Some(format!("Invalid session ID: '{id_str}'"));
                     }
                 } else {
                     self.error_message = Some("Usage: :session <uuid>".to_string());
@@ -798,8 +859,7 @@ impl App {
                     let task = parts[1..].join(" ");
                     self.start_sprint(task);
                 } else {
-                    self.error_message =
-                        Some("Usage: :sprint <task description>".to_string());
+                    self.error_message = Some("Usage: :sprint <task description>".to_string());
                 }
             },
             "auto" => {
@@ -807,8 +867,7 @@ impl App {
                     let task = parts[1..].join(" ");
                     self.start_auto(task);
                 } else {
-                    self.error_message =
-                        Some("Usage: :auto <task description>".to_string());
+                    self.error_message = Some("Usage: :auto <task description>".to_string());
                 }
             },
             "generate" | "gen" => {
@@ -816,8 +875,7 @@ impl App {
                     let task = parts[1..].join(" ");
                     self.start_generate(task);
                 } else {
-                    self.error_message =
-                        Some("Usage: :generate <task description>".to_string());
+                    self.error_message = Some("Usage: :generate <task description>".to_string());
                 }
             },
             "test" => {
@@ -839,7 +897,8 @@ impl App {
                     )));
                 } else {
                     self.chat_view.add_message(Message::system(
-                        "Usage: :doc <file>\nFor full doc generation, use: clawdius doc <file>".to_string(),
+                        "Usage: :doc <file>\nFor full doc generation, use: clawdius doc <file>"
+                            .to_string(),
                     ));
                 }
             },
@@ -875,7 +934,12 @@ impl App {
                     let sub = parts[1].trim();
                     match sub {
                         "show" | "s" => {
-                            let provider = self.config.llm.default_provider.as_deref().unwrap_or("none");
+                            let provider = self
+                                .config
+                                .llm
+                                .default_provider
+                                .as_deref()
+                                .unwrap_or("none");
                             self.error_message = Some(format!(
                                 "Provider: {provider}\nTimeout: {}s\nTools: {}\nMode: {}",
                                 self.request_timeout_secs,
@@ -884,9 +948,8 @@ impl App {
                             ));
                         },
                         _ => {
-                            self.error_message = Some(
-                                "Usage: :config show\nSubcommands: show".to_string(),
-                            );
+                            self.error_message =
+                                Some("Usage: :config show\nSubcommands: show".to_string());
                         },
                     }
                 } else {
@@ -1009,13 +1072,15 @@ impl App {
         let user_content = match self.workspace_context.as_deref() {
             Some(ctx) if !ctx.is_empty() => {
                 format!("{ctx}\n\n## Project Structure\n{context_str}")
-            }
+            },
             _ => context_str,
         };
 
         // Add user message to conversation history
-        self.conversation_history
-            .push(ChatMessage { role: ChatRole::User, content: user_content });
+        self.conversation_history.push(ChatMessage {
+            role: ChatRole::User,
+            content: user_content,
+        });
 
         // Add a placeholder streaming message
         let mut stream_msg = Message::assistant("");
@@ -1059,7 +1124,9 @@ impl App {
     /// Poll the stream receiver for a structured event. Call this from the event loop.
     /// Returns `true` if an event was received (or stream ended).
     pub fn poll_stream(&mut self) -> bool {
-        let Some(rx) = &mut self.stream_rx else { return false };
+        let Some(rx) = &mut self.stream_rx else {
+            return false;
+        };
 
         match rx.try_recv() {
             Ok(event) => {
@@ -1083,21 +1150,30 @@ impl App {
                         stream_msg.streaming = true;
                         self.chat_view.add_message(stream_msg);
                     },
-                    TuiEvent::ToolResult { name, output, is_error } => {
+                    TuiEvent::ToolResult {
+                        name,
+                        output,
+                        is_error,
+                    } => {
                         let prefix = if is_error { "❌" } else { "✅" };
                         let display_output = if output.len() > 500 {
                             format!("{}...\n[{} bytes total]", &output[..500], output.len())
                         } else {
                             output
                         };
-                        self.chat_view
-                            .add_message(Message::tool(format!("{prefix} {name}: {display_output}")));
+                        self.chat_view.add_message(Message::tool(format!(
+                            "{prefix} {name}: {display_output}"
+                        )));
                         // Refresh file list after file edits
                         if matches!(name.as_str(), "write_file" | "edit_file") && !is_error {
                             self.file_list.refresh();
                         }
                     },
-                    TuiEvent::Phase { name, status, detail } => {
+                    TuiEvent::Phase {
+                        name,
+                        status,
+                        detail,
+                    } => {
                         use super::types::PhaseStatus;
                         let icon = match status {
                             PhaseStatus::Started => "▶",
@@ -1108,7 +1184,9 @@ impl App {
                         };
                         let msg = match &status {
                             PhaseStatus::Started => format!("{icon} {name}"),
-                            PhaseStatus::Progress(s) | PhaseStatus::Completed(s) => format!("{icon} {name}: {s}"),
+                            PhaseStatus::Progress(s) | PhaseStatus::Completed(s) => {
+                                format!("{icon} {name}: {s}")
+                            },
                             PhaseStatus::Failed(s) => format!("{icon} {name} FAILED: {s}"),
                             PhaseStatus::Skipped => format!("{icon} {name}: skipped"),
                         };
@@ -1125,7 +1203,8 @@ impl App {
                     },
                     TuiEvent::Error(e) => {
                         self.chat_view.finish_streaming();
-                        self.chat_view.append_to_last_message(&format!("\nError: {e}"));
+                        self.chat_view
+                            .append_to_last_message(&format!("\nError: {e}"));
                         self.is_loading = false;
                         self.iteration_count = 0;
                         self.stream_rx = None;
@@ -1175,13 +1254,10 @@ impl App {
                         self.chat_view.add_message(Message::system(format!(
                             "{icon} {} {}",
                             event.label(),
-                            event
-                                .path()
-                                .file_name()
-                                .map_or_else(
-                                    || event.path().to_string_lossy().to_string(),
-                                    |n| n.to_string_lossy().to_string(),
-                                )
+                            event.path().file_name().map_or_else(
+                                || event.path().to_string_lossy().to_string(),
+                                |n| n.to_string_lossy().to_string(),
+                            )
                         )));
                     }
                 },
@@ -1200,7 +1276,8 @@ impl App {
     /// Start a sprint workflow in the background.
     fn start_sprint(&mut self, task: String) {
         self.chat_view.add_message(Message::user(&task));
-        self.chat_view.add_message(Message::system(format!("🚀 Starting sprint: {task}")));
+        self.chat_view
+            .add_message(Message::system(format!("🚀 Starting sprint: {task}")));
         self.is_loading = true;
         self.spinner.tick();
 
@@ -1219,21 +1296,22 @@ impl App {
 
         tokio::spawn(async move {
             // Create provider
-            let llm_config = match clawdius_core::llm::LlmConfig::from_config(
-                &config_clone.llm,
-                &provider_name,
-            ) {
-                Ok(c) => c,
-                Err(e) => {
-                    let _ = tx.send(TuiEvent::Error(format!("Config error: {e}"))).await;
-                    let _ = tx.send(TuiEvent::Done).await;
-                    return;
-                },
-            };
+            let llm_config =
+                match clawdius_core::llm::LlmConfig::from_config(&config_clone.llm, &provider_name)
+                {
+                    Ok(c) => c,
+                    Err(e) => {
+                        let _ = tx.send(TuiEvent::Error(format!("Config error: {e}"))).await;
+                        let _ = tx.send(TuiEvent::Done).await;
+                        return;
+                    },
+                };
             let provider = match clawdius_core::llm::create_provider(&llm_config) {
                 Ok(p) => p,
                 Err(e) => {
-                    let _ = tx.send(TuiEvent::Error(format!("Provider error: {e}"))).await;
+                    let _ = tx
+                        .send(TuiEvent::Error(format!("Provider error: {e}")))
+                        .await;
                     let _ = tx.send(TuiEvent::Done).await;
                     return;
                 },
@@ -1241,8 +1319,7 @@ impl App {
             let llm = std::sync::Arc::new(provider);
 
             // Build sprint config
-            let mut sprint_config =
-                clawdius_core::agentic::sprint::SprintConfig::new(&task);
+            let mut sprint_config = clawdius_core::agentic::sprint::SprintConfig::new(&task);
             sprint_config.project_root = cwd;
             sprint_config.auto_approve = true;
             sprint_config.real_execution = true;
@@ -1296,7 +1373,9 @@ impl App {
                     }
                 },
                 Err(e) => {
-                    let _ = tx.send(TuiEvent::Error(format!("Sprint failed: {e}"))).await;
+                    let _ = tx
+                        .send(TuiEvent::Error(format!("Sprint failed: {e}")))
+                        .await;
                 },
             }
             let _ = tx.send(TuiEvent::Done).await;
@@ -1306,7 +1385,8 @@ impl App {
     /// Start an auto (single LLM call + optional test/commit) in the background.
     fn start_auto(&mut self, task: String) {
         self.chat_view.add_message(Message::user(&task));
-        self.chat_view.add_message(Message::system("🤖 Auto mode: processing task..."));
+        self.chat_view
+            .add_message(Message::system("🤖 Auto mode: processing task..."));
         self.is_loading = true;
         self.spinner.tick();
 
@@ -1323,21 +1403,22 @@ impl App {
         let config_clone = self.config.clone();
 
         tokio::spawn(async move {
-            let llm_config = match clawdius_core::llm::LlmConfig::from_config(
-                &config_clone.llm,
-                &provider_name,
-            ) {
-                Ok(c) => c,
-                Err(e) => {
-                    let _ = tx.send(TuiEvent::Error(format!("Config error: {e}"))).await;
-                    let _ = tx.send(TuiEvent::Done).await;
-                    return;
-                },
-            };
+            let llm_config =
+                match clawdius_core::llm::LlmConfig::from_config(&config_clone.llm, &provider_name)
+                {
+                    Ok(c) => c,
+                    Err(e) => {
+                        let _ = tx.send(TuiEvent::Error(format!("Config error: {e}"))).await;
+                        let _ = tx.send(TuiEvent::Done).await;
+                        return;
+                    },
+                };
             let provider = match clawdius_core::llm::create_provider(&llm_config) {
                 Ok(p) => p,
                 Err(e) => {
-                    let _ = tx.send(TuiEvent::Error(format!("Provider error: {e}"))).await;
+                    let _ = tx
+                        .send(TuiEvent::Error(format!("Provider error: {e}")))
+                        .await;
                     let _ = tx.send(TuiEvent::Done).await;
                     return;
                 },
@@ -1347,8 +1428,10 @@ impl App {
             let messages = vec![
                 clawdius_core::llm::ChatMessage {
                     role: clawdius_core::llm::ChatRole::System,
-                    content: "You are an autonomous coding assistant. Complete the task concisely. \
-                             Make real file changes using [TOOL_CALL] blocks when needed.".to_string(),
+                    content:
+                        "You are an autonomous coding assistant. Complete the task concisely. \
+                             Make real file changes using [TOOL_CALL] blocks when needed."
+                            .to_string(),
                 },
                 clawdius_core::llm::ChatMessage {
                     role: clawdius_core::llm::ChatRole::User,
@@ -1372,7 +1455,9 @@ impl App {
     #[allow(clippy::too_many_lines)]
     fn start_generate(&mut self, task: String) {
         self.chat_view.add_message(Message::user(&task));
-        self.chat_view.add_message(Message::system("⚡ Generate mode: agentic code generation..."));
+        self.chat_view.add_message(Message::system(
+            "⚡ Generate mode: agentic code generation...",
+        ));
         self.is_loading = true;
         self.spinner.tick();
 
@@ -1389,21 +1474,22 @@ impl App {
         let config_clone = self.config.clone();
 
         tokio::spawn(async move {
-            let llm_config = match clawdius_core::llm::LlmConfig::from_config(
-                &config_clone.llm,
-                &provider_name,
-            ) {
-                Ok(c) => c,
-                Err(e) => {
-                    let _ = tx.send(TuiEvent::Error(format!("Config error: {e}"))).await;
-                    let _ = tx.send(TuiEvent::Done).await;
-                    return;
-                },
-            };
+            let llm_config =
+                match clawdius_core::llm::LlmConfig::from_config(&config_clone.llm, &provider_name)
+                {
+                    Ok(c) => c,
+                    Err(e) => {
+                        let _ = tx.send(TuiEvent::Error(format!("Config error: {e}"))).await;
+                        let _ = tx.send(TuiEvent::Done).await;
+                        return;
+                    },
+                };
             let provider = match clawdius_core::llm::create_provider(&llm_config) {
                 Ok(p) => p,
                 Err(e) => {
-                    let _ = tx.send(TuiEvent::Error(format!("Provider error: {e}"))).await;
+                    let _ = tx
+                        .send(TuiEvent::Error(format!("Provider error: {e}")))
+                        .await;
                     let _ = tx.send(TuiEvent::Done).await;
                     return;
                 },
@@ -1411,7 +1497,7 @@ impl App {
             let llm = std::sync::Arc::new(provider);
 
             let request = clawdius_core::agentic::TaskRequest {
-                                id: uuid::Uuid::new_v4().to_string(),
+                id: uuid::Uuid::new_v4().to_string(),
                 description: task.clone(),
                 target_files: Vec::new(),
                 mode: clawdius_core::agentic::GenerationMode::iterative_with_max(3),
@@ -1427,30 +1513,27 @@ impl App {
                 trust_level: clawdius_core::agentic::TrustLevel::Medium,
             };
 
-            let mut system =
-                clawdius_core::agentic::AgenticSystem::new(
-                    request.mode.clone(),
-                    request.test_strategy,
-                    request.apply_workflow.clone(),
-                )
-                .with_llm_client(llm);
+            let mut system = clawdius_core::agentic::AgenticSystem::new(
+                request.mode.clone(),
+                request.test_strategy,
+                request.apply_workflow.clone(),
+            )
+            .with_llm_client(llm);
 
             match system.execute(request).await {
                 Ok(result) => {
                     let _ = tx
                         .send(TuiEvent::Phase {
                             name: "Generate".to_string(),
-                            status: super::types::PhaseStatus::Completed(
-                                if result.success {
-                                    format!(
-                                        "{} files changed in {}ms",
-                                        result.changes.len(),
-                                        result.duration_ms
-                                    )
-                                } else {
-                                    "Generation failed".to_string()
-                                },
-                            ),
+                            status: super::types::PhaseStatus::Completed(if result.success {
+                                format!(
+                                    "{} files changed in {}ms",
+                                    result.changes.len(),
+                                    result.duration_ms
+                                )
+                            } else {
+                                "Generation failed".to_string()
+                            }),
                             detail: format!(
                                 "Files: {}",
                                 result
@@ -1479,7 +1562,9 @@ impl App {
                     }
                 },
                 Err(e) => {
-                    let _ = tx.send(TuiEvent::Error(format!("Generate failed: {e}"))).await;
+                    let _ = tx
+                        .send(TuiEvent::Error(format!("Generate failed: {e}")))
+                        .await;
                 },
             }
             let _ = tx.send(TuiEvent::Done).await;
@@ -1504,7 +1589,8 @@ impl App {
                 } else {
                     stdout
                 };
-                self.chat_view.add_message(Message::tool(result.trim().to_string()));
+                self.chat_view
+                    .add_message(Message::tool(result.trim().to_string()));
             },
             Err(e) => {
                 self.error_message = Some(format!("Failed to run command: {e}"));
@@ -1543,7 +1629,7 @@ impl App {
             AppMode::Chat => self.chat_view.scroll_up(),
             AppMode::FileBrowser => self.file_list.up(),
             AppMode::Diff => self.diff_view.scroll_up(),
-            AppMode::Help => {}
+            AppMode::Help => {},
         }
     }
 
@@ -1553,7 +1639,7 @@ impl App {
             AppMode::Chat => self.chat_view.scroll_down(50),
             AppMode::FileBrowser => self.file_list.down(),
             AppMode::Diff => self.diff_view.scroll_down(50),
-            AppMode::Help => {}
+            AppMode::Help => {},
         }
     }
 
@@ -1562,10 +1648,10 @@ impl App {
         let outer_chunks = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
-                Constraint::Length(3),   // header
-                Constraint::Min(10),     // main content
-                Constraint::Length(3),   // input
-                Constraint::Length(1),   // status
+                Constraint::Length(3), // header
+                Constraint::Min(10),   // main content
+                Constraint::Length(3), // input
+                Constraint::Length(1), // status
             ])
             .split(f.area());
 
@@ -1577,7 +1663,7 @@ impl App {
         match self.layout_mode {
             LayoutMode::Single => {
                 self.draw_main_content(f, outer_chunks[1], self.mode);
-            }
+            },
             LayoutMode::SplitHorizontal => {
                 let split = Layout::default()
                     .direction(Direction::Horizontal)
@@ -1592,13 +1678,12 @@ impl App {
                 self.draw_messages(f, split[0]);
 
                 // Divider line
-                let divider = Paragraph::new("│")
-                    .style(Style::default().fg(Color::DarkGray));
+                let divider = Paragraph::new("│").style(Style::default().fg(Color::DarkGray));
                 f.render_widget(divider, split[1]);
 
                 // Secondary panel
                 self.draw_main_content(f, split[2], self.secondary_mode);
-            }
+            },
             LayoutMode::SplitVertical => {
                 let split = Layout::default()
                     .direction(Direction::Vertical)
@@ -1613,13 +1698,12 @@ impl App {
                 self.draw_messages(f, split[0]);
 
                 // Divider
-                let divider = Paragraph::new("─")
-                    .style(Style::default().fg(Color::DarkGray));
+                let divider = Paragraph::new("─").style(Style::default().fg(Color::DarkGray));
                 f.render_widget(divider, split[1]);
 
                 // Secondary
                 self.draw_main_content(f, split[2], self.secondary_mode);
-            }
+            },
         }
 
         if let Some(ref error) = self.error_message {
@@ -1629,7 +1713,8 @@ impl App {
         // Render session picker popup on top
         if self.session_picker.visible {
             let theme = theme::current();
-            let widget = components::session_picker::SessionPickerWidget::new(&self.session_picker, theme);
+            let widget =
+                components::session_picker::SessionPickerWidget::new(&self.session_picker, theme);
             f.render_widget(widget, f.area());
         }
 
@@ -1665,11 +1750,7 @@ impl App {
             LayoutMode::SplitVertical => " [VSPLIT]",
         };
 
-        let tools_indicator = if self.tools_enabled {
-            "🔧"
-        } else {
-            ""
-        };
+        let tools_indicator = if self.tools_enabled { "🔧" } else { "" };
 
         let iteration_text = if self.iteration_count > 0 {
             format!(" [iter {}]", self.iteration_count)
@@ -1964,7 +2045,11 @@ async fn run_agentic_loop(
     for iteration in 0..MAX_ITERATIONS {
         // Send iteration event
         let _ = tx
-            .send(TuiEvent::Chunk(format!("\n[iteration {}/{}]\n", iteration + 1, MAX_ITERATIONS)))
+            .send(TuiEvent::Chunk(format!(
+                "\n[iteration {}/{}]\n",
+                iteration + 1,
+                MAX_ITERATIONS
+            )))
             .await;
 
         // Call LLM (with tools if available)

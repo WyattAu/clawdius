@@ -107,14 +107,11 @@ impl SlackAdapter {
                 source: Some(Box::new(e)),
             })?;
 
-        let json: serde_json::Value = response
-            .json()
-            .await
-            .map_err(|e| GatewayError::Adapter {
-                platform: "slack".to_string(),
-                message: format!("failed to parse response: {e}"),
-                source: Some(Box::new(e)),
-            })?;
+        let json: serde_json::Value = response.json().await.map_err(|e| GatewayError::Adapter {
+            platform: "slack".to_string(),
+            message: format!("failed to parse response: {e}"),
+            source: Some(Box::new(e)),
+        })?;
 
         if json.get("ok").and_then(|v| v.as_bool()) != Some(true) {
             let error = json
@@ -178,19 +175,13 @@ impl PlatformAdapter for SlackAdapter {
         Ok(())
     }
 
-    async fn edit_message(
-        &self,
-        message_id: &str,
-        new_text: &str,
-    ) -> Result<(), GatewayError> {
+    async fn edit_message(&self, message_id: &str, new_text: &str) -> Result<(), GatewayError> {
         // message_id format: "channel_id:timestamp"
         let parts: Vec<&str> = message_id.splitn(2, ':').collect();
         if parts.len() != 2 {
             return Err(GatewayError::Adapter {
                 platform: "slack".to_string(),
-                message: format!(
-                    "invalid message_id format (expected channel:ts): {message_id}"
-                ),
+                message: format!("invalid message_id format (expected channel:ts): {message_id}"),
                 source: None,
             });
         }
@@ -275,9 +266,7 @@ impl PlatformAdapter for SlackAdapter {
             messages_processed: self
                 .messages_processed
                 .load(std::sync::atomic::Ordering::Relaxed),
-            errors: self
-                .error_count
-                .load(std::sync::atomic::Ordering::Relaxed),
+            errors: self.error_count.load(std::sync::atomic::Ordering::Relaxed),
             last_message_at: None,
         }
     }

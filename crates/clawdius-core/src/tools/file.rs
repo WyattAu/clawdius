@@ -216,12 +216,12 @@ impl FileTool {
             Ok(result) => {
                 fs::write(path, &result.new_content)?;
                 Ok(true)
-            }
+            },
             Err(e) => {
                 // No strategy matched — return false (backward compatible)
                 tracing::debug!("edit cascade no match: {}", e);
                 Ok(false)
-            }
+            },
         }
     }
 

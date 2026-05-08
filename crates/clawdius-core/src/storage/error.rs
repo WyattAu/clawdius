@@ -19,7 +19,10 @@ pub enum StorageError {
 
     /// A foreign key constraint was violated.
     #[error("foreign key constraint violated: {table} references={references}")]
-    ForeignKeyViolation { table: &'static str, references: &'static str },
+    ForeignKeyViolation {
+        table: &'static str,
+        references: &'static str,
+    },
 
     /// The database connection failed or was lost.
     #[error("connection error: {0}")]
@@ -53,12 +56,18 @@ pub enum StorageError {
 impl StorageError {
     /// Create a not-found error for a session.
     pub fn session_not_found(id: impl std::fmt::Display) -> Self {
-        Self::NotFound { kind: "session", id: id.to_string() }
+        Self::NotFound {
+            kind: "session",
+            id: id.to_string(),
+        }
     }
 
     /// Create a not-found error for a checkpoint.
     pub fn checkpoint_not_found(id: impl std::fmt::Display) -> Self {
-        Self::NotFound { kind: "checkpoint", id: id.to_string() }
+        Self::NotFound {
+            kind: "checkpoint",
+            id: id.to_string(),
+        }
     }
 }
 

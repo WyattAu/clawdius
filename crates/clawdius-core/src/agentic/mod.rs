@@ -47,6 +47,7 @@ pub mod llm_generator;
 pub mod parallel_sprint;
 pub mod planner_agent;
 pub mod review_engine;
+pub mod sandbox;
 pub mod ship_pipeline;
 pub mod sprint;
 pub mod streaming_generator;
@@ -56,7 +57,6 @@ pub mod tool_use;
 pub mod verifier_agent;
 pub mod web_search;
 pub mod worktree;
-pub mod sandbox;
 
 // Re-exports
 pub use apply_workflow::{
@@ -85,6 +85,10 @@ pub use planner_agent::{
 pub use review_engine::{
     FusedReview, ReviewEngine, ReviewFinding, ReviewFocus, ReviewResult, ReviewerConfig,
 };
+pub use sandbox::{
+    ContainerBackend, DirectorySandbox, SandboxCheck, SandboxConfig, SandboxLevel, SandboxStats,
+    SandboxedExecutor,
+};
 pub use ship_pipeline::{
     BenchmarkComparison, BenchmarkReport, BenchmarkResult, BenchmarkSuite, BranchProtection,
     BranchRule, CanaryConfig, CanaryDeployment, CanaryMetrics, CanaryStatus, CommitMessage,
@@ -104,14 +108,8 @@ pub use tool_use::{ToolCall, ToolExecutionResult, ToolUseRound};
 pub use verifier_agent::{
     IssueSeverity, VerificationIssue, VerificationResult, VerificationRule, VerifierAgent,
 };
+pub use web_search::{ScrapedPage, SearchResult, WebSearchAgent, WebSearchConfig, WebSearchStats};
 pub use worktree::{WorktreeError, WorktreeManager, WorktreeSession};
-pub use sandbox::{
-    ContainerBackend, DirectorySandbox, SandboxedExecutor, SandboxCheck, SandboxConfig,
-    SandboxLevel, SandboxStats,
-};
-pub use web_search::{
-    ScrapedPage, SearchResult, WebSearchAgent, WebSearchConfig, WebSearchStats,
-};
 
 use crate::error::Result;
 use crate::llm::LlmClient;
@@ -477,17 +475,18 @@ impl AgenticSystem {
                     message: "Tests failed, attempting error recovery".to_string(),
                 });
 
-                let recovery = ErrorRecovery::with_config(
-                    Arc::clone(client),
-                    ErrorRecoveryConfig::default(),
-                );
+                let recovery =
+                    ErrorRecovery::with_config(Arc::clone(client), ErrorRecoveryConfig::default());
 
                 let errors = error_recovery::parse_compiler_output(&result.output);
 
                 if !errors.is_empty() {
                     for change in changes {
                         let change_language = detect_language_from_path(&change.path);
-                        match recovery.recover(&change.new, &errors, change_language).await {
+                        match recovery
+                            .recover(&change.new, &errors, change_language)
+                            .await
+                        {
                             Ok(recovery_result) if recovery_result.success => {
                                 log.push(LogEntry {
                                     timestamp: current_timestamp(),
@@ -903,13 +902,11 @@ impl AgenticSystem {
             std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
 
         // Auto-generate repo map for project context grounding
-        match crate::graph_rag::repo_map::RepoMap::build(
-            sprint_config.project_root.clone(),
-        ) {
+        match crate::graph_rag::repo_map::RepoMap::build(sprint_config.project_root.clone()) {
             Ok(map) if map.tag_count() > 0 => {
                 sprint_config.extra_context = Some(map.to_string());
-            }
-            _ => {} // Skip repo map if empty or failed
+            },
+            _ => {}, // Skip repo map if empty or failed
         }
 
         // Copy target files as context

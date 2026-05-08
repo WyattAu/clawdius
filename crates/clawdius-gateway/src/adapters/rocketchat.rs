@@ -27,8 +27,7 @@
 use std::sync::Arc;
 
 use crate::adapter::{
-    AdapterHealth, MessageCallback, OutgoingMessage, Platform, PlatformAdapter,
-    PlatformConfig,
+    AdapterHealth, MessageCallback, OutgoingMessage, Platform, PlatformAdapter, PlatformConfig,
 };
 use crate::error::GatewayError;
 
@@ -84,24 +83,18 @@ impl RocketChatAdapter {
             .settings
             .get("server_url")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| {
-                GatewayError::Config("ROCKETCHAT_URL not set".to_string())
-            })?;
+            .ok_or_else(|| GatewayError::Config("ROCKETCHAT_URL not set".to_string()))?;
 
         let auth_token = config
             .api_token
             .as_ref()
-            .ok_or_else(|| {
-                GatewayError::Config("ROCKETCHAT_TOKEN not set".to_string())
-            })?;
+            .ok_or_else(|| GatewayError::Config("ROCKETCHAT_TOKEN not set".to_string()))?;
 
         let rc_user_id = config
             .settings
             .get("rc_user_id")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| {
-                GatewayError::Config("ROCKETCHAT_USER_ID not set".to_string())
-            })?;
+            .ok_or_else(|| GatewayError::Config("ROCKETCHAT_USER_ID not set".to_string()))?;
 
         Ok(Self::new(server_url, auth_token, rc_user_id))
     }
@@ -134,15 +127,9 @@ impl RocketChatAdapter {
         path: &str,
         body: Option<&serde_json::Value>,
     ) -> Result<serde_json::Value, GatewayError> {
-        let url = format!(
-            "{}{path}",
-            self.server_url.trim_end_matches('/')
-        );
+        let url = format!("{}{path}", self.server_url.trim_end_matches('/'));
 
-        let mut request = self
-            .http()
-            .request(method, &url)
-            .headers(self.headers());
+        let mut request = self.http().request(method, &url).headers(self.headers());
 
         if let Some(b) = body {
             request = request.json(b);
@@ -216,11 +203,19 @@ impl PlatformAdapter for RocketChatAdapter {
                 "text": message.text,
                 "tmid": reply_to,
             });
-            self.rc_api(reqwest::Method::POST, "/api/v1/chat.postMessage", Some(&body))
-                .await?;
+            self.rc_api(
+                reqwest::Method::POST,
+                "/api/v1/chat.postMessage",
+                Some(&body),
+            )
+            .await?;
         } else {
-            self.rc_api(reqwest::Method::POST, "/api/v1/chat.postMessage", Some(&body))
-                .await?;
+            self.rc_api(
+                reqwest::Method::POST,
+                "/api/v1/chat.postMessage",
+                Some(&body),
+            )
+            .await?;
         }
 
         self.messages_processed
@@ -228,11 +223,7 @@ impl PlatformAdapter for RocketChatAdapter {
         Ok(())
     }
 
-    async fn edit_message(
-        &self,
-        message_id: &str,
-        new_text: &str,
-    ) -> Result<(), GatewayError> {
+    async fn edit_message(&self, message_id: &str, new_text: &str) -> Result<(), GatewayError> {
         // message_id is the Rocket.Chat message _id
         let body = serde_json::json!({
             "roomId": "default", // Would need to track roomId per message
@@ -303,9 +294,7 @@ impl PlatformAdapter for RocketChatAdapter {
             messages_processed: self
                 .messages_processed
                 .load(std::sync::atomic::Ordering::Relaxed),
-            errors: self
-                .error_count
-                .load(std::sync::atomic::Ordering::Relaxed),
+            errors: self.error_count.load(std::sync::atomic::Ordering::Relaxed),
             last_message_at: None,
         }
     }

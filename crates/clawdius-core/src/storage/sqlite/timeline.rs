@@ -3,8 +3,8 @@ use crate::error::Result;
 use crate::storage::backend::TimelineRepository;
 use crate::storage::error::StorageError;
 use crate::timeline::{
-    CheckpointId, CheckpointInfo, Diff, DiffSummary, ExportedCheckpoint,
-    ExportedFile, FileChangeType, FileDiff, FileVersion, RollbackPreview, StorageStats,
+    CheckpointId, CheckpointInfo, Diff, DiffSummary, ExportedCheckpoint, ExportedFile,
+    FileChangeType, FileDiff, FileVersion, RollbackPreview, StorageStats,
 };
 use chrono::{DateTime, Utc};
 use rusqlite::{params, OptionalExtension};
@@ -68,7 +68,9 @@ impl TimelineRepository for SqliteBackend {
         }
     }
 
-    fn list_checkpoints(&self) -> impl std::future::Future<Output = Result<Vec<CheckpointInfo>>> + Send {
+    fn list_checkpoints(
+        &self,
+    ) -> impl std::future::Future<Output = Result<Vec<CheckpointInfo>>> + Send {
         async move {
             self.with_conn(|conn| {
                 let mut stmt = conn
@@ -110,7 +112,10 @@ impl TimelineRepository for SqliteBackend {
         }
     }
 
-    fn get_checkpoint(&self, id: &CheckpointId) -> impl std::future::Future<Output = Result<Option<CheckpointInfo>>> + Send {
+    fn get_checkpoint(
+        &self,
+        id: &CheckpointId,
+    ) -> impl std::future::Future<Output = Result<Option<CheckpointInfo>>> + Send {
         async move {
             self.with_conn(|conn| {
                 let result = conn
@@ -142,7 +147,10 @@ impl TimelineRepository for SqliteBackend {
         }
     }
 
-    fn delete_checkpoint(&self, id: &CheckpointId) -> impl std::future::Future<Output = Result<()>> + Send {
+    fn delete_checkpoint(
+        &self,
+        id: &CheckpointId,
+    ) -> impl std::future::Future<Output = Result<()>> + Send {
         async move {
             self.with_conn(|conn| {
                 conn.execute(
@@ -172,7 +180,10 @@ impl TimelineRepository for SqliteBackend {
         }
     }
 
-    fn get_file_history(&self, path: &Path) -> impl std::future::Future<Output = Result<Vec<FileVersion>>> + Send {
+    fn get_file_history(
+        &self,
+        path: &Path,
+    ) -> impl std::future::Future<Output = Result<Vec<FileVersion>>> + Send {
         async move {
             let path_str = path.to_string_lossy().to_string();
             self.with_conn(|conn| {
@@ -308,7 +319,11 @@ impl TimelineRepository for SqliteBackend {
         }
     }
 
-    fn diff_checkpoints(&self, from: &CheckpointId, to: &CheckpointId) -> impl std::future::Future<Output = Result<Diff>> + Send {
+    fn diff_checkpoints(
+        &self,
+        from: &CheckpointId,
+        to: &CheckpointId,
+    ) -> impl std::future::Future<Output = Result<Diff>> + Send {
         async move {
             let changes = self.get_files_changed_between(from, to).await?;
             let files_changed: Vec<FileDiff> = changes
@@ -336,10 +351,11 @@ impl TimelineRepository for SqliteBackend {
         }
     }
 
-    fn rollback(&self, _checkpoint_id: &CheckpointId) -> impl std::future::Future<Output = Result<()>> + Send {
-        async move {
-            Ok(())
-        }
+    fn rollback(
+        &self,
+        _checkpoint_id: &CheckpointId,
+    ) -> impl std::future::Future<Output = Result<()>> + Send {
+        async move { Ok(()) }
     }
 
     fn rollback_files(
@@ -347,12 +363,13 @@ impl TimelineRepository for SqliteBackend {
         _checkpoint_id: &CheckpointId,
         _files: &[PathBuf],
     ) -> impl std::future::Future<Output = Result<()>> + Send {
-        async move {
-            Ok(())
-        }
+        async move { Ok(()) }
     }
 
-    fn preview_rollback(&self, checkpoint_id: &CheckpointId) -> impl std::future::Future<Output = Result<RollbackPreview>> + Send {
+    fn preview_rollback(
+        &self,
+        checkpoint_id: &CheckpointId,
+    ) -> impl std::future::Future<Output = Result<RollbackPreview>> + Send {
         async move {
             let checkpoint = self
                 .get_checkpoint(checkpoint_id)
@@ -417,7 +434,10 @@ impl TimelineRepository for SqliteBackend {
         }
     }
 
-    fn query_by_name(&self, pattern: &str) -> impl std::future::Future<Output = Result<Vec<CheckpointInfo>>> + Send {
+    fn query_by_name(
+        &self,
+        pattern: &str,
+    ) -> impl std::future::Future<Output = Result<Vec<CheckpointInfo>>> + Send {
         async move {
             let like_pattern = format!("%{pattern}%");
             self.with_conn(|conn| {
@@ -461,7 +481,10 @@ impl TimelineRepository for SqliteBackend {
         }
     }
 
-    fn export_checkpoint(&self, checkpoint_id: &CheckpointId) -> impl std::future::Future<Output = Result<ExportedCheckpoint>> + Send {
+    fn export_checkpoint(
+        &self,
+        checkpoint_id: &CheckpointId,
+    ) -> impl std::future::Future<Output = Result<ExportedCheckpoint>> + Send {
         async move {
             let checkpoint = self
                 .get_checkpoint(checkpoint_id)
@@ -511,22 +534,26 @@ impl TimelineRepository for SqliteBackend {
         }
     }
 
-    fn import_checkpoint(&self, exported: ExportedCheckpoint) -> impl std::future::Future<Output = Result<CheckpointId>> + Send {
+    fn import_checkpoint(
+        &self,
+        exported: ExportedCheckpoint,
+    ) -> impl std::future::Future<Output = Result<CheckpointId>> + Send {
         async move {
-            let id = self.create_checkpoint(&exported.name, exported.description.as_deref()).await?;
+            let id = self
+                .create_checkpoint(&exported.name, exported.description.as_deref())
+                .await?;
             Ok(id)
         }
     }
 
-    fn cleanup_old_checkpoints(&self, keep_count: usize) -> impl std::future::Future<Output = Result<usize>> + Send {
+    fn cleanup_old_checkpoints(
+        &self,
+        keep_count: usize,
+    ) -> impl std::future::Future<Output = Result<usize>> + Send {
         async move {
             self.with_conn(|conn| {
                 let count: i64 = conn
-                    .query_row(
-                        "SELECT COUNT(*) FROM checkpoints",
-                        [],
-                        |row| row.get(0),
-                    )
+                    .query_row("SELECT COUNT(*) FROM checkpoints", [], |row| row.get(0))
                     .map_err(|e| StorageError::Query {
                         statement: "COUNT checkpoints".to_string(),
                         reason: e.to_string(),
@@ -556,9 +583,7 @@ impl TimelineRepository for SqliteBackend {
     }
 
     fn cleanup_snapshots(&self) -> impl std::future::Future<Output = Result<usize>> + Send {
-        async move {
-            Ok(0)
-        }
+        async move { Ok(0) }
     }
 
     fn storage_stats(&self) -> impl std::future::Future<Output = Result<StorageStats>> + Send {

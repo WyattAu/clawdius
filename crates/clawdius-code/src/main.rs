@@ -122,10 +122,11 @@ async fn run_server() -> anyhow::Result<()> {
         .await;
 
     // Register completion handler (with LLM client)
-    let completion_handler = llm_client.as_ref().map_or_else(
-        CompletionHandler::new,
-        |client| CompletionHandler::with_llm(Arc::clone(client)),
-    );
+    let completion_handler = llm_client
+        .as_ref()
+        .map_or_else(CompletionHandler::new, |client| {
+            CompletionHandler::with_llm(Arc::clone(client))
+        });
     server
         .register_handler("completion/inline", Arc::new(completion_handler))
         .await;

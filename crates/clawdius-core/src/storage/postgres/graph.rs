@@ -8,7 +8,10 @@ use crate::storage::error::StorageError;
 use tokio_postgres::types::ToSql;
 
 impl GraphRepository for PostgresBackend {
-    fn insert_file(&self, file: &FileInfo) -> impl std::future::Future<Output = Result<i64>> + Send {
+    fn insert_file(
+        &self,
+        file: &FileInfo,
+    ) -> impl std::future::Future<Output = Result<i64>> + Send {
         async move {
             let client = self.get_client().await?;
             let result = client
@@ -36,7 +39,10 @@ impl GraphRepository for PostgresBackend {
         }
     }
 
-    fn get_file_by_path(&self, path: &str) -> impl std::future::Future<Output = Result<Option<FileInfo>>> + Send {
+    fn get_file_by_path(
+        &self,
+        path: &str,
+    ) -> impl std::future::Future<Output = Result<Option<FileInfo>>> + Send {
         async move {
             let client = self.get_client().await?;
             let row = client
@@ -65,7 +71,10 @@ impl GraphRepository for PostgresBackend {
         }
     }
 
-    fn get_file_by_id(&self, id: i64) -> impl std::future::Future<Output = Result<Option<FileInfo>>> + Send {
+    fn get_file_by_id(
+        &self,
+        id: i64,
+    ) -> impl std::future::Future<Output = Result<Option<FileInfo>>> + Send {
         async move {
             let client = self.get_client().await?;
             let row = client
@@ -94,7 +103,10 @@ impl GraphRepository for PostgresBackend {
         }
     }
 
-    fn get_file_id(&self, path: &str) -> impl std::future::Future<Output = Result<Option<i64>>> + Send {
+    fn get_file_id(
+        &self,
+        path: &str,
+    ) -> impl std::future::Future<Output = Result<Option<i64>>> + Send {
         async move {
             let client = self.get_client().await?;
             let row = client
@@ -144,7 +156,10 @@ impl GraphRepository for PostgresBackend {
         }
     }
 
-    fn insert_symbol(&self, symbol: &Symbol) -> impl std::future::Future<Output = Result<i64>> + Send {
+    fn insert_symbol(
+        &self,
+        symbol: &Symbol,
+    ) -> impl std::future::Future<Output = Result<i64>> + Send {
         async move {
             let client = self.get_client().await?;
             let result = client
@@ -176,7 +191,10 @@ impl GraphRepository for PostgresBackend {
         }
     }
 
-    fn find_symbol(&self, name: &str) -> impl std::future::Future<Output = Result<Vec<Symbol>>> + Send {
+    fn find_symbol(
+        &self,
+        name: &str,
+    ) -> impl std::future::Future<Output = Result<Vec<Symbol>>> + Send {
         async move {
             let client = self.get_client().await?;
             let rows = client
@@ -205,7 +223,10 @@ impl GraphRepository for PostgresBackend {
         }
     }
 
-    fn find_symbol_by_id(&self, id: i64) -> impl std::future::Future<Output = Result<Option<Symbol>>> + Send {
+    fn find_symbol_by_id(
+        &self,
+        id: i64,
+    ) -> impl std::future::Future<Output = Result<Option<Symbol>>> + Send {
         async move {
             let client = self.get_client().await?;
             let row = client
@@ -229,7 +250,10 @@ impl GraphRepository for PostgresBackend {
         }
     }
 
-    fn find_symbols_by_kind(&self, kind: &SymbolKind) -> impl std::future::Future<Output = Result<Vec<Symbol>>> + Send {
+    fn find_symbols_by_kind(
+        &self,
+        kind: &SymbolKind,
+    ) -> impl std::future::Future<Output = Result<Vec<Symbol>>> + Send {
         async move {
             let client = self.get_client().await?;
             let kind_str = format!("{:?}", kind);
@@ -259,7 +283,10 @@ impl GraphRepository for PostgresBackend {
         }
     }
 
-    fn find_symbols_in_file(&self, file_id: i64) -> impl std::future::Future<Output = Result<Vec<Symbol>>> + Send {
+    fn find_symbols_in_file(
+        &self,
+        file_id: i64,
+    ) -> impl std::future::Future<Output = Result<Vec<Symbol>>> + Send {
         async move {
             let client = self.get_client().await?;
             let rows = client
@@ -288,7 +315,10 @@ impl GraphRepository for PostgresBackend {
         }
     }
 
-    fn search_symbols(&self, query: &str) -> impl std::future::Future<Output = Result<Vec<Symbol>>> + Send {
+    fn search_symbols(
+        &self,
+        query: &str,
+    ) -> impl std::future::Future<Output = Result<Vec<Symbol>>> + Send {
         async move {
             let client = self.get_client().await?;
             let pattern = format!("%{query}%");
@@ -334,7 +364,10 @@ impl GraphRepository for PostgresBackend {
         }
     }
 
-    fn delete_symbols_for_file(&self, file_id: i64) -> impl std::future::Future<Output = Result<()>> + Send {
+    fn delete_symbols_for_file(
+        &self,
+        file_id: i64,
+    ) -> impl std::future::Future<Output = Result<()>> + Send {
         async move {
             let client = self.get_client().await?;
             client
@@ -351,7 +384,10 @@ impl GraphRepository for PostgresBackend {
         }
     }
 
-    fn insert_reference(&self, reference: &Reference) -> impl std::future::Future<Output = Result<()>> + Send {
+    fn insert_reference(
+        &self,
+        reference: &Reference,
+    ) -> impl std::future::Future<Output = Result<()>> + Send {
         async move {
             let client = self.get_client().await?;
             client
@@ -377,7 +413,10 @@ impl GraphRepository for PostgresBackend {
         }
     }
 
-    fn find_symbol_refs(&self, symbol_id: i64) -> impl std::future::Future<Output = Result<Vec<Reference>>> + Send {
+    fn find_symbol_refs(
+        &self,
+        symbol_id: i64,
+    ) -> impl std::future::Future<Output = Result<Vec<Reference>>> + Send {
         async move {
             let client = self.get_client().await?;
             let rows = client
@@ -414,7 +453,10 @@ impl GraphRepository for PostgresBackend {
         }
     }
 
-    fn delete_symbol_refs_for_file(&self, file_id: i64) -> impl std::future::Future<Output = Result<()>> + Send {
+    fn delete_symbol_refs_for_file(
+        &self,
+        file_id: i64,
+    ) -> impl std::future::Future<Output = Result<()>> + Send {
         async move {
             let client = self.get_client().await?;
             client
@@ -431,7 +473,10 @@ impl GraphRepository for PostgresBackend {
         }
     }
 
-    fn insert_relationship(&self, relationship: &Relationship) -> impl std::future::Future<Output = Result<()>> + Send {
+    fn insert_relationship(
+        &self,
+        relationship: &Relationship,
+    ) -> impl std::future::Future<Output = Result<()>> + Send {
         async move {
             let client = self.get_client().await?;
             client
@@ -455,7 +500,10 @@ impl GraphRepository for PostgresBackend {
         }
     }
 
-    fn find_relationships(&self, symbol_id: i64) -> impl std::future::Future<Output = Result<Vec<Relationship>>> + Send {
+    fn find_relationships(
+        &self,
+        symbol_id: i64,
+    ) -> impl std::future::Future<Output = Result<Vec<Relationship>>> + Send {
         async move {
             let client = self.get_client().await?;
             let rows = client
@@ -477,7 +525,10 @@ impl GraphRepository for PostgresBackend {
         }
     }
 
-    fn find_outgoing_relationships(&self, symbol_id: i64) -> impl std::future::Future<Output = Result<Vec<Relationship>>> + Send {
+    fn find_outgoing_relationships(
+        &self,
+        symbol_id: i64,
+    ) -> impl std::future::Future<Output = Result<Vec<Relationship>>> + Send {
         async move {
             let client = self.get_client().await?;
             let rows = client
@@ -499,7 +550,10 @@ impl GraphRepository for PostgresBackend {
         }
     }
 
-    fn find_incoming_relationships(&self, symbol_id: i64) -> impl std::future::Future<Output = Result<Vec<Relationship>>> + Send {
+    fn find_incoming_relationships(
+        &self,
+        symbol_id: i64,
+    ) -> impl std::future::Future<Output = Result<Vec<Relationship>>> + Send {
         async move {
             let client = self.get_client().await?;
             let rows = client

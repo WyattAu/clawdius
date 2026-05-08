@@ -2,7 +2,10 @@ use super::{OutputFormat, SkillAction};
 
 use std::path::PathBuf;
 
-pub(super) async fn handle_skill(action: SkillAction, output_format: OutputFormat) -> anyhow::Result<()> {
+pub(super) async fn handle_skill(
+    action: SkillAction,
+    output_format: OutputFormat,
+) -> anyhow::Result<()> {
     use clawdius_core::llm::providers::LlmClient;
     use clawdius_core::skills::{SkillContext, SkillRegistry};
     use std::sync::Arc;
@@ -133,31 +136,33 @@ pub(super) async fn handle_skill(action: SkillAction, output_format: OutputForma
             let result = registry.execute(&name, ctx).await;
 
             match result {
-                Ok(skill_result) => if output_format == OutputFormat::Json {
-                    println!(
-                        "{}",
-                        serde_json::json!({
-                            "success": skill_result.success,
-                            "output": skill_result.output,
-                            "modified_files": skill_result.modified_files,
-                            "duration_ms": skill_result.duration_ms,
-                        })
-                    );
-                } else {
-                    if skill_result.success {
-                        println!("✅ Skill '{name}' completed successfully");
+                Ok(skill_result) => {
+                    if output_format == OutputFormat::Json {
+                        println!(
+                            "{}",
+                            serde_json::json!({
+                                "success": skill_result.success,
+                                "output": skill_result.output,
+                                "modified_files": skill_result.modified_files,
+                                "duration_ms": skill_result.duration_ms,
+                            })
+                        );
                     } else {
-                        println!("❌ Skill '{name}' failed");
-                    }
-                    if !skill_result.output.is_empty() {
-                        println!();
-                        println!("{}", skill_result.output);
-                    }
-                    if !skill_result.modified_files.is_empty() {
-                        println!();
-                        println!("Files modified:");
-                        for f in &skill_result.modified_files {
-                            println!("  {f}");
+                        if skill_result.success {
+                            println!("✅ Skill '{name}' completed successfully");
+                        } else {
+                            println!("❌ Skill '{name}' failed");
+                        }
+                        if !skill_result.output.is_empty() {
+                            println!();
+                            println!("{}", skill_result.output);
+                        }
+                        if !skill_result.modified_files.is_empty() {
+                            println!();
+                            println!("Files modified:");
+                            for f in &skill_result.modified_files {
+                                println!("  {f}");
+                            }
                         }
                     }
                 },

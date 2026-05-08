@@ -5,6 +5,35 @@ defaultTargets = ["clawdius"]
 [[lean_lib]]
 name = "Clawdius"
 
+-- Proof files from .specs/02_architecture/proofs/
+[[lean_lib]]
+name = "ProofsSpecs"
+srcDir = ".specs/02_architecture/proofs"
+roots = [
+  "agent_loop",
+  "concurrent_execution",
+  "proof_carrying_edits",
+  "repo_map_scoring",
+  "sanitizer_soundness",
+  "security_policy",
+  "token_budget_scan",
+  "vfs_safety",
+]
+
+-- Proof files from .clawdius/specs/02_architecture/proofs/
+[[lean_lib]]
+name = "ProofsClawdius"
+srcDir = ".clawdius/specs/02_architecture/proofs"
+roots = [
+  "proof_audit",
+  "proof_capability",
+  "proof_container",
+  "proof_fsm",
+  "proof_host",
+  "proof_ring_buffer",
+  "proof_sandbox",
+]
+
 [[lean_exe]]
 name = "clawdius"
 root = "Main"

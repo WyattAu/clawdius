@@ -335,7 +335,11 @@ impl RepoMap {
             // Factor 4: Definition length (longer definitions may be more complex)
             let length_score = {
                 let lines = (tag.end_line - tag.line + 1) as f64;
-                if lines > 20.0 { 0.1 } else { 0.0 }
+                if lines > 20.0 {
+                    0.1
+                } else {
+                    0.0
+                }
             };
 
             // Normalize to [0, 1]

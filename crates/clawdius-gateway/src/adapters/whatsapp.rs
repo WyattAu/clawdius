@@ -57,10 +57,7 @@ pub struct WhatsAppAdapter {
 impl WhatsAppAdapter {
     /// Create a new WhatsApp adapter.
     #[must_use]
-    pub fn new(
-        access_token: impl Into<String>,
-        phone_number_id: impl Into<String>,
-    ) -> Self {
+    pub fn new(access_token: impl Into<String>, phone_number_id: impl Into<String>) -> Self {
         Self {
             api_url: "https://graph.facebook.com/v21.0".to_string(),
             access_token: access_token.into(),
@@ -83,22 +80,16 @@ impl WhatsAppAdapter {
         let access_token = config
             .api_token
             .as_ref()
-            .ok_or_else(|| {
-                GatewayError::Config("WHATSAPP_ACCESS_TOKEN not set".to_string())
-            })?;
+            .ok_or_else(|| GatewayError::Config("WHATSAPP_ACCESS_TOKEN not set".to_string()))?;
 
         let phone_number_id = config
             .settings
             .get("phone_number_id")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| {
-                GatewayError::Config("WHATSAPP_PHONE_NUMBER_ID not set".to_string())
-            })?;
+            .ok_or_else(|| GatewayError::Config("WHATSAPP_PHONE_NUMBER_ID not set".to_string()))?;
 
         let mut adapter = Self::new(access_token, phone_number_id);
-        adapter.verify_token = config
-            .webhook_secret
-            .clone();
+        adapter.verify_token = config.webhook_secret.clone();
         Ok(adapter)
     }
 
@@ -138,10 +129,7 @@ impl WhatsAppAdapter {
     }
 
     /// Parse an incoming WhatsApp webhook payload into `IncomingMessages`.
-    pub fn parse_webhook_payload(
-        &self,
-        body: &serde_json::Value,
-    ) -> Vec<IncomingMessage> {
+    pub fn parse_webhook_payload(&self, body: &serde_json::Value) -> Vec<IncomingMessage> {
         let mut messages = Vec::new();
 
         // Navigate the WhatsApp webhook structure
@@ -172,7 +160,10 @@ impl WhatsAppAdapter {
                     .unwrap_or_default();
 
                 for msg in &messages_arr {
-                    let msg_type = msg.get("type").and_then(|t| t.as_str()).unwrap_or("unknown");
+                    let msg_type = msg
+                        .get("type")
+                        .and_then(|t| t.as_str())
+                        .unwrap_or("unknown");
 
                     let text = if msg_type == "text" {
                         msg.get("text")
@@ -185,25 +176,23 @@ impl WhatsAppAdapter {
                     };
 
                     // Extract sender info from contacts
-                    let (user_id, user_name) = contacts
-                        .first()
-                        .map_or_else(
-                            || ("unknown".to_string(), "Unknown".to_string()),
-                            |c| {
-                                let wa_id = c
-                                    .get("wa_id")
-                                    .and_then(|i| i.as_str())
-                                    .unwrap_or("unknown")
-                                    .to_string();
-                                let name = c
-                                    .get("profile")
-                                    .and_then(|p| p.get("name"))
-                                    .and_then(|n| n.as_str())
-                                    .unwrap_or("Unknown")
-                                    .to_string();
-                                (wa_id, name)
-                            },
-                        );
+                    let (user_id, user_name) = contacts.first().map_or_else(
+                        || ("unknown".to_string(), "Unknown".to_string()),
+                        |c| {
+                            let wa_id = c
+                                .get("wa_id")
+                                .and_then(|i| i.as_str())
+                                .unwrap_or("unknown")
+                                .to_string();
+                            let name = c
+                                .get("profile")
+                                .and_then(|p| p.get("name"))
+                                .and_then(|n| n.as_str())
+                                .unwrap_or("Unknown")
+                                .to_string();
+                            (wa_id, name)
+                        },
+                    );
 
                     let message_id = msg
                         .get("id")
@@ -273,10 +262,7 @@ impl PlatformAdapter for WhatsAppAdapter {
     }
 
     async fn send_message(&self, message: OutgoingMessage) -> Result<(), GatewayError> {
-        let url = format!(
-            "{}/messages",
-            self.api_url.trim_end_matches('/')
-        );
+        let url = format!("{}/messages", self.api_url.trim_end_matches('/'));
 
         let body = serde_json::json!({
             "messaging_product": "whatsapp",
@@ -320,11 +306,7 @@ impl PlatformAdapter for WhatsAppAdapter {
         Ok(())
     }
 
-    async fn edit_message(
-        &self,
-        _message_id: &str,
-        new_text: &str,
-    ) -> Result<(), GatewayError> {
+    async fn edit_message(&self, _message_id: &str, new_text: &str) -> Result<(), GatewayError> {
         // WhatsApp does NOT support message editing.
         // Send as a new message.
         let fallback = OutgoingMessage::new(
@@ -388,9 +370,7 @@ impl PlatformAdapter for WhatsAppAdapter {
             messages_processed: self
                 .messages_processed
                 .load(std::sync::atomic::Ordering::Relaxed),
-            errors: self
-                .error_count
-                .load(std::sync::atomic::Ordering::Relaxed),
+            errors: self.error_count.load(std::sync::atomic::Ordering::Relaxed),
             last_message_at: None,
         }
     }

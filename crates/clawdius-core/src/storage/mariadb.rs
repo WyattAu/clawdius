@@ -15,12 +15,11 @@ use crate::graph_rag::ast::{
     FileInfo, Reference, Relationship, RelationshipType, Symbol, SymbolKind,
 };
 use crate::session::types::{
-    ContentPart, Message, MessageContent, MessageRole, Session, SessionId,
-    SessionMeta, TokenUsage,
+    ContentPart, Message, MessageContent, MessageRole, Session, SessionId, SessionMeta, TokenUsage,
 };
 use crate::timeline::{
-    CheckpointId, CheckpointInfo, Diff, DiffSummary, ExportedCheckpoint,
-    ExportedFile, FileChangeType, FileDiff, FileVersion, RollbackPreview, StorageStats,
+    CheckpointId, CheckpointInfo, Diff, DiffSummary, ExportedCheckpoint, ExportedFile,
+    FileChangeType, FileDiff, FileVersion, RollbackPreview, StorageStats,
 };
 use crate::workspace::{Project, ProjectId, Workspace, WorkspaceId};
 use chrono::{DateTime, Utc};
@@ -170,8 +169,7 @@ CREATE TABLE IF NOT EXISTS graph_relationships (
 ";
 
 fn parse_dt(s: &str) -> DateTime<Utc> {
-    DateTime::parse_from_rfc3339(s)
-        .map_or_else(|_| Utc::now(), |dt| dt.with_timezone(&Utc))
+    DateTime::parse_from_rfc3339(s).map_or_else(|_| Utc::now(), |dt| dt.with_timezone(&Utc))
 }
 
 // ─────────────────────────────────────────────────────────
@@ -214,11 +212,11 @@ impl MariaDbBackend {
             serde_json::from_str(&extra_json).unwrap_or_default();
 
         Ok(Session {
-            id: SessionId::from_uuid(
-                Uuid::parse_str(&id_str).map_err(|e| StorageError::RowConversion {
+            id: SessionId::from_uuid(Uuid::parse_str(&id_str).map_err(|e| {
+                StorageError::RowConversion {
                     reason: format!("invalid session UUID: {e}"),
-                })?,
-            ),
+                }
+            })?),
             title,
             messages: Vec::new(),
             meta: SessionMeta {
@@ -389,7 +387,10 @@ impl MariaDbBackend {
 // ─────────────────────────────────────────────────────────
 
 impl SessionRepository for MariaDbBackend {
-    fn create_session(&self, session: &Session) -> impl std::future::Future<Output = Result<()>> + Send {
+    fn create_session(
+        &self,
+        session: &Session,
+    ) -> impl std::future::Future<Output = Result<()>> + Send {
         async move {
             let mut conn = self.pool.get_conn().await.map_err(StorageError::from)?;
             let tags_json = serde_json::to_string(&session.meta.tags)?;
@@ -416,22 +417,30 @@ impl SessionRepository for MariaDbBackend {
                     "created_at" => session.created_at.to_rfc3339(),
                     "updated_at" => session.updated_at.to_rfc3339(),
                 },
-            ).await.map_err(StorageError::from)?;
+            )
+            .await
+            .map_err(StorageError::from)?;
 
             Ok(())
         }
     }
 
-    fn load_session(&self, id: &SessionId) -> impl std::future::Future<Output = Result<Option<Session>>> + Send {
+    fn load_session(
+        &self,
+        id: &SessionId,
+    ) -> impl std::future::Future<Output = Result<Option<Session>>> + Send {
         async move {
             let mut conn = self.pool.get_conn().await.map_err(StorageError::from)?;
-            let result = conn.exec_first(
-                r"SELECT id, title, provider, model, working_dir, tags, extra,
+            let result = conn
+                .exec_first(
+                    r"SELECT id, title, provider, model, working_dir, tags, extra,
                          input_tokens, output_tokens, cached_tokens,
                          created_at, updated_at
                   FROM sessions WHERE id = :id",
-                params! { "id" => id.to_string() },
-            ).await.map_err(StorageError::from)?;
+                    params! { "id" => id.to_string() },
+                )
+                .await
+                .map_err(StorageError::from)?;
 
             match result {
                 Some(row) => Ok(Some(Self::row_to_session(&row)?)),
@@ -440,19 +449,25 @@ impl SessionRepository for MariaDbBackend {
         }
     }
 
-    fn load_session_full(&self, id: &SessionId) -> impl std::future::Future<Output = Result<Option<Session>>> + Send {
+    fn load_session_full(
+        &self,
+        id: &SessionId,
+    ) -> impl std::future::Future<Output = Result<Option<Session>>> + Send {
         async move {
             let Some(mut session) = self.load_session(id).await? else {
                 return Ok(None);
             };
 
             let mut conn = self.pool.get_conn().await.map_err(StorageError::from)?;
-            let rows: Vec<mysql_async::Row> = conn.exec(
-                r"SELECT id, session_id, role, content, tokens, tool_calls, metadata, created_at
+            let rows: Vec<mysql_async::Row> = conn
+                .exec(
+                    r"SELECT id, session_id, role, content, tokens, tool_calls, metadata, created_at
                  FROM messages WHERE session_id = :session_id
                  ORDER BY created_at ASC",
-                params! { "session_id" => id.to_string() },
-            ).await.map_err(StorageError::from)?;
+                    params! { "session_id" => id.to_string() },
+                )
+                .await
+                .map_err(StorageError::from)?;
 
             let messages: Vec<Message> = rows
                 .iter()
@@ -467,13 +482,16 @@ impl SessionRepository for MariaDbBackend {
     fn list_sessions(&self) -> impl std::future::Future<Output = Result<Vec<Session>>> + Send {
         async move {
             let mut conn = self.pool.get_conn().await.map_err(StorageError::from)?;
-            let rows: Vec<mysql_async::Row> = conn.query(
-                r"SELECT id, title, provider, model, working_dir, tags, extra,
+            let rows: Vec<mysql_async::Row> = conn
+                .query(
+                    r"SELECT id, title, provider, model, working_dir, tags, extra,
                          input_tokens, output_tokens, cached_tokens,
                          created_at, updated_at
                   FROM sessions
                   ORDER BY updated_at DESC",
-            ).await.map_err(StorageError::from)?;
+                )
+                .await
+                .map_err(StorageError::from)?;
 
             let sessions: Vec<Session> = rows
                 .iter()
@@ -484,22 +502,33 @@ impl SessionRepository for MariaDbBackend {
         }
     }
 
-    fn delete_session(&self, id: &SessionId) -> impl std::future::Future<Output = Result<()>> + Send {
+    fn delete_session(
+        &self,
+        id: &SessionId,
+    ) -> impl std::future::Future<Output = Result<()>> + Send {
         async move {
             let mut conn = self.pool.get_conn().await.map_err(StorageError::from)?;
             conn.exec_drop(
                 "DELETE FROM messages WHERE session_id = :session_id",
                 params! { "session_id" => id.to_string() },
-            ).await.map_err(StorageError::from)?;
+            )
+            .await
+            .map_err(StorageError::from)?;
             conn.exec_drop(
                 "DELETE FROM sessions WHERE id = :id",
                 params! { "id" => id.to_string() },
-            ).await.map_err(StorageError::from)?;
+            )
+            .await
+            .map_err(StorageError::from)?;
             Ok(())
         }
     }
 
-    fn save_message(&self, session_id: &SessionId, message: &Message) -> impl std::future::Future<Output = Result<()>> + Send {
+    fn save_message(
+        &self,
+        session_id: &SessionId,
+        message: &Message,
+    ) -> impl std::future::Future<Output = Result<()>> + Send {
         async move {
             let content_json = match &message.content {
                 MessageContent::Text(text) => serde_json::to_string(&text)?,
@@ -539,13 +568,18 @@ impl SessionRepository for MariaDbBackend {
                     "now" => Utc::now().to_rfc3339(),
                     "id" => session_id.to_string(),
                 },
-            ).await.map_err(StorageError::from)?;
+            )
+            .await
+            .map_err(StorageError::from)?;
 
             Ok(())
         }
     }
 
-    fn search_messages(&self, query: &str) -> impl std::future::Future<Output = Result<Vec<(SessionId, Message)>>> + Send {
+    fn search_messages(
+        &self,
+        query: &str,
+    ) -> impl std::future::Future<Output = Result<Vec<(SessionId, Message)>>> + Send {
         async move {
             let mut conn = self.pool.get_conn().await.map_err(StorageError::from)?;
             let pattern = format!("%{query}%");
@@ -562,11 +596,12 @@ impl SessionRepository for MariaDbBackend {
             for row in &rows {
                 let message = Self::row_to_message(row)?;
                 let session_id_str: String = row.get(1).unwrap_or_default();
-                let session_id = SessionId::from_uuid(
-                    Uuid::parse_str(&session_id_str).map_err(|e| StorageError::RowConversion {
-                        reason: format!("invalid session UUID: {e}"),
-                    })?,
-                );
+                let session_id =
+                    SessionId::from_uuid(Uuid::parse_str(&session_id_str).map_err(|e| {
+                        StorageError::RowConversion {
+                            reason: format!("invalid session UUID: {e}"),
+                        }
+                    })?);
                 results.push((session_id, message));
             }
 
@@ -574,7 +609,11 @@ impl SessionRepository for MariaDbBackend {
         }
     }
 
-    fn update_token_usage(&self, id: &SessionId, usage: &TokenUsage) -> impl std::future::Future<Output = Result<()>> + Send {
+    fn update_token_usage(
+        &self,
+        id: &SessionId,
+        usage: &TokenUsage,
+    ) -> impl std::future::Future<Output = Result<()>> + Send {
         async move {
             let mut conn = self.pool.get_conn().await.map_err(StorageError::from)?;
             conn.exec_drop(
@@ -591,7 +630,9 @@ impl SessionRepository for MariaDbBackend {
                     "updated_at" => Utc::now().to_rfc3339(),
                     "id" => id.to_string(),
                 },
-            ).await.map_err(StorageError::from)?;
+            )
+            .await
+            .map_err(StorageError::from)?;
             Ok(())
         }
     }
@@ -609,7 +650,9 @@ impl TimelineRepository for MariaDbBackend {
             conn.exec_drop(
                 r"INSERT IGNORE INTO tracked_files (path) VALUES (:path)",
                 params! { "path" => &path_str },
-            ).await.map_err(StorageError::from)?;
+            )
+            .await
+            .map_err(StorageError::from)?;
             Ok(())
         }
     }
@@ -617,8 +660,10 @@ impl TimelineRepository for MariaDbBackend {
     fn tracked_file_count(&self) -> impl std::future::Future<Output = Result<usize>> + Send {
         async move {
             let mut conn = self.pool.get_conn().await.map_err(StorageError::from)?;
-            let result: Option<i64> = conn.query_first("SELECT COUNT(*) FROM tracked_files")
-                .await.map_err(StorageError::from)?;
+            let result: Option<i64> = conn
+                .query_first("SELECT COUNT(*) FROM tracked_files")
+                .await
+                .map_err(StorageError::from)?;
             Ok(result.unwrap_or(0) as usize)
         }
     }
@@ -646,43 +691,62 @@ impl TimelineRepository for MariaDbBackend {
         }
     }
 
-    fn list_checkpoints(&self) -> impl std::future::Future<Output = Result<Vec<CheckpointInfo>>> + Send {
+    fn list_checkpoints(
+        &self,
+    ) -> impl std::future::Future<Output = Result<Vec<CheckpointInfo>>> + Send {
         async move {
             let mut conn = self.pool.get_conn().await.map_err(StorageError::from)?;
-            let rows: Vec<mysql_async::Row> = conn.query(
-                r"SELECT id, name, description, timestamp, files_count, total_size
+            let rows: Vec<mysql_async::Row> = conn
+                .query(
+                    r"SELECT id, name, description, timestamp, files_count, total_size
                   FROM checkpoints ORDER BY timestamp DESC",
-            ).await.map_err(StorageError::from)?;
+                )
+                .await
+                .map_err(StorageError::from)?;
 
-            let checkpoints: Vec<CheckpointInfo> = rows.iter().map(Self::row_to_checkpoint_info).collect();
+            let checkpoints: Vec<CheckpointInfo> =
+                rows.iter().map(Self::row_to_checkpoint_info).collect();
             Ok(checkpoints)
         }
     }
 
-    fn get_checkpoint(&self, id: &CheckpointId) -> impl std::future::Future<Output = Result<Option<CheckpointInfo>>> + Send {
+    fn get_checkpoint(
+        &self,
+        id: &CheckpointId,
+    ) -> impl std::future::Future<Output = Result<Option<CheckpointInfo>>> + Send {
         async move {
             let mut conn = self.pool.get_conn().await.map_err(StorageError::from)?;
-            let result: Option<mysql_async::Row> = conn.exec_first(
-                r"SELECT id, name, description, timestamp, files_count, total_size
+            let result: Option<mysql_async::Row> = conn
+                .exec_first(
+                    r"SELECT id, name, description, timestamp, files_count, total_size
                   FROM checkpoints WHERE id = :id",
-                params! { "id" => &id.0 },
-            ).await.map_err(StorageError::from)?;
+                    params! { "id" => &id.0 },
+                )
+                .await
+                .map_err(StorageError::from)?;
 
             Ok(result.map(|r| Self::row_to_checkpoint_info(&r)))
         }
     }
 
-    fn delete_checkpoint(&self, id: &CheckpointId) -> impl std::future::Future<Output = Result<()>> + Send {
+    fn delete_checkpoint(
+        &self,
+        id: &CheckpointId,
+    ) -> impl std::future::Future<Output = Result<()>> + Send {
         async move {
             let mut conn = self.pool.get_conn().await.map_err(StorageError::from)?;
             conn.exec_drop(
                 "DELETE FROM file_versions WHERE checkpoint_id = :id",
                 params! { "id" => &id.0 },
-            ).await.map_err(StorageError::from)?;
+            )
+            .await
+            .map_err(StorageError::from)?;
             conn.exec_drop(
                 "DELETE FROM checkpoints WHERE id = :id",
                 params! { "id" => &id.0 },
-            ).await.map_err(StorageError::from)?;
+            )
+            .await
+            .map_err(StorageError::from)?;
             Ok(())
         }
     }
@@ -690,22 +754,30 @@ impl TimelineRepository for MariaDbBackend {
     fn checkpoint_count(&self) -> impl std::future::Future<Output = Result<usize>> + Send {
         async move {
             let mut conn = self.pool.get_conn().await.map_err(StorageError::from)?;
-            let result: Option<i64> = conn.query_first("SELECT COUNT(*) FROM checkpoints")
-                .await.map_err(StorageError::from)?;
+            let result: Option<i64> = conn
+                .query_first("SELECT COUNT(*) FROM checkpoints")
+                .await
+                .map_err(StorageError::from)?;
             Ok(result.unwrap_or(0) as usize)
         }
     }
 
-    fn get_file_history(&self, path: &Path) -> impl std::future::Future<Output = Result<Vec<FileVersion>>> + Send {
+    fn get_file_history(
+        &self,
+        path: &Path,
+    ) -> impl std::future::Future<Output = Result<Vec<FileVersion>>> + Send {
         async move {
             let mut conn = self.pool.get_conn().await.map_err(StorageError::from)?;
             let path_str = path.to_string_lossy().to_string();
-            let rows: Vec<mysql_async::Row> = conn.exec(
-                r"SELECT path, version, checkpoint_id, checksum, size, timestamp
+            let rows: Vec<mysql_async::Row> = conn
+                .exec(
+                    r"SELECT path, version, checkpoint_id, checksum, size, timestamp
                   FROM file_versions WHERE path = :path
                   ORDER BY timestamp DESC",
-                params! { "path" => &path_str },
-            ).await.map_err(StorageError::from)?;
+                    params! { "path" => &path_str },
+                )
+                .await
+                .map_err(StorageError::from)?;
 
             let versions: Vec<FileVersion> = rows.iter().map(Self::row_to_file_version).collect();
             Ok(versions)
@@ -720,15 +792,18 @@ impl TimelineRepository for MariaDbBackend {
         async move {
             let mut conn = self.pool.get_conn().await.map_err(StorageError::from)?;
             let path_str = path.to_string_lossy().to_string();
-            let result: Option<mysql_async::Row> = conn.exec_first(
-                r"SELECT path, version, checkpoint_id, checksum, size, timestamp
+            let result: Option<mysql_async::Row> = conn
+                .exec_first(
+                    r"SELECT path, version, checkpoint_id, checksum, size, timestamp
                   FROM file_versions WHERE path = :path AND checkpoint_id = :checkpoint_id
                   ORDER BY version DESC LIMIT 1",
-                params! {
-                    "path" => &path_str,
-                    "checkpoint_id" => &checkpoint_id.0,
-                },
-            ).await.map_err(StorageError::from)?;
+                    params! {
+                        "path" => &path_str,
+                        "checkpoint_id" => &checkpoint_id.0,
+                    },
+                )
+                .await
+                .map_err(StorageError::from)?;
 
             Ok(result.map(|r| Self::row_to_file_version(&r)))
         }
@@ -775,7 +850,11 @@ impl TimelineRepository for MariaDbBackend {
         }
     }
 
-    fn diff_checkpoints(&self, from: &CheckpointId, to: &CheckpointId) -> impl std::future::Future<Output = Result<Diff>> + Send {
+    fn diff_checkpoints(
+        &self,
+        from: &CheckpointId,
+        to: &CheckpointId,
+    ) -> impl std::future::Future<Output = Result<Diff>> + Send {
         async move {
             let changes = self.get_files_changed_between(from, to).await?;
             let files_changed: Vec<FileDiff> = changes
@@ -803,10 +882,11 @@ impl TimelineRepository for MariaDbBackend {
         }
     }
 
-    fn rollback(&self, _checkpoint_id: &CheckpointId) -> impl std::future::Future<Output = Result<()>> + Send {
-        async move {
-            Ok(())
-        }
+    fn rollback(
+        &self,
+        _checkpoint_id: &CheckpointId,
+    ) -> impl std::future::Future<Output = Result<()>> + Send {
+        async move { Ok(()) }
     }
 
     fn rollback_files(
@@ -814,12 +894,13 @@ impl TimelineRepository for MariaDbBackend {
         _checkpoint_id: &CheckpointId,
         _files: &[PathBuf],
     ) -> impl std::future::Future<Output = Result<()>> + Send {
-        async move {
-            Ok(())
-        }
+        async move { Ok(()) }
     }
 
-    fn preview_rollback(&self, checkpoint_id: &CheckpointId) -> impl std::future::Future<Output = Result<RollbackPreview>> + Send {
+    fn preview_rollback(
+        &self,
+        checkpoint_id: &CheckpointId,
+    ) -> impl std::future::Future<Output = Result<RollbackPreview>> + Send {
         async move {
             let checkpoint = self
                 .get_checkpoint(checkpoint_id)
@@ -842,38 +923,52 @@ impl TimelineRepository for MariaDbBackend {
     ) -> impl std::future::Future<Output = Result<Vec<CheckpointInfo>>> + Send {
         async move {
             let mut conn = self.pool.get_conn().await.map_err(StorageError::from)?;
-            let rows: Vec<mysql_async::Row> = conn.exec(
-                r"SELECT id, name, description, timestamp, files_count, total_size
+            let rows: Vec<mysql_async::Row> = conn
+                .exec(
+                    r"SELECT id, name, description, timestamp, files_count, total_size
                   FROM checkpoints WHERE timestamp >= :start AND timestamp <= :end
                   ORDER BY timestamp DESC",
-                params! {
-                    "start" => start.to_rfc3339(),
-                    "end" => end.to_rfc3339(),
-                },
-            ).await.map_err(StorageError::from)?;
+                    params! {
+                        "start" => start.to_rfc3339(),
+                        "end" => end.to_rfc3339(),
+                    },
+                )
+                .await
+                .map_err(StorageError::from)?;
 
-            let checkpoints: Vec<CheckpointInfo> = rows.iter().map(Self::row_to_checkpoint_info).collect();
+            let checkpoints: Vec<CheckpointInfo> =
+                rows.iter().map(Self::row_to_checkpoint_info).collect();
             Ok(checkpoints)
         }
     }
 
-    fn query_by_name(&self, pattern: &str) -> impl std::future::Future<Output = Result<Vec<CheckpointInfo>>> + Send {
+    fn query_by_name(
+        &self,
+        pattern: &str,
+    ) -> impl std::future::Future<Output = Result<Vec<CheckpointInfo>>> + Send {
         async move {
             let mut conn = self.pool.get_conn().await.map_err(StorageError::from)?;
             let like_pattern = format!("%{pattern}%");
-            let rows: Vec<mysql_async::Row> = conn.exec(
-                r"SELECT id, name, description, timestamp, files_count, total_size
+            let rows: Vec<mysql_async::Row> = conn
+                .exec(
+                    r"SELECT id, name, description, timestamp, files_count, total_size
                   FROM checkpoints WHERE name LIKE :pattern
                   ORDER BY timestamp DESC",
-                params! { "pattern" => &like_pattern },
-            ).await.map_err(StorageError::from)?;
+                    params! { "pattern" => &like_pattern },
+                )
+                .await
+                .map_err(StorageError::from)?;
 
-            let checkpoints: Vec<CheckpointInfo> = rows.iter().map(Self::row_to_checkpoint_info).collect();
+            let checkpoints: Vec<CheckpointInfo> =
+                rows.iter().map(Self::row_to_checkpoint_info).collect();
             Ok(checkpoints)
         }
     }
 
-    fn export_checkpoint(&self, checkpoint_id: &CheckpointId) -> impl std::future::Future<Output = Result<ExportedCheckpoint>> + Send {
+    fn export_checkpoint(
+        &self,
+        checkpoint_id: &CheckpointId,
+    ) -> impl std::future::Future<Output = Result<ExportedCheckpoint>> + Send {
         async move {
             let checkpoint = self
                 .get_checkpoint(checkpoint_id)
@@ -909,18 +1004,28 @@ impl TimelineRepository for MariaDbBackend {
         }
     }
 
-    fn import_checkpoint(&self, exported: ExportedCheckpoint) -> impl std::future::Future<Output = Result<CheckpointId>> + Send {
+    fn import_checkpoint(
+        &self,
+        exported: ExportedCheckpoint,
+    ) -> impl std::future::Future<Output = Result<CheckpointId>> + Send {
         async move {
-            let id = self.create_checkpoint(&exported.name, exported.description.as_deref()).await?;
+            let id = self
+                .create_checkpoint(&exported.name, exported.description.as_deref())
+                .await?;
             Ok(id)
         }
     }
 
-    fn cleanup_old_checkpoints(&self, keep_count: usize) -> impl std::future::Future<Output = Result<usize>> + Send {
+    fn cleanup_old_checkpoints(
+        &self,
+        keep_count: usize,
+    ) -> impl std::future::Future<Output = Result<usize>> + Send {
         async move {
             let mut conn = self.pool.get_conn().await.map_err(StorageError::from)?;
-            let result: Option<i64> = conn.query_first("SELECT COUNT(*) FROM checkpoints")
-                .await.map_err(StorageError::from)?;
+            let result: Option<i64> = conn
+                .query_first("SELECT COUNT(*) FROM checkpoints")
+                .await
+                .map_err(StorageError::from)?;
             let count = result.unwrap_or(0);
 
             if count as usize <= keep_count {
@@ -928,10 +1033,13 @@ impl TimelineRepository for MariaDbBackend {
             }
 
             let keep = keep_count as i64;
-            let rows: Vec<mysql_async::Row> = conn.exec(
-                r"SELECT id FROM checkpoints ORDER BY timestamp DESC LIMIT :limit",
-                params! { "limit" => keep },
-            ).await.map_err(StorageError::from)?;
+            let rows: Vec<mysql_async::Row> = conn
+                .exec(
+                    r"SELECT id FROM checkpoints ORDER BY timestamp DESC LIMIT :limit",
+                    params! { "limit" => keep },
+                )
+                .await
+                .map_err(StorageError::from)?;
 
             if rows.is_empty() {
                 return Ok(0);
@@ -951,37 +1059,45 @@ impl TimelineRepository for MariaDbBackend {
             }
 
             let placeholders: String = ids.iter().map(|_| "?").collect::<Vec<_>>().join(",");
-            let delete_sql = format!(
-                "DELETE FROM file_versions WHERE checkpoint_id NOT IN ({placeholders})"
-            );
-            let vals: Vec<mysql_async::Value> = ids.iter().map(|id: &String| mysql_async::Value::from(id.as_str())).collect();
-            conn.exec_drop(delete_sql, vals.clone()).await.map_err(StorageError::from)?;
+            let delete_sql =
+                format!("DELETE FROM file_versions WHERE checkpoint_id NOT IN ({placeholders})");
+            let vals: Vec<mysql_async::Value> = ids
+                .iter()
+                .map(|id: &String| mysql_async::Value::from(id.as_str()))
+                .collect();
+            conn.exec_drop(delete_sql, vals.clone())
+                .await
+                .map_err(StorageError::from)?;
 
-            let delete_sql2 = format!(
-                "DELETE FROM checkpoints WHERE id NOT IN ({placeholders})"
-            );
-            let deleted = conn.exec_iter(delete_sql2, vals)
-                .await.map_err(StorageError::from)?
+            let delete_sql2 = format!("DELETE FROM checkpoints WHERE id NOT IN ({placeholders})");
+            let deleted = conn
+                .exec_iter(delete_sql2, vals)
+                .await
+                .map_err(StorageError::from)?
                 .affected_rows();
             Ok(deleted as usize)
         }
     }
 
     fn cleanup_snapshots(&self) -> impl std::future::Future<Output = Result<usize>> + Send {
-        async move {
-            Ok(0)
-        }
+        async move { Ok(0) }
     }
 
     fn storage_stats(&self) -> impl std::future::Future<Output = Result<StorageStats>> + Send {
         async move {
             let mut conn = self.pool.get_conn().await.map_err(StorageError::from)?;
-            let checkpoint_count: Option<i64> = conn.query_first("SELECT COUNT(*) FROM checkpoints")
-                .await.map_err(StorageError::from)?;
-            let tracked_file_count: Option<i64> = conn.query_first("SELECT COUNT(*) FROM tracked_files")
-                .await.map_err(StorageError::from)?;
-            let version_count: Option<i64> = conn.query_first("SELECT COUNT(*) FROM file_versions")
-                .await.map_err(StorageError::from)?;
+            let checkpoint_count: Option<i64> = conn
+                .query_first("SELECT COUNT(*) FROM checkpoints")
+                .await
+                .map_err(StorageError::from)?;
+            let tracked_file_count: Option<i64> = conn
+                .query_first("SELECT COUNT(*) FROM tracked_files")
+                .await
+                .map_err(StorageError::from)?;
+            let version_count: Option<i64> = conn
+                .query_first("SELECT COUNT(*) FROM file_versions")
+                .await
+                .map_err(StorageError::from)?;
 
             Ok(StorageStats {
                 checkpoint_count: checkpoint_count.unwrap_or(0) as usize,
@@ -998,13 +1114,19 @@ impl TimelineRepository for MariaDbBackend {
 // ─────────────────────────────────────────────────────────
 
 impl GraphRepository for MariaDbBackend {
-    fn insert_file(&self, file: &FileInfo) -> impl std::future::Future<Output = Result<i64>> + Send {
+    fn insert_file(
+        &self,
+        file: &FileInfo,
+    ) -> impl std::future::Future<Output = Result<i64>> + Send {
         async move {
             let mut conn = self.pool.get_conn().await.map_err(StorageError::from)?;
-            let existing: Option<i64> = conn.exec_first(
-                "SELECT id FROM graph_files WHERE path = :path",
-                params! { "path" => &file.path },
-            ).await.map_err(StorageError::from)?;
+            let existing: Option<i64> = conn
+                .exec_first(
+                    "SELECT id FROM graph_files WHERE path = :path",
+                    params! { "path" => &file.path },
+                )
+                .await
+                .map_err(StorageError::from)?;
 
             if let Some(id) = existing {
                 conn.exec_drop(
@@ -1029,20 +1151,28 @@ impl GraphRepository for MariaDbBackend {
                 },
             ).await.map_err(StorageError::from)?;
 
-            let id: Option<i64> = conn.query_first("SELECT LAST_INSERT_ID()")
-                .await.map_err(StorageError::from)?;
+            let id: Option<i64> = conn
+                .query_first("SELECT LAST_INSERT_ID()")
+                .await
+                .map_err(StorageError::from)?;
             Ok(id.unwrap_or(0))
         }
     }
 
-    fn get_file_by_path(&self, path: &str) -> impl std::future::Future<Output = Result<Option<FileInfo>>> + Send {
+    fn get_file_by_path(
+        &self,
+        path: &str,
+    ) -> impl std::future::Future<Output = Result<Option<FileInfo>>> + Send {
         async move {
             let mut conn = self.pool.get_conn().await.map_err(StorageError::from)?;
-            let result: Option<mysql_async::Row> = conn.exec_first(
-                r"SELECT id, path, hash, language, last_modified, created_at
+            let result: Option<mysql_async::Row> = conn
+                .exec_first(
+                    r"SELECT id, path, hash, language, last_modified, created_at
                   FROM graph_files WHERE path = :path",
-                params! { "path" => path },
-            ).await.map_err(StorageError::from)?;
+                    params! { "path" => path },
+                )
+                .await
+                .map_err(StorageError::from)?;
 
             match result {
                 Some(r) => Ok(Some(FileInfo {
@@ -1056,14 +1186,20 @@ impl GraphRepository for MariaDbBackend {
         }
     }
 
-    fn get_file_by_id(&self, id: i64) -> impl std::future::Future<Output = Result<Option<FileInfo>>> + Send {
+    fn get_file_by_id(
+        &self,
+        id: i64,
+    ) -> impl std::future::Future<Output = Result<Option<FileInfo>>> + Send {
         async move {
             let mut conn = self.pool.get_conn().await.map_err(StorageError::from)?;
-            let result: Option<mysql_async::Row> = conn.exec_first(
-                r"SELECT id, path, hash, language, last_modified, created_at
+            let result: Option<mysql_async::Row> = conn
+                .exec_first(
+                    r"SELECT id, path, hash, language, last_modified, created_at
                   FROM graph_files WHERE id = :id",
-                params! { "id" => id },
-            ).await.map_err(StorageError::from)?;
+                    params! { "id" => id },
+                )
+                .await
+                .map_err(StorageError::from)?;
 
             match result {
                 Some(r) => Ok(Some(FileInfo {
@@ -1077,13 +1213,19 @@ impl GraphRepository for MariaDbBackend {
         }
     }
 
-    fn get_file_id(&self, path: &str) -> impl std::future::Future<Output = Result<Option<i64>>> + Send {
+    fn get_file_id(
+        &self,
+        path: &str,
+    ) -> impl std::future::Future<Output = Result<Option<i64>>> + Send {
         async move {
             let mut conn = self.pool.get_conn().await.map_err(StorageError::from)?;
-            let result: Option<(i64,)> = conn.exec_first(
-                "SELECT id FROM graph_files WHERE path = :path",
-                params! { "path" => path },
-            ).await.map_err(StorageError::from)?;
+            let result: Option<(i64,)> = conn
+                .exec_first(
+                    "SELECT id FROM graph_files WHERE path = :path",
+                    params! { "path" => path },
+                )
+                .await
+                .map_err(StorageError::from)?;
 
             Ok(result.map(|r| r.0))
         }
@@ -1092,10 +1234,13 @@ impl GraphRepository for MariaDbBackend {
     fn delete_file(&self, path: &str) -> impl std::future::Future<Output = Result<bool>> + Send {
         async move {
             let mut conn = self.pool.get_conn().await.map_err(StorageError::from)?;
-            let file_id: Option<i64> = conn.exec_first(
-                "SELECT id FROM graph_files WHERE path = :path",
-                params! { "path" => path },
-            ).await.map_err(StorageError::from)?;
+            let file_id: Option<i64> = conn
+                .exec_first(
+                    "SELECT id FROM graph_files WHERE path = :path",
+                    params! { "path" => path },
+                )
+                .await
+                .map_err(StorageError::from)?;
 
             let Some(fid) = file_id else {
                 return Ok(false);
@@ -1104,15 +1249,21 @@ impl GraphRepository for MariaDbBackend {
             conn.exec_drop(
                 "DELETE FROM graph_symbol_refs WHERE file_id = :file_id",
                 params! { "file_id" => fid },
-            ).await.map_err(StorageError::from)?;
+            )
+            .await
+            .map_err(StorageError::from)?;
             conn.exec_drop(
                 "DELETE FROM graph_symbols WHERE file_id = :file_id",
                 params! { "file_id" => fid },
-            ).await.map_err(StorageError::from)?;
+            )
+            .await
+            .map_err(StorageError::from)?;
             conn.exec_drop(
                 "DELETE FROM graph_files WHERE path = :path",
                 params! { "path" => path },
-            ).await.map_err(StorageError::from)?;
+            )
+            .await
+            .map_err(StorageError::from)?;
 
             Ok(true)
         }
@@ -1121,13 +1272,18 @@ impl GraphRepository for MariaDbBackend {
     fn count_files(&self) -> impl std::future::Future<Output = Result<i64>> + Send {
         async move {
             let mut conn = self.pool.get_conn().await.map_err(StorageError::from)?;
-            let result: Option<i64> = conn.query_first("SELECT COUNT(*) FROM graph_files")
-                .await.map_err(StorageError::from)?;
+            let result: Option<i64> = conn
+                .query_first("SELECT COUNT(*) FROM graph_files")
+                .await
+                .map_err(StorageError::from)?;
             Ok(result.unwrap_or(0))
         }
     }
 
-    fn insert_symbol(&self, symbol: &Symbol) -> impl std::future::Future<Output = Result<i64>> + Send {
+    fn insert_symbol(
+        &self,
+        symbol: &Symbol,
+    ) -> impl std::future::Future<Output = Result<i64>> + Send {
         async move {
             let mut conn = self.pool.get_conn().await.map_err(StorageError::from)?;
             conn.exec_drop(
@@ -1146,13 +1302,18 @@ impl GraphRepository for MariaDbBackend {
                 },
             ).await.map_err(StorageError::from)?;
 
-            let id: Option<i64> = conn.query_first("SELECT LAST_INSERT_ID()")
-                .await.map_err(StorageError::from)?;
+            let id: Option<i64> = conn
+                .query_first("SELECT LAST_INSERT_ID()")
+                .await
+                .map_err(StorageError::from)?;
             Ok(id.unwrap_or(0))
         }
     }
 
-    fn find_symbol(&self, name: &str) -> impl std::future::Future<Output = Result<Vec<Symbol>>> + Send {
+    fn find_symbol(
+        &self,
+        name: &str,
+    ) -> impl std::future::Future<Output = Result<Vec<Symbol>>> + Send {
         async move {
             let mut conn = self.pool.get_conn().await.map_err(StorageError::from)?;
             let rows: Vec<mysql_async::Row> = conn.exec(
@@ -1170,7 +1331,10 @@ impl GraphRepository for MariaDbBackend {
         }
     }
 
-    fn find_symbol_by_id(&self, id: i64) -> impl std::future::Future<Output = Result<Option<Symbol>>> + Send {
+    fn find_symbol_by_id(
+        &self,
+        id: i64,
+    ) -> impl std::future::Future<Output = Result<Option<Symbol>>> + Send {
         async move {
             let mut conn = self.pool.get_conn().await.map_err(StorageError::from)?;
             let result: Option<mysql_async::Row> = conn.exec_first(
@@ -1186,7 +1350,10 @@ impl GraphRepository for MariaDbBackend {
         }
     }
 
-    fn find_symbols_by_kind(&self, kind: &SymbolKind) -> impl std::future::Future<Output = Result<Vec<Symbol>>> + Send {
+    fn find_symbols_by_kind(
+        &self,
+        kind: &SymbolKind,
+    ) -> impl std::future::Future<Output = Result<Vec<Symbol>>> + Send {
         async move {
             let mut conn = self.pool.get_conn().await.map_err(StorageError::from)?;
             let kind_str = format!("{:?}", kind);
@@ -1205,7 +1372,10 @@ impl GraphRepository for MariaDbBackend {
         }
     }
 
-    fn find_symbols_in_file(&self, file_id: i64) -> impl std::future::Future<Output = Result<Vec<Symbol>>> + Send {
+    fn find_symbols_in_file(
+        &self,
+        file_id: i64,
+    ) -> impl std::future::Future<Output = Result<Vec<Symbol>>> + Send {
         async move {
             let mut conn = self.pool.get_conn().await.map_err(StorageError::from)?;
             let rows: Vec<mysql_async::Row> = conn.exec(
@@ -1223,7 +1393,10 @@ impl GraphRepository for MariaDbBackend {
         }
     }
 
-    fn search_symbols(&self, query: &str) -> impl std::future::Future<Output = Result<Vec<Symbol>>> + Send {
+    fn search_symbols(
+        &self,
+        query: &str,
+    ) -> impl std::future::Future<Output = Result<Vec<Symbol>>> + Send {
         async move {
             let mut conn = self.pool.get_conn().await.map_err(StorageError::from)?;
             let pattern = format!("%{query}%");
@@ -1246,13 +1419,18 @@ impl GraphRepository for MariaDbBackend {
     fn count_symbols(&self) -> impl std::future::Future<Output = Result<i64>> + Send {
         async move {
             let mut conn = self.pool.get_conn().await.map_err(StorageError::from)?;
-            let result: Option<i64> = conn.query_first("SELECT COUNT(*) FROM graph_symbols")
-                .await.map_err(StorageError::from)?;
+            let result: Option<i64> = conn
+                .query_first("SELECT COUNT(*) FROM graph_symbols")
+                .await
+                .map_err(StorageError::from)?;
             Ok(result.unwrap_or(0))
         }
     }
 
-    fn delete_symbols_for_file(&self, file_id: i64) -> impl std::future::Future<Output = Result<()>> + Send {
+    fn delete_symbols_for_file(
+        &self,
+        file_id: i64,
+    ) -> impl std::future::Future<Output = Result<()>> + Send {
         async move {
             let mut conn = self.pool.get_conn().await.map_err(StorageError::from)?;
             conn.exec_drop(
@@ -1262,12 +1440,17 @@ impl GraphRepository for MariaDbBackend {
             conn.exec_drop(
                 "DELETE FROM graph_symbols WHERE file_id = :file_id",
                 params! { "file_id" => file_id },
-            ).await.map_err(StorageError::from)?;
+            )
+            .await
+            .map_err(StorageError::from)?;
             Ok(())
         }
     }
 
-    fn insert_reference(&self, reference: &Reference) -> impl std::future::Future<Output = Result<()>> + Send {
+    fn insert_reference(
+        &self,
+        reference: &Reference,
+    ) -> impl std::future::Future<Output = Result<()>> + Send {
         async move {
             let mut conn = self.pool.get_conn().await.map_err(StorageError::from)?;
             conn.exec_drop(
@@ -1280,19 +1463,27 @@ impl GraphRepository for MariaDbBackend {
                     "col" => reference.col,
                     "context" => &reference.context,
                 },
-            ).await.map_err(StorageError::from)?;
+            )
+            .await
+            .map_err(StorageError::from)?;
             Ok(())
         }
     }
 
-    fn find_symbol_refs(&self, symbol_id: i64) -> impl std::future::Future<Output = Result<Vec<Reference>>> + Send {
+    fn find_symbol_refs(
+        &self,
+        symbol_id: i64,
+    ) -> impl std::future::Future<Output = Result<Vec<Reference>>> + Send {
         async move {
             let mut conn = self.pool.get_conn().await.map_err(StorageError::from)?;
-            let rows: Vec<mysql_async::Row> = conn.exec(
-                r"SELECT id, symbol_id, file_id, line, col, context
+            let rows: Vec<mysql_async::Row> = conn
+                .exec(
+                    r"SELECT id, symbol_id, file_id, line, col, context
                   FROM graph_symbol_refs WHERE symbol_id = :symbol_id",
-                params! { "symbol_id" => symbol_id },
-            ).await.map_err(StorageError::from)?;
+                    params! { "symbol_id" => symbol_id },
+                )
+                .await
+                .map_err(StorageError::from)?;
 
             let refs: Vec<Reference> = rows.iter().map(Self::row_to_reference).collect();
             Ok(refs)
@@ -1302,24 +1493,34 @@ impl GraphRepository for MariaDbBackend {
     fn count_symbol_refs(&self) -> impl std::future::Future<Output = Result<i64>> + Send {
         async move {
             let mut conn = self.pool.get_conn().await.map_err(StorageError::from)?;
-            let result: Option<i64> = conn.query_first("SELECT COUNT(*) FROM graph_symbol_refs")
-                .await.map_err(StorageError::from)?;
+            let result: Option<i64> = conn
+                .query_first("SELECT COUNT(*) FROM graph_symbol_refs")
+                .await
+                .map_err(StorageError::from)?;
             Ok(result.unwrap_or(0))
         }
     }
 
-    fn delete_symbol_refs_for_file(&self, file_id: i64) -> impl std::future::Future<Output = Result<()>> + Send {
+    fn delete_symbol_refs_for_file(
+        &self,
+        file_id: i64,
+    ) -> impl std::future::Future<Output = Result<()>> + Send {
         async move {
             let mut conn = self.pool.get_conn().await.map_err(StorageError::from)?;
             conn.exec_drop(
                 "DELETE FROM graph_symbol_refs WHERE file_id = :file_id",
                 params! { "file_id" => file_id },
-            ).await.map_err(StorageError::from)?;
+            )
+            .await
+            .map_err(StorageError::from)?;
             Ok(())
         }
     }
 
-    fn insert_relationship(&self, relationship: &Relationship) -> impl std::future::Future<Output = Result<()>> + Send {
+    fn insert_relationship(
+        &self,
+        relationship: &Relationship,
+    ) -> impl std::future::Future<Output = Result<()>> + Send {
         async move {
             let mut conn = self.pool.get_conn().await.map_err(StorageError::from)?;
             conn.exec_drop(
@@ -1330,12 +1531,17 @@ impl GraphRepository for MariaDbBackend {
                     "to_symbol" => relationship.to_symbol,
                     "relationship_type" => format!("{:?}", relationship.relationship_type),
                 },
-            ).await.map_err(StorageError::from)?;
+            )
+            .await
+            .map_err(StorageError::from)?;
             Ok(())
         }
     }
 
-    fn find_relationships(&self, symbol_id: i64) -> impl std::future::Future<Output = Result<Vec<Relationship>>> + Send {
+    fn find_relationships(
+        &self,
+        symbol_id: i64,
+    ) -> impl std::future::Future<Output = Result<Vec<Relationship>>> + Send {
         async move {
             let mut conn = self.pool.get_conn().await.map_err(StorageError::from)?;
             let rows: Vec<mysql_async::Row> = conn.exec(
@@ -1349,28 +1555,40 @@ impl GraphRepository for MariaDbBackend {
         }
     }
 
-    fn find_outgoing_relationships(&self, symbol_id: i64) -> impl std::future::Future<Output = Result<Vec<Relationship>>> + Send {
+    fn find_outgoing_relationships(
+        &self,
+        symbol_id: i64,
+    ) -> impl std::future::Future<Output = Result<Vec<Relationship>>> + Send {
         async move {
             let mut conn = self.pool.get_conn().await.map_err(StorageError::from)?;
-            let rows: Vec<mysql_async::Row> = conn.exec(
-                r"SELECT id, from_symbol, to_symbol, relationship_type
+            let rows: Vec<mysql_async::Row> = conn
+                .exec(
+                    r"SELECT id, from_symbol, to_symbol, relationship_type
                   FROM graph_relationships WHERE from_symbol = :symbol_id",
-                params! { "symbol_id" => symbol_id },
-            ).await.map_err(StorageError::from)?;
+                    params! { "symbol_id" => symbol_id },
+                )
+                .await
+                .map_err(StorageError::from)?;
 
             let rels: Vec<Relationship> = rows.iter().map(Self::row_to_relationship).collect();
             Ok(rels)
         }
     }
 
-    fn find_incoming_relationships(&self, symbol_id: i64) -> impl std::future::Future<Output = Result<Vec<Relationship>>> + Send {
+    fn find_incoming_relationships(
+        &self,
+        symbol_id: i64,
+    ) -> impl std::future::Future<Output = Result<Vec<Relationship>>> + Send {
         async move {
             let mut conn = self.pool.get_conn().await.map_err(StorageError::from)?;
-            let rows: Vec<mysql_async::Row> = conn.exec(
-                r"SELECT id, from_symbol, to_symbol, relationship_type
+            let rows: Vec<mysql_async::Row> = conn
+                .exec(
+                    r"SELECT id, from_symbol, to_symbol, relationship_type
                   FROM graph_relationships WHERE to_symbol = :symbol_id",
-                params! { "symbol_id" => symbol_id },
-            ).await.map_err(StorageError::from)?;
+                    params! { "symbol_id" => symbol_id },
+                )
+                .await
+                .map_err(StorageError::from)?;
 
             let rels: Vec<Relationship> = rows.iter().map(Self::row_to_relationship).collect();
             Ok(rels)
@@ -1380,8 +1598,10 @@ impl GraphRepository for MariaDbBackend {
     fn count_relationships(&self) -> impl std::future::Future<Output = Result<i64>> + Send {
         async move {
             let mut conn = self.pool.get_conn().await.map_err(StorageError::from)?;
-            let result: Option<i64> = conn.query_first("SELECT COUNT(*) FROM graph_relationships")
-                .await.map_err(StorageError::from)?;
+            let result: Option<i64> = conn
+                .query_first("SELECT COUNT(*) FROM graph_relationships")
+                .await
+                .map_err(StorageError::from)?;
             Ok(result.unwrap_or(0))
         }
     }
@@ -1390,13 +1610,17 @@ impl GraphRepository for MariaDbBackend {
         async move {
             let mut conn = self.pool.get_conn().await.map_err(StorageError::from)?;
             conn.query_drop("DELETE FROM graph_relationships")
-                .await.map_err(StorageError::from)?;
+                .await
+                .map_err(StorageError::from)?;
             conn.query_drop("DELETE FROM graph_symbol_refs")
-                .await.map_err(StorageError::from)?;
+                .await
+                .map_err(StorageError::from)?;
             conn.query_drop("DELETE FROM graph_symbols")
-                .await.map_err(StorageError::from)?;
+                .await
+                .map_err(StorageError::from)?;
             conn.query_drop("DELETE FROM graph_files")
-                .await.map_err(StorageError::from)?;
+                .await
+                .map_err(StorageError::from)?;
             Ok(())
         }
     }
@@ -1407,7 +1631,10 @@ impl GraphRepository for MariaDbBackend {
 // ─────────────────────────────────────────────────────────
 
 impl WorkspaceRepository for MariaDbBackend {
-    fn create_workspace(&self, workspace: &Workspace) -> impl std::future::Future<Output = Result<()>> + Send {
+    fn create_workspace(
+        &self,
+        workspace: &Workspace,
+    ) -> impl std::future::Future<Output = Result<()>> + Send {
         async move {
             let mut conn = self.pool.get_conn().await.map_err(StorageError::from)?;
             conn.exec_drop(
@@ -1419,24 +1646,33 @@ impl WorkspaceRepository for MariaDbBackend {
                     "default_project_id" => workspace.default_project_id.as_ref().map(|pid| &pid.0),
                     "created_at" => workspace.created_at.to_rfc3339(),
                 },
-            ).await.map_err(StorageError::from)?;
+            )
+            .await
+            .map_err(StorageError::from)?;
             Ok(())
         }
     }
 
-    fn load_workspace(&self, id: &WorkspaceId) -> impl std::future::Future<Output = Result<Option<Workspace>>> + Send {
+    fn load_workspace(
+        &self,
+        id: &WorkspaceId,
+    ) -> impl std::future::Future<Output = Result<Option<Workspace>>> + Send {
         async move {
             let mut conn = self.pool.get_conn().await.map_err(StorageError::from)?;
             let row: Option<(String, String, Option<String>, String)> = conn.exec_first(
                 "SELECT id, name, default_project_id, created_at FROM workspaces WHERE id = :id",
                 params! { "id" => &id.0 },
             ).await.map_err(StorageError::from)?;
-            Ok(row.map(|(id, name, default_project_id, created_at)| Workspace {
-                id: WorkspaceId(id),
-                name,
-                default_project_id: default_project_id.map(ProjectId),
-                created_at: created_at.parse::<DateTime<Utc>>().unwrap_or_else(|_| Utc::now()),
-            }))
+            Ok(
+                row.map(|(id, name, default_project_id, created_at)| Workspace {
+                    id: WorkspaceId(id),
+                    name,
+                    default_project_id: default_project_id.map(ProjectId),
+                    created_at: created_at
+                        .parse::<DateTime<Utc>>()
+                        .unwrap_or_else(|_| Utc::now()),
+                }),
+            )
         }
     }
 
@@ -1452,28 +1688,40 @@ impl WorkspaceRepository for MariaDbBackend {
                     id: WorkspaceId(id),
                     name,
                     default_project_id: default_project_id.map(ProjectId),
-                    created_at: created_at.parse::<DateTime<Utc>>().unwrap_or_else(|_| Utc::now()),
+                    created_at: created_at
+                        .parse::<DateTime<Utc>>()
+                        .unwrap_or_else(|_| Utc::now()),
                 })
                 .collect())
         }
     }
 
-    fn delete_workspace(&self, id: &WorkspaceId) -> impl std::future::Future<Output = Result<()>> + Send {
+    fn delete_workspace(
+        &self,
+        id: &WorkspaceId,
+    ) -> impl std::future::Future<Output = Result<()>> + Send {
         async move {
             let mut conn = self.pool.get_conn().await.map_err(StorageError::from)?;
             conn.exec_drop(
                 "DELETE FROM workspace_projects WHERE workspace_id = :id",
                 params! { "id" => &id.0 },
-            ).await.map_err(StorageError::from)?;
+            )
+            .await
+            .map_err(StorageError::from)?;
             conn.exec_drop(
                 "DELETE FROM workspaces WHERE id = :id",
                 params! { "id" => &id.0 },
-            ).await.map_err(StorageError::from)?;
+            )
+            .await
+            .map_err(StorageError::from)?;
             Ok(())
         }
     }
 
-    fn add_project(&self, project: &Project) -> impl std::future::Future<Output = Result<()>> + Send {
+    fn add_project(
+        &self,
+        project: &Project,
+    ) -> impl std::future::Future<Output = Result<()>> + Send {
         async move {
             let mut conn = self.pool.get_conn().await.map_err(StorageError::from)?;
             conn.exec_drop(
@@ -1485,28 +1733,41 @@ impl WorkspaceRepository for MariaDbBackend {
                     "root_path" => project.root_path.to_string_lossy().as_ref(),
                     "created_at" => project.created_at.to_rfc3339(),
                 },
-            ).await.map_err(StorageError::from)?;
+            )
+            .await
+            .map_err(StorageError::from)?;
             Ok(())
         }
     }
 
-    fn load_project(&self, id: &ProjectId) -> impl std::future::Future<Output = Result<Option<Project>>> + Send {
+    fn load_project(
+        &self,
+        id: &ProjectId,
+    ) -> impl std::future::Future<Output = Result<Option<Project>>> + Send {
         async move {
             let mut conn = self.pool.get_conn().await.map_err(StorageError::from)?;
-            let row: Option<(String, String, String, String)> = conn.exec_first(
-                "SELECT id, name, root_path, created_at FROM projects WHERE id = :id",
-                params! { "id" => &id.0 },
-            ).await.map_err(StorageError::from)?;
+            let row: Option<(String, String, String, String)> = conn
+                .exec_first(
+                    "SELECT id, name, root_path, created_at FROM projects WHERE id = :id",
+                    params! { "id" => &id.0 },
+                )
+                .await
+                .map_err(StorageError::from)?;
             Ok(row.map(|(id, name, root_path, created_at)| Project {
                 id: ProjectId(id),
                 name,
                 root_path: PathBuf::from(root_path),
-                created_at: created_at.parse::<DateTime<Utc>>().unwrap_or_else(|_| Utc::now()),
+                created_at: created_at
+                    .parse::<DateTime<Utc>>()
+                    .unwrap_or_else(|_| Utc::now()),
             }))
         }
     }
 
-    fn load_project_by_path(&self, path: &Path) -> impl std::future::Future<Output = Result<Option<Project>>> + Send {
+    fn load_project_by_path(
+        &self,
+        path: &Path,
+    ) -> impl std::future::Future<Output = Result<Option<Project>>> + Send {
         async move {
             let mut conn = self.pool.get_conn().await.map_err(StorageError::from)?;
             let path_str = path.to_string_lossy().to_string();
@@ -1518,7 +1779,9 @@ impl WorkspaceRepository for MariaDbBackend {
                 id: ProjectId(id),
                 name,
                 root_path: PathBuf::from(root_path),
-                created_at: created_at.parse::<DateTime<Utc>>().unwrap_or_else(|_| Utc::now()),
+                created_at: created_at
+                    .parse::<DateTime<Utc>>()
+                    .unwrap_or_else(|_| Utc::now()),
             }))
         }
     }
@@ -1526,22 +1789,30 @@ impl WorkspaceRepository for MariaDbBackend {
     fn list_projects(&self) -> impl std::future::Future<Output = Result<Vec<Project>>> + Send {
         async move {
             let mut conn = self.pool.get_conn().await.map_err(StorageError::from)?;
-            let rows: Vec<(String, String, String, String)> = conn.query(
-                "SELECT id, name, root_path, created_at FROM projects ORDER BY created_at DESC",
-            ).await.map_err(StorageError::from)?;
+            let rows: Vec<(String, String, String, String)> = conn
+                .query(
+                    "SELECT id, name, root_path, created_at FROM projects ORDER BY created_at DESC",
+                )
+                .await
+                .map_err(StorageError::from)?;
             Ok(rows
                 .into_iter()
                 .map(|(id, name, root_path, created_at)| Project {
                     id: ProjectId(id),
                     name,
                     root_path: PathBuf::from(root_path),
-                    created_at: created_at.parse::<DateTime<Utc>>().unwrap_or_else(|_| Utc::now()),
+                    created_at: created_at
+                        .parse::<DateTime<Utc>>()
+                        .unwrap_or_else(|_| Utc::now()),
                 })
                 .collect())
         }
     }
 
-    fn update_project(&self, project: &Project) -> impl std::future::Future<Output = Result<()>> + Send {
+    fn update_project(
+        &self,
+        project: &Project,
+    ) -> impl std::future::Future<Output = Result<()>> + Send {
         async move {
             let mut conn = self.pool.get_conn().await.map_err(StorageError::from)?;
             conn.exec_drop(
@@ -1551,22 +1822,31 @@ impl WorkspaceRepository for MariaDbBackend {
                     "name" => &project.name,
                     "root_path" => project.root_path.to_string_lossy().as_ref(),
                 },
-            ).await.map_err(StorageError::from)?;
+            )
+            .await
+            .map_err(StorageError::from)?;
             Ok(())
         }
     }
 
-    fn remove_project(&self, id: &ProjectId) -> impl std::future::Future<Output = Result<()>> + Send {
+    fn remove_project(
+        &self,
+        id: &ProjectId,
+    ) -> impl std::future::Future<Output = Result<()>> + Send {
         async move {
             let mut conn = self.pool.get_conn().await.map_err(StorageError::from)?;
             conn.exec_drop(
                 "DELETE FROM workspace_projects WHERE project_id = :id",
                 params! { "id" => &id.0 },
-            ).await.map_err(StorageError::from)?;
+            )
+            .await
+            .map_err(StorageError::from)?;
             conn.exec_drop(
                 "DELETE FROM projects WHERE id = :id",
                 params! { "id" => &id.0 },
-            ).await.map_err(StorageError::from)?;
+            )
+            .await
+            .map_err(StorageError::from)?;
             Ok(())
         }
     }
@@ -1585,7 +1865,9 @@ impl WorkspaceRepository for MariaDbBackend {
                     "workspace_id" => &workspace_id.0,
                     "project_id" => &project_id.0,
                 },
-            ).await.map_err(StorageError::from)?;
+            )
+            .await
+            .map_err(StorageError::from)?;
             Ok(())
         }
     }
@@ -1614,21 +1896,26 @@ impl WorkspaceRepository for MariaDbBackend {
     ) -> impl std::future::Future<Output = Result<Vec<Project>>> + Send {
         async move {
             let mut conn = self.pool.get_conn().await.map_err(StorageError::from)?;
-            let rows: Vec<(String, String, String, String)> = conn.exec(
-                r"SELECT p.id, p.name, p.root_path, p.created_at
+            let rows: Vec<(String, String, String, String)> = conn
+                .exec(
+                    r"SELECT p.id, p.name, p.root_path, p.created_at
                    FROM projects p
                    INNER JOIN workspace_projects wp ON wp.project_id = p.id
                    WHERE wp.workspace_id = :workspace_id
                    ORDER BY wp.added_at DESC",
-                params! { "workspace_id" => &workspace_id.0 },
-            ).await.map_err(StorageError::from)?;
+                    params! { "workspace_id" => &workspace_id.0 },
+                )
+                .await
+                .map_err(StorageError::from)?;
             Ok(rows
                 .into_iter()
                 .map(|(id, name, root_path, created_at)| Project {
                     id: ProjectId(id),
                     name,
                     root_path: PathBuf::from(root_path),
-                    created_at: created_at.parse::<DateTime<Utc>>().unwrap_or_else(|_| Utc::now()),
+                    created_at: created_at
+                        .parse::<DateTime<Utc>>()
+                        .unwrap_or_else(|_| Utc::now()),
                 })
                 .collect())
         }
@@ -1647,7 +1934,9 @@ impl WorkspaceRepository for MariaDbBackend {
                     "workspace_id" => &workspace_id.0,
                     "project_id" => &project_id.0,
                 },
-            ).await.map_err(StorageError::from)?;
+            )
+            .await
+            .map_err(StorageError::from)?;
             Ok(())
         }
     }
@@ -1658,25 +1947,34 @@ impl WorkspaceRepository for MariaDbBackend {
     ) -> impl std::future::Future<Output = Result<Option<Project>>> + Send {
         async move {
             let mut conn = self.pool.get_conn().await.map_err(StorageError::from)?;
-            let default_id: Option<String> = conn.exec_first(
-                "SELECT default_project_id FROM workspaces WHERE id = :id",
-                params! { "id" => &workspace_id.0 },
-            ).await.map_err(StorageError::from)?.flatten();
+            let default_id: Option<String> = conn
+                .exec_first(
+                    "SELECT default_project_id FROM workspaces WHERE id = :id",
+                    params! { "id" => &workspace_id.0 },
+                )
+                .await
+                .map_err(StorageError::from)?
+                .flatten();
 
             let Some(default_id) = default_id else {
                 return Ok(None);
             };
 
-            let row: Option<(String, String, String, String)> = conn.exec_first(
-                "SELECT id, name, root_path, created_at FROM projects WHERE id = :id",
-                params! { "id" => &default_id },
-            ).await.map_err(StorageError::from)?;
+            let row: Option<(String, String, String, String)> = conn
+                .exec_first(
+                    "SELECT id, name, root_path, created_at FROM projects WHERE id = :id",
+                    params! { "id" => &default_id },
+                )
+                .await
+                .map_err(StorageError::from)?;
 
             Ok(row.map(|(id, name, root_path, created_at)| Project {
                 id: ProjectId(id),
                 name,
                 root_path: PathBuf::from(root_path),
-                created_at: created_at.parse::<DateTime<Utc>>().unwrap_or_else(|_| Utc::now()),
+                created_at: created_at
+                    .parse::<DateTime<Utc>>()
+                    .unwrap_or_else(|_| Utc::now()),
             }))
         }
     }
@@ -1707,7 +2005,9 @@ impl StorageBackend for MariaDbBackend {
                 r"INSERT INTO schema_version (version) VALUES (:version)
                   ON DUPLICATE KEY UPDATE version = VALUES(version)",
                 params! { "version" => SCHEMA_VERSION },
-            ).await.map_err(StorageError::from)?;
+            )
+            .await
+            .map_err(StorageError::from)?;
 
             Ok(())
         }
@@ -1716,8 +2016,10 @@ impl StorageBackend for MariaDbBackend {
     fn health_check(&self) -> impl std::future::Future<Output = Result<()>> + Send {
         async move {
             let mut conn = self.pool.get_conn().await.map_err(StorageError::from)?;
-            let result: Option<u8> = conn.query_first("SELECT 1")
-                .await.map_err(StorageError::from)?;
+            let result: Option<u8> = conn
+                .query_first("SELECT 1")
+                .await
+                .map_err(StorageError::from)?;
             if result.is_none() {
                 return Err(StorageError::Connection("health check failed".to_string()).into());
             }
@@ -1726,9 +2028,7 @@ impl StorageBackend for MariaDbBackend {
     }
 
     fn close(&self) -> impl std::future::Future<Output = Result<()>> + Send {
-        async move {
-            Ok(())
-        }
+        async move { Ok(()) }
     }
 }
 

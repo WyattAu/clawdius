@@ -18,6 +18,10 @@ use uuid::Uuid;
 
 use crate::agentic::ParallelSprintManager;
 use crate::api::auth::{auth_middleware, tenant_aware_auth_middleware, ApiKeyAuth, AuthState};
+use crate::api::auth_handler::{
+    create_api_key, delete_tenant, get_tenant, list_api_keys, list_tenants, login,
+    record_tenant_task, revoke_api_key, signup, update_tenant,
+};
 use crate::api::gateway::RateLimitConfig;
 use crate::api::metrics_handler;
 use crate::api::rate_limit::{rate_limit_middleware, ApiRateLimiter};
@@ -28,13 +32,9 @@ use crate::api::sprint_handler::{
     execute_skill, generate_commit_message, get_sprint_session, list_skills, list_sprint_sessions,
     run_pre_ship_checks, run_sprint, stream_sprint, submit_sprint_session,
 };
-use crate::api::auth_handler::{
-    create_api_key, delete_tenant, get_tenant, list_api_keys, list_tenants, login,
-    record_tenant_task, revoke_api_key, signup, update_tenant,
-};
 use crate::api::tenant::{default_tenants, AuthenticatedApiKey, TenantStore};
-use crate::llm::{ChatMessage, ChatRole, LlmProvider};
 use crate::llm::providers::LlmClient;
+use crate::llm::{ChatMessage, ChatRole, LlmProvider};
 use crate::mcp::McpRequest;
 use crate::session::{Message as SessionMessage, MessageRole, Session, SessionId, SessionStore};
 
@@ -388,7 +388,10 @@ pub async fn chat(
 
     // Record tenant usage if authenticated
     if let Some(Extension(key)) = api_key {
-        let store = state.tenant_store.read().expect("tenant_store read lock poisoned");
+        let store = state
+            .tenant_store
+            .read()
+            .expect("tenant_store read lock poisoned");
         if let Some(tenant_id) = store.get_tenant_id_by_api_key(&key.0) {
             drop(store);
             let _ = record_tenant_task(&state, &tenant_id, 0);
@@ -580,7 +583,10 @@ async fn finalize_agent_session(
 ) -> String {
     // Record tenant usage if authenticated
     if let Some(Extension(key)) = api_key {
-        let store = state.tenant_store.read().expect("tenant_store read lock poisoned");
+        let store = state
+            .tenant_store
+            .read()
+            .expect("tenant_store read lock poisoned");
         if let Some(tenant_id) = store.get_tenant_id_by_api_key(&key.0) {
             drop(store);
             let _ = record_tenant_task(state, &tenant_id, 0);
@@ -596,8 +602,12 @@ async fn finalize_agent_session(
     if let Some(ref session_id_str) = request.session_id {
         if let Ok(uuid) = Uuid::parse_str(session_id_str) {
             let sid = SessionId::from_uuid(uuid);
-            let _ = state.add_message(sid, SessionMessage::user(&request.message)).await;
-            let _ = state.add_message(sid, SessionMessage::assistant(response_text)).await;
+            let _ = state
+                .add_message(sid, SessionMessage::user(&request.message))
+                .await;
+            let _ = state
+                .add_message(sid, SessionMessage::assistant(response_text))
+                .await;
         }
     }
 
@@ -801,7 +811,10 @@ pub async fn usage_endpoint(
     use crate::telemetry::metrics;
     use std::sync::atomic::Ordering;
 
-    let store = state.tenant_store.read().expect("tenant_store read lock poisoned");
+    let store = state
+        .tenant_store
+        .read()
+        .expect("tenant_store read lock poisoned");
 
     let tenant = match api_key {
         Some(Extension(key)) => store.get_tenant_by_api_key(&key.0),
@@ -1131,8 +1144,14 @@ mod tests {
     #[test]
     fn execute_mcp_tool_call_git_status() {
         let result = execute_mcp_tool_call("git_status", &serde_json::json!({}));
-        assert!(!result.is_empty(), "git_status should return non-empty result");
-        assert!(!result.contains("error: unknown tool"), "git_status should be a known tool");
+        assert!(
+            !result.is_empty(),
+            "git_status should return non-empty result"
+        );
+        assert!(
+            !result.contains("error: unknown tool"),
+            "git_status should be a known tool"
+        );
     }
 
     #[test]

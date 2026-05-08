@@ -20,7 +20,9 @@ macro_rules! backend_test_suite {
                 FileInfo, Relationship, RelationshipType, Symbol, SymbolKind,
             };
             use crate::session::types::{Message, Session, TokenUsage};
-            use crate::storage::{GraphRepository, SessionRepository, StorageBackend, TimelineRepository};
+            use crate::storage::{
+                GraphRepository, SessionRepository, StorageBackend, TimelineRepository,
+            };
             use crate::timeline::FileChangeType;
             use std::path::PathBuf;
 
@@ -179,13 +181,20 @@ macro_rules! backend_test_suite {
             async fn test_checkpoint_crud() {
                 let backend = make_backend().await;
 
-                let id = backend.create_checkpoint("v1", Some("first version")).await.unwrap();
+                let id = backend
+                    .create_checkpoint("v1", Some("first version"))
+                    .await
+                    .unwrap();
 
                 let checkpoints = backend.list_checkpoints().await.unwrap();
                 assert_eq!(checkpoints.len(), 1);
                 assert_eq!(checkpoints[0].name, "v1");
 
-                let cp = backend.get_checkpoint(&id).await.unwrap().expect("checkpoint exists");
+                let cp = backend
+                    .get_checkpoint(&id)
+                    .await
+                    .unwrap()
+                    .expect("checkpoint exists");
                 assert_eq!(cp.name, "v1");
                 assert_eq!(backend.checkpoint_count().await.unwrap(), 1);
 
@@ -231,7 +240,10 @@ macro_rules! backend_test_suite {
                 assert_eq!(stats.tracked_file_count, 0);
 
                 backend.create_checkpoint("v1", None).await.unwrap();
-                backend.track_file(&PathBuf::from("/test.rs")).await.unwrap();
+                backend
+                    .track_file(&PathBuf::from("/test.rs"))
+                    .await
+                    .unwrap();
 
                 let stats = backend.storage_stats().await.unwrap();
                 assert_eq!(stats.checkpoint_count, 1);
@@ -242,8 +254,14 @@ macro_rules! backend_test_suite {
             async fn test_query_by_name() {
                 let backend = make_backend().await;
 
-                backend.create_checkpoint("release-1.0", None).await.unwrap();
-                backend.create_checkpoint("release-2.0", None).await.unwrap();
+                backend
+                    .create_checkpoint("release-1.0", None)
+                    .await
+                    .unwrap();
+                backend
+                    .create_checkpoint("release-2.0", None)
+                    .await
+                    .unwrap();
                 backend.create_checkpoint("hotfix", None).await.unwrap();
 
                 assert_eq!(backend.query_by_name("release").await.unwrap().len(), 2);
@@ -254,7 +272,10 @@ macro_rules! backend_test_suite {
             async fn test_export_import_checkpoint() {
                 let backend = make_backend().await;
 
-                let id = backend.create_checkpoint("export-test", None).await.unwrap();
+                let id = backend
+                    .create_checkpoint("export-test", None)
+                    .await
+                    .unwrap();
 
                 let exported = backend.export_checkpoint(&id).await.unwrap();
                 assert_eq!(exported.name, "export-test");
@@ -331,8 +352,18 @@ macro_rules! backend_test_suite {
                 assert!(found.is_some());
                 assert_eq!(found.unwrap().name, "main");
 
-                assert_eq!(backend.find_symbols_by_kind(&SymbolKind::Function).await.unwrap().len(), 1);
-                assert_eq!(backend.find_symbols_in_file(file_id).await.unwrap().len(), 1);
+                assert_eq!(
+                    backend
+                        .find_symbols_by_kind(&SymbolKind::Function)
+                        .await
+                        .unwrap()
+                        .len(),
+                    1
+                );
+                assert_eq!(
+                    backend.find_symbols_in_file(file_id).await.unwrap().len(),
+                    1
+                );
                 assert_eq!(backend.count_symbols().await.unwrap(), 1);
                 assert_eq!(backend.search_symbols("mai").await.unwrap().len(), 1);
             }
@@ -385,8 +416,22 @@ macro_rules! backend_test_suite {
                 backend.insert_relationship(&rel).await.unwrap();
 
                 assert_eq!(backend.find_relationships(id_a).await.unwrap().len(), 1);
-                assert_eq!(backend.find_outgoing_relationships(id_a).await.unwrap().len(), 1);
-                assert_eq!(backend.find_incoming_relationships(id_b).await.unwrap().len(), 1);
+                assert_eq!(
+                    backend
+                        .find_outgoing_relationships(id_a)
+                        .await
+                        .unwrap()
+                        .len(),
+                    1
+                );
+                assert_eq!(
+                    backend
+                        .find_incoming_relationships(id_b)
+                        .await
+                        .unwrap()
+                        .len(),
+                    1
+                );
                 assert_eq!(backend.count_relationships().await.unwrap(), 1);
             }
 
@@ -451,7 +496,10 @@ macro_rules! backend_test_suite {
                 let backend = make_backend().await;
                 let session = Session::new();
                 backend.create_session(&session).await.unwrap();
-                backend.save_message(&session.id, &Message::user("hello")).await.unwrap();
+                backend
+                    .save_message(&session.id, &Message::user("hello"))
+                    .await
+                    .unwrap();
 
                 let results = backend.search_messages("").await.unwrap();
                 let _ = results; // just verify no panic

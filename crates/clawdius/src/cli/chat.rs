@@ -1,9 +1,9 @@
-use super::{OutputFormat, load_config};
+use super::{load_config, OutputFormat};
 use anyhow::Context;
-use std::path::PathBuf;
 use clawdius_core::output::{OutputFormat as CoreOutputFormat, OutputFormatter, OutputOptions};
-use clawdius_core::SessionManager;
 use clawdius_core::MentionResolver;
+use clawdius_core::SessionManager;
+use std::path::PathBuf;
 
 #[allow(clippy::too_many_arguments)]
 #[allow(clippy::cast_possible_truncation)]
@@ -19,8 +19,8 @@ pub(super) async fn handle_chat(
     config_path: Option<PathBuf>,
     output_format: OutputFormat,
 ) -> anyhow::Result<()> {
-    use clawdius_core::llm::{create_provider, ChatMessage, ChatRole, LlmConfig};
     use clawdius_core::llm::providers::LlmClient;
+    use clawdius_core::llm::{create_provider, ChatMessage, ChatRole, LlmConfig};
     use clawdius_core::modes::AgentMode;
     use clawdius_core::tools::editor::ExternalEditor;
     use std::io::{self, IsTerminal, Read, Write};

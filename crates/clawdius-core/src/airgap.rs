@@ -66,7 +66,9 @@ impl AirGapConfig {
             block_crash_reports: true,
             block_auto_updates: true,
             local_storage_only: true,
-            blocked_message: "Operation blocked: air-gapped mode is enabled. Contact your administrator.".to_string(),
+            blocked_message:
+                "Operation blocked: air-gapped mode is enabled. Contact your administrator."
+                    .to_string(),
         }
     }
 

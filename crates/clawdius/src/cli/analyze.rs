@@ -1,7 +1,7 @@
 use super::OutputFormat;
 
-use std::path::PathBuf;
 use clawdius_core::analysis::{DebtReport, DriftReport, DriftSeverity as CoreDriftSeverity};
+use std::path::PathBuf;
 
 pub(super) fn handle_analyze(
     path: &PathBuf,
@@ -162,7 +162,10 @@ fn format_analyze_text(
                 .get("file")
                 .and_then(|v| v.as_str())
                 .unwrap_or("unknown");
-            let line = drift.get("line").and_then(serde_json::Value::as_u64).unwrap_or(0);
+            let line = drift
+                .get("line")
+                .and_then(serde_json::Value::as_u64)
+                .unwrap_or(0);
             let msg = drift
                 .get("message")
                 .and_then(|v| v.as_str())
@@ -181,11 +184,7 @@ fn format_analyze_text(
         "  Total Effort: {:.1} hours",
         debt_report.total_effort_hours
     );
-    let _ = writeln!(
-        output,
-        "  Blocking Items: {}",
-        debt_report.blocking_count
-    );
+    let _ = writeln!(output, "  Blocking Items: {}", debt_report.blocking_count);
     output.push('\n');
 
     let top_debts = debt_report.top_priorities(10);
@@ -380,10 +379,7 @@ fn run_auto_analysis(files: &[PathBuf], verbose: bool) {
 
     let source_files: Vec<(PathBuf, String)> = files
         .iter()
-        .filter(|p| {
-            p.extension()
-                .is_some_and(|ext| ext == "rs")
-        })
+        .filter(|p| p.extension().is_some_and(|ext| ext == "rs"))
         .filter_map(|p| {
             let content = std::fs::read_to_string(p).ok()?;
             Some((p.clone(), content))
@@ -399,22 +395,16 @@ fn run_auto_analysis(files: &[PathBuf], verbose: bool) {
     }
 
     let detector = DriftDetector::new();
-    let drift = detector.analyze_files(
-        source_files.iter().map(|(p, c)| (p.clone(), c.as_str())),
-    );
+    let drift = detector.analyze_files(source_files.iter().map(|(p, c)| (p.clone(), c.as_str())));
 
     let analyzer = DebtAnalyzer::new();
-    let debt = analyzer.analyze_files(
-        source_files.iter().map(|(p, c)| (p.clone(), c.as_str())),
-    );
+    let debt = analyzer.analyze_files(source_files.iter().map(|(p, c)| (p.clone(), c.as_str())));
 
     let drift_count = drift.len();
     let debt_count = debt.len();
 
     if drift_count > 0 || debt_count > 0 {
-        println!(
-            "  📊 Analysis: {drift_count} drift(s), {debt_count} debt item(s)",
-        );
+        println!("  📊 Analysis: {drift_count} drift(s), {debt_count} debt item(s)",);
     } else if verbose {
         println!("  ✅ No new drift or debt detected");
     }

@@ -57,11 +57,15 @@ impl CliToolExecutor {
         args: &std::collections::HashMap<String, serde_json::Value>,
         key: &str,
     ) -> bool {
-        args.get(key).and_then(serde_json::Value::as_bool).unwrap_or(false)
+        args.get(key)
+            .and_then(serde_json::Value::as_bool)
+            .unwrap_or(false)
     }
 
     fn get_u64_arg(args: &std::collections::HashMap<String, serde_json::Value>, key: &str) -> u64 {
-        args.get(key).and_then(serde_json::Value::as_u64).unwrap_or(120_000)
+        args.get(key)
+            .and_then(serde_json::Value::as_u64)
+            .unwrap_or(120_000)
     }
 
     #[allow(clippy::too_many_lines)]
@@ -220,10 +224,12 @@ impl ToolExecutor for CliToolExecutor {
                 let Some(path) = Self::get_string_arg(&request.arguments, "path") else {
                     return Ok(ToolResult::error("Missing 'path' argument"));
                 };
-                let Some(old_string) = Self::get_string_arg(&request.arguments, "old_string") else {
+                let Some(old_string) = Self::get_string_arg(&request.arguments, "old_string")
+                else {
                     return Ok(ToolResult::error("Missing 'old_string' argument"));
                 };
-                let Some(new_string) = Self::get_string_arg(&request.arguments, "new_string") else {
+                let Some(new_string) = Self::get_string_arg(&request.arguments, "new_string")
+                else {
                     return Ok(ToolResult::error("Missing 'new_string' argument"));
                 };
                 let replace_all = Self::get_bool_arg(&request.arguments, "replace_all");

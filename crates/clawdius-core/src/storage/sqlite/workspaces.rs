@@ -8,7 +8,10 @@ use rusqlite::{params, OptionalExtension};
 use std::path::{Path, PathBuf};
 
 impl WorkspaceRepository for SqliteBackend {
-    fn create_workspace(&self, workspace: &Workspace) -> impl std::future::Future<Output = Result<()>> + Send {
+    fn create_workspace(
+        &self,
+        workspace: &Workspace,
+    ) -> impl std::future::Future<Output = Result<()>> + Send {
         async move {
             self.with_conn(|conn| {
                 conn.execute(
@@ -23,7 +26,10 @@ impl WorkspaceRepository for SqliteBackend {
         }
     }
 
-    fn load_workspace(&self, id: &WorkspaceId) -> impl std::future::Future<Output = Result<Option<Workspace>>> + Send {
+    fn load_workspace(
+        &self,
+        id: &WorkspaceId,
+    ) -> impl std::future::Future<Output = Result<Option<Workspace>>> + Send {
         async move {
             self.with_conn(|conn| {
                 let mut stmt = conn.prepare(
@@ -43,14 +49,16 @@ impl WorkspaceRepository for SqliteBackend {
                         statement: "SELECT workspace".to_string(),
                         reason: e.to_string(),
                     })?;
-                Ok(row.map(|(id, name, default_project_id, created_at)| Workspace {
-                    id: WorkspaceId(id),
-                    name,
-                    default_project_id: default_project_id.map(ProjectId),
-                    created_at: created_at
-                        .parse::<DateTime<Utc>>()
-                        .unwrap_or_else(|_| Utc::now()),
-                }))
+                Ok(
+                    row.map(|(id, name, default_project_id, created_at)| Workspace {
+                        id: WorkspaceId(id),
+                        name,
+                        default_project_id: default_project_id.map(ProjectId),
+                        created_at: created_at
+                            .parse::<DateTime<Utc>>()
+                            .unwrap_or_else(|_| Utc::now()),
+                    }),
+                )
             })
         }
     }
@@ -87,17 +95,26 @@ impl WorkspaceRepository for SqliteBackend {
         }
     }
 
-    fn delete_workspace(&self, id: &WorkspaceId) -> impl std::future::Future<Output = Result<()>> + Send {
+    fn delete_workspace(
+        &self,
+        id: &WorkspaceId,
+    ) -> impl std::future::Future<Output = Result<()>> + Send {
         async move {
             self.with_conn(|conn| {
-                conn.execute("DELETE FROM workspace_projects WHERE workspace_id = ?1", params![id.0])?;
+                conn.execute(
+                    "DELETE FROM workspace_projects WHERE workspace_id = ?1",
+                    params![id.0],
+                )?;
                 conn.execute("DELETE FROM workspaces WHERE id = ?1", params![id.0])?;
                 Ok(())
             })
         }
     }
 
-    fn add_project(&self, project: &Project) -> impl std::future::Future<Output = Result<()>> + Send {
+    fn add_project(
+        &self,
+        project: &Project,
+    ) -> impl std::future::Future<Output = Result<()>> + Send {
         async move {
             self.with_conn(|conn| {
                 conn.execute(
@@ -112,7 +129,10 @@ impl WorkspaceRepository for SqliteBackend {
         }
     }
 
-    fn load_project(&self, id: &ProjectId) -> impl std::future::Future<Output = Result<Option<Project>>> + Send {
+    fn load_project(
+        &self,
+        id: &ProjectId,
+    ) -> impl std::future::Future<Output = Result<Option<Project>>> + Send {
         async move {
             self.with_conn(|conn| {
                 let mut stmt = conn.prepare(
@@ -144,7 +164,10 @@ impl WorkspaceRepository for SqliteBackend {
         }
     }
 
-    fn load_project_by_path(&self, path: &Path) -> impl std::future::Future<Output = Result<Option<Project>>> + Send {
+    fn load_project_by_path(
+        &self,
+        path: &Path,
+    ) -> impl std::future::Future<Output = Result<Option<Project>>> + Send {
         async move {
             self.with_conn(|conn| {
                 let mut stmt = conn.prepare(
@@ -203,19 +226,29 @@ impl WorkspaceRepository for SqliteBackend {
                         })
                     })
                     .collect::<std::result::Result<Vec<_>, _>>()
-                    .map_err(|e| StorageError::RowConversion { reason: e.to_string() })?;
+                    .map_err(|e| StorageError::RowConversion {
+                        reason: e.to_string(),
+                    })?;
                 Ok(projects)
             })
         }
     }
 
-    fn update_project(&self, project: &Project) -> impl std::future::Future<Output = Result<()>> + Send {
+    fn update_project(
+        &self,
+        project: &Project,
+    ) -> impl std::future::Future<Output = Result<()>> + Send {
         async move {
             self.with_conn(|conn| {
                 conn.execute(
                     "UPDATE projects SET name = ?2, root_path = ?3 WHERE id = ?1",
-                    params![project.id.0, project.name, project.root_path.to_string_lossy().as_ref()],
-                ).map_err(|e| StorageError::Query {
+                    params![
+                        project.id.0,
+                        project.name,
+                        project.root_path.to_string_lossy().as_ref()
+                    ],
+                )
+                .map_err(|e| StorageError::Query {
                     statement: "UPDATE projects".to_string(),
                     reason: e.to_string(),
                 })?;
@@ -224,10 +257,16 @@ impl WorkspaceRepository for SqliteBackend {
         }
     }
 
-    fn remove_project(&self, id: &ProjectId) -> impl std::future::Future<Output = Result<()>> + Send {
+    fn remove_project(
+        &self,
+        id: &ProjectId,
+    ) -> impl std::future::Future<Output = Result<()>> + Send {
         async move {
             self.with_conn(|conn| {
-                conn.execute("DELETE FROM workspace_projects WHERE project_id = ?1", params![id.0])?;
+                conn.execute(
+                    "DELETE FROM workspace_projects WHERE project_id = ?1",
+                    params![id.0],
+                )?;
                 conn.execute("DELETE FROM projects WHERE id = ?1", params![id.0])?;
                 Ok(())
             })
@@ -263,7 +302,8 @@ impl WorkspaceRepository for SqliteBackend {
                 conn.execute(
                     "DELETE FROM workspace_projects WHERE workspace_id = ?1 AND project_id = ?2",
                     params![workspace_id.0, project_id.0],
-                ).map_err(|e| StorageError::Query {
+                )
+                .map_err(|e| StorageError::Query {
                     statement: "DELETE FROM workspace_projects".to_string(),
                     reason: e.to_string(),
                 })?;
@@ -305,7 +345,9 @@ impl WorkspaceRepository for SqliteBackend {
                         })
                     })
                     .collect::<std::result::Result<Vec<_>, _>>()
-                    .map_err(|e| StorageError::RowConversion { reason: e.to_string() })?;
+                    .map_err(|e| StorageError::RowConversion {
+                        reason: e.to_string(),
+                    })?;
                 Ok(projects)
             })
         }
@@ -321,7 +363,8 @@ impl WorkspaceRepository for SqliteBackend {
                 conn.execute(
                     "UPDATE workspaces SET default_project_id = ?2 WHERE id = ?1",
                     params![workspace_id.0, project_id.0],
-                ).map_err(|e| StorageError::Query {
+                )
+                .map_err(|e| StorageError::Query {
                     statement: "UPDATE workspaces default_project_id".to_string(),
                     reason: e.to_string(),
                 })?;
@@ -336,11 +379,12 @@ impl WorkspaceRepository for SqliteBackend {
     ) -> impl std::future::Future<Output = Result<Option<Project>>> + Send {
         async move {
             self.with_conn(|conn| {
-                let mut stmt = conn.prepare(
-                    "SELECT default_project_id FROM workspaces WHERE id = ?1",
-                )?;
+                let mut stmt =
+                    conn.prepare("SELECT default_project_id FROM workspaces WHERE id = ?1")?;
                 let default_id: Option<String> = stmt
-                    .query_row(params![workspace_id.0], |row| row.get::<_, Option<String>>(0))
+                    .query_row(params![workspace_id.0], |row| {
+                        row.get::<_, Option<String>>(0)
+                    })
                     .optional()
                     .map_err(|e| StorageError::Query {
                         statement: "SELECT default_project_id".to_string(),

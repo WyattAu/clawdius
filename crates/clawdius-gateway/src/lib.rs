@@ -42,8 +42,8 @@
 #![allow(clippy::trait_duplication_in_bounds)]
 
 pub mod adapter;
-pub mod admin;
 pub mod adapters;
+pub mod admin;
 pub mod error;
 pub mod formatter;
 pub mod gateway;

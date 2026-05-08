@@ -73,7 +73,7 @@ impl SandboxConfig {
             level: SandboxLevel::Directory,
             root,
             timeout: Duration::from_secs(300), // 5 minutes per command
-            max_output_bytes: 512 * 1024, // 512 KB
+            max_output_bytes: 512 * 1024,      // 512 KB
             env_vars: HashMap::new(),
             network_allowed: false,
             max_processes: 8,
@@ -200,11 +200,7 @@ impl DirectorySandbox {
                 // check the parent instead
                 if let Some(parent) = absolute.parent() {
                     match std::fs::canonicalize(parent) {
-                        Ok(p) => p.join(
-                            absolute
-                                .file_name()
-                                .unwrap_or_default(),
-                        ),
+                        Ok(p) => p.join(absolute.file_name().unwrap_or_default()),
                         Err(_) => absolute.clone(),
                     }
                 } else {
@@ -537,8 +533,8 @@ mod tests {
 
     #[test]
     fn test_sandbox_config_serialization() {
-        let config = SandboxConfig::new(PathBuf::from("/tmp/project"))
-            .with_level(SandboxLevel::Directory);
+        let config =
+            SandboxConfig::new(PathBuf::from("/tmp/project")).with_level(SandboxLevel::Directory);
 
         let json = serde_json::to_string(&config).unwrap();
         let parsed: SandboxConfig = serde_json::from_str(&json).unwrap();
@@ -648,8 +644,7 @@ mod tests {
 
     #[test]
     fn test_truncate_output_within_limit() {
-        let config = SandboxConfig::new(PathBuf::from("/tmp"))
-            .with_level(SandboxLevel::None);
+        let config = SandboxConfig::new(PathBuf::from("/tmp")).with_level(SandboxLevel::None);
         let inner: Arc<dyn ToolExecutor> = Arc::new(NoOpToolExecutor);
         let sandbox = SandboxedExecutor::new(inner, config);
 

@@ -3,8 +3,8 @@
 //! Tests chat and tool_use across multiple models.
 //! Run with: cargo test -p clawdius-core --test test_llm_models -- --nocapture
 
-use clawdius_core::llm::*;
 use clawdius_core::llm::providers::{ChatWithToolsResult, Tool};
+use clawdius_core::llm::*;
 use serde_json::json;
 
 const API_KEY: &str = "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";
@@ -65,11 +65,13 @@ async fn test_tool_call(model: &str) -> Result<ChatWithToolsResult, String> {
         content: "What's the weather in Tokyo?".to_string(),
     }];
 
-    let result =
-        tokio::time::timeout(std::time::Duration::from_secs(30), provider.chat_with_tools(messages, tools))
-            .await
-            .map_err(|e| format!("timeout: {e}"))?
-            .map_err(|e| format!("chat_with_tools error: {e}"))?;
+    let result = tokio::time::timeout(
+        std::time::Duration::from_secs(30),
+        provider.chat_with_tools(messages, tools),
+    )
+    .await
+    .map_err(|e| format!("timeout: {e}"))?
+    .map_err(|e| format!("chat_with_tools error: {e}"))?;
     Ok(result)
 }
 

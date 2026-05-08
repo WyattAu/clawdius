@@ -4,9 +4,9 @@
 //! Supports JSON/CSV export and PDF-ready data structures.
 //! Self-hosted deployments can use this without Stripe.
 
-use chrono::{DateTime, Utc};
 use crate::billing::{BillingEvent, BillingEventType, PlanTier, Subscription};
 use crate::usage::{UsageAggregation, UsageRecord};
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -220,7 +220,7 @@ impl InvoiceGenerator {
                         total_cents: event.amount_cents,
                         kind: LineItemKind::Proration,
                     });
-                }
+                },
                 BillingEventType::OneTimeCharge => {
                     line_items.push(LineItem {
                         description: event.description.clone(),
@@ -229,7 +229,7 @@ impl InvoiceGenerator {
                         total_cents: event.amount_cents,
                         kind: LineItemKind::Charge,
                     });
-                }
+                },
                 BillingEventType::Credit | BillingEventType::Refund => {
                     line_items.push(LineItem {
                         description: event.description.clone(),
@@ -238,10 +238,10 @@ impl InvoiceGenerator {
                         total_cents: event.amount_cents,
                         kind: LineItemKind::Credit,
                     });
-                }
+                },
                 _ => {
                     // SubscriptionCharge, PaymentFailed, PaymentSucceeded — no line item
-                }
+                },
             }
         }
 
@@ -251,7 +251,8 @@ impl InvoiceGenerator {
         if tokens_used > allowance && allowance != u64::MAX {
             let overage_tokens = tokens_used - allowance;
             let overage_1k_units = (overage_tokens + 999) / 1000; // ceiling division
-            let overage_cost = overage_1k_units as i64 * self.config.overage_price_per_1k_tokens_cents;
+            let overage_cost =
+                overage_1k_units as i64 * self.config.overage_price_per_1k_tokens_cents;
             if overage_cost > 0 {
                 line_items.push(LineItem {
                     description: format!(
@@ -294,10 +295,7 @@ impl InvoiceGenerator {
             total_cents: total,
             currency: self.config.currency.clone(),
             event_ids,
-            notes: format!(
-                "Tokens used: {}. Plan: {}.",
-                tokens_used, subscription.tier
-            ),
+            notes: format!("Tokens used: {}. Plan: {}.", tokens_used, subscription.tier),
             stripe_invoice_id: None,
         }
     }
@@ -305,7 +303,9 @@ impl InvoiceGenerator {
     /// Generate a CSV string from an invoice.
     pub fn to_csv(&self, invoice: &Invoice) -> String {
         let mut csv = String::new();
-        csv.push_str("Invoice ID,Tenant,Cycle,Status,Tier,Seats,Subtotal,Tax,Total,Currency,Due Date\n");
+        csv.push_str(
+            "Invoice ID,Tenant,Cycle,Status,Tier,Seats,Subtotal,Tax,Total,Currency,Due Date\n",
+        );
         csv.push_str(&format!(
             "{},{},{},{},{},{},{},{},{},{},{}\n",
             invoice.id,
@@ -517,7 +517,14 @@ mod tests {
     fn test_enterprise_no_overage() {
         let gen = InvoiceGenerator::new();
         let sub = Subscription::new("bigcorp", PlanTier::Enterprise);
-        let records = vec![UsageRecord::new("bigcorp", "s1", "test", "m1", 100_000_000, 0)];
+        let records = vec![UsageRecord::new(
+            "bigcorp",
+            "s1",
+            "test",
+            "m1",
+            100_000_000,
+            0,
+        )];
         let invoice = gen.generate(&sub, &[], &records);
 
         // Enterprise has unlimited tokens — no overage

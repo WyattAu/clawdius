@@ -171,7 +171,10 @@ impl WebSearchConfig {
             follow_redirects: true,
             custom_headers: vec![
                 ("Accept-Language".to_string(), "en-US,en;q=0.9".to_string()),
-                ("Accept".to_string(), "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8".to_string()),
+                (
+                    "Accept".to_string(),
+                    "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8".to_string(),
+                ),
                 ("DNT".to_string(), "1".to_string()),
                 ("Connection".to_string(), "keep-alive".to_string()),
                 ("Upgrade-Insecure-Requests".to_string(), "1".to_string()),
@@ -279,9 +282,11 @@ impl WebSearchAgent {
         self.rate_limit().await;
 
         // Concurrency limiting
-        let _permit = self.semaphore.acquire().await.map_err(|e| {
-            crate::Error::Network(format!("Semaphore closed: {e}"))
-        })?;
+        let _permit = self
+            .semaphore
+            .acquire()
+            .await
+            .map_err(|e| crate::Error::Network(format!("Semaphore closed: {e}")))?;
 
         let mut stats = self.stats.lock().await;
         stats.total_requests += 1;
@@ -328,8 +333,7 @@ impl WebSearchAgent {
 
                     // Truncate content
                     let content = if content.len() > self.config.max_content_length {
-                        let mut truncated =
-                            content[..self.config.max_content_length].to_string();
+                        let mut truncated = content[..self.config.max_content_length].to_string();
                         truncated.push_str("\n\n[CONTENT TRUNCATED]");
                         truncated
                     } else {
@@ -355,7 +359,11 @@ impl WebSearchAgent {
                     stats.failed_requests += 1;
                     Ok(ScrapedPage::err(
                         url.to_string(),
-                        format!("HTTP {}: {}", status.as_u16(), status.canonical_reason().unwrap_or("Unknown")),
+                        format!(
+                            "HTTP {}: {}",
+                            status.as_u16(),
+                            status.canonical_reason().unwrap_or("Unknown")
+                        ),
                         start.elapsed().as_millis() as u64,
                     ))
                 }
@@ -380,7 +388,9 @@ impl WebSearchAgent {
         let results: Vec<Result<ScrapedPage>> = futures::future::join_all(futures).await;
         results
             .into_iter()
-            .map(|r| r.unwrap_or_else(|e| ScrapedPage::err("unknown".to_string(), e.to_string(), 0)))
+            .map(|r| {
+                r.unwrap_or_else(|e| ScrapedPage::err("unknown".to_string(), e.to_string(), 0))
+            })
             .collect()
     }
 
@@ -391,10 +401,7 @@ impl WebSearchAgent {
     /// (Google Custom Search, Bing Web Search API, etc.).
     pub async fn search(&self, query: &str) -> Result<Vec<SearchResult>> {
         let encoded = urlencoding::encode(query);
-        let search_url = format!(
-            "https://html.duckduckgo.com/html/?q={}",
-            encoded
-        );
+        let search_url = format!("https://html.duckduckgo.com/html/?q={}", encoded);
 
         let page = self.fetch_url(&search_url).await?;
 
@@ -420,11 +427,7 @@ impl WebSearchAgent {
     ) -> Result<(Vec<SearchResult>, Vec<ScrapedPage>)> {
         let results = self.search(query).await?;
 
-        let top_urls: Vec<&str> = results
-            .iter()
-            .take(top_n)
-            .map(|r| r.url.as_str())
-            .collect();
+        let top_urls: Vec<&str> = results.iter().take(top_n).map(|r| r.url.as_str()).collect();
 
         let pages = self.fetch_urls(&top_urls).await;
 
@@ -783,7 +786,8 @@ mod tests {
 
     #[test]
     fn test_extract_text_content_simple() {
-        let html = "<html><head><title>Test Page</title></head><body><p>Hello world</p></body></html>";
+        let html =
+            "<html><head><title>Test Page</title></head><body><p>Hello world</p></body></html>";
         let (title, content) = extract_text_content(html);
         assert_eq!(title, "Test Page");
         assert!(content.contains("Hello world"));

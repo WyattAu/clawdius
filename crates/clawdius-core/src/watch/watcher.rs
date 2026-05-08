@@ -9,8 +9,8 @@ use std::sync::mpsc as std_mpsc;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
-use notify::{Event, EventKind, RecursiveMode, Watcher as NotifyWatcher};
 use notify::RecommendedWatcher;
+use notify::{Event, EventKind, RecursiveMode, Watcher as NotifyWatcher};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -455,10 +455,7 @@ mod tests {
     #[test]
     fn test_flush_to_watch_events() {
         let mut debouncer = EventDebouncer::default();
-        debouncer.add(
-            PathBuf::from("existing.rs"),
-            DebouncedEventKind::Modified,
-        );
+        debouncer.add(PathBuf::from("existing.rs"), DebouncedEventKind::Modified);
 
         let events = flush_to_watch_events(&mut debouncer);
         assert_eq!(events.len(), 1);

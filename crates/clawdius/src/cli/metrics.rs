@@ -1,7 +1,7 @@
-use super::{OutputFormat, MetricsOutputFormat, load_config};
+use super::{load_config, MetricsOutputFormat, OutputFormat};
 
-use std::path::PathBuf;
 use clawdius_core::output::{OutputFormat as CoreOutputFormat, OutputFormatter};
+use std::path::PathBuf;
 
 pub(super) async fn handle_metrics(
     format: MetricsOutputFormat,

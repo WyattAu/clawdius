@@ -143,9 +143,9 @@ pub struct Quota {
 impl Default for Quota {
     fn default() -> Self {
         Self {
-            monthly_token_limit: 10_000_000,   // 10M tokens/month
-            per_request_token_limit: 100_000,     // 100K tokens/request
-            monthly_cost_limit: 100.0,            // $100/month
+            monthly_token_limit: 10_000_000,  // 10M tokens/month
+            per_request_token_limit: 100_000, // 100K tokens/request
+            monthly_cost_limit: 100.0,        // $100/month
             rate_limit_per_minute: 60,
         }
     }
@@ -408,10 +408,7 @@ impl TenantUsageTracker {
                     cost_cents.max(0) as u64,
                     calls.max(0) as u64,
                 );
-                tracker
-                    .meters
-                    .write()
-                    .insert(tenant_id, meter);
+                tracker.meters.write().insert(tenant_id, meter);
             }
         }
 
@@ -574,10 +571,13 @@ mod tests {
     #[test]
     fn test_tenant_tracker_record_within_quota() {
         let tracker = TenantUsageTracker::new();
-        tracker.register_tenant("org1", Quota {
-            monthly_token_limit: 1000,
-            ..Default::default()
-        });
+        tracker.register_tenant(
+            "org1",
+            Quota {
+                monthly_token_limit: 1000,
+                ..Default::default()
+            },
+        );
 
         assert!(tracker.record_usage("org1", 500, 10).is_ok());
         assert!(tracker.record_usage("org1", 400, 5).is_ok());
@@ -586,10 +586,13 @@ mod tests {
     #[test]
     fn test_tenant_tracker_quota_exceeded() {
         let tracker = TenantUsageTracker::new();
-        tracker.register_tenant("org1", Quota {
-            monthly_token_limit: 1000,
-            ..Default::default()
-        });
+        tracker.register_tenant(
+            "org1",
+            Quota {
+                monthly_token_limit: 1000,
+                ..Default::default()
+            },
+        );
 
         tracker.record_usage("org1", 600, 0).unwrap();
 

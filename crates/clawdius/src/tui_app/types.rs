@@ -63,7 +63,11 @@ pub enum TuiEvent {
     /// The LLM wants to call a tool.
     ToolCall { name: String, arguments: String },
     /// A tool execution completed.
-    ToolResult { name: String, output: String, is_error: bool },
+    ToolResult {
+        name: String,
+        output: String,
+        is_error: bool,
+    },
     /// A sprint/generate phase started or completed.
     Phase {
         name: String,

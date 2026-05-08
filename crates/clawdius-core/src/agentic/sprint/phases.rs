@@ -88,7 +88,11 @@ fn build_base_user_message(state: &SprintState) -> String {
 }
 
 /// Attempt to attach browser QA snapshot context for the Test phase.
-async fn attach_browser_qa_context(engine: &SprintEngine, state: &SprintState, user_message: &mut String) {
+async fn attach_browser_qa_context(
+    engine: &SprintEngine,
+    state: &SprintState,
+    user_message: &mut String,
+) {
     let Some(ref url) = state.config.browser_qa_url else {
         return;
     };
@@ -188,7 +192,11 @@ async fn attach_lsp_symbols(engine: &SprintEngine, state: &SprintState, user_mes
 }
 
 /// Attach LSP diagnostics and code actions for Build/Test/Review phases.
-async fn attach_lsp_diagnostics(engine: &SprintEngine, state: &SprintState, user_message: &mut String) {
+async fn attach_lsp_diagnostics(
+    engine: &SprintEngine,
+    state: &SprintState,
+    user_message: &mut String,
+) {
     let Some(ref lsp) = engine.lsp_client else {
         return;
     };
@@ -209,15 +217,13 @@ async fn attach_lsp_diagnostics(engine: &SprintEngine, state: &SprintState, user
         for (uri, file_diags) in &diags {
             let err_diags: Vec<crate::lsp::protocol::Diagnostic> = file_diags
                 .iter()
-                .filter(|d| {
-                    d.severity
-                        == Some(crate::lsp::protocol::DiagnosticSeverity::Error)
-                })
+                .filter(|d| d.severity == Some(crate::lsp::protocol::DiagnosticSeverity::Error))
                 .cloned()
                 .collect();
             if !err_diags.is_empty() {
-                if let Ok(ca) =
-                    lsp.code_actions(uri, err_diags[0].range.clone(), err_diags).await
+                if let Ok(ca) = lsp
+                    .code_actions(uri, err_diags[0].range.clone(), err_diags)
+                    .await
                 {
                     actions.extend(ca);
                 }
@@ -227,8 +233,7 @@ async fn attach_lsp_diagnostics(engine: &SprintEngine, state: &SprintState, user
     };
 
     if !all_diags.is_empty() {
-        let mut diag_text =
-            String::from("\n\n## LSP Diagnostics\nThe language server reported:\n");
+        let mut diag_text = String::from("\n\n## LSP Diagnostics\nThe language server reported:\n");
         let (mut error_count, mut warning_count) = (0usize, 0usize);
         for (uri, diags) in &all_diags {
             for d in diags {
@@ -237,11 +242,11 @@ async fn attach_lsp_diagnostics(engine: &SprintEngine, state: &SprintState, user
                     Some(DiagnosticSeverity::Error) => {
                         error_count += 1;
                         "ERROR"
-                    }
+                    },
                     Some(DiagnosticSeverity::Warning) => {
                         warning_count += 1;
                         "WARNING"
-                    }
+                    },
                     Some(DiagnosticSeverity::Information) => "INFO",
                     Some(DiagnosticSeverity::Hint) => "HINT",
                     _ => "UNKNOWN",
@@ -312,8 +317,14 @@ async fn call_llm_with_fallback(
 ) -> PhaseResult {
     let system_prompt = phase_prompt(phase);
     let messages = vec![
-        ChatMessage { role: ChatRole::System, content: system_prompt },
-        ChatMessage { role: ChatRole::User, content: build_base_user_message(state) },
+        ChatMessage {
+            role: ChatRole::System,
+            content: system_prompt,
+        },
+        ChatMessage {
+            role: ChatRole::User,
+            content: build_base_user_message(state),
+        },
     ];
 
     match engine.chat_collecting_stream(messages).await {
@@ -323,7 +334,10 @@ async fn call_llm_with_fallback(
                 PhaseResult {
                     phase: phase.clone(),
                     status: PhaseStatus::Failed,
-                    output: format!("LLM returned error response: {}", &output[..output.len().min(200)]),
+                    output: format!(
+                        "LLM returned error response: {}",
+                        &output[..output.len().min(200)]
+                    ),
                     duration_ms: start.elapsed().as_millis() as u64,
                     files_modified: Vec::new(),
                     errors: vec!["LLM error response".to_string()],
@@ -405,7 +419,10 @@ pub async fn run_phase(
     if *phase == SprintPhase::Plan {
         attach_lsp_symbols(engine, state, &mut user_message).await;
     }
-    if matches!(phase, SprintPhase::Build | SprintPhase::Test | SprintPhase::Review) {
+    if matches!(
+        phase,
+        SprintPhase::Build | SprintPhase::Test | SprintPhase::Review
+    ) {
         attach_lsp_diagnostics(engine, state, &mut user_message).await;
     }
 
@@ -464,13 +481,16 @@ pub async fn sync_lsp_documents(engine: &SprintEngine, files: &[String]) {
                 if let Err(e) = lsp.open_document(&uri, lang_id, &text).await {
                     tracing::debug!("LSP sync failed for {}: {}", file_path, e);
                 }
-            }
-            Err(_) => {}
+            },
+            Err(_) => {},
         }
     }
 }
 
-async fn maybe_compact_context(engine: &SprintEngine, state: &mut SprintState) -> crate::Result<()> {
+async fn maybe_compact_context(
+    engine: &SprintEngine,
+    state: &mut SprintState,
+) -> crate::Result<()> {
     const COMPACT_THRESHOLD_CHARS: usize = 320_000;
     const KEEP_RECENT_CHARS: usize = 20_000;
     if state.context_accumulator.len() <= COMPACT_THRESHOLD_CHARS {
@@ -482,10 +502,16 @@ async fn maybe_compact_context(engine: &SprintEngine, state: &mut SprintState) -
     }
     let split_point = total_len - KEEP_RECENT_CHARS;
     let split_point = state.context_accumulator[..split_point]
-        .rfind('\n').map(|p| p + 1).unwrap_or(split_point);
+        .rfind('\n')
+        .map(|p| p + 1)
+        .unwrap_or(split_point);
     let old_context = &state.context_accumulator[..split_point];
     let recent_context = &state.context_accumulator[split_point..];
-    tracing::info!(total_chars = total_len, old_chars = old_context.len(), "context compaction triggered");
+    tracing::info!(
+        total_chars = total_len,
+        old_chars = old_context.len(),
+        "context compaction triggered"
+    );
     let old_for_llm = if old_context.len() > 100_000 {
         &old_context[old_context.len() - 100_000..]
     } else {
@@ -503,21 +529,33 @@ async fn maybe_compact_context(engine: &SprintEngine, state: &mut SprintState) -
         Ok(summary) => {
             let summary = if summary.len() > 8000 {
                 format!("{}... [truncated]", &summary[..8000])
-            } else { summary };
+            } else {
+                summary
+            };
             let old_len = old_context.len();
             let new_acc = format!(
                 "[Previous sprint context compacted]\n\n{summary}\n\n[End of compacted context]\n\n--- Recent context ---\n{recent_context}"
             );
-            tracing::info!(old_chars = old_len, new_chars = new_acc.len(), "context compaction completed");
+            tracing::info!(
+                old_chars = old_len,
+                new_chars = new_acc.len(),
+                "context compaction completed"
+            );
             state.context_accumulator = new_acc;
-        }
+        },
         Err(e) => {
             tracing::warn!("LLM compaction failed, using truncation fallback: {e}");
             let truncated = if old_context.len() > 8000 {
-                format!("[Previous context truncated]\n...{}", &old_context[old_context.len() - 8000..])
-            } else { old_context.to_string() };
-            state.context_accumulator = format!("{truncated}\n\n--- Recent context ---\n{recent_context}");
-        }
+                format!(
+                    "[Previous context truncated]\n...{}",
+                    &old_context[old_context.len() - 8000..]
+                )
+            } else {
+                old_context.to_string()
+            };
+            state.context_accumulator =
+                format!("{truncated}\n\n--- Recent context ---\n{recent_context}");
+        },
     }
     Ok(())
 }

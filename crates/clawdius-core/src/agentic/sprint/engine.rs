@@ -1,7 +1,7 @@
 use super::{
-    create_checkpoint, get_changed_files, load_latest_state, run_multi_model_review,
-    save_state, PhaseResult, PhaseStatus, SprintConfig, SprintError, SprintMetrics, SprintPhase,
-    SprintResult, SprintState,
+    create_checkpoint, get_changed_files, load_latest_state, run_multi_model_review, save_state,
+    PhaseResult, PhaseStatus, SprintConfig, SprintError, SprintMetrics, SprintPhase, SprintResult,
+    SprintState,
 };
 use crate::agentic::browser_daemon::BrowserDaemon;
 use crate::agentic::tool_executor::{ToolExecutor, ToolRequest};
@@ -46,7 +46,10 @@ impl SprintEngine {
         self
     }
 
-    pub(crate) async fn chat_collecting_stream(&self, messages: Vec<crate::llm::ChatMessage>) -> crate::Result<String> {
+    pub(crate) async fn chat_collecting_stream(
+        &self,
+        messages: Vec<crate::llm::ChatMessage>,
+    ) -> crate::Result<String> {
         let llm_timeout = std::time::Duration::from_secs(120);
         match tokio::time::timeout(llm_timeout, self.llm.chat_stream(messages.clone())).await {
             Ok(Ok(mut rx)) => {
@@ -64,12 +67,11 @@ impl SprintEngine {
                     Ok(output)
                 }
             },
-            Ok(Err(_)) => {
-                self.llm
-                    .chat(messages)
-                    .await
-                    .map_err(|e| crate::Error::Llm(format!("LLM chat failed: {e}")))
-            },
+            Ok(Err(_)) => self
+                .llm
+                .chat(messages)
+                .await
+                .map_err(|e| crate::Error::Llm(format!("LLM chat failed: {e}"))),
             Err(_) => Err(crate::Error::Llm(
                 "LLM streaming call timed out (120s)".to_string(),
             )),
@@ -192,9 +194,7 @@ impl SprintEngine {
                 }
             },
             Err(_) => {
-                eprintln!(
-                    "  [native tool-use not available, falling back to parser-based loop]"
-                );
+                eprintln!("  [native tool-use not available, falling back to parser-based loop]");
                 match tool_use::run_tool_use_loop(
                     llm,
                     executor,
@@ -221,9 +221,7 @@ impl SprintEngine {
                         }
                     },
                     Err(e) => {
-                        eprintln!(
-                            "Tool-use loop error: {e}. Falling back to LLM-only result."
-                        );
+                        eprintln!("Tool-use loop error: {e}. Falling back to LLM-only result.");
                         result
                     },
                 }
@@ -274,9 +272,7 @@ impl SprintEngine {
         match run_multi_model_review(self, state, result.clone()).await {
             Ok(r) => r,
             Err(e) => {
-                eprintln!(
-                    "Multi-model review error: {e}. Falling back to single LLM review."
-                );
+                eprintln!("Multi-model review error: {e}. Falling back to single LLM review.");
                 result
             },
         }
@@ -453,7 +449,13 @@ impl SprintEngine {
             }
 
             // Handle build/test retry cycle
-            match self.handle_test_retry(phase, &phases, &result, &mut state, &mut build_test_iterations) {
+            match self.handle_test_retry(
+                phase,
+                &phases,
+                &result,
+                &mut state,
+                &mut build_test_iterations,
+            ) {
                 TestRetryAction::RestartAt(new_idx) => {
                     idx = new_idx;
                     continue;
@@ -465,7 +467,11 @@ impl SprintEngine {
             idx += 1;
         }
 
-        Ok(Self::build_result(state, sprint_start, build_test_iterations))
+        Ok(Self::build_result(
+            state,
+            sprint_start,
+            build_test_iterations,
+        ))
     }
 
     pub async fn run_with_persistence(
@@ -555,7 +561,13 @@ impl SprintEngine {
             }
 
             // Handle build/test retry cycle
-            match self.handle_test_retry(phase, &phases, &result, &mut state, &mut build_test_iterations) {
+            match self.handle_test_retry(
+                phase,
+                &phases,
+                &result,
+                &mut state,
+                &mut build_test_iterations,
+            ) {
                 TestRetryAction::RestartAt(new_idx) => {
                     idx = new_idx;
                     continue;
@@ -567,7 +579,11 @@ impl SprintEngine {
             idx += 1;
         }
 
-        Ok(Self::build_result(state, sprint_start, build_test_iterations))
+        Ok(Self::build_result(
+            state,
+            sprint_start,
+            build_test_iterations,
+        ))
     }
 }
 

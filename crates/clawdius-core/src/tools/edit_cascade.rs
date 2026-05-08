@@ -173,7 +173,7 @@ pub fn apply_edit_cascade_with_config(
         match try_whitespace_tolerant(params) {
             Ok(Some(result)) if result.confidence >= config.min_confidence => {
                 return Ok(apply_match(params, &result));
-            }
+            },
             Ok(Some(result)) => {
                 diagnostics.push(StrategyDiagnostic {
                     strategy: Strategy::WhitespaceTolerant,
@@ -182,19 +182,19 @@ pub fn apply_edit_cascade_with_config(
                         result.confidence, config.min_confidence
                     ),
                 });
-            }
+            },
             Ok(None) => {
                 diagnostics.push(StrategyDiagnostic {
                     strategy: Strategy::WhitespaceTolerant,
                     reason: "no match after whitespace normalization".into(),
                 });
-            }
+            },
             Err(e) => {
                 diagnostics.push(StrategyDiagnostic {
                     strategy: Strategy::WhitespaceTolerant,
                     reason: format!("error: {e}"),
                 });
-            }
+            },
         }
     }
 
@@ -203,7 +203,7 @@ pub fn apply_edit_cascade_with_config(
         match try_line_number_anchored(params) {
             Ok(Some(result)) if result.confidence >= config.min_confidence => {
                 return Ok(apply_match(params, &result));
-            }
+            },
             Ok(Some(result)) => {
                 diagnostics.push(StrategyDiagnostic {
                     strategy: Strategy::LineNumberAnchored,
@@ -212,19 +212,19 @@ pub fn apply_edit_cascade_with_config(
                         result.confidence, config.min_confidence
                     ),
                 });
-            }
+            },
             Ok(None) => {
                 diagnostics.push(StrategyDiagnostic {
                     strategy: Strategy::LineNumberAnchored,
                     reason: "no line number anchors found in old_text".into(),
                 });
-            }
+            },
             Err(e) => {
                 diagnostics.push(StrategyDiagnostic {
                     strategy: Strategy::LineNumberAnchored,
                     reason: format!("error: {e}"),
                 });
-            }
+            },
         }
     }
 
@@ -233,7 +233,7 @@ pub fn apply_edit_cascade_with_config(
         match try_prefix_suffix_anchored(params) {
             Ok(Some(result)) if result.confidence >= config.min_confidence => {
                 return Ok(apply_match(params, &result));
-            }
+            },
             Ok(Some(result)) => {
                 diagnostics.push(StrategyDiagnostic {
                     strategy: Strategy::PrefixSuffixAnchored,
@@ -242,19 +242,19 @@ pub fn apply_edit_cascade_with_config(
                         result.confidence, config.min_confidence
                     ),
                 });
-            }
+            },
             Ok(None) => {
                 diagnostics.push(StrategyDiagnostic {
                     strategy: Strategy::PrefixSuffixAnchored,
                     reason: "no unique prefix/suffix anchors found".into(),
                 });
-            }
+            },
             Err(e) => {
                 diagnostics.push(StrategyDiagnostic {
                     strategy: Strategy::PrefixSuffixAnchored,
                     reason: format!("error: {e}"),
                 });
-            }
+            },
         }
     }
 
@@ -263,7 +263,7 @@ pub fn apply_edit_cascade_with_config(
         match try_fuzzy(params, config.max_levenshtein_distance) {
             Ok(Some(result)) if result.confidence >= config.min_confidence => {
                 return Ok(apply_match(params, &result));
-            }
+            },
             Ok(Some(result)) => {
                 diagnostics.push(StrategyDiagnostic {
                     strategy: Strategy::Fuzzy,
@@ -272,19 +272,19 @@ pub fn apply_edit_cascade_with_config(
                         result.confidence, config.min_confidence
                     ),
                 });
-            }
+            },
             Ok(None) => {
                 diagnostics.push(StrategyDiagnostic {
                     strategy: Strategy::Fuzzy,
                     reason: "no fuzzy match within distance threshold".into(),
                 });
-            }
+            },
             Err(e) => {
                 diagnostics.push(StrategyDiagnostic {
                     strategy: Strategy::Fuzzy,
                     reason: format!("error: {e}"),
                 });
-            }
+            },
         }
     }
 
@@ -448,7 +448,8 @@ fn try_line_number_anchored(params: &EditParams<'_>) -> Result<Option<MatchResul
                 continue;
             }
             let actual_line = content_lines[i].trim();
-            let hint_trimmed = hint_content.trim_start_matches(|c: char| c.is_ascii_digit() || c == ':' || c == '|');
+            let hint_trimmed = hint_content
+                .trim_start_matches(|c: char| c.is_ascii_digit() || c == ':' || c == '|');
             let hint_trimmed = hint_trimmed.trim();
 
             if !hint_trimmed.is_empty() && actual_line.contains(hint_trimmed) {
@@ -459,9 +460,11 @@ fn try_line_number_anchored(params: &EditParams<'_>) -> Result<Option<MatchResul
                 let anchor_in_old = old_lines.iter().position(|l| *l == *hint_content);
                 if let Some(anchor_offset) = anchor_in_old {
                     let estimated_start = i.saturating_sub(anchor_offset);
-                    let estimated_end = (estimated_start + old_lines.len()).min(content_lines.len());
+                    let estimated_end =
+                        (estimated_start + old_lines.len()).min(content_lines.len());
 
-                    if estimated_start < content_lines.len() && estimated_end <= content_lines.len() {
+                    if estimated_start < content_lines.len() && estimated_end <= content_lines.len()
+                    {
                         // Compute byte range
                         let byte_start = content_lines[..estimated_start]
                             .iter()
@@ -591,10 +594,7 @@ fn try_prefix_suffix_anchored(params: &EditParams<'_>) -> Result<Option<MatchRes
 // Strategy 5: Fuzzy Match (Aho-Corasick + Levenshtein)
 // =============================================================================
 
-fn try_fuzzy(
-    params: &EditParams<'_>,
-    max_distance: usize,
-) -> Result<Option<MatchResult>, String> {
+fn try_fuzzy(params: &EditParams<'_>, max_distance: usize) -> Result<Option<MatchResult>, String> {
     // For fuzzy matching, we use significant lines from old_text as Aho-Corasick
     // patterns to find candidate regions, then verify with Levenshtein.
 
@@ -664,8 +664,7 @@ fn apply_match(params: &EditParams<'_>, match_result: &MatchResult) -> EditCasca
         params.content.replace(params.old_text, params.new_text)
     } else {
         let mut result = String::with_capacity(
-            params.content.len() - (match_result.end - match_result.start)
-                + params.new_text.len(),
+            params.content.len() - (match_result.end - match_result.start) + params.new_text.len(),
         );
         result.push_str(&params.content[..match_result.start]);
         result.push_str(params.new_text);
@@ -718,9 +717,7 @@ pub fn levenshtein(a: &str, b: &str) -> usize {
             } else {
                 1
             };
-            curr[j] = (prev[j] + 1)
-                .min(curr[j - 1] + 1)
-                .min(prev[j - 1] + cost);
+            curr[j] = (prev[j] + 1).min(curr[j - 1] + 1).min(prev[j - 1] + cost);
         }
         std::mem::swap(&mut prev, &mut curr);
     }

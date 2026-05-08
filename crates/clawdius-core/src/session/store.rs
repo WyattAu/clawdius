@@ -43,7 +43,7 @@ where
                     .expect("run_async worker thread panicked")
                 })
             }
-        }
+        },
         Err(_) => {
             // No runtime present — create a temporary one (e.g., plain #[test])
             let rt = tokio::runtime::Builder::new_current_thread()
@@ -51,7 +51,7 @@ where
                 .build()
                 .expect("failed to create tokio runtime");
             rt.block_on(f)
-        }
+        },
     }
 }
 
@@ -70,7 +70,6 @@ where
 pub struct SessionStore {
     backend: SqliteBackend,
 }
-
 
 impl SessionStore {
     /// Open or create session store at path.

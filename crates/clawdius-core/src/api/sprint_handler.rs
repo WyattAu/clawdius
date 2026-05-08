@@ -167,8 +167,8 @@ pub async fn run_sprint(
     match crate::graph_rag::repo_map::RepoMap::build(config.project_root.clone()) {
         Ok(map) if map.tag_count() > 0 => {
             config.extra_context = Some(map.to_string());
-        }
-        _ => {}
+        },
+        _ => {},
     }
 
     // Create and run SprintEngine with real shell execution
@@ -201,7 +201,10 @@ pub async fn run_sprint(
 
             // Record tenant usage if authenticated
             if let Some(Extension(key)) = api_key {
-                let store = state.tenant_store.read().expect("tenant_store lock poisoned");
+                let store = state
+                    .tenant_store
+                    .read()
+                    .expect("tenant_store lock poisoned");
                 if let Some(tenant_id) = store.get_tenant_id_by_api_key(&key.0) {
                     drop(store);
                     let total_tokens = result.metrics.total_tokens as usize;
@@ -406,7 +409,9 @@ pub async fn stream_sprint(
     let llm_provider = match &state.llm_client {
         Some(provider) => Arc::clone(provider) as Arc<dyn LlmClient>,
         None => {
-            let _ = tx.send(SprintSseEvent::error(None, "No LLM provider configured")).await;
+            let _ = tx
+                .send(SprintSseEvent::error(None, "No LLM provider configured"))
+                .await;
             drop(tx);
 
             let stream: std::pin::Pin<
@@ -450,8 +455,8 @@ pub async fn stream_sprint(
     match crate::graph_rag::repo_map::RepoMap::build(config.project_root.clone()) {
         Ok(map) if map.tag_count() > 0 => {
             config.extra_context = Some(map.to_string());
-        }
-        _ => {}
+        },
+        _ => {},
     }
 
     // Clone state and api_key for use in the spawned task
@@ -480,7 +485,12 @@ pub async fn stream_sprint(
             let result = match engine.run_phase(&mut sprint_state, phase).await {
                 Ok(r) => r,
                 Err(e) => {
-                    let _ = tx.send(SprintSseEvent::error(Some(&phase_name), format!("Phase {phase} error: {e}"))).await;
+                    let _ = tx
+                        .send(SprintSseEvent::error(
+                            Some(&phase_name),
+                            format!("Phase {phase} error: {e}"),
+                        ))
+                        .await;
                     let _ = tx.send(SprintSseEvent::sprint_end(false, 0)).await;
                     return;
                 },
@@ -529,11 +539,16 @@ pub async fn stream_sprint(
             .iter()
             .map(|r| r.tokens_used)
             .sum();
-        let _ = tx.send(SprintSseEvent::sprint_end(all_success, total_tokens)).await;
+        let _ = tx
+            .send(SprintSseEvent::sprint_end(all_success, total_tokens))
+            .await;
 
         // Record tenant usage if authenticated
         if let Some(Extension(key)) = key_clone {
-            let store = state_clone.tenant_store.read().expect("tenant_store lock poisoned");
+            let store = state_clone
+                .tenant_store
+                .read()
+                .expect("tenant_store lock poisoned");
             if let Some(tenant_id) = store.get_tenant_id_by_api_key(&key.0) {
                 drop(store);
                 let _ = crate::api::auth_handler::record_tenant_task(

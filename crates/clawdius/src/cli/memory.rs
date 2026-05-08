@@ -1,4 +1,4 @@
-use super::{OutputFormat, MemoryCommands, load_config};
+use super::{load_config, MemoryCommands, OutputFormat};
 
 use std::path::PathBuf;
 
@@ -14,7 +14,11 @@ pub(super) fn handle_memory(
         .storage
         .database_path
         .parent()
-        .map(|p| p.parent().unwrap_or(p)).map_or_else(|| std::env::current_dir().unwrap_or_default(), std::path::Path::to_path_buf);
+        .map(|p| p.parent().unwrap_or(p))
+        .map_or_else(
+            || std::env::current_dir().unwrap_or_default(),
+            std::path::Path::to_path_buf,
+        );
 
     match action {
         MemoryCommands::Show { instructions } => {
@@ -391,15 +395,18 @@ pub(super) fn handle_memory(
                 // Add frontmatter
                 content.push_str("---\n");
                 if let Some(name) = &memory.metadata().project_name {
-                    let _ = std::fmt::Write::write_fmt(&mut content, format_args!("project: {name}"));
+                    let _ =
+                        std::fmt::Write::write_fmt(&mut content, format_args!("project: {name}"));
                     content.push('\n');
                 }
                 if let Some(lang) = &memory.metadata().primary_language {
-                    let _ = std::fmt::Write::write_fmt(&mut content, format_args!("language: {lang}"));
+                    let _ =
+                        std::fmt::Write::write_fmt(&mut content, format_args!("language: {lang}"));
                     content.push('\n');
                 }
                 if let Some(fw) = &memory.metadata().framework {
-                    let _ = std::fmt::Write::write_fmt(&mut content, format_args!("framework: {fw}"));
+                    let _ =
+                        std::fmt::Write::write_fmt(&mut content, format_args!("framework: {fw}"));
                     content.push('\n');
                 }
                 content.push_str("---\n\n");

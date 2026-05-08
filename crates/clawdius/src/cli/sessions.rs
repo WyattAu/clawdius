@@ -1,9 +1,9 @@
-use super::{OutputFormat, load_config};
+use super::{load_config, OutputFormat};
 
-use std::path::PathBuf;
+use clawdius_core::output::SessionInfo;
 use clawdius_core::output::{OutputFormat as CoreOutputFormat, OutputFormatter, OutputOptions};
 use clawdius_core::SessionManager;
-use clawdius_core::output::SessionInfo;
+use std::path::PathBuf;
 
 pub(super) fn handle_sessions(
     delete: Option<&str>,
@@ -26,18 +26,16 @@ pub(super) fn handle_sessions(
         let results = session_manager.search_messages(query)?;
         println!("Search results for '{query}':");
         for (session_id, msg) in results {
-            let preview = msg
-                .as_text()
-                .map_or_else(
-                    || "[non-text]".to_string(),
-                    |t| {
-                        if t.len() > 50 {
-                            format!("{}...", &t[..50])
-                        } else {
-                            t.to_string()
-                        }
-                    },
-                );
+            let preview = msg.as_text().map_or_else(
+                || "[non-text]".to_string(),
+                |t| {
+                    if t.len() > 50 {
+                        format!("{}...", &t[..50])
+                    } else {
+                        t.to_string()
+                    }
+                },
+            );
             println!("  {session_id} > {preview}");
         }
         return Ok(());

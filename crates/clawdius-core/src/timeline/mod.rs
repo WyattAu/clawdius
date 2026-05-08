@@ -42,7 +42,9 @@ pub use change_tracker::{
     ChangeId, ChangeSource, ChangeTracker, ChangeType, DiffCalculator, FileChangeRecord,
     FileChangeSummary, FileState, LineChange, LineChangeType,
 };
-pub use store::{CheckpointInfo, FileSnapshot, FileVersion, StorageStats, TimelineCheckpoint, TimelineStore};
+pub use store::{
+    CheckpointInfo, FileSnapshot, FileVersion, StorageStats, TimelineCheckpoint, TimelineStore,
+};
 pub use watcher::{ChangeKind, FileChangeEvent, FileWatcher, WatcherConfig};
 
 use serde::{Deserialize, Serialize};

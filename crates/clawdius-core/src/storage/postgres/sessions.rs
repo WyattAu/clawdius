@@ -1,8 +1,7 @@
 use super::PostgresBackend;
 use crate::error::Result;
 use crate::session::types::{
-    ContentPart, Message, MessageContent, MessageRole, Session, SessionId,
-    SessionMeta, TokenUsage,
+    ContentPart, Message, MessageContent, MessageRole, Session, SessionId, SessionMeta, TokenUsage,
 };
 use crate::storage::backend::SessionRepository;
 use crate::storage::error::StorageError;
@@ -11,7 +10,10 @@ use tokio_postgres::types::ToSql;
 use uuid::Uuid;
 
 impl SessionRepository for PostgresBackend {
-    fn create_session(&self, session: &Session) -> impl std::future::Future<Output = Result<()>> + Send {
+    fn create_session(
+        &self,
+        session: &Session,
+    ) -> impl std::future::Future<Output = Result<()>> + Send {
         async move {
             let client = self.get_client().await?;
             let tags_json = serde_json::to_string(&session.meta.tags)?;
@@ -51,7 +53,10 @@ impl SessionRepository for PostgresBackend {
         }
     }
 
-    fn load_session(&self, id: &SessionId) -> impl std::future::Future<Output = Result<Option<Session>>> + Send {
+    fn load_session(
+        &self,
+        id: &SessionId,
+    ) -> impl std::future::Future<Output = Result<Option<Session>>> + Send {
         async move {
             let client = self.get_client().await?;
             let result = client
@@ -77,7 +82,10 @@ impl SessionRepository for PostgresBackend {
         }
     }
 
-    fn load_session_full(&self, id: &SessionId) -> impl std::future::Future<Output = Result<Option<Session>>> + Send {
+    fn load_session_full(
+        &self,
+        id: &SessionId,
+    ) -> impl std::future::Future<Output = Result<Option<Session>>> + Send {
         async move {
             let Some(mut session) = self.load_session(id).await? else {
                 return Ok(None);
@@ -144,7 +152,10 @@ impl SessionRepository for PostgresBackend {
         }
     }
 
-    fn delete_session(&self, id: &SessionId) -> impl std::future::Future<Output = Result<()>> + Send {
+    fn delete_session(
+        &self,
+        id: &SessionId,
+    ) -> impl std::future::Future<Output = Result<()>> + Send {
         async move {
             let client = self.get_client().await?;
             client
@@ -161,7 +172,11 @@ impl SessionRepository for PostgresBackend {
         }
     }
 
-    fn save_message(&self, session_id: &SessionId, message: &Message) -> impl std::future::Future<Output = Result<()>> + Send {
+    fn save_message(
+        &self,
+        session_id: &SessionId,
+        message: &Message,
+    ) -> impl std::future::Future<Output = Result<()>> + Send {
         async move {
             let content_json = match &message.content {
                 MessageContent::Text(text) => serde_json::to_string(&text)?,
@@ -218,7 +233,10 @@ impl SessionRepository for PostgresBackend {
         }
     }
 
-    fn search_messages(&self, query: &str) -> impl std::future::Future<Output = Result<Vec<(SessionId, Message)>>> + Send {
+    fn search_messages(
+        &self,
+        query: &str,
+    ) -> impl std::future::Future<Output = Result<Vec<(SessionId, Message)>>> + Send {
         async move {
             let client = self.get_client().await?;
             let pattern = format!("%{query}%");
@@ -243,11 +261,12 @@ impl SessionRepository for PostgresBackend {
             for row in &rows {
                 let message = Self::row_to_message(row)?;
                 let session_id_str: String = row.get(1);
-                let session_id = SessionId::from_uuid(
-                    Uuid::parse_str(&session_id_str).map_err(|e| StorageError::RowConversion {
-                        reason: format!("invalid session UUID: {e}"),
-                    })?,
-                );
+                let session_id =
+                    SessionId::from_uuid(Uuid::parse_str(&session_id_str).map_err(|e| {
+                        StorageError::RowConversion {
+                            reason: format!("invalid session UUID: {e}"),
+                        }
+                    })?);
                 results.push((session_id, message));
             }
 
@@ -255,7 +274,11 @@ impl SessionRepository for PostgresBackend {
         }
     }
 
-    fn update_token_usage(&self, id: &SessionId, usage: &TokenUsage) -> impl std::future::Future<Output = Result<()>> + Send {
+    fn update_token_usage(
+        &self,
+        id: &SessionId,
+        usage: &TokenUsage,
+    ) -> impl std::future::Future<Output = Result<()>> + Send {
         async move {
             let client = self.get_client().await?;
             client

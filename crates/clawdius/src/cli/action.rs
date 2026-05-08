@@ -1,7 +1,7 @@
 use super::OutputFormat;
 
-use std::path::PathBuf;
 use clawdius_core::output::{OutputFormat as CoreOutputFormat, OutputFormatter};
+use std::path::PathBuf;
 
 pub(super) fn handle_refactor(
     _from: String,

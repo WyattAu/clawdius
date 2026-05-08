@@ -1,6 +1,9 @@
-use super::{OutputFormat, LspCommands};
+use super::{LspCommands, OutputFormat};
 
-pub(super) async fn handle_lsp(action: LspCommands, output_format: OutputFormat) -> anyhow::Result<()> {
+pub(super) async fn handle_lsp(
+    action: LspCommands,
+    output_format: OutputFormat,
+) -> anyhow::Result<()> {
     use clawdius_core::lsp::{LspClient, LspClientConfig};
 
     match action {
@@ -10,8 +13,7 @@ pub(super) async fn handle_lsp(action: LspCommands, output_format: OutputFormat)
 
             // Show spinner for text output
             let spinner = if output_format == OutputFormat::Text {
-                let mut s =
-                    crate::cli_progress::Spinner::new(format!("Connecting to {server}..."));
+                let mut s = crate::cli_progress::Spinner::new(format!("Connecting to {server}..."));
                 s.start();
                 Some(s)
             } else {
@@ -52,9 +54,7 @@ pub(super) async fn handle_lsp(action: LspCommands, output_format: OutputFormat)
                             );
                         },
                         OutputFormat::Text => {
-                            crate::cli_progress::success(&format!(
-                                "LSP server started: {server}"
-                            ));
+                            crate::cli_progress::success(&format!("LSP server started: {server}"));
                             if let Some(r) = &root {
                                 println!("   Root: {r}");
                             }

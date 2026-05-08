@@ -302,8 +302,7 @@ impl RedisTaskQueue {
 impl TaskQueue for RedisTaskQueue {
     async fn enqueue(&self, task: QueuedTask) -> Result<String> {
         let task_id = task.task_id().to_string();
-        let task_json =
-            serde_json::to_string(&task).map_err(Error::Serialization)?;
+        let task_json = serde_json::to_string(&task).map_err(Error::Serialization)?;
 
         let mut conn = self.client.clone();
         let pending_key = self.key("pending_tasks");
@@ -393,8 +392,7 @@ impl TaskQueue for RedisTaskQueue {
         task.last_heartbeat = Some(current_timestamp());
 
         // Update stored task
-        let updated_json =
-            serde_json::to_string(&task).map_err(Error::Serialization)?;
+        let updated_json = serde_json::to_string(&task).map_err(Error::Serialization)?;
         redis::cmd("SET")
             .arg(&task_key)
             .arg(&updated_json)
@@ -425,8 +423,7 @@ impl TaskQueue for RedisTaskQueue {
             serde_json::from_str(&task_json).map_err(|e| Error::ParseError(e.to_string()))?;
         task.status = status;
 
-        let updated_json =
-            serde_json::to_string(&task).map_err(Error::Serialization)?;
+        let updated_json = serde_json::to_string(&task).map_err(Error::Serialization)?;
         redis::cmd("SET")
             .arg(&task_key)
             .arg(&updated_json)

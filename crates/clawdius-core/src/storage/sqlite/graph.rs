@@ -1,14 +1,15 @@
 use super::SqliteBackend;
 use crate::error::Result;
-use crate::graph_rag::ast::{
-    FileInfo, Reference, Relationship, Symbol, SymbolKind,
-};
+use crate::graph_rag::ast::{FileInfo, Reference, Relationship, Symbol, SymbolKind};
 use crate::storage::backend::GraphRepository;
 use crate::storage::error::StorageError;
 use rusqlite::{params, OptionalExtension};
 
 impl GraphRepository for SqliteBackend {
-    fn insert_file(&self, file: &FileInfo) -> impl std::future::Future<Output = Result<i64>> + Send {
+    fn insert_file(
+        &self,
+        file: &FileInfo,
+    ) -> impl std::future::Future<Output = Result<i64>> + Send {
         async move {
             self.with_conn(|conn| {
                 conn.execute(
@@ -16,12 +17,7 @@ impl GraphRepository for SqliteBackend {
                     INSERT OR REPLACE INTO graph_files (path, hash, language, last_modified)
                     VALUES (?1, ?2, ?3, ?4)
                     ",
-                    params![
-                        file.path,
-                        file.hash,
-                        file.language,
-                        file.last_modified,
-                    ],
+                    params![file.path, file.hash, file.language, file.last_modified,],
                 )
                 .map_err(|e| StorageError::Query {
                     statement: "INSERT graph_file".to_string(),
@@ -32,7 +28,10 @@ impl GraphRepository for SqliteBackend {
         }
     }
 
-    fn get_file_by_path(&self, path: &str) -> impl std::future::Future<Output = Result<Option<FileInfo>>> + Send {
+    fn get_file_by_path(
+        &self,
+        path: &str,
+    ) -> impl std::future::Future<Output = Result<Option<FileInfo>>> + Send {
         async move {
             self.with_conn(|conn| {
                 let result = conn
@@ -61,7 +60,10 @@ impl GraphRepository for SqliteBackend {
         }
     }
 
-    fn get_file_by_id(&self, id: i64) -> impl std::future::Future<Output = Result<Option<FileInfo>>> + Send {
+    fn get_file_by_id(
+        &self,
+        id: i64,
+    ) -> impl std::future::Future<Output = Result<Option<FileInfo>>> + Send {
         async move {
             self.with_conn(|conn| {
                 let result = conn
@@ -90,7 +92,10 @@ impl GraphRepository for SqliteBackend {
         }
     }
 
-    fn get_file_id(&self, path: &str) -> impl std::future::Future<Output = Result<Option<i64>>> + Send {
+    fn get_file_id(
+        &self,
+        path: &str,
+    ) -> impl std::future::Future<Output = Result<Option<i64>>> + Send {
         async move {
             self.with_conn(|conn| {
                 let result = conn
@@ -113,10 +118,7 @@ impl GraphRepository for SqliteBackend {
         async move {
             self.with_conn(|conn| {
                 let affected = conn
-                    .execute(
-                        "DELETE FROM graph_files WHERE path = ?1",
-                        params![path],
-                    )
+                    .execute("DELETE FROM graph_files WHERE path = ?1", params![path])
                     .map_err(|e| StorageError::Query {
                         statement: "DELETE graph_file".to_string(),
                         reason: e.to_string(),
@@ -140,7 +142,10 @@ impl GraphRepository for SqliteBackend {
         }
     }
 
-    fn insert_symbol(&self, symbol: &Symbol) -> impl std::future::Future<Output = Result<i64>> + Send {
+    fn insert_symbol(
+        &self,
+        symbol: &Symbol,
+    ) -> impl std::future::Future<Output = Result<i64>> + Send {
         async move {
             self.with_conn(|conn| {
                 conn.execute(
@@ -169,7 +174,10 @@ impl GraphRepository for SqliteBackend {
         }
     }
 
-    fn find_symbol(&self, name: &str) -> impl std::future::Future<Output = Result<Vec<Symbol>>> + Send {
+    fn find_symbol(
+        &self,
+        name: &str,
+    ) -> impl std::future::Future<Output = Result<Vec<Symbol>>> + Send {
         async move {
             self.with_conn(|conn| {
                 let mut stmt = conn
@@ -228,7 +236,10 @@ impl GraphRepository for SqliteBackend {
         }
     }
 
-    fn find_symbol_by_id(&self, id: i64) -> impl std::future::Future<Output = Result<Option<Symbol>>> + Send {
+    fn find_symbol_by_id(
+        &self,
+        id: i64,
+    ) -> impl std::future::Future<Output = Result<Option<Symbol>>> + Send {
         async move {
             self.with_conn(|conn| {
                 let result = conn
@@ -277,7 +288,10 @@ impl GraphRepository for SqliteBackend {
         }
     }
 
-    fn find_symbols_by_kind(&self, kind: &SymbolKind) -> impl std::future::Future<Output = Result<Vec<Symbol>>> + Send {
+    fn find_symbols_by_kind(
+        &self,
+        kind: &SymbolKind,
+    ) -> impl std::future::Future<Output = Result<Vec<Symbol>>> + Send {
         async move {
             let kind_str = format!("{:?}", kind);
             self.with_conn(|conn| {
@@ -323,7 +337,10 @@ impl GraphRepository for SqliteBackend {
         }
     }
 
-    fn find_symbols_in_file(&self, file_id: i64) -> impl std::future::Future<Output = Result<Vec<Symbol>>> + Send {
+    fn find_symbols_in_file(
+        &self,
+        file_id: i64,
+    ) -> impl std::future::Future<Output = Result<Vec<Symbol>>> + Send {
         async move {
             self.with_conn(|conn| {
                 let mut stmt = conn
@@ -382,7 +399,10 @@ impl GraphRepository for SqliteBackend {
         }
     }
 
-    fn search_symbols(&self, query: &str) -> impl std::future::Future<Output = Result<Vec<Symbol>>> + Send {
+    fn search_symbols(
+        &self,
+        query: &str,
+    ) -> impl std::future::Future<Output = Result<Vec<Symbol>>> + Send {
         async move {
             let pattern = format!("%{query}%");
             self.with_conn(|conn| {
@@ -457,7 +477,10 @@ impl GraphRepository for SqliteBackend {
         }
     }
 
-    fn delete_symbols_for_file(&self, file_id: i64) -> impl std::future::Future<Output = Result<()>> + Send {
+    fn delete_symbols_for_file(
+        &self,
+        file_id: i64,
+    ) -> impl std::future::Future<Output = Result<()>> + Send {
         async move {
             self.with_conn(|conn| {
                 conn.execute(
@@ -473,7 +496,10 @@ impl GraphRepository for SqliteBackend {
         }
     }
 
-    fn insert_reference(&self, reference: &Reference) -> impl std::future::Future<Output = Result<()>> + Send {
+    fn insert_reference(
+        &self,
+        reference: &Reference,
+    ) -> impl std::future::Future<Output = Result<()>> + Send {
         async move {
             self.with_conn(|conn| {
                 conn.execute(
@@ -498,7 +524,10 @@ impl GraphRepository for SqliteBackend {
         }
     }
 
-    fn find_symbol_refs(&self, symbol_id: i64) -> impl std::future::Future<Output = Result<Vec<Reference>>> + Send {
+    fn find_symbol_refs(
+        &self,
+        symbol_id: i64,
+    ) -> impl std::future::Future<Output = Result<Vec<Reference>>> + Send {
         async move {
             self.with_conn(|conn| {
                 let mut stmt = conn
@@ -543,7 +572,9 @@ impl GraphRepository for SqliteBackend {
         async move {
             self.with_conn(|conn| {
                 let count: i64 = conn
-                    .query_row("SELECT COUNT(*) FROM graph_symbol_refs", [], |row| row.get(0))
+                    .query_row("SELECT COUNT(*) FROM graph_symbol_refs", [], |row| {
+                        row.get(0)
+                    })
                     .map_err(|e| StorageError::Query {
                         statement: "COUNT graph_symbol_refs".to_string(),
                         reason: e.to_string(),
@@ -553,7 +584,10 @@ impl GraphRepository for SqliteBackend {
         }
     }
 
-    fn delete_symbol_refs_for_file(&self, file_id: i64) -> impl std::future::Future<Output = Result<()>> + Send {
+    fn delete_symbol_refs_for_file(
+        &self,
+        file_id: i64,
+    ) -> impl std::future::Future<Output = Result<()>> + Send {
         async move {
             self.with_conn(|conn| {
                 conn.execute(
@@ -569,7 +603,10 @@ impl GraphRepository for SqliteBackend {
         }
     }
 
-    fn insert_relationship(&self, relationship: &Relationship) -> impl std::future::Future<Output = Result<()>> + Send {
+    fn insert_relationship(
+        &self,
+        relationship: &Relationship,
+    ) -> impl std::future::Future<Output = Result<()>> + Send {
         async move {
             self.with_conn(|conn| {
                 conn.execute(
@@ -592,7 +629,10 @@ impl GraphRepository for SqliteBackend {
         }
     }
 
-    fn find_relationships(&self, symbol_id: i64) -> impl std::future::Future<Output = Result<Vec<Relationship>>> + Send {
+    fn find_relationships(
+        &self,
+        symbol_id: i64,
+    ) -> impl std::future::Future<Output = Result<Vec<Relationship>>> + Send {
         async move {
             self.with_conn(|conn| {
                 let mut stmt = conn
@@ -640,7 +680,10 @@ impl GraphRepository for SqliteBackend {
         }
     }
 
-    fn find_outgoing_relationships(&self, symbol_id: i64) -> impl std::future::Future<Output = Result<Vec<Relationship>>> + Send {
+    fn find_outgoing_relationships(
+        &self,
+        symbol_id: i64,
+    ) -> impl std::future::Future<Output = Result<Vec<Relationship>>> + Send {
         async move {
             self.with_conn(|conn| {
                 let mut stmt = conn
@@ -688,7 +731,10 @@ impl GraphRepository for SqliteBackend {
         }
     }
 
-    fn find_incoming_relationships(&self, symbol_id: i64) -> impl std::future::Future<Output = Result<Vec<Relationship>>> + Send {
+    fn find_incoming_relationships(
+        &self,
+        symbol_id: i64,
+    ) -> impl std::future::Future<Output = Result<Vec<Relationship>>> + Send {
         async move {
             self.with_conn(|conn| {
                 let mut stmt = conn
@@ -740,11 +786,9 @@ impl GraphRepository for SqliteBackend {
         async move {
             self.with_conn(|conn| {
                 let count: i64 = conn
-                    .query_row(
-                        "SELECT COUNT(*) FROM graph_relationships",
-                        [],
-                        |row| row.get(0),
-                    )
+                    .query_row("SELECT COUNT(*) FROM graph_relationships", [], |row| {
+                        row.get(0)
+                    })
                     .map_err(|e| StorageError::Query {
                         statement: "COUNT graph_relationships".to_string(),
                         reason: e.to_string(),

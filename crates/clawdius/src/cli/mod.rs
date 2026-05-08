@@ -7,7 +7,7 @@
     clippy::fn_params_excessive_bools,
     clippy::items_after_statements,
     clippy::ptr_arg,
-    elided_lifetimes_in_paths,
+    elided_lifetimes_in_paths
 )]
 
 use clap::{Parser, Subcommand, ValueEnum};
@@ -1185,8 +1185,8 @@ pub mod lang;
 pub mod lsp;
 pub mod memory;
 pub mod metrics;
-pub mod modes;
 pub mod models;
+pub mod modes;
 pub mod server;
 pub mod sessions;
 pub mod setup;
@@ -1257,9 +1257,12 @@ pub async fn handle_command(
         },
         Commands::Init { name } => setup::handle_init(name).await,
         Commands::Setup { quick, provider } => setup::handle_setup(quick, provider, output_format),
-        Commands::Sessions { delete, search } => {
-            sessions::handle_sessions(delete.as_deref(), search.as_deref(), config_path.as_ref(), output_format)
-        },
+        Commands::Sessions { delete, search } => sessions::handle_sessions(
+            delete.as_deref(),
+            search.as_deref(),
+            config_path.as_ref(),
+            output_format,
+        ),
         Commands::Refactor {
             from,
             to,
@@ -1273,17 +1276,15 @@ pub async fn handle_command(
             column,
             end_line,
             end_column,
-        } => {
-            action::handle_action(
-                &action,
-                &file,
-                line,
-                column,
-                end_line,
-                end_column,
-                output_format,
-            )
-        },
+        } => action::handle_action(
+            &action,
+            &file,
+            line,
+            column,
+            end_line,
+            end_column,
+            output_format,
+        ),
         Commands::Test {
             file,
             function,
@@ -1312,16 +1313,14 @@ pub async fn handle_command(
             disable,
             enable_metrics,
             enable_crash_reporting,
-        } => {
-            metrics::handle_telemetry(
-                enable,
-                disable,
-                enable_metrics,
-                enable_crash_reporting,
-                config_path,
-                output_format,
-            )
-        },
+        } => metrics::handle_telemetry(
+            enable,
+            disable,
+            enable_metrics,
+            enable_crash_reporting,
+            config_path,
+            output_format,
+        ),
         #[cfg(feature = "vector-db")]
         Commands::Index { path, watch } => index::handle_index(path, watch, output_format).await,
         #[cfg(feature = "vector-db")]
@@ -1331,7 +1330,9 @@ pub async fn handle_command(
         Commands::Checkpoint { action } => {
             checkpoint::handle_checkpoint(action, config_path, output_format).await
         },
-        Commands::Timeline { action } => timeline::handle_timeline(action, config_path, output_format).await,
+        Commands::Timeline { action } => {
+            timeline::handle_timeline(action, config_path, output_format).await
+        },
         Commands::Modes { action } => modes::handle_modes(action, config_path, output_format).await,
         Commands::Lang { action } => lang::handle_lang(action, config_path, output_format),
         Commands::Edit {
@@ -1339,7 +1340,9 @@ pub async fn handle_command(
             editor,
             extension,
         } => edit::handle_edit(initial, editor, extension, output_format).await,
-        Commands::Webhook { action } => webhook::handle_webhook(action, config_path, output_format).await,
+        Commands::Webhook { action } => {
+            webhook::handle_webhook(action, config_path, output_format).await
+        },
         Commands::Generate {
             prompt,
             files,
@@ -1369,7 +1372,9 @@ pub async fn handle_command(
             .await
         },
         Commands::Lsp { action } => lsp::handle_lsp(action, output_format).await,
-        Commands::Memory { action } => memory::handle_memory(action, config_path.as_ref(), output_format),
+        Commands::Memory { action } => {
+            memory::handle_memory(action, config_path.as_ref(), output_format)
+        },
         Commands::Models { action, host, port } => {
             models::handle_models(action, &host, port, output_format).await
         },
@@ -1401,23 +1406,29 @@ pub async fn handle_command(
             output,
             severity,
             exclude,
-        } => analyze::handle_analyze(&path, drift, debt, analyze_format, output, &severity, exclude),
+        } => analyze::handle_analyze(
+            &path,
+            drift,
+            debt,
+            analyze_format,
+            output,
+            &severity,
+            exclude,
+        ),
         Commands::Watch {
             path,
             ignore,
             auto_analyze,
             debounce_ms,
             verbose,
-        } => {
-            analyze::handle_watch(
-                &path,
-                ignore,
-                auto_analyze,
-                debounce_ms,
-                verbose,
-                output_format,
-            )
-        },
+        } => analyze::handle_watch(
+            &path,
+            ignore,
+            auto_analyze,
+            debounce_ms,
+            verbose,
+            output_format,
+        ),
         Commands::Git { action } => git::handle_git(action, config_path).await,
         Commands::Server { host, port } => server::handle_server(&host, port).await,
         Commands::Sprint {
@@ -1448,15 +1459,24 @@ pub async fn handle_command(
         },
         Commands::Ship { action } => ship::handle_ship(action, output_format).await,
         Commands::Skill { action } => skill::handle_skill(action, output_format).await,
-        Commands::Config { action } => config_cmd::handle_config(action, config_path, output_format),
+        Commands::Config { action } => {
+            config_cmd::handle_config(action, config_path, output_format)
+        },
     }
 }
 
 #[allow(elided_lifetimes_in_paths, clippy::missing_errors_doc)]
 pub fn load_config(config_path: Option<&Path>) -> anyhow::Result<Config> {
     config_path.map_or_else(
-        || Config::load_default().map_err(|e| anyhow::anyhow!("Failed to load default config: {e}")),
-        |path| Config::load(path).map_err(|e| anyhow::anyhow!("Failed to load config from {}: {}", path.display(), e)),
+        || {
+            Config::load_default()
+                .map_err(|e| anyhow::anyhow!("Failed to load default config: {e}"))
+        },
+        |path| {
+            Config::load(path).map_err(|e| {
+                anyhow::anyhow!("Failed to load config from {}: {}", path.display(), e)
+            })
+        },
     )
 }
 

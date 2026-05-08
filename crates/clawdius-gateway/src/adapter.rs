@@ -315,7 +315,11 @@ impl PlatformConfig {
 // ─────────────────────────────────────────────────────────
 
 /// Callback type for delivering incoming messages from adapters to the gateway.
-pub type MessageCallback = Arc<dyn Fn(IncomingMessage) -> std::pin::Pin<Box<dyn std::future::Future<Output = ()> + Send>> + Send + Sync>;
+pub type MessageCallback = Arc<
+    dyn Fn(IncomingMessage) -> std::pin::Pin<Box<dyn std::future::Future<Output = ()> + Send>>
+        + Send
+        + Sync,
+>;
 
 /// Trait for connecting Clawdius to a chat platform.
 ///
@@ -370,11 +374,7 @@ pub trait PlatformAdapter: Send + Sync {
     ///
     /// Returns `Ok(())` if the edit was successful, or an error if
     /// the platform doesn't support editing or the message wasn't found.
-    async fn edit_message(
-        &self,
-        message_id: &str,
-        new_text: &str,
-    ) -> Result<(), GatewayError>;
+    async fn edit_message(&self, message_id: &str, new_text: &str) -> Result<(), GatewayError>;
 
     /// Download an attachment by URL.
     ///

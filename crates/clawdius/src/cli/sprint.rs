@@ -20,17 +20,17 @@ pub(super) async fn handle_sprint(
     use clawdius_core::llm::providers::LlmClient;
     use std::sync::Arc;
 
-     let config = clawdius_core::config::Config::load_or_default();
+    let config = clawdius_core::config::Config::load_or_default();
 
     let llm_config = match clawdius_core::llm::LlmConfig::from_config(&config.llm, &provider) {
-         Ok(mut cfg) => {
-             // Override model if --model flag was provided
-              if let Some(m) = &model {
-                  cfg.model.clone_from(m);
-              }
-             cfg
-         },
-         Err(e) => {
+        Ok(mut cfg) => {
+            // Override model if --model flag was provided
+            if let Some(m) = &model {
+                cfg.model.clone_from(m);
+            }
+            cfg
+        },
+        Err(e) => {
             match output_format {
                 OutputFormat::Json => {
                     println!(
@@ -77,7 +77,9 @@ pub(super) async fn handle_sprint(
 
     // Build workspace context if available
     let workspace_root = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
-    if let Ok(ctx) = clawdius_core::workspace::WorkspaceContextBuilder::build_single(&workspace_root, None) {
+    if let Ok(ctx) =
+        clawdius_core::workspace::WorkspaceContextBuilder::build_single(&workspace_root, None)
+    {
         if !ctx.trim().is_empty() {
             sprint_config.extra_context = Some(ctx);
             if output_format == OutputFormat::Text {
@@ -110,17 +112,19 @@ pub(super) async fn handle_sprint(
                 }
                 engine = engine.with_lsp_client(lsp_client);
             },
-            Err(e) => if output_format == OutputFormat::Json {
-                eprintln!(
-                    "{}",
-                    serde_json::json!({
-                        "warning": format!("LSP client failed to start: {e}"),
-                        "lsp_command": lsp_cmd,
-                    })
-                );
-            } else {
-                eprintln!("⚠️  LSP client '{lsp_cmd}' failed to start: {e}");
-                eprintln!("   Continuing sprint without LSP code intelligence.");
+            Err(e) => {
+                if output_format == OutputFormat::Json {
+                    eprintln!(
+                        "{}",
+                        serde_json::json!({
+                            "warning": format!("LSP client failed to start: {e}"),
+                            "lsp_command": lsp_cmd,
+                        })
+                    );
+                } else {
+                    eprintln!("⚠️  LSP client '{lsp_cmd}' failed to start: {e}");
+                    eprintln!("   Continuing sprint without LSP code intelligence.");
+                }
             },
         }
     }

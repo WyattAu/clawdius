@@ -37,7 +37,8 @@ pub(super) async fn handle_server(host: &str, port: u16) -> anyhow::Result<()> {
     let admin_state = std::sync::Arc::new(clawdius_gateway::admin::AdminState {
         billing: std::sync::Arc::new(clawdius_core::billing::BillingManager::new()),
         usage: std::sync::Arc::new(clawdius_core::usage::TenantUsageTracker::new()),
-        api_key: std::env::var("CLAWDIUS_ADMIN_API_KEY").unwrap_or_else(|_| "clawdius-admin".to_string()),
+        api_key: std::env::var("CLAWDIUS_ADMIN_API_KEY")
+            .unwrap_or_else(|_| "clawdius-admin".to_string()),
     });
     let admin_router = clawdius_gateway::admin::admin_router(admin_state);
     let admin_listener = tokio::net::TcpListener::bind(admin_addr).await?;
@@ -69,5 +70,6 @@ pub(super) async fn handle_server(host: &str, port: u16) -> anyhow::Result<()> {
 pub(super) async fn shutdown_signal() {
     tokio::signal::ctrl_c()
         .await
-        .map_err(|e| anyhow::anyhow!("Failed to install Ctrl+C handler: {e}")).ok();
+        .map_err(|e| anyhow::anyhow!("Failed to install Ctrl+C handler: {e}"))
+        .ok();
 }

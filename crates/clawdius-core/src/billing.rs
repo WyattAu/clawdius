@@ -180,18 +180,13 @@ impl Subscription {
     #[must_use]
     pub fn has_token_allowance(&self, requested: u64) -> bool {
         self.is_active()
-            && self
-                .tokens_used
-                .saturating_add(requested)
-                <= self.tier.token_allowance()
+            && self.tokens_used.saturating_add(requested) <= self.tier.token_allowance()
     }
 
     /// Get remaining tokens in current period.
     #[must_use]
     pub fn remaining_tokens(&self) -> u64 {
-        self.tier
-            .token_allowance()
-            .saturating_sub(self.tokens_used)
+        self.tier.token_allowance().saturating_sub(self.tokens_used)
     }
 
     /// Get utilization ratio (0.0 to 1.0).
@@ -288,7 +283,8 @@ impl PriceConfig {
             price_id: format!("{}_{}", tier.name().to_lowercase(), cycle.months()),
             tier,
             cycle,
-            unit_amount_cents: tier.price_cents() * cycle.months() as u64 * multiplier / 12 * 12 / multiplier,
+            unit_amount_cents: tier.price_cents() * cycle.months() as u64 * multiplier / 12 * 12
+                / multiplier,
             currency: "usd".to_string(),
             stripe_product_id: None,
         }
@@ -337,9 +333,7 @@ impl BillingManager {
     pub fn with_stripe(api_key: impl Into<String>) -> Self {
         let mut mgr = Self::new();
         mgr.stripe_enabled = true;
-        mgr.stripe_client = Some(Arc::new(
-            stripe::Client::new(api_key.into()),
-        ));
+        mgr.stripe_client = Some(Arc::new(stripe::Client::new(api_key.into())));
         mgr
     }
 
@@ -351,7 +345,11 @@ impl BillingManager {
     }
 
     /// Create a subscription for a tenant.
-    pub fn create_subscription(&self, tenant_id: impl Into<String>, tier: PlanTier) -> Subscription {
+    pub fn create_subscription(
+        &self,
+        tenant_id: impl Into<String>,
+        tier: PlanTier,
+    ) -> Subscription {
         let sub = Subscription::new(tenant_id, tier);
         self.subscriptions
             .write()
@@ -378,13 +376,15 @@ impl BillingManager {
     }
 
     /// Change plan tier for a tenant.
-    pub fn change_plan(&self, tenant_id: &str, new_tier: PlanTier) -> Result<Subscription, BillingError> {
+    pub fn change_plan(
+        &self,
+        tenant_id: &str,
+        new_tier: PlanTier,
+    ) -> Result<Subscription, BillingError> {
         let mut subs = self.subscriptions.write();
-        let sub = subs
-            .get_mut(tenant_id)
-            .ok_or(BillingError::NotFound {
-                tenant_id: tenant_id.to_string(),
-            })?;
+        let sub = subs.get_mut(tenant_id).ok_or(BillingError::NotFound {
+            tenant_id: tenant_id.to_string(),
+        })?;
 
         let old_tier = sub.tier;
         sub.tier = new_tier;
@@ -402,19 +402,18 @@ impl BillingManager {
         drop(subs);
         self.ledger.write().push(event);
 
-        self.get_subscription(tenant_id).ok_or(BillingError::NotFound {
-            tenant_id: tenant_id.to_string(),
-        })
+        self.get_subscription(tenant_id)
+            .ok_or(BillingError::NotFound {
+                tenant_id: tenant_id.to_string(),
+            })
     }
 
     /// Cancel a subscription.
     pub fn cancel_subscription(&self, tenant_id: &str) -> Result<(), BillingError> {
         let mut subs = self.subscriptions.write();
-        let sub = subs
-            .get_mut(tenant_id)
-            .ok_or(BillingError::NotFound {
-                tenant_id: tenant_id.to_string(),
-            })?;
+        let sub = subs.get_mut(tenant_id).ok_or(BillingError::NotFound {
+            tenant_id: tenant_id.to_string(),
+        })?;
         sub.status = SubscriptionStatus::Canceled;
         sub.cancel_at_period_end = true;
 
@@ -443,13 +442,16 @@ impl BillingManager {
     }
 
     /// Record usage against a tenant's subscription.
-    pub fn record_usage(&self, tenant_id: &str, tokens: u64, cost_cents: u64) -> Result<(), BillingError> {
+    pub fn record_usage(
+        &self,
+        tenant_id: &str,
+        tokens: u64,
+        cost_cents: u64,
+    ) -> Result<(), BillingError> {
         let mut subs = self.subscriptions.write();
-        let sub = subs
-            .get_mut(tenant_id)
-            .ok_or(BillingError::NotFound {
-                tenant_id: tenant_id.to_string(),
-            })?;
+        let sub = subs.get_mut(tenant_id).ok_or(BillingError::NotFound {
+            tenant_id: tenant_id.to_string(),
+        })?;
         if !sub.has_token_allowance(tokens) {
             return Err(BillingError::QuotaExceeded {
                 tenant_id: tenant_id.to_string(),
@@ -839,8 +841,12 @@ mod tests {
     #[test]
     fn test_get_price() {
         let mgr = BillingManager::new();
-        assert!(mgr.get_price(PlanTier::Pro, BillingCycle::Monthly).is_some());
-        assert!(mgr.get_price(PlanTier::Enterprise, BillingCycle::Monthly).is_none());
+        assert!(mgr
+            .get_price(PlanTier::Pro, BillingCycle::Monthly)
+            .is_some());
+        assert!(mgr
+            .get_price(PlanTier::Enterprise, BillingCycle::Monthly)
+            .is_none());
     }
 
     #[test]

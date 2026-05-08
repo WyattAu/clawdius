@@ -12,9 +12,11 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use tokio::sync::RwLock;
 
-use crate::adapter::{AdapterHealth, IncomingMessage, MessageCallback, Platform, PlatformAdapter, PlatformConfig};
 #[cfg(test)]
 use crate::adapter::OutgoingMessage;
+use crate::adapter::{
+    AdapterHealth, IncomingMessage, MessageCallback, Platform, PlatformAdapter, PlatformConfig,
+};
 use crate::error::GatewayError;
 use crate::formatter::ResponseFormatter;
 use crate::rate_limit::RateLimiter;
@@ -94,10 +96,7 @@ impl MessageGateway {
     }
 
     /// Get a registered adapter by platform.
-    pub async fn get_adapter(
-        &self,
-        platform: Platform,
-    ) -> Option<Arc<dyn PlatformAdapter>> {
+    pub async fn get_adapter(&self, platform: Platform) -> Option<Arc<dyn PlatformAdapter>> {
         self.adapters.read().await.get(&platform).cloned()
     }
 
@@ -144,13 +143,13 @@ impl MessageGateway {
         }
 
         // 3. Check rate limit
-        self.rate_limiter.check(platform, &message.user.id).map_err(|e| {
-            GatewayError::RateLimited {
+        self.rate_limiter
+            .check(platform, &message.user.id)
+            .map_err(|e| GatewayError::RateLimited {
                 user_id: message.user.id.clone(),
                 platform: platform.to_string(),
                 retry_after_ms: e.retry_after_ms,
-            }
-        })?;
+            })?;
 
         // 4. Route to handler
         let response = {
@@ -199,7 +198,9 @@ impl MessageGateway {
             .await
             .ok_or_else(|| GatewayError::PlatformNotConfigured(platform.to_string()))?;
 
-        let messages = self.formatter.format_response(platform, chat_id, text, None);
+        let messages = self
+            .formatter
+            .format_response(platform, chat_id, text, None);
         for msg in messages {
             adapter.send_message(msg).await?;
         }
@@ -235,9 +236,8 @@ impl MessageGateway {
                 continue;
             }
 
-            let callback: MessageCallback = Arc::new(|_msg: IncomingMessage| {
-                Box::pin(std::future::ready(()))
-            });
+            let callback: MessageCallback =
+                Arc::new(|_msg: IncomingMessage| Box::pin(std::future::ready(())));
 
             adapter.set_message_callback(callback);
 
@@ -371,12 +371,14 @@ mod tests {
         }
 
         async fn start(&self) -> Result<(), GatewayError> {
-            self.running.store(true, std::sync::atomic::Ordering::Relaxed);
+            self.running
+                .store(true, std::sync::atomic::Ordering::Relaxed);
             Ok(())
         }
 
         async fn stop(&self) -> Result<(), GatewayError> {
-            self.running.store(false, std::sync::atomic::Ordering::Relaxed);
+            self.running
+                .store(false, std::sync::atomic::Ordering::Relaxed);
             Ok(())
         }
 
@@ -385,11 +387,18 @@ mod tests {
             Ok(())
         }
 
-        async fn edit_message(&self, _message_id: &str, _new_text: &str) -> Result<(), GatewayError> {
+        async fn edit_message(
+            &self,
+            _message_id: &str,
+            _new_text: &str,
+        ) -> Result<(), GatewayError> {
             Ok(())
         }
 
-        async fn download_attachment(&self, _url: &str) -> Result<std::path::PathBuf, GatewayError> {
+        async fn download_attachment(
+            &self,
+            _url: &str,
+        ) -> Result<std::path::PathBuf, GatewayError> {
             Err(GatewayError::Adapter {
                 platform: self.platform.to_string(),
                 message: "mock adapter does not support downloads".to_string(),
@@ -441,10 +450,16 @@ mod tests {
     async fn test_registered_platforms() {
         let mut gateway = MessageGateway::new();
         gateway
-            .register_adapter(MockAdapter::new(Platform::Telegram), PlatformConfig::new(Platform::Telegram))
+            .register_adapter(
+                MockAdapter::new(Platform::Telegram),
+                PlatformConfig::new(Platform::Telegram),
+            )
             .await;
         gateway
-            .register_adapter(MockAdapter::new(Platform::Discord), PlatformConfig::new(Platform::Discord))
+            .register_adapter(
+                MockAdapter::new(Platform::Discord),
+                PlatformConfig::new(Platform::Discord),
+            )
             .await;
 
         let platforms = gateway.registered_platforms().await;
@@ -476,7 +491,10 @@ mod tests {
     async fn test_handle_incoming_no_handler() {
         let mut gateway = MessageGateway::new();
         gateway
-            .register_adapter(MockAdapter::new(Platform::Telegram), PlatformConfig::new(Platform::Telegram))
+            .register_adapter(
+                MockAdapter::new(Platform::Telegram),
+                PlatformConfig::new(Platform::Telegram),
+            )
             .await;
 
         let msg = make_incoming(Platform::Telegram, "user1", "hello");
@@ -490,7 +508,9 @@ mod tests {
         let mut gateway = MessageGateway::new();
         let mut config = PlatformConfig::new(Platform::Telegram);
         config.allowed_users = vec!["admin".to_string()];
-        gateway.register_adapter(MockAdapter::new(Platform::Telegram), config).await;
+        gateway
+            .register_adapter(MockAdapter::new(Platform::Telegram), config)
+            .await;
         gateway.set_handler(Box::new(EchoHandler)).await;
 
         let msg = make_incoming(Platform::Telegram, "random_user", "hello");
@@ -503,7 +523,10 @@ mod tests {
     async fn test_handle_incoming_rate_limited() {
         let mut gateway = MessageGateway::with_rate_limiter(2, 60);
         gateway
-            .register_adapter(MockAdapter::new(Platform::Telegram), PlatformConfig::new(Platform::Telegram))
+            .register_adapter(
+                MockAdapter::new(Platform::Telegram),
+                PlatformConfig::new(Platform::Telegram),
+            )
             .await;
         gateway.set_handler(Box::new(EchoHandler)).await;
 
@@ -523,10 +546,16 @@ mod tests {
     async fn test_start_and_stop_all() {
         let mut gateway = MessageGateway::new();
         gateway
-            .register_adapter(MockAdapter::new(Platform::Telegram), PlatformConfig::new(Platform::Telegram))
+            .register_adapter(
+                MockAdapter::new(Platform::Telegram),
+                PlatformConfig::new(Platform::Telegram),
+            )
             .await;
         gateway
-            .register_adapter(MockAdapter::new(Platform::Discord), PlatformConfig::new(Platform::Discord))
+            .register_adapter(
+                MockAdapter::new(Platform::Discord),
+                PlatformConfig::new(Platform::Discord),
+            )
             .await;
 
         let start_results = gateway.start_all().await;
@@ -543,7 +572,10 @@ mod tests {
     async fn test_health_status() {
         let mut gateway = MessageGateway::new();
         gateway
-            .register_adapter(MockAdapter::new(Platform::Telegram), PlatformConfig::new(Platform::Telegram))
+            .register_adapter(
+                MockAdapter::new(Platform::Telegram),
+                PlatformConfig::new(Platform::Telegram),
+            )
             .await;
 
         let status = gateway.health_status().await;
@@ -656,7 +688,10 @@ mod tests {
         gateway.handle_incoming(discord_msg).await.unwrap();
 
         let d_msgs = discord_sent.lock().await;
-        assert!(d_msgs.len() > 1, "Discord should chunk 3000 chars into multiple messages");
+        assert!(
+            d_msgs.len() > 1,
+            "Discord should chunk 3000 chars into multiple messages"
+        );
 
         // Send same message to Slack → should NOT be chunked
         let slack_msg = make_incoming(Platform::Slack, "u1", "chunk me");
@@ -785,7 +820,9 @@ mod tests {
         let mut gateway = MessageGateway::new();
         let mut config = PlatformConfig::new(Platform::Telegram);
         config.enabled = false;
-        gateway.register_adapter(MockAdapter::new(Platform::Telegram), config).await;
+        gateway
+            .register_adapter(MockAdapter::new(Platform::Telegram), config)
+            .await;
         gateway.set_handler(Box::new(EchoHandler)).await;
 
         let msg = make_incoming(Platform::Telegram, "user1", "hello");
@@ -796,7 +833,9 @@ mod tests {
     #[tokio::test]
     async fn test_send_to_unconfigured_platform() {
         let gateway = MessageGateway::new();
-        let result = gateway.send_to_platform(Platform::Discord, "chat1", "hi").await;
+        let result = gateway
+            .send_to_platform(Platform::Discord, "chat1", "hi")
+            .await;
         assert!(result.is_err());
     }
 
@@ -824,7 +863,12 @@ mod tests {
     #[tokio::test]
     async fn test_gateway_with_rate_limiter_custom() {
         let gateway = MessageGateway::with_rate_limiter(100, 300);
-        assert_eq!(gateway.rate_limiter().current_count(Platform::Telegram, "u1"), 0);
+        assert_eq!(
+            gateway
+                .rate_limiter()
+                .current_count(Platform::Telegram, "u1"),
+            0
+        );
     }
 
     #[tokio::test]
@@ -847,7 +891,10 @@ mod tests {
     async fn test_handler_error_propagates() {
         let mut gateway = MessageGateway::new();
         gateway
-            .register_adapter(MockAdapter::new(Platform::Telegram), PlatformConfig::new(Platform::Telegram))
+            .register_adapter(
+                MockAdapter::new(Platform::Telegram),
+                PlatformConfig::new(Platform::Telegram),
+            )
             .await;
         gateway.set_handler(Box::new(FailHandler)).await;
 
@@ -888,9 +935,14 @@ mod tests {
         let mut gateway = MessageGateway::new();
         let mut config = PlatformConfig::new(Platform::Telegram);
         config.enabled = false;
-        gateway.register_adapter(MockAdapter::new(Platform::Telegram), config).await;
         gateway
-            .register_adapter(MockAdapter::new(Platform::Discord), PlatformConfig::new(Platform::Discord))
+            .register_adapter(MockAdapter::new(Platform::Telegram), config)
+            .await;
+        gateway
+            .register_adapter(
+                MockAdapter::new(Platform::Discord),
+                PlatformConfig::new(Platform::Discord),
+            )
             .await;
 
         let results = gateway.start_all().await;
@@ -902,7 +954,10 @@ mod tests {
     async fn test_multiple_users_independent_rate_limits() {
         let mut gateway = MessageGateway::with_rate_limiter(1, 60);
         gateway
-            .register_adapter(MockAdapter::new(Platform::Telegram), PlatformConfig::new(Platform::Telegram))
+            .register_adapter(
+                MockAdapter::new(Platform::Telegram),
+                PlatformConfig::new(Platform::Telegram),
+            )
             .await;
         gateway.set_handler(Box::new(EchoHandler)).await;
 

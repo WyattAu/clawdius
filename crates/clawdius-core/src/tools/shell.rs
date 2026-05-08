@@ -84,23 +84,19 @@ fn check_shell_rate_limit() -> crate::Result<()> {
     const WINDOW_SECS: u64 = 60;
 
     let now = Instant::now();
-    let mut state = SHELL_RATE_LIMIT
-        .lock()
-        .unwrap_or_else(|e| {
-            tracing::error!("shell rate-limit mutex poisoned: {}", e);
-            e.into_inner()
-        });
+    let mut state = SHELL_RATE_LIMIT.lock().unwrap_or_else(|e| {
+        tracing::error!("shell rate-limit mutex poisoned: {}", e);
+        e.into_inner()
+    });
 
     match state.window_start {
         Some(start) if now.duration_since(start) < Duration::from_secs(WINDOW_SECS) => {
             state.call_count += 1;
             if state.call_count > MAX_CALLS_PER_WINDOW {
-                return Err(crate::Error::Tool(
-                    format!(
-                        "Shell tool rate limit exceeded (max {} calls per {}s)",
-                        MAX_CALLS_PER_WINDOW, WINDOW_SECS
-                    ),
-                ));
+                return Err(crate::Error::Tool(format!(
+                    "Shell tool rate limit exceeded (max {} calls per {}s)",
+                    MAX_CALLS_PER_WINDOW, WINDOW_SECS
+                )));
             }
         },
         _ => {

@@ -17,8 +17,7 @@ use super::error::StorageError;
 use crate::error::Result;
 use crate::graph_rag::ast::{Reference, Relationship, Symbol, SymbolKind};
 use crate::session::types::{
-    ContentPart, Message, MessageContent, MessageRole, Session, SessionId,
-    SessionMeta, TokenUsage,
+    ContentPart, Message, MessageContent, MessageRole, Session, SessionId, SessionMeta, TokenUsage,
 };
 use crate::timeline::{CheckpointId, CheckpointInfo, FileVersion};
 use chrono::{DateTime, Utc};
@@ -65,13 +64,14 @@ impl PostgresBackend {
     pub(super) async fn get_client(
         &self,
     ) -> std::result::Result<deadpool_postgres::Client, StorageError> {
-        self.pool
-            .get()
-            .await
-            .map_err(|e| StorageError::Connection(format!("failed to get connection from pool: {e}")))
+        self.pool.get().await.map_err(|e| {
+            StorageError::Connection(format!("failed to get connection from pool: {e}"))
+        })
     }
 
-    pub(super) fn row_to_session(row: &tokio_postgres::Row) -> std::result::Result<Session, StorageError> {
+    pub(super) fn row_to_session(
+        row: &tokio_postgres::Row,
+    ) -> std::result::Result<Session, StorageError> {
         let id_str: String = row.get(0);
         let title: Option<String> = row.get(1);
         let provider: Option<String> = row.get(2);
@@ -90,11 +90,11 @@ impl PostgresBackend {
             serde_json::from_str(&extra_json).unwrap_or_default();
 
         Ok(Session {
-            id: SessionId::from_uuid(
-                Uuid::parse_str(&id_str).map_err(|e| StorageError::RowConversion {
+            id: SessionId::from_uuid(Uuid::parse_str(&id_str).map_err(|e| {
+                StorageError::RowConversion {
                     reason: format!("invalid session UUID: {e}"),
-                })?,
-            ),
+                }
+            })?),
             title,
             messages: Vec::new(),
             meta: SessionMeta {
@@ -114,7 +114,9 @@ impl PostgresBackend {
         })
     }
 
-    pub(super) fn row_to_message(row: &tokio_postgres::Row) -> std::result::Result<Message, StorageError> {
+    pub(super) fn row_to_message(
+        row: &tokio_postgres::Row,
+    ) -> std::result::Result<Message, StorageError> {
         let id_str: String = row.get(0);
         let _session_id: String = row.get(1);
         let role_str: String = row.get(2);
@@ -176,7 +178,9 @@ impl PostgresBackend {
         }
     }
 
-    pub(super) fn row_to_symbol(row: &tokio_postgres::Row) -> std::result::Result<Symbol, StorageError> {
+    pub(super) fn row_to_symbol(
+        row: &tokio_postgres::Row,
+    ) -> std::result::Result<Symbol, StorageError> {
         let kind_str: String = row.get(3);
         let kind = Self::parse_symbol_kind(&kind_str);
         Ok(Symbol {
@@ -289,9 +293,7 @@ impl StorageBackend for PostgresBackend {
     }
 
     fn close(&self) -> impl std::future::Future<Output = Result<()>> + Send {
-        async move {
-            Ok(())
-        }
+        async move { Ok(()) }
     }
 }
 

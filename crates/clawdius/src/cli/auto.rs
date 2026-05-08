@@ -1,8 +1,8 @@
-use super::{OutputFormat, load_config};
+use super::{load_config, OutputFormat};
 
-use std::path::PathBuf;
 use clawdius_core::output::{OutputFormat as CoreOutputFormat, OutputFormatter};
 use clawdius_core::SessionManager;
+use std::path::PathBuf;
 
 pub(super) async fn handle_auto(
     task: String,
@@ -16,8 +16,8 @@ pub(super) async fn handle_auto(
     config_path: Option<PathBuf>,
     output_format: OutputFormat,
 ) -> anyhow::Result<()> {
-    use clawdius_core::llm::{create_provider, ChatMessage, ChatRole, LlmConfig};
     use clawdius_core::llm::providers::LlmClient;
+    use clawdius_core::llm::{create_provider, ChatMessage, ChatRole, LlmConfig};
     use clawdius_core::modes::AgentMode;
     use clawdius_core::output::{ActionEdit, ActionResult, OutputOptions};
     use std::io;

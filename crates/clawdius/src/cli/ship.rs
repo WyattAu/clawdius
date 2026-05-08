@@ -1,6 +1,9 @@
 use super::{OutputFormat, ShipAction};
 
-pub(super) async fn handle_ship(action: ShipAction, output_format: OutputFormat) -> anyhow::Result<()> {
+pub(super) async fn handle_ship(
+    action: ShipAction,
+    output_format: OutputFormat,
+) -> anyhow::Result<()> {
     use clawdius_core::agentic::ShipPipeline;
 
     match action {

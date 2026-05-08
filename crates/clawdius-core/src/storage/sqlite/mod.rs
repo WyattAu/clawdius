@@ -36,8 +36,8 @@ impl SqliteBackend {
     }
 
     pub fn in_memory() -> Result<Self> {
-        let conn = Connection::open_in_memory()
-            .map_err(|e| StorageError::Connection(e.to_string()))?;
+        let conn =
+            Connection::open_in_memory().map_err(|e| StorageError::Connection(e.to_string()))?;
         let backend = Self {
             conn: std::sync::Mutex::new(conn),
             path: PathBuf::from(":memory:"),
@@ -78,9 +78,7 @@ impl StorageBackend for SqliteBackend {
     }
 
     fn close(&self) -> impl std::future::Future<Output = Result<()>> + Send {
-        async move {
-            Ok(())
-        }
+        async move { Ok(()) }
     }
 }
 

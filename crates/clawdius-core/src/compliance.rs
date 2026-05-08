@@ -173,7 +173,9 @@ impl ComplianceGenerator {
         self.add_control(Control {
             id: "CC6.1".to_string(),
             name: "Logical and Physical Access Controls".to_string(),
-            description: "The entity implements logical access security measures over information assets.".to_string(),
+            description:
+                "The entity implements logical access security measures over information assets."
+                    .to_string(),
             framework: Framework::Soc2,
             category: "Security".to_string(),
             status: ControlStatus::Implemented,
@@ -236,19 +238,24 @@ impl ComplianceGenerator {
         self.add_control(Control {
             id: "CC7.2".to_string(),
             name: "Incident Response".to_string(),
-            description: "The entity responds to identified incidents to mitigate impact.".to_string(),
+            description: "The entity responds to identified incidents to mitigate impact."
+                .to_string(),
             framework: Framework::Soc2,
             category: "Security".to_string(),
             status: ControlStatus::PartiallyImplemented,
             evidence: vec![],
             last_assessed: Some(now),
-            notes: "Error classification taxonomy exists (10 levels). Formal IR procedures documented.".to_string(),
+            notes:
+                "Error classification taxonomy exists (10 levels). Formal IR procedures documented."
+                    .to_string(),
         });
 
         self.add_control(Control {
             id: "CC8.1".to_string(),
             name: "Change Management".to_string(),
-            description: "The entity authorizes, designs, develops, configures, tests, and approves changes.".to_string(),
+            description:
+                "The entity authorizes, designs, develops, configures, tests, and approves changes."
+                    .to_string(),
             framework: Framework::Soc2,
             category: "Security".to_string(),
             status: ControlStatus::Implemented,
@@ -285,7 +292,8 @@ impl ComplianceGenerator {
         self.add_control(Control {
             id: "SC-8".to_string(),
             name: "Transmission Confidentiality".to_string(),
-            description: "FedRAMP SC-8: Protect confidentiality of transmitted information.".to_string(),
+            description: "FedRAMP SC-8: Protect confidentiality of transmitted information."
+                .to_string(),
             framework: Framework::FedrampModerate,
             category: "System and Communications Protection".to_string(),
             status: ControlStatus::Implemented,
@@ -460,11 +468,7 @@ impl ComplianceGenerator {
     /// List all frameworks with controls.
     #[must_use]
     pub fn supported_frameworks(&self) -> Vec<Framework> {
-        let mut frameworks: Vec<Framework> = self
-            .controls
-            .values()
-            .map(|c| c.framework)
-            .collect();
+        let mut frameworks: Vec<Framework> = self.controls.values().map(|c| c.framework).collect();
         frameworks.sort_by_key(|f| format!("{f:?}"));
         frameworks.dedup();
         frameworks
@@ -506,7 +510,10 @@ mod tests {
     fn test_update_control_status() {
         let mut gen = ComplianceGenerator::new();
         assert!(gen.update_control_status("CC6.1", ControlStatus::Implemented));
-        assert_eq!(gen.get_control("CC6.1").unwrap().status, ControlStatus::Implemented);
+        assert_eq!(
+            gen.get_control("CC6.1").unwrap().status,
+            ControlStatus::Implemented
+        );
         assert!(!gen.update_control_status("NONEXISTENT", ControlStatus::Implemented));
     }
 

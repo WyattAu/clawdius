@@ -168,7 +168,9 @@ impl ResponseFormatter {
             } else {
                 // Try to break at a newline within the limit
                 let candidate = &text[start..start + max_len];
-                candidate.rfind('\n').map_or_else(|| start + max_len, |newline_pos| start + newline_pos)
+                candidate
+                    .rfind('\n')
+                    .map_or_else(|| start + max_len, |newline_pos| start + newline_pos)
             };
 
             chunks.push(text[start..end].to_string());
@@ -234,12 +236,8 @@ mod tests {
     #[test]
     fn test_format_response_with_reply() {
         let formatter = ResponseFormatter::new();
-        let msgs = formatter.format_response(
-            Platform::Telegram,
-            "chat123",
-            "hello",
-            Some("msg456"),
-        );
+        let msgs =
+            formatter.format_response(Platform::Telegram, "chat123", "hello", Some("msg456"));
         assert_eq!(msgs.len(), 1);
         assert_eq!(msgs[0].reply_to, Some("msg456".to_string()));
     }
@@ -296,7 +294,10 @@ mod tests {
         text.push_str("Some trailing text.");
 
         let chunks = formatter.chunk_response(Platform::Discord, &text);
-        assert!(chunks.len() > 1, "should produce multiple chunks for large code block");
+        assert!(
+            chunks.len() > 1,
+            "should produce multiple chunks for large code block"
+        );
 
         let full: String = chunks.join("");
         assert!(full.contains("```rust"));
@@ -313,13 +314,8 @@ mod tests {
 
     #[test]
     fn test_format_stream_chunk_no_reply() {
-        let msg = ResponseFormatter::format_stream_chunk(
-            Platform::Discord,
-            "chat1",
-            "partial",
-            0,
-            None,
-        );
+        let msg =
+            ResponseFormatter::format_stream_chunk(Platform::Discord, "chat1", "partial", 0, None);
         assert!(msg.is_chunk);
         assert_eq!(msg.stream_position, Some(0));
         assert!(msg.reply_to.is_none());

@@ -127,18 +127,10 @@ impl LlmClient for ZaiProvider {
             .await
             .map_err(|e| Error::Llm(e.to_string()))?;
 
-        let text = response
-            .content
-            .first_text()
-            .unwrap_or("")
-            .to_string();
+        let text = response.content.first_text().unwrap_or("").to_string();
 
-        let tool_calls: Vec<genai::chat::ToolCall> = response
-            .content
-            .tool_calls()
-            .into_iter()
-            .cloned()
-            .collect();
+        let tool_calls: Vec<genai::chat::ToolCall> =
+            response.content.tool_calls().into_iter().cloned().collect();
 
         Ok(ChatWithToolsResult { text, tool_calls })
     }

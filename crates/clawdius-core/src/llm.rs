@@ -578,7 +578,11 @@ impl LlmConfig {
                 let model = cfg
                     .and_then(|c| c.model.clone())
                     .map(|m| {
-                        if m.starts_with("zai-coding::") { m } else { format!("zai-coding::{m}") }
+                        if m.starts_with("zai-coding::") {
+                            m
+                        } else {
+                            format!("zai-coding::{m}")
+                        }
                     })
                     .unwrap_or_else(|| "zai-coding::glm-4.6".to_string());
 
@@ -718,7 +722,9 @@ impl LlmClientWithRetry {
     }
 
     pub async fn chat_with_tools(
-        &self, messages: Vec<ChatMessage>, tools: Vec<genai::chat::Tool>,
+        &self,
+        messages: Vec<ChatMessage>,
+        tools: Vec<genai::chat::Tool>,
     ) -> Result<ChatWithToolsResult> {
         match &self.provider {
             LlmProvider::Anthropic(p) => p.chat_with_tools(messages, tools).await,
@@ -837,9 +843,7 @@ pub fn create_provider(config: &LlmConfig) -> Result<LlmProvider> {
         },
         "zai" | "glm" => {
             let api_key = config.api_key.as_ref().ok_or_else(|| {
-                Error::Config(
-                    ErrorHelpers::api_key_missing("ZAI", "ZAI_API_KEY").to_string(),
-                )
+                Error::Config(ErrorHelpers::api_key_missing("ZAI", "ZAI_API_KEY").to_string())
             })?;
             Ok(LlmProvider::Zai(providers::zai::ZaiProvider::new(
                 api_key,
@@ -879,7 +883,15 @@ pub fn create_provider(config: &LlmConfig) -> Result<LlmProvider> {
         _ => Err(Error::Config(
             ErrorHelpers::unknown_provider(
                 &config.provider,
-                &["anthropic", "google", "openai", "openrouter", "deepseek", "zai", "ollama"],
+                &[
+                    "anthropic",
+                    "google",
+                    "openai",
+                    "openrouter",
+                    "deepseek",
+                    "zai",
+                    "ollama",
+                ],
             )
             .to_string(),
         )),

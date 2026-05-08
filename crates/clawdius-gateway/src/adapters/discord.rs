@@ -185,11 +185,7 @@ impl PlatformAdapter for DiscordAdapter {
         Ok(())
     }
 
-    async fn edit_message(
-        &self,
-        message_id: &str,
-        new_text: &str,
-    ) -> Result<(), GatewayError> {
+    async fn edit_message(&self, message_id: &str, new_text: &str) -> Result<(), GatewayError> {
         // message_id is expected to be "channel_id:message_id"
         let parts: Vec<&str> = message_id.splitn(2, ':').collect();
         if parts.len() != 2 {
@@ -205,9 +201,7 @@ impl PlatformAdapter for DiscordAdapter {
         let channel_id = parts[0];
         let msg_id = parts[1];
 
-        let url = format!(
-            "https://discord.com/api/v10/channels/{channel_id}/messages/{msg_id}"
-        );
+        let url = format!("https://discord.com/api/v10/channels/{channel_id}/messages/{msg_id}");
 
         let body = serde_json::json!({
             "content": new_text,
@@ -298,9 +292,7 @@ impl PlatformAdapter for DiscordAdapter {
             messages_processed: self
                 .messages_processed
                 .load(std::sync::atomic::Ordering::Relaxed),
-            errors: self
-                .error_count
-                .load(std::sync::atomic::Ordering::Relaxed),
+            errors: self.error_count.load(std::sync::atomic::Ordering::Relaxed),
             last_message_at: None,
         }
     }
@@ -314,14 +306,21 @@ impl PlatformAdapter for DiscordAdapter {
 #[cfg(feature = "discord")]
 pub struct DiscordEventHandler {
     /// Callback invoked when a new message is received.
-    pub on_message:
-        std::sync::Arc<dyn Fn(IncomingMessage) -> std::pin::Pin<Box<dyn std::future::Future<Output = ()> + Send>> + Send + Sync>,
+    pub on_message: std::sync::Arc<
+        dyn Fn(IncomingMessage) -> std::pin::Pin<Box<dyn std::future::Future<Output = ()> + Send>>
+            + Send
+            + Sync,
+    >,
 }
 
 #[cfg(feature = "discord")]
 #[serenity::async_trait]
 impl serenity::client::EventHandler for DiscordEventHandler {
-    async fn message(&self, ctx: serenity::client::Context, new_message: serenity::model::channel::Message) {
+    async fn message(
+        &self,
+        ctx: serenity::client::Context,
+        new_message: serenity::model::channel::Message,
+    ) {
         // Ignore bot messages
         if new_message.author.bot {
             return;
@@ -378,14 +377,12 @@ impl serenity::client::EventHandler for DiscordEventHandler {
             timestamp: chrono::DateTime::from_timestamp(
                 new_message.id.created_at().unix_timestamp(),
                 0,
-            ).unwrap_or_else(chrono::Utc::now),
+            )
+            .unwrap_or_else(chrono::Utc::now),
             metadata: {
                 let mut meta = std::collections::HashMap::new();
                 if let Some(guild_id) = new_message.guild_id {
-                    meta.insert(
-                        "guild_id".to_string(),
-                        serde_json::json!(guild_id.get()),
-                    );
+                    meta.insert("guild_id".to_string(), serde_json::json!(guild_id.get()));
                 }
                 meta
             },

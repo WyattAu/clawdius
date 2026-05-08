@@ -146,7 +146,10 @@ pub async fn signup(
     };
 
     {
-        let mut store = state.tenant_store.write().expect("tenant_store write lock poisoned");
+        let mut store = state
+            .tenant_store
+            .write()
+            .expect("tenant_store write lock poisoned");
         store.add_tenant(tenant);
     }
 
@@ -158,7 +161,8 @@ pub async fn signup(
             tier: tier.to_string(),
             api_key,
             api_key_label,
-            message: "Tenant created. Save your API key — you won't be able to see it again.".to_string(),
+            message: "Tenant created. Save your API key — you won't be able to see it again."
+                .to_string(),
         }),
     ))
 }
@@ -170,19 +174,30 @@ pub async fn login(
 ) -> Result<(StatusCode, Json<LoginResponse>), (StatusCode, Json<ApiError>)> {
     // First pass: validate the API key and get tenant_id
     let tenant_id = {
-        let store = state.tenant_store.read().expect("tenant_store read lock poisoned");
+        let store = state
+            .tenant_store
+            .read()
+            .expect("tenant_store read lock poisoned");
         let tenant = store
             .get_tenant_by_api_key(&request.api_key)
-            .ok_or_else(|| (StatusCode::UNAUTHORIZED, Json(ApiError {
-                code: "UNAUTHORIZED".to_string(),
-                message: "Invalid API key".to_string(),
-            })))?;
+            .ok_or_else(|| {
+                (
+                    StatusCode::UNAUTHORIZED,
+                    Json(ApiError {
+                        code: "UNAUTHORIZED".to_string(),
+                        message: "Invalid API key".to_string(),
+                    }),
+                )
+            })?;
         tenant.id.clone()
     };
 
     // Second pass: update last used timestamp
     {
-        let mut store = state.tenant_store.write().expect("tenant_store write lock poisoned");
+        let mut store = state
+            .tenant_store
+            .write()
+            .expect("tenant_store write lock poisoned");
         if let Some(tenant) = store.get_tenant_mut(&tenant_id) {
             if let Some(entry) = tenant
                 .api_keys
@@ -195,7 +210,10 @@ pub async fn login(
     }
 
     // Third pass: read the tenant for the response
-    let store = state.tenant_store.read().expect("tenant_store read lock poisoned");
+    let store = state
+        .tenant_store
+        .read()
+        .expect("tenant_store read lock poisoned");
     let tenant = store.get_tenant(&tenant_id).ok_or_else(|| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -223,10 +241,11 @@ pub async fn login(
 // ── Tenant Endpoints ──────────────────────────────────────────────────────────
 
 /// GET /api/v1/tenants — List all tenants (requires auth).
-pub async fn list_tenants(
-    State(state): State<ApiState>,
-) -> Json<Vec<TenantResponse>> {
-    let store = state.tenant_store.read().expect("tenant_store read lock poisoned");
+pub async fn list_tenants(State(state): State<ApiState>) -> Json<Vec<TenantResponse>> {
+    let store = state
+        .tenant_store
+        .read()
+        .expect("tenant_store read lock poisoned");
     let tenants = store
         .list_tenants()
         .into_iter()
@@ -240,7 +259,10 @@ pub async fn get_tenant(
     State(state): State<ApiState>,
     axum::extract::Path(id): axum::extract::Path<String>,
 ) -> Result<Json<TenantResponse>, (StatusCode, Json<ApiError>)> {
-    let store = state.tenant_store.read().expect("tenant_store read lock poisoned");
+    let store = state
+        .tenant_store
+        .read()
+        .expect("tenant_store read lock poisoned");
     let tenant = store.get_tenant(&id).ok_or_else(|| {
         (
             StatusCode::NOT_FOUND,
@@ -260,53 +282,21 @@ pub async fn update_tenant(
     axum::extract::Path(id): axum::extract::Path<String>,
     Json(request): Json<UpdateTenantRequest>,
 ) -> Result<Json<TenantResponse>, (StatusCode, Json<ApiError>)> {
-    let tier = request
-        .tier
-        .as_deref()
-        .and_then(TenantTier::from_str_opt);
+    let tier = request.tier.as_deref().and_then(TenantTier::from_str_opt);
 
     {
-        let mut store = state.tenant_store.write().expect("tenant_store write lock poisoned");
-        store.update_tenant(
-            &id,
-            request.name.as_deref(),
-            tier,
-            request.email.as_deref(),
-            request.workspace_root.as_deref(),
-        )
-        .ok_or_else(|| {
-            (
-                StatusCode::NOT_FOUND,
-                Json(ApiError {
-                    code: "NOT_FOUND".to_string(),
-                    message: format!("Tenant '{id}' not found"),
-                }),
+        let mut store = state
+            .tenant_store
+            .write()
+            .expect("tenant_store write lock poisoned");
+        store
+            .update_tenant(
+                &id,
+                request.name.as_deref(),
+                tier,
+                request.email.as_deref(),
+                request.workspace_root.as_deref(),
             )
-        })?;
-    }
-
-    let store = state.tenant_store.read().expect("tenant_store read lock poisoned");
-    let tenant = store.get_tenant(&id).ok_or_else(|| {
-            (
-                StatusCode::NOT_FOUND,
-                Json(ApiError {
-                    code: "NOT_FOUND".to_string(),
-                    message: format!("Tenant '{id}' not found after update"),
-                }),
-            )
-        })?;
-    Ok(Json(tenant_to_response(tenant)))
-}
-
-/// DELETE /api/v1/tenants/{id} — Delete a tenant and all its data.
-pub async fn delete_tenant(
-    State(state): State<ApiState>,
-    axum::extract::Path(id): axum::extract::Path<String>,
-) -> Result<(StatusCode, Json<serde_json::Value>), (StatusCode, Json<ApiError>)> {
-    {
-        let mut store = state.tenant_store.write().expect("tenant_store write lock poisoned");
-        store.delete_tenant(&id)
-            .then_some(())
             .ok_or_else(|| {
                 (
                     StatusCode::NOT_FOUND,
@@ -316,6 +306,43 @@ pub async fn delete_tenant(
                     }),
                 )
             })?;
+    }
+
+    let store = state
+        .tenant_store
+        .read()
+        .expect("tenant_store read lock poisoned");
+    let tenant = store.get_tenant(&id).ok_or_else(|| {
+        (
+            StatusCode::NOT_FOUND,
+            Json(ApiError {
+                code: "NOT_FOUND".to_string(),
+                message: format!("Tenant '{id}' not found after update"),
+            }),
+        )
+    })?;
+    Ok(Json(tenant_to_response(tenant)))
+}
+
+/// DELETE /api/v1/tenants/{id} — Delete a tenant and all its data.
+pub async fn delete_tenant(
+    State(state): State<ApiState>,
+    axum::extract::Path(id): axum::extract::Path<String>,
+) -> Result<(StatusCode, Json<serde_json::Value>), (StatusCode, Json<ApiError>)> {
+    {
+        let mut store = state
+            .tenant_store
+            .write()
+            .expect("tenant_store write lock poisoned");
+        store.delete_tenant(&id).then_some(()).ok_or_else(|| {
+            (
+                StatusCode::NOT_FOUND,
+                Json(ApiError {
+                    code: "NOT_FOUND".to_string(),
+                    message: format!("Tenant '{id}' not found"),
+                }),
+            )
+        })?;
     }
 
     Ok((
@@ -341,7 +368,10 @@ pub async fn create_api_key(
     };
 
     let key_entry = {
-        let mut store = state.tenant_store.write().expect("tenant_store write lock poisoned");
+        let mut store = state
+            .tenant_store
+            .write()
+            .expect("tenant_store write lock poisoned");
         store.add_api_key(&id, label).ok_or_else(|| {
             (
                 StatusCode::NOT_FOUND,
@@ -369,7 +399,10 @@ pub async fn list_api_keys(
     State(state): State<ApiState>,
     axum::extract::Path(id): axum::extract::Path<String>,
 ) -> Result<Json<Vec<ApiKeyInfo>>, (StatusCode, Json<ApiError>)> {
-    let store = state.tenant_store.read().expect("tenant_store read lock poisoned");
+    let store = state
+        .tenant_store
+        .read()
+        .expect("tenant_store read lock poisoned");
     let tenant = store.get_tenant(&id).ok_or_else(|| {
         (
             StatusCode::NOT_FOUND,
@@ -404,7 +437,10 @@ pub async fn revoke_api_key(
     let key = params.get("key").cloned().unwrap_or_default();
 
     let success = {
-        let mut store = state.tenant_store.write().expect("tenant_store write lock poisoned");
+        let mut store = state
+            .tenant_store
+            .write()
+            .expect("tenant_store write lock poisoned");
         store.revoke_api_key(&tenant_id, &key)
     };
 
@@ -454,11 +490,10 @@ fn tenant_to_response(tenant: &Tenant) -> TenantResponse {
 
 /// Record a task (LLM request) against a tenant.
 /// Returns false if rate limit would be exceeded.
-pub fn record_tenant_task(
-    state: &ApiState,
-    tenant_id: &str,
-    tokens: usize,
-) -> bool {
-    let mut store = state.tenant_store.write().expect("tenant_store write lock poisoned");
+pub fn record_tenant_task(state: &ApiState, tenant_id: &str, tokens: usize) -> bool {
+    let mut store = state
+        .tenant_store
+        .write()
+        .expect("tenant_store write lock poisoned");
     store.record_task(tenant_id, tokens)
 }

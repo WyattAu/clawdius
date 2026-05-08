@@ -224,7 +224,10 @@ impl From<SprintError> for crate::Error {
 }
 
 pub fn detect_language(path: &str) -> &'static str {
-    match std::path::Path::new(path).extension().and_then(|e| e.to_str()) {
+    match std::path::Path::new(path)
+        .extension()
+        .and_then(|e| e.to_str())
+    {
         Some("rs") => "rust",
         Some("py") => "python",
         Some("ts") | Some("tsx") => "typescript",
@@ -329,8 +332,7 @@ pub fn save_state(state: &SprintState) -> Result<String> {
 
     let filename = format!("sprint_{}.json", state.started_at.format("%Y%m%d-%H%M%S"));
     let path = sprint_dir.join(&filename);
-    let json =
-        serde_json::to_string_pretty(state).map_err(|e| crate::Error::Serialization(e))?;
+    let json = serde_json::to_string_pretty(state).map_err(|e| crate::Error::Serialization(e))?;
     std::fs::write(&path, json).map_err(|e| {
         crate::Error::Io(std::io::Error::new(
             std::io::ErrorKind::Other,
@@ -441,8 +443,8 @@ pub fn delete_saved_state(project_root: &std::path::Path, started_at: DateTime<U
 mod tests {
     use super::*;
     use crate::agentic::tool_executor::NoOpToolExecutor;
-    use crate::llm::ChatMessage;
     use crate::llm::providers::LlmClient;
+    use crate::llm::ChatMessage;
     use async_trait::async_trait;
     use std::sync::Arc;
     use tokio::sync::mpsc;
@@ -465,7 +467,10 @@ mod tests {
             Ok(self.response.clone())
         }
 
-        async fn chat_stream(&self, _messages: Vec<ChatMessage>) -> crate::Result<mpsc::Receiver<String>> {
+        async fn chat_stream(
+            &self,
+            _messages: Vec<ChatMessage>,
+        ) -> crate::Result<mpsc::Receiver<String>> {
             let (tx, rx) = mpsc::channel(1);
             let _ = tx.send(self.response.clone()).await;
             Ok(rx)
@@ -484,7 +489,10 @@ mod tests {
             Err(crate::Error::Llm("mock failure".to_string()))
         }
 
-        async fn chat_stream(&self, _messages: Vec<ChatMessage>) -> crate::Result<mpsc::Receiver<String>> {
+        async fn chat_stream(
+            &self,
+            _messages: Vec<ChatMessage>,
+        ) -> crate::Result<mpsc::Receiver<String>> {
             let (tx, rx) = mpsc::channel(1);
             drop(tx);
             Ok(rx)
@@ -1084,7 +1092,8 @@ mod tests {
 
     #[test]
     fn test_error_recovery_config_builder() {
-        let config = crate::agentic::error_recovery::ErrorRecoveryConfig::new(5).with_compiler_output(true);
+        let config =
+            crate::agentic::error_recovery::ErrorRecoveryConfig::new(5).with_compiler_output(true);
         assert_eq!(config.max_retries, 5);
         assert!(config.include_compiler_output);
     }

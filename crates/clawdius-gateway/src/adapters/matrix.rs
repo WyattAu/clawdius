@@ -77,16 +77,12 @@ impl MatrixAdapter {
             .settings
             .get("homeserver_url")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| {
-                GatewayError::Config("MATRIX_HOMESERVER_URL not set".to_string())
-            })?;
+            .ok_or_else(|| GatewayError::Config("MATRIX_HOMESERVER_URL not set".to_string()))?;
 
         let access_token = config
             .api_token
             .as_ref()
-            .ok_or_else(|| {
-                GatewayError::Config("MATRIX_ACCESS_TOKEN not set".to_string())
-            })?;
+            .ok_or_else(|| GatewayError::Config("MATRIX_ACCESS_TOKEN not set".to_string()))?;
 
         let user_id = config
             .settings
@@ -139,14 +135,11 @@ impl MatrixAdapter {
             });
         }
 
-        response
-            .json()
-            .await
-            .map_err(|e| GatewayError::Adapter {
-                platform: "matrix".to_string(),
-                message: format!("failed to parse response: {e}"),
-                source: Some(Box::new(e)),
-            })
+        response.json().await.map_err(|e| GatewayError::Adapter {
+            platform: "matrix".to_string(),
+            message: format!("failed to parse response: {e}"),
+            source: Some(Box::new(e)),
+        })
     }
 }
 
@@ -215,11 +208,7 @@ impl PlatformAdapter for MatrixAdapter {
         Ok(())
     }
 
-    async fn edit_message(
-        &self,
-        message_id: &str,
-        new_text: &str,
-    ) -> Result<(), GatewayError> {
+    async fn edit_message(&self, message_id: &str, new_text: &str) -> Result<(), GatewayError> {
         // Matrix edits use m.new_content with a relation to the original event
         // message_id is the Matrix event_id
         let txn_id = format!("clawdius_edit_{}", uuid::Uuid::new_v4());
@@ -346,9 +335,7 @@ impl PlatformAdapter for MatrixAdapter {
             messages_processed: self
                 .messages_processed
                 .load(std::sync::atomic::Ordering::Relaxed),
-            errors: self
-                .error_count
-                .load(std::sync::atomic::Ordering::Relaxed),
+            errors: self.error_count.load(std::sync::atomic::Ordering::Relaxed),
             last_message_at: None,
         }
     }

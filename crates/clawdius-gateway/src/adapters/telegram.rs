@@ -19,8 +19,8 @@
 //! - Long-polling with graceful shutdown via `CancellationToken`
 //! - Rate limit awareness
 
-use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::Arc;
 
 use tokio::sync::Mutex;
 use tokio_util::sync::CancellationToken;
@@ -128,17 +128,32 @@ impl TelegramAdapter {
         }
     }
 
-    /// Run the long-polling loop until cancelled.
-    async fn run_polling(&self) {
-        let bot = self.bot.clone();
+    /// Dispatch a message using pre-cloned callback and counters (no &self).
+    async fn dispatch_with(
+        callback: &Option<MessageCallback>,
+        message: IncomingMessage,
+        processed: &AtomicU64,
+    ) {
+        if let Some(cb) = callback {
+            cb(message).await;
+            processed.fetch_add(1, Ordering::Relaxed);
+        } else {
+            tracing::warn!("Telegram adapter received message but no callback is set");
+        }
+    }
+
+    /// Run the long-polling loop until cancelled (static, owned args, no unsafe).
+    async fn run_polling_with(
+        bot: teloxide::Bot,
+        callback: Option<MessageCallback>,
+        cancel: CancellationToken,
+        running: &AtomicBool,
+        processed: &AtomicU64,
+        errors: &AtomicU64,
+    ) {
         let mut last_update_id: i32 = 0;
 
         loop {
-            let cancel = {
-                let token = self.cancel_token.lock().await;
-                token.clone()
-            };
-
             tokio::select! {
                 _ = cancel.cancelled() => {
                     tracing::info!("Telegram polling stopped");
@@ -155,7 +170,7 @@ impl TelegramAdapter {
                             for update in &updates {
                                 last_update_id = update.id.0 + 1;
                                 if let Some(incoming) = Self::convert_update(update.clone()).await {
-                                    self.dispatch_message(incoming).await;
+                                    Self::dispatch_with(&callback, incoming, processed).await;
                                 }
                             }
                         }
@@ -165,12 +180,12 @@ impl TelegramAdapter {
                         }
                         Err(teloxide::RequestError::Network(err)) => {
                             tracing::warn!("Telegram network error: {err}, retrying in 2s");
-                            self.error_count.fetch_add(1, Ordering::Relaxed);
+                            errors.fetch_add(1, Ordering::Relaxed);
                             tokio::time::sleep(std::time::Duration::from_secs(2)).await;
                         }
                         Err(e) => {
                             tracing::error!("Telegram polling error: {e}");
-                            self.error_count.fetch_add(1, Ordering::Relaxed);
+                            errors.fetch_add(1, Ordering::Relaxed);
                             tokio::time::sleep(std::time::Duration::from_secs(5)).await;
                         }
                     }
@@ -178,7 +193,7 @@ impl TelegramAdapter {
             }
         }
 
-        self.running.store(false, Ordering::Relaxed);
+        running.store(false, Ordering::Relaxed);
     }
 }
 
@@ -244,13 +259,14 @@ impl PlatformAdapter for TelegramAdapter {
         tokio::time::sleep(std::time::Duration::from_millis(50)).await;
 
         // Spawn the polling loop
-        let self_ref = self as *const Self as usize;
+        let bot = self.bot.clone();
+        let callback = self.message_callback.lock().await.clone();
+        let cancel = self.cancel_token.lock().await.clone();
+        let running = &self.running;
+        let processed = &self.messages_processed;
+        let errors = &self.error_count;
         tokio::spawn(async move {
-            // SAFETY: The adapter is owned by the gateway via Arc and outlives
-            // the polling task. The task is cancelled in stop() before the
-            // adapter is dropped.
-            let adapter = unsafe { &*self_ref };
-            adapter.run_polling().await;
+            Self::run_polling_with(bot, callback, cancel, running, processed, errors).await;
         });
 
         Ok(())
@@ -287,18 +303,12 @@ impl PlatformAdapter for TelegramAdapter {
         Ok(())
     }
 
-    async fn edit_message(
-        &self,
-        message_id: &str,
-        new_text: &str,
-    ) -> Result<(), GatewayError> {
-        let mid: i32 = message_id
-            .parse()
-            .map_err(|_| GatewayError::Adapter {
-                platform: "telegram".to_string(),
-                message: format!("invalid message_id: {message_id}"),
-                source: None,
-            })?;
+    async fn edit_message(&self, message_id: &str, new_text: &str) -> Result<(), GatewayError> {
+        let mid: i32 = message_id.parse().map_err(|_| GatewayError::Adapter {
+            platform: "telegram".to_string(),
+            message: format!("invalid message_id: {message_id}"),
+            source: None,
+        })?;
 
         self.bot
             .edit_message_text(ChatId(0), MessageId(mid), new_text)

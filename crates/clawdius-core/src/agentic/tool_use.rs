@@ -226,42 +226,37 @@ pub async fn execute_tool_call(
                     };
 
                     match crate::tools::edit_cascade::apply_edit_cascade(&cascade_params) {
-                        Ok(result) => {
-                            match std::fs::write(&full_path, &result.new_content) {
-                                Ok(()) => {
-                                    let strategy_note = if result.strategy
-                                        != crate::tools::edit_cascade::Strategy::Exact
-                                    {
-                                        format!(
-                                            " (via {} strategy, confidence {:.0}%)",
-                                            result.strategy,
-                                            result.confidence * 100.0
-                                        )
-                                    } else {
-                                        String::new()
-                                    };
-                                    ToolExecutionResult {
-                                        success: true,
-                                        output: format!(
-                                            "Edited {} (replaced {} bytes with {} bytes){}",
-                                            full_path.display(),
-                                            old_text.len(),
-                                            new_text.len(),
-                                            strategy_note
-                                        ),
-                                        duration_ms: start.elapsed().as_millis() as u64,
-                                    }
-                                }
-                                Err(e) => ToolExecutionResult {
-                                    success: false,
+                        Ok(result) => match std::fs::write(&full_path, &result.new_content) {
+                            Ok(()) => {
+                                let strategy_note = if result.strategy
+                                    != crate::tools::edit_cascade::Strategy::Exact
+                                {
+                                    format!(
+                                        " (via {} strategy, confidence {:.0}%)",
+                                        result.strategy,
+                                        result.confidence * 100.0
+                                    )
+                                } else {
+                                    String::new()
+                                };
+                                ToolExecutionResult {
+                                    success: true,
                                     output: format!(
-                                        "Failed to write {}: {e}",
-                                        full_path.display()
+                                        "Edited {} (replaced {} bytes with {} bytes){}",
+                                        full_path.display(),
+                                        old_text.len(),
+                                        new_text.len(),
+                                        strategy_note
                                     ),
                                     duration_ms: start.elapsed().as_millis() as u64,
-                                },
-                            }
-                        }
+                                }
+                            },
+                            Err(e) => ToolExecutionResult {
+                                success: false,
+                                output: format!("Failed to write {}: {e}", full_path.display()),
+                                duration_ms: start.elapsed().as_millis() as u64,
+                            },
+                        },
                         Err(e) => ToolExecutionResult {
                             success: false,
                             output: format!(
@@ -273,7 +268,7 @@ pub async fn execute_tool_call(
                             duration_ms: start.elapsed().as_millis() as u64,
                         },
                     }
-                }
+                },
                 Err(e) => ToolExecutionResult {
                     success: false,
                     output: format!("Failed to read {}: {e}", full_path.display()),
@@ -1151,7 +1146,10 @@ Done.
         let calls = parse_tool_calls(output);
         assert_eq!(calls.len(), 1);
         assert_eq!(calls[0].tool, "write_file");
-        assert_eq!(calls[0].args.get("path").unwrap().as_str().unwrap(), "src/main.rs");
+        assert_eq!(
+            calls[0].args.get("path").unwrap().as_str().unwrap(),
+            "src/main.rs"
+        );
     }
 
     #[test]
@@ -1165,7 +1163,10 @@ Done.
         let calls = parse_tool_calls(output);
         assert_eq!(calls.len(), 1);
         assert_eq!(calls[0].tool, "shell");
-        assert_eq!(calls[0].args.get("command").unwrap().as_str().unwrap(), "cargo build");
+        assert_eq!(
+            calls[0].args.get("command").unwrap().as_str().unwrap(),
+            "cargo build"
+        );
     }
 
     #[test]

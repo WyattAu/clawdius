@@ -3,8 +3,8 @@ use crate::graph_rag::ast::FileInfo;
 use crate::graph_rag::languages::{detect_language, supported_extensions};
 use crate::graph_rag::parser::CodeParser;
 use crate::graph_rag::store::GraphStore;
-use crate::llm::{ChatMessage, ChatRole, LlmConfig};
 use crate::llm::providers::LlmClient;
+use crate::llm::{ChatMessage, ChatRole, LlmConfig};
 use crate::tools::web_search::{SearchProvider, WebSearchTool};
 use std::sync::LazyLock;
 use walkdir::WalkDir;
@@ -346,9 +346,7 @@ fn tool_edit_file(args: &serde_json::Value) -> McpToolResult {
 
     match crate::tools::edit_cascade::apply_edit_cascade(&cascade_params) {
         Ok(result) => {
-            let strategy_note = if result.strategy
-                != crate::tools::edit_cascade::Strategy::Exact
-            {
+            let strategy_note = if result.strategy != crate::tools::edit_cascade::Strategy::Exact {
                 format!(
                     " (via {} strategy, confidence {:.0}%)",
                     result.strategy,
@@ -358,12 +356,10 @@ fn tool_edit_file(args: &serde_json::Value) -> McpToolResult {
                 String::new()
             };
             match std::fs::write(&resolved, &result.new_content) {
-                Ok(()) => McpToolResult::text(format!(
-                    "edited {path} successfully{strategy_note}"
-                )),
+                Ok(()) => McpToolResult::text(format!("edited {path} successfully{strategy_note}")),
                 Err(e) => McpToolResult::error(format!("failed to write file: {e}")),
             }
-        }
+        },
         Err(e) => McpToolResult::error(format!(
             "old_string not found in file.\nEdit cascade diagnostics:\n{e}"
         )),
@@ -893,13 +889,11 @@ mod tests {
 
     #[test]
     fn test_edit_file_replaces_content() {
-        let dir = std::env::temp_dir().join("clawdius_test_edit");
-        let _ = std::fs::remove_dir_all(&dir);
-        std::fs::create_dir_all(&dir).unwrap();
-        std::fs::write(dir.join("edit_me.txt"), "foo bar baz").unwrap();
+        let dir = tempfile::tempdir().expect("create temp dir");
+        std::fs::write(dir.path().join("edit_me.txt"), "foo bar baz").unwrap();
 
         let saved = std::env::current_dir().unwrap();
-        std::env::set_current_dir(&dir).unwrap();
+        std::env::set_current_dir(dir.path()).unwrap();
 
         let req = McpRequest::new(1, "tools/call").with_params(serde_json::json!({
             "name": "edit_file",
@@ -914,24 +908,23 @@ mod tests {
 
         assert!(resp.result.is_some());
         let result = resp.result.unwrap();
-        assert!(!result["is_error"].as_bool().unwrap());
+        assert!(
+            !result["is_error"].as_bool().unwrap_or(true),
+            "expected success, got: {result}"
+        );
         assert_eq!(
-            std::fs::read_to_string(dir.join("edit_me.txt")).unwrap(),
+            std::fs::read_to_string(dir.path().join("edit_me.txt")).unwrap(),
             "foo qux baz"
         );
-
-        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]
     fn test_edit_file_old_string_not_found() {
-        let dir = std::env::temp_dir().join("clawdius_test_edit_nf");
-        let _ = std::fs::remove_dir_all(&dir);
-        std::fs::create_dir_all(&dir).unwrap();
-        std::fs::write(dir.join("missing.txt"), "hello").unwrap();
+        let dir = tempfile::tempdir().expect("create temp dir");
+        std::fs::write(dir.path().join("missing.txt"), "hello").unwrap();
 
         let saved = std::env::current_dir().unwrap();
-        std::env::set_current_dir(&dir).unwrap();
+        std::env::set_current_dir(dir.path()).unwrap();
 
         let req = McpRequest::new(1, "tools/call").with_params(serde_json::json!({
             "name": "edit_file",
@@ -946,13 +939,15 @@ mod tests {
 
         assert!(resp.result.is_some());
         let result = resp.result.unwrap();
-        assert!(result["is_error"].as_bool().unwrap());
-        assert!(result["content"][0]["text"]
-            .as_str()
-            .unwrap()
-            .contains("not found"));
-
-        let _ = std::fs::remove_dir_all(&dir);
+        assert!(
+            result["is_error"].as_bool().unwrap_or(false),
+            "expected error, got: {result}"
+        );
+        let text = result["content"][0]["text"].as_str().unwrap_or("");
+        assert!(
+            text.contains("not found") || text.contains("NoMatch"),
+            "expected 'not found' in error text, got: {text}"
+        );
     }
 
     #[test]

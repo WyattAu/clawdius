@@ -23,8 +23,7 @@ static RE_STYLE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"(?is)<style[^>]*>.*?</style>").expect("valid regex"));
 static RE_COMMENT: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"(?s)<!--.*?-->").expect("valid regex"));
-static RE_TAG: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"<[^>]+>").expect("valid regex"));
+static RE_TAG: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"<[^>]+>").expect("valid regex"));
 static RE_MULTI_NEWLINE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"\n{3,}").expect("valid regex"));
 
@@ -190,7 +189,8 @@ impl HtmlCompressor {
         for tag in &[
             "nav", "footer", "header", "aside", "form", "iframe", "noscript", "svg",
         ] {
-            let re = Regex::new(&format!(r"(?is)<{}[^>]*>.*?</{}>", tag, tag)).expect("valid regex");
+            let re =
+                Regex::new(&format!(r"(?is)<{}[^>]*>.*?</{}>", tag, tag)).expect("valid regex");
             text = re.replace_all(&text, "").to_string();
         }
 
@@ -231,9 +231,7 @@ impl HtmlCompressor {
         result = self.decode_entities(&result);
 
         // Remove excessive whitespace that was between tags
-        result = RE_MULTI_NEWLINE
-            .replace_all(&result, "\n\n")
-            .to_string();
+        result = RE_MULTI_NEWLINE.replace_all(&result, "\n\n").to_string();
 
         result
     }
@@ -450,7 +448,7 @@ mod tests {
         let result = compressor.compress(html).expect("compress");
 
         assert!(result.compression_percent() > 50.0);
-        assert!(result.section_count >= 0);
+        assert!(result.section_count > 0);
     }
 
     #[test]

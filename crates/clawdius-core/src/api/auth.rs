@@ -170,7 +170,10 @@ pub async fn tenant_aware_auth_middleware(
 
     // Check tenant store keys (fallback) — lock is scoped to this block
     let tenant_valid = {
-        let store = auth_state.tenant_store.read().expect("tenant_store lock poisoned");
+        let store = auth_state
+            .tenant_store
+            .read()
+            .expect("tenant_store lock poisoned");
         store.get_tenant_by_api_key(&token).is_some()
     }; // RwLockReadGuard dropped here
 
@@ -312,17 +315,11 @@ mod tests {
         store.add_tenant(tenant);
 
         let config_auth = ApiKeyAuth::new(make_keys());
-        let auth_state = AuthState::new(
-            config_auth,
-            Arc::new(RwLock::new(store)),
-        );
+        let auth_state = AuthState::new(config_auth, Arc::new(RwLock::new(store)));
 
-        let app = Router::new()
-            .route("/api/v1/test", get(ok_handler))
-            .layer(middleware::from_fn_with_state(
-                auth_state.clone(),
-                tenant_aware_auth_middleware,
-            ));
+        let app = Router::new().route("/api/v1/test", get(ok_handler)).layer(
+            middleware::from_fn_with_state(auth_state.clone(), tenant_aware_auth_middleware),
+        );
 
         // The tenant store key should be accepted
         let req = make_request("/api/v1/test", Some("ck_test_tenant_key_12345"));
@@ -358,17 +355,11 @@ mod tests {
         store.add_tenant(tenant);
 
         let config_auth = ApiKeyAuth::new(make_keys());
-        let auth_state = AuthState::new(
-            config_auth,
-            Arc::new(RwLock::new(store)),
-        );
+        let auth_state = AuthState::new(config_auth, Arc::new(RwLock::new(store)));
 
-        let app = Router::new()
-            .route("/api/v1/test", get(ok_handler))
-            .layer(middleware::from_fn_with_state(
-                auth_state.clone(),
-                tenant_aware_auth_middleware,
-            ));
+        let app = Router::new().route("/api/v1/test", get(ok_handler)).layer(
+            middleware::from_fn_with_state(auth_state.clone(), tenant_aware_auth_middleware),
+        );
 
         // A key not in config or tenant store should be rejected
         let req = make_request("/api/v1/test", Some("ck_nonexistent_key"));
@@ -380,17 +371,11 @@ mod tests {
     async fn config_key_still_works_with_tenant_middleware() {
         let store = TenantStore::new();
         let config_auth = ApiKeyAuth::new(make_keys());
-        let auth_state = AuthState::new(
-            config_auth,
-            Arc::new(RwLock::new(store)),
-        );
+        let auth_state = AuthState::new(config_auth, Arc::new(RwLock::new(store)));
 
-        let app = Router::new()
-            .route("/api/v1/test", get(ok_handler))
-            .layer(middleware::from_fn_with_state(
-                auth_state.clone(),
-                tenant_aware_auth_middleware,
-            ));
+        let app = Router::new().route("/api/v1/test", get(ok_handler)).layer(
+            middleware::from_fn_with_state(auth_state.clone(), tenant_aware_auth_middleware),
+        );
 
         // Config key should still work
         let req = make_request("/api/v1/test", Some("secret123"));

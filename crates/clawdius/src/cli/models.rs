@@ -1,4 +1,4 @@
-use super::{OutputFormat, ModelsCommands};
+use super::{ModelsCommands, OutputFormat};
 
 #[allow(clippy::cast_precision_loss)]
 pub(super) async fn handle_models(
@@ -69,18 +69,20 @@ pub(super) async fn handle_models(
             }
 
             match provider.pull_model(&model).await {
-                Ok(()) => if output_format == OutputFormat::Json {
-                    println!(
-                        "{}",
-                        serde_json::json!({
-                            "status": "success",
-                            "model": model
-                        })
-                    );
-                } else {
-                    println!("✅ Model pulled successfully: {model}");
-                    println!("\nUse it with:");
-                    println!("  clawdius chat -P ollama --model {model}");
+                Ok(()) => {
+                    if output_format == OutputFormat::Json {
+                        println!(
+                            "{}",
+                            serde_json::json!({
+                                "status": "success",
+                                "model": model
+                            })
+                        );
+                    } else {
+                        println!("✅ Model pulled successfully: {model}");
+                        println!("\nUse it with:");
+                        println!("  clawdius chat -P ollama --model {model}");
+                    }
                 },
                 Err(e) => {
                     match output_format {
@@ -102,34 +104,38 @@ pub(super) async fn handle_models(
             }
         },
 
-        ModelsCommands::Health => if matches!(provider.health_check().await, Ok(true)) { if output_format == OutputFormat::Json {
-            println!(
-                "{}",
-                serde_json::json!({
-                    "status": "healthy",
-                    "host": host,
-                    "port": port
-                })
-            );
-        } else {
-            println!("✅ Ollama server is healthy");
-            println!("   Host: {host}:{port}");
-        } } else {
-            if output_format == OutputFormat::Json {
-                println!(
-                    "{}",
-                    serde_json::json!({
-                        "status": "unhealthy",
-                        "host": host,
-                        "port": port
-                    })
-                );
+        ModelsCommands::Health => {
+            if matches!(provider.health_check().await, Ok(true)) {
+                if output_format == OutputFormat::Json {
+                    println!(
+                        "{}",
+                        serde_json::json!({
+                            "status": "healthy",
+                            "host": host,
+                            "port": port
+                        })
+                    );
+                } else {
+                    println!("✅ Ollama server is healthy");
+                    println!("   Host: {host}:{port}");
+                }
             } else {
-                eprintln!("❌ Ollama server is not responding");
-                eprintln!("\n💡 Start Ollama with:");
-                eprintln!("   ollama serve");
+                if output_format == OutputFormat::Json {
+                    println!(
+                        "{}",
+                        serde_json::json!({
+                            "status": "unhealthy",
+                            "host": host,
+                            "port": port
+                        })
+                    );
+                } else {
+                    eprintln!("❌ Ollama server is not responding");
+                    eprintln!("\n💡 Start Ollama with:");
+                    eprintln!("   ollama serve");
+                }
+                return Err(anyhow::anyhow!("Ollama server not responding"));
             }
-            return Err(anyhow::anyhow!("Ollama server not responding"));
         },
 
         ModelsCommands::Current => {

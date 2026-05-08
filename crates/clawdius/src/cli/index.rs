@@ -5,7 +5,6 @@ use std::path::{Path, PathBuf};
 
 use clawdius_core::output::{OutputFormat as CoreOutputFormat, OutputFormatter, OutputOptions};
 
-
 pub(super) async fn handle_index(
     path: Option<PathBuf>,
     watch: bool,

@@ -150,7 +150,11 @@ impl ProgressBar {
     }
 
     /// Render the progress bar.
-    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss, clippy::cast_precision_loss)]
+    #[allow(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        clippy::cast_precision_loss
+    )]
     fn render(&self) {
         let percent = if self.total > 0 {
             ((self.current as f64 / self.total as f64) * 100.0) as usize

@@ -25,8 +25,7 @@
 use std::sync::Arc;
 
 use crate::adapter::{
-    AdapterHealth, MessageCallback, OutgoingMessage, Platform, PlatformAdapter,
-    PlatformConfig,
+    AdapterHealth, MessageCallback, OutgoingMessage, Platform, PlatformAdapter, PlatformConfig,
 };
 use crate::error::GatewayError;
 
@@ -75,9 +74,7 @@ impl SignalAdapter {
         let account_number = config
             .api_token
             .as_ref()
-            .ok_or_else(|| {
-                GatewayError::Config("SIGNAL_ACCOUNT_NUMBER not set".to_string())
-            })?;
+            .ok_or_else(|| GatewayError::Config("SIGNAL_ACCOUNT_NUMBER not set".to_string()))?;
 
         Ok(Self::new(rest_url, account_number))
     }
@@ -178,11 +175,7 @@ impl PlatformAdapter for SignalAdapter {
         Ok(())
     }
 
-    async fn edit_message(
-        &self,
-        _message_id: &str,
-        new_text: &str,
-    ) -> Result<(), GatewayError> {
+    async fn edit_message(&self, _message_id: &str, new_text: &str) -> Result<(), GatewayError> {
         // Signal does NOT support editing messages.
         // Send a new message as a fallback (with "edited:" prefix).
         let fallback = OutgoingMessage::new(
@@ -246,9 +239,7 @@ impl PlatformAdapter for SignalAdapter {
             messages_processed: self
                 .messages_processed
                 .load(std::sync::atomic::Ordering::Relaxed),
-            errors: self
-                .error_count
-                .load(std::sync::atomic::Ordering::Relaxed),
+            errors: self.error_count.load(std::sync::atomic::Ordering::Relaxed),
             last_message_at: None,
         }
     }

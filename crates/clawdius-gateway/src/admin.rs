@@ -18,9 +18,7 @@ use axum::{
     Json, Router,
 };
 use chrono::{DateTime, Utc};
-use clawdius_core::billing::{
-    BillingManager, PlanTier, Subscription,
-};
+use clawdius_core::billing::{BillingManager, PlanTier, Subscription};
 use clawdius_core::usage::{Quota, TenantUsageTracker};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -175,7 +173,10 @@ pub fn admin_router(state: Arc<AdminState>) -> Router {
         .route("/api/admin/tenants/{tenant_id}", get(get_tenant))
         .route("/api/admin/tenants/{tenant_id}", delete(delete_tenant))
         .route("/api/admin/tenants/{tenant_id}/usage", get(get_usage))
-        .route("/api/admin/tenants/{tenant_id}/usage/reset", post(reset_usage))
+        .route(
+            "/api/admin/tenants/{tenant_id}/usage/reset",
+            post(reset_usage),
+        )
         .route("/api/admin/tenants/{tenant_id}/quota", get(get_quota))
         .route("/api/admin/tenants/{tenant_id}/quota", put(set_quota))
         .route(
@@ -297,7 +298,7 @@ async fn get_usage(
                 "api_calls": calls,
                 "utilization_pct": utilization,
             }))
-        }
+        },
         None => error_response(StatusCode::NOT_FOUND, "tenant not found"),
     }
 }
@@ -359,7 +360,7 @@ async fn change_plan(
                 StatusCode::BAD_REQUEST,
                 format!("invalid tier: {}", req.new_tier),
             );
-        }
+        },
     };
     match state.billing.change_plan(&tenant_id, new_tier) {
         Ok(sub) => ok_response(subscription_to_map(&sub)),
@@ -619,7 +620,9 @@ mod tests {
     fn test_tenant_creation_with_all_tiers() {
         let state = test_state();
         for tier in [PlanTier::Free, PlanTier::Pro, PlanTier::Team] {
-            let sub = state.billing.create_subscription(&format!("org_{:?}", tier), tier);
+            let sub = state
+                .billing
+                .create_subscription(&format!("org_{:?}", tier), tier);
             assert_eq!(sub.tier, tier);
         }
         assert_eq!(state.billing.list_subscriptions().len(), 3);

@@ -219,8 +219,8 @@ impl ErrorCategory {
                 return Self::TraitBound;
             }
             // Macro
-            if msg_lower.contains("macro")
-                || code_upper.as_deref() == Some("E0425") // some macro expansion errors
+            if msg_lower.contains("macro") || code_upper.as_deref() == Some("E0425")
+            // some macro expansion errors
             {
                 return Self::Macro;
             }
@@ -232,9 +232,7 @@ impl ErrorCategory {
                 return Self::Unused;
             }
             // Feature
-            if msg_lower.contains("feature")
-                || code_upper.as_deref() == Some("E0554")
-            {
+            if msg_lower.contains("feature") || code_upper.as_deref() == Some("E0554") {
                 return Self::Feature;
             }
         }
@@ -265,8 +263,7 @@ impl ErrorCategory {
         // Python patterns
         if language == "python" {
             if msg_lower.contains("name ")
-                && (msg_lower.contains("is not defined")
-                    || msg_lower.contains("is not built-in"))
+                && (msg_lower.contains("is not defined") || msg_lower.contains("is not built-in"))
             {
                 return Self::Undefined;
             }
@@ -276,38 +273,26 @@ impl ErrorCategory {
             {
                 return Self::MissingImport;
             }
-            if msg_lower.contains("typeerror")
-                || msg_lower.contains("unsupported operand")
-            {
+            if msg_lower.contains("typeerror") || msg_lower.contains("unsupported operand") {
                 return Self::TypeMismatch;
             }
-            if msg_lower.contains("indentationerror")
-                || msg_lower.contains("unexpected indent")
-            {
+            if msg_lower.contains("indentationerror") || msg_lower.contains("unexpected indent") {
                 return Self::Syntax;
             }
         }
 
         // Go patterns
         if language == "go" {
-            if msg_lower.contains("undefined:")
-                || msg_lower.contains("undeclared name")
-            {
+            if msg_lower.contains("undefined:") || msg_lower.contains("undeclared name") {
                 return Self::Undefined;
             }
-            if msg_lower.contains("cannot use")
-                || msg_lower.contains("invalid operation")
-            {
+            if msg_lower.contains("cannot use") || msg_lower.contains("invalid operation") {
                 return Self::TypeMismatch;
             }
-            if msg_lower.contains("imported but not used")
-                || msg_lower.contains("undefined:")
-            {
+            if msg_lower.contains("imported but not used") || msg_lower.contains("undefined:") {
                 return Self::MissingImport;
             }
-            if msg_lower.contains("syntax error")
-                || msg_lower.contains("expected")
-            {
+            if msg_lower.contains("syntax error") || msg_lower.contains("expected") {
                 return Self::Syntax;
             }
         }
@@ -318,38 +303,64 @@ impl ErrorCategory {
     /// Get a strategy hint for this error category.
     pub fn strategy_hint(&self) -> &'static str {
         match self {
-            Self::MissingImport => "Add the missing import statement at the top of the file. \
-                Check the correct module path and import style for the language.",
-            Self::TypeMismatch => "Check the types on both sides of the expression. \
+            Self::MissingImport => {
+                "Add the missing import statement at the top of the file. \
+                Check the correct module path and import style for the language."
+            },
+            Self::TypeMismatch => {
+                "Check the types on both sides of the expression. \
                 Add explicit type annotations if needed. Verify generic type arguments \
-                and trait object safety.",
-            Self::Undefined => "Verify the identifier is in scope. Check for typos, \
+                and trait object safety."
+            },
+            Self::Undefined => {
+                "Verify the identifier is in scope. Check for typos, \
                 missing imports, and correct scoping. Ensure the item is declared \
-                before it is used.",
-            Self::Syntax => "Fix the syntax error. Check for missing brackets, \
-                incorrect punctuation, and malformed expressions.",
-            Self::Lifetime => "Check ownership and borrowing. Add explicit lifetimes where \
+                before it is used."
+            },
+            Self::Syntax => {
+                "Fix the syntax error. Check for missing brackets, \
+                incorrect punctuation, and malformed expressions."
+            },
+            Self::Lifetime => {
+                "Check ownership and borrowing. Add explicit lifetimes where \
                 needed. Use references instead of moves where possible. Consider \
-                cloning or using `Cow` for owned data.",
-            Self::BorrowChecker => "Fix the ownership/borrowing conflict. Consider using \
+                cloning or using `Cow` for owned data."
+            },
+            Self::BorrowChecker => {
+                "Fix the ownership/borrowing conflict. Consider using \
                 references, cloning, restructuring the code, or using interior mutability \
-                patterns (`RefCell`, `Rc`, `Arc`).",
-            Self::TraitBound => "Implement the required trait for the type, or add \
+                patterns (`RefCell`, `Rc`, `Arc`)."
+            },
+            Self::TraitBound => {
+                "Implement the required trait for the type, or add \
                 trait bounds to generic parameters. Consider using a blanket implementation \
-                or a wrapper type.",
-            Self::Macro => "Fix the macro invocation. Check required arguments, \
-                syntax, and delimiter handling. Verify the macro is imported.",
-            Self::Unused => "Remove the unused item or prefix with an underscore \
-                to suppress the warning.",
-            Self::Feature => "Enable the required feature gate or use an alternative \
-                approach that doesn't require the unstable feature.",
-            Self::ModuleResolution => "Fix the module path. Check for correct \
+                or a wrapper type."
+            },
+            Self::Macro => {
+                "Fix the macro invocation. Check required arguments, \
+                syntax, and delimiter handling. Verify the macro is imported."
+            },
+            Self::Unused => {
+                "Remove the unused item or prefix with an underscore \
+                to suppress the warning."
+            },
+            Self::Feature => {
+                "Enable the required feature gate or use an alternative \
+                approach that doesn't require the unstable feature."
+            },
+            Self::ModuleResolution => {
+                "Fix the module path. Check for correct \
                 casing and directory structure. Verify the module is listed in \
-                Cargo.toml / go.mod / package.json.",
-            Self::Configuration => "Fix the build configuration. Check Cargo.toml \
-                dependencies, compiler flags, and build settings.",
-            Self::Other => "Analyze the error message carefully and apply the \
-                appropriate fix.",
+                Cargo.toml / go.mod / package.json."
+            },
+            Self::Configuration => {
+                "Fix the build configuration. Check Cargo.toml \
+                dependencies, compiler flags, and build settings."
+            },
+            Self::Other => {
+                "Analyze the error message carefully and apply the \
+                appropriate fix."
+            },
         }
     }
 
@@ -388,28 +399,27 @@ pub fn parse_compiler_output(output: &str) -> Vec<CompilationError> {
         Regex::new(r"error\[([A-Z]\d+)\]: (.+?)(?:\n|$)\s*(?:.*?--> (.*?):(\d+):(\d+))?")
     else {
         return errors;
-        };
+    };
 
     let Ok(rust_error_re_no_code) =
         Regex::new(r"error(?:\[(.+?)\])?: (.+?)(?:\n|$)\s*(?:.*?--> (.*?):(\d+):(\d+))?")
     else {
         return errors;
-        };
+    };
 
     let Ok(python_re) = Regex::new(r#"File "(.*?)", line (\d+)(?:, in .+?)?\n(.+?)(?:\n|$)"#)
     else {
         return errors;
-        };
+    };
 
     let Ok(typescript_re) = Regex::new(r"(.*?\((\d+),(\d+)\)):\s*error\s+(TS\d+):\s*(.+?)(?:\n|$)")
     else {
         return errors;
-        };
+    };
 
-    let Ok(go_re) = Regex::new(r"(.*?:(\d+)(?::\d+)?)\s*(.+?)(?:\n|$)")
-    else {
+    let Ok(go_re) = Regex::new(r"(.*?:(\d+)(?::\d+)?)\s*(.+?)(?:\n|$)") else {
         return errors;
-        };
+    };
 
     if rust_error_re.is_match(output) || rust_error_re_no_code.is_match(output) {
         for caps in rust_error_re.captures_iter(output) {
@@ -533,9 +543,7 @@ pub fn build_fix_prompt(
 }
 
 fn strip_code_block(response: &str) -> String {
-    let Ok(code_block_re) =
-        Regex::new(r"```(?:\w*)\n([\s\S]*?)```")
-    else {
+    let Ok(code_block_re) = Regex::new(r"```(?:\w*)\n([\s\S]*?)```") else {
         return response.to_string();
     };
     if let Some(caps) = code_block_re.captures(response) {
@@ -565,8 +573,9 @@ pub fn build_targeted_fix_prompt(
         ));
     }
 
-    let errors_by_file: std::collections::HashMap<&str, Vec<&CompilationError>> =
-        errors.iter().fold(std::collections::HashMap::new(), |mut map, err| {
+    let errors_by_file: std::collections::HashMap<&str, Vec<&CompilationError>> = errors
+        .iter()
+        .fold(std::collections::HashMap::new(), |mut map, err| {
             map.entry(err.file_path.as_deref().unwrap_or("unknown"))
                 .or_insert_with(|| Vec::new())
                 .push(err);
@@ -1094,37 +1103,33 @@ src/index.ts(20,12): error TS2322: Type 'string' is not assignable to type 'numb
 
     #[test]
     fn test_categorize_rust_missing_import() {
-        let err = CompilationError::new("cannot find value `x` in this scope")
-            .with_code("E0425");
+        let err = CompilationError::new("cannot find value `x` in this scope").with_code("E0425");
         // "cannot find value" matches MissingImport first
         assert_eq!(err.categorize("rust"), ErrorCategory::MissingImport);
     }
 
     #[test]
     fn test_categorize_rust_type_mismatch() {
-        let err = CompilationError::new("mismatched types")
-            .with_code("E0308");
+        let err = CompilationError::new("mismatched types").with_code("E0308");
         assert_eq!(err.categorize("rust"), ErrorCategory::TypeMismatch);
     }
 
     #[test]
     fn test_categorize_rust_borrow_checker() {
-        let err = CompilationError::new("cannot borrow `x` as mutable")
-            .with_code("E0382");
+        let err = CompilationError::new("cannot borrow `x` as mutable").with_code("E0382");
         assert_eq!(err.categorize("rust"), ErrorCategory::BorrowChecker);
     }
 
     #[test]
     fn test_categorize_rust_lifetime() {
-        let err = CompilationError::new("`x` does not live long enough")
-            .with_code("E0597");
+        let err = CompilationError::new("`x` does not live long enough").with_code("E0597");
         assert_eq!(err.categorize("rust"), ErrorCategory::Lifetime);
     }
 
     #[test]
     fn test_categorize_rust_trait_bound() {
-        let err = CompilationError::new("the following trait is not implemented")
-            .with_code("E0277");
+        let err =
+            CompilationError::new("the following trait is not implemented").with_code("E0277");
         assert_eq!(err.categorize("rust"), ErrorCategory::TraitBound);
     }
 
@@ -1166,9 +1171,15 @@ src/index.ts(20,12): error TS2322: Type 'string' is not assignable to type 'numb
 
     #[test]
     fn test_error_category_display_name() {
-        assert_eq!(ErrorCategory::MissingImport.display_name(), "Missing Import");
+        assert_eq!(
+            ErrorCategory::MissingImport.display_name(),
+            "Missing Import"
+        );
         assert_eq!(ErrorCategory::TypeMismatch.display_name(), "Type Mismatch");
-        assert_eq!(ErrorCategory::BorrowChecker.display_name(), "Borrow Checker Error");
+        assert_eq!(
+            ErrorCategory::BorrowChecker.display_name(),
+            "Borrow Checker Error"
+        );
         assert_eq!(ErrorCategory::Other.display_name(), "Other Error");
     }
 
@@ -1187,11 +1198,9 @@ src/index.ts(20,12): error TS2322: Type 'string' is not assignable to type 'numb
 
     #[test]
     fn test_build_targeted_fix_prompt() {
-        let errors = vec![
-            CompilationError::new("cannot find value `x` in this scope")
-                .with_full_location(Some("src/main.rs".to_string()), Some(10), Some(5))
-                .with_error_code(Some("E0425".to_string())),
-        ];
+        let errors = vec![CompilationError::new("cannot find value `x` in this scope")
+            .with_full_location(Some("src/main.rs".to_string()), Some(10), Some(5))
+            .with_error_code(Some("E0425".to_string()))];
         let prompt = build_targeted_fix_prompt("fn main() { x; }", &errors, "rust");
         assert!(prompt.contains("Missing Import"));
         assert!(prompt.contains("[E0425]"));
@@ -1230,7 +1239,8 @@ src/index.ts(20,12): error TS2322: Type 'string' is not assignable to type 'numb
 
     #[test]
     fn test_parse_go_errors() {
-        let output = "main.go:10:5: undefined: foo\nmain.go:15:2: cannot use x (type int) as type string";
+        let output =
+            "main.go:10:5: undefined: foo\nmain.go:15:2: cannot use x (type int) as type string";
         let errors = parse_compiler_output(output);
         assert_eq!(errors.len(), 2);
         assert_eq!(errors[0].file_path.as_deref(), Some("main.go:10:5"));

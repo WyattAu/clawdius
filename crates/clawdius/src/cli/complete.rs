@@ -1,4 +1,4 @@
-use super::{OutputFormat, load_config};
+use super::{load_config, OutputFormat};
 
 use std::path::PathBuf;
 
@@ -47,19 +47,21 @@ pub(super) async fn handle_complete(
     let request = CompletionRequest::new(&content, Position::new(line, character), &language)
         .with_file_path(&file);
 
-    if output_format == OutputFormat::Json { match completion_provider.complete(&request).await {
-        Ok(response) => {
-            println!("{}", serde_json::to_string_pretty(&response)?);
-        },
-        Err(e) => {
-            println!(
-                "{}",
-                serde_json::json!({
-                    "error": e.to_string()
-                })
-            );
-        },
-    } } else {
+    if output_format == OutputFormat::Json {
+        match completion_provider.complete(&request).await {
+            Ok(response) => {
+                println!("{}", serde_json::to_string_pretty(&response)?);
+            },
+            Err(e) => {
+                println!(
+                    "{}",
+                    serde_json::json!({
+                        "error": e.to_string()
+                    })
+                );
+            },
+        }
+    } else {
         println!("🔍 Requesting completion from {provider}...");
         println!("   File: {file}:{line}");
         println!("   Language: {language}\n");

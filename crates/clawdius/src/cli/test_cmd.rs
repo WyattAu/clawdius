@@ -1,9 +1,9 @@
 use super::OutputFormat;
 
-use std::path::PathBuf;
-use clawdius_core::output::{OutputFormat as CoreOutputFormat, OutputFormatter};
 use clawdius_core::actions::Function;
 use clawdius_core::output::TestCaseInfo;
+use clawdius_core::output::{OutputFormat as CoreOutputFormat, OutputFormatter};
+use std::path::PathBuf;
 
 pub(super) async fn handle_test(
     file: PathBuf,

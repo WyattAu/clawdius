@@ -110,7 +110,10 @@ pub struct MockPlatformAdapter {
     on_incoming: tokio::sync::Mutex<
         Option<
             Arc<
-                dyn Fn(IncomingMessage) -> std::pin::Pin<Box<dyn std::future::Future<Output = ()> + Send>>
+                dyn Fn(
+                        IncomingMessage,
+                    )
+                        -> std::pin::Pin<Box<dyn std::future::Future<Output = ()> + Send>>
                     + Send
                     + Sync,
             >,
@@ -182,7 +185,11 @@ impl MockPlatformAdapter {
 
     /// Simulate latency if configured.
     async fn simulate_latency(&self) {
-        let latency = self.config.read().expect("lock poisoned").simulated_latency_ms;
+        let latency = self
+            .config
+            .read()
+            .expect("lock poisoned")
+            .simulated_latency_ms;
         if latency > 0 {
             tokio::time::sleep(std::time::Duration::from_millis(latency)).await;
         }
@@ -192,12 +199,7 @@ impl MockPlatformAdapter {
     ///
     /// This triggers the `on_incoming` callback if one has been set.
     /// Use this to test message handling without a real platform.
-    pub async fn inject_message(
-        &self,
-        user_id: &str,
-        text: &str,
-        chat_id: &str,
-    ) {
+    pub async fn inject_message(&self, user_id: &str, text: &str, chat_id: &str) {
         let msg = IncomingMessage {
             id: format!("mock_{}", uuid::Uuid::new_v4()),
             platform: self.platform,
@@ -222,13 +224,7 @@ impl MockPlatformAdapter {
     }
 
     /// Inject a simulated incoming message with a reply-to reference.
-    pub async fn inject_reply(
-        &self,
-        user_id: &str,
-        text: &str,
-        chat_id: &str,
-        reply_to: &str,
-    ) {
+    pub async fn inject_reply(&self, user_id: &str, text: &str, chat_id: &str, reply_to: &str) {
         let msg = IncomingMessage {
             id: format!("mock_{}", uuid::Uuid::new_v4()),
             platform: self.platform,
@@ -253,12 +249,7 @@ impl MockPlatformAdapter {
     }
 
     /// Inject a simulated incoming message from an admin user.
-    pub async fn inject_admin_message(
-        &self,
-        user_id: &str,
-        text: &str,
-        chat_id: &str,
-    ) {
+    pub async fn inject_admin_message(&self, user_id: &str, text: &str, chat_id: &str) {
         let msg = IncomingMessage {
             id: format!("mock_{}", uuid::Uuid::new_v4()),
             platform: self.platform,
@@ -286,7 +277,10 @@ impl MockPlatformAdapter {
     pub async fn set_message_handler(
         &self,
         handler: Arc<
-            dyn Fn(IncomingMessage) -> std::pin::Pin<Box<dyn std::future::Future<Output = ()> + Send>>
+            dyn Fn(
+                    IncomingMessage,
+                )
+                    -> std::pin::Pin<Box<dyn std::future::Future<Output = ()> + Send>>
                 + Send
                 + Sync,
         >,
@@ -360,7 +354,11 @@ impl PlatformAdapter for MockPlatformAdapter {
 
         let (send_fails, error_message, max_messages) = {
             let config = self.config.read().expect("lock poisoned");
-            (config.send_fails, config.error_message.clone(), config.max_messages)
+            (
+                config.send_fails,
+                config.error_message.clone(),
+                config.max_messages,
+            )
         };
 
         if send_fails {
@@ -383,18 +381,11 @@ impl PlatformAdapter for MockPlatformAdapter {
         }
 
         self.sent_messages.lock().await.push(message.clone());
-        self.all_ops
-            .lock()
-            .await
-            .push(RecordedOp::Sent(message));
+        self.all_ops.lock().await.push(RecordedOp::Sent(message));
         Ok(())
     }
 
-    async fn edit_message(
-        &self,
-        message_id: &str,
-        new_text: &str,
-    ) -> Result<(), GatewayError> {
+    async fn edit_message(&self, message_id: &str, new_text: &str) -> Result<(), GatewayError> {
         self.simulate_latency().await;
 
         let (edit_fails, error_message) = {
@@ -437,7 +428,10 @@ impl PlatformAdapter for MockPlatformAdapter {
             });
         }
 
-        let path = std::path::PathBuf::from(format!("/tmp/clawdius-mock/{}", url.split('/').last().unwrap_or("file")));
+        let path = std::path::PathBuf::from(format!(
+            "/tmp/clawdius-mock/{}",
+            url.split('/').last().unwrap_or("file")
+        ));
         self.downloads
             .lock()
             .await
@@ -462,7 +456,11 @@ impl PlatformAdapter for MockPlatformAdapter {
             } else {
                 "ok".to_string()
             },
-            messages_processed: self.sent_messages.try_lock().map(|g| g.len() as u64).unwrap_or(0),
+            messages_processed: self
+                .sent_messages
+                .try_lock()
+                .map(|g| g.len() as u64)
+                .unwrap_or(0),
             errors: 0,
             last_message_at: None,
         }
@@ -503,7 +501,10 @@ mod tests {
         let mock = MockPlatformAdapter::new(Platform::Slack);
         mock.start().await.unwrap();
 
-        let path = mock.download_attachment("https://example.com/file.txt").await.unwrap();
+        let path = mock
+            .download_attachment("https://example.com/file.txt")
+            .await
+            .unwrap();
         assert!(path.to_string_lossy().contains("file.txt"));
 
         let downloads = mock.downloads.lock().await;
@@ -645,7 +646,8 @@ mod tests {
         }))
         .await;
 
-        mock.inject_admin_message("admin1", "admin command", "ch1").await;
+        mock.inject_admin_message("admin1", "admin command", "ch1")
+            .await;
 
         let received = received.lock().await;
         assert!(received.is_some());

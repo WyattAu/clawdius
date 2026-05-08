@@ -1,8 +1,7 @@
 use super::SqliteBackend;
 use crate::error::Result;
 use crate::session::types::{
-    ContentPart, Message, MessageContent, MessageRole, Session, SessionId,
-    SessionMeta, TokenUsage,
+    ContentPart, Message, MessageContent, MessageRole, Session, SessionId, SessionMeta, TokenUsage,
 };
 use crate::storage::backend::SessionRepository;
 use crate::storage::error::StorageError;
@@ -11,7 +10,9 @@ use rusqlite::{params, OptionalExtension};
 use uuid::Uuid;
 
 impl SqliteBackend {
-    pub(super) fn row_to_session(row: &rusqlite::Row<'_>) -> std::result::Result<Session, rusqlite::Error> {
+    pub(super) fn row_to_session(
+        row: &rusqlite::Row<'_>,
+    ) -> std::result::Result<Session, rusqlite::Error> {
         let id_str: String = row.get(0)?;
         let title: Option<String> = row.get(1)?;
         let provider: Option<String> = row.get(2)?;
@@ -55,7 +56,9 @@ impl SqliteBackend {
         })
     }
 
-    pub(super) fn row_to_message(row: &rusqlite::Row<'_>) -> std::result::Result<Message, rusqlite::Error> {
+    pub(super) fn row_to_message(
+        row: &rusqlite::Row<'_>,
+    ) -> std::result::Result<Message, rusqlite::Error> {
         let id_str: String = row.get(0)?;
         let role_str: String = row.get(2)?;
         let content_json: String = row.get(3)?;
@@ -96,7 +99,10 @@ impl SqliteBackend {
 }
 
 impl SessionRepository for SqliteBackend {
-    fn create_session(&self, session: &Session) -> impl std::future::Future<Output = Result<()>> + Send {
+    fn create_session(
+        &self,
+        session: &Session,
+    ) -> impl std::future::Future<Output = Result<()>> + Send {
         async move {
             let tags_json = serde_json::to_string(&session.meta.tags)?;
             let extra_json = serde_json::to_string(&session.meta.extra)?;
@@ -134,7 +140,10 @@ impl SessionRepository for SqliteBackend {
         }
     }
 
-    fn load_session(&self, id: &SessionId) -> impl std::future::Future<Output = Result<Option<Session>>> + Send {
+    fn load_session(
+        &self,
+        id: &SessionId,
+    ) -> impl std::future::Future<Output = Result<Option<Session>>> + Send {
         async move {
             self.with_conn(|conn| {
                 let mut stmt = conn
@@ -164,7 +173,10 @@ impl SessionRepository for SqliteBackend {
         }
     }
 
-    fn load_session_full(&self, id: &SessionId) -> impl std::future::Future<Output = Result<Option<Session>>> + Send {
+    fn load_session_full(
+        &self,
+        id: &SessionId,
+    ) -> impl std::future::Future<Output = Result<Option<Session>>> + Send {
         async move {
             let Some(mut session) = self.load_session(id).await? else {
                 return Ok(None);
@@ -191,12 +203,12 @@ impl SessionRepository for SqliteBackend {
                         reason: e.to_string(),
                     })?;
 
-                session.messages = messages.collect::<std::result::Result<Vec<_>, _>>().map_err(
-                    |e| StorageError::Query {
+                session.messages = messages
+                    .collect::<std::result::Result<Vec<_>, _>>()
+                    .map_err(|e| StorageError::Query {
                         statement: "SELECT messages".to_string(),
                         reason: e.to_string(),
-                    },
-                )?;
+                    })?;
 
                 Ok(session)
             })
@@ -239,7 +251,10 @@ impl SessionRepository for SqliteBackend {
         }
     }
 
-    fn delete_session(&self, id: &SessionId) -> impl std::future::Future<Output = Result<()>> + Send {
+    fn delete_session(
+        &self,
+        id: &SessionId,
+    ) -> impl std::future::Future<Output = Result<()>> + Send {
         async move {
             self.with_conn(|conn| {
                 conn.execute(
@@ -255,7 +270,11 @@ impl SessionRepository for SqliteBackend {
         }
     }
 
-    fn save_message(&self, session_id: &SessionId, message: &Message) -> impl std::future::Future<Output = Result<()>> + Send {
+    fn save_message(
+        &self,
+        session_id: &SessionId,
+        message: &Message,
+    ) -> impl std::future::Future<Output = Result<()>> + Send {
         async move {
             let content_json = match &message.content {
                 MessageContent::Text(text) => serde_json::to_string(&text)?,
@@ -309,7 +328,10 @@ impl SessionRepository for SqliteBackend {
         }
     }
 
-    fn search_messages(&self, query: &str) -> impl std::future::Future<Output = Result<Vec<(SessionId, Message)>>> + Send {
+    fn search_messages(
+        &self,
+        query: &str,
+    ) -> impl std::future::Future<Output = Result<Vec<(SessionId, Message)>>> + Send {
         async move {
             self.with_conn(|conn| {
                 let mut stmt = conn
@@ -353,7 +375,11 @@ impl SessionRepository for SqliteBackend {
         }
     }
 
-    fn update_token_usage(&self, id: &SessionId, usage: &TokenUsage) -> impl std::future::Future<Output = Result<()>> + Send {
+    fn update_token_usage(
+        &self,
+        id: &SessionId,
+        usage: &TokenUsage,
+    ) -> impl std::future::Future<Output = Result<()>> + Send {
         async move {
             self.with_conn(|conn| {
                 conn.execute(

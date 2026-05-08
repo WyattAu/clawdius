@@ -1,7 +1,7 @@
-use super::{OutputFormat, CheckpointCommands};
+use super::{CheckpointCommands, OutputFormat};
 
-use std::path::PathBuf;
 use clawdius_core::output::{OutputFormat as CoreOutputFormat, OutputFormatter};
+use std::path::PathBuf;
 
 pub(super) async fn handle_checkpoint(
     action: CheckpointCommands,

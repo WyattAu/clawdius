@@ -1,7 +1,9 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use clawdius_gateway::adapter::{AdapterHealth, MessageCallback, Platform, PlatformConfig, PlatformAdapter};
+use clawdius_gateway::adapter::{
+    AdapterHealth, MessageCallback, Platform, PlatformAdapter, PlatformConfig,
+};
 use clawdius_gateway::gateway::MessageGateway;
 use clawdius_gateway::rate_limit::RateLimiter;
 
@@ -266,7 +268,10 @@ async fn test_gateway_new() {
 async fn test_gateway_register_adapter() {
     let mut gateway = MessageGateway::new();
     gateway
-        .register_adapter(MockAdapter::new(Platform::Webhook), PlatformConfig::new(Platform::Webhook))
+        .register_adapter(
+            MockAdapter::new(Platform::Webhook),
+            PlatformConfig::new(Platform::Webhook),
+        )
         .await;
     let platforms = gateway.registered_platforms().await;
     assert_eq!(platforms.len(), 1);
@@ -277,10 +282,16 @@ async fn test_gateway_register_adapter() {
 async fn test_gateway_register_multiple_adapters() {
     let mut gateway = MessageGateway::new();
     gateway
-        .register_adapter(MockAdapter::new(Platform::Telegram), PlatformConfig::new(Platform::Telegram))
+        .register_adapter(
+            MockAdapter::new(Platform::Telegram),
+            PlatformConfig::new(Platform::Telegram),
+        )
         .await;
     gateway
-        .register_adapter(MockAdapter::new(Platform::Discord), PlatformConfig::new(Platform::Discord))
+        .register_adapter(
+            MockAdapter::new(Platform::Discord),
+            PlatformConfig::new(Platform::Discord),
+        )
         .await;
     let platforms = gateway.registered_platforms().await;
     assert_eq!(platforms.len(), 2);
@@ -297,7 +308,10 @@ async fn test_gateway_health_empty() {
 async fn test_gateway_health_with_adapter() {
     let mut gateway = MessageGateway::new();
     gateway
-        .register_adapter(MockAdapter::new(Platform::Webhook), PlatformConfig::new(Platform::Webhook))
+        .register_adapter(
+            MockAdapter::new(Platform::Webhook),
+            PlatformConfig::new(Platform::Webhook),
+        )
         .await;
     let health = gateway.health_status().await;
     assert!(health.contains_key(&Platform::Webhook));
@@ -308,7 +322,10 @@ async fn test_gateway_health_with_adapter() {
 async fn test_gateway_get_adapter() {
     let mut gateway = MessageGateway::new();
     gateway
-        .register_adapter(MockAdapter::new(Platform::Telegram), PlatformConfig::new(Platform::Telegram))
+        .register_adapter(
+            MockAdapter::new(Platform::Telegram),
+            PlatformConfig::new(Platform::Telegram),
+        )
         .await;
     assert!(gateway.get_adapter(Platform::Telegram).await.is_some());
     assert!(gateway.get_adapter(Platform::Discord).await.is_none());
@@ -317,7 +334,9 @@ async fn test_gateway_get_adapter() {
 #[tokio::test]
 async fn test_gateway_send_to_unconfigured_platform() {
     let gateway = MessageGateway::new();
-    let result = gateway.send_to_platform(Platform::Discord, "chat1", "hi").await;
+    let result = gateway
+        .send_to_platform(Platform::Discord, "chat1", "hi")
+        .await;
     assert!(result.is_err());
 }
 

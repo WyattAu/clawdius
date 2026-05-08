@@ -58,10 +58,7 @@ impl<R: WorkspaceRepository> WorkspaceManager<R> {
     // ── Workspace operations ──
 
     /// Create a new empty workspace with the given name.
-    pub async fn create_workspace(
-        &self,
-        name: impl Into<String>,
-    ) -> Result<Workspace> {
+    pub async fn create_workspace(&self, name: impl Into<String>) -> Result<Workspace> {
         let ws = Workspace::new(name);
         self.repo.create_workspace(&ws).await?;
         Ok(ws)
@@ -98,7 +95,10 @@ impl<R: WorkspaceRepository> WorkspaceManager<R> {
         if workspaces.is_empty() {
             self.create_workspace("default").await
         } else {
-            Ok(workspaces.into_iter().next().expect("workspaces is non-empty"))
+            Ok(workspaces
+                .into_iter()
+                .next()
+                .expect("workspaces is non-empty"))
         }
     }
 
@@ -116,9 +116,12 @@ impl<R: WorkspaceRepository> WorkspaceManager<R> {
         let root_path = root_path.as_ref();
 
         // Canonicalize the path for dedup
-        let canonical = root_path
-            .canonicalize()
-            .map_err(|e| Error::InvalidInput(format!("cannot resolve path '{}': {e}", root_path.display())))?;
+        let canonical = root_path.canonicalize().map_err(|e| {
+            Error::InvalidInput(format!(
+                "cannot resolve path '{}': {e}",
+                root_path.display()
+            ))
+        })?;
 
         // Check for existing project with same path
         if let Some(existing) = self.repo.load_project_by_path(&canonical).await? {
@@ -207,10 +210,7 @@ impl<R: WorkspaceRepository> WorkspaceManager<R> {
     }
 
     /// Get the default project for a workspace.
-    pub async fn get_default_project(
-        &self,
-        workspace_id: &WorkspaceId,
-    ) -> Result<Option<Project>> {
+    pub async fn get_default_project(&self, workspace_id: &WorkspaceId) -> Result<Option<Project>> {
         self.repo.get_default_project(workspace_id).await
     }
 
@@ -299,10 +299,7 @@ impl<R: WorkspaceRepository> WorkspaceManager<R> {
     // ── Workspace summary ──
 
     /// Get a summary of a workspace with its projects.
-    pub async fn workspace_summary(
-        &self,
-        workspace_id: &WorkspaceId,
-    ) -> Result<WorkspaceSummary> {
+    pub async fn workspace_summary(&self, workspace_id: &WorkspaceId) -> Result<WorkspaceSummary> {
         let workspace = self.load_workspace(workspace_id).await?;
         let projects = self.list_projects(workspace_id).await?;
         let default_project = self.get_default_project(workspace_id).await?;
@@ -364,8 +361,7 @@ fn detect_project_name(root: &Path) -> String {
     }
 
     // Fallback: directory name
-    root
-        .file_name()
+    root.file_name()
         .and_then(|n| n.to_str())
         .unwrap_or("unknown")
         .to_string()
@@ -620,9 +616,7 @@ version = "0.1.0"
         assert_eq!(default.unwrap().id, proj1.id);
 
         // Switch default
-        mgr.set_default_project(&ws.id, &proj2.id)
-            .await
-            .unwrap();
+        mgr.set_default_project(&ws.id, &proj2.id).await.unwrap();
         let default = mgr.get_default_project(&ws.id).await.unwrap();
         assert_eq!(default.unwrap().id, proj2.id);
     }
@@ -775,11 +769,7 @@ version = "0.1.0"
     fn test_detect_project_name_package_json() {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path();
-        std::fs::write(
-            path.join("package.json"),
-            r#"{"name": "test-app"}"#,
-        )
-        .unwrap();
+        std::fs::write(path.join("package.json"), r#"{"name": "test-app"}"#).unwrap();
 
         assert_eq!(detect_project_name(path), "test-app");
     }
@@ -798,11 +788,7 @@ version = "0.1.0"
     fn test_detect_project_name_go_mod() {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path();
-        std::fs::write(
-            path.join("go.mod"),
-            "module github.com/user/my-go-lib\n",
-        )
-        .unwrap();
+        std::fs::write(path.join("go.mod"), "module github.com/user/my-go-lib\n").unwrap();
 
         assert_eq!(detect_project_name(path), "my-go-lib");
     }

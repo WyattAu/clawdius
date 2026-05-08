@@ -69,6 +69,8 @@ cargo build --release
 export DEEPSEEK_API_KEY="sk-your-key"
 # Or: export ANTHROPIC_API_KEY="sk-ant-..."
 # Or: export OPENAI_API_KEY="sk-..."
+
+clawdius --version
 ```
 
 ### 3. Chat (TUI)
@@ -166,6 +168,46 @@ cargo build --release --features telegram,discord
 
 # Full build
 cargo build --release --features "keyring,embeddings,vector-db,postgres"
+```
+
+### Binary Size Comparison
+
+| Configuration | Dependencies | Binary Size |
+|--------------|--------------|-------------|
+| Minimal | ~350 | clawdius 25MB, clawdius-gateway 15MB |
+| +embeddings | ~400 | ~35MB |
+| +vector-db | ~450 | ~30MB |
+| Full | ~696 | ~40MB |
+
+---
+
+## Quick Start
+
+### 1. Set Up (New in v1.2.0!)
+```bash
+# Interactive setup wizard (recommended)
+clawdius setup
+
+# Or quick setup with pre-selected provider
+clawdius setup --quick --provider anthropic
+```
+
+The wizard will:
+- Guide you through provider selection (Anthropic, OpenAI, Ollama, Zhipu AI)
+- Securely store your API key using system keyring
+- Apply a settings preset (Balanced, Security, Performance, Development)
+- Verify connectivity for local LLMs (Ollama)
+
+### 2. Start Chatting
+
+```bash
+clawdius chat
+```
+
+### 3. Generate Code
+
+```bash
+clawdius generate --mode agent "Create a REST API endpoint"
 ```
 
 ## Configuration

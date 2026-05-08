@@ -126,7 +126,11 @@ impl<'a> StatusBar<'a> {
 }
 
 impl Widget for StatusBar<'_> {
-    #[allow(clippy::cast_precision_loss, clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+    #[allow(
+        clippy::cast_precision_loss,
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss
+    )]
     fn render(self, area: Rect, buf: &mut ratatui::buffer::Buffer) {
         let processing_indicator = if self.state.processing {
             " ●" // Spinning dot
@@ -143,7 +147,10 @@ impl Widget for StatusBar<'_> {
         };
 
         let session_display = if self.state.session_id.len() > 8 {
-            format!("…{}", &self.state.session_id[self.state.session_id.len() - 8..])
+            format!(
+                "…{}",
+                &self.state.session_id[self.state.session_id.len() - 8..]
+            )
         } else {
             self.state.session_id.clone()
         };
@@ -167,22 +174,13 @@ impl Widget for StatusBar<'_> {
                 format!(" {processing_indicator} "),
                 self.theme.status_highlight(),
             ),
-            Span::styled(
-                format!(" {model_display} "),
-                self.theme.model_info(),
-            ),
-            Span::styled(
-                format!(" {} ", self.state.provider),
-                self.theme.muted(),
-            ),
+            Span::styled(format!(" {model_display} "), self.theme.model_info()),
+            Span::styled(format!(" {} ", self.state.provider), self.theme.muted()),
             Span::styled(token_bar, self.theme.token_count()),
         ];
 
         let right = vec![
-            Span::styled(
-                format!(" {} ", self.state.project),
-                self.theme.file_item(),
-            ),
+            Span::styled(format!(" {} ", self.state.project), self.theme.file_item()),
             if self.state.workspace.is_empty() {
                 Span::raw("")
             } else {
@@ -195,10 +193,7 @@ impl Widget for StatusBar<'_> {
                 format!(" {} files ", self.state.file_count),
                 self.theme.muted(),
             ),
-            Span::styled(
-                format!(" {session_display} "),
-                self.theme.muted(),
-            ),
+            Span::styled(format!(" {session_display} "), self.theme.muted()),
             Span::styled(
                 format!(" {:?} ", self.state.vim_mode),
                 self.theme.mode_normal(),
@@ -247,7 +242,10 @@ mod tests {
 
         // The state stores the original model name (not truncated).
         // Truncation to 23 chars + "…" happens during rendering.
-        assert!(state.model.len() > 25, "model name should be long enough to trigger truncation");
+        assert!(
+            state.model.len() > 25,
+            "model name should be long enough to trigger truncation"
+        );
 
         // Verify the truncation logic produces correct output
         let truncated = if state.model.len() > 25 {
@@ -255,7 +253,11 @@ mod tests {
         } else {
             state.model.clone()
         };
-        assert_eq!(truncated.chars().count(), 24, "truncated display should be 24 chars (23 + …)");
+        assert_eq!(
+            truncated.chars().count(),
+            24,
+            "truncated display should be 24 chars (23 + …)"
+        );
         assert!(truncated.ends_with('…'));
     }
 }

@@ -203,10 +203,7 @@ impl Widget for SessionPickerWidget<'_> {
                         },
                     ),
                     Span::styled(title, self.theme.file_item()),
-                    Span::styled(
-                        format!(" ({}) ", entry.message_count),
-                        self.theme.muted(),
-                    ),
+                    Span::styled(format!(" ({}) ", entry.message_count), self.theme.muted()),
                     Span::styled(
                         format!("{}tok", entry.tokens_used),
                         self.theme.muted().add_modifier(Modifier::DIM),
@@ -220,9 +217,7 @@ impl Widget for SessionPickerWidget<'_> {
         // Render the list with highlight
         ratatui::widgets::List::new(items)
             .block(block)
-            .highlight_style(
-                self.theme.file_selected().add_modifier(Modifier::BOLD),
-            )
+            .highlight_style(self.theme.file_selected().add_modifier(Modifier::BOLD))
             .render(popup_area, buf);
     }
 }

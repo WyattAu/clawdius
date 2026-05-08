@@ -28,26 +28,30 @@ use clawdius_gateway::admin::{admin_router, AdminState};
 use clawdius_gateway::handler::ClawdiusHandler;
 use clawdius_gateway::MessageGateway;
 
-#[cfg(feature = "telegram")]
-use clawdius_gateway::adapters::telegram::TelegramAdapter;
 #[cfg(feature = "discord")]
 use clawdius_gateway::adapters::discord::DiscordAdapter;
-#[cfg(feature = "slack")]
-use clawdius_gateway::adapters::slack::SlackAdapter;
 #[cfg(feature = "matrix")]
 use clawdius_gateway::adapters::matrix::MatrixAdapter;
-use clawdius_gateway::adapters::signal::SignalAdapter;
-use clawdius_gateway::adapters::teams::TeamsAdapter;
-use clawdius_gateway::adapters::whatsapp::WhatsAppAdapter;
 use clawdius_gateway::adapters::rocketchat::RocketChatAdapter;
+use clawdius_gateway::adapters::signal::SignalAdapter;
+#[cfg(feature = "slack")]
+use clawdius_gateway::adapters::slack::SlackAdapter;
+use clawdius_gateway::adapters::teams::TeamsAdapter;
+#[cfg(feature = "telegram")]
+use clawdius_gateway::adapters::telegram::TelegramAdapter;
 use clawdius_gateway::adapters::webhook::{WebhookAdapter, WebhookConfig};
+use clawdius_gateway::adapters::whatsapp::WhatsAppAdapter;
 
 use clawdius_core::billing::BillingManager;
 use clawdius_core::usage::TenantUsageTracker;
 
 /// Clawdius Messaging Gateway
 #[derive(Parser, Debug)]
-#[command(name = "clawdius-gateway", version, about = "Connect chat platforms to the Clawdius agent")]
+#[command(
+    name = "clawdius-gateway",
+    version,
+    about = "Connect chat platforms to the Clawdius agent"
+)]
 struct Cli {
     /// Path to configuration file
     #[arg(short, long, env = "CLAWDIUS_CONFIG")]
@@ -234,45 +238,55 @@ async fn register_platform(gateway: &mut MessageGateway, platform: &Platform, cl
                 match cli.telegram_token.as_ref() {
                     Some(token) => {
                         let config = PlatformConfig::with_token(*platform, token);
-                        gateway.register_adapter(TelegramAdapter::new(token), config).await;
+                        gateway
+                            .register_adapter(TelegramAdapter::new(token), config)
+                            .await;
                         tracing::info!("Registered adapter for platform: {platform}");
-                    }
+                    },
                     None => tracing::warn!("Skipping telegram: TELEGRAM_BOT_TOKEN not set"),
                 }
             }
             #[cfg(not(feature = "telegram"))]
-            tracing::warn!("Skipping telegram: feature not enabled (compile with --features telegram)");
-        }
+            tracing::warn!(
+                "Skipping telegram: feature not enabled (compile with --features telegram)"
+            );
+        },
         Platform::Discord => {
             #[cfg(feature = "discord")]
             {
                 match cli.discord_token.as_ref() {
                     Some(token) => {
                         let config = PlatformConfig::with_token(*platform, token);
-                        gateway.register_adapter(DiscordAdapter::new(token), config).await;
+                        gateway
+                            .register_adapter(DiscordAdapter::new(token), config)
+                            .await;
                         tracing::info!("Registered adapter for platform: {platform}");
-                    }
+                    },
                     None => tracing::warn!("Skipping discord: DISCORD_BOT_TOKEN not set"),
                 }
             }
             #[cfg(not(feature = "discord"))]
-            tracing::warn!("Skipping discord: feature not enabled (compile with --features discord)");
-        }
+            tracing::warn!(
+                "Skipping discord: feature not enabled (compile with --features discord)"
+            );
+        },
         Platform::Slack => {
             #[cfg(feature = "slack")]
             {
                 match cli.slack_token.as_ref() {
                     Some(token) => {
                         let config = PlatformConfig::with_token(*platform, token);
-                        gateway.register_adapter(SlackAdapter::new(token), config).await;
+                        gateway
+                            .register_adapter(SlackAdapter::new(token), config)
+                            .await;
                         tracing::info!("Registered adapter for platform: {platform}");
-                    }
+                    },
                     None => tracing::warn!("Skipping slack: SLACK_BOT_TOKEN not set"),
                 }
             }
             #[cfg(not(feature = "slack"))]
             tracing::warn!("Skipping slack: feature not enabled (compile with --features slack)");
-        }
+        },
         Platform::Matrix => {
             #[cfg(feature = "matrix")]
             {
@@ -293,17 +307,19 @@ async fn register_platform(gateway: &mut MessageGateway, platform: &Platform, cl
             }
             #[cfg(not(feature = "matrix"))]
             tracing::warn!("Skipping matrix: feature not enabled (compile with --features matrix)");
-        }
+        },
         Platform::Signal => {
             if let Some(account) = cli.signal_account.as_ref() {
                 let url = cli.signal_url.as_deref().unwrap_or("http://localhost:7583");
                 let config = PlatformConfig::with_token(*platform, account);
-                gateway.register_adapter(SignalAdapter::new(url, account), config).await;
+                gateway
+                    .register_adapter(SignalAdapter::new(url, account), config)
+                    .await;
                 tracing::info!("Registered adapter for platform: {platform}");
             } else {
                 tracing::warn!("Skipping signal: SIGNAL_ACCOUNT_NUMBER not set");
             }
-        }
+        },
         Platform::Teams => {
             if let (Some(service_url), Some(app_id), Some(app_password)) = (
                 cli.teams_service_url.as_ref(),
@@ -318,9 +334,11 @@ async fn register_platform(gateway: &mut MessageGateway, platform: &Platform, cl
             } else {
                 tracing::warn!("Skipping teams: TEAMS_SERVICE_URL, TEAMS_APP_ID, and TEAMS_APP_PASSWORD must all be set");
             }
-        }
+        },
         Platform::WhatsApp => {
-            if let (Some(token), Some(phone_id)) = (cli.whatsapp_token.as_ref(), cli.whatsapp_phone_id.as_ref()) {
+            if let (Some(token), Some(phone_id)) =
+                (cli.whatsapp_token.as_ref(), cli.whatsapp_phone_id.as_ref())
+            {
                 let config = PlatformConfig::with_token(*platform, token);
                 gateway
                     .register_adapter(WhatsAppAdapter::new(token, phone_id), config)
@@ -329,7 +347,7 @@ async fn register_platform(gateway: &mut MessageGateway, platform: &Platform, cl
             } else {
                 tracing::warn!("Skipping whatsapp: WHATSAPP_ACCESS_TOKEN and WHATSAPP_PHONE_NUMBER_ID must both be set");
             }
-        }
+        },
         Platform::RocketChat => {
             if let (Some(server_url), Some(auth_token), Some(rc_user_id)) = (
                 cli.rocketchat_url.as_ref(),
@@ -347,7 +365,7 @@ async fn register_platform(gateway: &mut MessageGateway, platform: &Platform, cl
             } else {
                 tracing::warn!("Skipping rocketchat: ROCKETCHAT_URL, ROCKETCHAT_TOKEN, and ROCKETCHAT_USER_ID must all be set");
             }
-        }
+        },
         Platform::Webhook => {
             if let Some(outgoing_url) = cli.webhook_url.as_ref() {
                 let webhook_config = WebhookConfig {
@@ -357,15 +375,17 @@ async fn register_platform(gateway: &mut MessageGateway, platform: &Platform, cl
                     listen_port: cli.port,
                 };
                 let config = PlatformConfig::with_token(*platform, outgoing_url);
-                gateway.register_adapter(WebhookAdapter::new(webhook_config), config).await;
+                gateway
+                    .register_adapter(WebhookAdapter::new(webhook_config), config)
+                    .await;
                 tracing::info!("Registered adapter for platform: {platform}");
             } else {
                 tracing::warn!("Skipping webhook: WEBHOOK_URL not set");
             }
-        }
+        },
         _ => {
             tracing::warn!("Unknown platform variant: '{platform}'. Skipping.");
-        }
+        },
     }
 }
 
@@ -375,8 +395,11 @@ async fn main() -> anyhow::Result<()> {
 
     tracing_subscriber::fmt()
         .with_env_filter(
-            tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| cli.log_level.parse().unwrap_or_else(|_| "info".parse().unwrap())),
+            tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| {
+                cli.log_level
+                    .parse()
+                    .unwrap_or_else(|_| "info".parse().unwrap())
+            }),
         )
         .init();
 
@@ -389,7 +412,9 @@ async fn main() -> anyhow::Result<()> {
     tracing::info!("Rate limit: {} requests/minute", cli.rate_limit);
 
     if cli.platforms.is_empty() {
-        tracing::warn!("No platforms specified via --platform. Gateway will start with no adapters.");
+        tracing::warn!(
+            "No platforms specified via --platform. Gateway will start with no adapters."
+        );
     }
 
     // Register all requested platform adapters
@@ -449,7 +474,8 @@ async fn main() -> anyhow::Result<()> {
     let admin_listener = tokio::net::TcpListener::bind(&admin_addr).await?;
     tracing::info!("Admin API listening on {admin_addr}");
 
-    let admin_server = axum::serve(admin_listener, admin_app).with_graceful_shutdown(shutdown_signal());
+    let admin_server =
+        axum::serve(admin_listener, admin_app).with_graceful_shutdown(shutdown_signal());
 
     tracing::info!("Gateway is running. Press Ctrl+C to shut down.");
     admin_server.await?;
