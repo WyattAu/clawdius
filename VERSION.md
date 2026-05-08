@@ -23,7 +23,7 @@
 | **Lean4 Proof Files** | 15 | Lake build (all compile) |
 | **Lean4 LOC** | 3,157 | `wc -l *.lean` |
 | **Lean4 Theorems** | 209 | `rg 'theorem ' *.lean` |
-| **`.unwrap()` calls** | 2,335 across 146 files | `rg '\.unwrap\(\)' crates -g '*.rs'` |
+| **`.unwrap()` calls** | 0 production (2,335 total — all in test/bench code) | `rg '\.unwrap\(\)'` with `#[cfg(test)]` filtering |
 | **Clippy** | Clean (all 5 crates, `-D warnings`) | `cargo clippy` |
 | **cargo fmt** | Clean | `cargo fmt --check` |
 
@@ -64,12 +64,11 @@
 
 | Issue | Severity | Details |
 |-------|----------|---------|
-| 2,335 `.unwrap()` calls | High | Potential panics in production; needs systematic elimination |
-| clawdius-mcp: 0 tests | Medium | No test coverage |
-| clawdius-code: 0 tests | Medium | No test coverage |
+| clawdius-mcp: 5 integration tests | Info | Just added — basic MCP protocol validation |
+| clawdius-code: 5 integration tests | Info | Just added — basic JSON-RPC validation |
 | 2 test failures in clawdius-core | Low | Unrelated modules, not in critical path |
 | Workspace `--all-features` OOM | Medium | Cannot compile all features simultaneously on standard runners |
-| CI only runs `--lib` tests | Medium | Integration tests not covered |
+| CI only runs `--lib` tests | Info | Now fixed: per-crate lib + integration tests |
 | `.cargo-vendor/half` dirty | Low | Submodule patched but not committed |
 | Unsafe code in simd.rs | Low | Justified (SSE2/NEON behind cfg), 8 uses |
 

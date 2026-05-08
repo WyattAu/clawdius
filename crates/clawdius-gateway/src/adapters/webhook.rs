@@ -263,7 +263,7 @@ impl WebhookAdapter {
         let hash = hmac_sha256::HMAC::mac(body, secret.as_bytes());
         let mut hex = String::with_capacity(64);
         for byte in hash {
-            write!(hex, "{byte:02x}").unwrap();
+            let _ = write!(hex, "{byte:02x}");
         }
         Some(format!("sha256={hex}"))
     }

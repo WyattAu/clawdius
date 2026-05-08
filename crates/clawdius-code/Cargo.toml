@@ -44,5 +44,8 @@ mimalloc = { workspace = true, optional = true }
 [features]
 default = ["mimalloc"]
 
+[dev-dependencies]
+serde_json.workspace = true
+
 [lints]
 workspace = true

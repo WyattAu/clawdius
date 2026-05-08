@@ -18,5 +18,8 @@ serde_json.workspace = true
 serde.workspace = true
 tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
 
+[dev-dependencies]
+serde_json.workspace = true
+
 [lints]
 workspace = true

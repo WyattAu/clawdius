@@ -398,7 +398,7 @@ async fn main() -> anyhow::Result<()> {
             tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| {
                 cli.log_level
                     .parse()
-                    .unwrap_or_else(|_| "info".parse().unwrap())
+                    .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("info"))
             }),
         )
         .init();
