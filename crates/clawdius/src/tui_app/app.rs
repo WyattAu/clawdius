@@ -86,168 +86,141 @@ impl TuiToolExecutor {
     }
 
     /// Execute a tool call by name. Returns `(output, is_error)`.
-    #[allow(clippy::cast_possible_truncation)]
     pub fn execute_tool(&self, name: &str, arguments: &str) -> (String, bool) {
         let args: HashMap<String, serde_json::Value> =
             serde_json::from_str(arguments).unwrap_or_default();
 
         match name {
-            "read_file" => {
-                let path = args
-                    .get("path")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("")
-                    .to_string();
-                let offset = args
-                    .get("offset")
-                    .and_then(serde_json::Value::as_u64)
-                    .map(|n| n as usize); // safe: target pointer width >= 32
-                let limit = args
-                    .get("limit")
-                    .and_then(serde_json::Value::as_u64)
-                    .map(|n| n as usize); // safe: target pointer width >= 32
-                let params = FileReadParams {
-                    path,
-                    offset,
-                    limit,
-                };
-                match self.file_tool.read(params) {
-                    Ok(content) => (content, false),
-                    Err(e) => (format!("Error: {e}"), true),
-                }
-            },
-            "write_file" => {
-                let path = args
-                    .get("path")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("")
-                    .to_string();
-                let content = args
-                    .get("content")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("")
-                    .to_string();
-                let params = FileWriteParams { path, content };
-                match self.file_tool.write(params) {
-                    Ok(()) => ("File written successfully".to_string(), false),
-                    Err(e) => (format!("Error: {e}"), true),
-                }
-            },
-            "edit_file" => {
-                let path = args
-                    .get("path")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("")
-                    .to_string();
-                let old_string = args
-                    .get("old_string")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("")
-                    .to_string();
-                let new_string = args
-                    .get("new_string")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("")
-                    .to_string();
-                let replace_all = args
-                    .get("replace_all")
-                    .and_then(serde_json::Value::as_bool)
-                    .unwrap_or(false);
-                let params = FileEditParams {
-                    path,
-                    old_string,
-                    new_string,
-                    replace_all,
-                };
-                match self.file_tool.edit(params) {
-                    Ok(changed) => {
-                        if changed {
-                            ("File edited successfully".to_string(), false)
-                        } else {
-                            ("No changes made (old_string not found)".to_string(), true)
-                        }
-                    },
-                    Err(e) => (format!("Error: {e}"), true),
-                }
-            },
-            "list_directory" => {
-                let path = args
-                    .get("path")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or(".")
-                    .to_string();
-                let params = FileListParams { path };
-                match self.file_tool.list(params) {
-                    Ok(entries) => (entries.join("\n"), false),
-                    Err(e) => (format!("Error: {e}"), true),
-                }
-            },
-            "shell" | "run_command" => {
-                let command = args
-                    .get("command")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("")
-                    .to_string();
-                let timeout = args
-                    .get("timeout")
-                    .and_then(serde_json::Value::as_u64)
-                    .unwrap_or(120_000);
-                let params = ShellParams {
-                    command,
-                    timeout,
-                    cwd: None,
-                };
-                match self.shell_tool.execute(params) {
-                    Ok(result) => {
-                        let output = if result.stdout.is_empty() {
-                            result.stderr
-                        } else if result.stderr.is_empty() {
-                            result.stdout
-                        } else {
-                            format!("{}\n{}", result.stdout, result.stderr)
-                        };
-                        (output, result.exit_code != 0)
-                    },
-                    Err(e) => (format!("Error: {e}"), true),
-                }
-            },
+            "read_file" => self.exec_read_file(&args),
+            "write_file" => self.exec_write_file(&args),
+            "edit_file" => self.exec_edit_file(&args),
+            "list_directory" => self.exec_list_directory(&args),
+            "shell" | "run_command" => self.exec_shell(&args),
             "git_status" => match self.git_tool.status(None) {
                 Ok(output) => (output, false),
                 Err(e) => (format!("Error: {e}"), true),
             },
-            "git_diff" => {
-                let staged = args
-                    .get("staged")
-                    .and_then(serde_json::Value::as_bool)
-                    .unwrap_or(false);
-                let path = args
-                    .get("path")
-                    .or_else(|| args.get("file"))
-                    .and_then(|v| v.as_str())
-                    .map(String::from);
-                let params = GitDiffParams { staged, path };
-                match self.git_tool.diff(params, None) {
-                    Ok(output) => (output, false),
-                    Err(e) => (format!("Error: {e}"), true),
-                }
-            },
-            "git_log" => {
-                let count = args
-                    .get("count")
-                    .and_then(serde_json::Value::as_u64)
-                    .unwrap_or(20) as usize; // safe: target pointer width >= 32
-                let path = args
-                    .get("path")
-                    .or_else(|| args.get("file"))
-                    .and_then(|v| v.as_str())
-                    .map(String::from);
-                let params = GitLogParams { count, path };
-                match self.git_tool.log(params, None) {
-                    Ok(output) => (output, false),
-                    Err(e) => (format!("Error: {e}"), true),
-                }
-            },
+            "git_diff" => self.exec_git_diff(&args),
+            "git_log" => self.exec_git_log(&args),
             _ => (format!("Unknown tool: {name}"), true),
+        }
+    }
+
+    // --- Tool arm helpers (extracted from execute_tool) ---
+
+    fn exec_read_file(&self, args: &HashMap<String, serde_json::Value>) -> (String, bool) {
+        let path = args
+            .get("path")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
+        #[allow(clippy::cast_possible_truncation)]
+        let offset = args
+            .get("offset")
+            .and_then(serde_json::Value::as_u64)
+            .map(|n| n as usize);
+        #[allow(clippy::cast_possible_truncation)]
+        let limit = args
+            .get("limit")
+            .and_then(serde_json::Value::as_u64)
+            .map(|n| n as usize);
+        match self.file_tool.read(FileReadParams { path, offset, limit }) {
+            Ok(content) => (content, false),
+            Err(e) => (format!("Error: {e}"), true),
+        }
+    }
+
+    fn exec_write_file(&self, args: &HashMap<String, serde_json::Value>) -> (String, bool) {
+        let path = args.get("path").and_then(|v| v.as_str()).unwrap_or("").to_string();
+        let content = args.get("content").and_then(|v| v.as_str()).unwrap_or("").to_string();
+        match self.file_tool.write(FileWriteParams { path, content }) {
+            Ok(()) => ("File written successfully".to_string(), false),
+            Err(e) => (format!("Error: {e}"), true),
+        }
+    }
+
+    fn exec_edit_file(&self, args: &HashMap<String, serde_json::Value>) -> (String, bool) {
+        let path = args.get("path").and_then(|v| v.as_str()).unwrap_or("").to_string();
+        let old_string = args.get("old_string").and_then(|v| v.as_str()).unwrap_or("").to_string();
+        let new_string = args.get("new_string").and_then(|v| v.as_str()).unwrap_or("").to_string();
+        let replace_all = args
+            .get("replace_all")
+            .and_then(serde_json::Value::as_bool)
+            .unwrap_or(false);
+        match self
+            .file_tool
+            .edit(FileEditParams { path, old_string, new_string, replace_all })
+        {
+            Ok(changed) => {
+                if changed {
+                    ("File edited successfully".to_string(), false)
+                } else {
+                    ("No changes made (old_string not found)".to_string(), true)
+                }
+            },
+            Err(e) => (format!("Error: {e}"), true),
+        }
+    }
+
+    fn exec_list_directory(&self, args: &HashMap<String, serde_json::Value>) -> (String, bool) {
+        let path = args.get("path").and_then(|v| v.as_str()).unwrap_or(".").to_string();
+        match self.file_tool.list(FileListParams { path }) {
+            Ok(entries) => (entries.join("\n"), false),
+            Err(e) => (format!("Error: {e}"), true),
+        }
+    }
+
+    fn exec_shell(&self, args: &HashMap<String, serde_json::Value>) -> (String, bool) {
+        let command = args.get("command").and_then(|v| v.as_str()).unwrap_or("").to_string();
+        let timeout = args
+            .get("timeout")
+            .and_then(serde_json::Value::as_u64)
+            .unwrap_or(120_000);
+        match self
+            .shell_tool
+            .execute(ShellParams { command, timeout, cwd: None })
+        {
+            Ok(result) => {
+                let output = if result.stdout.is_empty() {
+                    result.stderr
+                } else if result.stderr.is_empty() {
+                    result.stdout
+                } else {
+                    format!("{}\n{}", result.stdout, result.stderr)
+                };
+                (output, result.exit_code != 0)
+            },
+            Err(e) => (format!("Error: {e}"), true),
+        }
+    }
+
+    fn exec_git_diff(&self, args: &HashMap<String, serde_json::Value>) -> (String, bool) {
+        let staged = args.get("staged").and_then(serde_json::Value::as_bool).unwrap_or(false);
+        let path = args
+            .get("path")
+            .or_else(|| args.get("file"))
+            .and_then(|v| v.as_str())
+            .map(String::from);
+        match self.git_tool.diff(GitDiffParams { staged, path }, None) {
+            Ok(output) => (output, false),
+            Err(e) => (format!("Error: {e}"), true),
+        }
+    }
+
+    fn exec_git_log(&self, args: &HashMap<String, serde_json::Value>) -> (String, bool) {
+        #[allow(clippy::cast_possible_truncation)]
+        let count = args
+            .get("count")
+            .and_then(serde_json::Value::as_u64)
+            .unwrap_or(20) as usize;
+        let path = args
+            .get("path")
+            .or_else(|| args.get("file"))
+            .and_then(|v| v.as_str())
+            .map(String::from);
+        match self.git_tool.log(GitLogParams { count, path }, None) {
+            Ok(output) => (output, false),
+            Err(e) => (format!("Error: {e}"), true),
         }
     }
 }

@@ -8,5 +8,4 @@ avoid-breaking-exported-api = true
 
 # Wasmtime pulls duplicate transitive deps (wit-bindgen, wit-parser, etc.)
 # that cannot be unified without [patch] overrides breaking upstream compat.
-# These are documented in Cargo.toml comments.
-multiple-crate-versions = "allow"
+# Allowed in workspace Cargo.toml [workspace.lints.clippy].

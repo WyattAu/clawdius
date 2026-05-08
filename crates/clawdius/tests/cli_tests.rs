@@ -1,5 +1,5 @@
-use clawdius::cli::{Cli, Commands, OutputFormat};
 use clap::Parser;
+use clawdius::cli::{Cli, Commands, OutputFormat};
 
 #[test]
 fn test_cli_default_values() {
@@ -19,7 +19,7 @@ fn test_cli_chat_subcommand() {
     match cli.command {
         Some(Commands::Chat { prompt, .. }) => {
             assert_eq!(prompt.as_deref(), Some("hello"));
-        }
+        },
         other => panic!("expected Chat command, got: {other:?}"),
     }
 }
@@ -30,7 +30,7 @@ fn test_cli_server_subcommand() {
     match cli.command {
         Some(Commands::Server { port, .. }) => {
             assert_eq!(port, 9090);
-        }
+        },
         other => panic!("expected Server command, got: {other:?}"),
     }
 }
@@ -42,7 +42,7 @@ fn test_cli_setup_subcommand() {
         Some(Commands::Setup { quick, provider }) => {
             assert!(!quick);
             assert!(provider.is_none());
-        }
+        },
         other => panic!("expected Setup command, got: {other:?}"),
     }
 }
@@ -53,7 +53,7 @@ fn test_cli_init_subcommand() {
     match cli.command {
         Some(Commands::Init { name }) => {
             assert!(name.is_none());
-        }
+        },
         other => panic!("expected Init command, got: {other:?}"),
     }
 }
@@ -64,7 +64,7 @@ fn test_cli_init_with_name() {
     match cli.command {
         Some(Commands::Init { name }) => {
             assert_eq!(name.as_deref(), Some("my-project"));
-        }
+        },
         other => panic!("expected Init command, got: {other:?}"),
     }
 }
@@ -76,7 +76,7 @@ fn test_cli_sessions_subcommand() {
         Some(Commands::Sessions { delete, search }) => {
             assert!(delete.is_none());
             assert!(search.is_none());
-        }
+        },
         other => panic!("expected Sessions command, got: {other:?}"),
     }
 }
@@ -87,7 +87,7 @@ fn test_cli_sprint_subcommand() {
     match cli.command {
         Some(Commands::Sprint { task, .. }) => {
             assert_eq!(task, "fix bug");
-        }
+        },
         other => panic!("expected Sprint command, got: {other:?}"),
     }
 }
@@ -99,7 +99,7 @@ fn test_cli_metrics_subcommand() {
         Some(Commands::Metrics { reset, watch, .. }) => {
             assert!(!reset);
             assert!(!watch);
-        }
+        },
         other => panic!("expected Metrics command, got: {other:?}"),
     }
 }
@@ -108,7 +108,7 @@ fn test_cli_metrics_subcommand() {
 fn test_cli_checkpoint_create_subcommand() {
     let cli = Cli::parse_from(["clawdius", "checkpoint", "create", "save point"]);
     match cli.command {
-        Some(Commands::Checkpoint { .. }) => {}
+        Some(Commands::Checkpoint { .. }) => {},
         other => panic!("expected Checkpoint command, got: {other:?}"),
     }
 }
@@ -117,7 +117,7 @@ fn test_cli_checkpoint_create_subcommand() {
 fn test_cli_checkpoint_list_subcommand() {
     let cli = Cli::parse_from(["clawdius", "checkpoint", "list"]);
     match cli.command {
-        Some(Commands::Checkpoint { .. }) => {}
+        Some(Commands::Checkpoint { .. }) => {},
         other => panic!("expected Checkpoint command, got: {other:?}"),
     }
 }
@@ -126,7 +126,7 @@ fn test_cli_checkpoint_list_subcommand() {
 fn test_cli_timeline_list_subcommand() {
     let cli = Cli::parse_from(["clawdius", "timeline", "list"]);
     match cli.command {
-        Some(Commands::Timeline { .. }) => {}
+        Some(Commands::Timeline { .. }) => {},
         other => panic!("expected Timeline command, got: {other:?}"),
     }
 }
@@ -149,7 +149,7 @@ fn test_cli_auto_subcommand() {
     match cli.command {
         Some(Commands::Auto { task, .. }) => {
             assert_eq!(task, "fix tests");
-        }
+        },
         other => panic!("expected Auto command, got: {other:?}"),
     }
 }
@@ -160,7 +160,7 @@ fn test_cli_generate_subcommand() {
     match cli.command {
         Some(Commands::Generate { prompt, .. }) => {
             assert_eq!(prompt, "tests for foo");
-        }
+        },
         other => panic!("expected Generate command, got: {other:?}"),
     }
 }
@@ -169,7 +169,7 @@ fn test_cli_generate_subcommand() {
 fn test_cli_modes_list_subcommand() {
     let cli = Cli::parse_from(["clawdius", "modes", "list"]);
     match cli.command {
-        Some(Commands::Modes { .. }) => {}
+        Some(Commands::Modes { .. }) => {},
         other => panic!("expected Modes command, got: {other:?}"),
     }
 }
@@ -180,7 +180,7 @@ fn test_cli_analyze_subcommand() {
     match cli.command {
         Some(Commands::Analyze { path, .. }) => {
             assert_eq!(path.to_string_lossy(), "main.rs");
-        }
+        },
         other => panic!("expected Analyze command, got: {other:?}"),
     }
 }
@@ -189,7 +189,7 @@ fn test_cli_analyze_subcommand() {
 fn test_cli_models_list_subcommand() {
     let cli = Cli::parse_from(["clawdius", "models", "list"]);
     match cli.command {
-        Some(Commands::Models { .. }) => {}
+        Some(Commands::Models { .. }) => {},
         other => panic!("expected Models command, got: {other:?}"),
     }
 }
@@ -198,7 +198,7 @@ fn test_cli_models_list_subcommand() {
 fn test_cli_config_show_subcommand() {
     let cli = Cli::parse_from(["clawdius", "config", "show"]);
     match cli.command {
-        Some(Commands::Config { .. }) => {}
+        Some(Commands::Config { .. }) => {},
         other => panic!("expected Config command, got: {other:?}"),
     }
 }
@@ -223,11 +223,17 @@ fn test_cli_output_format_stream_json() {
 
 #[test]
 fn test_cli_model_flag() {
-    let cli = Cli::parse_from(["clawdius", "chat", "hi", "--model", "claude-sonnet-4-20250514"]);
+    let cli = Cli::parse_from([
+        "clawdius",
+        "chat",
+        "hi",
+        "--model",
+        "claude-sonnet-4-20250514",
+    ]);
     match cli.command {
         Some(Commands::Chat { model, .. }) => {
             assert_eq!(model.as_deref(), Some("claude-sonnet-4-20250514"));
-        }
+        },
         other => panic!("expected Chat command, got: {other:?}"),
     }
 }
@@ -238,7 +244,7 @@ fn test_cli_provider_flag() {
     match cli.command {
         Some(Commands::Chat { provider, .. }) => {
             assert_eq!(provider, "anthropic");
-        }
+        },
         other => panic!("expected Chat command, got: {other:?}"),
     }
 }
@@ -249,19 +255,26 @@ fn test_cli_session_flag() {
     match cli.command {
         Some(Commands::Chat { session, .. }) => {
             assert_eq!(session.as_deref(), Some("abc123"));
-        }
+        },
         other => panic!("expected Chat command, got: {other:?}"),
     }
 }
 
 #[test]
 fn test_cli_refactor_subcommand() {
-    let cli = Cli::parse_from(["clawdius", "refactor", "--from", "typescript", "--to", "rust"]);
+    let cli = Cli::parse_from([
+        "clawdius",
+        "refactor",
+        "--from",
+        "typescript",
+        "--to",
+        "rust",
+    ]);
     match cli.command {
         Some(Commands::Refactor { from, to, .. }) => {
             assert_eq!(from, "typescript");
             assert_eq!(to, "rust");
-        }
+        },
         other => panic!("expected Refactor command, got: {other:?}"),
     }
 }
@@ -272,7 +285,7 @@ fn test_cli_verify_subcommand() {
     match cli.command {
         Some(Commands::Verify { proof, .. }) => {
             assert_eq!(proof.to_string_lossy(), "proof.lean");
-        }
+        },
         other => panic!("expected Verify command, got: {other:?}"),
     }
 }
@@ -283,7 +296,7 @@ fn test_cli_doc_subcommand() {
     match cli.command {
         Some(Commands::Doc { file, .. }) => {
             assert_eq!(file.to_string_lossy(), "README.md");
-        }
+        },
         other => panic!("expected Doc command, got: {other:?}"),
     }
 }
@@ -302,7 +315,7 @@ fn test_cli_telemetry_subcommand() {
             assert!(!disable);
             assert!(!enable_metrics);
             assert!(!enable_crash_reporting);
-        }
+        },
         other => panic!("expected Telemetry command, got: {other:?}"),
     }
 }
@@ -313,7 +326,7 @@ fn test_cli_watch_subcommand() {
     match cli.command {
         Some(Commands::Watch { path, .. }) => {
             assert_eq!(path.to_string_lossy(), ".");
-        }
+        },
         other => panic!("expected Watch command, got: {other:?}"),
     }
 }
@@ -325,7 +338,7 @@ fn test_cli_server_host_port_flags() {
         Some(Commands::Server { host, port }) => {
             assert_eq!(host, "0.0.0.0");
             assert_eq!(port, 9090);
-        }
+        },
         other => panic!("expected Server command, got: {other:?}"),
     }
 }
@@ -358,7 +371,9 @@ fn test_cli_cwd_flag() {
 fn test_cli_config_flag() {
     let cli = Cli::parse_from(["clawdius", "--config", "/path/to/config.toml"]);
     assert_eq!(
-        cli.config.as_deref().map(|p| p.to_string_lossy().to_string()),
+        cli.config
+            .as_deref()
+            .map(|p| p.to_string_lossy().to_string()),
         Some("/path/to/config.toml".to_string())
     );
 }
@@ -369,7 +384,7 @@ fn test_cli_chat_mode_flag() {
     match cli.command {
         Some(Commands::Chat { mode, .. }) => {
             assert_eq!(mode, "debug");
-        }
+        },
         other => panic!("expected Chat command, got: {other:?}"),
     }
 }
@@ -380,7 +395,7 @@ fn test_cli_chat_editor_flag() {
     match cli.command {
         Some(Commands::Chat { editor, .. }) => {
             assert!(editor);
-        }
+        },
         other => panic!("expected Chat command, got: {other:?}"),
     }
 }
@@ -391,7 +406,7 @@ fn test_cli_chat_exit_flag() {
     match cli.command {
         Some(Commands::Chat { exit, .. }) => {
             assert!(exit);
-        }
+        },
         other => panic!("expected Chat command, got: {other:?}"),
     }
 }
@@ -402,7 +417,7 @@ fn test_cli_auto_with_run_tests() {
     match cli.command {
         Some(Commands::Auto { run_tests, .. }) => {
             assert!(run_tests);
-        }
+        },
         other => panic!("expected Auto command, got: {other:?}"),
     }
 }
@@ -413,7 +428,7 @@ fn test_cli_auto_with_auto_commit() {
     match cli.command {
         Some(Commands::Auto { auto_commit, .. }) => {
             assert!(auto_commit);
-        }
+        },
         other => panic!("expected Auto command, got: {other:?}"),
     }
 }
@@ -424,7 +439,7 @@ fn test_cli_sprint_with_max_iterations() {
     match cli.command {
         Some(Commands::Sprint { max_iterations, .. }) => {
             assert_eq!(max_iterations, 10);
-        }
+        },
         other => panic!("expected Sprint command, got: {other:?}"),
     }
 }
@@ -435,7 +450,7 @@ fn test_cli_sprint_with_provider() {
     match cli.command {
         Some(Commands::Sprint { provider, .. }) => {
             assert_eq!(provider, "anthropic");
-        }
+        },
         other => panic!("expected Sprint command, got: {other:?}"),
     }
 }
@@ -446,7 +461,7 @@ fn test_cli_edit_subcommand() {
     match cli.command {
         Some(Commands::Edit { initial, .. }) => {
             assert_eq!(initial.as_deref(), Some("hello"));
-        }
+        },
         other => panic!("expected Edit command, got: {other:?}"),
     }
 }
@@ -455,7 +470,7 @@ fn test_cli_edit_subcommand() {
 fn test_cli_git_diff_subcommand() {
     let cli = Cli::parse_from(["clawdius", "git", "diff", "--staged"]);
     match cli.command {
-        Some(Commands::Git { .. }) => {}
+        Some(Commands::Git { .. }) => {},
         other => panic!("expected Git command, got: {other:?}"),
     }
 }
@@ -464,7 +479,7 @@ fn test_cli_git_diff_subcommand() {
 fn test_cli_lang_list_subcommand() {
     let cli = Cli::parse_from(["clawdius", "lang", "list"]);
     match cli.command {
-        Some(Commands::Lang { .. }) => {}
+        Some(Commands::Lang { .. }) => {},
         other => panic!("expected Lang command, got: {other:?}"),
     }
 }
@@ -473,7 +488,7 @@ fn test_cli_lang_list_subcommand() {
 fn test_cli_memory_show_subcommand() {
     let cli = Cli::parse_from(["clawdius", "memory", "show"]);
     match cli.command {
-        Some(Commands::Memory { .. }) => {}
+        Some(Commands::Memory { .. }) => {},
         other => panic!("expected Memory command, got: {other:?}"),
     }
 }

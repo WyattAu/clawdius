@@ -1,38 +1,90 @@
 name = "clawdius"
 version = "0.1.0"
-defaultTargets = ["clawdius"]
+defaultTargets = [
+  "ProofAgentLoop", "ProofConcurrentExecution", "ProofCarryingEdits",
+  "ProofRepoMapScoring", "ProofSanitizerSoundness", "ProofSecurityPolicy",
+  "ProofTokenBudgetScan", "ProofVfsSafety",
+  "ProofAudit", "ProofCapability", "ProofContainer", "ProofFsm",
+  "ProofHost", "ProofRingBuffer", "ProofSandbox",
+]
 
 [[lean_lib]]
 name = "Clawdius"
 
--- Proof files from .specs/02_architecture/proofs/
 [[lean_lib]]
-name = "ProofsSpecs"
+name = "ProofAgentLoop"
 srcDir = ".specs/02_architecture/proofs"
-roots = [
-  "agent_loop",
-  "concurrent_execution",
-  "proof_carrying_edits",
-  "repo_map_scoring",
-  "sanitizer_soundness",
-  "security_policy",
-  "token_budget_scan",
-  "vfs_safety",
-]
+roots = ["agent_loop"]
 
--- Proof files from .clawdius/specs/02_architecture/proofs/
 [[lean_lib]]
-name = "ProofsClawdius"
+name = "ProofConcurrentExecution"
+srcDir = ".specs/02_architecture/proofs"
+roots = ["concurrent_execution"]
+
+[[lean_lib]]
+name = "ProofCarryingEdits"
+srcDir = ".specs/02_architecture/proofs"
+roots = ["proof_carrying_edits"]
+
+[[lean_lib]]
+name = "ProofRepoMapScoring"
+srcDir = ".specs/02_architecture/proofs"
+roots = ["repo_map_scoring"]
+
+[[lean_lib]]
+name = "ProofSanitizerSoundness"
+srcDir = ".specs/02_architecture/proofs"
+roots = ["sanitizer_soundness"]
+
+[[lean_lib]]
+name = "ProofSecurityPolicy"
+srcDir = ".specs/02_architecture/proofs"
+roots = ["security_policy"]
+
+[[lean_lib]]
+name = "ProofTokenBudgetScan"
+srcDir = ".specs/02_architecture/proofs"
+roots = ["token_budget_scan"]
+
+[[lean_lib]]
+name = "ProofVfsSafety"
+srcDir = ".specs/02_architecture/proofs"
+roots = ["vfs_safety"]
+
+[[lean_lib]]
+name = "ProofAudit"
 srcDir = ".clawdius/specs/02_architecture/proofs"
-roots = [
-  "proof_audit",
-  "proof_capability",
-  "proof_container",
-  "proof_fsm",
-  "proof_host",
-  "proof_ring_buffer",
-  "proof_sandbox",
-]
+roots = ["proof_audit"]
+
+[[lean_lib]]
+name = "ProofCapability"
+srcDir = ".clawdius/specs/02_architecture/proofs"
+roots = ["proof_capability"]
+
+[[lean_lib]]
+name = "ProofContainer"
+srcDir = ".clawdius/specs/02_architecture/proofs"
+roots = ["proof_container"]
+
+[[lean_lib]]
+name = "ProofFsm"
+srcDir = ".clawdius/specs/02_architecture/proofs"
+roots = ["proof_fsm"]
+
+[[lean_lib]]
+name = "ProofHost"
+srcDir = ".clawdius/specs/02_architecture/proofs"
+roots = ["proof_host"]
+
+[[lean_lib]]
+name = "ProofRingBuffer"
+srcDir = ".clawdius/specs/02_architecture/proofs"
+roots = ["proof_ring_buffer"]
+
+[[lean_lib]]
+name = "ProofSandbox"
+srcDir = ".clawdius/specs/02_architecture/proofs"
+roots = ["proof_sandbox"]
 
 [[lean_exe]]
 name = "clawdius"

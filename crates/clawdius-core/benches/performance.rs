@@ -3,7 +3,7 @@
 //! Benchmarks key operations: tool call parsing, message creation,
 //! serialization, and session compaction checks.
 
-use clawdius_core::session::{Compactor, CompactConfig, Message, Session};
+use clawdius_core::session::{CompactConfig, Compactor, Message, Session};
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 
 fn bench_parse_tool_calls(c: &mut Criterion) {

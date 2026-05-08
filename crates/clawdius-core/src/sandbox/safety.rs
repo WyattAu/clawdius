@@ -651,8 +651,7 @@ impl LeakDetector {
                     .find("-----END")
                     .map(|pos| pos + "-----END".len())
                     .unwrap_or(remaining.len())
-            } else if pattern.prefix.contains("Bearer")
-                || pattern.prefix.contains("Authorization")
+            } else if pattern.prefix.contains("Bearer") || pattern.prefix.contains("Authorization")
             {
                 // Token patterns — extend to next whitespace
                 remaining

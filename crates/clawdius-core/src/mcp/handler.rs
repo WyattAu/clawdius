@@ -832,21 +832,19 @@ mod tests {
 
     #[test]
     fn test_write_file_creates_file() {
-        let dir = std::env::temp_dir().join("clawdius_test_write");
+        let dir = std::env::current_dir()
+            .expect("cwd")
+            .join("target")
+            .join("test_write_file_tmp");
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         let file_path = dir.join("sub").join("test.txt");
-        let relative = format!("sub/test.txt");
-
-        let saved = std::env::current_dir().unwrap();
-        std::env::set_current_dir(&dir).unwrap();
 
         let req = McpRequest::new(1, "tools/call").with_params(serde_json::json!({
             "name": "write_file",
-            "arguments": { "path": relative, "content": "hello world" }
+            "arguments": { "path": file_path.to_str().unwrap(), "content": "hello world" }
         }));
         let resp = handle_mcp_request(&req);
-        std::env::set_current_dir(&saved).unwrap();
 
         assert!(resp.result.is_some());
         let result = resp.result.unwrap();
@@ -862,19 +860,19 @@ mod tests {
 
     #[test]
     fn test_write_file_rejects_traversal() {
-        let dir = std::env::temp_dir().join("clawdius_test_traversal");
+        let dir = std::env::current_dir()
+            .expect("cwd")
+            .join("target")
+            .join("test_traversal_tmp");
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
-
-        let saved = std::env::current_dir().unwrap();
-        std::env::set_current_dir(&dir).unwrap();
+        let traversal_path = dir.join("..").join("..").join("etc").join("passwd");
 
         let req = McpRequest::new(1, "tools/call").with_params(serde_json::json!({
             "name": "write_file",
-            "arguments": { "path": "../etc/passwd", "content": "hack" }
+            "arguments": { "path": traversal_path.to_str().unwrap(), "content": "hack" }
         }));
         let resp = handle_mcp_request(&req);
-        std::env::set_current_dir(&saved).unwrap();
 
         assert!(resp.result.is_some());
         let result = resp.result.unwrap();
@@ -889,22 +887,24 @@ mod tests {
 
     #[test]
     fn test_edit_file_replaces_content() {
-        let dir = tempfile::tempdir().expect("create temp dir");
-        std::fs::write(dir.path().join("edit_me.txt"), "foo bar baz").unwrap();
-
-        let saved = std::env::current_dir().unwrap();
-        std::env::set_current_dir(dir.path()).unwrap();
+        let dir = std::env::current_dir()
+            .expect("cwd")
+            .join("target")
+            .join("test_edit_tmp");
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let file_path = dir.join("edit_me.txt");
+        std::fs::write(&file_path, "foo bar baz").unwrap();
 
         let req = McpRequest::new(1, "tools/call").with_params(serde_json::json!({
             "name": "edit_file",
             "arguments": {
-                "path": "edit_me.txt",
+                "path": file_path.to_str().unwrap(),
                 "old_string": "bar",
                 "new_string": "qux"
             }
         }));
         let resp = handle_mcp_request(&req);
-        std::env::set_current_dir(&saved).unwrap();
 
         assert!(resp.result.is_some());
         let result = resp.result.unwrap();
@@ -913,29 +913,33 @@ mod tests {
             "expected success, got: {result}"
         );
         assert_eq!(
-            std::fs::read_to_string(dir.path().join("edit_me.txt")).unwrap(),
+            std::fs::read_to_string(&file_path).unwrap(),
             "foo qux baz"
         );
+
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]
     fn test_edit_file_old_string_not_found() {
-        let dir = tempfile::tempdir().expect("create temp dir");
-        std::fs::write(dir.path().join("missing.txt"), "hello").unwrap();
-
-        let saved = std::env::current_dir().unwrap();
-        std::env::set_current_dir(dir.path()).unwrap();
+        let dir = std::env::current_dir()
+            .expect("cwd")
+            .join("target")
+            .join("test_edit_not_found_tmp");
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let file_path = dir.join("missing.txt");
+        std::fs::write(&file_path, "hello").unwrap();
 
         let req = McpRequest::new(1, "tools/call").with_params(serde_json::json!({
             "name": "edit_file",
             "arguments": {
-                "path": "missing.txt",
+                "path": file_path.to_str().unwrap_or("missing.txt"),
                 "old_string": "goodbye",
                 "new_string": "world"
             }
         }));
         let resp = handle_mcp_request(&req);
-        std::env::set_current_dir(&saved).unwrap();
 
         assert!(resp.result.is_some());
         let result = resp.result.unwrap();
@@ -948,6 +952,8 @@ mod tests {
             text.contains("not found") || text.contains("NoMatch"),
             "expected 'not found' in error text, got: {text}"
         );
+
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]
