@@ -357,7 +357,7 @@ pub trait PlatformAdapter: Send + Sync {
 
     /// Start the adapter's event loop.
     ///
-    /// This should block (or run in a loop) until [`stop`] is called
+    /// This should block (or run in a loop) until [`PlatformAdapter::stop`] is called
     /// or a fatal error occurs.
     ///
     /// Incoming messages are delivered via the callback set by

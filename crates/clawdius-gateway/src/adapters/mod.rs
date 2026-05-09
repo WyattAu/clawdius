@@ -15,10 +15,10 @@
 //!
 //! # Feature-Gated
 //!
-//! - [`telegram`] — `#[cfg(feature = "telegram")]` — teloxide SDK
-//! - [`discord`] — `#[cfg(feature = "discord")]` — serenity SDK
-//! - [`slack`] — `#[cfg(feature = "slack")]` — slack-morphism SDK
-//! - [`matrix`] — `#[cfg(feature = "matrix")]` — matrix-sdk
+//! - `telegram` — `#[cfg(feature = "telegram")]` — teloxide SDK
+//! - `discord` — `#[cfg(feature = "discord")]` — serenity SDK
+//! - `slack` — `#[cfg(feature = "slack")]` — slack-morphism SDK
+//! - `matrix` — `#[cfg(feature = "matrix")]` — matrix-sdk
 
 #[cfg(feature = "telegram")]
 pub mod telegram;

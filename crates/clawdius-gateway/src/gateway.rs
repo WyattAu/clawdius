@@ -221,10 +221,11 @@ impl MessageGateway {
 
     /// Start all registered adapters.
     ///
-    /// For each adapter, sets a no-op message callback then calls [`start`].
-    /// To wire up the full routing callback, use [`start_all_arc`] instead.
+    /// For each adapter, sets a no-op message callback then calls
+    /// [`PlatformAdapter::start`].
+    /// To wire up the full routing callback, use [`Self::start_all_arc`] instead.
     ///
-    /// **Prefer [`start_all_arc`] when you have an `Arc<MessageGateway>`.**
+    /// **Prefer [`Self::start_all_arc`] when you have an `Arc<MessageGateway>`.**
     #[allow(clippy::significant_drop_tightening)]
     pub async fn start_all(&self) -> Vec<(Platform, Result<(), GatewayError>)> {
         let adapters = self.adapters.read().await;
