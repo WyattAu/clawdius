@@ -12,9 +12,10 @@ use tempfile::TempDir;
 use tower::ServiceExt; // for oneshot
 
 fn create_test_app() -> (axum::Router, TempDir) {
-    let temp_dir = TempDir::new().expect("Failed to create temp dir");
+    let temp_dir = TempDir::new().unwrap_or_else(|e| panic!("Failed to create temp dir: {e}"));
     let db_path = temp_dir.path().join("test.db");
-    let store = SessionStore::open(&db_path).expect("Failed to create session store");
+    let store = SessionStore::open(&db_path)
+        .unwrap_or_else(|e| panic!("Failed to create session store: {e}"));
     let state = ApiState::new(store);
     let router = clawdius_core::api::rest::create_router(state);
     (router, temp_dir)

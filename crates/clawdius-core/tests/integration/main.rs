@@ -1,3 +1,5 @@
+#![allow(missing_docs)]
+
 pub mod agentic_llm;
 pub mod diff_workflow;
 pub mod features;

@@ -912,10 +912,7 @@ mod tests {
             !result["is_error"].as_bool().unwrap_or(true),
             "expected success, got: {result}"
         );
-        assert_eq!(
-            std::fs::read_to_string(&file_path).unwrap(),
-            "foo qux baz"
-        );
+        assert_eq!(std::fs::read_to_string(&file_path).unwrap(), "foo qux baz");
 
         let _ = std::fs::remove_dir_all(&dir);
     }

@@ -1,4 +1,5 @@
-use std::collections::HashMap;
+#![allow(missing_docs, clippy::expect_used)]
+
 use std::sync::Arc;
 
 use clawdius_gateway::adapter::{

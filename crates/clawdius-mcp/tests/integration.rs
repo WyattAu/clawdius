@@ -41,7 +41,8 @@ fn test_initialize_request_returns_valid_json() {
         r#"{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"0.1.0"}}}"#,
     ]);
     assert!(!lines.is_empty(), "should get at least one response");
-    let parsed: serde_json::Value = serde_json::from_str(&lines[0]).expect("response is valid JSON");
+    let parsed: serde_json::Value =
+        serde_json::from_str(&lines[0]).expect("response is valid JSON");
     assert_eq!(parsed["jsonrpc"], "2.0");
     assert_eq!(parsed["id"], 1);
     assert!(
@@ -57,8 +58,14 @@ fn test_tools_list_returns_array() {
         r#"{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}"#,
     ]);
     // Should get 2 responses
-    assert!(lines.len() >= 2, "expected >= 2 responses, got {}: {:?}", lines.len(), lines);
-    let tools_resp: serde_json::Value = serde_json::from_str(&lines[1]).expect("response is valid JSON");
+    assert!(
+        lines.len() >= 2,
+        "expected >= 2 responses, got {}: {:?}",
+        lines.len(),
+        lines
+    );
+    let tools_resp: serde_json::Value =
+        serde_json::from_str(&lines[1]).expect("response is valid JSON");
     assert_eq!(tools_resp["id"], 2);
     let tools = &tools_resp["result"]["tools"];
     assert!(tools.is_array(), "tools should be an array, got: {tools}");
@@ -77,7 +84,8 @@ fn test_malformed_json_does_not_crash() {
     ]);
     // Should still get the initialize response
     assert!(!lines.is_empty(), "server survived malformed input");
-    let parsed: serde_json::Value = serde_json::from_str(&lines[0]).expect("response is valid JSON");
+    let parsed: serde_json::Value =
+        serde_json::from_str(&lines[0]).expect("response is valid JSON");
     assert_eq!(parsed["jsonrpc"], "2.0");
 }
 
@@ -89,7 +97,8 @@ fn test_empty_lines_are_ignored() {
         r#"{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"0.1.0"}}}"#,
     ]);
     assert!(!lines.is_empty(), "server survived empty lines");
-    let parsed: serde_json::Value = serde_json::from_str(&lines[0]).expect("response is valid JSON");
+    let parsed: serde_json::Value =
+        serde_json::from_str(&lines[0]).expect("response is valid JSON");
     assert_eq!(parsed["id"], 1);
 }
 

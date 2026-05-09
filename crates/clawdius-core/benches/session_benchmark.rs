@@ -1,3 +1,9 @@
+//! Session benchmark suite for clawdius-core.
+//!
+//! Benchmarks session creation, persistence, and message operations.
+
+#![allow(missing_docs)]
+
 use clawdius_core::session::{Message, Session, SessionStore};
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 use tempfile::NamedTempFile;
@@ -71,9 +77,11 @@ fn bench_message_operations(c: &mut Criterion) {
         b.iter(|| Message::system(black_box("You are a helpful assistant.")));
     });
 
-    let long_message: String = (0..100)
-        .map(|i| format!("Line {i} of the message. "))
-        .collect();
+    let mut long_message = String::with_capacity(100 * 28);
+    for i in 0..100 {
+        use std::fmt::Write;
+        write!(long_message, "Line {i} of the message. ").unwrap();
+    }
     group.throughput(Throughput::Bytes(long_message.len() as u64));
     group.bench_with_input(
         BenchmarkId::new("message_create", "long"),

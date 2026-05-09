@@ -2,6 +2,8 @@
 //!
 //! Verifies the JSON-RPC server starts, handles requests, and exits cleanly.
 
+#![allow(clippy::expect_used)]
+
 use std::io::Write;
 use std::process::{Command, Stdio};
 
@@ -33,22 +35,21 @@ fn run_code(requests: &[&str]) -> Vec<String> {
 
 #[test]
 fn test_server_responds_to_state_get() {
-    let lines = run_code(&[
-        r#"{"jsonrpc":"2.0","id":1,"method":"state/get","params":{}}"#,
-    ]);
+    let lines = run_code(&[r#"{"jsonrpc":"2.0","id":1,"method":"state/get","params":{}}"#]);
     assert!(!lines.is_empty(), "server should respond");
-    let parsed: serde_json::Value = serde_json::from_str(&lines[0]).expect("response is valid JSON");
+    let parsed: serde_json::Value =
+        serde_json::from_str(&lines[0]).expect("response is valid JSON");
     assert_eq!(parsed["jsonrpc"], "2.0");
     assert_eq!(parsed["id"], 1);
 }
 
 #[test]
 fn test_unknown_method_returns_error() {
-    let lines = run_code(&[
-        r#"{"jsonrpc":"2.0","id":42,"method":"nonexistent/method","params":{}}"#,
-    ]);
+    let lines =
+        run_code(&[r#"{"jsonrpc":"2.0","id":42,"method":"nonexistent/method","params":{}}"#]);
     assert!(!lines.is_empty(), "server should respond to unknown method");
-    let parsed: serde_json::Value = serde_json::from_str(&lines[0]).expect("response is valid JSON");
+    let parsed: serde_json::Value =
+        serde_json::from_str(&lines[0]).expect("response is valid JSON");
     assert_eq!(parsed["id"], 42);
     assert!(
         !parsed["error"].is_null(),
@@ -59,8 +60,12 @@ fn test_unknown_method_returns_error() {
 #[test]
 fn test_malformed_json_returns_parse_error() {
     let lines = run_code(&["{broken json"]);
-    assert!(!lines.is_empty(), "server should respond to malformed input");
-    let parsed: serde_json::Value = serde_json::from_str(&lines[0]).expect("response is valid JSON");
+    assert!(
+        !lines.is_empty(),
+        "server should respond to malformed input"
+    );
+    let parsed: serde_json::Value =
+        serde_json::from_str(&lines[0]).expect("response is valid JSON");
     assert!(
         !parsed["error"].is_null(),
         "expected parse error for malformed JSON, got: {parsed}"
@@ -69,11 +74,10 @@ fn test_malformed_json_returns_parse_error() {
 
 #[test]
 fn test_session_list_returns_result() {
-    let lines = run_code(&[
-        r#"{"jsonrpc":"2.0","id":3,"method":"session/list","params":{}}"#,
-    ]);
+    let lines = run_code(&[r#"{"jsonrpc":"2.0","id":3,"method":"session/list","params":{}}"#]);
     assert!(!lines.is_empty(), "server should respond to session/list");
-    let parsed: serde_json::Value = serde_json::from_str(&lines[0]).expect("response is valid JSON");
+    let parsed: serde_json::Value =
+        serde_json::from_str(&lines[0]).expect("response is valid JSON");
     assert_eq!(parsed["id"], 3);
     assert!(
         !parsed["result"].is_null(),

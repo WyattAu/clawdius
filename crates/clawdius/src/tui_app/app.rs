@@ -124,15 +124,27 @@ impl TuiToolExecutor {
             .get("limit")
             .and_then(serde_json::Value::as_u64)
             .map(|n| n as usize);
-        match self.file_tool.read(FileReadParams { path, offset, limit }) {
+        match self.file_tool.read(FileReadParams {
+            path,
+            offset,
+            limit,
+        }) {
             Ok(content) => (content, false),
             Err(e) => (format!("Error: {e}"), true),
         }
     }
 
     fn exec_write_file(&self, args: &HashMap<String, serde_json::Value>) -> (String, bool) {
-        let path = args.get("path").and_then(|v| v.as_str()).unwrap_or("").to_string();
-        let content = args.get("content").and_then(|v| v.as_str()).unwrap_or("").to_string();
+        let path = args
+            .get("path")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
+        let content = args
+            .get("content")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
         match self.file_tool.write(FileWriteParams { path, content }) {
             Ok(()) => ("File written successfully".to_string(), false),
             Err(e) => (format!("Error: {e}"), true),
@@ -140,17 +152,31 @@ impl TuiToolExecutor {
     }
 
     fn exec_edit_file(&self, args: &HashMap<String, serde_json::Value>) -> (String, bool) {
-        let path = args.get("path").and_then(|v| v.as_str()).unwrap_or("").to_string();
-        let old_string = args.get("old_string").and_then(|v| v.as_str()).unwrap_or("").to_string();
-        let new_string = args.get("new_string").and_then(|v| v.as_str()).unwrap_or("").to_string();
+        let path = args
+            .get("path")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
+        let old_string = args
+            .get("old_string")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
+        let new_string = args
+            .get("new_string")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
         let replace_all = args
             .get("replace_all")
             .and_then(serde_json::Value::as_bool)
             .unwrap_or(false);
-        match self
-            .file_tool
-            .edit(FileEditParams { path, old_string, new_string, replace_all })
-        {
+        match self.file_tool.edit(FileEditParams {
+            path,
+            old_string,
+            new_string,
+            replace_all,
+        }) {
             Ok(changed) => {
                 if changed {
                     ("File edited successfully".to_string(), false)
@@ -163,7 +189,11 @@ impl TuiToolExecutor {
     }
 
     fn exec_list_directory(&self, args: &HashMap<String, serde_json::Value>) -> (String, bool) {
-        let path = args.get("path").and_then(|v| v.as_str()).unwrap_or(".").to_string();
+        let path = args
+            .get("path")
+            .and_then(|v| v.as_str())
+            .unwrap_or(".")
+            .to_string();
         match self.file_tool.list(FileListParams { path }) {
             Ok(entries) => (entries.join("\n"), false),
             Err(e) => (format!("Error: {e}"), true),
@@ -171,15 +201,20 @@ impl TuiToolExecutor {
     }
 
     fn exec_shell(&self, args: &HashMap<String, serde_json::Value>) -> (String, bool) {
-        let command = args.get("command").and_then(|v| v.as_str()).unwrap_or("").to_string();
+        let command = args
+            .get("command")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
         let timeout = args
             .get("timeout")
             .and_then(serde_json::Value::as_u64)
             .unwrap_or(120_000);
-        match self
-            .shell_tool
-            .execute(ShellParams { command, timeout, cwd: None })
-        {
+        match self.shell_tool.execute(ShellParams {
+            command,
+            timeout,
+            cwd: None,
+        }) {
             Ok(result) => {
                 let output = if result.stdout.is_empty() {
                     result.stderr
@@ -195,7 +230,10 @@ impl TuiToolExecutor {
     }
 
     fn exec_git_diff(&self, args: &HashMap<String, serde_json::Value>) -> (String, bool) {
-        let staged = args.get("staged").and_then(serde_json::Value::as_bool).unwrap_or(false);
+        let staged = args
+            .get("staged")
+            .and_then(serde_json::Value::as_bool)
+            .unwrap_or(false);
         let path = args
             .get("path")
             .or_else(|| args.get("file"))
