@@ -1,3 +1,16 @@
+#![allow(
+    dead_code,
+    unused_variables,
+    clippy::cast_precision_loss,
+    clippy::expect_used,
+    clippy::panic,
+    missing_docs,
+    clippy::items_after_statements,
+    clippy::manual_is_multiple_of,
+    clippy::must_use_candidate,
+    clippy::return_self_not_must_use
+)]
+
 use clap::Parser;
 use clawdius::cli::{Cli, Commands, OutputFormat};
 

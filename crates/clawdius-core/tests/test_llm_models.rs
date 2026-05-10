@@ -1,8 +1,41 @@
-//! Live LLM model test via OpenRouter
+//! Live LLM model test via `OpenRouter`
 //!
-//! Tests chat and tool_use across multiple models.
-//! Run with: cargo test -p clawdius-core --test test_llm_models -- --nocapture
+//! Tests chat and `tool_use` across multiple models.
+//! Run with: `cargo test -p clawdius-core --test test_llm_models -- --nocapture`
 
+#![allow(
+    dead_code,
+    missing_docs,
+    unused_imports,
+    unused_variables,
+    clippy::cast_possible_truncation,
+    clippy::cast_precision_loss,
+    clippy::clone_on_copy,
+    clippy::doc_lazy_continuation,
+    clippy::doc_markdown,
+    clippy::expect_used,
+    clippy::float_cmp,
+    clippy::format_collect,
+    clippy::from_over_into,
+    clippy::ignored_unit_patterns,
+    clippy::items_after_statements,
+    clippy::let_and_return,
+    clippy::manual_is_multiple_of,
+    clippy::manual_range_contains,
+    clippy::match_single_binding,
+    clippy::missing_const_for_fn,
+    clippy::must_use_candidate,
+    clippy::needless_return,
+    clippy::panic,
+    clippy::redundant_clone,
+    clippy::return_self_not_must_use,
+    clippy::similar_names,
+    clippy::single_match_else,
+    clippy::too_many_lines,
+    clippy::uninlined_format_args,
+    clippy::unreadable_literal,
+    clippy::unwrap_used
+)]
 use clawdius_core::llm::providers::{ChatWithToolsResult, Tool};
 use clawdius_core::llm::*;
 use serde_json::json;
@@ -172,7 +205,7 @@ async fn free_qwen_3_8b() {
 // NOTE: These require OpenRouter credits (402 if insufficient)
 
 #[tokio::test]
-#[ignore] // Requires OpenRouter credits
+#[ignore = "Requires OpenRouter credits"]
 async fn claude_3_5_haiku() {
     let model = "anthropic/claude-3.5-haiku";
     println!("\n=== {model} ===");
@@ -196,7 +229,7 @@ async fn claude_3_5_haiku() {
 }
 
 #[tokio::test]
-#[ignore] // Requires OpenRouter credits
+#[ignore = "Requires OpenRouter credits"]
 async fn claude_sonnet_4() {
     let model = "anthropic/claude-sonnet-4";
     println!("\n=== {model} ===");
@@ -223,7 +256,7 @@ async fn claude_sonnet_4() {
 // NOTE: These require OpenRouter credits (402 if insufficient)
 
 #[tokio::test]
-#[ignore] // Requires OpenRouter credits
+#[ignore = "Requires OpenRouter credits"]
 async fn gpt_4o_mini() {
     let model = "openai/gpt-4o-mini";
     println!("\n=== {model} ===");
@@ -247,7 +280,7 @@ async fn gpt_4o_mini() {
 }
 
 #[tokio::test]
-#[ignore] // Requires OpenRouter credits
+#[ignore = "Requires OpenRouter credits"]
 async fn gpt_4o() {
     let model = "openai/gpt-4o";
     println!("\n=== {model} ===");
@@ -273,7 +306,7 @@ async fn gpt_4o() {
 // ── Other Notable Models ──────────────────────────────────────────────
 
 #[tokio::test]
-#[ignore] // Requires OpenRouter credits
+#[ignore = "Requires OpenRouter credits"]
 async fn gemini_2_5_flash() {
     let model = "google/gemini-2.5-flash-preview";
     println!("\n=== {model} ===");

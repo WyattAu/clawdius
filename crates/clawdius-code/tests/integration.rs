@@ -2,7 +2,16 @@
 //!
 //! Verifies the JSON-RPC server starts, handles requests, and exits cleanly.
 
-#![allow(clippy::expect_used)]
+#![allow(
+    dead_code,
+    unused_variables,
+    clippy::cast_precision_loss,
+    clippy::expect_used,
+    clippy::items_after_statements,
+    clippy::manual_is_multiple_of,
+    clippy::must_use_candidate,
+    clippy::return_self_not_must_use
+)]
 
 use std::io::Write;
 use std::process::{Command, Stdio};

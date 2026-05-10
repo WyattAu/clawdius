@@ -1,3 +1,17 @@
+#![allow(
+    dead_code,
+    missing_docs,
+    deprecated,
+    clippy::expect_used,
+    clippy::panic,
+    unused_variables,
+    clippy::cast_precision_loss,
+    clippy::items_after_statements,
+    clippy::manual_is_multiple_of,
+    clippy::must_use_candidate,
+    clippy::return_self_not_must_use
+)]
+
 use clap::Parser;
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 use std::path::PathBuf;

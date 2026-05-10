@@ -125,11 +125,11 @@ async fn test_code_generator_with_llm() {
 
 #[tokio::test]
 async fn test_generate_code_with_llm() {
-    let expected_code = r#"
+    let expected_code = r"
 pub fn calculate_sum(numbers: &[i32]) -> i32 {
     numbers.iter().sum()
 }
-"#;
+";
 
     let llm_client = Arc::new(MockLlmClient::single(expected_code));
 

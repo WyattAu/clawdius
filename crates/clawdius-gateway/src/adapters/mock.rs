@@ -173,11 +173,19 @@ impl MockPlatformAdapter {
     }
 
     /// Update the mock configuration.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the internal config lock is poisoned.
     pub fn set_config(&self, config: MockConfig) {
         *self.config.write().expect("lock poisoned") = config;
     }
 
     /// Get a copy of the current mock configuration.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the internal config lock is poisoned.
     #[must_use]
     pub fn get_config(&self) -> MockConfig {
         self.config.read().expect("lock poisoned").clone()
@@ -530,9 +538,11 @@ mod tests {
 
     #[tokio::test]
     async fn test_mock_send_fails() {
-        let mut config = MockConfig::default();
-        config.send_fails = true;
-        config.error_message = "test error".to_string();
+        let config = MockConfig {
+            send_fails: true,
+            error_message: "test error".to_string(),
+            ..MockConfig::default()
+        };
 
         let mock = MockPlatformAdapter::with_config(Platform::Discord, config);
         mock.start().await.unwrap();
@@ -547,8 +557,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_mock_max_messages() {
-        let mut config = MockConfig::default();
-        config.max_messages = Some(2);
+        let config = MockConfig {
+            max_messages: Some(2),
+            ..MockConfig::default()
+        };
 
         let mock = MockPlatformAdapter::with_config(Platform::Discord, config);
         mock.start().await.unwrap();
@@ -569,8 +581,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_mock_force_unhealthy() {
-        let mut config = MockConfig::default();
-        config.force_unhealthy = true;
+        let config = MockConfig {
+            force_unhealthy: true,
+            ..MockConfig::default()
+        };
 
         let mock = MockPlatformAdapter::with_config(Platform::Discord, config);
         let health = mock.health();

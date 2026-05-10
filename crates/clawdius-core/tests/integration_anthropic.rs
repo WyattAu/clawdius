@@ -1,17 +1,45 @@
+#![allow(
+    dead_code,
+    missing_docs,
+    unused_imports,
+    unused_variables,
+    clippy::cast_possible_truncation,
+    clippy::cast_precision_loss,
+    clippy::clone_on_copy,
+    clippy::doc_lazy_continuation,
+    clippy::doc_markdown,
+    clippy::expect_used,
+    clippy::float_cmp,
+    clippy::format_collect,
+    clippy::from_over_into,
+    clippy::ignored_unit_patterns,
+    clippy::items_after_statements,
+    clippy::let_and_return,
+    clippy::manual_is_multiple_of,
+    clippy::manual_range_contains,
+    clippy::match_single_binding,
+    clippy::missing_const_for_fn,
+    clippy::must_use_candidate,
+    clippy::needless_return,
+    clippy::panic,
+    clippy::redundant_clone,
+    clippy::return_self_not_must_use,
+    clippy::similar_names,
+    clippy::single_match_else,
+    clippy::too_many_lines,
+    clippy::uninlined_format_args,
+    clippy::unreadable_literal,
+    clippy::unwrap_used
+)]
 use clawdius_core::llm::providers::anthropic::AnthropicProvider;
 use clawdius_core::llm::providers::LlmClient;
 use clawdius_core::llm::{ChatMessage, ChatRole};
 
 #[tokio::test]
-#[ignore]
+#[ignore = "Requires live Anthropic API key"]
 async fn test_anthropic_provider_real_api() {
-    let api_key = match std::env::var("ANTHROPIC_API_KEY") {
-        Ok(key) => key,
-        Err(_) => {
-            eprintln!("Skipping: ANTHROPIC_API_KEY not set");
-            return;
-        },
-    };
+    let api_key =
+        std::env::var("ANTHROPIC_API_KEY").expect("ANTHROPIC_API_KEY must be set for this test");
 
     let provider = AnthropicProvider::new(&api_key, Some("claude-sonnet-4-20250514"))
         .expect("Failed to create AnthropicProvider");

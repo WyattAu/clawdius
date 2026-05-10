@@ -230,7 +230,7 @@ mod tests {
         assert_eq!(state.model, "claude-sonnet-4-20250514");
         assert_eq!(state.provider, "anthropic");
         assert_eq!(state.tokens_used, 1500);
-        assert_eq!(state.processing, true);
+        assert!(state.processing);
         assert_eq!(state.file_count, 42);
     }
 
@@ -251,7 +251,7 @@ mod tests {
         let truncated = if state.model.len() > 25 {
             format!("{}…", &state.model[..23])
         } else {
-            state.model.clone()
+            String::from(&state.model)
         };
         assert_eq!(
             truncated.chars().count(),

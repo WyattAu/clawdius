@@ -459,7 +459,7 @@ mod tests {
         state.usage.register_tenant("org1", Quota::default());
         state.usage.record_usage("org1", 500_000, 50).unwrap();
 
-        let (tokens, cost_cents, calls) = state.usage.get_usage("org1").unwrap();
+        let (tokens, _cost_cents, calls) = state.usage.get_usage("org1").unwrap();
         assert_eq!(tokens, 500_000);
         assert_eq!(calls, 1);
     }
@@ -622,7 +622,7 @@ mod tests {
         for tier in [PlanTier::Free, PlanTier::Pro, PlanTier::Team] {
             let sub = state
                 .billing
-                .create_subscription(&format!("org_{:?}", tier), tier);
+                .create_subscription(format!("org_{tier:?}"), tier);
             assert_eq!(sub.tier, tier);
         }
         assert_eq!(state.billing.list_subscriptions().len(), 3);

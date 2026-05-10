@@ -606,7 +606,7 @@ mod tests {
 
     #[async_trait]
     impl MessageHandler for LongResponseHandler {
-        async fn handle_message(&self, message: IncomingMessage) -> Result<String, GatewayError> {
+        async fn handle_message(&self, _message: IncomingMessage) -> Result<String, GatewayError> {
             // Return a response longer than Discord's 2000 char limit
             Ok("X".repeat(3000))
         }

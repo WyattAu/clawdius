@@ -1,4 +1,14 @@
-#![allow(missing_docs, clippy::expect_used)]
+#![allow(
+    dead_code,
+    missing_docs,
+    clippy::expect_used,
+    unused_variables,
+    clippy::cast_precision_loss,
+    clippy::items_after_statements,
+    clippy::manual_is_multiple_of,
+    clippy::must_use_candidate,
+    clippy::return_self_not_must_use
+)]
 
 use std::sync::Arc;
 

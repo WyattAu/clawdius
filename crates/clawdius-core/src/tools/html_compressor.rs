@@ -26,6 +26,8 @@ static RE_COMMENT: LazyLock<Regex> =
 static RE_TAG: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"<[^>]+>").expect("valid regex"));
 static RE_MULTI_NEWLINE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"\n{3,}").expect("valid regex"));
+static RE_HEADING: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(?is)<h([1-6])[^>]*>(.*?)</h[1-6]>").expect("valid regex"));
 
 /// Result of HTML compression.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -197,6 +199,15 @@ impl HtmlCompressor {
         // Remove HTML comments
         text = RE_COMMENT.replace_all(&text, "").to_string();
 
+        // Convert heading tags to Markdown before stripping all tags
+        text = RE_HEADING
+            .replace_all(&text, |caps: &regex::Captures<'_>| {
+                let level: usize = caps[1].parse().unwrap_or(1);
+                let hashes = "#".repeat(level);
+                format!("\n{hashes} {}\n", &caps[2])
+            })
+            .to_string();
+
         // Remove all remaining HTML tags
         text = RE_TAG.replace_all(&text, "").to_string();
 
@@ -237,23 +248,19 @@ impl HtmlCompressor {
     }
 
     /// Collapses multiple whitespace characters.
+    ///
+    /// Preserves newline boundaries (only collapses horizontal whitespace
+    /// within lines), then collapses runs of 3+ newlines down to 2.
     fn collapse_whitespace(&self, text: &str) -> String {
         let mut result = String::with_capacity(text.len());
-        let mut prev_space = false;
 
-        for ch in text.chars() {
-            if ch.is_whitespace() {
-                if !prev_space {
-                    result.push(' ');
-                    prev_space = true;
-                }
-            } else {
-                result.push(ch);
-                prev_space = false;
-            }
+        for line in text.lines() {
+            let collapsed: String = line.split_whitespace().collect::<Vec<_>>().join(" ");
+            result.push_str(&collapsed);
+            result.push('\n');
         }
 
-        // Collapse multiple newlines to max 2
+        // Collapse runs of 3+ newlines down to 2
         RE_MULTI_NEWLINE.replace_all(&result, "\n\n").to_string()
     }
 

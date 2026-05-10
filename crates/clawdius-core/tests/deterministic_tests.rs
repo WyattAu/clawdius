@@ -7,6 +7,39 @@
 //!
 //! All tests are fully deterministic — no API keys, no network, no flakiness.
 
+#![allow(
+    dead_code,
+    missing_docs,
+    unused_imports,
+    unused_variables,
+    clippy::cast_possible_truncation,
+    clippy::cast_precision_loss,
+    clippy::clone_on_copy,
+    clippy::doc_lazy_continuation,
+    clippy::doc_markdown,
+    clippy::expect_used,
+    clippy::float_cmp,
+    clippy::format_collect,
+    clippy::from_over_into,
+    clippy::ignored_unit_patterns,
+    clippy::items_after_statements,
+    clippy::let_and_return,
+    clippy::manual_is_multiple_of,
+    clippy::manual_range_contains,
+    clippy::match_single_binding,
+    clippy::missing_const_for_fn,
+    clippy::must_use_candidate,
+    clippy::needless_return,
+    clippy::panic,
+    clippy::redundant_clone,
+    clippy::return_self_not_must_use,
+    clippy::similar_names,
+    clippy::single_match_else,
+    clippy::too_many_lines,
+    clippy::uninlined_format_args,
+    clippy::unreadable_literal,
+    clippy::unwrap_used
+)]
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU32, Ordering};
 
@@ -138,6 +171,11 @@ impl MockLlmProvider {
         self.default_response.clone()
     }
 
+    /// Asserts all configured responses were consumed.
+    ///
+    /// # Panics
+    ///
+    /// Panics if not all configured responses were consumed.
     pub fn assert_exhausted(&self) {
         if self.enforce_exhaustion {
             let total = self.total_call_count();
@@ -246,6 +284,11 @@ impl SeededRng {
         self.next_u64() % 2 == 0
     }
 
+    /// Returns a random u64 in `[min, max]`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `min > max`.
     pub fn next_range(&mut self, min: u64, max: u64) -> u64 {
         assert!(min <= max, "SeededRng::next_range: min must be <= max");
         min + (self.next_u64() % (max - min + 1))

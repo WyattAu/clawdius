@@ -3,6 +3,19 @@
 //! Spawns the MCP stdio server with pre-loaded stdin, captures stdout,
 //! validates responses.
 
+#![allow(
+    dead_code,
+    missing_docs,
+    unused_variables,
+    clippy::cast_precision_loss,
+    clippy::expect_used,
+    clippy::items_after_statements,
+    clippy::manual_is_multiple_of,
+    clippy::must_use_candidate,
+    clippy::return_self_not_must_use,
+    clippy::uninlined_format_args,
+    clippy::unwrap_used
+)]
 use std::io::Write;
 use std::process::{Command, Stdio};
 
@@ -70,7 +83,7 @@ fn test_tools_list_returns_array() {
     let tools = &tools_resp["result"]["tools"];
     assert!(tools.is_array(), "tools should be an array, got: {tools}");
     assert!(
-        tools.as_array().map_or(false, |arr| !arr.is_empty()),
+        tools.as_array().is_some_and(|arr| !arr.is_empty()),
         "tools list should not be empty"
     );
 }

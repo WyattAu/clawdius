@@ -284,11 +284,13 @@ mod tests {
 
     #[test]
     fn test_code_block_chunked_across_boundary() {
+        use std::fmt::Write;
+
         let formatter = ResponseFormatter::new();
         let mut text = String::new();
         text.push_str("```rust\n");
         for i in 0..200 {
-            text.push_str(&format!("let x{} = {};\n", i, i));
+            let _ = writeln!(text, "let x{i} = {i};");
         }
         text.push_str("```\n");
         text.push_str("Some trailing text.");

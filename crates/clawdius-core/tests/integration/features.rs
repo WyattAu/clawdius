@@ -1,4 +1,13 @@
-#![allow(unsafe_code)]
+#![allow(
+    dead_code,
+    unused_variables,
+    clippy::cast_precision_loss,
+    clippy::items_after_statements,
+    clippy::manual_is_multiple_of,
+    clippy::must_use_candidate,
+    clippy::return_self_not_must_use,
+    unsafe_code
+)]
 
 use clawdius_core::{
     config::{Config, RetryCondition, RetryConfig, ShellSandboxConfig},

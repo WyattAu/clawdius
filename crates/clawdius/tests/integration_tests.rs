@@ -3,9 +3,19 @@
 //! Tests for LLM wiring, tools, streaming, and configuration.
 
 #![allow(
+    dead_code,
+    unused_variables,
+    clippy::cast_precision_loss,
+    clippy::doc_lazy_continuation,
     clippy::expect_used,
-    clippy::unwrap_used,
+    clippy::float_cmp,
+    clippy::items_after_statements,
+    clippy::manual_is_multiple_of,
+    clippy::must_use_candidate,
+    clippy::panic,
+    clippy::return_self_not_must_use,
     clippy::uninlined_format_args,
+    clippy::unwrap_used,
     unsafe_code
 )]
 
@@ -22,7 +32,6 @@ use clawdius_core::tools::file::{
 };
 use clawdius_core::tools::git::{GitDiffParams, GitLogParams, GitTool};
 use clawdius_core::tools::shell::{ShellParams, ShellTool};
-use std::io::Write;
 use std::path::PathBuf;
 use tempfile::TempDir;
 
@@ -772,7 +781,7 @@ mod generate_tests {
         TaskContext, TaskRequest,
     };
 
-    /// Test that TaskRequest can be created with all required fields
+    /// Test that `TaskRequest` can be created with all required fields
     #[test]
     fn test_task_request_creation() {
         let request = TaskRequest {

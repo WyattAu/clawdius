@@ -11,6 +11,33 @@
 //!   - `db_bytes_per_session`: SQLite file growth per session
 //!   - `db_bytes_per_message`: SQLite file growth per message
 
+#![allow(
+    dead_code,
+    missing_docs,
+    unused_imports,
+    unused_variables,
+    clippy::cast_possible_truncation,
+    clippy::cast_precision_loss,
+    clippy::doc_lazy_continuation,
+    clippy::doc_markdown,
+    clippy::expect_used,
+    clippy::float_cmp,
+    clippy::format_collect,
+    clippy::from_over_into,
+    clippy::ignored_unit_patterns,
+    clippy::items_after_statements,
+    clippy::let_and_return,
+    clippy::manual_is_multiple_of,
+    clippy::match_single_binding,
+    clippy::missing_const_for_fn,
+    clippy::must_use_candidate,
+    clippy::return_self_not_must_use,
+    clippy::single_match_else,
+    clippy::too_many_lines,
+    clippy::uninlined_format_args,
+    clippy::unreadable_literal,
+    clippy::unwrap_used
+)]
 use std::path::Path;
 
 use clawdius_core::session::{Message, Session, SessionStore};
