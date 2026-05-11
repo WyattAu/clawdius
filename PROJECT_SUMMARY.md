@@ -20,27 +20,27 @@ The current focus is **Phase 4: Feature Expansion** - wiring MCP (Model Context 
 
 **Goal:** Wire MCP tool integration into ExecutorAgent so the agentic system can call MCP tools during plan execution.
 
-#### ✅ Completed
+#### [OK] Completed
 
 | Component | Status | Details |
 |-----------|--------|---------|
-| ToolExecutor trait | ✅ Complete | Trait-based interface in `clawdius-core/src/agentic/tool_executor.rs` |
-| ToolRequest/ToolResult | ✅ Complete | Core types for tool execution |
-| NoOpToolExecutor | ✅ Complete | Test implementation |
-| McpToolExecutor adapter | ✅ Complete | Bridges McpHost to ToolExecutor trait |
-| ExecutorAgent integration | ✅ Complete | Accepts optional ToolExecutor, uses in execute_command/execute_custom |
-| AgenticSystem integration | ✅ Complete | `with_tool_executor()` and `tool_executor()` methods |
-| Debug impl for ExecutorAgent | ✅ Complete | Manual impl to handle `dyn ToolExecutor` |
-| Compilation verified | ✅ Complete | All 40 agentic tests pass |
+| ToolExecutor trait | [OK] Complete | Trait-based interface in `clawdius-core/src/agentic/tool_executor.rs` |
+| ToolRequest/ToolResult | [OK] Complete | Core types for tool execution |
+| NoOpToolExecutor | [OK] Complete | Test implementation |
+| McpToolExecutor adapter | [OK] Complete | Bridges McpHost to ToolExecutor trait |
+| ExecutorAgent integration | [OK] Complete | Accepts optional ToolExecutor, uses in execute_command/execute_custom |
+| AgenticSystem integration | [OK] Complete | `with_tool_executor()` and `tool_executor()` methods |
+| Debug impl for ExecutorAgent | [OK] Complete | Manual impl to handle `dyn ToolExecutor` |
+| Compilation verified | [OK] Complete | All 40 agentic tests pass |
 
-#### 🔄 In Progress
+####  In Progress
 
 | Component | Status | Issue |
 |-----------|--------|-------|
-| Integration tests | ⚠️ Pending | Need tests for tool execution flow |
-| CLI integration | ⚠️ Pending | Wire McpToolExecutor to AgenticSystem in CLI |
+| Integration tests | [WARN] Pending | Need tests for tool execution flow |
+| CLI integration | [WARN] Pending | Wire McpToolExecutor to AgenticSystem in CLI |
 
-#### ❌ Not Started
+#### [FAIL] Not Started
 
 - End-to-end testing with real MCP tools
 - Documentation updates
@@ -94,36 +94,36 @@ clawdius/
 
 ## Current Status
 
-### ✅ Completed
+### [OK] Completed
 
 | Component | Status | Details |
 |-----------|--------|---------|
-| Feature Gap Analysis | ✅ Complete | Identified 10 missing feature categories |
-| Monorepo Structure | ✅ Complete | 4 crates configured |
-| Core Library Modules | ✅ Complete | 15+ modules implemented |
-| CLI Binary | ✅ Complete | Basic CLI with TUI scaffolding |
-| VSCode Helper Binary | ✅ Complete | JSON-RPC server skeleton |
-| Session System | ✅ Complete | SQLite-backed persistence |
-| Context/@Mentions | ✅ Complete | Mention parser and builder |
-| Output System | ✅ Complete | JSON/stream output |
-| RPC Protocol | ✅ Complete | Server, handlers, types |
-| Tools System | ✅ Complete | File, Shell, Git, Browser tools |
-| Checkpoint System | ✅ Complete | Snapshot and diff |
-| Commands System | ✅ Complete | Parser, templates, executor |
-| Agent Modes | ✅ Complete | Mode definitions |
-| Sandbox System | ✅ Complete | Tier definitions and executor |
-| Graph-RAG | ✅ Complete | AST and vector search |
-| i18n | ✅ Complete | Localization framework |
-| LLM Integration | ✅ Complete | Providers and message handling |
-| MCP Tool Integration | ✅ Complete | ToolExecutor trait wired to AgenticSystem |
+| Feature Gap Analysis | [OK] Complete | Identified 10 missing feature categories |
+| Monorepo Structure | [OK] Complete | 4 crates configured |
+| Core Library Modules | [OK] Complete | 15+ modules implemented |
+| CLI Binary | [OK] Complete | Basic CLI with TUI scaffolding |
+| VSCode Helper Binary | [OK] Complete | JSON-RPC server skeleton |
+| Session System | [OK] Complete | SQLite-backed persistence |
+| Context/@Mentions | [OK] Complete | Mention parser and builder |
+| Output System | [OK] Complete | JSON/stream output |
+| RPC Protocol | [OK] Complete | Server, handlers, types |
+| Tools System | [OK] Complete | File, Shell, Git, Browser tools |
+| Checkpoint System | [OK] Complete | Snapshot and diff |
+| Commands System | [OK] Complete | Parser, templates, executor |
+| Agent Modes | [OK] Complete | Mode definitions |
+| Sandbox System | [OK] Complete | Tier definitions and executor |
+| Graph-RAG | [OK] Complete | AST and vector search |
+| i18n | [OK] Complete | Localization framework |
+| LLM Integration | [OK] Complete | Providers and message handling |
+| MCP Tool Integration | [OK] Complete | ToolExecutor trait wired to AgenticSystem |
 
-### ⚠️ In Progress
+### [WARN] In Progress
 
 | Component | Status | Issue |
 |-----------|--------|-------|
-| Leptos Webview | ❌ Blocked | API errors: `mount_to_body` and `child` not found |
-| Build Compilation | ❌ Blocked | Webview crate fails to compile |
-| VSCode Extension Wiring | ⚠️ Pending | Extension needs to spawn `clawdius-code` binary |
+| Leptos Webview | [FAIL] Blocked | API errors: `mount_to_body` and `child` not found |
+| Build Compilation | [FAIL] Blocked | Webview crate fails to compile |
+| VSCode Extension Wiring | [WARN] Pending | Extension needs to spawn `clawdius-code` binary |
 
 ---
 
@@ -185,31 +185,31 @@ clawdius/
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| VSCode Extension | ⚠️ In Progress | Skeleton exists |
-| Browser Automation | ⚠️ Tool exists | Needs integration |
-| Session Persistence | ✅ Complete | SQLite-backed |
-| @Mentions | ✅ Complete | Parser implemented |
-| JSON Output | ✅ Complete | Output module |
-| Auto-Compact | ✅ Complete | Session compactor |
+| VSCode Extension | [WARN] In Progress | Skeleton exists |
+| Browser Automation | [WARN] Tool exists | Needs integration |
+| Session Persistence | [OK] Complete | SQLite-backed |
+| @Mentions | [OK] Complete | Parser implemented |
+| JSON Output | [OK] Complete | Output module |
+| Auto-Compact | [OK] Complete | Session compactor |
 
 ### Secondary Features (P1)
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Diff View | ❌ Missing | Show changes before applying |
-| Checkpoints | ✅ Complete | Snapshot/restore |
-| Custom Commands | ✅ Complete | Parser + executor |
-| External Editor | ❌ Missing | Open $EDITOR |
-| GitHub Action | ❌ Missing | CI/CD integration |
+| Diff View | [FAIL] Missing | Show changes before applying |
+| Checkpoints | [OK] Complete | Snapshot/restore |
+| Custom Commands | [OK] Complete | Parser + executor |
+| External Editor | [FAIL] Missing | Open $EDITOR |
+| GitHub Action | [FAIL] Missing | CI/CD integration |
 
 ### Future Features (P2)
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Agent Modes | ✅ Complete | Mode definitions |
-| Web Search | ❌ Missing | Ground responses |
-| Vim Keybindings | ❌ Missing | Modal editing |
-| Localization | ✅ Complete | i18n framework |
+| Agent Modes | [OK] Complete | Mode definitions |
+| Web Search | [FAIL] Missing | Ground responses |
+| Vim Keybindings | [FAIL] Missing | Modal editing |
+| Localization | [OK] Complete | i18n framework |
 
 ---
 
@@ -233,10 +233,10 @@ Leptos 0.7 API changes - the `csr` feature uses different APIs than server-side 
 ### Workspace Dependencies Resolved
 
 During setup, these dependency issues were fixed:
-- ❌ `jsonrpsee` doesn't have `stdio` feature (removed, using custom implementation)
-- ❌ `mimalloc` can't be optional (made required in workspace)
-- ❌ Profile `lto` can't be package-specific (removed)
-- ❌ `leptos_meta` doesn't have `csr` feature (needs fix)
+- [FAIL] `jsonrpsee` doesn't have `stdio` feature (removed, using custom implementation)
+- [FAIL] `mimalloc` can't be optional (made required in workspace)
+- [FAIL] Profile `lto` can't be package-specific (removed)
+- [FAIL] `leptos_meta` doesn't have `csr` feature (needs fix)
 
 ---
 

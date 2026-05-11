@@ -6,13 +6,13 @@
 
 ---
 
-## 🎉 Introduction
+## Introduction
 
 Clawdius v1.0.0-rc.1 marks our first release candidate for the stable v1.0.0 launch. This release represents months of development, 993+ passing tests, 104 formal verification theorems, and a commitment to building the most secure and performant AI coding assistant.
 
 ---
 
-## 🚀 Highlights
+## Highlights
 
 ### Security-First Design
 - **5 sandbox backends (+ 2 planned: gVisor, Firecracker)** for isolated code execution
@@ -34,7 +34,7 @@ Clawdius v1.0.0-rc.1 marks our first release candidate for the stable v1.0.0 lau
 
 ---
 
-## ✨ New Features
+## New Features
 
 ### Plugin System
 ```rust
@@ -73,7 +73,7 @@ pub enum AuditStorage {
 
 ---
 
-## 📊 Metrics
+## Metrics
 
 | Metric | Value |
 |--------|-------|
@@ -89,7 +89,7 @@ pub enum AuditStorage {
 
 ---
 
-## 🔧 Breaking Changes
+## Breaking Changes
 
 *None in this release candidate.* 
 
@@ -97,7 +97,7 @@ API stability is guaranteed from v1.0.0 onward. See [API_STABILITY.md](./API_STA
 
 ---
 
-## 🐛 Bug Fixes
+## Bug Fixes
 
 - Fixed event sourcing trait definitions
 - Resolved all clippy documentation warnings
@@ -106,7 +106,7 @@ API stability is guaranteed from v1.0.0 onward. See [API_STABILITY.md](./API_STA
 
 ---
 
-## 📚 Documentation
+## Documentation
 
 ### New Documentation
 - [Getting Started Guide](./GETTING_STARTED.md) - 10 minutes to first chat
@@ -120,7 +120,7 @@ API stability is guaranteed from v1.0.0 onward. See [API_STABILITY.md](./API_STA
 
 ---
 
-## 🛡️ Security
+## Security
 
 ### Sandboxing
 All code execution is sandboxed by default:
@@ -136,7 +136,7 @@ All code execution is sandboxed by default:
 
 ---
 
-## 📦 Installation
+## Installation
 
 ### Cargo
 ```bash
@@ -164,7 +164,7 @@ Download from [GitHub Releases](https://github.com/clawdius/clawdius/releases/ta
 
 ---
 
-## 🔄 Upgrade Guide
+## Upgrade Guide
 
 ### From v0.2.x
 
@@ -186,7 +186,7 @@ clawdius --version
 
 ---
 
-## 🗺️ Roadmap
+## Roadmap
 
 ### v1.0.0 (Next)
 - API stability guarantee
@@ -205,7 +205,7 @@ clawdius --version
 
 ---
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 Thanks to all contributors who made this release possible:
 - Core development team
@@ -215,7 +215,7 @@ Thanks to all contributors who made this release possible:
 
 ---
 
-## 📞 Support
+## Support
 
 - **Documentation:** [docs.clawdius.dev](https://docs.clawdius.dev)
 - **GitHub Issues:** [github.com/clawdius/clawdius/issues](https://github.com/clawdius/clawdius/issues)

@@ -6,7 +6,7 @@
 
 ---
 
-## 🎉 Welcome to Clawdius v1.0.0
+## Welcome to Clawdius v1.0.0
 
 After extensive development and testing, Clawdius v1.0.0 is now **stable and production-ready**. This release marks the first stable API guarantee - all public APIs will follow Semantic Versioning.
 
@@ -14,17 +14,17 @@ After extensive development and testing, Clawdius v1.0.0 is now **stable and pro
 
 | Feature | Clawdius | Others |
 |---------|----------|--------|
-| **Sandboxed Execution** | ✅ 5 backends (WASM, Container, Bubblewrap, Sandbox-exec, Filtered) + 2 planned (gVisor, Firecracker) | ❌ None |
-| **Formal Verification** | ✅ 104 Lean4 theorems | ❌ None |
-| **Native Performance** | ✅ Rust (<20ms boot) | ❌ Node.js/Electron |
-| **Enterprise SSO** | ✅ SAML 2.0, OIDC, Okta, Azure AD | ⚠️ Limited |
-| **Plugin System** | ✅ WASM + Marketplace | ⚠️ Limited |
-| **Audit Logging** | ✅ Multi-backend (SQLite, ES, Webhooks) | ⚠️ Basic |
-| **Compliance** | ✅ SOC 2, HIPAA, GDPR templates | ❌ None |
+| **Sandboxed Execution** | [OK] 5 backends (WASM, Container, Bubblewrap, Sandbox-exec, Filtered) + 2 planned (gVisor, Firecracker) | [FAIL] None |
+| **Formal Verification** | [OK] 104 Lean4 theorems | [FAIL] None |
+| **Native Performance** | [OK] Rust (<20ms boot) | [FAIL] Node.js/Electron |
+| **Enterprise SSO** | [OK] SAML 2.0, OIDC, Okta, Azure AD | [WARN] Limited |
+| **Plugin System** | [OK] WASM + Marketplace | [WARN] Limited |
+| **Audit Logging** | [OK] Multi-backend (SQLite, ES, Webhooks) | [WARN] Basic |
+| **Compliance** | [OK] SOC 2, HIPAA, GDPR templates | [FAIL] None |
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Installation
 
@@ -58,9 +58,9 @@ clawdius tui
 
 ---
 
-## ✨ Key Features
+## Key Features
 
-### 🔒 Multi-Tier Sandboxing
+### Multi-Tier Sandboxing
 
 All code execution is sandboxed by default with 5 production backends (+ 2 planned):
 
@@ -71,7 +71,7 @@ All code execution is sandboxed by default with 5 production backends (+ 2 plann
 | 3 (Trusted) | Filtered commands | Your own code |
 | 4 (Direct) | None | Audited code only |
 
-### 🧮 Formal Verification
+### Formal Verification
 
 104 Lean4 theorems provide mathematical guarantees for:
 - Session management
@@ -81,7 +81,7 @@ All code execution is sandboxed by default with 5 production backends (+ 2 plann
 - Audit logging
 - SSO authentication
 
-### 🤖 Multi-Provider LLM Support
+### Multi-Provider LLM Support
 
 - **Anthropic** Claude (recommended)
 - **OpenAI** GPT-4
@@ -89,7 +89,7 @@ All code execution is sandboxed by default with 5 production backends (+ 2 plann
 - **Z.AI** Cloud
 - **Local** Self-hosted
 
-### 🔌 Plugin System
+### Plugin System
 
 WASM-based plugins with 26 hook types:
 - `on_startup` / `on_shutdown`
@@ -98,7 +98,7 @@ WASM-based plugins with 26 hook types:
 - `before_file_read` / `after_file_write`
 - Custom hooks via `custom:*`
 
-### 🏢 Enterprise Features
+### Enterprise Features
 
 - **SSO**: SAML 2.0, OIDC, Okta, Azure AD
 - **Audit**: SQLite, Elasticsearch, Webhook backends
@@ -107,7 +107,7 @@ WASM-based plugins with 26 hook types:
 
 ---
 
-## 📊 Metrics
+## Metrics
 
 | Metric | Value |
 |--------|-------|
@@ -122,7 +122,7 @@ WASM-based plugins with 26 hook types:
 
 ---
 
-## 🛡️ Security
+## Security
 
 - **No known CVEs**
 - **Capability-based security**
@@ -132,7 +132,7 @@ WASM-based plugins with 26 hook types:
 
 ---
 
-## 📦 What's Changed Since RC.1
+## What's Changed Since RC.1
 
 ### Bug Fixes
 - Fixed all clippy warnings and errors
@@ -153,7 +153,7 @@ WASM-based plugins with 26 hook types:
 
 ---
 
-## 🔮 What's Next
+## What's Next
 
 ### v1.1.0 (Q2 2026)
 - MCP Protocol support
@@ -172,7 +172,7 @@ WASM-based plugins with 26 hook types:
 
 ---
 
-## 📞 Support
+## Support
 
 - **Documentation:** https://docs.clawdius.dev
 - **GitHub:** https://github.com/clawdius/clawdius
@@ -181,7 +181,7 @@ WASM-based plugins with 26 hook types:
 
 ---
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 Special thanks to:
 - The Rust community

@@ -75,12 +75,12 @@ petgraph.workspace = true
 lru.workspace = true
 url.workspace = true
 which.workspace = true
-tempfile.workspace = true
 
 # Token counting
 tiktoken-rs.workspace = true
 
 # Diff
+tempfile.workspace = true
 similar.workspace = true
 
 # Encoding
@@ -138,7 +138,6 @@ redis = { version = "0.27", features = ["tokio-comp", "connection-manager"], opt
 stripe = { version = "1.0.0-rc.5", package = "async-stripe", optional = true, default-features = false, features = ["default-tls"] }
 
 [dev-dependencies]
-tempfile.workspace = true
 criterion = { workspace = true }
 mockall.workspace = true
 httpmock = { workspace = true }

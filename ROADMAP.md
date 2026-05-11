@@ -51,7 +51,7 @@ Clawdius v2.8.0 is a Rust-native agentic coding engine that **exceeds gstack's c
 
 > **Goal:** Replicate and exceed gstack's workflow capabilities as a Rust-native, self-hosted, multi-LLM system.
 
-### M1: Wire the Core Loop — ✅ COMPLETE
+### M1: Wire the Core Loop — [OK] COMPLETE
 
 | # | Feature | Details |
 |---|---------|---------|
@@ -62,7 +62,7 @@ Clawdius v2.8.0 is a Rust-native agentic coding engine that **exceeds gstack's c
 | M1.5 | 4 new MCP tools | `git_commit`, `grep_search`, `multi_file_edit`, `list_branches` |
 | M1.6 | Lean4 proofs | 69 theorems in `.specs/02_architecture/proofs/` |
 
-### M2: Sprint Process Engine — ✅ COMPLETE
+### M2: Sprint Process Engine — [OK] COMPLETE
 
 | # | Feature | Details |
 |---|---------|---------|
@@ -72,7 +72,7 @@ Clawdius v2.8.0 is a Rust-native agentic coding engine that **exceeds gstack's c
 | M2.4 | SprintMetrics | Token counting per phase, per-phase timing, ASCII report |
 | M2.5 | Tests | 20 unit tests, all pass |
 
-### M3: Error Recovery & QA Loop — ✅ COMPLETE
+### M3: Error Recovery & QA Loop — [OK] COMPLETE
 
 | # | Feature | Details |
 |---|---------|---------|
@@ -84,7 +84,7 @@ Clawdius v2.8.0 is a Rust-native agentic coding engine that **exceeds gstack's c
 | M3.6 | Browser QA | `SprintConfig.browser_qa_url` — visual QA in Test phase |
 | M3.7 | Tests | 8 new tests (28 sprint tests total) |
 
-### M4: Review & Multi-Model Pipeline — ✅ COMPLETE
+### M4: Review & Multi-Model Pipeline — [OK] COMPLETE
 
 | # | Feature | Details |
 |---|---------|---------|
@@ -94,7 +94,7 @@ Clawdius v2.8.0 is a Rust-native agentic coding engine that **exceeds gstack's c
 | M4.4 | Sprint integration | `SprintConfig.reviewers` — replaces single-LLM review |
 | M4.5 | Tests | 14 review tests + 1 integration test |
 
-### M5: Browser Daemon & Parallel Sprints — ✅ COMPLETE
+### M5: Browser Daemon & Parallel Sprints — [OK] COMPLETE
 
 | # | Feature | Details |
 |---|---------|---------|
@@ -107,7 +107,7 @@ Clawdius v2.8.0 is a Rust-native agentic coding engine that **exceeds gstack's c
 | M5.7 | StubBrowserSession | No-op implementation for testing without Chromium |
 | M5.8 | Tests | 12 parallel sprint + 13 browser daemon tests |
 
-### M6: Ship Pipeline & Benchmarking — ✅ COMPLETE
+### M6: Ship Pipeline & Benchmarking — [OK] COMPLETE
 
 | # | Feature | Details |
 |---|---------|---------|
@@ -220,16 +220,16 @@ Clawdius v2.8.0 is a Rust-native agentic coding engine that **exceeds gstack's c
 
 | # | Task | Status | Details |
 |---|------|--------|---------|
-| B1 | `GenerationMode::Sprint` variant | ✅ | `agentic/generation_mode.rs` — Sprint, SprintWithExecution, AutonomousSprint |
-| B2 | SprintEngine wired into AgenticSystem | ✅ | `agentic/mod.rs` — `execute_sprint()` method dispatches to SprintEngine |
-| B3 | ErrorRecovery in sprint Build phase | ✅ | Already integrated inside SprintEngine |
-| B4 | ReviewEngine in sprint Review phase | ✅ | Already integrated inside SprintEngine |
-| B5+B9 | REST API endpoints | ✅ | `api/sprint_handler.rs` — 7 endpoints, 12 tests |
-| B6 | ParallelSprintManager wired | ✅ | `ApiState.sprint_manager` — live session management |
-| B7 | BrowserDaemon in sprint Test phase | ✅ | `SprintEngine.with_browser_daemon()` — live accessibility snapshots |
-| B8 | CLI commands | ✅ | `clawdius sprint`, `clawdius ship`, `clawdius skill` — all working |
-| B10 | Integration tests | ✅ | 4 new tests verifying Sprint mode creation and properties |
-| B11 | ROADMAP updated | ✅ | This document |
+| B1 | `GenerationMode::Sprint` variant | [OK] | `agentic/generation_mode.rs` — Sprint, SprintWithExecution, AutonomousSprint |
+| B2 | SprintEngine wired into AgenticSystem | [OK] | `agentic/mod.rs` — `execute_sprint()` method dispatches to SprintEngine |
+| B3 | ErrorRecovery in sprint Build phase | [OK] | Already integrated inside SprintEngine |
+| B4 | ReviewEngine in sprint Review phase | [OK] | Already integrated inside SprintEngine |
+| B5+B9 | REST API endpoints | [OK] | `api/sprint_handler.rs` — 7 endpoints, 12 tests |
+| B6 | ParallelSprintManager wired | [OK] | `ApiState.sprint_manager` — live session management |
+| B7 | BrowserDaemon in sprint Test phase | [OK] | `SprintEngine.with_browser_daemon()` — live accessibility snapshots |
+| B8 | CLI commands | [OK] | `clawdius sprint`, `clawdius ship`, `clawdius skill` — all working |
+| B10 | Integration tests | [OK] | 4 new tests verifying Sprint mode creation and properties |
+| B11 | ROADMAP updated | [OK] | This document |
 
 ### REST API Endpoints (New in v2.5.0)
 
@@ -294,38 +294,38 @@ Clawdius v2.8.0 is a Rust-native agentic coding engine that **exceeds gstack's c
 
 | # | Task | Status | Details |
 |---|------|--------|---------|
-| P1.1 | End-to-end sprint test | ✅ | Sprint runs all 7 phases with real OpenRouter LLM, produces substantive output |
-| P1.2 | `--lsp` CLI flag | ✅ | `clawdius sprint --lsp "rust-analyzer"` attaches LSP client for code intelligence |
-| P1.3 | WorktreeManager → ParallelSprintManager | ✅ | Each parallel sprint gets isolated git worktree, auto-cleanup on cancel/complete/fail |
-| P1.4 | Fix `test_chat_endpoint` | ✅ | Expect 503 when no LLM configured; 9/9 integration tests now pass |
-| P1.5 | ROADMAP.md update | ✅ | This document |
-| O2.1 | ShellToolExecutor | ✅ | Real async shell execution via `tokio::process::Command` with safety blocklist |
-| O2.2 | Streaming sprint LLM | ✅ | `chat_stream()` with progress dots, fallback on empty stream |
-| O2.3 | Sprint persistence | ✅ | `.clawdius/sprints/` save/load + `--resume` CLI flag |
-| O2.4 | Built-in skills LLM | ✅ | All 4 skills call LLM with fallback to hardcoded text |
-| O2.5 | Sprint API wiring | ✅ | POST /api/v1/sprint creates ShellToolExecutor |
-| O2.6 | Empty response fix | ✅ | Zero-chunk streaming treated as error |
-| O3.1 | LSP diagnostics capture | ✅ | `publishDiagnostics` via broadcast channel, sprint injection |
-| O3.2 | Git worktree manager | ✅ | WorktreeManager: create/list/remove/merge/diff/cleanup |
-| O3.3 | VSCode extension | ✅ | REST client + sprint/skills/ship command registrations |
-| O3.4 | OpenRouter LlmProvider wiring | ✅ | `OpenRouter` variant in all 7 match arms, `from_config`, `from_env`, `create_provider` |
+| P1.1 | End-to-end sprint test | [OK] | Sprint runs all 7 phases with real OpenRouter LLM, produces substantive output |
+| P1.2 | `--lsp` CLI flag | [OK] | `clawdius sprint --lsp "rust-analyzer"` attaches LSP client for code intelligence |
+| P1.3 | WorktreeManager → ParallelSprintManager | [OK] | Each parallel sprint gets isolated git worktree, auto-cleanup on cancel/complete/fail |
+| P1.4 | Fix `test_chat_endpoint` | [OK] | Expect 503 when no LLM configured; 9/9 integration tests now pass |
+| P1.5 | ROADMAP.md update | [OK] | This document |
+| O2.1 | ShellToolExecutor | [OK] | Real async shell execution via `tokio::process::Command` with safety blocklist |
+| O2.2 | Streaming sprint LLM | [OK] | `chat_stream()` with progress dots, fallback on empty stream |
+| O2.3 | Sprint persistence | [OK] | `.clawdius/sprints/` save/load + `--resume` CLI flag |
+| O2.4 | Built-in skills LLM | [OK] | All 4 skills call LLM with fallback to hardcoded text |
+| O2.5 | Sprint API wiring | [OK] | POST /api/v1/sprint creates ShellToolExecutor |
+| O2.6 | Empty response fix | [OK] | Zero-chunk streaming treated as error |
+| O3.1 | LSP diagnostics capture | [OK] | `publishDiagnostics` via broadcast channel, sprint injection |
+| O3.2 | Git worktree manager | [OK] | WorktreeManager: create/list/remove/merge/diff/cleanup |
+| O3.3 | VSCode extension | [OK] | REST client + sprint/skills/ship command registrations |
+| O3.4 | OpenRouter LlmProvider wiring | [OK] | `OpenRouter` variant in all 7 match arms, `from_config`, `from_env`, `create_provider` |
 
 ### Sprint Engine Demo Output (v2.6.0)
 
 The sprint engine successfully ran all 7 phases with a real OpenRouter LLM (`openai/gpt-oss-20b:free`), producing 1,225 tokens across 56 seconds:
 
 ```
-🚀 Starting sprint
+Starting sprint
    Task: Explain what a sprint engine does in one paragraph
    Provider: openrouter | Model: openai/gpt-oss-20b:free
 
-  ✅ Think (16.8s, 363 tokens)   — Real LLM analysis
-  ✅ Plan  (2.6s, 54 tokens)    — Sprint planning
-  ✅ Build (3.0s, 54 tokens)    — Code generation
-  ✅ Review (0.6s, 42 tokens)   — Code review
-  ✅ Test  (2.8s, 54 tokens)    — Test verification
-  ✅ Ship  (11.1s, 194 tokens)  — Deployment
-  ✅ Reflect (19.3s, 464 tokens) — Retrospective with metrics
+  [OK] Think (16.8s, 363 tokens)   — Real LLM analysis
+  [OK] Plan  (2.6s, 54 tokens)    — Sprint planning
+  [OK] Build (3.0s, 54 tokens)    — Code generation
+  [OK] Review (0.6s, 42 tokens)   — Code review
+  [OK] Test  (2.8s, 54 tokens)    — Test verification
+  [OK] Ship  (11.1s, 194 tokens)  — Deployment
+  [OK] Reflect (19.3s, 464 tokens) — Retrospective with metrics
 
 Total: 56.2s | 1,225 tokens | 7/0/0 (ok/fail/skip)
 ```
@@ -338,14 +338,14 @@ Total: 56.2s | 1,225 tokens | 7/0/0 (ok/fail/skip)
 
 | # | Task | Status | Details |
 |---|------|--------|---------|
-| A1 | Tool-use protocol design | ✅ | `tool_use.rs` — parser-based tool call format (JSON + bracket) |
-| A2 | Tool executor | ✅ | `ShellToolExecutor` with safety blocklist, path validation |
-| A3 | Tool-use loop in Build phase | ✅ | SprintEngine intercepts Build phase, runs tool loop |
-| A4 | 5 tools | ✅ | write_file, edit_file, shell, read_file, list_files |
-| A5 | Parallel sprint execution | ✅ | `tokio::spawn` + worktree isolation, priority queue |
-| A6 | SandboxedExecutor | ✅ | DirectorySandbox, ContainerBackend trait for Docker/Firecracker |
-| A7 | WebSearchAgent | ✅ | DuckDuckGo search, HTML extraction, stealth scraping |
-| A8 | Testbed project | ✅ | `testbed/invoicenest/` — full-stack SaaS invoicing platform |
+| A1 | Tool-use protocol design | [OK] | `tool_use.rs` — parser-based tool call format (JSON + bracket) |
+| A2 | Tool executor | [OK] | `ShellToolExecutor` with safety blocklist, path validation |
+| A3 | Tool-use loop in Build phase | [OK] | SprintEngine intercepts Build phase, runs tool loop |
+| A4 | 5 tools | [OK] | write_file, edit_file, shell, read_file, list_files |
+| A5 | Parallel sprint execution | [OK] | `tokio::spawn` + worktree isolation, priority queue |
+| A6 | SandboxedExecutor | [OK] | DirectorySandbox, ContainerBackend trait for Docker/Firecracker |
+| A7 | WebSearchAgent | [OK] | DuckDuckGo search, HTML extraction, stealth scraping |
+| A8 | Testbed project | [OK] | `testbed/invoicenest/` — full-stack SaaS invoicing platform |
 
 ---
 
@@ -355,19 +355,19 @@ Total: 56.2s | 1,225 tokens | 7/0/0 (ok/fail/skip)
 
 | # | Task | Status | Details |
 |---|------|--------|---------|
-| B1 | Native tool_use — Anthropic | ✅ | `chat_with_tools()` on AnthropicProvider via genai v0.5 `tool_use` content blocks |
-| B2 | Native tool_use — OpenAI | ✅ | `chat_with_tools()` on OpenAIProvider via genai v0.5 function calling |
-| B3 | SSE streaming endpoint | ✅ | `GET /api/v1/sprint/stream` — text/event-stream with phase_start/phase_end/sprint_end events |
-| B4 | Native tool_use — OpenRouter | ✅ | `chat_with_tools()` on OpenRouterProvider, proxies to underlying model |
-| B5 | Native tool-use loop | ✅ | `run_native_tool_use_loop()` with genai::chat::Tool definitions, SprintEngine tries native first, falls back to parser |
-| B6 | Config CLI | ✅ | `clawdius config show/get/set/path/list` — dot-path config keys |
-| B7 | End-to-end demo | ❌ | Agent writes + tests a real file with Claude — needs real API key |
-| B8 | Multi-tenant workspace | ✅ | `TenantStore` with 3 tiers, `ApiKeyEntry` struct, `TenantUsage` tracking, per-tenant workspace_root |
-| B9 | API key auth | ✅ | Signup/login endpoints, tenant CRUD, API key create/list/revoke, auth middleware skip paths |
-| B10 | Usage tracking + billing | ✅ | `record_tenant_task()` wired into chat/agent/sprint endpoints, per-tenant rate limiting |
-| B11 | E2E test suite | ✅ | `scripts/e2e_test.sh` — 12 sections, 32 checks, rate-limit detection, ZAI + OpenRouter support |
-| B12 | Auth middleware → TenantStore bridge | ✅ | Tenant API keys (from signup) now validated by auth middleware; optional auth mode (validate tokens when present even without config keys) |
-| B13 | ZAI (ZhipuAI) GLM provider | ✅ | `zai.rs` — native tool calling, genai v0.5.3 adapter, coding endpoint routing, glm-4.5/4.6/4.7/5/5.1 |
+| B1 | Native tool_use — Anthropic | [OK] | `chat_with_tools()` on AnthropicProvider via genai v0.5 `tool_use` content blocks |
+| B2 | Native tool_use — OpenAI | [OK] | `chat_with_tools()` on OpenAIProvider via genai v0.5 function calling |
+| B3 | SSE streaming endpoint | [OK] | `GET /api/v1/sprint/stream` — text/event-stream with phase_start/phase_end/sprint_end events |
+| B4 | Native tool_use — OpenRouter | [OK] | `chat_with_tools()` on OpenRouterProvider, proxies to underlying model |
+| B5 | Native tool-use loop | [OK] | `run_native_tool_use_loop()` with genai::chat::Tool definitions, SprintEngine tries native first, falls back to parser |
+| B6 | Config CLI | [OK] | `clawdius config show/get/set/path/list` — dot-path config keys |
+| B7 | End-to-end demo | [FAIL] | Agent writes + tests a real file with Claude — needs real API key |
+| B8 | Multi-tenant workspace | [OK] | `TenantStore` with 3 tiers, `ApiKeyEntry` struct, `TenantUsage` tracking, per-tenant workspace_root |
+| B9 | API key auth | [OK] | Signup/login endpoints, tenant CRUD, API key create/list/revoke, auth middleware skip paths |
+| B10 | Usage tracking + billing | [OK] | `record_tenant_task()` wired into chat/agent/sprint endpoints, per-tenant rate limiting |
+| B11 | E2E test suite | [OK] | `scripts/e2e_test.sh` — 12 sections, 32 checks, rate-limit detection, ZAI + OpenRouter support |
+| B12 | Auth middleware → TenantStore bridge | [OK] | Tenant API keys (from signup) now validated by auth middleware; optional auth mode (validate tokens when present even without config keys) |
+| B13 | ZAI (ZhipuAI) GLM provider | [OK] | `zai.rs` — native tool calling, genai v0.5.3 adapter, coding endpoint routing, glm-4.5/4.6/4.7/5/5.1 |
 
 ### E2E Test Results (v2.8.0)
 
@@ -375,20 +375,20 @@ All 21 non-LLM checks pass (11 LLM-dependent checks skipped due to OpenRouter fr
 
 | Section | Tests | Result |
 |---------|-------|--------|
-| 0a. Server startup | 1 | ✅ |
-| 0b. LLM rate limit check | 1 | ⏭️ Rate-limited |
-| 1. Health & Readiness | 2 | ✅ |
-| 2. Session Management | 3 | ✅ |
-| 3. Chat (LLM) | 2 | ⏭️ Rate-limited |
-| 4. Agent (LLM) | 2 | ⏭️ Rate-limited |
-| 5. Sprint (LLM) | 1 | ⏭️ Rate-limited |
-| 6. SSE Streaming (LLM) | 1 | ⏭️ Rate-limited |
-| 7. Skills | 2 | ✅+⏭️ |
-| 8. Ship | 2 | ✅+⏭️ |
-| 9. Multi-Tenant Auth | 8+1 | ✅+⏭️ |
-| 10. Usage Tracking | 1 | ✅ |
-| 11. Sprint Sessions | 1 | ✅ |
-| 12. Tools & Plugins | 3 | ✅ |
+| 0a. Server startup | 1 | [OK] |
+| 0b. LLM rate limit check | 1 | [SKIP] Rate-limited |
+| 1. Health & Readiness | 2 | [OK] |
+| 2. Session Management | 3 | [OK] |
+| 3. Chat (LLM) | 2 | [SKIP] Rate-limited |
+| 4. Agent (LLM) | 2 | [SKIP] Rate-limited |
+| 5. Sprint (LLM) | 1 | [SKIP] Rate-limited |
+| 6. SSE Streaming (LLM) | 1 | [SKIP] Rate-limited |
+| 7. Skills | 2 | [OK]+[SKIP] |
+| 8. Ship | 2 | [OK]+[SKIP] |
+| 9. Multi-Tenant Auth | 8+1 | [OK]+[SKIP] |
+| 10. Usage Tracking | 1 | [OK] |
+| 11. Sprint Sessions | 1 | [OK] |
+| 12. Tools & Plugins | 3 | [OK] |
 
 ### Native Tool Calling Architecture (v2.8.0)
 

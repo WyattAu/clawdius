@@ -3,6 +3,13 @@ name = "clawdius-gateway"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+keywords.workspace = true
+categories.workspace = true
+readme.workspace = true
 description = "Messaging gateway for Clawdius — routes chat platform messages to the agent"
 
 [dependencies]

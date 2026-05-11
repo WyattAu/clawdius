@@ -8,7 +8,7 @@ The @mentions system allows you to include rich context in your messages to Claw
 
 ## Supported Mention Types
 
-### 📄 @file:path
+### @file:path
 
 Include the contents of a file:
 
@@ -24,7 +24,7 @@ clawd chat "Compare @file:src/a.rs with @file:src/b.rs"
 
 ---
 
-### 📁 @folder:path
+### @folder:path
 
 List the contents of a folder:
 
@@ -39,7 +39,7 @@ clawd chat "Describe the structure @folder:crates/clawdius/src"
 
 ---
 
-### 🌐 @url:https://...
+### @url:https://...
 
 Fetch and include content from a URL:
 
@@ -55,7 +55,7 @@ clawd chat "Review this documentation @url:https://example.com/api-docs"
 
 ---
 
-### 🔧 @problems[:severity]
+### @problems[:severity]
 
 Include workspace diagnostics and errors:
 
@@ -73,7 +73,7 @@ clawd chat "What warnings do we have? @problems:warning"
 
 ---
 
-### 🌳 @git:diff or @git:staged
+### @git:diff or @git:staged
 
 Include git diff in your context:
 
@@ -88,7 +88,7 @@ clawd chat "Review staged changes @git:staged"
 
 ---
 
-### 📝 @git:log:N
+### @git:log:N
 
 Include recent commit history:
 
@@ -105,7 +105,7 @@ clawd chat "Summarize the last 10 commits @git:log:10"
 
 ---
 
-### 🔍 @symbol:name
+### @symbol:name
 
 Include a symbol definition:
 
@@ -123,7 +123,7 @@ clawd chat "Where is @symbol:Config defined?"
 
 ---
 
-### 🔎 @search:"query" or @search:query
+### @search:"query" or @search:query
 
 Search the codebase:
 
@@ -210,11 +210,11 @@ The `MentionResolver` resolves mentions to `ContextItem` objects:
 
 @mentions work in:
 
-- ✅ CLI `chat` command (`clawd chat "message with @mentions"`)
-- ✅ TUI chat mode (press `i` to insert, type message with @mentions)
-- ✅ Headless mode (stdin with @mentions)
-- ✅ Autocomplete suggestions (TUI)
-- ✅ Syntax highlighting (TUI)
+- [OK] CLI `chat` command (`clawd chat "message with @mentions"`)
+- [OK] TUI chat mode (press `i` to insert, type message with @mentions)
+- [OK] Headless mode (stdin with @mentions)
+- [OK] Autocomplete suggestions (TUI)
+- [OK] Syntax highlighting (TUI)
 
 ### Testing
 
@@ -247,8 +247,8 @@ All tests pass:
 - [ ] Mention preview in TUI
 - [ ] Mention validation and error messages
 - [ ] Mention caching for repeated references
-- [x] Mention autocomplete in TUI ✅
-- [x] Mention syntax highlighting in TUI ✅
+- [x] Mention autocomplete in TUI [OK]
+- [x] Mention syntax highlighting in TUI [OK]
 
 ---
 

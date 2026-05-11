@@ -13,9 +13,9 @@ Please do NOT open public issues for security vulnerabilities.
 
 | Version | Supported |
 |---------|-----------|
-| main branch | ✅ |
-| v1.0.0-rc.1 | ✅ |
-| < v1.0.0 | ❌ |
+| main branch | [OK] |
+| v1.0.0-rc.1 | [OK] |
+| < v1.0.0 | [FAIL] |
 
 ## Transitive Dependency Risks
 
@@ -25,7 +25,7 @@ Clawdius has **zero vulnerabilities in its direct dependencies**. All known CVEs
 
 | Advisory | Crate | Status | Mitigation |
 |----------|-------|--------|------------|
-| RUSTSEC-2026-0114 | wasmtime | ✅ Fixed | Upgraded to wasmtime 44.x |
+| RUSTSEC-2026-0114 | wasmtime | [OK] Fixed | Upgraded to wasmtime 44.x |
 
 ### Pending (Upstream Blocked)
 

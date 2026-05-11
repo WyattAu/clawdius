@@ -1,10 +1,10 @@
 
-# 🛡️ The Omni-Protocol Rust Master SOP (2026 Edition)
+# The Omni-Protocol Rust Master SOP (2026 Edition)
 *Targeting: Tier-1 HFT, Enterprise SaaS, Zero-Knowledge Verification, AAA Game Engines, and Petabyte-Scale Quant Pipelines.*
 
 ---
 
-## 📜 PART I: THE UNIVERSAL CORE (All Domains)
+## PART I: THE UNIVERSAL CORE (All Domains)
 *Objective: Enforce a baseline of mathematical correctness, eliminate silent panics, and guarantee deterministic builds.*
 
 ### 1.1 Toolchain & CI Rigor
@@ -42,7 +42,7 @@
 
 ---
 
-## 🏢 PART II: ENTERPRISE BACKEND (SaaS / Web / API)
+## PART II: ENTERPRISE BACKEND (SaaS / Web / API)
 *Objective: Maximize throughput (RPS), resilience, and maintainability.*
 
 ### 2.1 Concurrency, Runtime, & Config
@@ -71,7 +71,7 @@
 
 ---
 
-## ⚡ PART III: HFT & ECN (The "No-OS" Hot Path)
+## PART III: HFT & ECN (The "No-OS" Hot Path)
 *Objective: <1µs deterministic latency. The OS, Allocator, and CPU Caches are hostile variables.*
 
 ### 3.1 Hardware Sympathy & Kernel Bypass
@@ -105,7 +105,7 @@
 
 ---
 
-## 🔐 PART IV: CRYPTOGRAPHY & ZERO-KNOWLEDGE (ZK)
+## PART IV: CRYPTOGRAPHY & ZERO-KNOWLEDGE (ZK)
 *Objective: Verifiable compute, absolute algebraic rigor, and protection against side-channel timing attacks.*
 
 ### 4.1 Verifiable Compute & Circuits
@@ -126,7 +126,7 @@
 
 ---
 
-## 📱 PART V: THE EDGE, ML, & CLIENT (WASM, Mobile, Desktop)
+## PART V: THE EDGE, ML, & CLIENT (WASM, Mobile, Desktop)
 *Objective: Minimal binary size, security sandboxing, and strict platform boundaries.*
 
 ### 5.1 Edge Compute & Web
@@ -155,7 +155,7 @@
 
 ---
 
-## 🧬 PART VI: C++ FFI, QUANT DATA & AAA ENGINE INTEGRATION
+## PART VI: C++ FFI, QUANT DATA & AAA ENGINE INTEGRATION
 *Objective: Guarantee safe bidirectional memory ownership, petabyte-scale columnar data processing, and bit-for-bit deterministic integration with external C++ runtimes and garbage collectors.*
 
 ### 6.1 Safe C++ Bridging & Memory Ownership

@@ -15,25 +15,25 @@
 
 | ID | Task | Status |
 |----|------|--------|
-| M1 | Wire LLM providers to CLI | ✅ COMPLETE |
-| M2 | Wire LLM providers to TUI | ✅ COMPLETE |
-| M3 | Implement streaming responses | ✅ COMPLETE |
-| M4 | Implement file tool execution | ✅ COMPLETE |
-| M5 | Wire VSCode extension to binary | ✅ COMPLETE |
-| M6 | Add provider configuration | ✅ COMPLETE |
-| S1 | Implement shell tool with basic sandbox | ✅ COMPLETE |
-| S2 | Add API key keyring storage | ✅ COMPLETE |
-| S3 | Implement git tool wrapper | ✅ COMPLETE |
-| S4 | Add error recovery/retries | ✅ COMPLETE |
-| S5 | Add benchmark suite | ✅ COMPLETE |
-| C1 | Graph-RAG SQLite schema | ✅ COMPLETE |
-| C2 | Tree-sitter parsing | ✅ COMPLETE |
-| C3 | Basic sandbox backends | ✅ COMPLETE |
-| C4 | WASM Brain runtime | ✅ COMPLETE |
-| W1 | HFT Broker | ✅ COMPLETE |
-| W2 | LanceDB integration | ✅ COMPLETE |
-| W3 | Multi-language research | ✅ COMPLETE |
-| W4 | Lean 4 proof verification | ✅ COMPLETE |
+| M1 | Wire LLM providers to CLI | [OK] COMPLETE |
+| M2 | Wire LLM providers to TUI | [OK] COMPLETE |
+| M3 | Implement streaming responses | [OK] COMPLETE |
+| M4 | Implement file tool execution | [OK] COMPLETE |
+| M5 | Wire VSCode extension to binary | [OK] COMPLETE |
+| M6 | Add provider configuration | [OK] COMPLETE |
+| S1 | Implement shell tool with basic sandbox | [OK] COMPLETE |
+| S2 | Add API key keyring storage | [OK] COMPLETE |
+| S3 | Implement git tool wrapper | [OK] COMPLETE |
+| S4 | Add error recovery/retries | [OK] COMPLETE |
+| S5 | Add benchmark suite | [OK] COMPLETE |
+| C1 | Graph-RAG SQLite schema | [OK] COMPLETE |
+| C2 | Tree-sitter parsing | [OK] COMPLETE |
+| C3 | Basic sandbox backends | [OK] COMPLETE |
+| C4 | WASM Brain runtime | [OK] COMPLETE |
+| W1 | HFT Broker | [OK] COMPLETE |
+| W2 | LanceDB integration | [OK] COMPLETE |
+| W3 | Multi-language research | [OK] COMPLETE |
+| W4 | Lean 4 proof verification | [OK] COMPLETE |
 
 ### Key Achievements
 
@@ -82,23 +82,23 @@ Clawdius has an impressive architectural foundation with comprehensive specifica
 
 | Component | Status | Evidence |
 |-----------|--------|----------|
-| Monorepo Structure | ✅ Complete | 4 crates, workspace builds |
-| Core Library Types | ✅ Complete | ~6,000 LOC, compiles |
-| Session Management | ✅ Working | SQLite persistence, 33 tests pass |
-| Web Search Tool | ✅ Working | DuckDuckGo/Google/Bing, ~500 LOC |
-| Diff Rendering | ✅ Working | Unified format, themes |
-| TUI Framework | ✅ Working | ratatui components, LLM wired |
-| TUI Chat | ✅ Working | Streaming responses from LLM |
-| CLI Chat | ✅ Working | Streaming responses from LLM |
-| LLM Providers | ✅ Working | Anthropic, OpenAI, Ollama, Z.AI |
-| LLM Streaming | ✅ Working | Token-by-token output |
-| File Tools | ✅ Working | Read, write, edit operations |
-| Provider Configuration | ✅ Working | Model/provider selection |
-| RPC Types | ✅ Working | Full implementation |
-| Build System | ✅ Passing | `cargo build --workspace` succeeds |
-| Integration Tests | ✅ 33 passing | Session, diff, RPC, search |
-| Vim Keybindings | ✅ Working | Modal editing in TUI |
-| VSCode Extension | ✅ Working | Spawns binary, RPC functional |
+| Monorepo Structure | [OK] Complete | 4 crates, workspace builds |
+| Core Library Types | [OK] Complete | ~6,000 LOC, compiles |
+| Session Management | [OK] Working | SQLite persistence, 33 tests pass |
+| Web Search Tool | [OK] Working | DuckDuckGo/Google/Bing, ~500 LOC |
+| Diff Rendering | [OK] Working | Unified format, themes |
+| TUI Framework | [OK] Working | ratatui components, LLM wired |
+| TUI Chat | [OK] Working | Streaming responses from LLM |
+| CLI Chat | [OK] Working | Streaming responses from LLM |
+| LLM Providers | [OK] Working | Anthropic, OpenAI, Ollama, Z.AI |
+| LLM Streaming | [OK] Working | Token-by-token output |
+| File Tools | [OK] Working | Read, write, edit operations |
+| Provider Configuration | [OK] Working | Model/provider selection |
+| RPC Types | [OK] Working | Full implementation |
+| Build System | [OK] Passing | `cargo build --workspace` succeeds |
+| Integration Tests | [OK] 33 passing | Session, diff, RPC, search |
+| Vim Keybindings | [OK] Working | Modal editing in TUI |
+| VSCode Extension | [OK] Working | Spawns binary, RPC functional |
 
 ### What's NOT Working (v0.6.0+)
 
@@ -111,7 +111,7 @@ Clawdius has an impressive architectural foundation with comprehensive specifica
 
 ## Gap Analysis (Detailed)
 
-### 1. LLM Provider Integration (COMPLETE ✅)
+### 1. LLM Provider Integration (COMPLETE [OK])
 
 **Current State:**
 - `AnthropicProvider`, `OpenAIProvider`, `OllamaProvider` structs exist
@@ -126,7 +126,7 @@ Clawdius has an impressive architectural foundation with comprehensive specifica
 - Error handling and retries (SHOULD item)
 - Token counting (COULD item)
 
-### 2. Tool Execution (PARTIAL ✅)
+### 2. Tool Execution (PARTIAL [OK])
 
 **Current State:**
 - Tool types defined (`Tool`, `ToolResult`)
@@ -139,7 +139,7 @@ Clawdius has an impressive architectural foundation with comprehensive specifica
 - Git operations wrapper
 - Browser automation
 
-### 3. VSCode Extension (WORKING ✅)
+### 3. VSCode Extension (WORKING [OK])
 
 **Current State:**
 - `crates/clawdius-code/` exists with RPC server
@@ -204,67 +204,67 @@ Clawdius has an impressive architectural foundation with comprehensive specifica
 
 ## Priority Matrix (MoSCoW)
 
-### MUST (Block v0.3.0) - ALL COMPLETE ✅
+### MUST (Block v0.3.0) - ALL COMPLETE [OK]
 
 | ID | Task | Effort | Status |
 |----|------|--------|--------|
-| M1 | Wire LLM providers to CLI | 4h | ✅ COMPLETE |
-| M2 | Wire LLM providers to TUI | 4h | ✅ COMPLETE |
-| M3 | Implement streaming responses | 6h | ✅ COMPLETE |
-| M4 | Implement file tool execution | 6h | ✅ COMPLETE |
-| M5 | Wire VSCode extension to binary | 8h | ✅ COMPLETE |
-| M6 | Add provider configuration | 3h | ✅ COMPLETE |
+| M1 | Wire LLM providers to CLI | 4h | [OK] COMPLETE |
+| M2 | Wire LLM providers to TUI | 4h | [OK] COMPLETE |
+| M3 | Implement streaming responses | 6h | [OK] COMPLETE |
+| M4 | Implement file tool execution | 6h | [OK] COMPLETE |
+| M5 | Wire VSCode extension to binary | 8h | [OK] COMPLETE |
+| M6 | Add provider configuration | 3h | [OK] COMPLETE |
 
-### SHOULD (Improve v0.3.0) - ALL COMPLETE ✅
+### SHOULD (Improve v0.3.0) - ALL COMPLETE [OK]
 
 | ID | Task | Effort | Status |
 |----|------|--------|--------|
-| S1 | Implement shell tool with basic sandbox | 8h | ✅ COMPLETE |
-| S2 | Add API key keyring storage | 4h | ✅ COMPLETE |
-| S3 | Implement git tool wrapper | 4h | ✅ COMPLETE |
-| S4 | Add error recovery/retries | 4h | ✅ COMPLETE |
-| S5 | Add benchmark suite | 4h | ✅ COMPLETE |
+| S1 | Implement shell tool with basic sandbox | 8h | [OK] COMPLETE |
+| S2 | Add API key keyring storage | 4h | [OK] COMPLETE |
+| S3 | Implement git tool wrapper | 4h | [OK] COMPLETE |
+| S4 | Add error recovery/retries | 4h | [OK] COMPLETE |
+| S5 | Add benchmark suite | 4h | [OK] COMPLETE |
 
-### COULD (v0.4.0) - ALL COMPLETE ✅
+### COULD (v0.4.0) - ALL COMPLETE [OK]
 
 | ID | Task | Effort | Dependencies | Status |
 |----|------|--------|--------------|--------|
-| C1 | Graph-RAG SQLite schema | 8h | None | ✅ COMPLETE |
-| C2 | tree-sitter parsing | 8h | C1 | ✅ COMPLETE |
-| C3 | Basic sandbox backends | 12h | S1 | ✅ COMPLETE |
-| C4 | WASM Brain runtime | 12h | None | ✅ COMPLETE |
+| C1 | Graph-RAG SQLite schema | 8h | None | [OK] COMPLETE |
+| C2 | tree-sitter parsing | 8h | C1 | [OK] COMPLETE |
+| C3 | Basic sandbox backends | 12h | S1 | [OK] COMPLETE |
+| C4 | WASM Brain runtime | 12h | None | [OK] COMPLETE |
 
-### WON'T (v0.5.0) - ALL COMPLETE ✅
+### WON'T (v0.5.0) - ALL COMPLETE [OK]
 
 | ID | Task | Effort | Status |
 |----|------|--------|--------|
-| W1 | HFT Broker | 40h | ✅ COMPLETE |
-| W2 | LanceDB integration | 8h | ✅ COMPLETE |
-| W3 | Multi-language research | 16h | ✅ COMPLETE |
-| W4 | Lean 4 proof verification | 16h | ✅ COMPLETE |
+| W1 | HFT Broker | 40h | [OK] COMPLETE |
+| W2 | LanceDB integration | 8h | [OK] COMPLETE |
+| W3 | Multi-language research | 16h | [OK] COMPLETE |
+| W4 | Lean 4 proof verification | 16h | [OK] COMPLETE |
 
 ---
 
 ## Critical Path Analysis
 
 ```
-M1 (LLM CLI) ──✅──► M2 (LLM TUI) ──✅──► M3 (Streaming) ✅
-        │
-        └──✅──► M6 (Config) ✅ ──► S2 (Keyring) ✅
+M1 (LLM CLI) ──[OK]──► M2 (LLM TUI) ──[OK]──► M3 (Streaming) [OK]
+         │
+         └──[OK]──► M6 (Config) [OK] ──► S2 (Keyring) [OK]
         
-M4 (File Tools) ✅ ──► S1 (Shell/Sandbox) ✅ ──► S3 (Git) ✅
+M4 (File Tools) [OK] ──► S1 (Shell/Sandbox) [OK] ──► S3 (Git) [OK]
 
-M5 (VSCode Wire) ✅
+M5 (VSCode Wire) [OK]
 
-S4 (Error Recovery) ✅
+S4 (Error Recovery) [OK]
 
-S5 (Benchmarks) ✅
+S5 (Benchmarks) [OK]
 
-C1 (Graph-RAG Schema) ✅ ──► C2 (Tree-sitter) ✅
+C1 (Graph-RAG Schema) [OK] ──► C2 (Tree-sitter) [OK]
 
-C3 (Sandbox Backends) ✅
+C3 (Sandbox Backends) [OK]
 
-C4 (WASM Brain) ✅
+C4 (WASM Brain) [OK]
 ```
 
 **Critical Path Length:** ~31h (COMPLETE)
@@ -341,27 +341,27 @@ C4 (WASM Brain) ✅
 
 ## Immediate Action Items (Top 10)
 
-### Priority 1: This Week - COMPLETE ✅
+### Priority 1: This Week - COMPLETE [OK]
 
-1. ~~**Update VERSION.md** - Accurately reflect current state~~ ✅
-2. ~~**Implement LLM provider factory** - `llm.rs:create_provider()`~~ ✅
-3. ~~**Wire CLI chat to LLM** - Replace echo in `cli.rs:handle_chat()`~~ ✅
-4. ~~**Wire TUI chat to LLM** - Replace placeholder in `app.rs:send_message()`~~ ✅
-5. ~~**Implement streaming** - Add `chat_stream()` to providers~~ ✅
+1. ~~**Update VERSION.md** - Accurately reflect current state~~ [OK]
+2. ~~**Implement LLM provider factory** - `llm.rs:create_provider()`~~ [OK]
+3. ~~**Wire CLI chat to LLM** - Replace echo in `cli.rs:handle_chat()`~~ [OK]
+4. ~~**Wire TUI chat to LLM** - Replace placeholder in `app.rs:send_message()`~~ [OK]
+5. ~~**Implement streaming** - Add `chat_stream()` to providers~~ [OK]
 
 ### Priority 2: Next Week - REMAINING
 
-6. ~~**Implement file read tool** - Actual file operations~~ ✅
+6. ~~**Implement file read tool** - Actual file operations~~ [OK]
 7. **Add keyring integration** - Secure API key storage (SHOULD)
-8. ~~**Wire VSCode extension** - Spawn binary, basic RPC~~ ✅
-9. ~~**Add configuration loading** - Provider/model selection~~ ✅
+8. ~~**Wire VSCode extension** - Spawn binary, basic RPC~~ [OK]
+9. ~~**Add configuration loading** - Provider/model selection~~ [OK]
 10. **Write integration tests** - End-to-end chat workflow (SHOULD)
 
 ---
 
 ## Success Criteria for v0.4.0
 
-### Must Have - ALL COMPLETE ✅
+### Must Have - ALL COMPLETE [OK]
 
 - [x] `clawdius chat "hello"` returns actual LLM response
 - [x] TUI shows streaming responses token-by-token
@@ -371,7 +371,7 @@ C4 (WASM Brain) ✅
 - [x] All 100+ tests still passing
 - [x] Documentation updated to match reality
 
-### Should Have - ALL COMPLETE ✅
+### Should Have - ALL COMPLETE [OK]
 
 - [x] VSCode extension activates and shows status
 - [x] Shell commands execute (even without sandbox)
@@ -379,7 +379,7 @@ C4 (WASM Brain) ✅
 - [x] Error messages are helpful
 - [x] Configuration file supported
 
-### Could Have - ALL COMPLETE ✅
+### Could Have - ALL COMPLETE [OK]
 
 - [x] Graph-RAG SQLite schema implemented
 - [x] Tree-sitter parsing for 5 languages
@@ -390,43 +390,43 @@ C4 (WASM Brain) ✅
 
 | Metric | Current | Target | Status |
 |--------|---------|--------|--------|
-| Working chat | ✅ Yes (LLM) | ✅ Yes (LLM) | ✅ |
-| Streaming | ✅ Yes | ✅ Yes | ✅ |
-| Tools working | 6/6 | 4/5 | ✅ Exceeded |
-| Test count | 199 | 50+ | ✅ Exceeded |
-| VSCode extension | ✅ Working | ✅ Working | ✅ |
-| Graph-RAG | ✅ Working | ✅ Working | ✅ |
-| Sandbox | ✅ Working | ✅ Working | ✅ |
-| Brain WASM | ✅ Working | ✅ Working | ✅ |
-| HFT Broker | ✅ Working | ✅ Working | ✅ |
-| Vector Store | ✅ Working | ✅ Working | ✅ |
-| Multi-language | ✅ Working (16) | ✅ Working | ✅ |
-| Proof Verification | ✅ Working | ✅ Working | ✅ |
-| LOC (actual logic) | ~12,000 | ~5,000 | ✅ Exceeded |
+| Working chat | [OK] Yes (LLM) | [OK] Yes (LLM) | [OK] |
+| Streaming | [OK] Yes | [OK] Yes | [OK] |
+| Tools working | 6/6 | 4/5 | [OK] Exceeded |
+| Test count | 199 | 50+ | [OK] Exceeded |
+| VSCode extension | [OK] Working | [OK] Working | [OK] |
+| Graph-RAG | [OK] Working | [OK] Working | [OK] |
+| Sandbox | [OK] Working | [OK] Working | [OK] |
+| Brain WASM | [OK] Working | [OK] Working | [OK] |
+| HFT Broker | [OK] Working | [OK] Working | [OK] |
+| Vector Store | [OK] Working | [OK] Working | [OK] |
+| Multi-language | [OK] Working (16) | [OK] Working | [OK] |
+| Proof Verification | [OK] Working | [OK] Working | [OK] |
+| LOC (actual logic) | ~12,000 | ~5,000 | [OK] Exceeded |
 
 ---
 
 ## v0.3.0 Release Checklist
 
-### Completed ✅
+### Completed [OK]
 
 | Item | Status | Notes |
 |------|--------|-------|
-| M1: LLM CLI Integration | ✅ | Anthropic, OpenAI, Ollama, Z.AI |
-| M2: LLM TUI Integration | ✅ | Streaming in chat interface |
-| M3: Streaming Responses | ✅ | mpsc channel implementation |
-| M4: File Tool Execution | ✅ | Read, write, edit operations |
-| M5: VSCode Extension | ✅ | RPC communication working |
-| M6: Provider Configuration | ✅ | Config file + env vars |
-| S1: Shell Tool | ✅ | Basic command execution |
-| S2: Keyring Storage | ✅ | Secure API key storage |
-| S3: Git Tool | ✅ | Status, diff, log |
-| S4: Error Recovery | ✅ | Retry with exponential backoff |
-| S5: Benchmark Suite | ✅ | Core performance benchmarks |
-| Web Search Tool | ✅ | DuckDuckGo, Google, Bing |
-| Vim Keybindings | ✅ | Modal editing in TUI |
-| Documentation | ✅ | All READMEs updated |
-| Test Suite | ✅ | 100+ tests passing |
+| M1: LLM CLI Integration | [OK] | Anthropic, OpenAI, Ollama, Z.AI |
+| M2: LLM TUI Integration | [OK] | Streaming in chat interface |
+| M3: Streaming Responses | [OK] | mpsc channel implementation |
+| M4: File Tool Execution | [OK] | Read, write, edit operations |
+| M5: VSCode Extension | [OK] | RPC communication working |
+| M6: Provider Configuration | [OK] | Config file + env vars |
+| S1: Shell Tool | [OK] | Basic command execution |
+| S2: Keyring Storage | [OK] | Secure API key storage |
+| S3: Git Tool | [OK] | Status, diff, log |
+| S4: Error Recovery | [OK] | Retry with exponential backoff |
+| S5: Benchmark Suite | [OK] | Core performance benchmarks |
+| Web Search Tool | [OK] | DuckDuckGo, Google, Bing |
+| Vim Keybindings | [OK] | Modal editing in TUI |
+| Documentation | [OK] | All READMEs updated |
+| Test Suite | [OK] | 100+ tests passing |
 
 ### Remaining (v0.6.0+)
 
@@ -523,20 +523,20 @@ C4 (WASM Brain) ✅
 
 | Feature | Claude Code | Cline | Clawdius v0.5.0 |
 |---------|-------------|-------|-----------------|
-| CLI Chat | ✅ | ✅ | ✅ |
-| VSCode Integration | ✅ | ✅ | ✅ |
-| File Operations | ✅ | ✅ | ✅ |
-| Shell Execution | ✅ | ✅ | ✅ |
-| Streaming | ✅ | ✅ | ✅ |
-| Context/@mentions | ✅ | ✅ | ⚠️ |
-| Git Integration | ✅ | ✅ | ✅ |
-| Sandbox Security | ❌ | ❌ | ✅ |
-| Graph-RAG | ⚠️ | ❌ | ✅ |
-| WASM Analysis | ❌ | ❌ | ✅ |
-| HFT Broker | ❌ | ❌ | ✅ |
-| Vector Store | ❌ | ❌ | ✅ |
-| Multi-language | ❌ | ❌ | ✅ |
-| Proof Verification | ❌ | ❌ | ✅ |
+| CLI Chat | [OK] | [OK] | [OK] |
+| VSCode Integration | [OK] | [OK] | [OK] |
+| File Operations | [OK] | [OK] | [OK] |
+| Shell Execution | [OK] | [OK] | [OK] |
+| Streaming | [OK] | [OK] | [OK] |
+| Context/@mentions | [OK] | [OK] | [WARN] |
+| Git Integration | [OK] | [OK] | [OK] |
+| Sandbox Security | [FAIL] | [FAIL] | [OK] |
+| Graph-RAG | [WARN] | [FAIL] | [OK] |
+| WASM Analysis | [FAIL] | [FAIL] | [OK] |
+| HFT Broker | [FAIL] | [FAIL] | [OK] |
+| Vector Store | [FAIL] | [FAIL] | [OK] |
+| Multi-language | [FAIL] | [FAIL] | [OK] |
+| Proof Verification | [FAIL] | [FAIL] | [OK] |
 
 ---
 

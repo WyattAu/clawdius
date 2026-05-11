@@ -22,7 +22,7 @@ This document tracks conflicts between applicable standards, specifications, and
 |-----------|-------|
 | **Conflict ID** | CONF-001 |
 | **Severity** | Critical |
-| **Status** | ✅ RESOLVED |
+| **Status** | [OK] RESOLVED |
 | **Discovery Date** | 2026-03-01 |
 | **Resolution Date** | 2026-03-01 |
 
@@ -66,7 +66,7 @@ The technical specification (`basic_spec.md`) specified `tokio` as the async run
 |-----------|-------|
 | **Conflict ID** | CONF-002 |
 | **Severity** | Medium |
-| **Status** | 🔄 MONITORING |
+| **Status** | MONITORING |
 | **Discovery Date** | 2026-03-01 |
 
 #### Conflicting Standards
@@ -110,7 +110,7 @@ type Error = error_stack::Report<EnterpriseError>;
 |-----------|-------|
 | **Conflict ID** | CONF-003 |
 | **Severity** | Low |
-| **Status** | 🔄 MONITORING |
+| **Status** | MONITORING |
 | **Discovery Date** | 2026-03-01 |
 
 #### Conflicting Standards

@@ -28,10 +28,10 @@ This ensures:
 
 | Requirement | Yellow Paper | Blue Paper | Implementation | Unit Tests | Integration Tests |
 |-------------|--------------|------------|----------------|------------|-------------------|
-| REQ-1.1 | YP-FSM-NEXUS-001 ✅ | BP-HOST-KERNEL-001 ✅, BP-NEXUS-FSM-001 ✅ | PARTIAL (25%) | COMPLETE ✅ | COMPLETE ✅ |
-| REQ-1.2 | YP-FSM-NEXUS-001 ✅ | BP-NEXUS-FSM-001 ✅ | PARTIAL (25%) | COMPLETE ✅ | COMPLETE ✅ |
-| REQ-1.3 | YP-FSM-NEXUS-001 ✅ | BP-HOST-KERNEL-001 ✅, BP-NEXUS-FSM-001 ✅ | PARTIAL (25%) | COMPLETE ✅ | COMPLETE ✅ |
-| REQ-1.4 | - | BP-HOST-KERNEL-001 ✅ | COMPLETE ✅ | COMPLETE ✅ | COMPLETE ✅ |
+| REQ-1.1 | YP-FSM-NEXUS-001 [OK] | BP-HOST-KERNEL-001 [OK], BP-NEXUS-FSM-001 [OK] | PARTIAL (25%) | COMPLETE [OK] | COMPLETE [OK] |
+| REQ-1.2 | YP-FSM-NEXUS-001 [OK] | BP-NEXUS-FSM-001 [OK] | PARTIAL (25%) | COMPLETE [OK] | COMPLETE [OK] |
+| REQ-1.3 | YP-FSM-NEXUS-001 [OK] | BP-HOST-KERNEL-001 [OK], BP-NEXUS-FSM-001 [OK] | PARTIAL (25%) | COMPLETE [OK] | COMPLETE [OK] |
+| REQ-1.4 | - | BP-HOST-KERNEL-001 [OK] | COMPLETE [OK] | COMPLETE [OK] | COMPLETE [OK] |
 
 **Evidence:** `.reports/COMPLETE_STATUS_v0.8.0-alpha.md`, Nexus FSM scaffold at `crates/clawdius-core/src/nexus/`
 
@@ -39,11 +39,11 @@ This ensures:
 
 | Requirement | Yellow Paper | Blue Paper | Implementation | Unit Tests | Integration Tests |
 |-------------|--------------|------------|----------------|------------|-------------------|
-| REQ-2.1 | - | BP-GRAPH-RAG-001 ✅ | COMPLETE ✅ | COMPLETE ✅ | COMPLETE ✅ |
-| REQ-2.2 | - | BP-GRAPH-RAG-001 ✅ | COMPLETE ✅ | COMPLETE ✅ | COMPLETE ✅ |
-| REQ-2.3 | - | BP-GRAPH-RAG-001 ✅ | COMPLETE ✅ | COMPLETE ✅ | COMPLETE ✅ |
-| REQ-2.4 | - | BP-GRAPH-RAG-001 ✅ | COMPLETE ✅ | COMPLETE ✅ | COMPLETE ✅ |
-| REQ-2.5 | - | BP-BRAIN-001 ✅ | COMPLETE ✅ | COMPLETE ✅ | COMPLETE ✅ |
+| REQ-2.1 | - | BP-GRAPH-RAG-001 [OK] | COMPLETE [OK] | COMPLETE [OK] | COMPLETE [OK] |
+| REQ-2.2 | - | BP-GRAPH-RAG-001 [OK] | COMPLETE [OK] | COMPLETE [OK] | COMPLETE [OK] |
+| REQ-2.3 | - | BP-GRAPH-RAG-001 [OK] | COMPLETE [OK] | COMPLETE [OK] | COMPLETE [OK] |
+| REQ-2.4 | - | BP-GRAPH-RAG-001 [OK] | COMPLETE [OK] | COMPLETE [OK] | COMPLETE [OK] |
+| REQ-2.5 | - | BP-BRAIN-001 [OK] | COMPLETE [OK] | COMPLETE [OK] | COMPLETE [OK] |
 
 **Evidence:** Graph-RAG module at `crates/clawdius-core/src/graph_rag/`, Brain WASM at `crates/clawdius-core/src/brain/`
 
@@ -51,10 +51,10 @@ This ensures:
 
 | Requirement | Yellow Paper | Blue Paper | Implementation | Unit Tests | Integration Tests |
 |-------------|--------------|------------|----------------|------------|-------------------|
-| REQ-3.1 | YP-SECURITY-SANDBOX-001 ✅ | BP-SENTINEL-001 ✅ | COMPLETE ✅ | COMPLETE ✅ | COMPLETE ✅ |
-| REQ-3.2 | YP-SECURITY-SANDBOX-001 ✅ | BP-SENTINEL-001 ✅, BP-BRAIN-001 ✅ | COMPLETE ✅ | COMPLETE ✅ | COMPLETE ✅ |
-| REQ-3.3 | YP-SECURITY-SANDBOX-001 ✅ | BP-SENTINEL-001 ✅ | COMPLETE ✅ | COMPLETE ✅ | COMPLETE ✅ |
-| REQ-3.4 | YP-SECURITY-SANDBOX-001 ✅ | BP-SENTINEL-001 ✅ | COMPLETE ✅ | COMPLETE ✅ | COMPLETE ✅ |
+| REQ-3.1 | YP-SECURITY-SANDBOX-001 [OK] | BP-SENTINEL-001 [OK] | COMPLETE [OK] | COMPLETE [OK] | COMPLETE [OK] |
+| REQ-3.2 | YP-SECURITY-SANDBOX-001 [OK] | BP-SENTINEL-001 [OK], BP-BRAIN-001 [OK] | COMPLETE [OK] | COMPLETE [OK] | COMPLETE [OK] |
+| REQ-3.3 | YP-SECURITY-SANDBOX-001 [OK] | BP-SENTINEL-001 [OK] | COMPLETE [OK] | COMPLETE [OK] | COMPLETE [OK] |
+| REQ-3.4 | YP-SECURITY-SANDBOX-001 [OK] | BP-SENTINEL-001 [OK] | COMPLETE [OK] | COMPLETE [OK] | COMPLETE [OK] |
 
 **Evidence:** Sentinel at `crates/clawdius-core/src/sandbox/`, Brain WASM runtime with fuel limiting
 
@@ -62,10 +62,10 @@ This ensures:
 
 | Requirement | Yellow Paper | Blue Paper | Implementation | Unit Tests | Integration Tests |
 |-------------|--------------|------------|----------------|------------|-------------------|
-| REQ-4.1 | - | BP-BRAIN-001 ✅ | COMPLETE ✅ | COMPLETE ✅ | COMPLETE ✅ |
-| REQ-4.2 | YP-FSM-NEXUS-001 ✅ | BP-NEXUS-FSM-001 ✅ | PARTIAL (25%) | COMPLETE ✅ | PARTIAL |
-| REQ-4.3 | YP-FSM-NEXUS-001 ✅ | BP-NEXUS-FSM-001 ✅ | PARTIAL (25%) | COMPLETE ✅ | PARTIAL |
-| REQ-4.4 | - | BP-BRAIN-001 ✅ | COMPLETE ✅ | COMPLETE ✅ | COMPLETE ✅ |
+| REQ-4.1 | - | BP-BRAIN-001 [OK] | COMPLETE [OK] | COMPLETE [OK] | COMPLETE [OK] |
+| REQ-4.2 | YP-FSM-NEXUS-001 [OK] | BP-NEXUS-FSM-001 [OK] | PARTIAL (25%) | COMPLETE [OK] | PARTIAL |
+| REQ-4.3 | YP-FSM-NEXUS-001 [OK] | BP-NEXUS-FSM-001 [OK] | PARTIAL (25%) | COMPLETE [OK] | PARTIAL |
+| REQ-4.4 | - | BP-BRAIN-001 [OK] | COMPLETE [OK] | COMPLETE [OK] | COMPLETE [OK] |
 
 **Evidence:** Lean4 proof sketches at `.clawdius/specs/02_architecture/proofs/`
 
@@ -73,10 +73,10 @@ This ensures:
 
 | Requirement | Yellow Paper | Blue Paper | Implementation | Unit Tests | Integration Tests |
 |-------------|--------------|------------|----------------|------------|-------------------|
-| REQ-5.1 | - | BP-GRAPH-RAG-001 ✅, BP-HFT-BROKER-001 ✅ | PARTIAL | PARTIAL | PARTIAL |
-| REQ-5.2 | YP-HFT-BROKER-001 ✅ | BP-HFT-BROKER-001 ✅ | COMPLETE ✅ | COMPLETE ✅ | COMPLETE ✅ |
-| REQ-5.3 | YP-HFT-BROKER-001 ✅ | BP-HFT-BROKER-001 ✅ | COMPLETE ✅ | COMPLETE ✅ | COMPLETE ✅ |
-| REQ-5.4 | YP-HFT-BROKER-001 ✅ | BP-HFT-BROKER-001 ✅ | COMPLETE ✅ | COMPLETE ✅ | COMPLETE ✅ |
+| REQ-5.1 | - | BP-GRAPH-RAG-001 [OK], BP-HFT-BROKER-001 [OK] | PARTIAL | PARTIAL | PARTIAL |
+| REQ-5.2 | YP-HFT-BROKER-001 [OK] | BP-HFT-BROKER-001 [OK] | COMPLETE [OK] | COMPLETE [OK] | COMPLETE [OK] |
+| REQ-5.3 | YP-HFT-BROKER-001 [OK] | BP-HFT-BROKER-001 [OK] | COMPLETE [OK] | COMPLETE [OK] | COMPLETE [OK] |
+| REQ-5.4 | YP-HFT-BROKER-001 [OK] | BP-HFT-BROKER-001 [OK] | COMPLETE [OK] | COMPLETE [OK] | COMPLETE [OK] |
 
 **Evidence:** HFT Broker at `crates/clawdius-core/src/broker/` (SPSC ring buffer, unified WalletGuard, SimulatedFeed, SimulatedExecution, end-to-end pipeline)
 
@@ -84,10 +84,10 @@ This ensures:
 
 | Requirement | Yellow Paper | Blue Paper | Implementation | Unit Tests | Integration Tests |
 |-------------|--------------|------------|----------------|------------|-------------------|
-| REQ-6.1 | - | BP-HOST-KERNEL-001 ✅ | COMPLETE ✅ | COMPLETE ✅ | COMPLETE ✅ |
-| REQ-6.2 | - | BP-HOST-KERNEL-001 ✅ | COMPLETE ✅ | COMPLETE ✅ | COMPLETE ✅ |
-| REQ-6.3 | - | BP-HOST-KERNEL-001 ✅ | COMPLETE ✅ | COMPLETE ✅ | COMPLETE ✅ |
-| REQ-6.4 | - | BP-HOST-KERNEL-001 ✅ (HAL) | COMPLETE ✅ | COMPLETE ✅ | COMPLETE ✅ |
+| REQ-6.1 | - | BP-HOST-KERNEL-001 [OK] | COMPLETE [OK] | COMPLETE [OK] | COMPLETE [OK] |
+| REQ-6.2 | - | BP-HOST-KERNEL-001 [OK] | COMPLETE [OK] | COMPLETE [OK] | COMPLETE [OK] |
+| REQ-6.3 | - | BP-HOST-KERNEL-001 [OK] | COMPLETE [OK] | COMPLETE [OK] | COMPLETE [OK] |
+| REQ-6.4 | - | BP-HOST-KERNEL-001 [OK] (HAL) | COMPLETE [OK] | COMPLETE [OK] | COMPLETE [OK] |
 
 **Evidence:** HAL at `crates/clawdius-core/src/pal/`, Build time: 1.52s
 
@@ -95,10 +95,10 @@ This ensures:
 
 | Requirement | Yellow Paper | Blue Paper | Implementation | Unit Tests | Integration Tests |
 |-------------|--------------|------------|----------------|------------|-------------------|
-| REQ-7.1 | - | BP-HOST-KERNEL-001 ✅ | COMPLETE ✅ | COMPLETE ✅ | COMPLETE ✅ |
-| REQ-7.2 | - | BP-HOST-KERNEL-001 ✅ | COMPLETE ✅ | COMPLETE ✅ | COMPLETE ✅ |
-| REQ-7.3 | - | BP-HOST-KERNEL-001 ✅ | COMPLETE ✅ | COMPLETE ✅ | COMPLETE ✅ |
-| REQ-7.4 | - | BP-HOST-KERNEL-001 ✅ | COMPLETE ✅ | COMPLETE ✅ | COMPLETE ✅ |
+| REQ-7.1 | - | BP-HOST-KERNEL-001 [OK] | COMPLETE [OK] | COMPLETE [OK] | COMPLETE [OK] |
+| REQ-7.2 | - | BP-HOST-KERNEL-001 [OK] | COMPLETE [OK] | COMPLETE [OK] | COMPLETE [OK] |
+| REQ-7.3 | - | BP-HOST-KERNEL-001 [OK] | COMPLETE [OK] | COMPLETE [OK] | COMPLETE [OK] |
+| REQ-7.4 | - | BP-HOST-KERNEL-001 [OK] | COMPLETE [OK] | COMPLETE [OK] | COMPLETE [OK] |
 
 **Evidence:** VSCode extension at `extension/vscode/` (916 LOC, RPC working), TUI at `crates/clawdius/src/tui/`
 
@@ -110,34 +110,34 @@ This ensures:
 
 | Yellow Paper ID | Title | Traces To | Status | Verification |
 |-----------------|-------|-----------|--------|--------------|
-| YP-FSM-NEXUS-001 | Nexus R&D Lifecycle FSM Theory | REQ-1.1, REQ-1.2, REQ-1.3, REQ-4.2, REQ-4.3 | ✅ APPROVED | `.clawdius/specs/01_requirements/` |
-| YP-HFT-BROKER-001 | HFT Broker Mode Theory | REQ-5.2, REQ-5.3, REQ-5.4 | ✅ APPROVED | `.clawdius/specs/01_requirements/` |
-| YP-SECURITY-SANDBOX-001 | Sentinel Sandbox Theory | REQ-3.1, REQ-3.2, REQ-3.3, REQ-3.4 | ✅ APPROVED | `.clawdius/specs/01_requirements/` |
+| YP-FSM-NEXUS-001 | Nexus R&D Lifecycle FSM Theory | REQ-1.1, REQ-1.2, REQ-1.3, REQ-4.2, REQ-4.3 | [OK] APPROVED | `.clawdius/specs/01_requirements/` |
+| YP-HFT-BROKER-001 | HFT Broker Mode Theory | REQ-5.2, REQ-5.3, REQ-5.4 | [OK] APPROVED | `.clawdius/specs/01_requirements/` |
+| YP-SECURITY-SANDBOX-001 | Sentinel Sandbox Theory | REQ-3.1, REQ-3.2, REQ-3.3, REQ-3.4 | [OK] APPROVED | `.clawdius/specs/01_requirements/` |
 
 ### 3.2 Blue Papers → Requirements
 
 | Blue Paper ID | Title | Traces To | Status | Verification |
 |---------------|-------|-----------|--------|--------------|
-| BP-HOST-KERNEL-001 | Host Kernel Component | REQ-1.1, REQ-1.2, REQ-1.3, REQ-1.4, REQ-6.1, REQ-6.2, REQ-6.3, REQ-7.x | ✅ APPROVED | `.clawdius/specs/02_architecture/` |
-| BP-NEXUS-FSM-001 | Nexus FSM Component | REQ-1.1, REQ-1.2, REQ-1.3, REQ-4.2 | ✅ APPROVED | `.clawdius/specs/02_architecture/` |
-| BP-SENTINEL-001 | Sentinel Sandbox Component | REQ-3.1, REQ-3.2, REQ-3.3, REQ-3.4 | ✅ APPROVED | `.clawdius/specs/02_architecture/` |
-| BP-BRAIN-001 | Brain WASM Component | REQ-2.5, REQ-3.2, REQ-4.1, REQ-4.4 | ✅ APPROVED | `.clawdius/specs/02_architecture/` |
-| BP-GRAPH-RAG-001 | Graph-RAG Component | REQ-2.1, REQ-2.2, REQ-2.3, REQ-2.4, REQ-5.1 | ✅ APPROVED | `.clawdius/specs/02_architecture/` |
-| BP-HFT-BROKER-001 | HFT Broker Component | REQ-5.1, REQ-5.2, REQ-5.3, REQ-5.4 | ✅ APPROVED | `.clawdius/specs/02_architecture/` |
+| BP-HOST-KERNEL-001 | Host Kernel Component | REQ-1.1, REQ-1.2, REQ-1.3, REQ-1.4, REQ-6.1, REQ-6.2, REQ-6.3, REQ-7.x | [OK] APPROVED | `.clawdius/specs/02_architecture/` |
+| BP-NEXUS-FSM-001 | Nexus FSM Component | REQ-1.1, REQ-1.2, REQ-1.3, REQ-4.2 | [OK] APPROVED | `.clawdius/specs/02_architecture/` |
+| BP-SENTINEL-001 | Sentinel Sandbox Component | REQ-3.1, REQ-3.2, REQ-3.3, REQ-3.4 | [OK] APPROVED | `.clawdius/specs/02_architecture/` |
+| BP-BRAIN-001 | Brain WASM Component | REQ-2.5, REQ-3.2, REQ-4.1, REQ-4.4 | [OK] APPROVED | `.clawdius/specs/02_architecture/` |
+| BP-GRAPH-RAG-001 | Graph-RAG Component | REQ-2.1, REQ-2.2, REQ-2.3, REQ-2.4, REQ-5.1 | [OK] APPROVED | `.clawdius/specs/02_architecture/` |
+| BP-HFT-BROKER-001 | HFT Broker Component | REQ-5.1, REQ-5.2, REQ-5.3, REQ-5.4 | [OK] APPROVED | `.clawdius/specs/02_architecture/` |
 
 ### 3.3 Implementation Modules → Requirements
 
 | Module | Path | Traces To | Status | Evidence |
 |--------|------|-----------|--------|----------|
-| host | src/host/ | REQ-1.x, REQ-6.x | ✅ COMPLETE | `crates/clawdius-core/src/` |
-| fsm (nexus) | src/nexus/ | REQ-1.x, REQ-4.x | ✅ COMPLETE | `crates/clawdius-core/src/nexus/` (16 files, 13K+ LOC, typestate engine, persistence, event sourcing) |
-| sentinel | src/sandbox/ | REQ-3.x | ✅ COMPLETE | `crates/clawdius-core/src/sandbox/` (bubblewrap, sandbox-exec) |
-| brain | src/brain/ | REQ-2.5, REQ-4.x | ✅ COMPLETE | `crates/clawdius-core/src/brain/` (WASM + fuel limiting) |
-| graph | src/graph_rag/ | REQ-2.x | ✅ COMPLETE | `crates/clawdius-core/src/graph_rag/` (SQLite + tree-sitter) |
-| broker | src/broker/ | REQ-5.x | ✅ COMPLETE | `crates/clawdius-core/src/broker/` (SPSC, WalletGuard, Feed, Execution, Pipeline) |
-| pal | src/pal/ | REQ-6.4 | ✅ COMPLETE | `crates/clawdius-core/src/pal/` |
-| tui | src/tui/ | REQ-7.x | ✅ COMPLETE | `crates/clawdius/src/tui/` |
-| vscode | extension/vscode/ | REQ-7.x | ✅ COMPLETE | 916 LOC, RPC working |
+| host | src/host/ | REQ-1.x, REQ-6.x | [OK] COMPLETE | `crates/clawdius-core/src/` |
+| fsm (nexus) | src/nexus/ | REQ-1.x, REQ-4.x | [OK] COMPLETE | `crates/clawdius-core/src/nexus/` (16 files, 13K+ LOC, typestate engine, persistence, event sourcing) |
+| sentinel | src/sandbox/ | REQ-3.x | [OK] COMPLETE | `crates/clawdius-core/src/sandbox/` (bubblewrap, sandbox-exec) |
+| brain | src/brain/ | REQ-2.5, REQ-4.x | [OK] COMPLETE | `crates/clawdius-core/src/brain/` (WASM + fuel limiting) |
+| graph | src/graph_rag/ | REQ-2.x | [OK] COMPLETE | `crates/clawdius-core/src/graph_rag/` (SQLite + tree-sitter) |
+| broker | src/broker/ | REQ-5.x | [OK] COMPLETE | `crates/clawdius-core/src/broker/` (SPSC, WalletGuard, Feed, Execution, Pipeline) |
+| pal | src/pal/ | REQ-6.4 | [OK] COMPLETE | `crates/clawdius-core/src/pal/` |
+| tui | src/tui/ | REQ-7.x | [OK] COMPLETE | `crates/clawdius/src/tui/` |
+| vscode | extension/vscode/ | REQ-7.x | [OK] COMPLETE | 916 LOC, RPC working |
 
 ---
 
@@ -147,11 +147,11 @@ This ensures:
 
 | Requirement | Test File | Test Function | Coverage % | Status |
 |-------------|-----------|---------------|------------|--------|
-| REQ-1.1 | `nexus/tests.rs` | test_phase_transitions | 100% | ✅ COMPLETE |
-| REQ-1.2 | `nexus/tests.rs` | test_typestate_enforcement | 100% | ✅ COMPLETE |
-| REQ-3.1 | `sandbox/mod.rs` | test_sandbox_tiers | 100% | ✅ COMPLETE |
-| REQ-3.2 | `brain/mod.rs` | test_wasm_isolation | 100% | ✅ COMPLETE |
-| REQ-5.3 | `broker/mod.rs` | test_wallet_guard | 100% | ✅ COMPLETE |
+| REQ-1.1 | `nexus/tests.rs` | test_phase_transitions | 100% | [OK] COMPLETE |
+| REQ-1.2 | `nexus/tests.rs` | test_typestate_enforcement | 100% | [OK] COMPLETE |
+| REQ-3.1 | `sandbox/mod.rs` | test_sandbox_tiers | 100% | [OK] COMPLETE |
+| REQ-3.2 | `brain/mod.rs` | test_wasm_isolation | 100% | [OK] COMPLETE |
+| REQ-5.3 | `broker/mod.rs` | test_wallet_guard | 100% | [OK] COMPLETE |
 
 **Total Test Functions:** 222+ passing (100% pass rate)
 
@@ -159,10 +159,10 @@ This ensures:
 
 | Requirement | Test File | Test Scenario | Status |
 |-------------|-----------|---------------|--------|
-| REQ-1.1 | `tests/integration/` | FSM phase transitions | ✅ COMPLETE |
-| REQ-3.1 | `tests/integration/` | Sandbox isolation | ✅ COMPLETE |
-| REQ-3.2 | `tests/integration/` | Brain-Host RPC | ✅ COMPLETE |
-| REQ-5.3 | `tests/integration/` | Risk limit enforcement | ⚠️ PARTIAL |
+| REQ-1.1 | `tests/integration/` | FSM phase transitions | [OK] COMPLETE |
+| REQ-3.1 | `tests/integration/` | Sandbox isolation | [OK] COMPLETE |
+| REQ-3.2 | `tests/integration/` | Brain-Host RPC | [OK] COMPLETE |
+| REQ-5.3 | `tests/integration/` | Risk limit enforcement | [WARN] PARTIAL |
 
 **Evidence:** 119+ integration tests passing
 
@@ -172,35 +172,35 @@ This ensures:
 
 | Requirement | Acceptance Criteria | Test Status | Verification |
 |-------------|---------------------|-------------|--------------|
-| REQ-1.1 | AC-1.1.1, AC-1.1.2, AC-1.1.3, AC-1.1.4 | ✅ VERIFIED | Nexus scaffold operational |
-| REQ-1.2 | AC-1.2.1, AC-1.2.2, AC-1.2.3, AC-1.2.4 | ✅ VERIFIED | Typestate pattern enforced |
-| REQ-1.3 | AC-1.3.1, AC-1.3.2, AC-1.3.3, AC-1.3.4, AC-1.3.5 | ✅ VERIFIED | Event bus scaffolded |
-| REQ-1.4 | AC-1.4.1, AC-1.4.2, AC-1.4.3, AC-1.4.4, AC-1.4.5, AC-1.4.6 | ✅ VERIFIED | HAL implemented |
-| REQ-2.1 | AC-2.1.1, AC-2.1.2, AC-2.1.3, AC-2.1.4, AC-2.1.5, AC-2.1.6 | ✅ VERIFIED | Graph-RAG working |
-| REQ-2.2 | AC-2.2.1, AC-2.2.2, AC-2.2.3, AC-2.2.4 | ✅ VERIFIED | Tree-sitter parsing |
-| REQ-2.3 | AC-2.3.1, AC-2.3.2, AC-2.3.3, AC-2.3.4 | ✅ VERIFIED | 5 languages supported |
-| REQ-2.4 | AC-2.4.1, AC-2.4.2, AC-2.4.3 | ✅ VERIFIED | SQLite persistence |
-| REQ-2.5 | AC-2.5.1, AC-2.5.2, AC-2.5.3, AC-2.5.4, AC-2.5.5, AC-2.5.6 | ✅ VERIFIED | WASM runtime with fuel |
-| REQ-3.1 | AC-3.1.1, AC-3.1.2, AC-3.1.3, AC-3.1.4, AC-3.1.5, AC-3.1.6 | ✅ VERIFIED | Sandbox backends working |
-| REQ-3.2 | AC-3.2.1, AC-3.2.2, AC-3.2.3, AC-3.2.4, AC-3.2.5 | ✅ VERIFIED | Brain-sentinel integration |
-| REQ-3.3 | AC-3.3.1, AC-3.3.2, AC-3.3.3, AC-3.3.4 | ✅ VERIFIED | Capability system |
-| REQ-3.4 | AC-3.4.1, AC-3.4.2, AC-3.4.3, AC-3.4.4 | ✅ VERIFIED | Resource limits |
-| REQ-4.1 | AC-4.1.1, AC-4.1.2, AC-4.1.3, AC-4.1.4, AC-4.1.5 | ✅ VERIFIED | Lean4 sketches |
-| REQ-4.2 | AC-4.2.1, AC-4.2.2, AC-4.2.3, AC-4.2.4 | ⚠️ PARTIAL | FSM proofs scaffolded |
-| REQ-4.3 | AC-4.3.1, AC-4.3.2, AC-4.3.3, AC-4.3.4 | ⚠️ PARTIAL | FSM proofs scaffolded |
-| REQ-4.4 | AC-4.4.1, AC-4.4.2, AC-4.4.3, AC-4.4.4 | ✅ VERIFIED | Brain proofs sketched |
-| REQ-5.1 | AC-5.1.1, AC-5.1.2, AC-5.1.3, AC-5.1.4 | ⚠️ PARTIAL | Graph integration |
-| REQ-5.2 | AC-5.2.1, AC-5.2.2, AC-5.2.3, AC-5.2.4 | ✅ VERIFIED | Feed + execution pipeline |
-| REQ-5.3 | AC-5.3.1, AC-5.3.2, AC-5.3.3, AC-5.3.4 | ✅ VERIFIED | Unified WalletGuard (12 unit tests) |
-| REQ-5.4 | AC-5.4.1, AC-5.4.2, AC-5.4.3, AC-5.4.4 | ✅ VERIFIED | Risk limits enforced, 8 HFT test vectors |
-| REQ-6.1 | AC-6.1.1, AC-6.1.2, AC-6.1.3, AC-6.1.4 | ✅ VERIFIED | Build: 1.52s |
-| REQ-6.2 | AC-6.2.1, AC-6.2.2, AC-6.2.3, AC-6.2.4 | ✅ VERIFIED | Memory efficient |
-| REQ-6.3 | AC-6.3.1, AC-6.3.2, AC-6.3.3, AC-6.3.4 | ✅ VERIFIED | Async runtime |
-| REQ-6.4 | AC-6.4.1, AC-6.4.2, AC-6.4.3, AC-6.4.4, AC-6.4.5, AC-6.4.6 | ✅ VERIFIED | HAL cross-platform |
-| REQ-7.1 | AC-7.1.1, AC-7.1.2, AC-7.1.3, AC-7.1.4 | ✅ VERIFIED | VSCode extension |
-| REQ-7.2 | AC-7.2.1, AC-7.2.2, AC-7.2.3, AC-7.2.4 | ✅ VERIFIED | TUI working |
-| REQ-7.3 | AC-7.3.1, AC-7.3.2, AC-7.3.3, AC-7.3.4, AC-7.3.5 | ✅ VERIFIED | Vim keybindings |
-| REQ-7.4 | AC-7.4.1, AC-7.4.2, AC-7.4.3, AC-7.4.4 | ✅ VERIFIED | JSON output |
+| REQ-1.1 | AC-1.1.1, AC-1.1.2, AC-1.1.3, AC-1.1.4 | [OK] VERIFIED | Nexus scaffold operational |
+| REQ-1.2 | AC-1.2.1, AC-1.2.2, AC-1.2.3, AC-1.2.4 | [OK] VERIFIED | Typestate pattern enforced |
+| REQ-1.3 | AC-1.3.1, AC-1.3.2, AC-1.3.3, AC-1.3.4, AC-1.3.5 | [OK] VERIFIED | Event bus scaffolded |
+| REQ-1.4 | AC-1.4.1, AC-1.4.2, AC-1.4.3, AC-1.4.4, AC-1.4.5, AC-1.4.6 | [OK] VERIFIED | HAL implemented |
+| REQ-2.1 | AC-2.1.1, AC-2.1.2, AC-2.1.3, AC-2.1.4, AC-2.1.5, AC-2.1.6 | [OK] VERIFIED | Graph-RAG working |
+| REQ-2.2 | AC-2.2.1, AC-2.2.2, AC-2.2.3, AC-2.2.4 | [OK] VERIFIED | Tree-sitter parsing |
+| REQ-2.3 | AC-2.3.1, AC-2.3.2, AC-2.3.3, AC-2.3.4 | [OK] VERIFIED | 5 languages supported |
+| REQ-2.4 | AC-2.4.1, AC-2.4.2, AC-2.4.3 | [OK] VERIFIED | SQLite persistence |
+| REQ-2.5 | AC-2.5.1, AC-2.5.2, AC-2.5.3, AC-2.5.4, AC-2.5.5, AC-2.5.6 | [OK] VERIFIED | WASM runtime with fuel |
+| REQ-3.1 | AC-3.1.1, AC-3.1.2, AC-3.1.3, AC-3.1.4, AC-3.1.5, AC-3.1.6 | [OK] VERIFIED | Sandbox backends working |
+| REQ-3.2 | AC-3.2.1, AC-3.2.2, AC-3.2.3, AC-3.2.4, AC-3.2.5 | [OK] VERIFIED | Brain-sentinel integration |
+| REQ-3.3 | AC-3.3.1, AC-3.3.2, AC-3.3.3, AC-3.3.4 | [OK] VERIFIED | Capability system |
+| REQ-3.4 | AC-3.4.1, AC-3.4.2, AC-3.4.3, AC-3.4.4 | [OK] VERIFIED | Resource limits |
+| REQ-4.1 | AC-4.1.1, AC-4.1.2, AC-4.1.3, AC-4.1.4, AC-4.1.5 | [OK] VERIFIED | Lean4 sketches |
+| REQ-4.2 | AC-4.2.1, AC-4.2.2, AC-4.2.3, AC-4.2.4 | [WARN] PARTIAL | FSM proofs scaffolded |
+| REQ-4.3 | AC-4.3.1, AC-4.3.2, AC-4.3.3, AC-4.3.4 | [WARN] PARTIAL | FSM proofs scaffolded |
+| REQ-4.4 | AC-4.4.1, AC-4.4.2, AC-4.4.3, AC-4.4.4 | [OK] VERIFIED | Brain proofs sketched |
+| REQ-5.1 | AC-5.1.1, AC-5.1.2, AC-5.1.3, AC-5.1.4 | [WARN] PARTIAL | Graph integration |
+| REQ-5.2 | AC-5.2.1, AC-5.2.2, AC-5.2.3, AC-5.2.4 | [OK] VERIFIED | Feed + execution pipeline |
+| REQ-5.3 | AC-5.3.1, AC-5.3.2, AC-5.3.3, AC-5.3.4 | [OK] VERIFIED | Unified WalletGuard (12 unit tests) |
+| REQ-5.4 | AC-5.4.1, AC-5.4.2, AC-5.4.3, AC-5.4.4 | [OK] VERIFIED | Risk limits enforced, 8 HFT test vectors |
+| REQ-6.1 | AC-6.1.1, AC-6.1.2, AC-6.1.3, AC-6.1.4 | [OK] VERIFIED | Build: 1.52s |
+| REQ-6.2 | AC-6.2.1, AC-6.2.2, AC-6.2.3, AC-6.2.4 | [OK] VERIFIED | Memory efficient |
+| REQ-6.3 | AC-6.3.1, AC-6.3.2, AC-6.3.3, AC-6.3.4 | [OK] VERIFIED | Async runtime |
+| REQ-6.4 | AC-6.4.1, AC-6.4.2, AC-6.4.3, AC-6.4.4, AC-6.4.5, AC-6.4.6 | [OK] VERIFIED | HAL cross-platform |
+| REQ-7.1 | AC-7.1.1, AC-7.1.2, AC-7.1.3, AC-7.1.4 | [OK] VERIFIED | VSCode extension |
+| REQ-7.2 | AC-7.2.1, AC-7.2.2, AC-7.2.3, AC-7.2.4 | [OK] VERIFIED | TUI working |
+| REQ-7.3 | AC-7.3.1, AC-7.3.2, AC-7.3.3, AC-7.3.4, AC-7.3.5 | [OK] VERIFIED | Vim keybindings |
+| REQ-7.4 | AC-7.4.1, AC-7.4.2, AC-7.4.3, AC-7.4.4 | [OK] VERIFIED | JSON output |
 
 ---
 
@@ -208,13 +208,13 @@ This ensures:
 
 | Standard | Clause | Requirement | Compliance Status | Evidence |
 |----------|--------|-------------|-------------------|----------|
-| IEEE 1016 | All | All | ✅ COMPLIANT | Architecture docs complete |
-| IEEE 829 | All | All | ✅ COMPLIANT | Test plans documented |
-| NIST SP 800-53 | AC-3 | REQ-3.x | ✅ COMPLIANT | Sentinel sandbox |
-| NIST SP 800-53 | AU-2 | REQ-1.3 | ✅ COMPLIANT | Event logging |
-| OWASP ASVS | V1 | REQ-3.x | ✅ COMPLIANT | Security controls |
-| MiFID II | Article 25 | REQ-5.2, REQ-5.3 | ✅ COMPLIANT | Broker with feed + execution |
-| SEC 15c3-5 | All | REQ-5.3 | ✅ COMPLIANT | WalletGuard: position limit, order size, drawdown, margin |
+| IEEE 1016 | All | All | [OK] COMPLIANT | Architecture docs complete |
+| IEEE 829 | All | All | [OK] COMPLIANT | Test plans documented |
+| NIST SP 800-53 | AC-3 | REQ-3.x | [OK] COMPLIANT | Sentinel sandbox |
+| NIST SP 800-53 | AU-2 | REQ-1.3 | [OK] COMPLIANT | Event logging |
+| OWASP ASVS | V1 | REQ-3.x | [OK] COMPLIANT | Security controls |
+| MiFID II | Article 25 | REQ-5.2, REQ-5.3 | [OK] COMPLIANT | Broker with feed + execution |
+| SEC 15c3-5 | All | REQ-5.3 | [OK] COMPLIANT | WalletGuard: position limit, order size, drawdown, margin |
 
 ---
 
@@ -224,28 +224,28 @@ This ensures:
 
 | Property | Blue Paper | Lean4 Proof | Status | Evidence |
 |----------|------------|-------------|--------|----------|
-| FSM Termination | BP-NEXUS-FSM-001 | proof_fsm.lean | ✅ VERIFIED (7/8 proven, 1 axiom) | `.clawdius/specs/02_architecture/proofs/` |
-| FSM Deadlock Freedom | BP-NEXUS-FSM-001 | proof_fsm.lean | ✅ VERIFIED (7/8 proven, 1 axiom) | `.clawdius/specs/02_architecture/proofs/` |
-| Capability Unforgeability | BP-SENTINEL-001 | proof_sandbox.lean | ⚠️ SKETCH | `.clawdius/specs/02_architecture/proofs/` |
-| Attenuation-Only Derivation | BP-SENTINEL-001 | proof_sandbox.lean | ⚠️ SKETCH | `.clawdius/specs/02_architecture/proofs/` |
-| Risk Check Completeness | BP-HFT-BROKER-001 | proof_broker.lean | ✅ VERIFIED (6/10 proven, 4 sorry for HashMap) | `.clawdius/specs/02_architecture/proofs/` |
-| WCET Bound | BP-HFT-BROKER-001 | proof_broker.lean | ✅ VERIFIED (axiom) | `.clawdius/specs/02_architecture/proofs/` |
+| FSM Termination | BP-NEXUS-FSM-001 | proof_fsm.lean | [OK] VERIFIED (7/8 proven, 1 axiom) | `.clawdius/specs/02_architecture/proofs/` |
+| FSM Deadlock Freedom | BP-NEXUS-FSM-001 | proof_fsm.lean | [OK] VERIFIED (7/8 proven, 1 axiom) | `.clawdius/specs/02_architecture/proofs/` |
+| Capability Unforgeability | BP-SENTINEL-001 | proof_sandbox.lean | [WARN] SKETCH | `.clawdius/specs/02_architecture/proofs/` |
+| Attenuation-Only Derivation | BP-SENTINEL-001 | proof_sandbox.lean | [WARN] SKETCH | `.clawdius/specs/02_architecture/proofs/` |
+| Risk Check Completeness | BP-HFT-BROKER-001 | proof_broker.lean | [OK] VERIFIED (6/10 proven, 4 sorry for HashMap) | `.clawdius/specs/02_architecture/proofs/` |
+| WCET Bound | BP-HFT-BROKER-001 | proof_broker.lean | [OK] VERIFIED (axiom) | `.clawdius/specs/02_architecture/proofs/` |
 
 ### 7.2 Proof File → Implementation Traceability
 
 | Proof File | Theorems | Verified | Implementation File | Traceability |
 |-----------|----------|----------|-------------------|-------------|
-| proof_fsm.lean | 8 | ✅ 88% (7 proven, 1 axiom) | crates/clawdius-core/src/nexus/ | Phase names synced 2026-04-01 |
-| proof_sandbox.lean | 8 | ✅ 100% | src/sandbox.rs | Partial |
-| proof_broker.lean | 10 | ✅ 60% (6 proven, 4 sorry) | crates/clawdius-core/src/broker/wallet_guard.rs | Canonical implementation |
-| proof_brain.lean | 11 | ✅ 100% | src/brain.rs, src/wasm_runtime.rs | Partial |
-| proof_plugin.lean | 10 | ✅ 100% | src/plugin/ | Partial |
-| proof_sso.lean | 10 | ✅ 100% | src/compliance.rs | Partial |
-| proof_container.lean | 10 | ✅ 100% | src/sandbox/backends/ | Partial |
-| proof_audit.lean | 10 | ✅ 100% | src/audit/ | Partial |
-| proof_ring_buffer.lean | 8 | ✅ 100% | src/ring_buffer.rs | `// VERIFY:` annotations |
-| proof_capability.lean | 7 | ✅ 100% | src/capability.rs | `// VERIFY:` annotations |
-| proof_host.lean | 10 | ✅ 100% | src/host.rs | `// VERIFY:` annotations |
+| proof_fsm.lean | 8 | [OK] 88% (7 proven, 1 axiom) | crates/clawdius-core/src/nexus/ | Phase names synced 2026-04-01 |
+| proof_sandbox.lean | 8 | [OK] 100% | src/sandbox.rs | Partial |
+| proof_broker.lean | 10 | [OK] 60% (6 proven, 4 sorry) | crates/clawdius-core/src/broker/wallet_guard.rs | Canonical implementation |
+| proof_brain.lean | 11 | [OK] 100% | src/brain.rs, src/wasm_runtime.rs | Partial |
+| proof_plugin.lean | 10 | [OK] 100% | src/plugin/ | Partial |
+| proof_sso.lean | 10 | [OK] 100% | src/compliance.rs | Partial |
+| proof_container.lean | 10 | [OK] 100% | src/sandbox/backends/ | Partial |
+| proof_audit.lean | 10 | [OK] 100% | src/audit/ | Partial |
+| proof_ring_buffer.lean | 8 | [OK] 100% | src/ring_buffer.rs | `// VERIFY:` annotations |
+| proof_capability.lean | 7 | [OK] 100% | src/capability.rs | `// VERIFY:` annotations |
+| proof_host.lean | 10 | [OK] 100% | src/host.rs | `// VERIFY:` annotations |
 
 ---
 
@@ -255,30 +255,30 @@ This ensures:
 
 | Category | Complete | Partial | Not Started | Coverage |
 |----------|----------|---------|-------------|----------|
-| Core Engine | 100% | 0% | 0% | ✅ 100% |
-| LLM Providers | 100% | 0% | 0% | ✅ 100% (5 providers) |
-| Tools | 100% | 0% | 0% | ✅ 100% (6 tools) |
-| Security | 95% | 5% | 0% | ✅ 95% |
-| Graph-RAG | 100% | 0% | 0% | ✅ 100% |
-| Nexus FSM | 95% | 5% | 0% | ✅ 95% (typestate engine, persistence, event sourcing) |
-| HFT Broker | 85% | 15% | 0% | ✅ 85% |
-| Lean4 Proofs | 96.5% | 3.5% | 0% | ✅ 96.5% (111/115 theorems, 11 files, 0 errors) |
-| VSCode Extension | 100% | 0% | 0% | ✅ 100% |
+| Core Engine | 100% | 0% | 0% | [OK] 100% |
+| LLM Providers | 100% | 0% | 0% | [OK] 100% (5 providers) |
+| Tools | 100% | 0% | 0% | [OK] 100% (6 tools) |
+| Security | 95% | 5% | 0% | [OK] 95% |
+| Graph-RAG | 100% | 0% | 0% | [OK] 100% |
+| Nexus FSM | 95% | 5% | 0% | [OK] 95% (typestate engine, persistence, event sourcing) |
+| HFT Broker | 85% | 15% | 0% | [OK] 85% |
+| Lean4 Proofs | 96.5% | 3.5% | 0% | [OK] 96.5% (111/115 theorems, 11 files, 0 errors) |
+| VSCode Extension | 100% | 0% | 0% | [OK] 100% |
 
 ### 8.2 Key Metrics
 
 | Metric | Value | Target | Status |
 |--------|-------|--------|--------|
-| Build Status | PASSING | PASSING | ✅ |
-| Compilation Errors | 0 | 0 | ✅ |
-| Test Functions | 1,244 | 200+ | ✅ |
-| Test Pass Rate | 100% | 100% | ✅ |
-| Build Time | 1.52s | <3s | ✅ |
-| LLM Providers | 5 | 5 | ✅ |
-| Tools | 6 | 6 | ✅ |
-| Documentation Accuracy | 95% | 90% | ✅ |
-| Nexus FSM | 95% | 100% | ✅ |
-| Quality Gates | OPERATIONAL | OPERATIONAL | ✅ |
+| Build Status | PASSING | PASSING | [OK] |
+| Compilation Errors | 0 | 0 | [OK] |
+| Test Functions | 1,244 | 200+ | [OK] |
+| Test Pass Rate | 100% | 100% | [OK] |
+| Build Time | 1.52s | <3s | [OK] |
+| LLM Providers | 5 | 5 | [OK] |
+| Tools | 6 | 6 | [OK] |
+| Documentation Accuracy | 95% | 90% | [OK] |
+| Nexus FSM | 95% | 100% | [OK] |
+| Quality Gates | OPERATIONAL | OPERATIONAL | [OK] |
 
 ---
 
@@ -286,13 +286,13 @@ This ensures:
 
 | Status | Meaning |
 |--------|---------|
-| ✅ COMPLETE | Fully implemented and verified |
-| ✅ VERIFIED | Tested and approved |
-| ⚠️ PARTIAL | Implementation started but incomplete |
-| ⏳ SCAFFOLD | Structure complete, implementation pending |
-| ⚠️ SKETCH | Proof sketch with `sorry` |
-| ❌ NOT STARTED | Artifact not yet created |
-| ⏳ PENDING | Awaiting implementation |
+| [OK] COMPLETE | Fully implemented and verified |
+| [OK] VERIFIED | Tested and approved |
+| [WARN] PARTIAL | Implementation started but incomplete |
+| [PEND] SCAFFOLD | Structure complete, implementation pending |
+| [WARN] SKETCH | Proof sketch with `sorry` |
+| [FAIL] NOT STARTED | Artifact not yet created |
+| [PEND] PENDING | Awaiting implementation |
 
 ---
 
@@ -358,7 +358,7 @@ This ensures:
 
 ### High Priority (P0)
 - [ ] Lean4 axiom reduction — 68 axioms across 11 files, target <40 (40-60h)
-- [ ] ~~Nexus FSM full implementation~~ ✅ COMPLETE (typestate engine + persistence + event sourcing)
+- [ ] ~~Nexus FSM full implementation~~ [OK] COMPLETE (typestate engine + persistence + event sourcing)
 
 ### Medium Priority (P1)
 - [ ] Multi-Language TQA system (80-100h)
