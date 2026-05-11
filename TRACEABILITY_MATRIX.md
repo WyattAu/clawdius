@@ -1,7 +1,7 @@
 # Clawdius Traceability Matrix
 
 **Document ID:** TM-CLAWDIUS-001  
-**Version:** 5.0.0 (v1.2.0 HFT Broker Completion Update)  
+**Version:** 1.0.0-rc.1  
 **Phase:** Implementation Verification  
 **Created:** 2026-03-01  
 **Updated:** 2026-04-01  
@@ -33,7 +33,6 @@ This ensures:
 | REQ-1.3 | YP-FSM-NEXUS-001 [OK] | BP-HOST-KERNEL-001 [OK], BP-NEXUS-FSM-001 [OK] | PARTIAL (25%) | COMPLETE [OK] | COMPLETE [OK] |
 | REQ-1.4 | - | BP-HOST-KERNEL-001 [OK] | COMPLETE [OK] | COMPLETE [OK] | COMPLETE [OK] |
 
-**Evidence:** `.reports/COMPLETE_STATUS_v0.8.0-alpha.md`, Nexus FSM scaffold at `crates/clawdius-core/src/nexus/`
 
 ### 2.2 Knowledge & Intelligence
 
@@ -100,7 +99,7 @@ This ensures:
 | REQ-7.3 | - | BP-HOST-KERNEL-001 [OK] | COMPLETE [OK] | COMPLETE [OK] | COMPLETE [OK] |
 | REQ-7.4 | - | BP-HOST-KERNEL-001 [OK] | COMPLETE [OK] | COMPLETE [OK] | COMPLETE [OK] |
 
-**Evidence:** VSCode extension at `extension/vscode/` (916 LOC, RPC working), TUI at `crates/clawdius/src/tui/`
+**Evidence:** VSCode extension at `editors/vscode/` (916 LOC, RPC working), TUI at `crates/clawdius/src/tui/`
 
 ---
 
@@ -137,7 +136,7 @@ This ensures:
 | broker | src/broker/ | REQ-5.x | [OK] COMPLETE | `crates/clawdius-core/src/broker/` (SPSC, WalletGuard, Feed, Execution, Pipeline) |
 | pal | src/pal/ | REQ-6.4 | [OK] COMPLETE | `crates/clawdius-core/src/pal/` |
 | tui | src/tui/ | REQ-7.x | [OK] COMPLETE | `crates/clawdius/src/tui/` |
-| vscode | extension/vscode/ | REQ-7.x | [OK] COMPLETE | 916 LOC, RPC working |
+| vscode | editors/vscode/ | REQ-7.x | [OK] COMPLETE | 916 LOC, RPC working |
 
 ---
 
@@ -300,13 +299,9 @@ This ensures:
 
 | Evidence | Location | Date |
 |----------|----------|------|
-| Implementation Status | `.reports/COMPLETE_STATUS_v0.8.0-alpha.md` | 2026-03-06 |
 | Version Tracking | `VERSION.md` | 2026-03-06 |
-| JSON Output Complete | `IMPLEMENTATION_COMPLETE.md` | 2026-03-06 |
 | Nexus FSM Design | `.docs/nexus_fsm_technical_design.md` | 2026-03-06 |
 | Quality Gates | `.docs/quality_gates.md` | 2026-03-06 |
-| Diagnostic Analysis | `.reports/DIAGNOSTIC_ANALYSIS_v0.7.1.md` | 2026-03-06 |
-| Feature Matrix | `.reports/feature_implementation_matrix.md` | 2026-03-06 |
 
 ---
 
@@ -362,7 +357,6 @@ This ensures:
 
 ### Medium Priority (P1)
 - [ ] Multi-Language TQA system (80-100h)
-- [ ] WASM Webview polish (80-100h)
 - [ ] File timeline implementation (40-60h)
 
 ### Low Priority (P2)
@@ -372,6 +366,6 @@ This ensures:
 
 ---
 
-**Note:** This matrix has been updated to reflect actual implementation status as of v0.8.0-alpha. All PENDING/NOT STARTED entries have been reviewed against source code.
+**Note:** This matrix has been updated to reflect actual implementation status as of v1.0.0-rc.1. All PENDING/NOT STARTED entries have been reviewed against source code.
 
 **Next Update:** After Nexus FSM Phase 1 implementation completion

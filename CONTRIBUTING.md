@@ -84,7 +84,6 @@ clawdius/
 │   ├── clawdius/              # CLI application
 │   ├── clawdius-core/         # Core library
 │   ├── clawdius-code/         # VSCode helper
-│   └── clawdius-webview/      # WASM webview
 ├── editors/
 │   └── vscode/                # VSCode extension
 ├── .docs/                     # Documentation
@@ -99,7 +98,6 @@ clawdius/
 | `clawdius` | CLI binary, TUI | clawdius-core |
 | `clawdius-core` | LLM, sessions, tools, sandboxing | External libs only |
 | `clawdius-code` | JSON-RPC for VSCode | clawdius-core |
-| `clawdius-webview` | Browser UI | clawdius-core |
 
 ---
 
@@ -520,8 +518,6 @@ git push origin feat/semantic-caching
 | Feature | Crates | Description |
 |---------|--------|-------------|
 | `keyring` | clawdius, clawdius-core | System keyring for secure API key storage |
-| `hft-mode` | clawdius, clawdius-core | High-frequency trading optimizations |
-| `broker-mode` | clawdius | Financial trading features |
 
 ### Building with Features
 

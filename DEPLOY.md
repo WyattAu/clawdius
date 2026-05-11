@@ -1,4 +1,4 @@
-# Deploying Clawdius Server
+# Deploying Clawdius Gateway
 
 ## Quick Start
 
@@ -7,8 +7,8 @@
 docker compose up -d
 
 # Or build locally
-cargo build --release --bin clawdius-server
-./target/release/clawdius-server
+cargo build --release --bin clawdius-gateway
+./target/release/clawdius-gateway
 ```
 
 ## Configuration
@@ -179,39 +179,3 @@ docker compose down
 
 Data persists in the `clawdius-data` Docker volume at `/app/data`.
 
-## Encryption at Rest
-
-To enable AES-256-GCM encryption for the state store:
-
-1. Generate a 32-byte key (64 hex characters):
-   ```bash
-   openssl rand -hex 32
-   ```
-
-2. Set in config:
-   ```toml
-   [messaging.state_store]
-   encryption_key = "a1b2c3...64-char-hex-key"
-   ```
-
-   Or via environment variable (not recommended for production):
-   ```bash
-   CLAWDIUS_ENCRYPTION_KEY="a1b2c3..." ./clawdius-server
-   ```
-
-3. Build with the encryption feature:
-   ```bash
-   cargo build --release --bin clawdius-server --features encryption
-   ```
-
-## Prometheus Monitoring
-
-The server exposes metrics at `/metrics`. Key metrics:
-
-- `clawdius_http_requests_total` - HTTP request counter
-- `clawdius_http_request_duration_seconds` - Request latency histogram
-- `clawdius_usage_messages_total` - Message processing counter by tenant/platform/outcome
-- `clawdius_usage_message_duration_ms` - Message processing latency by tenant/platform
-- `clawdius_usage_active_tenants` - Gauge of distinct active tenants
-
-A Grafana dashboard and Prometheus alert rules are available in `crates/clawdius-server/monitoring/`.

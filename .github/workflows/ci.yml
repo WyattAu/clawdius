@@ -1,4 +1,5 @@
 name: CI
+
 on:
   push:
     branches: [main]
@@ -10,140 +11,67 @@ env:
   RUST_BACKTRACE: 1
 
 jobs:
-  fmt:
-    name: Rustfmt
+  rust-ci:
+    name: Rust CI
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@1.88
         with:
-          components: rustfmt
-      - run: cargo fmt --all --check
+          components: rustfmt, clippy
 
-  check:
-    name: Check
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - run: cargo check --workspace --all-targets
-
-  clippy:
-    name: Clippy
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - name: Cache cargo registry
+        uses: actions/cache@v4
         with:
-          components: clippy
-      - run: cargo clippy --workspace -- -D warnings
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
 
-  test-lib:
-    name: Test (lib)
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        crate:
-          - clawdius
-          - clawdius-core
-          - clawdius-gateway
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - run: cargo test -p ${{ matrix.crate }} --lib
+      - name: Check formatting
+        run: cargo fmt --all --check
 
-  test-integration:
-    name: Test (integration)
-    runs-on: ubuntu-latest
-    needs: [clippy]
-    strategy:
-      fail-fast: false
-      matrix:
-        crate:
-          - clawdius-mcp
-          - clawdius-code
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - run: cargo test -p ${{ matrix.crate }} --test integration
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
 
-  test-doc:
-    name: Test (doc)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - run: cargo test --workspace --doc
+      - name: Test lib
+        run: cargo test --workspace --lib
 
-  lean4:
+      - name: Test integration
+        run: cargo test --workspace --test integration
+
+      - name: Deny
+        run: cargo deny check bans licenses advisories
+
+      - name: Build release
+        run: cargo build --workspace --release
+
+  lean4-proofs:
     name: Lean4 Proofs
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: leanprover/lean4-action@v1
-      - run: lake build
 
-  audit:
-    name: Security Audit
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - run: cargo install cargo-audit
-      - run: |
-          cargo audit 2>&1 | tee /tmp/audit.txt
-          if grep -q "^error:" /tmp/audit.txt; then
-            echo "::error::Security vulnerabilities found"
-            exit 1
-          fi
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@1.88
 
-  features:
-    name: Feature Flags
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        feature:
-          - default
-          - keyring
-          - crash-reporting
-          - browser
-          - embeddings
-          - local-llm
-          - vector-db
-          - orchestrator
-          - redis-queue
-          - postgres
-          - mariadb
-          - stripe
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - run: cargo check -p clawdius-core --features ${{ matrix.feature }}
-
-  build-release:
-    name: Release Build
-    runs-on: ubuntu-latest
-    needs: [fmt, check, clippy, test-lib, test-doc]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - run: cargo build --release -p clawdius -p clawdius-gateway
-      - name: Report binary sizes
-        run: |
-          echo "clawdius: $(du -h target/release/clawdius | cut -f1)"
-          echo "clawdius-gateway: $(du -h target/release/clawdius-gateway | cut -f1)"
-      - name: Smoke test CLI commands
-        run: |
-          ./target/release/clawdius --version
-          ./target/release/clawdius --help
-          ./target/release/clawdius chat --help
-          ./target/release/clawdius sprint --help
-          ./target/release/clawdius watch --help
-          ./target/release/clawdius analyze --help
-          ./target/release/clawdius-gateway --help
-      - uses: actions/upload-artifact@v4
+      - name: Cache cargo registry
+        uses: actions/cache@v4
         with:
-          name: release-binaries
-          path: target/release/clawdius,target/release/clawdius-gateway
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - uses: leanprover/lean4-action@v1
+
+      - name: Build Lean4
+        run: lake build

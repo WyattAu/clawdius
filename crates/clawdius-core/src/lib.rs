@@ -10,12 +10,14 @@
 // Clippy: allow all warnings crate-wide.
 // The codebase prioritizes correctness, safety, and feature completeness over lint adherence.
 // Individual modules may opt back into specific lints where beneficial.
+// Deny .unwrap() in production code - use ? or .expect("invariant: ...") instead.
 #![allow(clippy::all)]
 #![allow(clippy::pedantic)]
 #![allow(clippy::cargo)]
 #![allow(clippy::nursery)]
 #![allow(clippy::restriction)]
 #![allow(dead_code)]
+#![deny(clippy::unwrap_used)]
 #![allow(unused_imports)]
 #![allow(unused_variables)]
 #![allow(unused_mut)]
