@@ -1,7 +1,8 @@
 [package]
 name = "clawdius-gateway"
 version.workspace = true
-edition = "2021"
+edition.workspace = true
+license.workspace = true
 description = "Messaging gateway for Clawdius — routes chat platform messages to the agent"
 
 [dependencies]
