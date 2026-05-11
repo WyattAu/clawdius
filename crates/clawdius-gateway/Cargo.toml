@@ -6,7 +6,7 @@ license.workspace = true
 description = "Messaging gateway for Clawdius — routes chat platform messages to the agent"
 
 [dependencies]
-clawdius-core = { path = "../clawdius-core" }
+clawdius-core = { path = "../clawdius-core", version = "1.0.0-rc.1" }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros", "sync", "signal"] }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
