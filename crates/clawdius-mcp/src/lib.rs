@@ -1,5 +1,7 @@
 //! Testable core logic for the MCP stdio server.
 
+#![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
+
 use clawdius_core::mcp::protocol::{McpError, McpRequest, McpResponse};
 
 /// Parse a raw JSON string into an MCP request.
@@ -110,7 +112,10 @@ mod tests {
         assert!(resp.is_notification());
         // Notification serialization should produce valid JSON
         let json = format_response(&resp);
-        assert!(!json.is_empty(), "notification should serialize to non-empty JSON");
+        assert!(
+            !json.is_empty(),
+            "notification should serialize to non-empty JSON"
+        );
         let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
         assert_eq!(parsed["jsonrpc"], "2.0");
     }

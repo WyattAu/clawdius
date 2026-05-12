@@ -2,6 +2,7 @@
     dead_code,
     missing_docs,
     clippy::expect_used,
+    clippy::unwrap_used,
     unused_variables,
     clippy::cast_precision_loss,
     clippy::items_after_statements,

@@ -3,6 +3,7 @@
     missing_docs,
     deprecated,
     clippy::expect_used,
+    clippy::unwrap_used,
     clippy::panic,
     unused_variables,
     clippy::cast_precision_loss,

@@ -1,5 +1,7 @@
 //! Testable core logic for the JSON-RPC server (clawdius-code).
 
+#![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
+
 use clawdius_core::rpc::types::{Error as RpcError, Request, Response};
 
 /// Parse a raw JSON string into a JSON-RPC request.

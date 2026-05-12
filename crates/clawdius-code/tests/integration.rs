@@ -7,6 +7,7 @@
     unused_variables,
     clippy::cast_precision_loss,
     clippy::expect_used,
+    clippy::unwrap_used,
     clippy::items_after_statements,
     clippy::manual_is_multiple_of,
     clippy::must_use_candidate,
@@ -132,7 +133,11 @@ fn test_session_create_then_list() {
         r#"{"jsonrpc":"2.0","id":1,"method":"session/create","params":{}}"#,
         r#"{"jsonrpc":"2.0","id":2,"method":"session/list","params":{}}"#,
     ]);
-    assert!(lines.len() >= 2, "expected >= 2 responses, got {}", lines.len());
+    assert!(
+        lines.len() >= 2,
+        "expected >= 2 responses, got {}",
+        lines.len()
+    );
     let create_resp: serde_json::Value = serde_json::from_str(&lines[0]).unwrap();
     assert_eq!(create_resp["id"], 1);
     let list_resp: serde_json::Value = serde_json::from_str(&lines[1]).unwrap();
@@ -208,10 +213,11 @@ fn test_context_add_unknown_type_returns_error() {
 
 #[test]
 fn test_state_checkpoint_returns_id() {
-    let lines = run_code(&[
-        r#"{"jsonrpc":"2.0","id":1,"method":"state/checkpoint","params":{}}"#,
-    ]);
-    assert!(!lines.is_empty(), "server should respond to state/checkpoint");
+    let lines = run_code(&[r#"{"jsonrpc":"2.0","id":1,"method":"state/checkpoint","params":{}}"#]);
+    assert!(
+        !lines.is_empty(),
+        "server should respond to state/checkpoint"
+    );
     let parsed: serde_json::Value = serde_json::from_str(&lines[0]).unwrap();
     assert_eq!(parsed["id"], 1);
     assert!(
@@ -222,9 +228,7 @@ fn test_state_checkpoint_returns_id() {
 
 #[test]
 fn test_state_list_returns_result() {
-    let lines = run_code(&[
-        r#"{"jsonrpc":"2.0","id":1,"method":"state/list","params":{}}"#,
-    ]);
+    let lines = run_code(&[r#"{"jsonrpc":"2.0","id":1,"method":"state/list","params":{}}"#]);
     assert!(!lines.is_empty(), "server should respond to state/list");
     let parsed: serde_json::Value = serde_json::from_str(&lines[0]).unwrap();
     assert_eq!(parsed["id"], 1);
@@ -265,15 +269,16 @@ fn test_notification_style_request() {
     // JSON-RPC 2.0 says servers MUST NOT reply to notifications (id: null),
     // but many implementations return an error for unknown methods.
     // Verify the server handles null-id requests without crashing.
-    let lines = run_code(&[
-        r#"{"jsonrpc":"2.0","id":null,"method":"initialized","params":{}}"#,
-    ]);
+    let lines = run_code(&[r#"{"jsonrpc":"2.0","id":null,"method":"initialized","params":{}}"#]);
     // Server should not crash; it may return an error or silence
     if !lines.is_empty() {
         let parsed: serde_json::Value = serde_json::from_str(&lines[0]).unwrap();
         assert_eq!(parsed["jsonrpc"], "2.0");
         // If response given, id should be null
-        assert!(parsed["id"].is_null(), "notification response id should be null");
+        assert!(
+            parsed["id"].is_null(),
+            "notification response id should be null"
+        );
     }
 }
 

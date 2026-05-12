@@ -18,6 +18,7 @@
 
 #![allow(clippy::significant_drop_tightening)]
 #![allow(clippy::type_complexity)]
+#![cfg_attr(test, allow(clippy::panic))]
 #![allow(clippy::module_name_repetitions)]
 #![allow(clippy::missing_errors_doc)]
 #![allow(clippy::missing_panics_doc)]

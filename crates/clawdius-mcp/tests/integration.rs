@@ -138,9 +138,8 @@ fn test_binary_exits_cleanly_on_eof() {
 
 #[test]
 fn test_notification_produces_no_output() {
-    let lines = run_mcp(&[
-        r#"{"jsonrpc":"2.0","id":0,"method":"notifications/initialized","params":{}}"#,
-    ]);
+    let lines =
+        run_mcp(&[r#"{"jsonrpc":"2.0","id":0,"method":"notifications/initialized","params":{}}"#]);
     // Notifications should not produce a response line on stdout
     assert!(
         lines.is_empty(),
@@ -155,7 +154,11 @@ fn test_ping_returns_empty_object() {
         r#"{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"0.1.0"}}}"#,
         r#"{"jsonrpc":"2.0","id":2,"method":"ping","params":{}}"#,
     ]);
-    assert!(lines.len() >= 2, "expected >= 2 responses, got {}", lines.len());
+    assert!(
+        lines.len() >= 2,
+        "expected >= 2 responses, got {}",
+        lines.len()
+    );
     let ping_resp: serde_json::Value =
         serde_json::from_str(&lines[1]).expect("ping response is valid JSON");
     assert_eq!(ping_resp["id"], 2);
@@ -171,7 +174,11 @@ fn test_resources_list_returns_array() {
         r#"{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"0.1.0"}}}"#,
         r#"{"jsonrpc":"2.0","id":2,"method":"resources/list","params":{}}"#,
     ]);
-    assert!(lines.len() >= 2, "expected >= 2 responses, got {}", lines.len());
+    assert!(
+        lines.len() >= 2,
+        "expected >= 2 responses, got {}",
+        lines.len()
+    );
     let resources_resp: serde_json::Value =
         serde_json::from_str(&lines[1]).expect("resources response is valid JSON");
     assert_eq!(resources_resp["id"], 2);
@@ -188,7 +195,11 @@ fn test_prompts_list_returns_array() {
         r#"{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"0.1.0"}}}"#,
         r#"{"jsonrpc":"2.0","id":2,"method":"prompts/list","params":{}}"#,
     ]);
-    assert!(lines.len() >= 2, "expected >= 2 responses, got {}", lines.len());
+    assert!(
+        lines.len() >= 2,
+        "expected >= 2 responses, got {}",
+        lines.len()
+    );
     let prompts_resp: serde_json::Value =
         serde_json::from_str(&lines[1]).expect("prompts response is valid JSON");
     assert_eq!(prompts_resp["id"], 2);
@@ -205,11 +216,18 @@ fn test_unknown_method_error_code() {
         r#"{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"0.1.0"}}}"#,
         r#"{"jsonrpc":"2.0","id":2,"method":"fake/nonexistent","params":{}}"#,
     ]);
-    assert!(lines.len() >= 2, "expected >= 2 responses, got {}", lines.len());
+    assert!(
+        lines.len() >= 2,
+        "expected >= 2 responses, got {}",
+        lines.len()
+    );
     let err_resp: serde_json::Value =
         serde_json::from_str(&lines[1]).expect("error response is valid JSON");
     assert_eq!(err_resp["id"], 2);
-    assert_eq!(err_resp["error"]["code"], -32601, "expected Method not found");
+    assert_eq!(
+        err_resp["error"]["code"], -32601,
+        "expected Method not found"
+    );
 }
 
 #[test]
@@ -240,7 +258,11 @@ fn test_tools_call_with_invalid_tool() {
         r#"{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"0.1.0"}}}"#,
         r#"{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"nonexistent_tool","arguments":{}}}"#,
     ]);
-    assert!(lines.len() >= 2, "expected >= 2 responses, got {}", lines.len());
+    assert!(
+        lines.len() >= 2,
+        "expected >= 2 responses, got {}",
+        lines.len()
+    );
     let call_resp: serde_json::Value =
         serde_json::from_str(&lines[1]).expect("tools/call response is valid JSON");
     assert_eq!(call_resp["id"], 2);

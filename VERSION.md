@@ -9,7 +9,7 @@
 |-----------|-------|
 | **Version** | 1.0.0-rc.1 |
 | **Status** | Active development |
-| **Last Updated** | 2026-05-11 |
+| **Last Updated** | 2026-05-12 |
 | **Rollback Checkpoint** | `885a67c4` |
 
 ## Empirical Metrics
@@ -26,6 +26,8 @@
 | **Lean4 lake build** | Pass (31/31 jobs) | `lake build` |
 | **Production unwraps** | 0 fallible (9 in doc comments/debug) | Manual audit |
 | **Root docs with emoji** | 0 | Grep audit |
+| **git hooks** | pre-commit + pre-push | Enforce quality gates at commit and push |
+| **git hooks** | pre-commit + pre-push | Enforce all quality gates |
 
 ### Test Counts
 
@@ -49,7 +51,7 @@ Directories: `.specs/02_architecture/proofs/` (8), `.clawdius/specs/02_architect
 |-------|----------|---------|
 | 6 transitive CVEs | Low | rustls-webpki (4), matrix-sdk-base (2); documented in deny.toml |
 | `--all-features` OOM | Medium | Cannot compile all features simultaneously |
-| `.cargo-vendor/half` dirty | Low | Patched submodule, not committed |
+| `.cargo-vendor/half` | Low | Vendored patch crate with lint suppression |
 | Unsafe code | Low | simd.rs (SSE2/NEON), proof/templates.rs, analysis/drift.rs |
 | 20+ transitive dep duplicates | Info | Documented in Cargo.toml comments |
 

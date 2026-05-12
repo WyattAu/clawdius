@@ -18,6 +18,7 @@
 #![allow(clippy::restriction)]
 #![allow(dead_code)]
 #![deny(clippy::unwrap_used)]
+#![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
 #![allow(unused_imports)]
 #![allow(unused_variables)]
 #![allow(unused_mut)]

@@ -4,6 +4,7 @@
 
 #![deny(unsafe_code)]
 #![allow(missing_docs)]
+#![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
 
 use clap::Parser;
 
