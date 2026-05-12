@@ -103,4 +103,121 @@ mod tests {
         let params = req.params.unwrap();
         assert_eq!(params["name"], "read_file");
     }
+
+    #[test]
+    fn test_format_notification_serializes_to_json() {
+        let resp = McpResponse::notification();
+        assert!(resp.is_notification());
+        // Notification serialization should produce valid JSON
+        let json = format_response(&resp);
+        assert!(!json.is_empty(), "notification should serialize to non-empty JSON");
+        let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed["jsonrpc"], "2.0");
+    }
+
+    #[test]
+    fn test_parse_request_with_extra_fields() {
+        // serde default behavior: unknown fields ignored
+        let json = r#"{"jsonrpc":"2.0","id":1,"method":"foo","extra":42,"more":"data"}"#;
+        let req = parse_request(json).unwrap();
+        assert_eq!(req.id, 1);
+        assert_eq!(req.method, "foo");
+    }
+
+    #[test]
+    fn test_parse_request_with_null_id_rejected() {
+        // MCP protocol uses u64 id; null id is rejected
+        let json = r#"{"jsonrpc":"2.0","id":null,"method":"initialized"}"#;
+        let result = parse_request(json);
+        assert!(result.is_err(), "null id should be rejected for MCP u64 id");
+        assert_eq!(result.unwrap_err().code, -32700);
+    }
+
+    #[test]
+    fn test_parse_request_with_whitespace_only() {
+        let result = parse_request("   \t\n  ");
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err().code, -32700);
+    }
+
+    #[test]
+    fn test_format_response_internal_error() {
+        let resp = McpResponse::error(1, McpError::internal_error("internal failure"));
+        let json = format_response(&resp);
+        let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed["error"]["code"], -32603);
+        assert!(parsed["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("internal failure"));
+    }
+
+    #[test]
+    fn test_format_response_invalid_request() {
+        let resp = McpResponse::error(0, McpError::invalid_request("bad request"));
+        let json = format_response(&resp);
+        let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed["error"]["code"], -32600);
+    }
+
+    #[test]
+    fn test_parse_request_with_array_params() {
+        let json = r#"{"jsonrpc":"2.0","id":1,"method":"test","params":[1,2,3]}"#;
+        let req = parse_request(json).unwrap();
+        assert_eq!(req.method, "test");
+        let params = req.params.unwrap();
+        assert!(params.is_array());
+        assert_eq!(params.as_array().unwrap().len(), 3);
+    }
+
+    #[test]
+    fn test_format_success_response_large_payload() {
+        let large_data = "x".repeat(100_000);
+        let resp = McpResponse::success(1, serde_json::json!({"data": large_data}));
+        let json = format_response(&resp);
+        let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed["id"], 1);
+        assert_eq!(parsed["result"]["data"].as_str().unwrap().len(), 100_000);
+    }
+
+    #[test]
+    fn test_format_response_parse_error() {
+        let resp = McpResponse::error(0, McpError::parse_error("parse failure"));
+        let json = format_response(&resp);
+        let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed["error"]["code"], -32700);
+    }
+
+    #[test]
+    fn test_format_response_invalid_params() {
+        let resp = McpResponse::error(1, McpError::invalid_params("missing field"));
+        let json = format_response(&resp);
+        let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed["error"]["code"], -32602);
+    }
+
+    #[test]
+    fn test_parse_request_without_jsonrpc_field() {
+        let json = r#"{"id":1,"method":"test"}"#;
+        let result = parse_request(json);
+        // Missing jsonrpc field is a schema violation
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_parse_request_without_method_field() {
+        let json = r#"{"jsonrpc":"2.0","id":1}"#;
+        let result = parse_request(json);
+        // Missing method field is a schema violation
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_format_success_response_empty_result() {
+        let resp = McpResponse::success(1, serde_json::json!({}));
+        let json = format_response(&resp);
+        let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed["result"], serde_json::json!({}));
+        assert!(parsed.get("error").is_none());
+    }
 }

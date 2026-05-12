@@ -125,7 +125,7 @@ fn test_binary_exits_cleanly_on_eof() {
         .spawn()
         .expect("failed to spawn clawdius-mcp");
 
-    // Close stdin immediately → EOF
+    // Close stdin immediately -> EOF
     child.stdin.take();
 
     let output = child.wait_with_output().expect("child exited");
@@ -133,5 +133,120 @@ fn test_binary_exits_cleanly_on_eof() {
         output.status.success(),
         "server should exit cleanly on EOF, got: {:?}",
         output.status.code()
+    );
+}
+
+#[test]
+fn test_notification_produces_no_output() {
+    let lines = run_mcp(&[
+        r#"{"jsonrpc":"2.0","id":0,"method":"notifications/initialized","params":{}}"#,
+    ]);
+    // Notifications should not produce a response line on stdout
+    assert!(
+        lines.is_empty(),
+        "notification should produce no output, got: {:?}",
+        lines
+    );
+}
+
+#[test]
+fn test_ping_returns_empty_object() {
+    let lines = run_mcp(&[
+        r#"{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"0.1.0"}}}"#,
+        r#"{"jsonrpc":"2.0","id":2,"method":"ping","params":{}}"#,
+    ]);
+    assert!(lines.len() >= 2, "expected >= 2 responses, got {}", lines.len());
+    let ping_resp: serde_json::Value =
+        serde_json::from_str(&lines[1]).expect("ping response is valid JSON");
+    assert_eq!(ping_resp["id"], 2);
+    assert!(
+        !ping_resp["result"].is_null(),
+        "ping should return a result, got: {ping_resp}"
+    );
+}
+
+#[test]
+fn test_resources_list_returns_array() {
+    let lines = run_mcp(&[
+        r#"{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"0.1.0"}}}"#,
+        r#"{"jsonrpc":"2.0","id":2,"method":"resources/list","params":{}}"#,
+    ]);
+    assert!(lines.len() >= 2, "expected >= 2 responses, got {}", lines.len());
+    let resources_resp: serde_json::Value =
+        serde_json::from_str(&lines[1]).expect("resources response is valid JSON");
+    assert_eq!(resources_resp["id"], 2);
+    let resources = &resources_resp["result"]["resources"];
+    assert!(
+        resources.is_array(),
+        "resources should be an array, got: {resources}"
+    );
+}
+
+#[test]
+fn test_prompts_list_returns_array() {
+    let lines = run_mcp(&[
+        r#"{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"0.1.0"}}}"#,
+        r#"{"jsonrpc":"2.0","id":2,"method":"prompts/list","params":{}}"#,
+    ]);
+    assert!(lines.len() >= 2, "expected >= 2 responses, got {}", lines.len());
+    let prompts_resp: serde_json::Value =
+        serde_json::from_str(&lines[1]).expect("prompts response is valid JSON");
+    assert_eq!(prompts_resp["id"], 2);
+    let prompts = &prompts_resp["result"]["prompts"];
+    assert!(
+        prompts.is_array(),
+        "prompts should be an array, got: {prompts}"
+    );
+}
+
+#[test]
+fn test_unknown_method_error_code() {
+    let lines = run_mcp(&[
+        r#"{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"0.1.0"}}}"#,
+        r#"{"jsonrpc":"2.0","id":2,"method":"fake/nonexistent","params":{}}"#,
+    ]);
+    assert!(lines.len() >= 2, "expected >= 2 responses, got {}", lines.len());
+    let err_resp: serde_json::Value =
+        serde_json::from_str(&lines[1]).expect("error response is valid JSON");
+    assert_eq!(err_resp["id"], 2);
+    assert_eq!(err_resp["error"]["code"], -32601, "expected Method not found");
+}
+
+#[test]
+fn test_three_sequential_requests() {
+    let lines = run_mcp(&[
+        r#"{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"0.1.0"}}}"#,
+        r#"{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}"#,
+        r#"{"jsonrpc":"2.0","id":3,"method":"ping","params":{}}"#,
+    ]);
+    assert!(
+        lines.len() >= 3,
+        "expected >= 3 responses for 3 requests, got {}: {:?}",
+        lines.len(),
+        lines
+    );
+    // Verify response ordering by id
+    let r1: serde_json::Value = serde_json::from_str(&lines[0]).unwrap();
+    let r2: serde_json::Value = serde_json::from_str(&lines[1]).unwrap();
+    let r3: serde_json::Value = serde_json::from_str(&lines[2]).unwrap();
+    assert_eq!(r1["id"], 1);
+    assert_eq!(r2["id"], 2);
+    assert_eq!(r3["id"], 3);
+}
+
+#[test]
+fn test_tools_call_with_invalid_tool() {
+    let lines = run_mcp(&[
+        r#"{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"0.1.0"}}}"#,
+        r#"{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"nonexistent_tool","arguments":{}}}"#,
+    ]);
+    assert!(lines.len() >= 2, "expected >= 2 responses, got {}", lines.len());
+    let call_resp: serde_json::Value =
+        serde_json::from_str(&lines[1]).expect("tools/call response is valid JSON");
+    assert_eq!(call_resp["id"], 2);
+    // Should be an error since the tool doesn't exist
+    assert!(
+        !call_resp["error"].is_null(),
+        "expected error for nonexistent tool, got: {call_resp}"
     );
 }

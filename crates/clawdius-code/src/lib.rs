@@ -104,4 +104,109 @@ mod tests {
         assert_eq!(req.id, Id::String("abc".to_string()));
         assert_eq!(req.method, "chat/send");
     }
+
+    #[test]
+    fn test_format_internal_error_response() {
+        let resp = Response::internal_error(Id::Number(1), "internal failure");
+        let json = format_response(&resp);
+        let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed["error"]["code"], -32603);
+        assert!(parsed["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("internal failure"));
+    }
+
+    #[test]
+    fn test_format_parse_error_response() {
+        let resp = Response::error(Id::Number(0), RpcError::parse_error("bad json"));
+        let json = format_response(&resp);
+        let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed["error"]["code"], -32700);
+    }
+
+    #[test]
+    fn test_format_invalid_request_response() {
+        let resp = Response::error(Id::Number(0), RpcError::invalid_request("bad request"));
+        let json = format_response(&resp);
+        let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed["error"]["code"], -32600);
+    }
+
+    #[test]
+    fn test_parse_request_with_extra_fields() {
+        let json = r#"{"jsonrpc":"2.0","id":1,"method":"test","extra":true,"more":42}"#;
+        let req = parse_request(json).unwrap();
+        assert_eq!(req.method, "test");
+        assert_eq!(req.id, Id::Number(1));
+    }
+
+    #[test]
+    fn test_parse_request_with_whitespace_only() {
+        let result = parse_request("   \t\n  ");
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err().code, -32700);
+    }
+
+    #[test]
+    fn test_success_response_with_null_result() {
+        let resp = Response::success(Id::Number(1), serde_json::Value::Null);
+        let json = format_response(&resp);
+        let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed["result"], serde_json::Value::Null);
+        assert!(parsed.get("error").is_none());
+    }
+
+    #[test]
+    fn test_success_response_empty_object() {
+        let resp = Response::success(Id::Number(5), serde_json::json!({}));
+        let json = format_response(&resp);
+        let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed["result"], serde_json::json!({}));
+    }
+
+    #[test]
+    fn test_format_server_error_response() {
+        let resp = Response::error(
+            Id::Number(1),
+            RpcError::server_error(-32000, "custom server error"),
+        );
+        let json = format_response(&resp);
+        let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed["error"]["code"], -32000);
+        assert!(parsed["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("custom server error"));
+    }
+
+    #[test]
+    fn test_parse_request_without_jsonrpc_field() {
+        let json = r#"{"id":1,"method":"test"}"#;
+        let result = parse_request(json);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_parse_request_without_method_field() {
+        let json = r#"{"jsonrpc":"2.0","id":1}"#;
+        let result = parse_request(json);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_parse_request_with_large_id() {
+        let json = r#"{"jsonrpc":"2.0","id":999999999,"method":"test"}"#;
+        let req = parse_request(json).unwrap();
+        assert_eq!(req.id, Id::Number(999_999_999));
+    }
+
+    #[test]
+    fn test_success_response_with_array_result() {
+        let resp = Response::success(Id::Number(1), serde_json::json!([1, 2, 3]));
+        let json = format_response(&resp);
+        let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+        assert!(parsed["result"].is_array());
+        assert_eq!(parsed["result"].as_array().unwrap().len(), 3);
+    }
 }
