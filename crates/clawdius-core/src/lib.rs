@@ -26,15 +26,19 @@
 pub mod actions;
 pub mod agentic;
 pub mod agents;
+#[doc(hidden)]
 pub mod airgap;
 pub mod analysis;
 pub mod api;
+#[doc(hidden)]
 pub mod audit;
+#[doc(hidden)]
 pub mod billing;
 pub mod capability;
 pub mod checkpoint;
 pub mod commands;
 pub mod completions;
+#[doc(hidden)]
 pub mod compliance;
 pub mod config;
 pub mod context;
@@ -42,31 +46,41 @@ pub mod diff;
 pub mod encryption;
 pub mod error;
 pub mod graph_rag;
+#[doc(hidden)]
 pub mod i18n;
+#[doc(hidden)]
 pub mod invoice;
 pub mod llm;
 pub mod lsp;
 pub mod mcp;
 pub mod memory;
 pub mod modes;
+#[doc(hidden)]
 pub mod onboarding;
 pub mod orchestrator;
 pub mod output;
+#[doc(hidden)]
 pub mod proof;
 pub mod retry;
+#[doc(hidden)]
 pub mod rpc;
+#[doc(hidden)]
 pub mod sandbox;
 pub mod session;
 pub mod simd;
 pub mod skills;
 pub mod storage;
+#[doc(hidden)]
 pub mod telemetry;
 pub mod timeline;
 pub mod timeout;
 pub mod tokenize;
 pub mod tools;
+#[doc(hidden)]
 pub mod usage;
+#[doc(hidden)]
 pub mod watch;
+#[doc(hidden)]
 pub mod webhooks;
 pub mod workspace;
 

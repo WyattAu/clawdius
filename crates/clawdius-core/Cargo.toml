@@ -165,6 +165,10 @@ harness = false
 name = "simd_bench"
 harness = false
 
+[[bench]]
+name = "memory_bench"
+harness = false
+
 [features]
 default = []
 keyring = ["dep:keyring"]

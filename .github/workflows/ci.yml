@@ -3,6 +3,9 @@ name: CI
 on:
   push:
     branches: [main]
+
+  schedule:
+    - cron: "0 6 * * 0"  # weekly Sunday 06:00 UTC
   pull_request:
     branches: [main]
 
@@ -16,6 +19,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Verify lib.rs integrity
+        run: bash scripts/check_librs.sh
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@1.88
@@ -75,3 +81,81 @@ jobs:
 
       - name: Build Lean4
         run: lake build
+
+  benchmarks:
+    name: Benchmarks
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@1.88
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-bench-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-bench-
+
+      - name: Cache benchmark results
+        uses: actions/cache@v4
+        with:
+          path: target/criterion
+          key: benchmark-results-${{ github.sha }}
+          restore-keys: |
+            benchmark-results-
+
+      - name: Run benchmarks
+        run: cargo bench --workspace -- --save-baseline main
+
+      - name: Upload benchmark results
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results
+          path: target/criterion
+          retention-days: 30
+
+  scheduled-benchmarks:
+    name: Scheduled Benchmarks
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@1.88
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-bench-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-bench-
+
+      - name: Restore previous baseline
+        uses: actions/cache@v4
+        with:
+          path: target/criterion
+          key: benchmark-results-${{ github.sha }}
+          restore-keys: |
+            benchmark-results-
+
+      - name: Run benchmarks with comparison
+        run: cargo bench --workspace -- --baseline main
+
+      - name: Upload benchmark results
+        uses: actions/upload-artifact@v4
+        with:
+          name: scheduled-benchmark-results
+          path: target/criterion
+          retention-days: 90
