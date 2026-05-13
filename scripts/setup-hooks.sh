@@ -31,3 +31,5 @@ if [ -f "$PREPUSH_SRC" ]; then
 fi
 
 echo "Git hooks installed successfully."
+echo ""
+echo "To bypass hooks in emergencies: CLAWDIUS_SKIP_HOOKS=1 git commit/push"
