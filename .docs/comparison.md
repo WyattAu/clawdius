@@ -6,25 +6,25 @@ A comprehensive comparison of Clawdius against other AI-powered coding assistant
 
 | Tool | Runtime | Security | LLM Support | Deployment | Open Source | Sandbox | RAG | License |
 |------|---------|----------|-------------|------------|-------------|---------|-----|---------|
-| **Clawdius** | Rust | Hardware-isolated | Multi-provider | Local-first | ✅ Yes | ✅ WASM/Container | ✅ Graph-RAG | Apache-2.0 |
-| IronClaw | Rust | Process-level | OpenAI/Anthropic | Cloud | ✅ Yes | ❌ None | ❌ No | MIT |
-| ZeroClaw | Go | None | Single-provider | Local | ✅ Yes | ❌ None | ❌ No | MIT |
-| OpenCode | TypeScript | Basic | Multi-provider | Cloud/Local | ✅ Yes | ❌ None | ⚠️ Basic | MIT |
-| Kilocode | Python | Basic | Multi-provider | Cloud | ❌ No | ❌ None | ⚠️ Basic | Proprietary |
-| Claude Code | Node.js | Basic | Claude only | Cloud | ❌ No | ❌ None | ✅ Yes | Proprietary |
-| Aider | Python | None | Multi-provider | Local | ✅ Yes | ❌ None | ⚠️ Repo-map | Apache-2.0 |
-| Cursor | TypeScript | Basic | Multi-provider | Cloud IDE | ❌ No | ⚠️ Limited | ✅ Indexed | Proprietary |
-| Continue | TypeScript | Basic | Multi-provider | Local IDE | ✅ Yes | ❌ None | ✅ Indexed | Apache-2.0 |
-| Cody | TypeScript | Basic | Multi-provider | Cloud/Local | ⚠️ Partial | ❌ None | ✅ Indexed | Apache-2.0 |
-| Tabby | Rust/Python | Basic | Self-hosted | Self-hosted | ✅ Yes | ❌ None | ✅ Indexed | Apache-2.0 |
+| **Clawdius** | Rust | Hardware-isolated | Multi-provider | Local-first | Yes | WASM/Container | Graph-RAG | Apache-2.0 |
+| IronClaw | Rust | Process-level | OpenAI/Anthropic | Cloud | Yes | None | No | MIT |
+| ZeroClaw | Go | None | Single-provider | Local | Yes | None | No | MIT |
+| OpenCode | TypeScript | Basic | Multi-provider | Cloud/Local | Yes | None | Basic | MIT |
+| Kilocode | Python | Basic | Multi-provider | Cloud | No | None | Basic | Proprietary |
+| Claude Code | Node.js | Basic | Claude only | Cloud | No | None | Yes | Proprietary |
+| Aider | Python | None | Multi-provider | Local | Yes | None | Repo-map | Apache-2.0 |
+| Cursor | TypeScript | Basic | Multi-provider | Cloud IDE | No | Limited | Indexed | Proprietary |
+| Continue | TypeScript | Basic | Multi-provider | Local IDE | Yes | None | Indexed | Apache-2.0 |
+| Cody | TypeScript | Basic | Multi-provider | Cloud/Local | Partial | None | Indexed | Apache-2.0 |
+| Tabby | Rust/Python | Basic | Self-hosted | Self-hosted | Yes | None | Indexed | Apache-2.0 |
 
 ---
 
 ## Detailed Comparison
 
 ### Clawdius
-**Runtime:** Rust  
-**License:** Apache-2.0  
+**Runtime:** Rust
+**License:** Apache-2.0
 **Website:** https://github.com/clawdius
 
 | Aspect | Details |
@@ -40,8 +40,8 @@ A comprehensive comparison of Clawdius against other AI-powered coding assistant
 ---
 
 ### IronClaw
-**Runtime:** Rust  
-**License:** MIT  
+**Runtime:** Rust
+**License:** MIT
 **Type:** Rust-based AI agent
 
 | Aspect | Details |
@@ -57,8 +57,8 @@ A comprehensive comparison of Clawdius against other AI-powered coding assistant
 ---
 
 ### ZeroClaw
-**Runtime:** Go  
-**License:** MIT  
+**Runtime:** Go
+**License:** MIT
 **Type:** Zero-dependency AI agent
 
 | Aspect | Details |
@@ -74,8 +74,8 @@ A comprehensive comparison of Clawdius against other AI-powered coding assistant
 ---
 
 ### OpenCode
-**Runtime:** TypeScript/Node.js  
-**License:** MIT  
+**Runtime:** TypeScript/Node.js
+**License:** MIT
 **Website:** https://opencode.ai
 
 | Aspect | Details |
@@ -91,8 +91,8 @@ A comprehensive comparison of Clawdius against other AI-powered coding assistant
 ---
 
 ### Kilocode
-**Runtime:** Python  
-**License:** Proprietary  
+**Runtime:** Python
+**License:** Proprietary
 **Type:** AI coding assistant
 
 | Aspect | Details |
@@ -108,8 +108,8 @@ A comprehensive comparison of Clawdius against other AI-powered coding assistant
 ---
 
 ### Claude Code
-**Runtime:** Node.js  
-**License:** Proprietary  
+**Runtime:** Node.js
+**License:** Proprietary
 **Website:** https://anthropic.com/claude
 
 | Aspect | Details |
@@ -126,8 +126,8 @@ A comprehensive comparison of Clawdius against other AI-powered coding assistant
 ---
 
 ### Aider
-**Runtime:** Python  
-**License:** Apache-2.0  
+**Runtime:** Python
+**License:** Apache-2.0
 **Website:** https://aider.chat
 
 | Aspect | Details |
@@ -145,8 +145,8 @@ A comprehensive comparison of Clawdius against other AI-powered coding assistant
 ---
 
 ### Cursor
-**Runtime:** TypeScript/Electron  
-**License:** Proprietary  
+**Runtime:** TypeScript/Electron
+**License:** Proprietary
 **Website:** https://cursor.sh
 
 | Aspect | Details |
@@ -164,8 +164,8 @@ A comprehensive comparison of Clawdius against other AI-powered coding assistant
 ---
 
 ### Continue
-**Runtime:** TypeScript  
-**License:** Apache-2.0  
+**Runtime:** TypeScript
+**License:** Apache-2.0
 **Website:** https://continue.dev
 
 | Aspect | Details |
@@ -182,8 +182,8 @@ A comprehensive comparison of Clawdius against other AI-powered coding assistant
 ---
 
 ### Cody
-**Runtime:** TypeScript  
-**License:** Apache-2.0 (core), Proprietary (enterprise)  
+**Runtime:** TypeScript
+**License:** Apache-2.0 (core), Proprietary (enterprise)
 **Website:** https://github.com/sourcegraph/cody
 
 | Aspect | Details |
@@ -200,8 +200,8 @@ A comprehensive comparison of Clawdius against other AI-powered coding assistant
 ---
 
 ### Tabby
-**Runtime:** Rust/Python  
-**License:** Apache-2.0  
+**Runtime:** Rust/Python
+**License:** Apache-2.0
 **Website:** https://github.com/TabbyML/tabby
 
 | Aspect | Details |
@@ -221,20 +221,20 @@ A comprehensive comparison of Clawdius against other AI-powered coding assistant
 
 | Feature | Clawdius | Aider | Cursor | Continue | Cody | Tabby |
 |---------|:--------:|:-----:|:------:|:--------:|:----:|:-----:|
-| Local Execution | ✅ | ✅ | ⚠️ | ✅ | ⚠️ | ✅ |
-| Cloud Option | ✅ | ❌ | ✅ | ❌ | ✅ | ❌ |
-| Sandboxed Execution | ✅ | ❌ | ⚠️ | ❌ | ❌ | ❌ |
-| Multi-LLM | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Codebase Indexing | ✅ | ⚠️ | ✅ | ✅ | ✅ | ✅ |
-| Git Integration | ✅ | ✅ | ✅ | ⚠️ | ✅ | ⚠️ |
-| IDE Integration | ⚠️ | ❌ | ✅ | ✅ | ✅ | ✅ |
-| CLI Interface | ✅ | ✅ | ✅ | ❌ | ⚠️ | ⚠️ |
-| Self-Hosted | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ |
-| Enterprise Ready | ✅ | ❌ | ✅ | ⚠️ | ✅ | ✅ |
-| Formal Verification | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Air-Gap Capable | ✅ | ✅ | ❌ | ✅ | ⚠️ | ✅ |
+| Local Execution | Yes | Yes | Partial | Yes | Partial | Yes |
+| Cloud Option | Yes | No | Yes | No | Yes | No |
+| Sandboxed Execution | Yes | No | Partial | No | No | No |
+| Multi-LLM | Yes | Yes | Yes | Yes | Yes | Yes |
+| Codebase Indexing | Yes | Partial | Yes | Yes | Yes | Yes |
+| Git Integration | Yes | Yes | Yes | Partial | Yes | Partial |
+| IDE Integration | Partial | No | Yes | Yes | Yes | Yes |
+| CLI Interface | Yes | Yes | Yes | No | Partial | Partial |
+| Self-Hosted | Yes | Yes | No | Yes | Yes | Yes |
+| Enterprise Ready | Yes | No | Yes | Partial | Yes | Yes |
+| Formal Verification | Yes | No | No | No | No | No |
+| Air-Gap Capable | Yes | Yes | No | Yes | Partial | Yes |
 
-Legend: ✅ Full support | ⚠️ Partial support | ❌ No support
+Legend: Full support | Partial support | No support
 
 ---
 
@@ -242,17 +242,17 @@ Legend: ✅ Full support | ⚠️ Partial support | ❌ No support
 
 | Tool | Execution Isolation | Data Privacy | Secret Management | Audit Logging |
 |------|:-------------------:|:------------:|:-----------------:|:-------------:|
-| **Clawdius** | WASM Sandbox | Local-first | Encrypted vault | ✅ |
-| IronClaw | Process | Cloud | Environment | ❌ |
-| ZeroClaw | None | Local | Environment | ❌ |
-| OpenCode | None | Configurable | Environment | ❌ |
-| Kilocode | None | Cloud | Cloud | ⚠️ |
-| Claude Code | None | Cloud | Cloud | ✅ |
-| Aider | None | Local | Environment | ❌ |
-| Cursor | Shadow Workspace | Cloud | Cloud | ✅ |
-| Continue | None | Local | Environment | ❌ |
-| Cody | None | Configurable | Configurable | ✅ |
-| Tabby | None | Self-hosted | Self-hosted | ⚠️ |
+| **Clawdius** | WASM Sandbox | Local-first | Encrypted vault | Yes |
+| IronClaw | Process | Cloud | Environment | No |
+| ZeroClaw | None | Local | Environment | No |
+| OpenCode | None | Configurable | Environment | No |
+| Kilocode | None | Cloud | Cloud | Partial |
+| Claude Code | None | Cloud | Cloud | Yes |
+| Aider | None | Local | Environment | No |
+| Cursor | Shadow Workspace | Cloud | Cloud | Yes |
+| Continue | None | Local | Environment | No |
+| Cody | None | Configurable | Configurable | Yes |
+| Tabby | None | Self-hosted | Self-hosted | Partial |
 
 ---
 
@@ -261,29 +261,29 @@ Legend: ✅ Full support | ⚠️ Partial support | ❌ No support
 ### Unique Advantages
 
 1. **Hardware-Isolated Sandboxing**
-   - WASM-based execution with capability system
-   - Formal verification of security-critical paths
-   - Defense-in-depth security model
+- WASM-based execution with capability system
+- Formal verification of security-critical paths
+- Defense-in-depth security model
 
 2. **Graph-RAG Knowledge System**
-   - Semantic relationship mapping
-   - Context-aware code understanding
-   - Persistent knowledge graphs
+- Semantic relationship mapping
+- Context-aware code understanding
+- Persistent knowledge graphs
 
 3. **Local-First Architecture**
-   - Full functionality without internet
-   - Air-gapped deployment support
-   - Complete data sovereignty
+- Full functionality without internet
+- Air-gapped deployment support
+- Complete data sovereignty
 
 4. **Enterprise-Grade Security**
-   - Audit logging
-   - Secret management
-   - Compliance-ready architecture
+- Audit logging
+- Secret management
+- Compliance-ready architecture
 
 5. **Performance**
-   - Native Rust performance
-   - Sub-100ms response times
-   - Minimal resource footprint
+- Native Rust performance
+- Sub-100ms response times
+- Minimal resource footprint
 
 ### When to Choose Clawdius
 

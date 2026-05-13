@@ -14,14 +14,14 @@ Clawdius has unique strengths in **security (Sentinel sandboxing)**, **formal ve
 
 | Priority | Category | Impact | Effort |
 |----------|----------|--------|--------|
-| 🔴 P0 | IDE Integration | High | High |
-| 🔴 P0 | Browser Automation | High | Medium |
-| 🟠 P1 | Context Management | High | Medium |
-| 🟠 P1 | Session/History | Medium | Low |
-| 🟡 P2 | Output Formats | Medium | Low |
-| 🟡 P2 | GitHub Integration | Medium | Medium |
-| 🟢 P3 | Web Search/Grounding | Low | Low |
-| 🟢 P3 | Team Collaboration | Low | High |
+| P0 | IDE Integration | High | High |
+| P0 | Browser Automation | High | Medium |
+| P1 | Context Management | High | Medium |
+| P1 | Session/History | Medium | Low |
+| P2 | Output Formats | Medium | Low |
+| P2 | GitHub Integration | Medium | Medium |
+| P3 | Web Search/Grounding | Low | Low |
+| P3 | Team Collaboration | Low | High |
 
 ---
 
@@ -31,12 +31,12 @@ Clawdius has unique strengths in **security (Sentinel sandboxing)**, **formal ve
 
 | Feature | Clawdius | Cline | Roo Code | Claude Code | Gemini CLI |
 |---------|:--------:|:-----:|:--------:|:-----------:|:----------:|
-| VSCode Extension | ❌ | ✅ | ✅ | ⚠️ | ✅ |
-| JetBrains Plugin | ❌ | ❌ | ❌ | ❌ | ❌ |
-| LSP Server Mode | ❌ | ✅ | ❌ | ❌ | ⚠️ |
-| Inline Completions | ❌ | ❌ | ✅ | ❌ | ❌ |
-| Diff View in Editor | ❌ | ✅ | ✅ | ✅ | ❌ |
-| Sidebar Panel | ❌ | ✅ | ✅ | ❌ | ❌ |
+| VSCode Extension | No | Yes | Yes | Partial | Yes |
+| JetBrains Plugin | No | No | No | No | No |
+| LSP Server Mode | No | Yes | No | No | Partial |
+| Inline Completions | No | No | Yes | No | No |
+| Diff View in Editor | No | Yes | Yes | Yes | No |
+| Sidebar Panel | No | Yes | Yes | No | No |
 
 **What's Missing:**
 - **VSCode Extension** - Most requested feature for daily use
@@ -52,12 +52,12 @@ Clawdius has unique strengths in **security (Sentinel sandboxing)**, **formal ve
 
 | Feature | Clawdius | Cline | Roo Code | Claude Code | Gemini CLI |
 |---------|:--------:|:-----:|:--------:|:-----------:|:----------:|
-| Headless Browser | ❌ | ✅ | ❌ | ❌ | ❌ |
-| Click/Type/Scroll | ❌ | ✅ | ❌ | ❌ | ❌ |
-| Screenshot Capture | ❌ | ✅ | ❌ | ❌ | ❌ |
-| Console Log Monitor | ❌ | ✅ | ❌ | ❌ | ❌ |
-| Visual Bug Fixing | ❌ | ✅ | ❌ | ❌ | ❌ |
-| E2E Testing | ❌ | ✅ | ❌ | ❌ | ❌ |
+| Headless Browser | No | Yes | No | No | No |
+| Click/Type/Scroll | No | Yes | No | No | No |
+| Screenshot Capture | No | Yes | No | No | No |
+| Console Log Monitor | No | Yes | No | No | No |
+| Visual Bug Fixing | No | Yes | No | No | No |
+| E2E Testing | No | Yes | No | No | No |
 
 **What's Missing:**
 - **Puppeteer/Playwright Integration** - Control browsers programmatically
@@ -74,13 +74,13 @@ Clawdius has unique strengths in **security (Sentinel sandboxing)**, **formal ve
 
 | Feature | Clawdius | Cline | Roo Code | Claude Code | Gemini CLI |
 |---------|:--------:|:-----:|:--------:|:-----------:|:----------:|
-| @url Context | ❌ | ✅ | ❌ | ❌ | ⚠️ |
-| @file Context | ❌ | ✅ | ✅ | ✅ | ✅ |
-| @folder Context | ❌ | ✅ | ✅ | ✅ | ✅ |
-| @problems Context | ❌ | ✅ | ✅ | ❌ | ❌ |
-| Auto-Compact | ❌ | ✅ | ✅ | ✅ | ✅ |
-| Token Caching | ❌ | ❌ | ❌ | ❌ | ✅ |
-| Context Window Display | ❌ | ✅ | ✅ | ✅ | ✅ |
+| @url Context | No | Yes | No | No | Partial |
+| @file Context | No | Yes | Yes | Yes | Yes |
+| @folder Context | No | Yes | Yes | Yes | Yes |
+| @problems Context | No | Yes | Yes | No | No |
+| Auto-Compact | No | Yes | Yes | Yes | Yes |
+| Token Caching | No | No | No | No | Yes |
+| Context Window Display | No | Yes | Yes | Yes | Yes |
 
 **What's Missing:**
 - **@Mentions System** - Quick way to add context (`@file:main.rs`, `@url:docs.rs`)
@@ -96,12 +96,12 @@ Clawdius has unique strengths in **security (Sentinel sandboxing)**, **formal ve
 
 | Feature | Clawdius | Cline | Roo Code | Claude Code | Gemini CLI |
 |---------|:--------:|:-----:|:--------:|:-----------:|:----------:|
-| Session Persistence | ❌ | ✅ (SQLite) | ✅ | ✅ | ✅ |
-| Session Restore | ❌ | ✅ | ✅ | ✅ | ✅ |
-| Conversation History | ❌ | ✅ | ✅ | ✅ | ✅ |
-| Checkpoints | ❌ | ✅ | ✅ | ❌ | ✅ |
-| Compare/Restore | ❌ | ✅ | ✅ | ❌ | ✅ |
-| Multiple Sessions | ❌ | ✅ | ✅ | ✅ | ✅ |
+| Session Persistence | No | (SQLite) | Yes | Yes | Yes |
+| Session Restore | No | Yes | Yes | Yes | Yes |
+| Conversation History | No | Yes | Yes | Yes | Yes |
+| Checkpoints | No | Yes | Yes | No | Yes |
+| Compare/Restore | No | Yes | Yes | No | Yes |
+| Multiple Sessions | No | Yes | Yes | Yes | Yes |
 
 **What's Missing:**
 - **SQLite Session Storage** - Persist conversations across restarts
@@ -117,12 +117,12 @@ Clawdius has unique strengths in **security (Sentinel sandboxing)**, **formal ve
 
 | Feature | Clawdius | Cline | Roo Code | Claude Code | Gemini CLI |
 |---------|:--------:|:-----:|:--------:|:-----------:|:----------:|
-| JSON Output | ❌ | ✅ | ❌ | ❌ | ✅ |
-| Stream JSON | ❌ | ❌ | ❌ | ❌ | ✅ |
-| Headless Mode | ⚠️ | ✅ | ❌ | ✅ | ✅ |
-| Exit Codes | ⚠️ | ✅ | ❌ | ✅ | ✅ |
-| Quiet Mode | ❌ | ✅ | ❌ | ❌ | ✅ |
-| Progress Indicators | ⚠️ | ✅ | ✅ | ✅ | ✅ |
+| JSON Output | No | Yes | No | No | Yes |
+| Stream JSON | No | No | No | No | Yes |
+| Headless Mode | Partial | Yes | No | Yes | Yes |
+| Exit Codes | Partial | Yes | No | Yes | Yes |
+| Quiet Mode | No | Yes | No | No | Yes |
+| Progress Indicators | Partial | Yes | Yes | Yes | Yes |
 
 **What's Missing:**
 - **`--output-format json`** - Structured output for scripts
@@ -138,11 +138,11 @@ Clawdius has unique strengths in **security (Sentinel sandboxing)**, **formal ve
 
 | Feature | Clawdius | Cline | Roo Code | Claude Code | Gemini CLI |
 |---------|:--------:|:-----:|:--------:|:-----------:|:----------:|
-| GitHub Actions | ❌ | ❌ | ❌ | ❌ | ✅ |
-| PR Reviews | ❌ | ⚠️ | ❌ | ✅ | ✅ |
-| Issue Triage | ❌ | ❌ | ❌ | ✅ | ✅ |
-| @mentions in GitHub | ❌ | ❌ | ❌ | ✅ | ✅ |
-| Sourcegraph Search | ❌ | ✅ | ❌ | ❌ | ❌ |
+| GitHub Actions | No | No | No | No | Yes |
+| PR Reviews | No | Partial | No | Yes | Yes |
+| Issue Triage | No | No | No | Yes | Yes |
+| @mentions in GitHub | No | No | No | Yes | Yes |
+| Sourcegraph Search | No | Yes | No | No | No |
 
 **What's Missing:**
 - **GitHub Action** - Run Clawdius in CI/CD pipelines
@@ -158,12 +158,12 @@ Clawdius has unique strengths in **security (Sentinel sandboxing)**, **formal ve
 
 | Feature | Clawdius | Cline | Roo Code | Claude Code | Gemini CLI |
 |---------|:--------:|:-----:|:--------:|:-----------:|:----------:|
-| Built-in Modes | ❌ | ❌ | ✅ (5) | ⚠️ | ❌ |
-| Custom Modes | ❌ | ❌ | ✅ | ✅ | ❌ |
-| Custom Commands | ❌ | ✅ | ✅ | ✅ | ✅ |
-| Command Arguments | ❌ | ✅ | ❌ | ✅ | ❌ |
-| Skills/Plugins | ❌ | ⚠️ | ❌ | ✅ | ❌ |
-| Memory Files | ⚠️ | ⚠️ | ✅ | ✅ | ✅ |
+| Built-in Modes | No | No | (5) | Partial | No |
+| Custom Modes | No | No | Yes | Yes | No |
+| Custom Commands | No | Yes | Yes | Yes | Yes |
+| Command Arguments | No | Yes | No | Yes | No |
+| Skills/Plugins | No | Partial | No | Yes | No |
+| Memory Files | Partial | Partial | Yes | Yes | Yes |
 
 **What's Missing:**
 - **Agent Modes** - Code, Architect, Ask, Debug modes with different behaviors
@@ -179,12 +179,12 @@ Clawdius has unique strengths in **security (Sentinel sandboxing)**, **formal ve
 
 | Feature | Clawdius | Cline | Roo Code | Claude Code | Gemini CLI |
 |---------|:--------:|:-----:|:--------:|:-----------:|:----------:|
-| MCP Servers | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Create MCP Tools | ❌ | ✅ | ❌ | ❌ | ❌ |
-| Web Fetch | ❌ | ✅ | ❌ | ⚠️ | ✅ |
-| Google Search | ❌ | ❌ | ❌ | ❌ | ✅ |
-| Slack/Teams | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Matrix Bridge | ⚠️ | ❌ | ❌ | ❌ | ❌ |
+| MCP Servers | Yes | Yes | Yes | Yes | Yes |
+| Create MCP Tools | No | Yes | No | No | No |
+| Web Fetch | No | Yes | No | Partial | Yes |
+| Google Search | No | No | No | No | Yes |
+| Slack/Teams | No | No | No | No | No |
+| Matrix Bridge | Partial | No | No | No | No |
 
 **What's Missing:**
 - **"Add a tool that..."** - Auto-create MCP servers from description
@@ -200,13 +200,13 @@ Clawdius has unique strengths in **security (Sentinel sandboxing)**, **formal ve
 
 | Feature | Clawdius | Cline | Roo Code | Claude Code | Gemini CLI |
 |---------|:--------:|:-----:|:--------:|:-----------:|:----------:|
-| TUI (Terminal UI) | ✅ | ✅ | ❌ | ✅ | ✅ |
-| Vim Keybindings | ❌ | ⚠️ | ❌ | ❌ | ❌ |
-| External Editor | ❌ | ✅ | ❌ | ❌ | ❌ |
-| File Timeline | ❌ | ✅ | ❌ | ❌ | ❌ |
-| Help Dialog | ⚠️ | ✅ | ✅ | ✅ | ✅ |
-| Keyboard Shortcuts | ⚠️ | ✅ | ✅ | ✅ | ✅ |
-| Multi-language UI | ❌ | ❌ | ✅ (18+) | ❌ | ❌ |
+| TUI (Terminal UI) | Yes | Yes | No | Yes | Yes |
+| Vim Keybindings | No | Partial | No | No | No |
+| External Editor | No | Yes | No | No | No |
+| File Timeline | No | Yes | No | No | No |
+| Help Dialog | Partial | Yes | Yes | Yes | Yes |
+| Keyboard Shortcuts | Partial | Yes | Yes | Yes | Yes |
+| Multi-language UI | No | No | (18+) | No | No |
 
 **What's Missing:**
 - **Vim-like Editor** - Modal editing in TUI
@@ -223,12 +223,12 @@ Clawdius has unique strengths in **security (Sentinel sandboxing)**, **formal ve
 
 | Feature | Clawdius | Cline | Roo Code | Claude Code | Gemini CLI |
 |---------|:--------:|:-----:|:--------:|:-----------:|:----------:|
-| SSO/SAML | ❌ | ✅ | ❌ | ✅ | ⚠️ |
-| Audit Logging | ⚠️ | ✅ | ❌ | ✅ | ✅ |
-| Team Workspaces | ❌ | ❌ | ❌ | ⚠️ | ⚠️ |
-| Policy Controls | ⚠️ | ✅ | ❌ | ✅ | ✅ |
-| Private Cloud | ✅ | ⚠️ | ❌ | ⚠️ | ⚠️ |
-| Enterprise Docs | ⚠️ | ✅ | ❌ | ✅ | ✅ |
+| SSO/SAML | No | Yes | No | Yes | Partial |
+| Audit Logging | Partial | Yes | No | Yes | Yes |
+| Team Workspaces | No | No | No | Partial | Partial |
+| Policy Controls | Partial | Yes | No | Yes | Yes |
+| Private Cloud | Yes | Partial | No | Partial | Partial |
+| Enterprise Docs | Partial | Yes | No | Yes | Yes |
 
 **What's Missing:**
 - **SSO Integration** - SAML/OIDC for enterprise auth
@@ -326,25 +326,25 @@ These are features Clawdius has that others don't:
 ## Competitive Positioning
 
 ```
-                    High Security
-                         │
-                    Clawdius ●
-                        ╱  │
-                       ╱   │
-       OpenCode ●    ╱    │
-                 ╱  ╱     │
-               ╱  ╱       │
-             ╱  ╱    Roo  ●
-           ╱  ╱      Code
-         ╱  ╱
-       ╱  ╱  Cline ●
-     ╱  ╱
-   ╱  ╱        Gemini ●
- ╱  ╱          CLI
-●  ╱
+High Security
+
+Clawdius
+
+
+OpenCode
+
+
+Roo
+Code
+
+Cline
+
+Gemini
+CLI
+
 Aider
-╱
-Low Security ──────────────── High Features
+
+Low Security High Features
 ```
 
 **Clawdius Position:** High security, medium features. Opportunity to move right (more features) while maintaining security advantage.

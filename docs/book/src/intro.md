@@ -4,7 +4,7 @@
 
 ## Why Clawdius?
 
-### 🛡️ Security First
+### Security First
 
 Clawdius was designed from the ground up with security as a primary concern:
 
@@ -13,7 +13,7 @@ Clawdius was designed from the ground up with security as a primary concern:
 - **Enterprise SSO**: SAML 2.0, OIDC, Okta, Azure AD, and GitHub integration
 - **Comprehensive Audit Logging**: SQLite, Elasticsearch, and webhook backends
 
-### ⚡ Native Performance
+### Native Performance
 
 Built in Rust for maximum performance:
 
@@ -22,7 +22,7 @@ Built in Rust for maximum performance:
 - **Memory-efficient**: Minimal resource footprint
 - **Cross-platform**: Linux, macOS, Windows support
 
-### 🔧 Extensible Architecture
+### Extensible Architecture
 
 - **Plugin System**: WASM-based plugins with 26 hook types
 - **Multiple LLM Providers**: Anthropic, OpenAI, Ollama, and custom endpoints
@@ -78,24 +78,24 @@ clawdius setup --quick --provider anthropic
 ## Architecture Overview
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                        Clawdius CLI                          │
-├─────────────────────────────────────────────────────────────┤
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐  │
-│  │   Session   │  │   Context   │  │      Timeline       │  │
-│  │   Manager   │  │   Builder   │  │    & Checkpoints    │  │
-│  └─────────────┘  └─────────────┘  └─────────────────────┘  │
-├─────────────────────────────────────────────────────────────┤
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐  │
-│  │     LLM     │  │   Graph-    │  │      Plugin         │  │
-│  │  Providers  │  │    RAG      │  │      System         │  │
-│  └─────────────┘  └─────────────┘  └─────────────────────┘  │
-├─────────────────────────────────────────────────────────────┤
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐  │
-│  │   Sandbox   │  │   Tool      │  │     Enterprise      │  │
-│  │  Executors  │  │   Runner    │  │     Features        │  │
-│  └─────────────┘  └─────────────┘  └─────────────────────┘  │
-└─────────────────────────────────────────────────────────────┘
++-------------------------------------------------------------+
+|                        Clawdius CLI |
++-------------------------------------------------------------+
+|  +-------------+  +-------------+  +---------------------+ |
+| |   Session | |   Context | |      Timeline | |
+| |   Manager | |   Builder | |    & Checkpoints | |
+|  +-------------+  +-------------+  +---------------------+ |
++-------------------------------------------------------------+
+|  +-------------+  +-------------+  +---------------------+ |
+| |     LLM | |   Graph- | |      Plugin | |
+| |  Providers | |    RAG | |      System | |
+|  +-------------+  +-------------+  +---------------------+ |
++-------------------------------------------------------------+
+|  +-------------+  +-------------+  +---------------------+ |
+| |   Sandbox | |   Tool | |     Enterprise | |
+| |  Executors | |   Runner | |     Features | |
+|  +-------------+  +-------------+  +---------------------+ |
++-------------------------------------------------------------+
 ```
 
 ## What's Next?

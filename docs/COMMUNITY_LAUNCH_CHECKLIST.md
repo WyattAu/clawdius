@@ -2,7 +2,7 @@
 
 ## Clawdius v1.2.0 - Phase 2 Polish Release
 
-### Pre-Launch ✅
+### Pre-Launch
 
 - [x] Code complete and tested (1,002+ tests passing)
 - [x] Security audit clean (zero vulnerabilities)
@@ -12,7 +12,7 @@
 - [x] VERSION.md updated
 - [x] Documentation updated for setup wizard
 
-### Content Ready ✅
+### Content Ready
 
 - [x] Blog post: `blog/2026-03-25-v1.2.0-launch.md`
 - [x] Twitter thread: `blog/twitter-thread-v1.2.0.md`
@@ -132,4 +132,4 @@
 
 ---
 
-**Good luck with the launch! 🚀**
+**Good luck with the launch!**

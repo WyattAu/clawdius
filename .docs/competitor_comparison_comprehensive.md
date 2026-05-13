@@ -1,7 +1,7 @@
 # Clawdius Comprehensive Competitor Analysis
 ## 25+ AI Coding Assistants Comparison
 
-**Generated:** 2026-03-10  
+**Generated:** 2026-03-10
 **Analyst:** Nexus (R&D Mega Prompt v5.0)
 
 ---
@@ -11,10 +11,10 @@
 Clawdius occupies a unique position in the AI coding assistant market with **unmatched security features** (Sentinel sandboxing, Lean4 verification) and **native Rust performance**. However, it lags behind competitors in **IDE integration** and **team collaboration** features.
 
 **Market Position:**
-- Security: 🏆 #1 (unique sandboxing + formal verification)
-- Performance: 🥈 Top 3 (native Rust, only Tabby comparable)
-- Features: 🔶 Middle tier (missing inline completions, JetBrains)
-- Adoption: 🆕 New entrant (0 stars, early stage)
+- Security: #1 (unique sandboxing + formal verification)
+- Performance: Top 3 (native Rust, only Tabby comparable)
+- Features: Middle tier (missing inline completions, JetBrains)
+- Adoption: New entrant (0 stars, early stage)
 
 ---
 
@@ -22,16 +22,16 @@ Clawdius occupies a unique position in the AI coding assistant market with **unm
 
 | Tool | Runtime | Security | RAG | Open Source | Sandboxing | License |
 |------|---------|----------|-----|-------------|------------|---------|
-| **Clawdius** | Rust | Hardware-isolated | Graph-RAG | ✅ Yes | ✅ WASM/Container | Apache-2.0 |
-| GitHub Copilot | Cloud | SOC2 | Basic | ❌ No | ❌ None | Proprietary |
-| Cursor | Electron | SOC2 | Indexed | ❌ No | ⚠️ Shadow | Proprietary |
-| Claude Code | Node.js | Cloud | Yes | ❌ No | ❌ None | Proprietary |
-| Aider | Python | None | Repo-map | ✅ Yes | ❌ None | Apache-2.0 |
-| Continue | TypeScript | Basic | Indexed | ✅ Yes | ❌ None | Apache-2.0 |
-| Cody | TypeScript | Enterprise | Code Graph | ⚠️ Partial | ❌ None | Apache-2.0/Proprietary |
-| Tabby | Rust/Python | Self-hosted | Indexed | ✅ Yes | ❌ None | Apache-2.0 |
-| Windsurf | Electron | Cloud | Indexed | ❌ No | ❌ None | Proprietary |
-| Replit AI | Cloud | Cloud | Basic | ❌ No | ❌ None | Proprietary |
+| **Clawdius** | Rust | Hardware-isolated | Graph-RAG | Yes | WASM/Container | Apache-2.0 |
+| GitHub Copilot | Cloud | SOC2 | Basic | No | None | Proprietary |
+| Cursor | Electron | SOC2 | Indexed | No | Shadow | Proprietary |
+| Claude Code | Node.js | Cloud | Yes | No | None | Proprietary |
+| Aider | Python | None | Repo-map | Yes | None | Apache-2.0 |
+| Continue | TypeScript | Basic | Indexed | Yes | None | Apache-2.0 |
+| Cody | TypeScript | Enterprise | Code Graph | Partial | None | Apache-2.0/Proprietary |
+| Tabby | Rust/Python | Self-hosted | Indexed | Yes | None | Apache-2.0 |
+| Windsurf | Electron | Cloud | Indexed | No | None | Proprietary |
+| Replit AI | Cloud | Cloud | Basic | No | None | Proprietary |
 
 ---
 
@@ -40,10 +40,10 @@ Clawdius occupies a unique position in the AI coding assistant market with **unm
 ### Tier 1: Major Commercial Players
 
 #### 1. GitHub Copilot
-**Company:** Microsoft/GitHub  
-**Website:** https://github.com/features/copilot  
-**Runtime:** Cloud (with local processing)  
-**License:** Proprietary  
+**Company:** Microsoft/GitHub
+**Website:** https://github.com/features/copilot
+**Runtime:** Cloud (with local processing)
+**License:** Proprietary
 
 | Aspect | Details |
 |--------|---------|
@@ -55,7 +55,7 @@ Clawdius occupies a unique position in the AI coding assistant market with **unm
 | **Pricing** | Free (limited) → $10/mo (Pro) → $19/mo (Business) → $39/mo (Enterprise) |
 | **Unique Features** | Agents on GitHub, native GitHub integration, multi-model |
 | **Limitations** | Cloud-dependent, no sandboxing, proprietary |
-| **Market Share** | 🏆 #1 - Most widely adopted |
+| **Market Share** | #1 - Most widely adopted |
 | **Key Differentiator** | Best GitHub integration, multi-model support |
 
 **Competitive Threat:** HIGH - Dominant market position, improving features
@@ -63,17 +63,17 @@ Clawdius occupies a unique position in the AI coding assistant market with **unm
 ---
 
 #### 2. Cursor
-**Company:** Anysphere  
-**Website:** https://cursor.sh  
-**Runtime:** Electron (Forked VSCode)  
-**License:** Proprietary  
+**Company:** Anysphere
+**Website:** https://cursor.sh
+**Runtime:** Electron (Forked VSCode)
+**License:** Proprietary
 
 | Aspect | Details |
 |--------|---------|
 | **Security Model** | SOC 2 certified, enterprise controls, shadow workspaces |
 | **LLM Support** | Multi-provider (OpenAI, Anthropic, Gemini, xAI, custom) |
 | **IDE Integration** | Cursor IDE (forked VSCode) |
-| **Sandboxing** | ⚠️ Limited - shadow workspaces for agents |
+| **Sandboxing** | Limited - shadow workspaces for agents |
 | **RAG/Knowledge** | Full codebase indexing with semantic search |
 | **Pricing** | Free (limited) → $20/mo (Pro) → $40/mo (Business) |
 | **Unique Features** | Tab completion, multi-agent, BugBot review, cloud agents |
@@ -86,10 +86,10 @@ Clawdius occupies a unique position in the AI coding assistant market with **unm
 ---
 
 #### 3. Claude Code
-**Company:** Anthropic  
-**Website:** https://anthropic.com/claude  
-**Runtime:** Node.js  
-**License:** Proprietary  
+**Company:** Anthropic
+**Website:** https://anthropic.com/claude
+**Runtime:** Node.js
+**License:** Proprietary
 
 | Aspect | Details |
 |--------|---------|
@@ -108,10 +108,10 @@ Clawdius occupies a unique position in the AI coding assistant market with **unm
 ---
 
 #### 4. Amazon Q Developer (CodeWhisperer)
-**Company:** Amazon/AWS  
-**Website:** https://aws.amazon.com/q/developer/  
-**Runtime:** Cloud  
-**License:** Proprietary  
+**Company:** Amazon/AWS
+**Website:** https://aws.amazon.com/q/developer/
+**Runtime:** Cloud
+**License:** Proprietary
 
 | Aspect | Details |
 |--------|---------|
@@ -130,10 +130,10 @@ Clawdius occupies a unique position in the AI coding assistant market with **unm
 ---
 
 #### 5. Google Gemini Code Assist
-**Company:** Google  
-**Website:** https://cloud.google.com/products/gemini/code-assist  
-**Runtime:** Cloud  
-**License:** Proprietary  
+**Company:** Google
+**Website:** https://cloud.google.com/products/gemini/code-assist
+**Runtime:** Cloud
+**License:** Proprietary
 
 | Aspect | Details |
 |--------|---------|
@@ -152,10 +152,10 @@ Clawdius occupies a unique position in the AI coding assistant market with **unm
 ---
 
 #### 6. Windsurf (by Codeium)
-**Company:** Codeium  
-**Website:** https://codeium.com/windsurf  
-**Runtime:** Electron (Forked VSCode)  
-**License:** Proprietary  
+**Company:** Codeium
+**Website:** https://codeium.com/windsurf
+**Runtime:** Electron (Forked VSCode)
+**License:** Proprietary
 
 | Aspect | Details |
 |--------|---------|
@@ -174,17 +174,17 @@ Clawdius occupies a unique position in the AI coding assistant market with **unm
 ---
 
 #### 7. Replit AI
-**Company:** Replit  
-**Website:** https://replit.com/ai  
-**Runtime:** Cloud (browser-based)  
-**License:** Proprietary  
+**Company:** Replit
+**Website:** https://replit.com/ai
+**Runtime:** Cloud (browser-based)
+**License:** Proprietary
 
 | Aspect | Details |
 |--------|---------|
 | **Security Model** | Cloud sandbox |
 | **LLM Support** | Multi-provider |
 | **IDE Integration** | Replit browser IDE |
-| **Sandboxing** | ⚠️ Cloud sandbox (isolated container) |
+| **Sandboxing** | Cloud sandbox (isolated container) |
 | **RAG/Knowledge** | Project context |
 | **Pricing** | Free tier → $20/mo |
 | **Unique Features** | Browser-based, instant deploy, multiplayer |
@@ -196,10 +196,10 @@ Clawdius occupies a unique position in the AI coding assistant market with **unm
 ---
 
 #### 8. Sourcegraph Cody
-**Company:** Sourcegraph  
-**Website:** https://github.com/sourcegraph/cody  
-**Runtime:** TypeScript  
-**License:** Apache-2.0 (core), Proprietary (enterprise)  
+**Company:** Sourcegraph
+**Website:** https://github.com/sourcegraph/cody
+**Runtime:** TypeScript
+**License:** Apache-2.0 (core), Proprietary (enterprise)
 
 | Aspect | Details |
 |--------|---------|
@@ -207,7 +207,7 @@ Clawdius occupies a unique position in the AI coding assistant market with **unm
 | **LLM Support** | Multi-provider, self-hosted options |
 | **IDE Integration** | VSCode, JetBrains |
 | **Sandboxing** | None |
-| **RAG/Knowledge** | ✅ Sourcegraph code graph, deep search |
+| **RAG/Knowledge** | Sourcegraph code graph, deep search |
 | **Pricing** | Free → $9/mo → Enterprise |
 | **Unique Features** | Deep codebase understanding, Sourcegraph integration |
 | **Limitations** | Best features require Sourcegraph instance |
@@ -220,18 +220,18 @@ Clawdius occupies a unique position in the AI coding assistant market with **unm
 ### Tier 2: Open Source / Self-Hosted
 
 #### 9. Aider
-**Website:** https://aider.chat  
-**Runtime:** Python  
-**License:** Apache-2.0  
-**Stars:** ~41,000  
+**Website:** https://aider.chat
+**Runtime:** Python
+**License:** Apache-2.0
+**Stars:** ~41,000
 
 | Aspect | Details |
 |--------|---------|
 | **Security Model** | None - runs with user permissions |
 | **LLM Support** | Multi-provider (Claude, GPT, DeepSeek, local) |
-| **IDE Integration** | ❌ CLI only |
-| **Sandboxing** | ❌ None |
-| **RAG/Knowledge** | ⚠️ Repo-map for codebase understanding |
+| **IDE Integration** | CLI only |
+| **Sandboxing** | None |
+| **RAG/Knowledge** | Repo-map for codebase understanding |
 | **Pricing** | Free (BYO API key) |
 | **Unique Features** | Git integration, voice-to-code, image support |
 | **Limitations** | No sandboxing, CLI-only, Python dependency |
@@ -242,18 +242,18 @@ Clawdius occupies a unique position in the AI coding assistant market with **unm
 ---
 
 #### 10. Continue
-**Website:** https://continue.dev  
-**Runtime:** TypeScript  
-**License:** Apache-2.0  
-**Stars:** ~20,000  
+**Website:** https://continue.dev
+**Runtime:** TypeScript
+**License:** Apache-2.0
+**Stars:** ~20,000
 
 | Aspect | Details |
 |--------|---------|
 | **Security Model** | Basic - runs locally |
 | **LLM Support** | Multi-provider, self-hosted options |
-| **IDE Integration** | ✅ VSCode, JetBrains |
-| **Sandboxing** | ❌ None |
-| **RAG/Knowledge** | ✅ Codebase indexing |
+| **IDE Integration** | VSCode, JetBrains |
+| **Sandboxing** | None |
+| **RAG/Knowledge** | Codebase indexing |
 | **Pricing** | Free (BYO API key) |
 | **Unique Features** | Open source, IDE integration, custom checks |
 | **Limitations** | No sandboxing, IDE-dependent |
@@ -264,18 +264,18 @@ Clawdius occupies a unique position in the AI coding assistant market with **unm
 ---
 
 #### 11. Tabby
-**Website:** https://github.com/TabbyML/tabby  
-**Runtime:** Rust/Python  
-**License:** Apache-2.0  
-**Stars:** ~25,000  
+**Website:** https://github.com/TabbyML/tabby
+**Runtime:** Rust/Python
+**License:** Apache-2.0
+**Stars:** ~25,000
 
 | Aspect | Details |
 |--------|---------|
 | **Security Model** | Self-hosted, data never leaves infrastructure |
 | **LLM Support** | Self-hosted models (StarCoder, CodeLlama, custom) |
-| **IDE Integration** | ✅ VSCode, JetBrains |
-| **Sandboxing** | ❌ None |
-| **RAG/Knowledge** | ✅ Repository context |
+| **IDE Integration** | VSCode, JetBrains |
+| **Sandboxing** | None |
+| **RAG/Knowledge** | Repository context |
 | **Pricing** | Free (self-hosted) |
 | **Unique Features** | Complete privacy, self-hosted, BYO model |
 | **Limitations** | Requires infrastructure, no cloud option |
@@ -286,17 +286,17 @@ Clawdius occupies a unique position in the AI coding assistant market with **unm
 ---
 
 #### 12. OpenDevin
-**Website:** https://github.com/All-Hands-AI/OpenHands  
-**Runtime:** Python  
-**License:** MIT  
-**Stars:** ~50,000  
+**Website:** https://github.com/All-Hands-AI/OpenHands
+**Runtime:** Python
+**License:** MIT
+**Stars:** ~50,000
 
 | Aspect | Details |
 |--------|---------|
 | **Security Model** | Docker sandboxing |
 | **LLM Support** | Multi-provider |
-| **IDE Integration** | ❌ Web UI |
-| **Sandboxing** | ⚠️ Docker container |
+| **IDE Integration** | Web UI |
+| **Sandboxing** | Docker container |
 | **RAG/Knowledge** | Basic |
 | **Pricing** | Free |
 | **Unique Features** | Autonomous agent, web browsing |
@@ -308,17 +308,17 @@ Clawdius occupies a unique position in the AI coding assistant market with **unm
 ---
 
 #### 13. GPT Engineer
-**Website:** https://github.com/gpt-engineer-org/gpt-engineer  
-**Runtime:** Python  
-**License:** MIT  
-**Stars:** ~52,000  
+**Website:** https://github.com/gpt-engineer-org/gpt-engineer
+**Runtime:** Python
+**License:** MIT
+**Stars:** ~52,000
 
 | Aspect | Details |
 |--------|---------|
 | **Security Model** | None |
 | **LLM Support** | Multi-provider |
-| **IDE Integration** | ❌ CLI only |
-| **Sandboxing** | ❌ None |
+| **IDE Integration** | CLI only |
+| **Sandboxing** | None |
 | **RAG/Knowledge** | Basic |
 | **Pricing** | Free |
 | **Unique Features** | Project generation from spec |
@@ -330,17 +330,17 @@ Clawdius occupies a unique position in the AI coding assistant market with **unm
 ---
 
 #### 14. Devin (by Cognition)
-**Company:** Cognition  
-**Website:** https://cognition.ai/devin  
-**Runtime:** Cloud  
-**License:** Proprietary  
+**Company:** Cognition
+**Website:** https://cognition.ai/devin
+**Runtime:** Cloud
+**License:** Proprietary
 
 | Aspect | Details |
 |--------|---------|
 | **Security Model** | Cloud sandbox |
 | **LLM Support** | Cognition models |
-| **IDE Integration** | ❌ Web interface |
-| **Sandboxing** | ⚠️ Cloud sandbox |
+| **IDE Integration** | Web interface |
+| **Sandboxing** | Cloud sandbox |
 | **RAG/Knowledge** | Advanced |
 | **Pricing** | Enterprise only |
 | **Unique Features** | Fully autonomous software engineer |
@@ -352,17 +352,17 @@ Clawdius occupies a unique position in the AI coding assistant market with **unm
 ---
 
 #### 15. Smol Developer
-**Website:** https://github.com/smol-ai/developer  
-**Runtime:** Python  
-**License:** MIT  
-**Stars:** ~12,000  
+**Website:** https://github.com/smol-ai/developer
+**Runtime:** Python
+**License:** MIT
+**Stars:** ~12,000
 
 | Aspect | Details |
 |--------|---------|
 | **Security Model** | None |
 | **LLM Support** | Multi-provider |
-| **IDE Integration** | ❌ CLI only |
-| **Sandboxing** | ❌ None |
+| **IDE Integration** | CLI only |
+| **Sandboxing** | None |
 | **RAG/Knowledge** | Basic |
 | **Pricing** | Free |
 | **Unique Features** | Lightweight, simple agent |
@@ -376,108 +376,108 @@ Clawdius occupies a unique position in the AI coding assistant market with **unm
 ### Tier 3: Specialized / Niche
 
 #### 16. Codeium
-**Website:** https://codeium.com  
-**Runtime:** Cloud/Extension  
-**License:** Proprietary  
+**Website:** https://codeium.com
+**Runtime:** Cloud/Extension
+**License:** Proprietary
 
 Free AI coding assistant with fast completions. 70+ IDE support.
 
 ---
 
 #### 17. DeepSeek Coder
-**Website:** https://deepseek.com  
-**Runtime:** Cloud/Local  
-**License:** MIT (model)  
+**Website:** https://deepseek.com
+**Runtime:** Cloud/Local
+**License:** MIT (model)
 
 Strong open code models. Good for self-hosted inference.
 
 ---
 
 #### 18. CodeGeeX
-**Website:** https://codegeex.cn  
-**Runtime:** Cloud  
-**License:** Proprietary  
+**Website:** https://codegeex.cn
+**Runtime:** Cloud
+**License:** Proprietary
 
 Popular in Chinese market. Multi-language support.
 
 ---
 
 #### 19. Blackbox AI
-**Website:** https://blackbox.ai  
-**Runtime:** Cloud  
-**License:** Proprietary  
+**Website:** https://blackbox.ai
+**Runtime:** Cloud
+**License:** Proprietary
 
 Code search + AI generation. Web integration.
 
 ---
 
 #### 20. Bito AI
-**Website:** https://bito.ai  
-**Runtime:** Cloud  
-**License:** Proprietary  
+**Website:** https://bito.ai
+**Runtime:** Cloud
+**License:** Proprietary
 
 Chat-focused with Slack integration.
 
 ---
 
 #### 21. Mutable.ai
-**Website:** https://mutable.ai  
-**Runtime:** Cloud  
-**License:** Proprietary  
+**Website:** https://mutable.ai
+**Runtime:** Cloud
+**License:** Proprietary
 
 Auto-documentation and codebase AI.
 
 ---
 
 #### 22. Pieces for Developers
-**Website:** https://pieces.app  
-**Runtime:** Electron  
-**License:** Proprietary  
+**Website:** https://pieces.app
+**Runtime:** Electron
+**License:** Proprietary
 
 Code snippet management with offline AI.
 
 ---
 
 #### 23. Mintlify
-**Website:** https://mintlify.com  
-**Runtime:** Cloud  
-**License:** Proprietary  
+**Website:** https://mintlify.com
+**Runtime:** Cloud
+**License:** Proprietary
 
 AI-powered documentation generation.
 
 ---
 
 #### 24. What The Diff
-**Website:** https://whatthediff.ai  
-**Runtime:** Cloud  
-**License:** Proprietary  
+**Website:** https://whatthediff.ai
+**Runtime:** Cloud
+**License:** Proprietary
 
 AI-powered PR review and diff analysis.
 
 ---
 
 #### 25. Phind
-**Website:** https://phind.com  
-**Runtime:** Cloud  
-**License:** Proprietary  
+**Website:** https://phind.com
+**Runtime:** Cloud
+**License:** Proprietary
 
 Web search integration for coding answers.
 
 ---
 
 #### 26. LlamaIndex
-**Website:** https://llamaindex.ai  
-**Runtime:** Python  
-**License:** MIT  
+**Website:** https://llamaindex.ai
+**Runtime:** Python
+**License:** MIT
 
 RAG framework, not an agent but infrastructure.
 
 ---
 
 #### 27. StarCoder / BigCode
-**Website:** https://bigcode-project.github.io  
-**Runtime:** Model only  
-**License:** BigCode Open Model License  
+**Website:** https://bigcode-project.github.io
+**Runtime:** Model only
+**License:** BigCode Open Model License
 
 Open code models for self-hosting.
 
@@ -489,53 +489,53 @@ Open code models for self-hosting.
 
 | Tool | Sandboxing | Air-Gap | Formal Verification | Audit Logs | Secret Management |
 |------|:----------:|:-------:|:-------------------:|:----------:|:-----------------:|
-| **Clawdius** | ✅ WASM/Container | ✅ | ✅ Lean4 | ✅ | ✅ Keyring |
-| GitHub Copilot | ❌ | ❌ | ❌ | ✅ | ⚠️ Cloud |
-| Cursor | ⚠️ Shadow | ❌ | ❌ | ✅ | ⚠️ Cloud |
-| Claude Code | ❌ | ❌ | ❌ | ✅ | ⚠️ Cloud |
-| Aider | ❌ | ✅ | ❌ | ❌ | ⚠️ Env |
-| Continue | ❌ | ✅ | ❌ | ❌ | ⚠️ Env |
-| Cody | ❌ | ⚠️ | ❌ | ✅ | ⚠️ Config |
-| Tabby | ❌ | ✅ | ❌ | ⚠️ | ✅ Self |
-| OpenDevin | ⚠️ Docker | ❌ | ❌ | ❌ | ⚠️ Env |
+| **Clawdius** | WASM/Container | Yes | Lean4 | Yes | Keyring |
+| GitHub Copilot | No | No | No | Yes | Cloud |
+| Cursor | Shadow | No | No | Yes | Cloud |
+| Claude Code | No | No | No | Yes | Cloud |
+| Aider | No | Yes | No | No | Env |
+| Continue | No | Yes | No | No | Env |
+| Cody | No | Partial | No | Yes | Config |
+| Tabby | No | Yes | No | Partial | Self |
+| OpenDevin | Docker | No | No | No | Env |
 
 ### Intelligence Features
 
 | Tool | Graph-RAG | Vector Search | Multi-LLM | Local Models | MCP Support |
 |------|:---------:|:-------------:|:---------:|:------------:|:-----------:|
-| **Clawdius** | ✅ SQLite+Tree-sitter | ✅ LanceDB | ✅ | ✅ Ollama | ✅ |
-| GitHub Copilot | ⚠️ Basic | ⚠️ | ✅ | ❌ | ⚠️ |
-| Cursor | ✅ Indexed | ✅ | ✅ | ❌ | ❌ |
-| Claude Code | ✅ | ⚠️ | ❌ | ❌ | ✅ |
-| Aider | ⚠️ Repo-map | ❌ | ✅ | ✅ | ❌ |
-| Continue | ✅ Indexed | ✅ | ✅ | ✅ | ✅ |
-| Cody | ✅ Code Graph | ✅ | ✅ | ✅ | ✅ |
-| Tabby | ⚠️ Context | ✅ | ❌ | ✅ | ❌ |
+| **Clawdius** | SQLite+Tree-sitter | LanceDB | Yes | Ollama | Yes |
+| GitHub Copilot | Basic | Partial | Yes | No | Partial |
+| Cursor | Indexed | Yes | Yes | No | No |
+| Claude Code | Yes | Partial | No | No | Yes |
+| Aider | Repo-map | No | Yes | Yes | No |
+| Continue | Indexed | Yes | Yes | Yes | Yes |
+| Cody | Code Graph | Yes | Yes | Yes | Yes |
+| Tabby | Context | Yes | No | Yes | No |
 
 ### Performance Features
 
 | Tool | Native Runtime | <20ms Boot | <100ms Response | Zero GC | Memory Efficient |
 |------|:--------------:|:----------:|:---------------:|:-------:|:----------------:|
-| **Clawdius** | ✅ Rust | ✅ | ✅ | ✅ | ✅ |
-| GitHub Copilot | ❌ Cloud | N/A | ⚠️ | N/A | N/A |
-| Cursor | ❌ Electron | ❌ | ⚠️ | ❌ | ❌ |
-| Claude Code | ❌ Node.js | ❌ | ⚠️ | ❌ | ❌ |
-| Aider | ❌ Python | ❌ | ❌ | ❌ | ❌ |
-| Continue | ❌ TypeScript | ❌ | ⚠️ | ❌ | ❌ |
-| Cody | ❌ TypeScript | ❌ | ⚠️ | ❌ | ❌ |
-| Tabby | ⚠️ Rust/Python | ⚠️ | ⚠️ | ⚠️ | ⚠️ |
+| **Clawdius** | Rust | Yes | Yes | Yes | Yes |
+| GitHub Copilot | Cloud | N/A | Partial | N/A | N/A |
+| Cursor | Electron | No | Partial | No | No |
+| Claude Code | Node.js | No | Partial | No | No |
+| Aider | Python | No | No | No | No |
+| Continue | TypeScript | No | Partial | No | No |
+| Cody | TypeScript | No | Partial | No | No |
+| Tabby | Rust/Python | Partial | Partial | Partial | Partial |
 
 ### UX Features
 
 | Tool | VSCode | JetBrains | CLI | TUI | Web UI | Mobile |
 |------|:------:|:---------:|:---:|:---:|:------:|:------:|
-| **Clawdius** | ✅ | ❌ | ✅ | ✅ | ⚠️ WASM | ❌ |
-| GitHub Copilot | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
-| Cursor | ✅ IDE | ❌ | ✅ | ❌ | ❌ | ❌ |
-| Claude Code | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ |
-| Aider | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ |
-| Continue | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Cody | ✅ | ✅ | ⚠️ | ❌ | ✅ | ❌ |
+| **Clawdius** | Yes | No | Yes | Yes | WASM | No |
+| GitHub Copilot | Yes | Yes | Yes | No | Yes | Yes |
+| Cursor | IDE | No | Yes | No | No | No |
+| Claude Code | Yes | No | Yes | No | No | No |
+| Aider | No | No | Yes | No | No | No |
+| Continue | Yes | Yes | No | No | No | No |
+| Cody | Yes | Yes | Partial | No | Yes | No |
 
 ---
 
@@ -545,12 +545,12 @@ Open code models for self-hosting.
 
 | Advantage | Uniqueness | Market Value | Sustainability |
 |-----------|------------|--------------|----------------|
-| **Sentinel Sandboxing** | 🏆 Unique | Critical for enterprise | HIGH |
-| **Lean4 Formal Verification** | 🏆 Unique | Critical for safety-critical | HIGH |
-| **HFT Broker Mode** | 🏆 Unique | Niche but valuable | MEDIUM |
-| **Native Rust Performance** | 🔶 Rare (only Tabby) | High for performance-sensitive | HIGH |
-| **Graph-RAG with Tree-sitter** | ⚠️ Shared with Cody | Medium value | MEDIUM |
-| **Multi-language Research (16)** | 🏆 Unique | Research/academic value | MEDIUM |
+| **Sentinel Sandboxing** | Unique | Critical for enterprise | HIGH |
+| **Lean4 Formal Verification** | Unique | Critical for safety-critical | HIGH |
+| **HFT Broker Mode** | Unique | Niche but valuable | MEDIUM |
+| **Native Rust Performance** | Rare (only Tabby) | High for performance-sensitive | HIGH |
+| **Graph-RAG with Tree-sitter** | Shared with Cody | Medium value | MEDIUM |
+| **Multi-language Research (16)** | Unique | Research/academic value | MEDIUM |
 
 ### Where Clawdius Lags
 
@@ -570,30 +570,30 @@ Open code models for self-hosting.
 ### Primary Target Markets
 
 1. **Security-conscious enterprises** (Finance, Healthcare, Defense)
-   - Clawdius advantage: Sandboxing + Verification
-   - Competitors: None with comparable security
+- Clawdius advantage: Sandboxing + Verification
+- Competitors: None with comparable security
 
 2. **Air-gapped / offline environments**
-   - Clawdius advantage: Full offline capability
-   - Competitors: Aider, Continue, Tabby
+- Clawdius advantage: Full offline capability
+- Competitors: Aider, Continue, Tabby
 
 3. **Safety-critical systems** (Aerospace, Medical devices)
-   - Clawdius advantage: Lean4 formal verification
-   - Competitors: None
+- Clawdius advantage: Lean4 formal verification
+- Competitors: None
 
 4. **High-frequency trading**
-   - Clawdius advantage: HFT Broker mode, zero GC
-   - Competitors: None
+- Clawdius advantage: HFT Broker mode, zero GC
+- Competitors: None
 
 ### Secondary Target Markets
 
 5. **Privacy-focused organizations**
-   - Clawdius advantage: Local-first, self-hosted
-   - Competitors: Tabby, Continue
+- Clawdius advantage: Local-first, self-hosted
+- Competitors: Tabby, Continue
 
 6. **Research institutions**
-   - Clawdius advantage: Multi-language, formal methods
-   - Competitors: None specialized
+- Clawdius advantage: Multi-language, formal methods
+- Competitors: None specialized
 
 ### Markets to Deprioritize
 
@@ -612,8 +612,8 @@ Clawdius has **unique competitive advantages** in security and performance that 
 3. **Target enterprise/security markets** - Where security matters most
 4. **Build community** - Open source advantage
 
-**Threat Level:** MEDIUM  
-**Opportunity Level:** HIGH  
+**Threat Level:** MEDIUM
+**Opportunity Level:** HIGH
 **Recommended Investment:** Continue development with focus on UX parity
 
 ---

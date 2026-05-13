@@ -36,8 +36,8 @@ registry_url = "https://registry.clawdius.dev/mcp"
 
 # Additional community registries
 community_registries = [
-    "https://mcp-community.example.com/registry",
-    "https://my-company.com/mcp-registry"
+"https://mcp-community.example.com/registry",
+"https://my-company.com/mcp-registry"
 ]
 
 # Auto-update servers
@@ -67,12 +67,12 @@ clawdius mcp list
 
 Output:
 ```
-NAME                    DESCRIPTION                          VERSION    AUTHOR
-github-mcp              GitHub API integration               1.2.0      Clawdius Team
-slack-mcp               Slack API integration               0.9.1      Community
-postgres-mcp            PostgreSQL database access          2.0.0      Database Tools
-kubernetes-mcp          Kubernetes cluster management       1.0.0      DevOps Tools
-filesystem-mcp          File system operations              1.1.0      Clawdius Team
+NAME DESCRIPTION VERSION AUTHOR
+github-mcp GitHub API integration 1.2.0 Clawdius Team
+slack-mcp Slack API integration 0.9.1 Community
+postgres-mcp PostgreSQL database access 2.0.0 Database Tools
+kubernetes-mcp Kubernetes cluster management 1.0.0 DevOps Tools
+filesystem-mcp File system operations 1.1.0 Clawdius Team
 ```
 
 ### Search MCP Servers
@@ -83,9 +83,9 @@ clawdius mcp search "github"
 
 Output:
 ```
-NAME           DESCRIPTION                     RELEVANCE
-github-mcp     GitHub API integration          0.95
-gitlab-mcp     GitLab API integration          0.78
+NAME DESCRIPTION RELEVANCE
+github-mcp GitHub API integration 0.95
+gitlab-mcp GitLab API integration 0.78
 ```
 
 ### Install MCP Server
@@ -120,21 +120,21 @@ Author: Clawdius Team
 Description: GitHub API integration for Clawdius
 
 Tools:
-  - search_repositories: Search GitHub repositories
-  - get_repository: Get repository details
-  - create_issue: Create a new issue
-  - create_pull_request: Create a new pull request
-  - get_pull_request: Get pull request details
-  - list_commits: List commits in a repository
+- search_repositories: Search GitHub repositories
+- get_repository: Get repository details
+- create_issue: Create a new issue
+- create_pull_request: Create a new pull request
+- get_pull_request: Get pull request details
+- list_commits: List commits in a repository
 
 Resources:
-  - repo: Repository access
-  - issue: Issue management
-  - pr: Pull request management
+- repo: Repository access
+- issue: Issue management
+- pr: Pull request management
 
 Configuration:
-  GITHUB_TOKEN: GitHub personal access token (required)
-  GITHUB_API_URL: GitHub API URL (optional, default: https://api.github.com)
+GITHUB_TOKEN: GitHub personal access token (required)
+GITHUB_API_URL: GitHub API URL (optional, default: https://api.github.com)
 ```
 
 ## Server Manifest Format
@@ -150,55 +150,55 @@ license: MIT
 
 # Runtime configuration
 runtime:
-  type: nodejs  # or python, binary
-  entrypoint: dist/index.js
-  node_version: "18"
+type: nodejs # or python, binary
+entrypoint: dist/index.js
+node_version: "18"
 
 # Capabilities
 tools:
-  - name: search_repositories
-    description: Search GitHub repositories
-    parameters:
-      query:
-        type: string
-        description: Search query
-        required: true
-      limit:
-        type: integer
-        description: Maximum results
-        default: 10
+- name: search_repositories
+description: Search GitHub repositories
+parameters:
+query:
+type: string
+description: Search query
+required: true
+limit:
+type: integer
+description: Maximum results
+default: 10
 
-  - name: get_repository
-    description: Get repository details
-    parameters:
-      owner:
-        type: string
-        required: true
-      repo:
-        type: string
-        required: true
+- name: get_repository
+description: Get repository details
+parameters:
+owner:
+type: string
+required: true
+repo:
+type: string
+required: true
 
 resources:
-  - type: repo
-    operations: [read, write]
-    description: Repository access
+- type: repo
+operations: [read, write]
+description: Repository access
 
 # Configuration schema
 config_schema:
-  GITHUB_TOKEN:
-    type: string
-    required: true
-    description: GitHub personal access token
-    secret: true
-  GITHUB_API_URL:
-    type: string
-    default: https://api.github.com
-    description: GitHub API URL
+GITHUB_TOKEN:
+type: string
+required: true
+description: GitHub personal access token
+secret: true
+GITHUB_API_URL:
+type: string
+default: https://api.github.com
+description: GitHub API URL
 
 # Permissions required
 permissions:
-  - network: outbound  # Requires outbound network access
-  - filesystem: read    # May need to read config files
+- network: outbound # Requires outbound network access
+- filesystem: read # May need to read config files
 ```
 
 ## Integration with Clawdius
@@ -209,11 +209,11 @@ When an MCP server is installed, its tools become available as Clawdius tools:
 
 ```json
 {
-  "tool": "mcp.github-mcp.search_repositories",
-  "parameters": {
-    "query": "clawdius",
-    "limit": 5
-  }
+"tool": "mcp.github-mcp.search_repositories",
+"parameters": {
+"query": "clawdius",
+"limit": 5
+}
 }
 ```
 
@@ -222,9 +222,9 @@ MCP resources are accessed through the context system:
 
 ```json
 {
-  "resource": "mcp.github-mcp.repo",
-  "uri": "clawdius/clawdius",
-  "operation": "read"
+"resource": "mcp.github-mcp.repo",
+"uri": "clawdius/clawdius",
+"operation": "read"
 }
 ```
 
@@ -245,8 +245,8 @@ Secrets (like API tokens) are:
 ### Permission Prompts
 When an MCP server requests a new permission:
 ```
-⚠️ github-mcp is requesting:
-  - Network access to api.github.com
+github-mcp is requesting:
+- Network access to api.github.com
 
 Allow? [y/N/a(always)]
 ```
@@ -256,42 +256,42 @@ Allow? [y/N/a(always)]
 ### Creating an MCP Server
 
 1. **Create the manifest:**
-   ```bash
-   clawdius mcp init my-server
-   ```
+```bash
+clawdius mcp init my-server
+```
 
 2. **Implement the server:**
-   ```typescript
-   // src/index.ts
-   import { MCPServer } from '@clawdius/mcp-sdk';
-   
-   const server = new MCPServer({
-     name: 'my-server',
-     version: '1.0.0',
-   });
-   
-   server.tool('my_tool', {
-     description: 'My custom tool',
-     parameters: {
-       input: { type: 'string', description: 'Input parameter' }
-     }
-   }, async (params) => {
-     return { result: `Processed: ${params.input}` };
-   });
-   
-   server.start();
-   ```
+```typescript
+// src/index.ts
+import { MCPServer } from '@clawdius/mcp-sdk';
+
+const server = new MCPServer({
+name: 'my-server',
+version: '1.0.0',
+});
+
+server.tool('my_tool', {
+description: 'My custom tool',
+parameters: {
+input: { type: 'string', description: 'Input parameter' }
+}
+}, async (params) => {
+return { result: `Processed: ${params.input}` };
+});
+
+server.start();
+```
 
 3. **Test locally:**
-   ```bash
-   clawdius mcp dev ./my-server
-   ```
+```bash
+clawdius mcp dev ./my-server
+```
 
 4. **Package and publish:**
-   ```bash
-   clawdius mcp pack ./my-server
-   clawdius mcp publish ./my-server
-   ```
+```bash
+clawdius mcp pack ./my-server
+clawdius mcp publish ./my-server
+```
 
 ## API Reference
 

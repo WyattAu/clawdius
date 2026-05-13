@@ -1,6 +1,6 @@
 # Clawdius Getting Started Guide
 
-**Version:** 0.6.0  
+**Version:** 0.6.0
 **Last Updated:** 2026-03-01
 
 ---
@@ -89,11 +89,11 @@ clawd init
 Output:
 ```
 Creating .clawdius/ directory structure...
-✓ .clawdius/sops/common.sop.md
-✓ .clawdius/sops/rust.sop.md
-✓ .clawdius/specs/
-✓ .clawdius/graph/
-✓ .clawdius/settings.toml
+.clawdius/sops/common.sop.md
+.clawdius/sops/rust.sop.md
+.clawdius/specs/
+.clawdius/graph/
+.clawdius/settings.toml
 
 Clawdius initialized successfully.
 Current phase: Context Discovery (-1)
@@ -126,7 +126,7 @@ clawd chat
 ```
 
 ```
-🦀 Clawdius v0.6.0
+Clawdius v0.6.0
 Phase: Context Discovery
 Provider: OpenAI (gpt-4)
 
@@ -200,21 +200,21 @@ clawd verify --all
 
 ```
 your-project/
-├── .clawdius/
-│   ├── sops/               # Standard Operating Procedures
-│   │   ├── common.sop.md   # General rules
-│   │   └── rust.sop.md     # Rust-specific rules
-│   ├── specs/              # Specifications
-│   │   ├── 00_requirements/
-│   │   ├── 01_research/
-│   │   ├── 02_architecture/
-│   │   └── ...
-│   ├── graph/              # Knowledge graph
-│   │   ├── ast.db          # SQLite AST index
-│   │   └── vectors/        # LanceDB embeddings
-│   └── settings.toml       # Configuration
-├── src/                    # Your source code
-└── Cargo.toml              # Your project manifest
+.clawdius/
+sops/ # Standard Operating Procedures
+common.sop.md # General rules
+rust.sop.md # Rust-specific rules
+specs/ # Specifications
+00_requirements/
+01_research/
+02_architecture/
+...
+graph/ # Knowledge graph
+ast.db # SQLite AST index
+vectors/ # LanceDB embeddings
+settings.toml # Configuration
+src/ # Your source code
+Cargo.toml # Your project manifest
 ```
 
 ---

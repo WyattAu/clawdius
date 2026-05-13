@@ -14,7 +14,7 @@ Clawdius v1.0.0 and all subsequent minor releases (1.x.x) commit to **Semantic V
 
 ## What Is Covered
 
-### ✅ Stable APIs (SemVer Guaranteed)
+### Stable APIs (SemVer Guaranteed)
 
 The following are covered by our stability guarantee:
 
@@ -24,16 +24,16 @@ All items marked `pub` in the following modules:
 
 | Module | Stability | Notes |
 |--------|-----------|-------|
-| `llm::*` | ✅ Stable | Provider traits, message types, streaming |
-| `session::*` | ✅ Stable | Session management, storage, compaction |
-| `tools::*` | ✅ Stable | Tool traits, execution, results |
-| `sandbox::*` | ✅ Stable | Backend traits, configuration, execution |
-| `config::*` | ✅ Stable | Configuration structures, loading |
-| `error::*` | ✅ Stable | Error types and conversions |
-| `checkpoint::*` | ✅ Stable | Timeline, checkpoints, rollback |
-| `graph_rag::*` | ✅ Stable | Symbol extraction, relationships, search |
-| `enterprise::*` | ✅ Stable | SSO, audit, compliance, teams |
-| `plugin::*` | ✅ Stable | Plugin API, hooks, marketplace |
+| `llm::*` | Stable | Provider traits, message types, streaming |
+| `session::*` | Stable | Session management, storage, compaction |
+| `tools::*` | Stable | Tool traits, execution, results |
+| `sandbox::*` | Stable | Backend traits, configuration, execution |
+| `config::*` | Stable | Configuration structures, loading |
+| `error::*` | Stable | Error types and conversions |
+| `checkpoint::*` | Stable | Timeline, checkpoints, rollback |
+| `graph_rag::*` | Stable | Symbol extraction, relationships, search |
+| `enterprise::*` | Stable | SSO, audit, compliance, teams |
+| `plugin::*` | Stable | Plugin API, hooks, marketplace |
 
 #### 2. Configuration File Schemas
 
@@ -41,10 +41,10 @@ All TOML configuration files:
 
 | File | Stability |
 |------|-----------|
-| `.clawdius/config.toml` | ✅ Stable |
-| `.clawdius/providers.toml` | ✅ Stable |
-| `.clawdius/modes.toml` | ✅ Stable |
-| `.clawdius/plugins/plugin.toml` | ✅ Stable |
+| `.clawdius/config.toml` | Stable |
+| `.clawdius/providers.toml` | Stable |
+| `.clawdius/modes.toml` | Stable |
+| `.clawdius/plugins/plugin.toml` | Stable |
 
 #### 3. CLI Interface
 
@@ -52,11 +52,11 @@ All command-line arguments and output formats:
 
 | Interface | Stability |
 |-----------|-----------|
-| `clawdius chat` | ✅ Stable |
-| `clawdius config` | ✅ Stable |
-| `clawdius --json` | ✅ Stable |
-| Exit codes (0, 1, 2) | ✅ Stable |
-| JSON output schema | ✅ Stable |
+| `clawdius chat` | Stable |
+| `clawdius config` | Stable |
+| `clawdius --json` | Stable |
+| Exit codes (0, 1, 2) | Stable |
+| JSON output schema | Stable |
 
 #### 4. RPC Protocol
 
@@ -64,9 +64,9 @@ JSON-RPC interface for editor integration:
 
 | Component | Stability |
 |-----------|-----------|
-| Method names | ✅ Stable |
-| Request/Response schemas | ✅ Stable |
-| Notification events | ✅ Stable |
+| Method names | Stable |
+| Request/Response schemas | Stable |
+| Notification events | Stable |
 
 #### 5. Plugin API
 
@@ -74,16 +74,16 @@ WASM plugin interface:
 
 | Component | Stability |
 |-----------|-----------|
-| `Plugin` trait | ✅ Stable |
-| `HookType` enum | ✅ Stable |
-| `HookContext` struct | ✅ Stable |
-| `PluginManifest` schema | ✅ Stable |
+| `Plugin` trait | Stable |
+| `HookType` enum | Stable |
+| `HookContext` struct | Stable |
+| `PluginManifest` schema | Stable |
 
 ---
 
 ## What Is NOT Covered
 
-### ⚠️ Unstable APIs (No Guarantees)
+### Unstable APIs (No Guarantees)
 
 The following may change without notice:
 
@@ -96,7 +96,7 @@ The following may change without notice:
 | **Debug output** | Log formats, trace messages |
 | **Experimental features** | Features behind `experimental-*` flags |
 
-### 🔬 Experimental Features
+### Experimental Features
 
 Features in preview may change:
 

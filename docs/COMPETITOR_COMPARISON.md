@@ -23,72 +23,72 @@ Clawdius is a Rust-native LLM coding assistant designed to fill gaps that existi
 
 | Feature | Clawdius | Claude Code | Cursor | Aider | OpenDevin | Windsurf | Continue |
 |---------|----------|-------------|--------|-------|-----------|----------|----------|
-| Code Generation | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | N/A |
-| Multi-mode Generation | ✅ 1,2,3 | ✅ | ❌ | ✅ | ✅ | ❌ | ❌ |
-| Code Completion | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ❌ |
-| Chat Interface | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
-| Context Awareness | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Multi-file Edits | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
-| Diff Preview | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Code Generation | Yes | Yes | Yes | Yes | Yes | Yes | N/A |
+| Multi-mode Generation | Yes 1,2,3 | Yes | No | Yes | Yes | No | No |
+| Code Completion | Yes | Yes | Yes | No | Yes | Yes | No |
+| Chat Interface | Yes | Yes | Yes | Yes | Yes | Yes | No |
+| Context Awareness | Yes | Yes | Yes | Yes | Yes | Yes | Yes |
+| Multi-file Edits | Yes | Yes | Yes | Yes | Yes | Yes | No |
+| Diff Preview | Yes | Yes | Yes | Yes | Yes | Yes | Yes |
 
 ### Agentic Capabilities
 
 | Feature | Clawdius | Claude Code | Cursor | Aider | OpenDevin | Windsurf | Continue |
 |---------|----------|-------------|--------|-------|-----------|----------|----------|
-| Single-pass Mode | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ |
-| Iterative Mode | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
-| Full Agent Mode | ✅ | ✅ | ✅ | 🔜 | ✅ | 🔜 | ❌ |
-| Planner Agent | ✅ | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ |
-| Executor Agent | ✅ | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ |
-| Verifier Agent | ✅ | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ |
-| Autonomous Execution | ✅ | ✅ | ✅ | 🔜 | ✅ | 🔜 | ❌ |
+| Single-pass Mode | Yes | Yes | Yes | No | No | Yes | Yes |
+| Iterative Mode | Yes | Yes | Yes | Yes | Yes | Yes | No |
+| Full Agent Mode | Yes | Yes | Yes | Planned | Yes | Planned | No |
+| Planner Agent | Yes | Yes | No | No | Yes | No | No |
+| Executor Agent | Yes | Yes | No | No | Yes | No | No |
+| Verifier Agent | Yes | Yes | No | No | Yes | No | No |
+| Autonomous Execution | Yes | Yes | Yes | Planned | Yes | Planned | No |
 
 ### Test & Apply Workflows
 
 | Feature | Clawdius | Claude Code | Cursor | Aider | OpenDevin | Windsurf | Continue |
 |---------|----------|-------------|--------|-------|-----------|----------|----------|
-| Sandboxed Testing | ✅ | ❌ | ✅ | ❌ | ✅ | ✅ | ❌ |
-| Direct Testing | ✅ | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
-| Rollback System | ✅ | ❌ | ✅ | ✅ | ❌ | ✅ | ❌ |
-| Configurable Trust | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| User Choice (Test) | ✅ B+C | A only | C only | C only | B only | C only | C only |
-| User Choice (Apply) | ✅ B+C | A only | C only | C only | B only | C only | C only |
+| Sandboxed Testing | Yes | No | Yes | No | Yes | Yes | No |
+| Direct Testing | Yes | Yes | Yes | Yes | No | Yes | Yes |
+| Rollback System | Yes | No | Yes | Yes | No | Yes | No |
+| Configurable Trust | Yes | No | No | No | No | No | No |
+| User Choice (Test) | Yes B+C | A only | C only | C only | B only | C only | C only |
+| User Choice (Apply) | Yes B+C | A only | C only | C only | B only | C only | C only |
 
 ### Integration & Extensibility
 
 | Feature | Clawdius | Claude Code | Cursor | Aider | OpenDevin | Windsurf | Continue |
 |---------|----------|-------------|--------|-------|-----------|----------|----------|
-| LSP Support | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ |
-| MCP Protocol | ✅ | ✅ | ✅ | ❌ | 🔜 | 🔜 | ❌ |
-| Git Integration | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Custom Tools | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Plugin System | 🔜 | ❌ | ✅ | ❌ | ✅ | ✅ | ✅ |
-| REST API | ✅ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ |
-| Webhook Support | ✅ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ |
+| LSP Support | Yes | Yes | Yes | No | Yes | Yes | Yes |
+| MCP Protocol | Yes | Yes | Yes | No | Planned | Planned | No |
+| Git Integration | Yes | Yes | Yes | Yes | Yes | Yes | Yes |
+| Custom Tools | Yes | Yes | Yes | Yes | Yes | Yes | Yes |
+| Plugin System | Planned | No | Yes | No | Yes | Yes | Yes |
+| REST API | Yes | No | No | No | Yes | No | No |
+| Webhook Support | Yes | No | No | No | Yes | No | No |
 
 ### Platform & Architecture
 
 | Feature | Clawdius | Claude Code | Cursor | Aider | OpenDevin | Windsurf | Continue |
 |---------|----------|-------------|--------|-------|-----------|----------|----------|
 | Language | Rust | TypeScript | TS/Elec | Python | Python | TS/Elec | TypeScript |
-| Open Source | ✅ | ❌ | ❌ | ✅ | ✅ | ❌ | ✅ |
-| Self-hosted | ✅ | ❌ | ❌ | ✅ | ✅ | ❌ | ✅ |
-| CLI Interface | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ✅ |
-| GUI Interface | 🔜 | ✅ | ✅ | ❌ | 🔜 | ✅ | ❌ |
-| Desktop App | 🔜 | ✅ | ✅ | ❌ | ❌ | ✅ | ❌ |
-| Web Interface | ✅ | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ |
+| Open Source | Yes | No | No | Yes | Yes | No | Yes |
+| Self-hosted | Yes | No | No | Yes | Yes | No | Yes |
+| CLI Interface | Yes | Yes | Yes | Yes | Yes | No | Yes |
+| GUI Interface | Planned | Yes | Yes | No | Planned | Yes | No |
+| Desktop App | Planned | Yes | Yes | No | No | Yes | No |
+| Web Interface | Yes | Yes | No | No | Yes | No | No |
 
 ### Unique Features
 
 | Feature | Clawdius | Competitors |
 |---------|----------|-------------|
-| HFT Trading Profile | ✅ | ❌ None |
-| LLM Proxy Server | ✅ | OpenDevin only |
-| Multi-profile System | ✅ | ❌ None |
-| SEC 15c3-5 Risk Controls | ✅ | ❌ None |
-| Lock-free Ring Buffers | ✅ | ❌ None |
-| Paper/Live Trading | ✅ | ❌ None |
-| LLM Sentiment Analysis | ✅ (planned) | ❌ None |
+| HFT Trading Profile | Yes | No |
+| LLM Proxy Server | Yes | OpenDevin only |
+| Multi-profile System | Yes | No |
+| SEC 15c3-5 Risk Controls | Yes | No |
+| Lock-free Ring Buffers | Yes | No |
+| Paper/Live Trading | Yes | No |
+| LLM Sentiment Analysis | Yes (planned) | No |
 
 ---
 
@@ -256,21 +256,21 @@ Clawdius is a Rust-native LLM coding assistant designed to fill gaps that existi
 
 | Feature | Clawdius | Claude Code | Cursor | Aider |
 |---------|----------|-------------|--------|-------|
-| Basic Code Gen | 🔜 Stub | ✅ | ✅ | ✅ |
-| Git Integration | ✅ | ✅ | ✅ | ✅ |
-| Webhooks | ✅ | ❌ | ❌ | ❌ |
-| REST API | ✅ | ❌ | ❌ | ❌ |
-| Security Scanning | ✅ | ✅ | ✅ | ❌ |
+| Basic Code Gen | Planned Stub | Yes | Yes | Yes |
+| Git Integration | Yes | Yes | Yes | Yes |
+| Webhooks | Yes | No | No | No |
+| REST API | Yes | No | No | No |
+| Security Scanning | Yes | Yes | Yes | No |
 
 ### v2.0.0 Target
 
 | Feature | Clawdius | Claude Code | Cursor | Aider |
 |---------|----------|-------------|--------|-------|
-| Agentic Mode | ✅ | ✅ | ✅ | 🔜 |
-| Multi-mode Gen | ✅ | ✅ | ❌ | 🔜 |
-| Trading Profile | ✅ | ❌ | ❌ | ❌ |
-| LSP Full Support | ✅ | ✅ | ✅ | ❌ |
-| MCP Protocol | ✅ | ✅ | ✅ | ❌ |
+| Agentic Mode | Yes | Yes | Yes | Planned |
+| Multi-mode Gen | Yes | Yes | No | Planned |
+| Trading Profile | Yes | No | No | No |
+| LSP Full Support | Yes | Yes | Yes | No |
+| MCP Protocol | Yes | Yes | Yes | No |
 
 ---
 

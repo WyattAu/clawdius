@@ -199,7 +199,7 @@ cargo install clawdius
 
 ### Text Overlay
 ```
-🦀 clawdius
+clawdius
 github.com/WyattAu/clawdius
 docs.clawdius.dev
 ```

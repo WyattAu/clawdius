@@ -18,7 +18,7 @@
 
 2. In GitHub Pages settings:
    - Custom domain: `docs.clawdius.dev`
-   - Enforce HTTPS: ✅
+   - Enforce HTTPS: Yes
 
 ### Step 3: Trigger Deployment
 

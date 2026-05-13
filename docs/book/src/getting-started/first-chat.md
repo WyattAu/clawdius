@@ -13,15 +13,15 @@ clawdius chat
 This opens an interactive REPL where you can have a conversation:
 
 ```
-╭─────────────────────────────────────────────────────────────────╮
-│  Clawdius v1.0.0 - High-Assurance AI Coding Assistant          │
-│  Provider: Anthropic (claude-sonnet-4-20250514)                 │
-│  Sandbox: standard (WASM)                                       │
-╰─────────────────────────────────────────────────────────────────╯
++-----------------------------------------------------------------+
+|  Clawdius v1.0.0 - High-Assurance AI Coding Assistant |
+|  Provider: Anthropic (claude-sonnet-4-20250514) |
+|  Sandbox: standard (WASM) |
++-----------------------------------------------------------------+
 
 You: Hello! Can you help me write a Rust function to parse JSON?
 
-Clawdius: I'd be happy to help! Here's a function that parses JSON using 
+Clawdius: I'd be happy to help! Here's a function that parses JSON using
 serde_json:
 
 ```rust

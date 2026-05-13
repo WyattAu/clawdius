@@ -8,72 +8,72 @@ Clawdius HFT (High-Frequency Trading) mode provides a Rust-native, low-latency t
 
 | Feature | Description | Status |
 |---------|-------------|--------|
-| Lock-free Ring Buffer | SPSC ring buffer with cache-padded atomics | ✅ Implemented |
-| SEC 15c3-5 Risk Controls | Pre-trade risk management (WalletGuard) | ✅ Implemented |
-| Signal Engine | Multi-strategy signal generation | ✅ Implemented |
-| Feed Manager | Multi-source market data distribution | ✅ Implemented |
-| Notification Gateway | Multi-channel alerts (Webhook, Matrix) | ✅ Implemented |
-| LLM Sentiment Analysis | AI-powered market sentiment | 🔜 Planned |
-| News Feed Integration | Real-time news processing | 🔜 Planned |
-| Paper Trading Mode | Risk-free strategy testing | 🔜 Planned |
-| Broker Connectors | Exchange API integrations | 🔜 Planned |
+| Lock-free Ring Buffer | SPSC ring buffer with cache-padded atomics | Yes |
+| SEC 15c3-5 Risk Controls | Pre-trade risk management (WalletGuard) | Yes |
+| Signal Engine | Multi-strategy signal generation | Yes |
+| Feed Manager | Multi-source market data distribution | Yes |
+| Notification Gateway | Multi-channel alerts (Webhook, Matrix) | Yes |
+| LLM Sentiment Analysis | AI-powered market sentiment | Planned |
+| News Feed Integration | Real-time news processing | Planned |
+| Paper Trading Mode | Risk-free strategy testing | Planned |
+| Broker Connectors | Exchange API integrations | Planned |
 
 ---
 
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                           CLAWDIUS HFT ARCHITECTURE                          │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                              │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐    │
-│  │  News Feed   │  │ Social Feed  │  │  SEC Filings │  │ Market Data  │    │
-│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘    │
-│         │                 │                 │                 │            │
-│         v                 v                 v                 v            │
-│  ┌─────────────────────────────────────────────────────────────────────┐   │
-│  │                         FEED MANAGER                                  │   │
-│  │  • Multi-feed aggregation     • Subscriber distribution              │   │
-│  │  • Symbol subscription        • Broadcast channels                   │   │
-│  └──────────────────────────────┬──────────────────────────────────────┘   │
-│                                 │                                           │
-│         ┌───────────────────────┼───────────────────────┐                  │
-│         v                       v                       v                  │
-│  ┌─────────────┐         ┌─────────────┐         ┌─────────────┐          │
-│  │  LLM Agent  │         │  Strategy   │         │  Technical  │          │
-│  │  (Sentiment)│         │  Engine     │         │  Analysis   │          │
-│  └──────┬──────┘         └──────┬──────┘         └──────┬──────┘          │
-│         │                       │                       │                  │
-│         v                       v                       v                  │
-│  ┌─────────────────────────────────────────────────────────────────────┐   │
-│  │                        SIGNAL ENGINE                                  │   │
-│  │  • Strategy registration     • Signal aggregation                    │   │
-│  │  • Ring buffer storage       • Confidence scoring                    │   │
-│  └──────────────────────────────┬──────────────────────────────────────┘   │
-│                                 │                                           │
-│                                 v                                           │
-│  ┌─────────────────────────────────────────────────────────────────────┐   │
-│  │                        WALLET GUARD                                   │   │
-│  │  SEC 15c3-5 Pre-Trade Risk Controls:                                  │   │
-│  │  • Order value limits        • Position size limits                   │   │
-│  │  • Daily volume caps         • Restricted symbol blocking             │   │
-│  └──────────────────────────────┬──────────────────────────────────────┘   │
-│                                 │                                           │
-│                    ┌────────────┴────────────┐                              │
-│                    v                         v                              │
-│            ┌─────────────┐           ┌─────────────┐                       │
-│            │  EXECUTION  │           │ NOTIFICATION│                       │
-│            │  ENGINE     │           │  GATEWAY    │                       │
-│            └──────┬──────┘           └──────┬──────┘                       │
-│                   │                         │                              │
-│                   v                         v                              │
-│            ┌─────────────┐           ┌─────────────┐                       │
-│            │   Broker    │           │  Webhook/   │                       │
-│            │  Connector  │           │  Matrix     │                       │
-│            └─────────────┘           └─────────────┘                       │
-│                                                                              │
-└─────────────────────────────────────────────────────────────────────────────┘
++-----------------------------------------------------------------------------+
+|                           CLAWDIUS HFT ARCHITECTURE |
++-----------------------------------------------------------------------------+
+| |
+|  +--------------+  +--------------+  +--------------+  +--------------+ |
+| |  News Feed | | Social Feed | |  SEC Filings | | Market Data | |
+|  +------+-------+  +------+-------+  +------+-------+  +------+-------+ |
+| | | | | |
+|         v                 v                 v                 v |
+|  +---------------------------------------------------------------------+ |
+| |                         FEED MANAGER | |
+| |  • Multi-feed aggregation     • Subscriber distribution | |
+| |  • Symbol subscription        • Broadcast channels | |
+|  +------------------------------+--------------------------------------+ |
+| | |
+|         +-----------------------+-----------------------+ |
+|         v                       v                       v |
+|  +-------------+         +-------------+         +-------------+ |
+| |  LLM Agent | |  Strategy | |  Technical | |
+| |  (Sentiment)| |  Engine | |  Analysis | |
+|  +------+------+         +------+------+         +------+------+ |
+| | | | |
+|         v                       v                       v |
+|  +---------------------------------------------------------------------+ |
+| |                        SIGNAL ENGINE | |
+| |  • Strategy registration     • Signal aggregation | |
+| |  • Ring buffer storage       • Confidence scoring | |
+|  +------------------------------+--------------------------------------+ |
+| | |
+|                                 v |
+|  +---------------------------------------------------------------------+ |
+| |                        WALLET GUARD | |
+| |  SEC 15c3-5 Pre-Trade Risk Controls: | |
+| |  • Order value limits        • Position size limits | |
+| |  • Daily volume caps         • Restricted symbol blocking | |
+|  +------------------------------+--------------------------------------+ |
+| | |
+|                    +------------+------------+ |
+|                    v                         v |
+|            +-------------+           +-------------+ |
+| |  EXECUTION | | NOTIFICATION| |
+| |  ENGINE | |  GATEWAY | |
+|            +------+------+           +------+------+ |
+| | | |
+|                   v                         v |
+|            +-------------+           +-------------+ |
+| |   Broker | |  Webhook/ | |
+| |  Connector | |  Matrix | |
+|            +-------------+           +-------------+ |
+| |
++-----------------------------------------------------------------------------+
 ```
 
 ---
@@ -254,7 +254,7 @@ gateway.add_channel(Box::new(MatrixChannel::new(
 ))).await;
 
 // Broadcast to all channels
-let results = gateway.broadcast("🚨 Signal: AAPL Buy @ $150 (0.85 confidence)").await;
+let results = gateway.broadcast("Signal: AAPL Buy @ $150 (0.85 confidence)").await;
 
 // Check results
 for (channel, result) in results {
@@ -276,7 +276,7 @@ Interface for implementing custom trading strategies.
 pub trait Strategy: Send + Sync {
     /// Evaluates market data and optionally returns a signal
     fn evaluate(&self, market_data: &MarketData) -> Option<Signal>;
-    
+
     /// Returns the strategy name
     fn name(&self) -> &str;
 }
@@ -299,7 +299,7 @@ impl Strategy for MovingAverageCrossover {
         // Return signal if crossover detected
         todo!()
     }
-    
+
     fn name(&self) -> &str {
         "MovingAverageCrossover"
     }
@@ -313,48 +313,48 @@ impl Strategy for MovingAverageCrossover {
 ### Architecture Extension
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                    LLM SIGNAL ANALYSIS LAYER                     │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐          │
-│  │  News Feed   │  │ Social Media │  │  SEC Filings │          │
-│  │  (Reuters,   │  │  (Twitter/X, │  │  (10-K, 10-Q,│          │
-│  │   Bloomberg) │  │   Reddit)    │  │   8-K)       │          │
-│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘          │
-│         │                 │                 │                   │
-│         v                 v                 v                   │
-│  ┌─────────────────────────────────────────────────────────┐   │
-│  │              PREPROCESSING PIPELINE                       │   │
-│  │  • Text cleaning    • Entity extraction                   │   │
-│  │  • Language detect  • Timestamp normalization             │   │
-│  └─────────────────────────┬───────────────────────────────┘   │
-│                            │                                    │
-│                            v                                    │
-│  ┌─────────────────────────────────────────────────────────┐   │
-│  │                    LLM ANALYSIS                           │   │
-│  │                                                           │   │
-│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐      │   │
-│  │  │  Sentiment  │  │   Event     │  │   Risk      │      │   │
-│  │  │  Analysis   │  │   Detection │  │   Scoring   │      │   │
-│  │  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘      │   │
-│  │         │                │                │              │   │
-│  │         v                v                v              │   │
-│  │  ┌─────────────────────────────────────────────────┐    │   │
-│  │  │              SENTIMENT SIGNAL                     │    │   │
-│  │  │  {                                               │    │   │
-│  │  │    "symbol": "AAPL",                             │    │   │
-│  │  │    "sentiment": 0.72,  // -1.0 to 1.0            │    │   │
-│  │  │    "confidence": 0.85,                           │    │   │
-│  │  │    "events": ["earnings_beat", "guidance_raise"],│    │   │
-│  │  │    "risk_factors": ["supply_chain"],             │    │   │
-│  │  │    "sources": 15,                                │    │   │
-│  │  │    "timestamp": 1700000000000                    │    │   │
-│  │  │  }                                               │    │   │
-│  │  └─────────────────────────────────────────────────┘    │   │
-│  └─────────────────────────────────────────────────────────┘   │
-│                                                                  │
-└─────────────────────────────────────────────────────────────────┘
++-----------------------------------------------------------------+
+|                    LLM SIGNAL ANALYSIS LAYER |
++-----------------------------------------------------------------+
+| |
+|  +--------------+  +--------------+  +--------------+ |
+| |  News Feed | | Social Media | |  SEC Filings | |
+| |  (Reuters, | |  (Twitter/X, | |  (10-K, 10-Q,| |
+| |   Bloomberg) | |   Reddit) | |   8-K) | |
+|  +------+-------+  +------+-------+  +------+-------+ |
+| | | | |
+|         v                 v                 v |
+|  +---------------------------------------------------------+ |
+| |              PREPROCESSING PIPELINE | |
+| |  • Text cleaning    • Entity extraction | |
+| |  • Language detect  • Timestamp normalization | |
+|  +-------------------------+-------------------------------+ |
+| | |
+|                            v |
+|  +---------------------------------------------------------+ |
+| |                    LLM ANALYSIS | |
+| | | |
+| |  +-------------+  +-------------+  +-------------+ | |
+| | |  Sentiment | |   Event | |   Risk | | |
+| | |  Analysis | |   Detection | |   Scoring | | |
+| |  +------+------+  +------+------+  +------+------+ | |
+| | | | | | |
+| |         v                v                v | |
+| |  +-------------------------------------------------+ | |
+| | |              SENTIMENT SIGNAL | | |
+| | |  { | | |
+| | |    "symbol": "AAPL", | | |
+| | |    "sentiment": 0.72,  // -1.0 to 1.0 | | |
+| | |    "confidence": 0.85, | | |
+| | |    "events": ["earnings_beat", "guidance_raise"],| | |
+| | |    "risk_factors": ["supply_chain"], | | |
+| | |    "sources": 15, | | |
+| | |    "timestamp": 1700000000000 | | |
+| | |  } | | |
+| |  +-------------------------------------------------+ | |
+|  +---------------------------------------------------------+ |
+| |
++-----------------------------------------------------------------+
 ```
 
 ### LLM Strategy Implementation
@@ -400,13 +400,13 @@ impl Strategy for LlmSentimentStrategy {
         // 3. Extract events and risk factors
         // 4. Calculate aggregate sentiment score
         // 5. Generate signal if threshold exceeded
-        
+
         let sentiment = self.analyze_sentiment(&market_data.symbol).await?;
-        
+
         if sentiment.source_count < self.min_sources {
             return None;
         }
-        
+
         let direction = if sentiment.sentiment > self.sentiment_threshold {
             SignalDirection::Buy
         } else if sentiment.sentiment < -self.sentiment_threshold {
@@ -414,11 +414,11 @@ impl Strategy for LlmSentimentStrategy {
         } else {
             SignalDirection::Hold
         };
-        
+
         if direction == SignalDirection::Hold {
             return None;
         }
-        
+
         Some(Signal {
             symbol: market_data.symbol.clone(),
             direction,
@@ -427,7 +427,7 @@ impl Strategy for LlmSentimentStrategy {
             timestamp: market_data.timestamp,
         })
     }
-    
+
     fn name(&self) -> &str {
         "LlmSentimentStrategy"
     }
@@ -474,7 +474,7 @@ temperature = 0.3
 max_tokens = 1000
 # System prompt for financial analysis
 system_prompt = """
-You are a financial sentiment analyst. Analyze the provided text 
+You are a financial sentiment analyst. Analyze the provided text
 and extract:
 1. Overall sentiment (-1.0 to 1.0)
 2. Confidence (0.0 to 1.0)
@@ -598,17 +598,17 @@ cargo bench --bench hft_bench -- boot_simulation
 
 ```
 config/
-├── profiles/
-│   ├── trading_paper.toml      # Paper trading config
-│   ├── trading_live.toml       # Live trading config
-│   └── trading_hft.toml        # High-frequency config
-├── trading/
-│   ├── sentiment_sources.toml  # LLM sentiment sources
-│   ├── strategies.toml         # Strategy configurations
-│   └── brokers.toml            # Broker connections
-└── notifications/
-    ├── webhooks.toml           # Webhook endpoints
-    └── matrix.toml             # Matrix homeserver config
++-- profiles/
+|   +-- trading_paper.toml      # Paper trading config
+|   +-- trading_live.toml       # Live trading config
+|   +-- trading_hft.toml        # High-frequency config
++-- trading/
+|   +-- sentiment_sources.toml  # LLM sentiment sources
+|   +-- strategies.toml         # Strategy configurations
+|   +-- brokers.toml            # Broker connections
++-- notifications/
+    +-- webhooks.toml           # Webhook endpoints
+    +-- matrix.toml             # Matrix homeserver config
 ```
 
 ### HFT Profile Example
@@ -630,7 +630,7 @@ default_order_type = "limit"
 # Enable strategies
 enabled = [
     "MovingAverageCrossover",
-    "RsiStrategy", 
+    "RsiStrategy",
     "LlmSentimentStrategy",
     "VolumeProfileStrategy"
 ]
@@ -674,27 +674,27 @@ notify_on_risk_warning = true
 ## Order Execution Pipeline
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                    ORDER EXECUTION PIPELINE                      │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│  ┌──────────┐    ┌──────────┐    ┌──────────┐    ┌──────────┐ │
-│  │  Signal  │───>│  Risk    │───>│  Order   │───>│  Broker  │ │
-│  │  Source  │    │  Check   │    │  Router  │    │  API     │ │
-│  └──────────┘    └──────────┘    └──────────┘    └──────────┘ │
-│       │               │               │               │         │
-│       v               v               v               v         │
-│  ┌──────────┐    ┌──────────┐    ┌──────────┐    ┌──────────┐ │
-│  │Strategy: │    │WalletGuard│    │Order Type│    │Alpaca/IB │ │
-│  │• Technical│   │• Value   │    │• Market  │    │• Coinbase│ │
-│  │• Sentiment│   │• Volume  │    │• Limit   │    │• Binance │ │
-│  │• LLM     │    │• Position│    │• Stop    │    │• Kraken  │ │
-│  └──────────┘    └──────────┘    └──────────┘    └──────────┘ │
-│                                                                  │
-│  TIMING TARGETS:                                                 │
-│  Signal ──<1ms──> Risk ──<100µs──> Router ──<10ms──> Broker     │
-│                                                                  │
-└─────────────────────────────────────────────────────────────────┘
++-----------------------------------------------------------------+
+|                    ORDER EXECUTION PIPELINE |
++-----------------------------------------------------------------+
+| |
+|  +----------+    +----------+    +----------+    +----------+ |
+| |  Signal |--->|  Risk |--->|  Order |--->|  Broker | |
+| |  Source | |  Check | |  Router | |  API | |
+|  +----------+    +----------+    +----------+    +----------+ |
+| | | | | |
+|       v               v               v               v |
+|  +----------+    +----------+    +----------+    +----------+ |
+| |Strategy: | |WalletGuard| |Order Type| |Alpaca/IB | |
+| |• Technical| |• Value | |• Market | |• Coinbase| |
+| |• Sentiment| |• Volume | |• Limit | |• Binance | |
+| |• LLM | |• Position| |• Stop | |• Kraken | |
+|  +----------+    +----------+    +----------+    +----------+ |
+| |
+|  TIMING TARGETS: |
+|  Signal --<1ms--> Risk --<100µs--> Router --<10ms--> Broker |
+| |
++-----------------------------------------------------------------+
 ```
 
 ### Execution Flow
@@ -706,23 +706,23 @@ pub async fn execute_signal(
 ) -> Result<ExecutionResult, ExecutionError> {
     // 1. Convert signal to order
     let order = engine.signal_to_order(&signal)?;
-    
+
     // 2. Pre-trade risk check (WalletGuard)
     engine.wallet_guard.check_order(&order)
         .map_err(|failures| ExecutionError::RiskRejected(failures))?;
-    
+
     // 3. Route to appropriate broker
     let broker = engine.router.select_broker(&order.symbol);
-    
+
     // 4. Submit order
     let result = broker.submit_order(order).await?;
-    
+
     // 5. Notify
     engine.notify_order_submitted(&result).await;
-    
+
     // 6. Track for circuit breaker
     engine.update_circuit_breaker(&result);
-    
+
     Ok(result)
 }
 ```

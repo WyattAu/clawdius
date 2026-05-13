@@ -24,7 +24,7 @@ A comprehensive comparison of Clawdius with other AI coding assistants.
 
 ### 1. Security & Sandboxing
 
-#### Clawdius ✅
+#### Clawdius
 - **5 sandbox backends (+ 2 planned):** WASM, Filtered, Bubblewrap, Sandbox-exec, Container, gVisor [v1.7.0], Firecracker [v1.7.0]
 - **Capability tokens:** Fine-grained permission system
 - **Keyring storage:** OS-native secure credential storage
@@ -41,42 +41,40 @@ SandboxConfig {
 }
 ```
 
-#### Claude Code ⚠️
+#### Claude Code - Partial
 - No sandboxing by default
 - Raw shell access
 - API keys in environment variables
 - No execution isolation
 
-#### Cursor ⚠️
+#### Cursor - Partial
 - Limited file system sandboxing
 - VSCode extension model
 - No command isolation
 
-#### Aider ❌
+#### Aider - Missing
 - No sandboxing
 - Direct shell execution
 - Environment variable credentials
 
 ### 2. Performance
 
-#### Clawdius ✅
-```
-Benchmark: Cold Start
-Clawdius:    18ms   ████████░░
-Claude Code: 487ms  █████████████████████████████████████████████
-Cursor:      2.1s   ████████████████████████████████████████████████████████████████████████████████
-Aider:       312ms ████████████████████████████
+#### Clawdius
+Clawdius:    18ms
+Claude Code: 487ms
+Cursor:      2.1s
+Aider:       312ms
 
 Benchmark: Memory Usage (Idle)
-Clawdius:    98MB   ████████
-Claude Code: 187MB  ███████████████████
-Cursor:      512MB  ████████████████████████████████████████████████████████████████████████████████
-Aider:       156MB  ████████████████
+Clawdius:    98MB
+Claude Code: 187MB
+Cursor:      512MB
+Aider:       156MB
 ```
 
 ### 3. Formal Verification
 
-#### Clawdius ✅ (Unique Feature)
+#### Clawdius (Unique Feature)
 - **104 Lean4 theorems** covering core algorithms
 - Mathematical proofs for:
   - Plugin system safety
@@ -88,14 +86,14 @@ Aider:       156MB  ████████████████
 ```lean
 -- Example: Plugin Safety Theorem
 theorem plugin_memory_isolation (p : Plugin) (s : SystemState) :
-  p.executes_in_sandbox → 
+  p.executes_in_sandbox →
   ¬p.can_access_host_memory s :=
   by
     intro h_sandbox h_access
     exact sandbox_isolation p s h_sandbox h_access
 ```
 
-#### All Others ❌
+#### All Others - Missing
 - No formal verification
 - Reliance on testing only
 - No mathematical guarantees
@@ -104,30 +102,30 @@ theorem plugin_memory_isolation (p : Plugin) (s : SystemState) :
 
 | Feature | Clawdius | Claude Code | Cursor |
 |---------|----------|-------------|--------|
-| SSO (SAML 2.0) | ✅ | ⚠️ Enterprise | ⚠️ Enterprise |
-| SSO (OIDC) | ✅ | ⚠️ Enterprise | ⚠️ Enterprise |
-| Okta Integration | ✅ | ⚠️ | ⚠️ |
-| Azure AD | ✅ | ⚠️ | ⚠️ |
-| Audit Logging | ✅ Multi-backend | ⚠️ Basic | ⚠️ Basic |
-| SOC 2 Template | ✅ | ❌ | ❌ |
-| HIPAA Template | ✅ | ❌ | ❌ |
-| GDPR Template | ✅ | ❌ | ❌ |
-| Team Permissions | ✅ 23 permissions | ⚠️ Basic | ⚠️ Basic |
-| Self-Hosted | ✅ Full | ❌ | ❌ |
+| SSO (SAML 2.0) | Yes | Partial Enterprise | Partial Enterprise |
+| SSO (OIDC) | Yes | Partial Enterprise | Partial Enterprise |
+| Okta Integration | Yes | Partial | Partial |
+| Azure AD | Yes | Partial | Partial |
+| Audit Logging | Yes Multi-backend | Partial Basic | Partial Basic |
+| SOC 2 Template | Yes | No | No |
+| HIPAA Template | Yes | No | No |
+| GDPR Template | Yes | No | No |
+| Team Permissions | Yes 23 permissions | Partial Basic | Partial Basic |
+| Self-Hosted | Yes Full | No | No |
 
 ### 5. LLM Provider Support
 
 | Provider | Clawdius | Claude Code | Cursor | Aider |
 |----------|----------|-------------|--------|-------|
-| Anthropic | ✅ | ✅ (Only) | ✅ | ✅ |
-| OpenAI | ✅ | ❌ | ✅ | ✅ |
-| Ollama (Local) | ✅ | ❌ | ⚠️ | ✅ |
-| Z.AI | ✅ | ❌ | ❌ | ❌ |
-| Custom/Open | ✅ | ❌ | ⚠️ | ✅ |
+| Anthropic | Yes | Yes (Only) | Yes | Yes |
+| OpenAI | Yes | No | Yes | Yes |
+| Ollama (Local) | Yes | No | Partial | Yes |
+| Z.AI | Yes | No | No | No |
+| Custom/Open | Yes | No | Partial | Yes |
 
 ### 6. Code Intelligence (Graph-RAG)
 
-#### Clawdius ✅
+#### Clawdius
 - **SQLite + LanceDB:** Hybrid graph-vector storage
 - **Tree-sitter:** 5 language parsers (Rust, Python, JS, TS, Go)
 - **Symbol extraction:** Functions, classes, imports, relationships
@@ -143,19 +141,19 @@ clawdius chat
 You: Where is the authentication middleware defined?
 ```
 
-#### Claude Code ⚠️
+#### Claude Code - Partial
 - Basic context window
 - No persistent code graph
 - Limited semantic understanding
 
-#### Cursor ⚠️
+#### Cursor - Partial
 - Codebase indexing
 - Vector similarity search
 - No structural graph
 
 ### 7. Plugin System
 
-#### Clawdius ✅
+#### Clawdius
 - **WASM runtime:** Sandboxed plugin execution
 - **26 hook types:** before_edit, after_commit, on_startup, etc.
 - **Marketplace:** Plugin discovery and installation
@@ -170,21 +168,21 @@ hooks = ["before_edit", "after_commit"]
 wasm = "plugin.wasm"
 ```
 
-#### Cursor ⚠️
+#### Cursor - Partial
 - VSCode extension model
 - Limited API surface
 
-#### Others ❌
+#### Others - Missing
 - No plugin system
 
 ### 8. IDE Integration
 
 | IDE | Clawdius | Claude Code | Cursor | Aider |
 |-----|----------|-------------|--------|-------|
-| VSCode | ✅ Extension | ✅ Native | ✅ Native | ✅ Terminal |
-| JetBrains | 📋 Planned | ❌ | ❌ | ❌ |
-| Vim/Neovim | ✅ CLI | ✅ CLI | ❌ | ✅ CLI |
-| Emacs | ✅ CLI | ✅ CLI | ❌ | ✅ CLI |
+| VSCode | Yes Extension | Yes Native | Yes Native | Yes Terminal |
+| JetBrains | Planned | No | No | No |
+| Vim/Neovim | Yes CLI | Yes CLI | No | Yes CLI |
+| Emacs | Yes CLI | Yes CLI | No | Yes CLI |
 
 ### 9. Licensing & Pricing
 
@@ -192,14 +190,14 @@ wasm = "plugin.wasm"
 |--------|----------|-------------|--------|-------|
 | License | Apache 2.0 | Proprietary | Proprietary | Apache 2.0 |
 | Price | Free | $20/mo | $20/mo | Free |
-| Self-Hosted | ✅ | ❌ | ❌ | ✅ |
-| Enterprise | ✅ | Custom | Custom | N/A |
+| Self-Hosted | Yes | No | No | Yes |
+| Enterprise | Yes | Custom | Custom | N/A |
 
 ---
 
 ## When to Choose Clawdius
 
-### ✅ Choose Clawdius If:
+### Choose Clawdius If:
 
 1. **Security is paramount** - You can't afford AI running unrestricted commands
 2. **You need formal guarantees** - Mathematical proofs matter for your use case
@@ -209,7 +207,7 @@ wasm = "plugin.wasm"
 6. **Offline/local-first** - Full functionality without internet
 7. **Open source required** - Apache 2.0, fully auditable
 
-### ⚠️ Consider Alternatives If:
+### Consider Alternatives If:
 
 1. **Claude-native workflow** - Claude Code for tight Anthropic integration
 2. **VSCode-native** - Cursor for integrated IDE experience

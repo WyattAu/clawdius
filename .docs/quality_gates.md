@@ -16,7 +16,7 @@ Quality gates are automated checks that run at different stages of development t
 
 **What it does:** Verifies that all code compiles successfully across all targets and features.
 
-**Command:** 
+**Command:**
 ```bash
 cargo check --all-targets --all-features
 ```
@@ -60,13 +60,13 @@ cargo clippy --all-targets --all-features
 
 # CI (strict mode - all warnings are errors)
 cargo clippy --all-targets --all-features -- \
-  -D warnings \
-  -D clippy::all \
-  -D clippy::pedantic \
-  -D clippy::unwrap_used \
-  -D clippy::expect_used \
-  -D clippy::panic \
-  -D clippy::todo
+-D warnings \
+-D clippy::all \
+-D clippy::pedantic \
+-D clippy::unwrap_used \
+-D clippy::expect_used \
+-D clippy::panic \
+-D clippy::todo
 ```
 
 **When it runs:**
@@ -90,7 +90,7 @@ The pre-commit hook is automatically created at `.git/hooks/pre-commit`. It runs
 
 ### How to Bypass (Emergency Only)
 
-⚠️ **WARNING:** Only bypass quality gates in emergencies. Bypassing can introduce broken code.
+**WARNING:** Only bypass quality gates in emergencies. Bypassing can introduce broken code.
 
 ```bash
 # Method 1: Environment variable
@@ -136,10 +136,10 @@ The GitHub Actions workflow (`.github/workflows/ci.yml`) runs comprehensive qual
 ### Quality Gate
 
 The pipeline includes a final "Quality Gate" job that verifies all checks passed:
-- ✅ Lint
-- ✅ Tests
-- ✅ Coverage
-- ✅ VSCode Extension
+- Lint
+- Tests
+- Coverage
+- VSCode Extension
 
 If any check fails, the entire pipeline fails.
 
