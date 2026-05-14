@@ -20,6 +20,10 @@
           extensions = [ "rust-src" "rust-analyzer" "clippy" "rustfmt" "llvm-tools" ];
         };
 
+        rustToolchainNightly = pkgs.rust-bin.nightly.latest.default.override {
+          extensions = [ "rust-src" "clippy" "rustfmt" "llvm-tools" ];
+        };
+
         commonBuildInputs = with pkgs; [
           openssl
           sqlite
@@ -60,6 +64,14 @@
           cargo-deny
           cargo-audit
           cargo-machete
+          cargo-llvm-cov
+        ];
+
+        profilingTools = with pkgs; [
+          valgrind
+          hyperfine
+          docker
+          docker-buildx
         ];
 
         formalTools = pkgs.lib.optionals pkgs.stdenv.isLinux [ pkgs.lean4 ];
@@ -74,7 +86,7 @@
         };
 
         devShells.default = pkgs.mkShell {
-          packages = [ rustToolchain ] ++ cargoTools ++ formalTools;
+          packages = [ rustToolchain ] ++ cargoTools ++ formalTools ++ profilingTools;
 
           buildInputs = commonBuildInputs;
           nativeBuildInputs = commonNativeBuildInputs;
