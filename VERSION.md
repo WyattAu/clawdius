@@ -9,8 +9,8 @@
 |-----------|-------|
 | **Version** | 1.0.0-rc.1 |
 | **Status** | Active development |
-| **Last Updated** | 2026-05-12 |
-| **Rollback Checkpoint** | `885a67c4` |
+| **Last Updated** | 2026-05-14 |
+| **Rollback Checkpoint** | `9ef09772` |
 
 ## Empirical Metrics
 
@@ -24,21 +24,32 @@
 | **cargo fmt** | Clean | `cargo fmt --all --check` |
 | **cargo deny** | Clean (advisories, licenses, bans) | `cargo deny check` |
 | **Lean4 lake build** | Pass (31/31 jobs) | `lake build` |
-| **Production unwraps** | 0 fallible (9 in doc comments/debug) | Manual audit |
-| **Root docs with emoji** | 0 | Grep audit |
-| **git hooks** | pre-commit + pre-push | Enforce quality gates at commit and push |
-| **git hooks** | pre-commit + pre-push | Enforce all quality gates |
+| **Production unwraps** | 0 (deny active on core) | `deny(clippy::unwrap_used)` |
+| **Root docs with emoji** | 0 | Python grep audit |
+| **git hooks** | pre-commit + pre-push | `CLAWDIUS_SKIP_HOOKS=1` escape hatch |
+| **Coverage (lines)** | ~60% | `cargo llvm-cov` |
+| **Transitive deps** | 497 (31 duplicates) | `cargo tree --duplicates` |
 
 ### Test Counts
 
-| Crate | Lib Tests | Integration Tests | Status |
-|-------|-----------|-------------------|--------|
-| clawdius | 12 | 51 | All passing |
-| clawdius-core | 1,075 | 97 | All passing (2 ignored) |
-| clawdius-gateway | 107 | 0 | All passing |
-| clawdius-mcp | 9 | 5 | All passing |
-| clawdius-code | 9 | 5 | All passing |
-| **Total** | **1,212** | **158** | **0 failures** |
+| Crate | Lib Tests | Integration Tests | Property Tests | Status |
+|-------|-----------|-------------------|----------------|--------|
+| clawdius | 12 | 51 | 0 | All passing |
+| clawdius-core | 1,075 | 97 | 27 | All passing |
+| clawdius-gateway | 107 | 0 | 0 | All passing |
+| clawdius-mcp | 42 | 5 | 0 | All passing |
+| clawdius-code | 48 | 5 | 0 | All passing |
+| **Total** | **1,284** | **158** | **27** | **0 failures** |
+
+### Coverage Baseline
+
+| Crate | Lines | Regions | Status |
+|-------|-------|---------|--------|
+| clawdius-code | 100% | 100% | Excellent |
+| clawdius-mcp | 100% | 100% | Excellent |
+| clawdius-core | 64.4% | 66.2% | Good |
+| clawdius-gateway | 60.8% | 62.7% | Good |
+| clawdius (CLI) | 5.6% | 5.4% | Needs work (25+ subcommands uncovered) |
 
 ### Lean4 Proof Files
 
@@ -50,10 +61,22 @@ Directories: `.specs/02_architecture/proofs/` (8), `.clawdius/specs/02_architect
 | Issue | Severity | Details |
 |-------|----------|---------|
 | 6 transitive CVEs | Low | rustls-webpki (4), matrix-sdk-base (2); documented in deny.toml |
-| `--all-features` OOM | Medium | Cannot compile all features simultaneously |
+| `--all-features` compile fail | Medium | vector-db (IndexStats import) and telegram (teloxide API mismatch) |
+| CLI coverage 5.6% | Medium | 25+ subcommands at 0% coverage |
+| memory_bench FK bug | Low | save_message called before create_session |
 | `.cargo-vendor/half` | Low | Vendored patch crate with lint suppression |
 | Unsafe code | Low | simd.rs (SSE2/NEON), proof/templates.rs, analysis/drift.rs |
-| 20+ transitive dep duplicates | Info | Documented in Cargo.toml comments |
+| 31 transitive dep duplicates | Info | Documented in .reports/dependency_audit.md |
+
+### Publish Readiness
+
+| Crate | Dry-Run | Blocker |
+|-------|---------|---------|
+| clawdius-core | Pass | Must publish first |
+| clawdius-code | Fail (core not on crates.io) | Depends on core |
+| clawdius-mcp | Fail (core not on crates.io) | Depends on core |
+| clawdius-gateway | Fail (core not on crates.io) | Missing README.md |
+| clawdius | Fail (core not on crates.io) | Depends on gateway |
 
 ### Transitive CVEs (tracked in deny.toml)
 
