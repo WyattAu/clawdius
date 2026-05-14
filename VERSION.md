@@ -32,14 +32,14 @@
 
 ### Test Counts
 
-| Crate | Lib Tests | Integration Tests | Property Tests | Status |
-|-------|-----------|-------------------|----------------|--------|
-| clawdius | 12 | 51 | 0 | All passing |
-| clawdius-core | 1,075 | 97 | 27 | All passing |
-| clawdius-gateway | 107 | 0 | 0 | All passing |
-| clawdius-mcp | 42 | 5 | 0 | All passing |
-| clawdius-code | 48 | 5 | 0 | All passing |
-| **Total** | **1,284** | **158** | **27** | **0 failures** |
+| Crate | Lib Tests | Integration Tests | Property Tests | Adapter Tests | Status |
+|-------|-----------|-------------------|----------------|---------------|--------|
+| clawdius | 12 | 51 | 0 | 0 | All passing |
+| clawdius-core | 1,075 | 97 | 27 | 0 | All passing |
+| clawdius-gateway | 243 | 0 | 0 | 136 | All passing |
+| clawdius-mcp | 42 | 5 | 0 | 0 | All passing |
+| clawdius-code | 48 | 5 | 0 | 0 | All passing |
+| **Total** | **1,420** | **158** | **27** | **136** | **1,527 tests, 0 failures** |
 
 ### Coverage Baseline
 
@@ -55,6 +55,16 @@
 
 All 15 proof files compile via `lake build` (31/31 jobs).
 Directories: `.specs/02_architecture/proofs/` (8), `.clawdius/specs/02_architecture/proofs/` (7).
+
+### Performance
+
+| Metric | Value | Target |
+|--------|-------|--------|
+| Cold start (`--version`) | 4.7 ms avg | <500ms PASS |
+| Cold start (`--help`) | 16.3 ms avg | <500ms PASS |
+| Binary size (release) | 24.9 MiB | N/A |
+| Docker image size | 164 MB | N/A |
+| Peak heap (startup) | 1.7 KiB | <100 MiB PASS |
 
 ### Known Issues
 
