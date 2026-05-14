@@ -244,3 +244,123 @@ impl PlatformAdapter for SignalAdapter {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
+    use super::*;
+
+    #[test]
+    fn test_signal_adapter_new() {
+        let adapter = SignalAdapter::new("http://localhost:7583", "+1234567890");
+        assert_eq!(adapter.platform(), Platform::Signal);
+        assert!(!adapter.is_running());
+    }
+
+    #[test]
+    fn test_signal_from_config_missing_account() {
+        let config = PlatformConfig::new(Platform::Signal);
+        let result = SignalAdapter::from_config(&config);
+        let err = result.err().expect("should be err").to_string();
+        assert!(err.contains("SIGNAL_ACCOUNT_NUMBER"));
+    }
+
+    #[test]
+    fn test_signal_from_config_valid() {
+        let mut config = PlatformConfig::new(Platform::Signal);
+        config.api_token = Some("+1234567890".to_string());
+        let adapter = SignalAdapter::from_config(&config).unwrap();
+        assert_eq!(adapter.platform(), Platform::Signal);
+    }
+
+    #[test]
+    fn test_signal_from_config_custom_rest_url() {
+        let mut config = PlatformConfig::new(Platform::Signal);
+        config.api_token = Some("+1234567890".to_string());
+        config.settings.insert(
+            "rest_url".to_string(),
+            serde_json::json!("http://signal-host:9999"),
+        );
+        let adapter = SignalAdapter::from_config(&config).unwrap();
+        assert_eq!(adapter.rest_url, "http://signal-host:9999");
+    }
+
+    #[test]
+    fn test_signal_from_config_default_rest_url() {
+        let mut config = PlatformConfig::new(Platform::Signal);
+        config.api_token = Some("+1234567890".to_string());
+        let adapter = SignalAdapter::from_config(&config).unwrap();
+        assert_eq!(adapter.rest_url, "http://localhost:7583");
+    }
+
+    #[test]
+    fn test_signal_send_message_json_format() {
+        let msg = OutgoingMessage::new(Platform::Signal, "+9876543210", "hello signal");
+        let body = serde_json::json!({
+            "message": msg.text,
+            "number": msg.chat_id,
+        });
+        assert_eq!(body["message"], "hello signal");
+        assert_eq!(body["number"], "+9876543210");
+    }
+
+    #[test]
+    fn test_signal_edit_message_prefix() {
+        let new_text = "updated content";
+        let prefix = format!("(edited) {new_text}");
+        assert!(prefix.starts_with("(edited)"));
+        assert!(prefix.contains("updated content"));
+    }
+
+    #[test]
+    fn test_signal_send_message_empty_text() {
+        let msg = OutgoingMessage::new(Platform::Signal, "+9876543210", "");
+        let body = serde_json::json!({
+            "message": msg.text,
+            "number": msg.chat_id,
+        });
+        assert_eq!(body["message"], "");
+    }
+
+    #[test]
+    fn test_signal_send_message_unicode() {
+        let msg = OutgoingMessage::new(Platform::Signal, "+9876543210", "héllo wörld ñ");
+        let body = serde_json::json!({
+            "message": msg.text,
+            "number": msg.chat_id,
+        });
+        assert_eq!(body["message"], "héllo wörld ñ");
+    }
+
+    #[tokio::test]
+    async fn test_signal_start_stop_lifecycle() {
+        let adapter = SignalAdapter::new("http://localhost:7583", "+1234567890");
+        assert!(!adapter.is_running());
+
+        adapter.start().await.unwrap();
+        assert!(adapter.is_running());
+
+        adapter.stop().await.unwrap();
+        assert!(!adapter.is_running());
+    }
+
+    #[test]
+    fn test_signal_health_stopped() {
+        let adapter = SignalAdapter::new("http://localhost:7583", "+1234567890");
+        let health = adapter.health();
+        assert!(!health.healthy);
+        assert_eq!(health.message, "stopped");
+        assert_eq!(health.messages_processed, 0);
+        assert_eq!(health.errors, 0);
+    }
+
+    #[tokio::test]
+    async fn test_signal_health_running() {
+        let adapter = SignalAdapter::new("http://localhost:7583", "+1234567890");
+        adapter.start().await.unwrap();
+        let health = adapter.health();
+        assert!(health.healthy);
+        assert_eq!(health.message, "connected");
+    }
+}

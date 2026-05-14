@@ -340,3 +340,174 @@ impl PlatformAdapter for MatrixAdapter {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
+    use super::*;
+
+    #[test]
+    fn test_matrix_adapter_new() {
+        let adapter =
+            MatrixAdapter::new("https://matrix.org", "access-token", "@bot:matrix.org");
+        assert_eq!(adapter.platform(), Platform::Matrix);
+        assert_eq!(adapter.homeserver_url, "https://matrix.org");
+        assert_eq!(adapter.access_token, "access-token");
+        assert_eq!(adapter.user_id, "@bot:matrix.org");
+        assert!(!adapter.is_running());
+    }
+
+    #[test]
+    fn test_matrix_from_config_missing_homeserver() {
+        let config = PlatformConfig::new(Platform::Matrix);
+        let result = MatrixAdapter::from_config(&config);
+        let err = result.err().expect("should be err").to_string();
+        assert!(err.contains("MATRIX_HOMESERVER_URL"));
+    }
+
+    #[test]
+    fn test_matrix_from_config_missing_access_token() {
+        let mut config = PlatformConfig::new(Platform::Matrix);
+        config.settings.insert(
+            "homeserver_url".to_string(),
+            serde_json::json!("https://matrix.org"),
+        );
+        let result = MatrixAdapter::from_config(&config);
+        let err = result.err().expect("should be err").to_string();
+        assert!(err.contains("MATRIX_ACCESS_TOKEN"));
+    }
+
+    #[test]
+    fn test_matrix_from_config_valid() {
+        let mut config = PlatformConfig::new(Platform::Matrix);
+        config
+            .settings
+            .insert("homeserver_url".to_string(), serde_json::json!("https://matrix.org"));
+        config.api_token = Some("my-access-token".to_string());
+        let adapter = MatrixAdapter::from_config(&config).unwrap();
+        assert_eq!(adapter.homeserver_url, "https://matrix.org");
+        assert_eq!(adapter.access_token, "my-access-token");
+    }
+
+    #[test]
+    fn test_matrix_from_config_default_user_id() {
+        let mut config = PlatformConfig::new(Platform::Matrix);
+        config
+            .settings
+            .insert("homeserver_url".to_string(), serde_json::json!("https://matrix.org"));
+        config.api_token = Some("token".to_string());
+        let adapter = MatrixAdapter::from_config(&config).unwrap();
+        assert_eq!(adapter.user_id, "@clawdius:matrix.org");
+    }
+
+    #[test]
+    fn test_matrix_from_config_custom_user_id() {
+        let mut config = PlatformConfig::new(Platform::Matrix);
+        config
+            .settings
+            .insert("homeserver_url".to_string(), serde_json::json!("https://matrix.org"));
+        config.api_token = Some("token".to_string());
+        config
+            .settings
+            .insert("user_id".to_string(), serde_json::json!("@custom:example.org"));
+        let adapter = MatrixAdapter::from_config(&config).unwrap();
+        assert_eq!(adapter.user_id, "@custom:example.org");
+    }
+
+    #[test]
+    fn test_matrix_send_message_json_format() {
+        let msg = OutgoingMessage::new(Platform::Matrix, "!room:matrix.org", "hello matrix");
+        let body = serde_json::json!({
+            "msgtype": "m.text",
+            "body": msg.text,
+        });
+        assert_eq!(body["msgtype"], "m.text");
+        assert_eq!(body["body"], "hello matrix");
+    }
+
+    #[test]
+    fn test_matrix_send_message_with_reply_json() {
+        let msg = OutgoingMessage::new(Platform::Matrix, "!room:matrix.org", "reply text")
+            .with_reply_to("$event_id:matrix.org");
+        let mut content = serde_json::json!({
+            "msgtype": "m.text",
+            "body": msg.text,
+        });
+        if let Some(ref reply_to) = msg.reply_to {
+            content["m.relates_to"] = serde_json::json!({
+                "rel_type": "m.in_reply_to",
+                "event_id": reply_to,
+            });
+        }
+        assert_eq!(content["m.relates_to"]["rel_type"], "m.in_reply_to");
+        assert_eq!(content["m.relates_to"]["event_id"], "$event_id:matrix.org");
+    }
+
+    #[test]
+    fn test_matrix_send_message_empty_text() {
+        let msg = OutgoingMessage::new(Platform::Matrix, "!room:matrix.org", "");
+        assert_eq!(msg.text, "");
+    }
+
+    #[test]
+    fn test_matrix_send_message_unicode() {
+        let msg = OutgoingMessage::new(Platform::Matrix, "!room:matrix.org", "matrix ünïcödé 🏠");
+        assert_eq!(msg.text, "matrix ünïcödé 🏠");
+    }
+
+    #[test]
+    fn test_matrix_edit_message_json_format() {
+        let new_text = "edited content";
+        let body = serde_json::json!({
+            "msgtype": "m.text",
+            "body": format!("* {new_text}"),
+            "m.new_content": {
+                "msgtype": "m.text",
+                "body": new_text,
+            },
+            "m.relates_to": {
+                "rel_type": "m.replace",
+                "event_id": "$original_event:matrix.org",
+            },
+        });
+        assert_eq!(body["body"], "* edited content");
+        assert_eq!(body["m.new_content"]["body"], "edited content");
+        assert_eq!(body["m.relates_to"]["rel_type"], "m.replace");
+        assert_eq!(body["m.relates_to"]["event_id"], "$original_event:matrix.org");
+    }
+
+    #[tokio::test]
+    async fn test_matrix_start_stop_lifecycle() {
+        let adapter =
+            MatrixAdapter::new("https://matrix.org", "token", "@bot:matrix.org");
+        assert!(!adapter.is_running());
+
+        adapter.start().await.unwrap();
+        assert!(adapter.is_running());
+
+        adapter.stop().await.unwrap();
+        assert!(!adapter.is_running());
+    }
+
+    #[test]
+    fn test_matrix_health_stopped() {
+        let adapter =
+            MatrixAdapter::new("https://matrix.org", "token", "@bot:matrix.org");
+        let health = adapter.health();
+        assert!(!health.healthy);
+        assert_eq!(health.message, "stopped");
+        assert_eq!(health.messages_processed, 0);
+        assert_eq!(health.errors, 0);
+    }
+
+    #[tokio::test]
+    async fn test_matrix_health_running() {
+        let adapter =
+            MatrixAdapter::new("https://matrix.org", "token", "@bot:matrix.org");
+        adapter.start().await.unwrap();
+        let health = adapter.health();
+        assert!(health.healthy);
+        assert_eq!(health.message, "syncing");
+    }
+}

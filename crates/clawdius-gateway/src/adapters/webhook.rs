@@ -482,3 +482,268 @@ impl PlatformAdapter for WebhookAdapter {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
+    use super::*;
+
+    fn make_config_with_url(url: &str) -> PlatformConfig {
+        let mut config = PlatformConfig::new(Platform::Webhook);
+        config.webhook_url = Some(url.to_string());
+        config
+    }
+
+    #[test]
+    fn test_webhook_config_default() {
+        let config = WebhookConfig::default();
+        assert_eq!(config.outgoing_url, "");
+        assert!(config.secret.is_none());
+        assert_eq!(config.listen_port, 8080);
+    }
+
+    #[test]
+    fn test_webhook_adapter_new() {
+        let config = WebhookConfig {
+            outgoing_url: "https://example.com/hook".to_string(),
+            ..WebhookConfig::default()
+        };
+        let adapter = WebhookAdapter::new(config);
+        assert_eq!(adapter.platform(), Platform::Webhook);
+        assert!(!adapter.is_running());
+    }
+
+    #[test]
+    fn test_webhook_from_config_missing_url() {
+        let config = PlatformConfig::new(Platform::Webhook);
+        let result = WebhookAdapter::from_config(&config);
+        let err = result.err().expect("should be err").to_string();
+        assert!(err.contains("WEBHOOK_URL"));
+    }
+
+    #[test]
+    fn test_webhook_from_config_valid() {
+        let config = make_config_with_url("https://example.com/hook");
+        let adapter = WebhookAdapter::from_config(&config).unwrap();
+        assert_eq!(adapter.platform(), Platform::Webhook);
+    }
+
+    #[test]
+    fn test_webhook_from_config_with_custom_port() {
+        let mut config = make_config_with_url("https://example.com/hook");
+        config.settings.insert("listen_port".to_string(), serde_json::json!(9090));
+        let adapter = WebhookAdapter::from_config(&config).unwrap();
+        assert_eq!(adapter.config.listen_port, 9090);
+    }
+
+    #[test]
+    fn test_webhook_from_config_with_headers() {
+        let mut config = make_config_with_url("https://example.com/hook");
+        config.settings.insert(
+            "outgoing_headers".to_string(),
+            serde_json::json!({"X-Custom": "value"}),
+        );
+        let adapter = WebhookAdapter::from_config(&config).unwrap();
+        assert_eq!(adapter.config.outgoing_headers.get("X-Custom").unwrap(), "value");
+    }
+
+    #[test]
+    fn test_webhook_incoming_deserialization_minimal() {
+        let json = r#"{"text":"hello"}"#;
+        let incoming: WebhookIncoming = serde_json::from_str(json).unwrap();
+        assert_eq!(incoming.text, "hello");
+        assert!(incoming.chat_id.is_none());
+        assert!(incoming.user.is_none());
+    }
+
+    #[test]
+    fn test_webhook_incoming_deserialization_full() {
+        let json = r#"{"chat_id":"ch1","user":{"id":"u1","name":"Alice","username":"alice"},"text":"hi","reply_to":"msg1","message_id":"m1"}"#;
+        let incoming: WebhookIncoming = serde_json::from_str(json).unwrap();
+        assert_eq!(incoming.chat_id.as_deref(), Some("ch1"));
+        assert_eq!(incoming.text, "hi");
+        assert_eq!(incoming.reply_to.as_deref(), Some("msg1"));
+        assert_eq!(incoming.message_id.as_deref(), Some("m1"));
+        let user = incoming.user.unwrap();
+        assert_eq!(user.id, "u1");
+        assert_eq!(user.name, "Alice");
+        assert_eq!(user.username.as_deref(), Some("alice"));
+    }
+
+    #[test]
+    fn test_webhook_outgoing_serialization() {
+        let outgoing = WebhookOutgoing {
+            chat_id: "ch1".to_string(),
+            text: "response".to_string(),
+            reply_to: Some("msg1".to_string()),
+            message_id: "wh_123".to_string(),
+            edit_message_id: None,
+        };
+        let json = serde_json::to_string(&outgoing).unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed["chat_id"], "ch1");
+        assert_eq!(parsed["text"], "response");
+        assert_eq!(parsed["reply_to"], "msg1");
+        assert_eq!(parsed["message_id"], "wh_123");
+        assert!(parsed.get("edit_message_id").is_none());
+    }
+
+    #[test]
+    fn test_webhook_outgoing_serialization_skips_none() {
+        let outgoing = WebhookOutgoing {
+            chat_id: "ch1".to_string(),
+            text: "resp".to_string(),
+            reply_to: None,
+            message_id: "wh_1".to_string(),
+            edit_message_id: None,
+        };
+        let json = serde_json::to_string(&outgoing).unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+        assert!(parsed.get("reply_to").is_none());
+        assert!(parsed.get("edit_message_id").is_none());
+    }
+
+    #[test]
+    fn test_convert_payload_minimal() {
+        let config = WebhookConfig {
+            outgoing_url: "https://example.com".to_string(),
+            ..WebhookConfig::default()
+        };
+        let adapter = WebhookAdapter::new(config);
+        let payload = WebhookIncoming {
+            chat_id: None,
+            user: None,
+            text: "hello world".to_string(),
+            reply_to: None,
+            message_id: None,
+        };
+        let msg = adapter.convert_payload(payload);
+        assert_eq!(msg.platform, Platform::Webhook);
+        assert_eq!(msg.chat_id, "default");
+        assert_eq!(msg.text, "hello world");
+        assert_eq!(msg.user.id, "anonymous");
+        assert_eq!(msg.user.name, "Anonymous");
+        assert!(msg.user.username.is_none());
+        assert!(!msg.user.is_admin);
+    }
+
+    #[test]
+    fn test_convert_payload_with_user_and_chat() {
+        let config = WebhookConfig {
+            outgoing_url: "https://example.com".to_string(),
+            ..WebhookConfig::default()
+        };
+        let adapter = WebhookAdapter::new(config);
+        let payload = WebhookIncoming {
+            chat_id: Some("room42".to_string()),
+            user: Some(WebhookUser {
+                id: "u99".to_string(),
+                name: "Bob".to_string(),
+                username: Some("bob".to_string()),
+                is_admin: true,
+            }),
+            text: "admin msg".to_string(),
+            reply_to: Some("parent1".to_string()),
+            message_id: Some("custom_id".to_string()),
+        };
+        let msg = adapter.convert_payload(payload);
+        assert_eq!(msg.chat_id, "room42");
+        assert_eq!(msg.user.id, "u99");
+        assert_eq!(msg.user.name, "Bob");
+        assert_eq!(msg.user.username.as_deref(), Some("bob"));
+        assert!(msg.user.is_admin);
+        assert_eq!(msg.reply_to.as_deref(), Some("parent1"));
+        assert_eq!(msg.id, "custom_id");
+    }
+
+    #[test]
+    fn test_convert_payload_empty_text() {
+        let config = WebhookConfig {
+            outgoing_url: "https://example.com".to_string(),
+            ..WebhookConfig::default()
+        };
+        let adapter = WebhookAdapter::new(config);
+        let payload = WebhookIncoming {
+            chat_id: None,
+            user: None,
+            text: String::new(),
+            reply_to: None,
+            message_id: None,
+        };
+        let msg = adapter.convert_payload(payload);
+        assert_eq!(msg.text, "");
+    }
+
+    #[test]
+    fn test_convert_payload_unicode() {
+        let config = WebhookConfig {
+            outgoing_url: "https://example.com".to_string(),
+            ..WebhookConfig::default()
+        };
+        let adapter = WebhookAdapter::new(config);
+        let payload = WebhookIncoming {
+            chat_id: None,
+            user: None,
+            text: "こんにちは世界 🌍".to_string(),
+            reply_to: None,
+            message_id: None,
+        };
+        let msg = adapter.convert_payload(payload);
+        assert_eq!(msg.text, "こんにちは世界 🌍");
+    }
+
+    #[test]
+    fn test_sign_payload_without_secret() {
+        let config = WebhookConfig {
+            outgoing_url: "https://example.com".to_string(),
+            secret: None,
+            ..WebhookConfig::default()
+        };
+        let adapter = WebhookAdapter::new(config);
+        assert!(adapter.sign_payload(b"hello").is_none());
+    }
+
+    #[test]
+    fn test_sign_payload_with_secret() {
+        let config = WebhookConfig {
+            outgoing_url: "https://example.com".to_string(),
+            secret: Some("mysecret".to_string()),
+            ..WebhookConfig::default()
+        };
+        let adapter = WebhookAdapter::new(config);
+        let sig = adapter.sign_payload(b"hello").unwrap();
+        assert!(sig.starts_with("sha256="));
+        assert_eq!(sig.len(), 7 + 64);
+    }
+
+    #[tokio::test]
+    async fn test_webhook_start_stop_lifecycle() {
+        let config = WebhookConfig {
+            outgoing_url: "https://example.com".to_string(),
+            ..WebhookConfig::default()
+        };
+        let adapter = WebhookAdapter::new(config);
+        assert!(!adapter.is_running());
+
+        adapter.start().await.unwrap();
+        assert!(adapter.is_running());
+
+        adapter.stop().await.unwrap();
+        assert!(!adapter.is_running());
+    }
+
+    #[test]
+    fn test_webhook_health_stopped() {
+        let config = WebhookConfig {
+            outgoing_url: "https://example.com".to_string(),
+            ..WebhookConfig::default()
+        };
+        let adapter = WebhookAdapter::new(config);
+        let health = adapter.health();
+        assert!(!health.healthy);
+        assert_eq!(health.message, "stopped");
+        assert_eq!(health.messages_processed, 0);
+        assert_eq!(health.errors, 0);
+    }
+}

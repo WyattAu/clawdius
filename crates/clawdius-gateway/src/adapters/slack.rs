@@ -271,3 +271,130 @@ impl PlatformAdapter for SlackAdapter {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
+    use super::*;
+
+    #[test]
+    fn test_slack_adapter_new() {
+        let adapter = SlackAdapter::new("xoxb-fake-token");
+        assert_eq!(adapter.platform(), Platform::Slack);
+        assert_eq!(adapter.bot_token, "xoxb-fake-token");
+        assert!(adapter.app_token.is_none());
+        assert!(!adapter.is_running());
+    }
+
+    #[test]
+    fn test_slack_from_config_missing_token() {
+        let config = PlatformConfig::new(Platform::Slack);
+        let result = SlackAdapter::from_config(&config);
+        let err = result.err().expect("should be err").to_string();
+        assert!(err.contains("SLACK_BOT_TOKEN"));
+    }
+
+    #[test]
+    fn test_slack_from_config_valid() {
+        let mut config = PlatformConfig::new(Platform::Slack);
+        config.api_token = Some("xoxb-bot-token".to_string());
+        let adapter = SlackAdapter::from_config(&config).unwrap();
+        assert_eq!(adapter.platform(), Platform::Slack);
+        assert_eq!(adapter.bot_token, "xoxb-bot-token");
+    }
+
+    #[test]
+    fn test_slack_from_config_with_app_token() {
+        let mut config = PlatformConfig::new(Platform::Slack);
+        config.api_token = Some("xoxb-bot-token".to_string());
+        config
+            .settings
+            .insert("app_token".to_string(), serde_json::json!("xapp-token"));
+        let adapter = SlackAdapter::from_config(&config).unwrap();
+        assert_eq!(adapter.app_token.as_deref(), Some("xapp-token"));
+    }
+
+    #[test]
+    fn test_slack_send_message_json_format() {
+        let msg = OutgoingMessage::new(Platform::Slack, "C12345", "hello slack");
+        let body = serde_json::json!({
+            "channel": msg.chat_id,
+            "text": msg.text,
+        });
+        assert_eq!(body["channel"], "C12345");
+        assert_eq!(body["text"], "hello slack");
+    }
+
+    #[test]
+    fn test_slack_send_message_with_reply_json() {
+        let msg = OutgoingMessage::new(Platform::Slack, "C12345", "threaded reply")
+            .with_reply_to("1234567890.123456");
+        let mut body = serde_json::json!({
+            "channel": msg.chat_id,
+            "text": msg.text,
+        });
+        if let Some(ref reply_to) = msg.reply_to {
+            body["thread_ts"] = serde_json::json!(reply_to);
+        }
+        assert_eq!(body["thread_ts"], "1234567890.123456");
+    }
+
+    #[test]
+    fn test_slack_send_message_empty_text() {
+        let msg = OutgoingMessage::new(Platform::Slack, "C12345", "");
+        assert_eq!(msg.text, "");
+    }
+
+    #[test]
+    fn test_slack_send_message_unicode() {
+        let msg = OutgoingMessage::new(Platform::Slack, "C12345", "slack 日本語 テスト 🚀");
+        assert_eq!(msg.text, "slack 日本語 テスト 🚀");
+    }
+
+    #[test]
+    fn test_slack_edit_message_json_format() {
+        let message_id = "C12345:1234567890.123456";
+        let parts: Vec<&str> = message_id.splitn(2, ':').collect();
+        assert_eq!(parts.len(), 2);
+        let body = serde_json::json!({
+            "channel": parts[0],
+            "ts": parts[1],
+            "text": "edited text",
+        });
+        assert_eq!(body["channel"], "C12345");
+        assert_eq!(body["ts"], "1234567890.123456");
+        assert_eq!(body["text"], "edited text");
+    }
+
+    #[tokio::test]
+    async fn test_slack_start_stop_lifecycle() {
+        let adapter = SlackAdapter::new("xoxb-fake-token");
+        assert!(!adapter.is_running());
+
+        adapter.start().await.unwrap();
+        assert!(adapter.is_running());
+
+        adapter.stop().await.unwrap();
+        assert!(!adapter.is_running());
+    }
+
+    #[test]
+    fn test_slack_health_stopped() {
+        let adapter = SlackAdapter::new("xoxb-fake-token");
+        let health = adapter.health();
+        assert!(!health.healthy);
+        assert_eq!(health.message, "stopped");
+        assert_eq!(health.messages_processed, 0);
+        assert_eq!(health.errors, 0);
+    }
+
+    #[tokio::test]
+    async fn test_slack_health_running() {
+        let adapter = SlackAdapter::new("xoxb-fake-token");
+        adapter.start().await.unwrap();
+        let health = adapter.health();
+        assert!(health.healthy);
+        assert_eq!(health.message, "connected");
+    }
+}

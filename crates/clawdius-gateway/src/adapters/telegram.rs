@@ -384,3 +384,95 @@ impl PlatformAdapter for TelegramAdapter {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
+    use super::*;
+
+    #[test]
+    fn test_parse_chat_id_valid() {
+        let chat_id = parse_chat_id("123456");
+        assert_eq!(chat_id.0, 123456);
+    }
+
+    #[test]
+    fn test_parse_chat_id_invalid() {
+        let chat_id = parse_chat_id("not_a_number");
+        assert_eq!(chat_id.0, 0);
+    }
+
+    #[test]
+    fn test_parse_chat_id_negative() {
+        let chat_id = parse_chat_id("-1001234567890");
+        assert_eq!(chat_id.0, -1001234567890);
+    }
+
+    #[test]
+    fn test_parse_chat_id_empty() {
+        let chat_id = parse_chat_id("");
+        assert_eq!(chat_id.0, 0);
+    }
+
+    #[test]
+    fn test_telegram_adapter_platform() {
+        let adapter = TelegramAdapter::new("fake-bot-token");
+        assert_eq!(adapter.platform(), Platform::Telegram);
+    }
+
+    #[test]
+    fn test_telegram_adapter_not_running_initially() {
+        let adapter = TelegramAdapter::new("fake-bot-token");
+        assert!(!adapter.is_running());
+    }
+
+    #[test]
+    fn test_telegram_adapter_health_stopped() {
+        let adapter = TelegramAdapter::new("fake-bot-token");
+        let health = adapter.health();
+        assert!(!health.healthy);
+        assert_eq!(health.message, "stopped");
+        assert_eq!(health.messages_processed, 0);
+        assert_eq!(health.errors, 0);
+    }
+
+    #[test]
+    fn test_telegram_from_config_missing_token() {
+        let config = PlatformConfig::new(Platform::Telegram);
+        let result = TelegramAdapter::from_config(&config);
+        let err = result.err().expect("should be err").to_string();
+        assert!(err.contains("TELEGRAM_BOT_TOKEN"));
+    }
+
+    #[test]
+    fn test_telegram_from_config_valid() {
+        let mut config = PlatformConfig::new(Platform::Telegram);
+        config.api_token = Some("123456:ABC-DEF".to_string());
+        let adapter = TelegramAdapter::from_config(&config).unwrap();
+        assert_eq!(adapter.platform(), Platform::Telegram);
+    }
+
+    #[test]
+    fn test_telegram_outgoing_message_json_format() {
+        let msg = OutgoingMessage::new(Platform::Telegram, "123456", "hello telegram");
+        let body = serde_json::json!({
+            "chat_id": msg.chat_id,
+            "text": msg.text,
+        });
+        assert_eq!(body["chat_id"], "123456");
+        assert_eq!(body["text"], "hello telegram");
+    }
+
+    #[test]
+    fn test_telegram_outgoing_message_empty_text() {
+        let msg = OutgoingMessage::new(Platform::Telegram, "123456", "");
+        assert_eq!(msg.text, "");
+    }
+
+    #[test]
+    fn test_telegram_outgoing_message_unicode() {
+        let msg = OutgoingMessage::new(Platform::Telegram, "123456", "Привет мир 🌍");
+        assert_eq!(msg.text, "Привет мир 🌍");
+    }
+}

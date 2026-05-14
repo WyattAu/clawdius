@@ -299,3 +299,157 @@ impl PlatformAdapter for RocketChatAdapter {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
+    use super::*;
+
+    #[test]
+    fn test_rocketchat_adapter_new() {
+        let adapter = RocketChatAdapter::new("https://rc.example.com", "auth-token", "rc-user-id");
+        assert_eq!(adapter.platform(), Platform::RocketChat);
+        assert_eq!(adapter.server_url, "https://rc.example.com");
+        assert_eq!(adapter.auth_token, "auth-token");
+        assert_eq!(adapter.rc_user_id, "rc-user-id");
+        assert!(!adapter.is_running());
+    }
+
+    #[test]
+    fn test_rocketchat_from_config_missing_server_url() {
+        let config = PlatformConfig::new(Platform::RocketChat);
+        let result = RocketChatAdapter::from_config(&config);
+        let err = result.err().expect("should be err").to_string();
+        assert!(err.contains("ROCKETCHAT_URL"));
+    }
+
+    #[test]
+    fn test_rocketchat_from_config_missing_token() {
+        let mut config = PlatformConfig::new(Platform::RocketChat);
+        config
+            .settings
+            .insert("server_url".to_string(), serde_json::json!("https://rc.example.com"));
+        let result = RocketChatAdapter::from_config(&config);
+        let err = result.err().expect("should be err").to_string();
+        assert!(err.contains("ROCKETCHAT_TOKEN"));
+    }
+
+    #[test]
+    fn test_rocketchat_from_config_missing_rc_user_id() {
+        let mut config = PlatformConfig::new(Platform::RocketChat);
+        config
+            .settings
+            .insert("server_url".to_string(), serde_json::json!("https://rc.example.com"));
+        config.api_token = Some("my-token".to_string());
+        let result = RocketChatAdapter::from_config(&config);
+        let err = result.err().expect("should be err").to_string();
+        assert!(err.contains("ROCKETCHAT_USER_ID"));
+    }
+
+    #[test]
+    fn test_rocketchat_from_config_valid() {
+        let mut config = PlatformConfig::new(Platform::RocketChat);
+        config
+            .settings
+            .insert("server_url".to_string(), serde_json::json!("https://rc.example.com"));
+        config.api_token = Some("my-token".to_string());
+        config
+            .settings
+            .insert("rc_user_id".to_string(), serde_json::json!("bot-user-id"));
+        let adapter = RocketChatAdapter::from_config(&config).unwrap();
+        assert_eq!(adapter.server_url, "https://rc.example.com");
+        assert_eq!(adapter.auth_token, "my-token");
+        assert_eq!(adapter.rc_user_id, "bot-user-id");
+    }
+
+    #[test]
+    fn test_rocketchat_send_message_json_format() {
+        let msg = OutgoingMessage::new(Platform::RocketChat, "GENERAL", "hello rc");
+        let body = serde_json::json!({
+            "channel": msg.chat_id,
+            "text": msg.text,
+        });
+        assert_eq!(body["channel"], "GENERAL");
+        assert_eq!(body["text"], "hello rc");
+    }
+
+    #[test]
+    fn test_rocketchat_send_message_with_reply_json_format() {
+        let msg =
+            OutgoingMessage::new(Platform::RocketChat, "GENERAL", "reply text").with_reply_to("thread-id-1");
+        let body = serde_json::json!({
+            "channel": msg.chat_id,
+            "text": msg.text,
+            "tmid": msg.reply_to,
+        });
+        assert_eq!(body["channel"], "GENERAL");
+        assert_eq!(body["text"], "reply text");
+        assert_eq!(body["tmid"], "thread-id-1");
+    }
+
+    #[test]
+    fn test_rocketchat_send_message_empty_text() {
+        let msg = OutgoingMessage::new(Platform::RocketChat, "GENERAL", "");
+        let body = serde_json::json!({
+            "channel": msg.chat_id,
+            "text": msg.text,
+        });
+        assert_eq!(body["text"], "");
+    }
+
+    #[test]
+    fn test_rocketchat_send_message_unicode() {
+        let msg = OutgoingMessage::new(Platform::RocketChat, "GENERAL", "héllo wörld café");
+        let body = serde_json::json!({
+            "channel": msg.chat_id,
+            "text": msg.text,
+        });
+        assert_eq!(body["text"], "héllo wörld café");
+    }
+
+    #[test]
+    fn test_rocketchat_edit_message_json_format() {
+        let _adapter = RocketChatAdapter::new("https://rc.example.com", "tok", "uid");
+        let message_id = "msg-abc-123";
+        let new_text = "edited content";
+        let body = serde_json::json!({
+            "roomId": "default",
+            "msgId": message_id,
+            "text": new_text,
+        });
+        assert_eq!(body["msgId"], "msg-abc-123");
+        assert_eq!(body["text"], "edited content");
+    }
+
+    #[tokio::test]
+    async fn test_rocketchat_start_stop_lifecycle() {
+        let adapter = RocketChatAdapter::new("https://rc.example.com", "tok", "uid");
+        assert!(!adapter.is_running());
+
+        adapter.start().await.unwrap();
+        assert!(adapter.is_running());
+
+        adapter.stop().await.unwrap();
+        assert!(!adapter.is_running());
+    }
+
+    #[test]
+    fn test_rocketchat_health_stopped() {
+        let adapter = RocketChatAdapter::new("https://rc.example.com", "tok", "uid");
+        let health = adapter.health();
+        assert!(!health.healthy);
+        assert_eq!(health.message, "stopped");
+        assert_eq!(health.messages_processed, 0);
+        assert_eq!(health.errors, 0);
+    }
+
+    #[tokio::test]
+    async fn test_rocketchat_health_running() {
+        let adapter = RocketChatAdapter::new("https://rc.example.com", "tok", "uid");
+        adapter.start().await.unwrap();
+        let health = adapter.health();
+        assert!(health.healthy);
+        assert_eq!(health.message, "connected");
+    }
+}

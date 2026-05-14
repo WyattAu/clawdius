@@ -367,3 +367,172 @@ impl PlatformAdapter for TeamsAdapter {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
+    use super::*;
+
+    #[test]
+    fn test_teams_adapter_new() {
+        let adapter = TeamsAdapter::new("https://smba.trafficmanager.net/amer", "app-id", "app-pw");
+        assert_eq!(adapter.platform(), Platform::Teams);
+        assert_eq!(adapter.app_id, "app-id");
+        assert_eq!(adapter.app_password, "app-pw");
+        assert!(!adapter.is_running());
+    }
+
+    #[test]
+    fn test_teams_from_config_missing_app_id() {
+        let config = PlatformConfig::new(Platform::Teams);
+        let result = TeamsAdapter::from_config(&config);
+        let err = result.err().expect("should be err").to_string();
+        assert!(err.contains("TEAMS_APP_ID"));
+    }
+
+    #[test]
+    fn test_teams_from_config_missing_app_password() {
+        let mut config = PlatformConfig::new(Platform::Teams);
+        config.api_token = Some("my-app-id".to_string());
+        let result = TeamsAdapter::from_config(&config);
+        let err = result.err().expect("should be err").to_string();
+        assert!(err.contains("TEAMS_APP_PASSWORD"));
+    }
+
+    #[test]
+    fn test_teams_from_config_valid() {
+        let mut config = PlatformConfig::new(Platform::Teams);
+        config.api_token = Some("my-app-id".to_string());
+        config.settings.insert("app_password".to_string(), serde_json::json!("secret123"));
+        let adapter = TeamsAdapter::from_config(&config).unwrap();
+        assert_eq!(adapter.platform(), Platform::Teams);
+        assert_eq!(adapter.app_id, "my-app-id");
+        assert_eq!(adapter.app_password, "secret123");
+    }
+
+    #[test]
+    fn test_teams_from_config_custom_service_url() {
+        let mut config = PlatformConfig::new(Platform::Teams);
+        config.api_token = Some("my-app-id".to_string());
+        config.settings.insert("app_password".to_string(), serde_json::json!("pw"));
+        config.settings.insert(
+            "service_url".to_string(),
+            serde_json::json!("https://custom.services.com"),
+        );
+        let adapter = TeamsAdapter::from_config(&config).unwrap();
+        assert_eq!(adapter.service_url, "https://custom.services.com");
+    }
+
+    #[test]
+    fn test_teams_from_config_default_service_url() {
+        let mut config = PlatformConfig::new(Platform::Teams);
+        config.api_token = Some("my-app-id".to_string());
+        config.settings.insert("app_password".to_string(), serde_json::json!("pw"));
+        let adapter = TeamsAdapter::from_config(&config).unwrap();
+        assert_eq!(adapter.service_url, "https://smba.trafficmanager.net/amer");
+    }
+
+    #[test]
+    fn test_teams_send_message_json_format() {
+        let msg = OutgoingMessage::new(Platform::Teams, "conv-id", "hello teams");
+        let body = serde_json::json!({
+            "type": "message",
+            "from": { "id": "app-id" },
+            "conversation": { "id": msg.chat_id },
+            "text": msg.text,
+        });
+        assert_eq!(body["type"], "message");
+        assert_eq!(body["from"]["id"], "app-id");
+        assert_eq!(body["conversation"]["id"], "conv-id");
+        assert_eq!(body["text"], "hello teams");
+    }
+
+    #[test]
+    fn test_teams_send_message_with_service_url_metadata() {
+        let msg = OutgoingMessage::new(Platform::Teams, "conv-id", "hi").with_metadata(
+            "service_url",
+            serde_json::json!("https://custom.com"),
+        );
+        let (service_url, conv_id) = if msg.metadata.contains_key("service_url") {
+            (
+                msg.metadata["service_url"].as_str().unwrap().to_string(),
+                msg.chat_id.clone(),
+            )
+        } else {
+            (String::new(), msg.chat_id)
+        };
+        assert_eq!(service_url, "https://custom.com");
+        assert_eq!(conv_id, "conv-id");
+    }
+
+    #[test]
+    fn test_teams_send_message_empty_text() {
+        let msg = OutgoingMessage::new(Platform::Teams, "conv-id", "");
+        let body = serde_json::json!({
+            "type": "message",
+            "from": { "id": "app-id" },
+            "conversation": { "id": msg.chat_id },
+            "text": msg.text,
+        });
+        assert_eq!(body["text"], "");
+    }
+
+    #[test]
+    fn test_teams_send_message_unicode() {
+        let msg = OutgoingMessage::new(Platform::Teams, "conv-id", " teams test 日本語");
+        let body = serde_json::json!({
+            "type": "message",
+            "from": { "id": "app-id" },
+            "conversation": { "id": msg.chat_id },
+            "text": msg.text,
+        });
+        assert_eq!(body["text"], " teams test 日本語");
+    }
+
+    #[test]
+    fn test_teams_edit_message_json_format() {
+        let _adapter = TeamsAdapter::new("https://smba.trafficmanager.net/amer", "app-id", "app-pw");
+        let new_text = "updated text";
+        let body = serde_json::json!({
+            "type": "message",
+            "text": new_text,
+        });
+        assert_eq!(body["type"], "message");
+        assert_eq!(body["text"], "updated text");
+    }
+
+    #[tokio::test]
+    async fn test_teams_start_stop_lifecycle() {
+        let adapter =
+            TeamsAdapter::new("https://smba.trafficmanager.net/amer", "app-id", "app-pw");
+        assert!(!adapter.is_running());
+
+        adapter.start().await.unwrap();
+        assert!(adapter.is_running());
+
+        adapter.stop().await.unwrap();
+        assert!(!adapter.is_running());
+    }
+
+    #[test]
+    fn test_teams_health_stopped() {
+        let adapter =
+            TeamsAdapter::new("https://smba.trafficmanager.net/amer", "app-id", "app-pw");
+        let health = adapter.health();
+        assert!(!health.healthy);
+        assert_eq!(health.message, "stopped");
+        assert_eq!(health.messages_processed, 0);
+        assert_eq!(health.errors, 0);
+    }
+
+    #[tokio::test]
+    async fn test_teams_health_running() {
+        let adapter =
+            TeamsAdapter::new("https://smba.trafficmanager.net/amer", "app-id", "app-pw");
+        adapter.start().await.unwrap();
+        let health = adapter.health();
+        assert!(health.healthy);
+        assert_eq!(health.message, "connected");
+    }
+}

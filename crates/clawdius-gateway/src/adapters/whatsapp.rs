@@ -375,3 +375,276 @@ impl PlatformAdapter for WhatsAppAdapter {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
+    use super::*;
+
+    #[test]
+    fn test_whatsapp_adapter_new() {
+        let adapter = WhatsAppAdapter::new("my-token", "phone-id-123");
+        assert_eq!(adapter.platform(), Platform::WhatsApp);
+        assert_eq!(adapter.access_token, "my-token");
+        assert_eq!(adapter.phone_number_id, "phone-id-123");
+        assert_eq!(adapter.api_url, "https://graph.facebook.com/v21.0");
+        assert!(!adapter.is_running());
+    }
+
+    #[test]
+    fn test_whatsapp_from_config_missing_access_token() {
+        let config = PlatformConfig::new(Platform::WhatsApp);
+        let result = WhatsAppAdapter::from_config(&config);
+        let err = result.err().expect("should be err").to_string();
+        assert!(err.contains("WHATSAPP_ACCESS_TOKEN"));
+    }
+
+    #[test]
+    fn test_whatsapp_from_config_missing_phone_number_id() {
+        let mut config = PlatformConfig::new(Platform::WhatsApp);
+        config.api_token = Some("my-token".to_string());
+        let result = WhatsAppAdapter::from_config(&config);
+        let err = result.err().expect("should be err").to_string();
+        assert!(err.contains("WHATSAPP_PHONE_NUMBER_ID"));
+    }
+
+    #[test]
+    fn test_whatsapp_from_config_valid() {
+        let mut config = PlatformConfig::new(Platform::WhatsApp);
+        config.api_token = Some("my-token".to_string());
+        config.settings.insert("phone_number_id".to_string(), serde_json::json!("phone-123"));
+        let adapter = WhatsAppAdapter::from_config(&config).unwrap();
+        assert_eq!(adapter.access_token, "my-token");
+        assert_eq!(adapter.phone_number_id, "phone-123");
+    }
+
+    #[test]
+    fn test_whatsapp_from_config_with_verify_token() {
+        let mut config = PlatformConfig::new(Platform::WhatsApp);
+        config.api_token = Some("my-token".to_string());
+        config.settings.insert("phone_number_id".to_string(), serde_json::json!("phone-123"));
+        config.webhook_secret = Some("verify-secret".to_string());
+        let adapter = WhatsAppAdapter::from_config(&config).unwrap();
+        assert_eq!(adapter.verify_token.as_deref(), Some("verify-secret"));
+    }
+
+    #[test]
+    fn test_whatsapp_verify_webhook_valid() {
+        let adapter = WhatsAppAdapter::new("token", "phone-id");
+        let result = adapter.verify_webhook("subscribe", "any-token", "challenge-123");
+        assert_eq!(result.unwrap(), "challenge-123");
+    }
+
+    #[test]
+    fn test_whatsapp_verify_webhook_invalid_mode() {
+        let adapter = WhatsAppAdapter::new("token", "phone-id");
+        let result = adapter.verify_webhook("invalid_mode", "any-token", "challenge");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_whatsapp_verify_webhook_token_mismatch() {
+        let mut adapter = WhatsAppAdapter::new("token", "phone-id");
+        adapter.verify_token = Some("correct-secret".to_string());
+        let result = adapter.verify_webhook("subscribe", "wrong-secret", "challenge");
+        assert!(result.is_err());
+        let err = result.unwrap_err().to_string();
+        assert!(err.contains("mismatch"));
+    }
+
+    #[test]
+    fn test_whatsapp_verify_webhook_no_verify_token_set() {
+        let adapter = WhatsAppAdapter::new("token", "phone-id");
+        let result = adapter.verify_webhook("subscribe", "anything", "challenge-42");
+        assert_eq!(result.unwrap(), "challenge-42");
+    }
+
+    #[test]
+    fn test_whatsapp_parse_webhook_empty_body() {
+        let adapter = WhatsAppAdapter::new("token", "phone-id");
+        let messages = adapter.parse_webhook_payload(&serde_json::json!({}));
+        assert!(messages.is_empty());
+    }
+
+    #[test]
+    fn test_whatsapp_parse_webhook_text_message() {
+        let adapter = WhatsAppAdapter::new("token", "phone-id");
+        let body = serde_json::json!({
+            "entry": [{
+                "changes": [{
+                    "value": {
+                        "contacts": [{"wa_id": "551199999", "profile": {"name": "Alice"}}],
+                        "messages": [{
+                            "type": "text",
+                            "text": {"body": "hello whatsapp"},
+                            "id": "wamid_123",
+                            "timestamp": "1700000000"
+                        }]
+                    }
+                }]
+            }]
+        });
+        let messages = adapter.parse_webhook_payload(&body);
+        assert_eq!(messages.len(), 1);
+        assert_eq!(messages[0].platform, Platform::WhatsApp);
+        assert_eq!(messages[0].text, "hello whatsapp");
+        assert_eq!(messages[0].user.id, "551199999");
+        assert_eq!(messages[0].user.name, "Alice");
+        assert_eq!(messages[0].id, "wamid_123");
+    }
+
+    #[test]
+    fn test_whatsapp_parse_webhook_non_text_message() {
+        let adapter = WhatsAppAdapter::new("token", "phone-id");
+        let body = serde_json::json!({
+            "entry": [{
+                "changes": [{
+                    "value": {
+                        "contacts": [{"wa_id": "551199999", "profile": {"name": "Bob"}}],
+                        "messages": [{
+                            "type": "image",
+                            "id": "wamid_img",
+                            "timestamp": "1700000000"
+                        }]
+                    }
+                }]
+            }]
+        });
+        let messages = adapter.parse_webhook_payload(&body);
+        assert_eq!(messages.len(), 1);
+        assert_eq!(messages[0].text, "");
+        assert_eq!(
+            messages[0].metadata.get("msg_type").unwrap(),
+            "image"
+        );
+    }
+
+    #[test]
+    fn test_whatsapp_parse_webhook_no_contacts() {
+        let adapter = WhatsAppAdapter::new("token", "phone-id");
+        let body = serde_json::json!({
+            "entry": [{
+                "changes": [{
+                    "value": {
+                        "messages": [{
+                            "type": "text",
+                            "text": {"body": "from unknown"},
+                            "id": "wamid_x",
+                            "timestamp": "1700000000"
+                        }]
+                    }
+                }]
+            }]
+        });
+        let messages = adapter.parse_webhook_payload(&body);
+        assert_eq!(messages.len(), 1);
+        assert_eq!(messages[0].user.id, "unknown");
+        assert_eq!(messages[0].user.name, "Unknown");
+    }
+
+    #[test]
+    fn test_whatsapp_parse_webhook_multiple_messages() {
+        let adapter = WhatsAppAdapter::new("token", "phone-id");
+        let body = serde_json::json!({
+            "entry": [{
+                "changes": [{
+                    "value": {
+                        "contacts": [{"wa_id": "5511", "profile": {"name": "A"}}],
+                        "messages": [
+                            {"type": "text", "text": {"body": "first"}, "id": "m1", "timestamp": "1700000000"},
+                            {"type": "text", "text": {"body": "second"}, "id": "m2", "timestamp": "1700000001"}
+                        ]
+                    }
+                }]
+            }]
+        });
+        let messages = adapter.parse_webhook_payload(&body);
+        assert_eq!(messages.len(), 2);
+        assert_eq!(messages[0].text, "first");
+        assert_eq!(messages[1].text, "second");
+    }
+
+    #[test]
+    fn test_whatsapp_parse_webhook_unicode_message() {
+        let adapter = WhatsAppAdapter::new("token", "phone-id");
+        let body = serde_json::json!({
+            "entry": [{
+                "changes": [{
+                    "value": {
+                        "contacts": [{"wa_id": "5511", "profile": {"name": "ユーザー"}}],
+                        "messages": [{
+                            "type": "text",
+                            "text": {"body": "こんにちは 🎉"},
+                            "id": "wamid_u",
+                            "timestamp": "1700000000"
+                        }]
+                    }
+                }]
+            }]
+        });
+        let messages = adapter.parse_webhook_payload(&body);
+        assert_eq!(messages.len(), 1);
+        assert_eq!(messages[0].text, "こんにちは 🎉");
+        assert_eq!(messages[0].user.name, "ユーザー");
+    }
+
+    #[test]
+    fn test_whatsapp_send_message_json_format() {
+        let msg = OutgoingMessage::new(Platform::WhatsApp, "551199999", "hello");
+        let body = serde_json::json!({
+            "messaging_product": "whatsapp",
+            "recipient_type": "individual",
+            "to": msg.chat_id,
+            "type": "text",
+            "text": {
+                "body": msg.text,
+                "preview_url": false,
+            },
+        });
+        assert_eq!(body["messaging_product"], "whatsapp");
+        assert_eq!(body["to"], "551199999");
+        assert_eq!(body["type"], "text");
+        assert_eq!(body["text"]["body"], "hello");
+        assert_eq!(body["text"]["preview_url"], false);
+    }
+
+    #[test]
+    fn test_whatsapp_edit_message_prefix() {
+        let new_text = "corrected version";
+        let prefix = format!("(corrected) {new_text}");
+        assert!(prefix.starts_with("(corrected)"));
+        assert!(prefix.contains("corrected version"));
+    }
+
+    #[tokio::test]
+    async fn test_whatsapp_start_stop_lifecycle() {
+        let adapter = WhatsAppAdapter::new("token", "phone-id");
+        assert!(!adapter.is_running());
+
+        adapter.start().await.unwrap();
+        assert!(adapter.is_running());
+
+        adapter.stop().await.unwrap();
+        assert!(!adapter.is_running());
+    }
+
+    #[test]
+    fn test_whatsapp_health_stopped() {
+        let adapter = WhatsAppAdapter::new("token", "phone-id");
+        let health = adapter.health();
+        assert!(!health.healthy);
+        assert_eq!(health.message, "stopped");
+        assert_eq!(health.messages_processed, 0);
+        assert_eq!(health.errors, 0);
+    }
+
+    #[tokio::test]
+    async fn test_whatsapp_health_running() {
+        let adapter = WhatsAppAdapter::new("token", "phone-id");
+        adapter.start().await.unwrap();
+        let health = adapter.health();
+        assert!(health.healthy);
+        assert_eq!(health.message, "connected");
+    }
+}

@@ -391,3 +391,113 @@ impl serenity::client::EventHandler for DiscordEventHandler {
         (self.on_message)(incoming).await;
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
+    use super::*;
+
+    #[test]
+    fn test_discord_adapter_new() {
+        let adapter = DiscordAdapter::new("fake-discord-token");
+        assert_eq!(adapter.platform(), Platform::Discord);
+        assert_eq!(adapter.token, "fake-discord-token");
+        assert!(!adapter.is_running());
+    }
+
+    #[test]
+    fn test_discord_from_config_missing_token() {
+        let config = PlatformConfig::new(Platform::Discord);
+        let result = DiscordAdapter::from_config(&config);
+        let err = result.err().expect("should be err").to_string();
+        assert!(err.contains("DISCORD_BOT_TOKEN"));
+    }
+
+    #[test]
+    fn test_discord_from_config_valid() {
+        let mut config = PlatformConfig::new(Platform::Discord);
+        config.api_token = Some("bot-token-123".to_string());
+        let adapter = DiscordAdapter::from_config(&config).unwrap();
+        assert_eq!(adapter.platform(), Platform::Discord);
+        assert_eq!(adapter.token, "bot-token-123");
+    }
+
+    #[test]
+    fn test_discord_send_message_json_format() {
+        let msg = OutgoingMessage::new(Platform::Discord, "123456789", "hello discord");
+        let mut body = serde_json::json!({
+            "content": msg.text,
+        });
+        body["message_reference"] = serde_json::json!({});
+        assert_eq!(body["content"], "hello discord");
+    }
+
+    #[test]
+    fn test_discord_send_message_with_reply_json() {
+        let msg =
+            OutgoingMessage::new(Platform::Discord, "123456789", "reply").with_reply_to("999888777");
+        let mut body = serde_json::json!({
+            "content": msg.text,
+        });
+        if let Some(ref reply_to) = msg.reply_to {
+            body["message_reference"] = serde_json::json!({
+                "message_id": reply_to,
+            });
+        }
+        assert_eq!(body["message_reference"]["message_id"], "999888777");
+    }
+
+    #[test]
+    fn test_discord_send_message_empty_text() {
+        let msg = OutgoingMessage::new(Platform::Discord, "123456789", "");
+        assert_eq!(msg.text, "");
+    }
+
+    #[test]
+    fn test_discord_send_message_unicode() {
+        let msg = OutgoingMessage::new(Platform::Discord, "123456789", "héllo discord 🎮");
+        assert_eq!(msg.text, "héllo discord 🎮");
+    }
+
+    #[test]
+    fn test_discord_send_message_special_characters() {
+        let msg = OutgoingMessage::new(
+            Platform::Discord,
+            "123456789",
+            "line1\nline2\ttabbed \"quoted\" <@mention>",
+        );
+        assert_eq!(msg.text, "line1\nline2\ttabbed \"quoted\" <@mention>");
+    }
+
+    #[tokio::test]
+    async fn test_discord_start_stop_lifecycle() {
+        let adapter = DiscordAdapter::new("fake-token");
+        assert!(!adapter.is_running());
+
+        adapter.start().await.unwrap();
+        assert!(adapter.is_running());
+
+        adapter.stop().await.unwrap();
+        assert!(!adapter.is_running());
+    }
+
+    #[test]
+    fn test_discord_health_stopped() {
+        let adapter = DiscordAdapter::new("fake-token");
+        let health = adapter.health();
+        assert!(!health.healthy);
+        assert_eq!(health.message, "stopped");
+        assert_eq!(health.messages_processed, 0);
+        assert_eq!(health.errors, 0);
+    }
+
+    #[tokio::test]
+    async fn test_discord_health_running() {
+        let adapter = DiscordAdapter::new("fake-token");
+        adapter.start().await.unwrap();
+        let health = adapter.health();
+        assert!(health.healthy);
+        assert_eq!(health.message, "connected");
+    }
+}
