@@ -152,4 +152,4 @@ pub mod types;
 pub use compactor::{CompactConfig, CompactSummary, Compactor};
 pub use manager::SessionManager;
 pub use store::SessionStore;
-pub use types::{Message, MessageContent, MessageRole, Session, SessionId, SessionMeta};
+pub use types::{Message, MessageContent, MessageRole, Session, SessionId, SessionMeta, TokenUsage};

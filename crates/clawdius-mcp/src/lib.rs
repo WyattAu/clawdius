@@ -225,4 +225,186 @@ mod tests {
         assert_eq!(parsed["result"], serde_json::json!({}));
         assert!(parsed.get("error").is_none());
     }
+
+    #[test]
+    fn test_parse_id_as_string_rejected() {
+        let json = r#"{"jsonrpc":"2.0","id":"one","method":"ping"}"#;
+        let result = parse_request(json);
+        assert!(result.is_err(), "string id should be rejected for u64");
+    }
+
+    #[test]
+    fn test_parse_id_as_negative_rejected() {
+        let json = r#"{"jsonrpc":"2.0","id":-1,"method":"ping"}"#;
+        let result = parse_request(json);
+        assert!(result.is_err(), "negative id should be rejected for u64");
+    }
+
+    #[test]
+    fn test_parse_id_as_boolean_rejected() {
+        let json = r#"{"jsonrpc":"2.0","id":true,"method":"ping"}"#;
+        let result = parse_request(json);
+        assert!(result.is_err(), "boolean id should be rejected for u64");
+    }
+
+    #[test]
+    fn test_parse_method_as_number_rejected() {
+        let json = r#"{"jsonrpc":"2.0","id":1,"method":42}"#;
+        let result = parse_request(json);
+        assert!(result.is_err(), "numeric method should be rejected for String");
+    }
+
+    #[test]
+    fn test_parse_method_as_boolean_rejected() {
+        let json = r#"{"jsonrpc":"2.0","id":1,"method":true}"#;
+        let result = parse_request(json);
+        assert!(result.is_err(), "boolean method should be rejected for String");
+    }
+
+    #[test]
+    fn test_parse_json_array_rejected() {
+        let json = r#"[{"jsonrpc":"2.0","id":1,"method":"ping"}]"#;
+        let result = parse_request(json);
+        assert!(result.is_err(), "top-level array should be rejected");
+    }
+
+    #[test]
+    fn test_parse_json_number_rejected() {
+        let json = r"42";
+        let result = parse_request(json);
+        assert!(result.is_err(), "bare number should be rejected");
+    }
+
+    #[test]
+    fn test_parse_wrong_jsonrpc_version_parses() {
+        let json = r#"{"jsonrpc":"1.0","id":1,"method":"ping"}"#;
+        let req = parse_request(json).unwrap();
+        assert_eq!(req.jsonrpc, "1.0");
+        assert_eq!(req.method, "ping");
+    }
+
+    #[test]
+    fn test_parse_unicode_method_name() {
+        let json = r#"{"jsonrpc":"2.0","id":1,"method":"tools/日本語テスト"}"#;
+        let req = parse_request(json).unwrap();
+        assert_eq!(req.method, "tools/日本語テスト");
+    }
+
+    #[test]
+    fn test_parse_special_characters_in_params() {
+        let json = "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"test\",\"params\":{\"path\":\"/tmp/a\\u0000b\",\"data\":\"hello\\nworld\"}}";
+        let req = parse_request(json).unwrap();
+        let params = req.params.unwrap();
+        assert_eq!(params["path"], "/tmp/a\u{0000}b");
+        assert_eq!(params["data"], "hello\nworld");
+    }
+
+    #[test]
+    fn test_parse_very_large_id() {
+        let json = r#"{"jsonrpc":"2.0","id":18446744073709551615,"method":"ping"}"#;
+        let req = parse_request(json).unwrap();
+        assert_eq!(req.id, u64::MAX);
+    }
+
+    #[test]
+    fn test_parse_id_exceeding_u64_max_rejected() {
+        let json = r#"{"jsonrpc":"2.0","id":18446744073709551616,"method":"ping"}"#;
+        let result = parse_request(json);
+        assert!(result.is_err(), "id exceeding u64::MAX should be rejected");
+    }
+
+    #[test]
+    fn test_format_response_with_deeply_nested_result() {
+        let nested = serde_json::json!({
+            "level1": {
+                "level2": {
+                    "level3": {
+                        "level4": "deep"
+                    }
+                }
+            }
+        });
+        let resp = McpResponse::success(1, nested);
+        let json = format_response(&resp);
+        let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed["result"]["level1"]["level2"]["level3"]["level4"], "deep");
+    }
+
+    #[test]
+    fn test_format_response_with_unicode_error_message() {
+        let resp = McpResponse::error(1, McpError::internal_error("エラー occurred: üñíçødé"));
+        let json = format_response(&resp);
+        let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+        let msg = parsed["error"]["message"].as_str().unwrap();
+        assert!(msg.contains("エラー"));
+        assert!(msg.contains("üñíçødé"));
+    }
+
+    #[test]
+    fn test_format_response_with_null_result() {
+        let resp = McpResponse::success(1, serde_json::Value::Null);
+        let json = format_response(&resp);
+        let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+        assert!(parsed["result"].is_null());
+    }
+
+    #[test]
+    fn test_parse_escaped_json_in_params() {
+        let json = r#"{"jsonrpc":"2.0","id":1,"method":"test","params":{"json":"{\"nested\":true}"}}"#;
+        let req = parse_request(json).unwrap();
+        let params = req.params.unwrap();
+        assert_eq!(params["json"], "{\"nested\":true}");
+    }
+
+    #[test]
+    fn test_format_error_preserves_code_exactly() {
+        let codes = [(-32700, "parse"), (-32600, "invalid"), (-32601, "method"), (-32602, "params"), (-32603, "internal")];
+        for (code, label) in codes {
+            let err = McpError::new(code, label.to_string());
+            let resp = McpResponse::error(1, err);
+            let json = format_response(&resp);
+            let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+            assert_eq!(parsed["error"]["code"], code, "code mismatch for {label}");
+        }
+    }
+
+    #[test]
+    fn test_parse_with_null_params() {
+        let json = r#"{"jsonrpc":"2.0","id":1,"method":"ping","params":null}"#;
+        let req = parse_request(json).unwrap();
+        assert!(req.params.is_none(), "null params should deserialize as None");
+    }
+
+    #[test]
+    fn test_concurrent_parse_requests() {
+        use std::thread;
+        let handles: Vec<_> = (0..8)
+            .map(|i| {
+                thread::spawn(move || {
+                    let json = format!(
+                        r#"{{"jsonrpc":"2.0","id":{i},"method":"tools/list"}}"#
+                    );
+                    let req = parse_request(&json).unwrap();
+                    assert_eq!(req.id, u64::try_from(i).unwrap_or(0));
+                    assert_eq!(req.method, "tools/list");
+                })
+            })
+            .collect();
+        for h in handles {
+            h.join().unwrap();
+        }
+    }
+
+    #[test]
+    fn test_format_multiple_notifications_independently() {
+        let n1 = McpResponse::notification();
+        let n2 = McpResponse::notification();
+        assert!(n1.is_notification());
+        assert!(n2.is_notification());
+        let j1 = format_response(&n1);
+        let j2 = format_response(&n2);
+        let p1: serde_json::Value = serde_json::from_str(&j1).unwrap();
+        let p2: serde_json::Value = serde_json::from_str(&j2).unwrap();
+        assert_eq!(p1, p2);
+    }
 }

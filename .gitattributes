@@ -1,1 +1,2 @@
-crates/clawdius-core/src/lib.rs merge=ours
+# Protect crate root files from merge conflicts (agentic tools have clobbered these)
+crates/*/src/lib.rs merge=union
