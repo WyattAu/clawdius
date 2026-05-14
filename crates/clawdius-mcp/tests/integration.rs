@@ -8,13 +8,13 @@
     missing_docs,
     unused_variables,
     clippy::cast_precision_loss,
+    clippy::unwrap_used,
     clippy::expect_used,
     clippy::items_after_statements,
     clippy::manual_is_multiple_of,
     clippy::must_use_candidate,
     clippy::return_self_not_must_use,
-    clippy::uninlined_format_args,
-    clippy::unwrap_used
+    clippy::uninlined_format_args
 )]
 use std::io::Write;
 use std::process::{Command, Stdio};
