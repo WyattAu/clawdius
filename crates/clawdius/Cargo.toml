@@ -5,6 +5,7 @@ edition.workspace = true
 authors.workspace = true
 license.workspace = true
 repository.workspace = true
+rust-version.workspace = true
 homepage.workspace = true
 documentation = "https://docs.rs/clawdius"
 description = "Clawdius CLI - High-Assurance Rust-Native Engineering Engine"

@@ -327,9 +327,10 @@ mod tests {
     #[test]
     fn test_rocketchat_from_config_missing_token() {
         let mut config = PlatformConfig::new(Platform::RocketChat);
-        config
-            .settings
-            .insert("server_url".to_string(), serde_json::json!("https://rc.example.com"));
+        config.settings.insert(
+            "server_url".to_string(),
+            serde_json::json!("https://rc.example.com"),
+        );
         let result = RocketChatAdapter::from_config(&config);
         let err = result.err().expect("should be err").to_string();
         assert!(err.contains("ROCKETCHAT_TOKEN"));
@@ -338,9 +339,10 @@ mod tests {
     #[test]
     fn test_rocketchat_from_config_missing_rc_user_id() {
         let mut config = PlatformConfig::new(Platform::RocketChat);
-        config
-            .settings
-            .insert("server_url".to_string(), serde_json::json!("https://rc.example.com"));
+        config.settings.insert(
+            "server_url".to_string(),
+            serde_json::json!("https://rc.example.com"),
+        );
         config.api_token = Some("my-token".to_string());
         let result = RocketChatAdapter::from_config(&config);
         let err = result.err().expect("should be err").to_string();
@@ -350,9 +352,10 @@ mod tests {
     #[test]
     fn test_rocketchat_from_config_valid() {
         let mut config = PlatformConfig::new(Platform::RocketChat);
-        config
-            .settings
-            .insert("server_url".to_string(), serde_json::json!("https://rc.example.com"));
+        config.settings.insert(
+            "server_url".to_string(),
+            serde_json::json!("https://rc.example.com"),
+        );
         config.api_token = Some("my-token".to_string());
         config
             .settings
@@ -376,8 +379,8 @@ mod tests {
 
     #[test]
     fn test_rocketchat_send_message_with_reply_json_format() {
-        let msg =
-            OutgoingMessage::new(Platform::RocketChat, "GENERAL", "reply text").with_reply_to("thread-id-1");
+        let msg = OutgoingMessage::new(Platform::RocketChat, "GENERAL", "reply text")
+            .with_reply_to("thread-id-1");
         let body = serde_json::json!({
             "channel": msg.chat_id,
             "text": msg.text,

@@ -360,7 +360,10 @@ mod edge_case_tests {
         let resp = Response::internal_error(Id::Number(1), "error with \"quotes\" and \n newlines");
         let json = format_response(&resp);
         let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
-        assert!(parsed["error"]["message"].as_str().unwrap().contains("quotes"));
+        assert!(parsed["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("quotes"));
     }
 }
 
@@ -373,7 +376,8 @@ mod roundtrip_tests {
 
     #[test]
     fn test_request_parse_roundtrip() {
-        let original = r#"{"jsonrpc":"2.0","id":42,"method":"session/create","params":{"name":"my-session"}}"#;
+        let original =
+            r#"{"jsonrpc":"2.0","id":42,"method":"session/create","params":{"name":"my-session"}}"#;
         let req = parse_request(original).unwrap();
         let serialized = serde_json::to_string(&req).unwrap();
         let req2 = parse_request(&serialized).unwrap();
@@ -384,7 +388,10 @@ mod roundtrip_tests {
 
     #[test]
     fn test_response_format_roundtrip() {
-        let resp = Response::success(Id::Number(7), serde_json::json!({"key": "value", "num": 123}));
+        let resp = Response::success(
+            Id::Number(7),
+            serde_json::json!({"key": "value", "num": 123}),
+        );
         let json = format_response(&resp);
         let reparsed = Response::from_json(&json).unwrap();
         assert_eq!(reparsed.id, resp.id);
@@ -404,7 +411,8 @@ mod roundtrip_tests {
 
     #[test]
     fn test_request_to_response_id_preservation() {
-        let json = r#"{"jsonrpc":"2.0","id":"unique-str-id","method":"chat/send","params":{"msg":"hi"}}"#;
+        let json =
+            r#"{"jsonrpc":"2.0","id":"unique-str-id","method":"chat/send","params":{"msg":"hi"}}"#;
         let req = parse_request(json).unwrap();
         let resp = Response::success(req.id, serde_json::json!({"ok": true}));
         let resp_json = format_response(&resp);
@@ -435,7 +443,8 @@ mod concurrent_access_tests {
 
     #[test]
     fn test_parse_request_from_multiple_threads() {
-        let json = Arc::new(r#"{"jsonrpc":"2.0","id":1,"method":"test","params":{"k":"v"}}"#.to_string());
+        let json =
+            Arc::new(r#"{"jsonrpc":"2.0","id":1,"method":"test","params":{"k":"v"}}"#.to_string());
         let handles: Vec<_> = (0..8)
             .map(|_| {
                 let j = Arc::clone(&json);

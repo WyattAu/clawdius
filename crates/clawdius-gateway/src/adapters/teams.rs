@@ -404,7 +404,9 @@ mod tests {
     fn test_teams_from_config_valid() {
         let mut config = PlatformConfig::new(Platform::Teams);
         config.api_token = Some("my-app-id".to_string());
-        config.settings.insert("app_password".to_string(), serde_json::json!("secret123"));
+        config
+            .settings
+            .insert("app_password".to_string(), serde_json::json!("secret123"));
         let adapter = TeamsAdapter::from_config(&config).unwrap();
         assert_eq!(adapter.platform(), Platform::Teams);
         assert_eq!(adapter.app_id, "my-app-id");
@@ -415,7 +417,9 @@ mod tests {
     fn test_teams_from_config_custom_service_url() {
         let mut config = PlatformConfig::new(Platform::Teams);
         config.api_token = Some("my-app-id".to_string());
-        config.settings.insert("app_password".to_string(), serde_json::json!("pw"));
+        config
+            .settings
+            .insert("app_password".to_string(), serde_json::json!("pw"));
         config.settings.insert(
             "service_url".to_string(),
             serde_json::json!("https://custom.services.com"),
@@ -428,7 +432,9 @@ mod tests {
     fn test_teams_from_config_default_service_url() {
         let mut config = PlatformConfig::new(Platform::Teams);
         config.api_token = Some("my-app-id".to_string());
-        config.settings.insert("app_password".to_string(), serde_json::json!("pw"));
+        config
+            .settings
+            .insert("app_password".to_string(), serde_json::json!("pw"));
         let adapter = TeamsAdapter::from_config(&config).unwrap();
         assert_eq!(adapter.service_url, "https://smba.trafficmanager.net/amer");
     }
@@ -450,10 +456,8 @@ mod tests {
 
     #[test]
     fn test_teams_send_message_with_service_url_metadata() {
-        let msg = OutgoingMessage::new(Platform::Teams, "conv-id", "hi").with_metadata(
-            "service_url",
-            serde_json::json!("https://custom.com"),
-        );
+        let msg = OutgoingMessage::new(Platform::Teams, "conv-id", "hi")
+            .with_metadata("service_url", serde_json::json!("https://custom.com"));
         let (service_url, conv_id) = if msg.metadata.contains_key("service_url") {
             (
                 msg.metadata["service_url"].as_str().unwrap().to_string(),
@@ -492,7 +496,8 @@ mod tests {
 
     #[test]
     fn test_teams_edit_message_json_format() {
-        let _adapter = TeamsAdapter::new("https://smba.trafficmanager.net/amer", "app-id", "app-pw");
+        let _adapter =
+            TeamsAdapter::new("https://smba.trafficmanager.net/amer", "app-id", "app-pw");
         let new_text = "updated text";
         let body = serde_json::json!({
             "type": "message",
@@ -504,8 +509,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_teams_start_stop_lifecycle() {
-        let adapter =
-            TeamsAdapter::new("https://smba.trafficmanager.net/amer", "app-id", "app-pw");
+        let adapter = TeamsAdapter::new("https://smba.trafficmanager.net/amer", "app-id", "app-pw");
         assert!(!adapter.is_running());
 
         adapter.start().await.unwrap();
@@ -517,8 +521,7 @@ mod tests {
 
     #[test]
     fn test_teams_health_stopped() {
-        let adapter =
-            TeamsAdapter::new("https://smba.trafficmanager.net/amer", "app-id", "app-pw");
+        let adapter = TeamsAdapter::new("https://smba.trafficmanager.net/amer", "app-id", "app-pw");
         let health = adapter.health();
         assert!(!health.healthy);
         assert_eq!(health.message, "stopped");
@@ -528,8 +531,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_teams_health_running() {
-        let adapter =
-            TeamsAdapter::new("https://smba.trafficmanager.net/amer", "app-id", "app-pw");
+        let adapter = TeamsAdapter::new("https://smba.trafficmanager.net/amer", "app-id", "app-pw");
         adapter.start().await.unwrap();
         let health = adapter.health();
         assert!(health.healthy);

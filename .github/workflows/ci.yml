@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, develop]
 
   schedule:
     - cron: "0 6 * * 0"  # weekly Sunday 06:00 UTC
@@ -54,8 +54,50 @@ jobs:
       - name: Deny
         run: cargo deny check bans licenses advisories
 
+      - name: Check all-features compile
+        run: cargo check --workspace --all-features
+
       - name: Build release
         run: cargo build --workspace --release
+
+  cross-platform:
+    name: Cross-Platform (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@1.88
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Verify lib.rs integrity
+        run: bash scripts/check_librs.sh
+        if: runner.os != 'Windows'
+
+      - name: Check formatting
+        run: cargo fmt --all --check
+
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: Test
+        run: cargo test --workspace --lib
 
   lean4-proofs:
     name: Lean4 Proofs

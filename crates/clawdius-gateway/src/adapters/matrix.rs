@@ -349,8 +349,7 @@ mod tests {
 
     #[test]
     fn test_matrix_adapter_new() {
-        let adapter =
-            MatrixAdapter::new("https://matrix.org", "access-token", "@bot:matrix.org");
+        let adapter = MatrixAdapter::new("https://matrix.org", "access-token", "@bot:matrix.org");
         assert_eq!(adapter.platform(), Platform::Matrix);
         assert_eq!(adapter.homeserver_url, "https://matrix.org");
         assert_eq!(adapter.access_token, "access-token");
@@ -381,9 +380,10 @@ mod tests {
     #[test]
     fn test_matrix_from_config_valid() {
         let mut config = PlatformConfig::new(Platform::Matrix);
-        config
-            .settings
-            .insert("homeserver_url".to_string(), serde_json::json!("https://matrix.org"));
+        config.settings.insert(
+            "homeserver_url".to_string(),
+            serde_json::json!("https://matrix.org"),
+        );
         config.api_token = Some("my-access-token".to_string());
         let adapter = MatrixAdapter::from_config(&config).unwrap();
         assert_eq!(adapter.homeserver_url, "https://matrix.org");
@@ -393,9 +393,10 @@ mod tests {
     #[test]
     fn test_matrix_from_config_default_user_id() {
         let mut config = PlatformConfig::new(Platform::Matrix);
-        config
-            .settings
-            .insert("homeserver_url".to_string(), serde_json::json!("https://matrix.org"));
+        config.settings.insert(
+            "homeserver_url".to_string(),
+            serde_json::json!("https://matrix.org"),
+        );
         config.api_token = Some("token".to_string());
         let adapter = MatrixAdapter::from_config(&config).unwrap();
         assert_eq!(adapter.user_id, "@clawdius:matrix.org");
@@ -404,13 +405,15 @@ mod tests {
     #[test]
     fn test_matrix_from_config_custom_user_id() {
         let mut config = PlatformConfig::new(Platform::Matrix);
-        config
-            .settings
-            .insert("homeserver_url".to_string(), serde_json::json!("https://matrix.org"));
+        config.settings.insert(
+            "homeserver_url".to_string(),
+            serde_json::json!("https://matrix.org"),
+        );
         config.api_token = Some("token".to_string());
-        config
-            .settings
-            .insert("user_id".to_string(), serde_json::json!("@custom:example.org"));
+        config.settings.insert(
+            "user_id".to_string(),
+            serde_json::json!("@custom:example.org"),
+        );
         let adapter = MatrixAdapter::from_config(&config).unwrap();
         assert_eq!(adapter.user_id, "@custom:example.org");
     }
@@ -474,13 +477,15 @@ mod tests {
         assert_eq!(body["body"], "* edited content");
         assert_eq!(body["m.new_content"]["body"], "edited content");
         assert_eq!(body["m.relates_to"]["rel_type"], "m.replace");
-        assert_eq!(body["m.relates_to"]["event_id"], "$original_event:matrix.org");
+        assert_eq!(
+            body["m.relates_to"]["event_id"],
+            "$original_event:matrix.org"
+        );
     }
 
     #[tokio::test]
     async fn test_matrix_start_stop_lifecycle() {
-        let adapter =
-            MatrixAdapter::new("https://matrix.org", "token", "@bot:matrix.org");
+        let adapter = MatrixAdapter::new("https://matrix.org", "token", "@bot:matrix.org");
         assert!(!adapter.is_running());
 
         adapter.start().await.unwrap();
@@ -492,8 +497,7 @@ mod tests {
 
     #[test]
     fn test_matrix_health_stopped() {
-        let adapter =
-            MatrixAdapter::new("https://matrix.org", "token", "@bot:matrix.org");
+        let adapter = MatrixAdapter::new("https://matrix.org", "token", "@bot:matrix.org");
         let health = adapter.health();
         assert!(!health.healthy);
         assert_eq!(health.message, "stopped");
@@ -503,8 +507,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_matrix_health_running() {
-        let adapter =
-            MatrixAdapter::new("https://matrix.org", "token", "@bot:matrix.org");
+        let adapter = MatrixAdapter::new("https://matrix.org", "token", "@bot:matrix.org");
         adapter.start().await.unwrap();
         let health = adapter.health();
         assert!(health.healthy);

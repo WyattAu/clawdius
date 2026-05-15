@@ -1,4 +1,10 @@
-#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic, missing_docs, clippy::useless_format)]
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    missing_docs,
+    clippy::useless_format
+)]
 use proptest::prelude::*;
 
 // ---------------------------------------------------------------------------
@@ -269,9 +275,7 @@ mod diff_computation {
 
 mod session_serialization {
     use super::*;
-    use clawdius_core::session::{
-        Message, MessageRole, Session, SessionMeta, TokenUsage,
-    };
+    use clawdius_core::session::{Message, MessageRole, Session, SessionMeta, TokenUsage};
 
     fn make_session(title: Option<String>, messages: Vec<Message>) -> Session {
         let mut session = Session::new();

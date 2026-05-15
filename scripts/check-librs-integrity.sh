@@ -22,8 +22,18 @@ for f in "${files[@]}"; do
     has_inner_attr=$(grep -q '#!\[' "$f" && echo "yes" || echo "no")
 
     failed=()
-    if [ "$line_count" -lt 5 ]; then
-        failed+=("line count $line_count < 5")
+    # Strict checks only for clawdius-core (known clobbering target)
+    if [ "$crate" = "clawdius-core" ]; then
+        if [ "$line_count" -lt 100 ]; then
+            failed+=("line count $line_count < 100 (core crate)")
+        fi
+        if [ "$pub_mod_count" -lt 10 ]; then
+            failed+=("pub mod count $pub_mod_count < 10 (core crate)")
+        fi
+    else
+        if [ "$line_count" -lt 5 ]; then
+            failed+=("line count $line_count < 5")
+        fi
     fi
     if [ "$pub_item_count" -lt 1 ]; then
         failed+=("pub item count $pub_item_count < 1")

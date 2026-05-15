@@ -5,6 +5,7 @@ edition.workspace = true
 authors.workspace = true
 license.workspace = true
 repository.workspace = true
+rust-version.workspace = true
 homepage.workspace = true
 documentation = "https://docs.rs/clawdius-core"
 description = "Core library for Clawdius - High-assurance AI coding assistant with multi-tier sandboxing"

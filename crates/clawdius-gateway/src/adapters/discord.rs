@@ -435,8 +435,8 @@ mod tests {
 
     #[test]
     fn test_discord_send_message_with_reply_json() {
-        let msg =
-            OutgoingMessage::new(Platform::Discord, "123456789", "reply").with_reply_to("999888777");
+        let msg = OutgoingMessage::new(Platform::Discord, "123456789", "reply")
+            .with_reply_to("999888777");
         let mut body = serde_json::json!({
             "content": msg.text,
         });

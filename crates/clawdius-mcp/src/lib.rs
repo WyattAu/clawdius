@@ -251,14 +251,20 @@ mod tests {
     fn test_parse_method_as_number_rejected() {
         let json = r#"{"jsonrpc":"2.0","id":1,"method":42}"#;
         let result = parse_request(json);
-        assert!(result.is_err(), "numeric method should be rejected for String");
+        assert!(
+            result.is_err(),
+            "numeric method should be rejected for String"
+        );
     }
 
     #[test]
     fn test_parse_method_as_boolean_rejected() {
         let json = r#"{"jsonrpc":"2.0","id":1,"method":true}"#;
         let result = parse_request(json);
-        assert!(result.is_err(), "boolean method should be rejected for String");
+        assert!(
+            result.is_err(),
+            "boolean method should be rejected for String"
+        );
     }
 
     #[test]
@@ -327,7 +333,10 @@ mod tests {
         let resp = McpResponse::success(1, nested);
         let json = format_response(&resp);
         let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
-        assert_eq!(parsed["result"]["level1"]["level2"]["level3"]["level4"], "deep");
+        assert_eq!(
+            parsed["result"]["level1"]["level2"]["level3"]["level4"],
+            "deep"
+        );
     }
 
     #[test]
@@ -350,7 +359,8 @@ mod tests {
 
     #[test]
     fn test_parse_escaped_json_in_params() {
-        let json = r#"{"jsonrpc":"2.0","id":1,"method":"test","params":{"json":"{\"nested\":true}"}}"#;
+        let json =
+            r#"{"jsonrpc":"2.0","id":1,"method":"test","params":{"json":"{\"nested\":true}"}}"#;
         let req = parse_request(json).unwrap();
         let params = req.params.unwrap();
         assert_eq!(params["json"], "{\"nested\":true}");
@@ -358,7 +368,13 @@ mod tests {
 
     #[test]
     fn test_format_error_preserves_code_exactly() {
-        let codes = [(-32700, "parse"), (-32600, "invalid"), (-32601, "method"), (-32602, "params"), (-32603, "internal")];
+        let codes = [
+            (-32700, "parse"),
+            (-32600, "invalid"),
+            (-32601, "method"),
+            (-32602, "params"),
+            (-32603, "internal"),
+        ];
         for (code, label) in codes {
             let err = McpError::new(code, label.to_string());
             let resp = McpResponse::error(1, err);
@@ -372,7 +388,10 @@ mod tests {
     fn test_parse_with_null_params() {
         let json = r#"{"jsonrpc":"2.0","id":1,"method":"ping","params":null}"#;
         let req = parse_request(json).unwrap();
-        assert!(req.params.is_none(), "null params should deserialize as None");
+        assert!(
+            req.params.is_none(),
+            "null params should deserialize as None"
+        );
     }
 
     #[test]
@@ -381,9 +400,7 @@ mod tests {
         let handles: Vec<_> = (0..8)
             .map(|i| {
                 thread::spawn(move || {
-                    let json = format!(
-                        r#"{{"jsonrpc":"2.0","id":{i},"method":"tools/list"}}"#
-                    );
+                    let json = format!(r#"{{"jsonrpc":"2.0","id":{i},"method":"tools/list"}}"#);
                     let req = parse_request(&json).unwrap();
                     assert_eq!(req.id, u64::try_from(i).unwrap_or(0));
                     assert_eq!(req.method, "tools/list");

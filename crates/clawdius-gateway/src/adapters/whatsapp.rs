@@ -413,7 +413,10 @@ mod tests {
     fn test_whatsapp_from_config_valid() {
         let mut config = PlatformConfig::new(Platform::WhatsApp);
         config.api_token = Some("my-token".to_string());
-        config.settings.insert("phone_number_id".to_string(), serde_json::json!("phone-123"));
+        config.settings.insert(
+            "phone_number_id".to_string(),
+            serde_json::json!("phone-123"),
+        );
         let adapter = WhatsAppAdapter::from_config(&config).unwrap();
         assert_eq!(adapter.access_token, "my-token");
         assert_eq!(adapter.phone_number_id, "phone-123");
@@ -423,7 +426,10 @@ mod tests {
     fn test_whatsapp_from_config_with_verify_token() {
         let mut config = PlatformConfig::new(Platform::WhatsApp);
         config.api_token = Some("my-token".to_string());
-        config.settings.insert("phone_number_id".to_string(), serde_json::json!("phone-123"));
+        config.settings.insert(
+            "phone_number_id".to_string(),
+            serde_json::json!("phone-123"),
+        );
         config.webhook_secret = Some("verify-secret".to_string());
         let adapter = WhatsAppAdapter::from_config(&config).unwrap();
         assert_eq!(adapter.verify_token.as_deref(), Some("verify-secret"));
@@ -514,10 +520,7 @@ mod tests {
         let messages = adapter.parse_webhook_payload(&body);
         assert_eq!(messages.len(), 1);
         assert_eq!(messages[0].text, "");
-        assert_eq!(
-            messages[0].metadata.get("msg_type").unwrap(),
-            "image"
-        );
+        assert_eq!(messages[0].metadata.get("msg_type").unwrap(), "image");
     }
 
     #[test]

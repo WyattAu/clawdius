@@ -16,14 +16,13 @@
 //! - File/attachment download
 //! - Message editing for streaming responses
 //! - Markdown v2 formatting
-//! - Long-polling with graceful shutdown via `CancellationToken`
+//! - Long-polling with graceful shutdown via `tokio::sync::Notify`
 //! - Rate limit awareness
 
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
 
-use tokio::sync::Mutex;
-use tokio_util::sync::CancellationToken;
+use tokio::sync::{Mutex, Notify};
 
 use crate::adapter::{
     AdapterHealth, IncomingMessage, MessageCallback, OutgoingMessage, Platform, PlatformAdapter,
@@ -40,15 +39,15 @@ use teloxide::types::{ChatId, MessageId, ParseMode, ReplyParameters, UpdateKind}
 pub struct TelegramAdapter {
     bot: teloxide::Bot,
     /// Callback for delivering incoming messages to the gateway.
-    message_callback: Mutex<Option<MessageCallback>>,
-    /// Cancellation token for shutting down the polling loop.
-    cancel_token: Mutex<CancellationToken>,
+    message_callback: Arc<Mutex<Option<MessageCallback>>>,
+    /// Notification for shutting down the polling loop.
+    cancel_notify: Arc<Notify>,
     /// Whether the polling loop is active.
-    running: AtomicBool,
+    running: Arc<AtomicBool>,
     /// Count of successfully processed messages.
-    messages_processed: AtomicU64,
+    messages_processed: Arc<AtomicU64>,
     /// Count of errors encountered.
-    error_count: AtomicU64,
+    error_count: Arc<AtomicU64>,
 }
 
 impl TelegramAdapter {
@@ -57,11 +56,11 @@ impl TelegramAdapter {
         let bot = teloxide::Bot::new(token);
         Self {
             bot,
-            message_callback: Mutex::new(None),
-            cancel_token: Mutex::new(CancellationToken::new()),
-            running: AtomicBool::new(false),
-            messages_processed: AtomicU64::new(0),
-            error_count: AtomicU64::new(0),
+            message_callback: Arc::new(Mutex::new(None)),
+            cancel_notify: Arc::new(Notify::new()),
+            running: Arc::new(AtomicBool::new(false)),
+            messages_processed: Arc::new(AtomicU64::new(0)),
+            error_count: Arc::new(AtomicU64::new(0)),
         }
     }
 
@@ -142,11 +141,11 @@ impl TelegramAdapter {
         }
     }
 
-    /// Run the long-polling loop until cancelled (static, owned args, no unsafe).
+    /// Run the long-polling loop until cancelled.
     async fn run_polling_with(
         bot: teloxide::Bot,
         callback: Option<MessageCallback>,
-        cancel: CancellationToken,
+        cancel: Arc<Notify>,
         running: &AtomicBool,
         processed: &AtomicU64,
         errors: &AtomicU64,
@@ -155,26 +154,27 @@ impl TelegramAdapter {
 
         loop {
             tokio::select! {
-                _ = cancel.cancelled() => {
+                _ = cancel.notified() => {
                     tracing::info!("Telegram polling stopped");
                     break;
                 }
                 result = bot.get_updates()
                     .offset(last_update_id)
-                    .timeout(std::time::Duration::from_secs(35))
-                    .allowed_update(teloxide::types::AllowedUpdate::Message)
-                    .limit(100)
+                    .timeout(35u32)
+                    .allowed_updates(vec![teloxide::types::AllowedUpdate::Message])
+                    .limit(100u8)
                 => {
                     match result {
                         Ok(updates) => {
                             for update in &updates {
-                                last_update_id = update.id.0 + 1;
+                                last_update_id = (update.id.0 + 1) as i32;
                                 if let Some(incoming) = Self::convert_update(update.clone()).await {
                                     Self::dispatch_with(&callback, incoming, processed).await;
                                 }
                             }
                         }
-                        Err(teloxide::RequestError::Api(teloxide::ApiError::RetryAfter(dur))) => {
+                        Err(teloxide::RequestError::RetryAfter(secs)) => {
+                            let dur = secs.duration();
                             tracing::warn!("Telegram rate limited, retrying after {dur:?}");
                             tokio::time::sleep(dur).await;
                         }
@@ -208,12 +208,10 @@ impl PlatformAdapter for TelegramAdapter {
     }
 
     fn set_message_callback(&self, callback: MessageCallback) {
-        // Store the callback using interior mutability.
-        // We spawn a task because set_message_callback is &self (not async).
-        let guard = self.message_callback.clone();
+        let cb = Arc::clone(&self.message_callback);
         tokio::spawn(async move {
-            let mut cb = guard.lock().await;
-            *cb = Some(callback);
+            let mut guard = cb.lock().await;
+            *guard = Some(callback);
         });
     }
 
@@ -231,29 +229,7 @@ impl PlatformAdapter for TelegramAdapter {
 
         tracing::info!(bot_id = me.id.0, bot_name = %me.first_name, "Telegram adapter starting");
 
-        // Reset cancellation token
-        {
-            let mut token = self.cancel_token.lock().await;
-            *token = CancellationToken::new();
-        }
-
         self.running.store(true, Ordering::Relaxed);
-
-        // Spawn the polling loop as a background task.
-        // The loop runs until cancel_token is cancelled (via stop()).
-        let running = self.running.clone();
-        let _polling_handle = tokio::spawn(async move {
-            // We need to get `self` into the spawned task.
-            // Instead, we use a different approach: store the polling handle.
-        });
-
-        // Actually, since start() is &self, we can't move self into spawn.
-        // Instead, we make run_polling take &self and await it directly.
-        // But that would block start() from returning.
-        //
-        // The solution: we need interior mutability for the spawned handle.
-        // For simplicity, we'll run polling in the current task and return
-        // immediately after spawning it.
 
         // Wait for the message callback to be set (brief wait)
         tokio::time::sleep(std::time::Duration::from_millis(50)).await;
@@ -261,12 +237,12 @@ impl PlatformAdapter for TelegramAdapter {
         // Spawn the polling loop
         let bot = self.bot.clone();
         let callback = self.message_callback.lock().await.clone();
-        let cancel = self.cancel_token.lock().await.clone();
-        let running = &self.running;
-        let processed = &self.messages_processed;
-        let errors = &self.error_count;
+        let cancel = Arc::clone(&self.cancel_notify);
+        let running = Arc::clone(&self.running);
+        let processed = Arc::clone(&self.messages_processed);
+        let errors = Arc::clone(&self.error_count);
         tokio::spawn(async move {
-            Self::run_polling_with(bot, callback, cancel, running, processed, errors).await;
+            Self::run_polling_with(bot, callback, cancel, &running, &processed, &errors).await;
         });
 
         Ok(())
@@ -274,7 +250,7 @@ impl PlatformAdapter for TelegramAdapter {
 
     async fn stop(&self) -> Result<(), GatewayError> {
         tracing::info!("Telegram adapter stopping");
-        self.cancel_token.lock().await.cancel();
+        self.cancel_notify.notify_one();
         self.running.store(false, Ordering::Relaxed);
         Ok(())
     }

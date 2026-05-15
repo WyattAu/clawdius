@@ -4,6 +4,8 @@ use super::OutputFormat;
 use std::path::{Path, PathBuf};
 
 use clawdius_core::output::{OutputFormat as CoreOutputFormat, OutputFormatter, OutputOptions};
+#[cfg(feature = "vector-db")]
+use clawdius_core::workspace::IndexStats;
 
 pub(super) async fn handle_index(
     path: Option<PathBuf>,

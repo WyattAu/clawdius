@@ -532,7 +532,9 @@ mod tests {
     #[test]
     fn test_webhook_from_config_with_custom_port() {
         let mut config = make_config_with_url("https://example.com/hook");
-        config.settings.insert("listen_port".to_string(), serde_json::json!(9090));
+        config
+            .settings
+            .insert("listen_port".to_string(), serde_json::json!(9090));
         let adapter = WebhookAdapter::from_config(&config).unwrap();
         assert_eq!(adapter.config.listen_port, 9090);
     }
@@ -545,7 +547,10 @@ mod tests {
             serde_json::json!({"X-Custom": "value"}),
         );
         let adapter = WebhookAdapter::from_config(&config).unwrap();
-        assert_eq!(adapter.config.outgoing_headers.get("X-Custom").unwrap(), "value");
+        assert_eq!(
+            adapter.config.outgoing_headers.get("X-Custom").unwrap(),
+            "value"
+        );
     }
 
     #[test]
