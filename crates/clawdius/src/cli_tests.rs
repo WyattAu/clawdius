@@ -372,7 +372,11 @@ fn test_output_format_default() {
 
 #[test]
 fn test_output_format_roundtrip() {
-    for fmt in [OutputFormat::Text, OutputFormat::Json, OutputFormat::StreamJson] {
+    for fmt in [
+        OutputFormat::Text,
+        OutputFormat::Json,
+        OutputFormat::StreamJson,
+    ] {
         let core: clawdius_core::output::OutputFormat = fmt.into();
         let _ = core; // verify conversion compiles
     }
@@ -399,10 +403,23 @@ fn test_metrics_output_format_variants() {
 #[test]
 fn test_chat_with_all_flags() {
     let cli = parse(&[
-        "clawdius", "-q", "--no-tui", "-f", "json", "chat",
-        "--model", "claude-3-opus", "-P", "openai",
-        "-M", "review", "--session", "sess-123",
-        "--auto-approve", "--exit", "hello",
+        "clawdius",
+        "-q",
+        "--no-tui",
+        "-f",
+        "json",
+        "chat",
+        "--model",
+        "claude-3-opus",
+        "-P",
+        "openai",
+        "-M",
+        "review",
+        "--session",
+        "sess-123",
+        "--auto-approve",
+        "--exit",
+        "hello",
     ]);
     match cli.command.expect("command") {
         Commands::Chat {
@@ -424,7 +441,7 @@ fn test_chat_with_all_flags() {
             assert!(auto_approve);
             assert!(exit);
             assert!(!editor);
-        }
+        },
         other => panic!("expected Chat, got {other:?}"),
     }
     assert!(cli.no_tui);
@@ -435,8 +452,11 @@ fn test_chat_with_all_flags() {
 #[test]
 fn test_auto_with_max_iterations_and_approve() {
     let cli = parse(&[
-        "clawdius", "auto", "fix tests",
-        "--max-iterations", "100",
+        "clawdius",
+        "auto",
+        "fix tests",
+        "--max-iterations",
+        "100",
         "--auto-commit",
     ]);
     match cli.command.expect("command") {
@@ -449,7 +469,7 @@ fn test_auto_with_max_iterations_and_approve() {
             assert_eq!(task, "fix tests");
             assert_eq!(max_iterations, Some(100));
             assert!(auto_commit);
-        }
+        },
         other => panic!("expected Auto, got {other:?}"),
     }
 }
@@ -458,18 +478,19 @@ fn test_auto_with_max_iterations_and_approve() {
 fn test_generate_with_mode_and_output() {
     // Global -f must come before the subcommand; Generate also has -f (files)
     let cli = parse(&[
-        "clawdius", "-f", "stream-json",
-        "generate", "-M", "architect", "add caching layer",
+        "clawdius",
+        "-f",
+        "stream-json",
+        "generate",
+        "-M",
+        "architect",
+        "add caching layer",
     ]);
     match cli.command.expect("command") {
-        Commands::Generate {
-            prompt,
-            mode,
-            ..
-        } => {
+        Commands::Generate { prompt, mode, .. } => {
             assert_eq!(prompt, "add caching layer");
             assert_eq!(mode, "architect");
-        }
+        },
         other => panic!("expected Generate, got {other:?}"),
     }
     assert_eq!(cli.output_format, OutputFormat::StreamJson);
@@ -478,9 +499,13 @@ fn test_generate_with_mode_and_output() {
 #[test]
 fn test_test_with_function_and_output() {
     let cli = parse(&[
-        "clawdius", "test", "src/lib.rs",
-        "--function", "parse_config",
-        "-o", "tests/config_test.rs",
+        "clawdius",
+        "test",
+        "src/lib.rs",
+        "--function",
+        "parse_config",
+        "-o",
+        "tests/config_test.rs",
     ]);
     match cli.command.expect("command") {
         Commands::Test {
@@ -490,8 +515,12 @@ fn test_test_with_function_and_output() {
         } => {
             assert_eq!(file.as_os_str(), "src/lib.rs");
             assert_eq!(function.as_deref(), Some("parse_config"));
-            assert!(output.as_ref().map(|p| p.to_str()).flatten().eq(&Some("tests/config_test.rs")));
-        }
+            assert!(output
+                .as_ref()
+                .map(|p| p.to_str())
+                .flatten()
+                .eq(&Some("tests/config_test.rs")));
+        },
         other => panic!("expected Test, got {other:?}"),
     }
 }
@@ -503,7 +532,7 @@ fn test_doc_with_element() {
         Commands::Doc { file, element, .. } => {
             assert_eq!(file.as_os_str(), "src/lib.rs");
             assert_eq!(element.as_deref(), Some("MyStruct"));
-        }
+        },
         other => panic!("expected Doc, got {other:?}"),
     }
 }
@@ -511,8 +540,11 @@ fn test_doc_with_element() {
 #[test]
 fn test_sprint_with_iterations() {
     let cli = parse(&[
-        "clawdius", "sprint", "refactor auth",
-        "-n", "10",
+        "clawdius",
+        "sprint",
+        "refactor auth",
+        "-n",
+        "10",
         "--real-execution",
         "--auto-approve",
     ]);
@@ -528,7 +560,7 @@ fn test_sprint_with_iterations() {
             assert_eq!(max_iterations, 10);
             assert!(real_execution);
             assert!(auto_approve);
-        }
+        },
         other => panic!("expected Sprint, got {other:?}"),
     }
 }
@@ -536,18 +568,22 @@ fn test_sprint_with_iterations() {
 #[test]
 fn test_verify_with_lean_path() {
     let cli = parse(&[
-        "clawdius", "verify",
-        "--proof", "proofs/session.lean",
-        "--lean-path", "/usr/local/bin/lean",
+        "clawdius",
+        "verify",
+        "--proof",
+        "proofs/session.lean",
+        "--lean-path",
+        "/usr/local/bin/lean",
     ]);
     match cli.command.expect("command") {
-        Commands::Verify {
-            proof,
-            lean_path,
-        } => {
+        Commands::Verify { proof, lean_path } => {
             assert_eq!(proof.as_os_str(), "proofs/session.lean");
-            assert!(lean_path.as_ref().map(|p| p.to_str()).flatten().eq(&Some("/usr/local/bin/lean")));
-        }
+            assert!(lean_path
+                .as_ref()
+                .map(|p| p.to_str())
+                .flatten()
+                .eq(&Some("/usr/local/bin/lean")));
+        },
         other => panic!("expected Verify, got {other:?}"),
     }
 }
@@ -555,9 +591,12 @@ fn test_verify_with_lean_path() {
 #[test]
 fn test_metrics_with_output_and_reset() {
     let cli = parse(&[
-        "clawdius", "metrics",
-        "-f", "json",
-        "--output", "metrics.json",
+        "clawdius",
+        "metrics",
+        "-f",
+        "json",
+        "--output",
+        "metrics.json",
         "--reset",
     ]);
     match cli.command.expect("command") {
@@ -568,10 +607,14 @@ fn test_metrics_with_output_and_reset() {
             watch,
         } => {
             assert_eq!(format!("{format:?}"), "Json");
-            assert!(output.as_ref().map(|p| p.to_str()).flatten().eq(&Some("metrics.json")));
+            assert!(output
+                .as_ref()
+                .map(|p| p.to_str())
+                .flatten()
+                .eq(&Some("metrics.json")));
             assert!(reset);
             assert!(!watch);
-        }
+        },
         other => panic!("expected Metrics, got {other:?}"),
     }
 }
@@ -579,7 +622,8 @@ fn test_metrics_with_output_and_reset() {
 #[test]
 fn test_telemetry_all_flags() {
     let cli = parse(&[
-        "clawdius", "telemetry",
+        "clawdius",
+        "telemetry",
         "--enable",
         "--enable-metrics",
         "--enable-crash-reporting",
@@ -603,7 +647,7 @@ fn test_server_custom_host_port() {
         Commands::Server { host, port } => {
             assert_eq!(host, "0.0.0.0");
             assert_eq!(port, 9090);
-        }
+        },
         other => panic!("expected Server, got {other:?}"),
     }
 }
@@ -618,9 +662,15 @@ fn test_memory_show_and_learn() {
 #[test]
 fn test_complete_with_language() {
     let cli = parse(&[
-        "clawdius", "complete", "main.rs", "10", "5",
-        "-l", "rust",
-        "-P", "anthropic",
+        "clawdius",
+        "complete",
+        "main.rs",
+        "10",
+        "5",
+        "-l",
+        "rust",
+        "-P",
+        "anthropic",
     ]);
     match cli.command.expect("command") {
         Commands::Complete {
@@ -636,7 +686,7 @@ fn test_complete_with_language() {
             assert_eq!(character, 5);
             assert_eq!(language.as_deref(), Some("rust"));
             assert_eq!(provider, "anthropic");
-        }
+        },
         other => panic!("expected Complete, got {other:?}"),
     }
 }
