@@ -278,8 +278,8 @@ fn set_config_value(
 /// Mask API key values in TOML output for safe display.
 fn mask_api_keys(toml: &str) -> String {
     let mut result = toml.to_string();
-    if let Ok(re) = regex::Regex::new(r#"(api_key\s*=\s*)"([^"]{8,}")"#) {
-        result = re.replace_all(&result, "${1}***").to_string();
+    if let Ok(re) = regex::Regex::new(r#"(\w*_?key\w*\s*=\s*)"[^"]{8,}""#) {
+        result = re.replace_all(&result, r#"${1}"***""#).to_string();
     }
     result
 }
