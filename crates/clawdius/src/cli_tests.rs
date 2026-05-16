@@ -256,7 +256,7 @@ fn test_sprint_subcommand() {
 
 #[test]
 fn test_ship_subcommand_requires_subcommand() {
-    let result = Cli::try_parse_from(&["clawdius", "ship"]);
+    let result = Cli::try_parse_from(["clawdius", "ship"]);
     assert!(result.is_err());
 }
 
@@ -265,7 +265,7 @@ fn test_ship_subcommand_requires_subcommand() {
 #[test]
 fn test_git_subcommand_requires_subcommand() {
     // git requires a sub-subcommand, so bare invocation fails
-    let result = Cli::try_parse_from(&["clawdius", "git"]);
+    let result = Cli::try_parse_from(["clawdius", "git"]);
     assert!(result.is_err());
 }
 
@@ -316,7 +316,7 @@ fn test_memory_show() {
 
 #[test]
 fn test_modes_subcommand_requires_subcommand() {
-    let result = Cli::try_parse_from(&["clawdius", "modes"]);
+    let result = Cli::try_parse_from(["clawdius", "modes"]);
     assert!(result.is_err());
 }
 
@@ -324,7 +324,7 @@ fn test_modes_subcommand_requires_subcommand() {
 
 #[test]
 fn test_lang_subcommand_requires_subcommand() {
-    let result = Cli::try_parse_from(&["clawdius", "lang"]);
+    let result = Cli::try_parse_from(["clawdius", "lang"]);
     assert!(result.is_err());
 }
 
@@ -332,7 +332,7 @@ fn test_lang_subcommand_requires_subcommand() {
 
 #[test]
 fn test_webhook_subcommand_requires_subcommand() {
-    let result = Cli::try_parse_from(&["clawdius", "webhook"]);
+    let result = Cli::try_parse_from(["clawdius", "webhook"]);
     assert!(result.is_err());
 }
 
@@ -340,26 +340,26 @@ fn test_webhook_subcommand_requires_subcommand() {
 
 #[test]
 fn test_invalid_output_format() {
-    let result = Cli::try_parse_from(&["clawdius", "-f", "xml"]);
+    let result = Cli::try_parse_from(["clawdius", "-f", "xml"]);
     assert!(result.is_err());
 }
 
 #[test]
 fn test_unknown_command() {
-    let result = Cli::try_parse_from(&["clawdius", "nonexistent"]);
+    let result = Cli::try_parse_from(["clawdius", "nonexistent"]);
     assert!(result.is_err());
 }
 
 #[test]
 fn test_version_flag() {
-    let result = Cli::try_parse_from(&["clawdius", "--version"]);
+    let result = Cli::try_parse_from(["clawdius", "--version"]);
     // clap exits on --version, but try_parse_from returns Err
     assert!(result.is_err());
 }
 
 #[test]
 fn test_help_flag() {
-    let result = Cli::try_parse_from(&["clawdius", "--help"]);
+    let result = Cli::try_parse_from(["clawdius", "--help"]);
     assert!(result.is_err());
 }
 
@@ -517,8 +517,7 @@ fn test_test_with_function_and_output() {
             assert_eq!(function.as_deref(), Some("parse_config"));
             assert!(output
                 .as_ref()
-                .map(|p| p.to_str())
-                .flatten()
+                .and_then(|p| p.to_str())
                 .eq(&Some("tests/config_test.rs")));
         },
         other => panic!("expected Test, got {other:?}"),
@@ -580,8 +579,7 @@ fn test_verify_with_lean_path() {
             assert_eq!(proof.as_os_str(), "proofs/session.lean");
             assert!(lean_path
                 .as_ref()
-                .map(|p| p.to_str())
-                .flatten()
+                .and_then(|p| p.to_str())
                 .eq(&Some("/usr/local/bin/lean")));
         },
         other => panic!("expected Verify, got {other:?}"),
@@ -609,8 +607,7 @@ fn test_metrics_with_output_and_reset() {
             assert_eq!(format!("{format:?}"), "Json");
             assert!(output
                 .as_ref()
-                .map(|p| p.to_str())
-                .flatten()
+                .and_then(|p| p.to_str())
                 .eq(&Some("metrics.json")));
             assert!(reset);
             assert!(!watch);
