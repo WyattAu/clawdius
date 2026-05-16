@@ -55,6 +55,7 @@ fn test_llm_config_from_env_anthropic() {
 
 #[test]
 fn test_llm_config_from_env_openai() {
+    let prev = std::env::var("OPENAI_API_KEY").ok();
     unsafe {
         std::env::set_var("OPENAI_API_KEY", "test-openai-key");
     }
@@ -62,8 +63,9 @@ fn test_llm_config_from_env_openai() {
     assert_eq!(config.provider, "openai");
     assert_eq!(config.model, "gpt-4o");
     assert_eq!(config.api_key, Some("test-openai-key".to_string()));
-    unsafe {
-        std::env::remove_var("OPENAI_API_KEY");
+    match prev {
+        Some(v) => unsafe { std::env::set_var("OPENAI_API_KEY", &v) },
+        None => unsafe { std::env::remove_var("OPENAI_API_KEY") },
     }
 }
 
@@ -108,6 +110,7 @@ fn test_create_provider_factory_anthropic() {
 
 #[test]
 fn test_create_provider_factory_openai() {
+    let prev = std::env::var("OPENAI_API_KEY").ok();
     unsafe {
         std::env::set_var("OPENAI_API_KEY", "test-key");
     }
@@ -117,8 +120,9 @@ fn test_create_provider_factory_openai() {
         LlmProvider::OpenAi(_) => (),
         _ => panic!("Expected OpenAI provider"),
     }
-    unsafe {
-        std::env::remove_var("OPENAI_API_KEY");
+    match prev {
+        Some(v) => unsafe { std::env::set_var("OPENAI_API_KEY", &v) },
+        None => unsafe { std::env::remove_var("OPENAI_API_KEY") },
     }
 }
 
@@ -491,6 +495,7 @@ fn test_config_retry_config() {
 
 #[test]
 fn test_config_env_override() {
+    let prev = std::env::var("OPENAI_API_KEY").ok();
     unsafe {
         std::env::set_var("OPENAI_API_KEY", "env-override-key");
     }
@@ -521,8 +526,9 @@ max_tokens = 4096
 
     assert_eq!(llm_config.api_key, Some("env-override-key".to_string()));
 
-    unsafe {
-        std::env::remove_var("OPENAI_API_KEY");
+    match prev {
+        Some(v) => unsafe { std::env::set_var("OPENAI_API_KEY", &v) },
+        None => unsafe { std::env::remove_var("OPENAI_API_KEY") },
     }
 }
 
