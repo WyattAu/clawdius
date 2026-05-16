@@ -283,3 +283,56 @@ fn mask_api_keys(toml: &str) -> String {
     }
     result
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_mask_api_keys_masks_long_key() {
+        let input = r#"api_key = "sk-12345678abcdef""#;
+        let result = mask_api_keys(input);
+        assert_eq!(result, r#"api_key = "***""#);
+    }
+
+    #[test]
+    fn test_mask_api_keys_preserves_short_key() {
+        let input = r#"api_key = "short""#;
+        let result = mask_api_keys(input);
+        assert_eq!(result, input);
+    }
+
+    #[test]
+    fn test_mask_api_keys_no_match() {
+        let input = r#"model = "claude-3""#;
+        let result = mask_api_keys(input);
+        assert_eq!(result, input);
+    }
+
+    #[test]
+    fn test_mask_api_keys_multiple_keys() {
+        let input = r#"api_key = "sk-12345678"
+openai_key = "sk-87654321abcdef""#;
+        let result = mask_api_keys(input);
+        assert!(result.contains(r#"api_key = "***""#));
+        assert!(result.contains(r#"openai_key = "***""#));
+        assert!(!result.contains("sk-"));
+    }
+
+    #[test]
+    fn test_mask_api_keys_preserves_other_fields() {
+        let input = r#"provider = "anthropic"
+model = "claude-3-opus"
+api_key = "sk-12345678""#;
+        let result = mask_api_keys(input);
+        assert!(result.contains("provider = \"anthropic\""));
+        assert!(result.contains("model = \"claude-3-opus\""));
+        assert!(result.contains("api_key = \"***\""));
+    }
+
+    #[test]
+    fn test_mask_api_keys_empty_string() {
+        let result = mask_api_keys("");
+        assert_eq!(result, "");
+    }
+}
