@@ -64,7 +64,7 @@ Users who do not enable these features are not affected.
 
 ## Security Features
 
-- **`#![deny(unsafe_code)]`** — Zero unsafe code in production (all 8 blocks isolated in `simd.rs`)
+- **`#![deny(unsafe_code)]`** — ~11 unsafe blocks across 3 files (simd.rs, proof/templates.rs, analysis/drift.rs)
 - **Shell sandboxing** — Blocked command patterns, timeout limits, directory restrictions
 - **No hardcoded secrets** — All API keys loaded from environment variables or OS keychain
 - **No telemetry** — Zero data sent to external servers without explicit user consent
