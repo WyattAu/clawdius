@@ -10,10 +10,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - name: Install elan
-        run: |
-          curl https://raw.githubusercontent.com/leanprover-community/elan/master/elan-init.sh -sSf | sh -s --
+
+      - name: Install Lean (elan)
+        uses: jaxx0/setup-lean@v1
+
       - name: Build Lean4 proofs
-        run: |
-          ~/.elan/bin/lake build
+        run: lake build
