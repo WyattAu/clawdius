@@ -487,9 +487,9 @@ fn test_config_retry_config() {
 fn test_config_env_override() {
     with_env_var("OPENAI_API_KEY", "env-override-key", || {
         let temp_dir = TempDir::new().unwrap();
-    let config_path = temp_dir.path().join("config.toml");
+        let config_path = temp_dir.path().join("config.toml");
 
-    let config_content = r#"
+        let config_content = r#"
 [project]
 name = "test"
 rigor_level = "high"
@@ -505,12 +505,12 @@ default_provider = "openai"
 max_tokens = 4096
 "#;
 
-    std::fs::write(&config_path, config_content).unwrap();
+        std::fs::write(&config_path, config_content).unwrap();
 
-    let config = Config::load(&config_path).unwrap();
-    let llm_config = LlmConfig::from_config(&config.llm, "openai").unwrap();
+        let config = Config::load(&config_path).unwrap();
+        let llm_config = LlmConfig::from_config(&config.llm, "openai").unwrap();
 
-    assert_eq!(llm_config.api_key, Some("env-override-key".to_string()));
+        assert_eq!(llm_config.api_key, Some("env-override-key".to_string()));
     });
 }
 
