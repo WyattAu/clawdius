@@ -120,7 +120,8 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-
 
-      - uses: leanprover/lean4-action@v1
+      - name: Install Lean
+        uses: jaxx0/setup-lean@v1
 
       - name: Build Lean4
         run: lake build
@@ -133,7 +134,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@1.88
+        uses: dtolnay/rust-toolchain@stable
 
       - name: Cache cargo registry
         uses: actions/cache@v4
@@ -172,7 +173,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@1.88
+        uses: dtolnay/rust-toolchain@stable
 
       - name: Cache cargo registry
         uses: actions/cache@v4
