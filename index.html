@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Clawdius</title>
+<meta name="description" content="Clawdius -- A formally verified, multi-provider AI coding agent built in Rust.">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0d1117;
+    --bg-card: #161b22;
+    --border: #30363d;
+    --text: #e6edf3;
+    --text-muted: #8b949e;
+    --accent: #58a6ff;
+    --accent-green: #3fb950;
+    --mono: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  }
+  html { font-size: 16px; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .container { max-width: 860px; margin: 0 auto; padding: 0 1.5rem; width: 100%; }
+
+  header { padding: 3rem 0 2rem; border-bottom: 1px solid var(--border); }
+  h1 {
+    font-family: var(--mono);
+    font-size: 2.5rem;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    margin-bottom: 0.25rem;
+  }
+  .tagline {
+    font-size: 1.1rem;
+    color: var(--text-muted);
+    font-family: var(--mono);
+    margin-bottom: 1rem;
+  }
+  .badges img { margin-right: 4px; margin-bottom: 4px; }
+
+  main { padding: 2.5rem 0 3rem; flex: 1; }
+  section { margin-bottom: 2.5rem; }
+  h2 {
+    font-family: var(--mono);
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    color: var(--accent);
+  }
+  p { color: var(--text-muted); max-width: 72ch; margin-bottom: 1rem; }
+
+  .features { list-style: none; display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem 2rem; }
+  .features li { color: var(--text-muted); font-size: 0.95rem; }
+  .features li::before { content: "> "; color: var(--accent-green); font-family: var(--mono); }
+
+  .install-box {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 1.25rem;
+    font-family: var(--mono);
+    font-size: 0.9rem;
+    overflow-x: auto;
+  }
+  .install-box .prompt { color: var(--accent-green); user-select: none; }
+  .install-box .cmd { color: var(--text); }
+
+  .links { display: flex; gap: 1.5rem; flex-wrap: wrap; }
+  .links a {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.5rem 1.25rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-family: var(--mono);
+    font-size: 0.9rem;
+    color: var(--text);
+    background: var(--bg-card);
+    transition: border-color 0.15s;
+  }
+  .links a:hover { text-decoration: none; border-color: var(--accent); }
+
+  .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem; }
+  .metric {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 1rem;
+    text-align: center;
+  }
+  .metric .val { font-family: var(--mono); font-size: 1.4rem; font-weight: 700; color: var(--accent-green); }
+  .metric .label { font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem; }
+
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 1.5rem 0;
+    text-align: center;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+  }
+
+  @media (max-width: 600px) {
+    h1 { font-size: 1.8rem; }
+    .features { grid-template-columns: 1fr; }
+    .links { flex-direction: column; }
+    .links a { justify-content: center; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <h1>Clawdius</h1>
+    <p class="tagline">A formally verified, multi-provider AI coding agent</p>
+    <div class="badges">
+      <img src="https://img.shields.io/badge/version-1.0.0--rc.1-blue.svg" alt="Version">
+      <img src="https://img.shields.io/badge/rust-1.88+-orange.svg" alt="Rust">
+      <img src="https://img.shields.io/badge/tests-1%2C530-passing-brightgreen.svg" alt="Tests">
+      <img src="https://img.shields.io/badge/Lean4-18%2F18%20proofs-blue.svg" alt="Lean4 Proofs">
+      <img src="https://img.shields.io/badge/License-Apache_2.0-yellow.svg" alt="License">
+    </div>
+  </header>
+
+  <main>
+    <section>
+      <p>
+        Clawdius is a next-generation AI coding engine built in Rust with a terminal UI, CLI, and
+        multi-platform messaging gateway. It connects chat platforms to a formal-verification-backed
+        code generation engine, supporting DeepSeek, Anthropic, OpenAI, OpenRouter, Ollama, and ZAI
+        with automatic retry. Lean4 proofs verify sandboxing, concurrency, and security invariants.
+      </p>
+    </section>
+
+    <section>
+      <h2>Features</h2>
+      <ul class="features">
+        <li>Multi-provider LLM with automatic retry</li>
+        <li>60 FPS terminal UI (25+ commands)</li>
+        <li>Agentic sprint execution and auto-fix</li>
+        <li>9 messaging platform adapters</li>
+        <li>Lean4 formal verification (18 proofs)</li>
+        <li>JIT sandboxing (Wasmtime WASM)</li>
+        <li>Session management with auto-compact</li>
+        <li>Architecture drift and debt analysis</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Quality</h2>
+      <div class="metrics">
+        <div class="metric"><div class="val">1,530</div><div class="label">Tests passing</div></div>
+        <div class="metric"><div class="val">0</div><div class="label">Clippy warnings</div></div>
+        <div class="metric"><div class="val">18/18</div><div class="label">Lean4 proofs</div></div>
+        <div class="metric"><div class="val">~130K</div><div class="label">Lines of Rust</div></div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Install</h2>
+      <div class="install-box">
+        <span class="prompt">$ </span><span class="cmd">cargo install clawdius --version 1.0.0-rc.1</span>
+      </div>
+    </section>
+
+    <section>
+      <h2>Links</h2>
+      <div class="links">
+        <a href="https://docs.clawdius.dev">Documentation</a>
+        <a href="https://github.com/WyattAu/clawdius">GitHub Repository</a>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    Licensed under Apache-2.0. Built with Rust.
+  </footer>
+
+</div>
+</body>
+</html>

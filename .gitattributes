@@ -1,2 +1,20 @@
-# Protect crate root files from merge conflicts (agentic tools have clobbered these)
+# Enforce LF line endings across all platforms
+* text=auto eol=lf
+
+# Binary files
+*.png binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.eot binary
+*.gz binary
+*.zst binary
+*.db binary
+*.lance binary
+
+# Protect crate root files from merge conflicts
 crates/*/src/lib.rs merge=union
+
+# Lean4 generated files
+.lake/** binary
