@@ -11,7 +11,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - uses: leanprover/lean4-action@v2
+      - uses: leanprover/lean4-action@v1
         with:
           lake-manifest: lake-manifest.json
       - run: lake build
