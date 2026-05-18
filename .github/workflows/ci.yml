@@ -173,7 +173,7 @@ jobs:
             benchmark-results-
 
       - name: Run benchmarks
-        run: cargo bench --workspace -- --noplot
+        run: cargo bench --workspace
 
       - name: Upload benchmark results
         uses: actions/upload-artifact@v4
