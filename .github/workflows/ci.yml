@@ -120,7 +120,18 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-
 
-      - uses: leanprover/lean4-action@v1
+      - name: Cache elan
+        uses: actions/cache@v4
+        with:
+          path: ~/.elan
+          key: elan-${{ runner.os }}-v4.28.0
+
+      - name: Install elan
+        run: |
+          if [ ! -f ~/.elan/bin/lean ]; then
+            curl https://raw.githubusercontent.com/leanprover-community/elan/master/elan-init.sh -sSf | sh -s -- -y
+          fi
+          echo "$HOME/.elan/bin" >> $GITHUB_PATH
 
       - name: Build Lean4
         run: lake build
