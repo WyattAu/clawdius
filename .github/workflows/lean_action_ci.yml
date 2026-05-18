@@ -12,7 +12,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install Lean (elan)
-        uses: jaxx0/setup-lean@v1
+        uses: leanprover/lean4-action@v1
 
       - name: Build Lean4 proofs
         run: lake build
