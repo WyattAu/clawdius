@@ -22,7 +22,9 @@ jobs:
           if [ ! -f ~/.elan/bin/lean ]; then
             curl https://raw.githubusercontent.com/leanprover-community/elan/master/elan-init.sh -sSf | sh -s -- -y
           fi
-          echo "$HOME/.elan/bin" >> $GITHUB_PATH
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
 
       - name: Build Lean4 proofs
-        run: lake build
+        run: |
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+          lake build

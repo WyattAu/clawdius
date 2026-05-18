@@ -72,7 +72,7 @@ pub(super) async fn handle_sprint(
     sprint_config.max_iterations = max_iterations;
     sprint_config.real_execution = real_execution;
     sprint_config.auto_approve = auto_approve;
-    sprint_config.model = model.clone();
+    sprint_config.model.clone_from(&model);
     sprint_config.browser_qa_url = browser_qa_url;
 
     // Build workspace context if available

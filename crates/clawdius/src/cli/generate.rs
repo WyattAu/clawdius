@@ -171,7 +171,7 @@ pub(super) async fn handle_generate(
     }
     let mut llm_config = LlmConfig::from_config(&config.llm, &provider)?;
     if let Some(ref m) = model {
-        llm_config.model = m.clone();
+        llm_config.model.clone_from(m);
     }
 
     let llm_client = std::sync::Arc::new(create_provider(&llm_config)?);
