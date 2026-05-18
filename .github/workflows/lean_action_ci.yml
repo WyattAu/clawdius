@@ -26,5 +26,5 @@ jobs:
 
       - name: Build Lean4 proofs
         run: |
-          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+          export PATH="$HOME/.elan/bin:$PATH"
           lake build

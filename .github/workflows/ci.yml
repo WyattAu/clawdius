@@ -135,7 +135,7 @@ jobs:
 
       - name: Build Lean4
         run: |
-          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+          export PATH="$HOME/.elan/bin:$PATH"
           lake build
 
   benchmarks:
