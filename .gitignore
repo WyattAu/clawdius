@@ -148,6 +148,7 @@ junit.xml
 # -----------------------------------------------------------------------------
 /doc/
 /docs/_build/
+/docs/book/book/
 /site/
 /.docusaurus/
 node_modules/
