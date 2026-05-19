@@ -264,51 +264,51 @@ jobs:
           
           # Check audit
           if [ "${{ needs.audit.result }}" == "success" ]; then
-            echo "✅ Dependency Audit: PASSED"
+            echo "[PASS] Dependency Audit: PASSED"
           else
-            echo "❌ Dependency Audit: FAILED"
+            echo "[FAIL] Dependency Audit: FAILED"
             FAILED=1
           fi
           
           # Check deny
           if [ "${{ needs.deny.result }}" == "success" ]; then
-            echo "✅ Dependency Lint: PASSED"
+            echo "[PASS] Dependency Lint: PASSED"
           else
-            echo "❌ Dependency Lint: FAILED"
+            echo "[FAIL] Dependency Lint: FAILED"
             FAILED=1
           fi
           
           # Check secrets
           if [ "${{ needs.secrets.result }}" == "success" ]; then
-            echo "✅ Secret Detection: PASSED"
+            echo "[PASS] Secret Detection: PASSED"
           else
-            echo "❌ Secret Detection: FAILED"
+            echo "[FAIL] Secret Detection: FAILED"
             FAILED=1
           fi
           
           # Check SAST
           if [ "${{ needs.sast.result }}" == "success" ]; then
-            echo "✅ SAST: PASSED"
+            echo "[PASS] SAST: PASSED"
           else
-            echo "❌ SAST: FAILED"
+            echo "[FAIL] SAST: FAILED"
             FAILED=1
           fi
           
           # Check security tests
           if [ "${{ needs.security-tests.result }}" == "success" ]; then
-            echo "✅ Security Tests: PASSED"
+            echo "[PASS] Security Tests: PASSED"
           else
-            echo "❌ Security Tests: FAILED"
+            echo "[FAIL] Security Tests: FAILED"
             FAILED=1
           fi
           
           # Check fuzz
           if [ "${{ needs.fuzz.result }}" == "success" ]; then
-            echo "✅ Fuzz Testing: PASSED"
+            echo "[PASS] Fuzz Testing: PASSED"
           elif [ "${{ needs.fuzz.result }}" == "skipped" ]; then
-            echo "⚠️ Fuzz Testing: SKIPPED"
+            echo "[WARN] Fuzz Testing: SKIPPED"
           else
-            echo "❌ Fuzz Testing: FAILED"
+            echo "[FAIL] Fuzz Testing: FAILED"
             FAILED=1
           fi
           

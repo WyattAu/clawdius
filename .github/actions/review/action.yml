@@ -58,7 +58,7 @@ runs:
         fetch-depth: 0
 
     - name: Setup Rust toolchain
-      uses: dtolnay/rust-toolchain@1.88
+      uses: dtolnay/rust-toolchain@1.92
 
     - name: Cache Cargo registry
       uses: actions/cache@v4
@@ -163,7 +163,7 @@ runs:
           try {
             const report = fs.readFileSync('review-output/report.md', 'utf8');
             
-            const body = `## 🔍 Clawdius Code Review
+            const body = `## Clawdius Code Review
           
           ${report}
           

@@ -129,7 +129,7 @@ jobs:
       
       - name: Run benchmarks (regression check)
         run: |
-          cargo bench --workspace -- --save-baseline release noplot || true
+          cargo bench --workspace -- noplot || true
 
   build:
     name: Build ${{ matrix.target }}

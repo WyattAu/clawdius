@@ -295,7 +295,7 @@ If you encounter caching issues:
 ## Support
 
 For issues and feature requests:
-- GitHub Issues: [clawdius/issues](https://github.com/your-org/clawdius/issues)
+- GitHub Issues: [clawdius/issues](https://github.com/WyattAu/clawdius/issues)
 - Documentation: [docs.clawdius.dev](https://docs.clawdius.dev)
 
 ## License

@@ -6,17 +6,17 @@ A comprehensive comparison of Clawdius with other AI coding assistants.
 
 ## Quick Summary
 
-| Feature | Clawdius | Claude Code | Cursor | Aider | OpenClaw | Roo Code |
-|---------|----------|-------------|--------|-------|----------|----------|
-| **Runtime** | Rust (Native) | Node.js | Electron | Python | Node.js | VSCode |
-| **Boot Time** | <20ms | ~500ms | ~2s | ~300ms | ~500ms | ~100ms |
-| **Memory** | ~100MB | ~200MB | ~500MB | ~150MB | ~200MB | ~300MB |
-| **Sandboxing** | 5 backends (+ 2 planned) | None | Limited | None | None | None |
-| **Formal Proofs** | 104 theorems | None | None | None | None | None |
-| **Enterprise SSO** | SAML/OIDC | Limited | Limited | None | None | None |
-| **Plugin System** | WASM | None | Limited | None | None | Limited |
-| **Offline/LAN** | Full | Partial | Partial | Full | Partial | Partial |
-| **Open Source** | Apache 2.0 | Proprietary | Proprietary | Apache 2.0 | MIT | MIT |
+| Feature | Clawdius | Claude Code | Cursor | Aider | OpenClaw | Claw Code | Roo Code |
+|---------|----------|-------------|--------|-------|----------|-----------|----------|
+| **Runtime** | Rust (Native) | Node.js | Electron | Python | Node.js | Rust (Native) | VSCode |
+| **Boot Time** | <20ms | ~500ms | ~2s | ~300ms | ~500ms | ~50ms | ~100ms |
+| **Memory** | ~100MB | ~200MB | ~500MB | ~150MB | ~200MB | ~50MB | ~300MB |
+| **Sandboxing** | 5 backends (+ 2 planned) | None | Limited | None | None | Container detection | None |
+| **Formal Proofs** | 209 theorems | None | None | None | None | None | None |
+| **Enterprise SSO** | SAML/OIDC | Limited | Limited | None | None | None | None |
+| **Plugin System** | WASM | None | Limited | None | None | Registry-based | Limited |
+| **Offline/LAN** | Full | Partial | Partial | Full | Partial | Full | Partial |
+| **Open Source** | Apache 2.0 | Proprietary | Proprietary | Apache 2.0 | MIT | MIT | MIT |
 
 ---
 
@@ -75,7 +75,7 @@ Aider:       156MB
 ### 3. Formal Verification
 
 #### Clawdius (Unique Feature)
-- **104 Lean4 theorems** covering core algorithms
+- **209 Lean4 theorems** covering core algorithms
 - Mathematical proofs for:
   - Plugin system safety
   - Container isolation properties

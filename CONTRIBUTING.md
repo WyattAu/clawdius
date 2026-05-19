@@ -28,7 +28,7 @@ This project follows the [Rust Code of Conduct](https://www.rust-lang.org/polici
 
 | Tool | Version | Purpose |
 |------|---------|---------|
-| Rust | 1.85+ | Core language |
+| Rust | 1.92+ | Core language |
 | Cargo | Included with Rust | Build system |
 | pnpm | Latest | VSCode extension |
 | git | Latest | Version control |
@@ -119,8 +119,8 @@ missing_docs = "warn"
 [workspace.lints.clippy]
 all = "deny"
 pedantic = "warn"
-unwrap_used = "allow"
-expect_used = "allow"
+unwrap_used = "warn"
+expect_used = "warn"
 ```
 
 #### Documentation
@@ -543,9 +543,9 @@ cargo test --all-features
 
 | Channel | Purpose | Link |
 |---------|---------|------|
-| **GitHub Discussions** | Q&A, ideas, showcases | [discussions](https://github.com/clawdius/clawdius/discussions) |
+| **GitHub Discussions** | Q&A, ideas, showcases | [discussions](https://github.com/WyattAu/clawdius/discussions) |
 | **Discord** | Real-time chat, community | [discord.gg/clawdius](https://discord.gg/clawdius) |
-| **GitHub Issues** | Bug reports, feature requests | [issues](https://github.com/clawdius/clawdius/issues) |
+| **GitHub Issues** | Bug reports, feature requests | [issues](https://github.com/WyattAu/clawdius/issues) |
 | **Email** | Private/security matters | maintainers@clawdius.dev |
 
 ### Discord Channels

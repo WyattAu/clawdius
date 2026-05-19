@@ -3,7 +3,7 @@ command = "cd docs/book && mdbook build"
 publish = "docs/book/book"
 
 [build.environment]
-RUST_VERSION = "1.75"
+RUST_VERSION = "1.92"
 
 [[redirects]]
 from = "/*"

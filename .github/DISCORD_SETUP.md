@@ -120,7 +120,7 @@ async def install(ctx, platform: str = "cargo"):
     platforms = {
         "cargo": "`cargo install clawdius`",
         "nix": "`nix shell github:clawdius/clawdius`",
-        "source": "```bash\ngit clone https://github.com/clawdius/clawdius\ncd clawdius\ncargo build --release\n```"
+        "source": "```bash\ngit clone https://github.com/WyattAu/clawdius\ncd clawdius\ncargo build --release\n```"
     }
     await ctx.send(platforms.get(platform, "Unknown platform. Use: cargo, nix, source"))
 
@@ -138,9 +138,9 @@ Clawdius is the high-assurance AI coding assistant built with Rust.
 
 ## Quick Links
 - 📚 Documentation: https://docs.clawdius.dev
-- 💻 GitHub: https://github.com/clawdius/clawdius
-- 🐛 Issues: https://github.com/clawdius/clawdius/issues
-- 💬 Discussions: https://github.com/clawdius/clawdius/discussions
+- 💻 GitHub: https://github.com/WyattAu/clawdius
+- 🐛 Issues: https://github.com/WyattAu/clawdius/issues
+- 💬 Discussions: https://github.com/WyattAu/clawdius/discussions
 
 ## Getting Started
 1. Read the rules in #code-of-conduct

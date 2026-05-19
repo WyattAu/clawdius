@@ -81,7 +81,7 @@ export EDITOR=emacs
 | VS Code | `code` | Microsoft's editor, wait flag handled automatically |
 | Emacs | `emacs` | Extensible, customizable editor |
 | Sublime Text | `subl` | Fast, feature-rich editor |
-| Atom | `atom` | GitHub's editor (deprecated) |
+
 
 ## API Usage
 

@@ -313,7 +313,7 @@ labels: security, needs-triage
 assignees: ''
 ---
 
-⚠️ **WARNING**: For critical security vulnerabilities, please email security@example.com instead of creating a public issue.
+⚠️ **WARNING**: For critical security vulnerabilities, please email security@clawdius.dev instead of creating a public issue.
 
 ## Security Issue Description
 A clear description of the security issue.

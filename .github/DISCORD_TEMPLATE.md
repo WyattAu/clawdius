@@ -60,9 +60,9 @@ When asking for help, please provide:
 ## Resources
 
 - **Documentation:** https://clawdius.dev/docs
-- **GitHub:** https://github.com/clawdius/clawdius
-- **Issues:** https://github.com/clawdius/clawdius/issues
-- **Discussions:** https://github.com/clawdius/clawdius/discussions
+- **GitHub:** https://github.com/WyattAu/clawdius
+- **Issues:** https://github.com/WyattAu/clawdius/issues
+- **Discussions:** https://github.com/WyattAu/clawdius/discussions
 
 ## Roles
 
