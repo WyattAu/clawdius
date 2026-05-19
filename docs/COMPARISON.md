@@ -119,8 +119,13 @@ theorem plugin_memory_isolation (p : Plugin) (s : SystemState) :
 |----------|----------|-------------|--------|-------|
 | Anthropic | Yes | Yes (Only) | Yes | Yes |
 | OpenAI | Yes | No | Yes | Yes |
+| Google Gemini | Yes | No | Partial | Yes |
+| xAI (Grok) | Yes | No | No | No |
+| Mistral | Yes | No | No | No |
+| DeepSeek | Yes | No | No | No |
 | Ollama (Local) | Yes | No | Partial | Yes |
 | Z.AI | Yes | No | No | No |
+| OpenRouter | Yes | No | Partial | Yes |
 | Custom/Open | Yes | No | Partial | Yes |
 
 ### 6. Code Intelligence (Graph-RAG)

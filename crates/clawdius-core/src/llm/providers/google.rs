@@ -24,7 +24,7 @@ impl GoogleProvider {
             .build();
         Ok(Self {
             client,
-            model: model.unwrap_or("gemini-2.0-flash").to_string(),
+            model: model.unwrap_or("gemini-2.5-flash").to_string(),
         })
     }
 }
