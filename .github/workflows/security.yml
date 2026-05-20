@@ -253,7 +253,6 @@ jobs:
     runs-on: ubuntu-latest
     needs: [audit, deny, secrets, sast, security-tests, fuzz]
     if: always()
-    continue-on-error: true
     steps:
       - name: Evaluate security gate
         run: |

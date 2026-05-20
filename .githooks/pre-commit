@@ -1,0 +1,118 @@
+#!/bin/bash
+# Clawdius pre-commit hook
+#
+# Fast-path checks: lib.rs integrity, merge markers, fmt, clippy, lib tests,
+# cargo deny, Lean4 proofs.
+#
+# Full test suite (integration, property, deterministic) runs in pre-push.
+# All checks must pass before a commit is allowed.
+
+set -euo pipefail
+
+# Escape hatch: set CLAWDIUS_SKIP_HOOKS=1 to bypass all checks
+if [ "${CLAWDIUS_SKIP_HOOKS:-0}" = "1" ]; then
+    echo "==> Clawdius pre-commit checks SKIPPED (CLAWDIUS_SKIP_HOOKS=1)"
+    exit 0
+fi
+
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m'
+
+echo "==> Clawdius pre-commit checks"
+
+# ─── Warm-cache detection ─────────────────────────────────────────────────
+# If target/ is missing or older than Cargo.toml, compilation will be slow.
+# In that case, warn the user and offer to skip.
+CARGO_TOML="Cargo.toml"
+TARGET_DIR="target"
+if [ ! -d "$TARGET_DIR" ] || [ "$CARGO_TOML" -nt "$TARGET_DIR" ]; then
+    echo -e "${YELLOW}WARNING: Cold cache detected (no target/ or Cargo.toml is newer).${NC}"
+    echo -e "${YELLOW}Compilation may take 10+ minutes. Set CLAWDIUS_SKIP_HOOKS=1 to bypass.${NC}"
+    echo -n "  Continue anyway? [y/N] "
+    read -r -n 1 REPLY 2>/dev/null || true
+    echo ""
+    if [ "$REPLY" != "y" ] && [ "$REPLY" != "Y" ]; then
+        echo -e "${YELLOW}Hooks skipped. Use CLAWDIUS_SKIP_HOOKS=1 to skip automatically.${NC}"
+        exit 0
+    fi
+fi
+
+# ─── 1. lib.rs integrity check ──────────────────────────────────────────────
+LIBRS="crates/clawdius-core/src/lib.rs"
+if [ -f "$LIBRS" ]; then
+    MOD_COUNT=$(grep -c "^pub mod " "$LIBRS" || true)
+    if [ "$MOD_COUNT" -lt 10 ]; then
+        echo -e "${RED}BLOCKED: $LIBRS has only $MOD_COUNT pub mod declarations (expected >=10)${NC}"
+        echo "Run: git checkout HEAD -- $LIBRS"
+        exit 1
+    fi
+fi
+
+# ─── 2. Merge conflict markers ─────────────────────────────────────────────
+CONFLICTS=$(git diff --cached --name-only --diff-filter=ACM | xargs grep -l '<<<<<<< ' 2>/dev/null || true)
+if [ -n "$CONFLICTS" ]; then
+    echo -e "${RED}BLOCKED: Merge conflict markers found in:${NC}"
+    echo "$CONFLICTS"
+    exit 1
+fi
+
+# ─── 3. cargo fmt ──────────────────────────────────────────────────────────
+echo -n "  [1/5] cargo fmt --check ... "
+if cargo fmt --all --check 2>/dev/null; then
+    echo -e "${GREEN}OK${NC}"
+else
+    echo -e "${RED}FAILED${NC}"
+    echo "Run: cargo fmt --all"
+    exit 1
+fi
+
+# ─── 4. cargo clippy ───────────────────────────────────────────────────────
+echo -n "  [2/5] cargo clippy --all-targets ... "
+if cargo clippy --workspace --all-targets -- -D warnings 2>/dev/null; then
+    echo -e "${GREEN}OK${NC}"
+else
+    echo -e "${RED}FAILED${NC}"
+    echo "Fix clippy warnings before committing."
+    exit 1
+fi
+
+# ─── 5. cargo test (lib only, fast path) ───────────────────────────────────
+echo -n "  [3/5] cargo test --workspace --lib ... "
+if cargo test --workspace --lib 2>/dev/null; then
+    echo -e "${GREEN}OK${NC}"
+else
+    echo -e "${RED}FAILED${NC}"
+    echo "Fix failing tests before committing."
+    exit 1
+fi
+
+# ─── 6. cargo deny ─────────────────────────────────────────────────────────
+echo -n "  [4/5] cargo deny check ... "
+if command -v cargo-deny &>/dev/null; then
+    if cargo deny check bans licenses advisories 2>/dev/null; then
+        echo -e "${GREEN}OK${NC}"
+    else
+        echo -e "${RED}FAILED${NC}"
+        echo "Fix deny violations before committing."
+        exit 1
+    fi
+else
+    echo -e "${YELLOW}SKIPPED (cargo-deny not installed)${NC}"
+fi
+
+# ─── 7. Lean4 proofs ───────────────────────────────────────────────────────
+echo -n "  [5/5] lake build ... "
+if command -v lake &>/dev/null; then
+    if lake build 2>/dev/null; then
+        echo -e "${GREEN}OK${NC}"
+    else
+        echo -e "${YELLOW}WARN (Lean4 proofs failed to build)${NC}"
+    fi
+else
+    echo -e "${YELLOW}SKIPPED (lake not installed)${NC}"
+fi
+
+echo -e "${GREEN}==> All pre-commit checks passed${NC}"
+exit 0

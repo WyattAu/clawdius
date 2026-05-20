@@ -68,7 +68,7 @@ runs:
           ~/.cargo/git
         key: ${{ inputs.cache-key }}-${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
         restore-keys: |
-          ${{ inputs.cache-hash }}-${{ runner.os }}-cargo-
+          ${{ inputs.cache-key }}-${{ runner.os }}-cargo-
 
     - name: Cache Clawdius binary
       id: cache-clawdius

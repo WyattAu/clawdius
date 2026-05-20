@@ -9,7 +9,7 @@
 Clawdius was designed from the ground up with security as a primary concern:
 
 - **5 Sandbox Backends (+ 2 Planned)**: From lightweight WASM to hardware-isolated Firecracker microVMs
-- **104 Formal Verification Theorems**: Mathematically proven correctness for critical operations
+- **209 Formal Verification Theorems**: Mathematically proven correctness for critical operations
 - **Enterprise SSO**: SAML 2.0, OIDC, Okta, Azure AD, and GitHub integration
 - **Comprehensive Audit Logging**: SQLite, Elasticsearch, and webhook backends
 
@@ -34,7 +34,7 @@ Built in Rust for maximum performance:
 | Feature | Clawdius | Competitors |
 |---------|----------|-------------|
 | Sandbox Backends | 5 (+ 2 planned) | 1-3 |
-| Formal Verification | 104 theorems | None |
+| Formal Verification | 209 theorems | None |
 | Cold Boot Time | <20ms | 100-500ms |
 | Plugin System | WASM + 26 hooks | Limited or None |
 | Enterprise SSO | Full (SAML, OIDC) | Limited |
@@ -48,7 +48,7 @@ Built in Rust for maximum performance:
 # Install from crates.io
 cargo install clawdius
 
-# Run the interactive setup wizard (new in v1.2.0!)
+# Run the interactive setup wizard
 clawdius setup
 
 # Or manually set your API key
@@ -58,11 +58,11 @@ clawdius config set api_key YOUR_ANTHROPIC_API_KEY
 clawdius chat
 ```
 
-### New: Interactive Setup Wizard
+### Interactive Setup Wizard
 
-Version 1.2.0 introduces an interactive setup wizard that guides you through:
+The interactive setup wizard guides you through:
 
-- **Provider Selection**: Choose from Anthropic, OpenAI, Ollama (local), or Zhipu AI
+- **Provider Selection**: Choose from Anthropic, OpenAI, Ollama, DeepSeek, or custom endpoints
 - **API Key Configuration**: Secure storage using your system keyring
 - **Settings Presets**: Balanced, Security-focused, Performance-optimized, or Development mode
 - **Ollama Connectivity Check**: Automatic TCP verification for local LLMs
@@ -114,4 +114,4 @@ clawdius setup --quick --provider anthropic
 
 ## License
 
-Clawdius is licensed under the [MIT License](https://github.com/WyattAu/clawdius/blob/main/LICENSE).
+Clawdius is licensed under the [Apache 2.0 License](https://github.com/WyattAu/clawdius/blob/main/LICENSE).

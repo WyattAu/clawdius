@@ -1,0 +1,94 @@
+#!/bin/bash
+# Clawdius pre-push hook
+#
+# Full verification suite executed before pushing to remote.
+# Runs complete test suite: all tests, clippy, deny, Lean4.
+#
+# Pre-commit runs fast checks (fmt, clippy, lib tests, deny, Lean4).
+# Pre-push runs the complete test suite before code reaches remote.
+
+set -euo pipefail
+
+# Escape hatch: set CLAWDIUS_SKIP_HOOKS=1 to bypass all checks
+if [ "${CLAWDIUS_SKIP_HOOKS:-0}" = "1" ]; then
+    echo "==> Clawdius pre-push checks SKIPPED (CLAWDIUS_SKIP_HOOKS=1)"
+    exit 0
+fi
+
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+CYAN='\033[0;36m'
+NC='\033[0m'
+
+echo -e "${CYAN}==> Clawdius pre-push full verification suite${NC}"
+echo ""
+
+# ─── Warm-cache detection ─────────────────────────────────────────────────
+# If target/ is missing or older than Cargo.toml, compilation will be slow.
+# In that case, warn the user and offer to skip.
+CARGO_TOML="Cargo.toml"
+TARGET_DIR="target"
+if [ ! -d "$TARGET_DIR" ] || [ "$CARGO_TOML" -nt "$TARGET_DIR" ]; then
+    echo -e "${YELLOW}WARNING: Cold cache detected (no target/ or Cargo.toml is newer).${NC}"
+    echo -e "${YELLOW}Compilation may take 10+ minutes. Set CLAWDIUS_SKIP_HOOKS=1 to bypass.${NC}"
+    echo -n "  Continue anyway? [y/N] "
+    read -r -n 1 REPLY 2>/dev/null || true
+    echo ""
+    if [ "$REPLY" != "y" ] && [ "$REPLY" != "Y" ]; then
+        echo -e "${YELLOW}Hooks skipped. Use CLAWDIUS_SKIP_HOOKS=1 to skip automatically.${NC}"
+        exit 0
+    fi
+fi
+
+# ─── 1. Full workspace tests (lib + integration + property + adapter) ───────
+echo -n "  [1/4] cargo test --workspace --tests ... "
+if timeout 600 cargo test --workspace --tests 2>/dev/null; then
+    echo -e "${GREEN}OK${NC}"
+else
+    echo -e "${RED}FAILED${NC}"
+    echo "Fix failing tests before pushing."
+    exit 1
+fi
+
+# ─── 2. Clippy (strict) ────────────────────────────────────────────────────
+echo -n "  [2/4] cargo clippy --workspace --all-targets -- -D warnings ... "
+if timeout 300 cargo clippy --workspace --all-targets -- -D warnings 2>/dev/null; then
+    echo -e "${GREEN}OK${NC}"
+else
+    echo -e "${RED}FAILED${NC}"
+    echo "Fix clippy warnings before pushing."
+    exit 1
+fi
+
+# ─── 3. cargo deny ─────────────────────────────────────────────────────────
+echo -n "  [3/4] cargo deny check ... "
+if command -v cargo-deny &>/dev/null; then
+    if cargo deny check bans licenses advisories 2>/dev/null; then
+        echo -e "${GREEN}OK${NC}"
+    else
+        echo -e "${RED}FAILED${NC}"
+        echo "Fix deny violations before pushing."
+        exit 1
+    fi
+else
+    echo -e "${YELLOW}SKIPPED (cargo-deny not installed)${NC}"
+fi
+
+# ─── 4. Lean4 proofs ───────────────────────────────────────────────────────
+echo -n "  [4/4] lake build ... "
+if command -v lake &>/dev/null; then
+    if lake build 2>/dev/null; then
+        echo -e "${GREEN}OK${NC}"
+    else
+        echo -e "${RED}FAILED${NC}"
+        echo "Fix Lean4 proof failures before pushing."
+        exit 1
+    fi
+else
+    echo -e "${YELLOW}SKIPPED (lake not installed)${NC}"
+fi
+
+echo ""
+echo -e "${GREEN}==> All pre-push checks passed -- safe to push${NC}"
+exit 0

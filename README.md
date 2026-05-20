@@ -3,20 +3,20 @@
 **The High-Assurance AI Engineering Engine.**
 *Native Rust. Formal Proofs. Multi-Platform Gateway.*
 
-[![Version](https://img.shields.io/badge/version-1.0.0--rc.1-blue.svg)](https://github.com/WyattAu/clawdius/releases)
+[![Version](https://img.shields.io/badge/version-1.0.0--rc.2-blue.svg)](https://github.com/WyattAu/clawdius/releases)
 [![Rust](https://img.shields.io/badge/language-Rust-orange.svg)](https://www.rust-lang.org)
-[![Tests](https://img.shields.io/badge/tests-1%2C240-passing-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-1%2C447-passing-brightgreen.svg)]()
 [![Clippy](https://img.shields.io/badge/clippy-0%20warnings-success.svg)]()
-[![Lean4](https://img.shields.io/badge/Lean4-16%2F16%20proofs-blue.svg)]()
+[![Lean4](https://img.shields.io/badge/Lean4-209%20theorems-blue.svg)]()
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-yellow.svg)](LICENSE)
 
 Clawdius is a next-generation AI coding engine built in Rust. It provides a terminal UI (TUI), CLI, and multi-platform messaging gateway for agentic coding — connecting chat platforms (Telegram, Discord, Slack, Matrix, and more) to a formal-verification-backed code generation engine.
 
 ## Highlights
 
-- **1,240 tests, 0 failures** across 5 workspace crates
+- **1,447 tests, 0 failures** across 5 workspace crates
 - **0 clippy warnings** (strictest `-W clippy::all`)
-- **16/16 Lean4 formal proofs** compiled and verified
+- **209 Lean4 formal verification theorems** compiled and verified
 - **12/12 feature flags** compile independently
 - **0 unsafe blocks** in production code (8 in SIMD module only)
 - **25 MB + 15 MB** release binaries (LTO fat, stripped)
