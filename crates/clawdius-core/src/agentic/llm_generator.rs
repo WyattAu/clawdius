@@ -81,7 +81,8 @@ impl LlmCodeGenerator {
         });
 
         // Call LLM
-        let response = self.client.chat(messages).await?;
+        let options = crate::llm::LlmChatOptions::from_mode_and_config(0.7, 4096);
+        let response = self.client.chat_with_options(messages, options).await?;
 
         // Parse response
         Ok(self.parse_response(&response))

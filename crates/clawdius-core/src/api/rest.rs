@@ -373,7 +373,8 @@ pub async fn chat(
         content: request.message.clone(),
     });
 
-    let response_text = match llm_client.chat(messages).await {
+    let options = crate::llm::LlmChatOptions::from_mode_and_config(0.7, 4096);
+    let response_text = match llm_client.chat_with_options(messages, options).await {
         Ok(text) => text,
         Err(e) => {
             return Err((
@@ -658,7 +659,8 @@ pub async fn agent_handler(
     for _ in 0..MAX_AGENT_ITERATIONS {
         iterations += 1;
 
-        let response_text = match llm_client.chat(messages.clone()).await {
+        let options = crate::llm::LlmChatOptions::from_mode_and_config(0.7, 4096);
+        let response_text = match llm_client.chat_with_options(messages.clone(), options).await {
             Ok(text) => text,
             Err(e) => {
                 return Err((

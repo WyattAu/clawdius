@@ -275,7 +275,8 @@ impl ReviewEngine {
             },
         ];
 
-        let review_text = match provider.chat(messages).await {
+        let options = crate::llm::LlmChatOptions::from_mode_and_config(0.5, 4096);
+        let review_text = match provider.chat_with_options(messages, options).await {
             Ok(output) => output,
             Err(_) => {
                 // Fallback for models that don't support system messages

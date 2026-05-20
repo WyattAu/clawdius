@@ -664,7 +664,8 @@ impl ErrorRecovery {
             },
         ];
 
-        let response = self.llm.chat(messages).await?;
+        let options = crate::llm::LlmChatOptions::from_mode_and_config(0.5, 4096);
+        let response = self.llm.chat_with_options(messages, options).await?;
         Ok(strip_code_block(&response))
     }
 

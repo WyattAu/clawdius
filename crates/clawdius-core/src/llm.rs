@@ -382,6 +382,28 @@ fn default_max_tokens() -> usize {
     4096
 }
 
+/// Options for LLM chat requests.
+#[derive(Debug, Clone, Default)]
+pub struct LlmChatOptions {
+    pub temperature: Option<f64>,
+    pub max_tokens: Option<u32>,
+    pub top_p: Option<f64>,
+    pub stop_sequences: Option<Vec<String>>,
+}
+
+impl LlmChatOptions {
+    pub fn from_mode_and_config(temperature: f64, max_tokens: usize) -> Self {
+        Self { temperature: Some(temperature), max_tokens: Some(max_tokens as u32), top_p: None, stop_sequences: None }
+    }
+    pub fn to_genai_options(&self) -> genai::chat::ChatOptions {
+        let mut opts = genai::chat::ChatOptions::default();
+        if let Some(t) = self.temperature { opts = opts.with_temperature(t); }
+        if let Some(m) = self.max_tokens { opts = opts.with_max_tokens(m); }
+        if let Some(p) = self.top_p { opts = opts.with_top_p(p); }
+        opts
+    }
+}
+
 impl LlmConfig {
     pub fn from_env(provider: &str) -> Result<Self> {
         use crate::error::ErrorHelpers;
@@ -738,6 +760,23 @@ impl LlmClientWithRetry {
             }
         })
         .await
+    }
+
+    pub async fn chat_with_options(&self, messages: Vec<ChatMessage>, options: LlmChatOptions) -> Result<String> {
+        let retry_config = self.retry_config.clone();
+        let provider = &self.provider;
+        with_retry(&retry_config, || async {
+            match provider {
+                LlmProvider::Anthropic(p) => p.chat_with_options(messages.clone(), options.clone()).await,
+                LlmProvider::Google(p) => p.chat_with_options(messages.clone(), options.clone()).await,
+                LlmProvider::OpenAi(p) => p.chat_with_options(messages.clone(), options.clone()).await,
+                LlmProvider::OpenRouter(p) => p.chat_with_options(messages.clone(), options.clone()).await,
+                LlmProvider::DeepSeek(p) => p.chat_with_options(messages.clone(), options.clone()).await,
+                LlmProvider::Zai(p) => p.chat_with_options(messages.clone(), options.clone()).await,
+                LlmProvider::Ollama(p) => p.chat_with_options(messages.clone(), options.clone()).await,
+                LlmProvider::Local(p) => p.chat_with_options(messages.clone(), options.clone()).await,
+            }
+        }).await
     }
 
     #[must_use]

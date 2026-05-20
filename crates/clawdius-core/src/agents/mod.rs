@@ -292,6 +292,7 @@ pub struct TeamConfig {
     pub enable_voting: bool,
     /// Maximum iterations for team tasks
     pub max_iterations: usize,
+    pub default_temperature: f64,
 }
 
 impl Default for TeamConfig {
@@ -303,6 +304,7 @@ impl Default for TeamConfig {
             shared_context: true,
             enable_voting: false,
             max_iterations: 50,
+            default_temperature: 0.7,
         }
     }
 }
@@ -397,11 +399,15 @@ pub struct TaskDecomposition {
 /// with dependencies, complexity estimates, and acceptance criteria.
 pub struct TaskDecomposer {
     llm_client: Arc<dyn LlmClient>,
+    temperature: f64,
 }
 
 impl TaskDecomposer {
     pub fn new(llm_client: Arc<dyn LlmClient>) -> Self {
-        Self { llm_client }
+        Self { llm_client, temperature: 0.7 }
+    }
+    pub fn with_temperature(mut self, temperature: f64) -> Self {
+        self.temperature = temperature; self
     }
 
     /// Decompose a high-level task into subtasks using the LLM.
@@ -457,7 +463,7 @@ Rules:
 
         let response = self
             .llm_client
-            .chat(messages)
+            .chat_with_options(messages, crate::llm::LlmChatOptions::from_mode_and_config(self.temperature, 4096))
             .await
             .map_err(|e| AgentError::LlmError(e.to_string()))?;
 
@@ -1111,7 +1117,7 @@ impl AgentTeam {
         ];
 
         let response = client
-            .chat(messages)
+            .chat_with_options(messages, crate::llm::LlmChatOptions::from_mode_and_config(self.config.default_temperature, 4096))
             .await
             .map_err(|e| AgentError::LlmError(e.to_string()))?;
         Ok(response)

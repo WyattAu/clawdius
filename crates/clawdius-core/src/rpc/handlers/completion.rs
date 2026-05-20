@@ -151,8 +151,8 @@ impl Handler for CompletionHandler {
         if let Some(ref llm) = self.llm {
             let messages = self.build_messages(&completion_req);
 
-            // Execute with timeout
-            let result = tokio::time::timeout(self.timeout, llm.chat(messages)).await;
+            let options = crate::llm::LlmChatOptions::from_mode_and_config(0.3, 256);
+            let result = tokio::time::timeout(self.timeout, llm.chat_with_options(messages, options)).await;
 
             match result {
                 Ok(Ok(response)) => {

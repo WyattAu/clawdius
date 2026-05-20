@@ -67,11 +67,11 @@ impl SprintEngine {
                     Ok(output)
                 }
             },
-            Ok(Err(_)) => self
-                .llm
-                .chat(messages)
-                .await
-                .map_err(|e| crate::Error::Llm(format!("LLM chat failed: {e}"))),
+            Ok(Err(_)) => {
+                let opts = crate::llm::LlmChatOptions::from_mode_and_config(0.7, 4096);
+                self.llm.chat_with_options(messages, opts).await
+                    .map_err(|e| crate::Error::Llm(format!("LLM chat failed: {e}")))
+            },
             Err(_) => Err(crate::Error::Llm(
                 "LLM streaming call timed out (120s)".to_string(),
             )),

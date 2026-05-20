@@ -54,6 +54,22 @@ impl LlmClient for GoogleProvider {
             .map(std::string::ToString::to_string)
             .ok_or_else(|| Error::Llm("No response text".into()))
     }
+    async fn chat_with_options(&self, messages: Vec<crate::llm::ChatMessage>,
+        options: crate::llm::LlmChatOptions) -> crate::Result<String> {
+        let genai_messages: Vec<ChatMessage> = messages.into_iter()
+            .map(|m| match m.role {
+                ChatRole::System => ChatMessage::system(m.content),
+                ChatRole::User => ChatMessage::user(m.content),
+                ChatRole::Assistant => ChatMessage::assistant(m.content),
+            }).collect();
+        let chat_req = ChatRequest::new(genai_messages);
+        let genai_opts = options.to_genai_options();
+        let response = self.client.exec_chat(&self.model, chat_req, Some(&genai_opts))
+            .await.map_err(|e| crate::Error::Llm(e.to_string()))?;
+        response.first_text().map(std::string::ToString::to_string)
+            .ok_or_else(|| crate::Error::Llm("No response text".into()))
+    }
+
 
     async fn chat_stream(&self, messages: Vec<ClawdiusMessage>) -> Result<mpsc::Receiver<String>> {
         let (tx, rx) = mpsc::channel(100);

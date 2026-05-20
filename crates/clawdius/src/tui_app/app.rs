@@ -494,6 +494,7 @@ impl App {
         Ok(())
     }
 
+    #[allow(clippy::too_many_lines)]
     async fn handle_chat_key(&mut self, key: crossterm::event::KeyEvent) -> anyhow::Result<()> {
         use crossterm::event::KeyCode;
 

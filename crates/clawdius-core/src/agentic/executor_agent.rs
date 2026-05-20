@@ -415,7 +415,7 @@ impl ExecutorAgent {
                 },
             ];
 
-            let response = client.chat(messages).await?;
+            let response = client.chat_with_options(messages, crate::llm::LlmChatOptions::from_mode_and_config(0.7, 4096)).await?;
             return Ok(response);
         }
 
@@ -458,7 +458,7 @@ impl ExecutorAgent {
                 },
             ];
 
-            let response = client.chat(messages).await?;
+            let response = client.chat_with_options(messages, crate::llm::LlmChatOptions::from_mode_and_config(0.7, 4096)).await?;
             return Ok(response);
         }
 
@@ -502,7 +502,7 @@ impl ExecutorAgent {
                 },
             ];
 
-            let response = client.chat(messages).await?;
+            let response = client.chat_with_options(messages, crate::llm::LlmChatOptions::from_mode_and_config(0.7, 4096)).await?;
             return Ok(response);
         }
 
@@ -864,7 +864,7 @@ impl ExecutorAgent {
                     content: prompt,
                 },
             ];
-            let response = client.chat(messages).await?;
+            let response = client.chat_with_options(messages, crate::llm::LlmChatOptions::from_mode_and_config(0.7, 4096)).await?;
             return Ok(response);
         }
         Err(crate::error::Error::Config(
@@ -890,7 +890,7 @@ impl ExecutorAgent {
                     content: prompt,
                 },
             ];
-            let response = client.chat(messages).await?;
+            let response = client.chat_with_options(messages, crate::llm::LlmChatOptions::from_mode_and_config(0.7, 4096)).await?;
             return Ok(response);
         }
         Ok(format!(
@@ -922,7 +922,7 @@ impl ExecutorAgent {
                     content: prompt,
                 },
             ];
-            let response = client.chat(messages).await?;
+            let response = client.chat_with_options(messages, crate::llm::LlmChatOptions::from_mode_and_config(0.7, 4096)).await?;
             return Ok(response);
         }
         Err(crate::error::Error::Config(
