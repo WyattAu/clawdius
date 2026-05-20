@@ -8,10 +8,13 @@ Clawdius supports multiple LLM providers through a unified interface powered by 
 |----------|------------|---------------|------------------|
 | Anthropic | `anthropic` | claude-sonnet-4-20250514 | Yes |
 | OpenAI | `openai` | gpt-4o | Yes |
+| Google Gemini | `google` | gemini-2.5-flash | Yes |
+| xAI Grok | `xai` | grok-3 | Yes |
+| Mistral AI | `mistral` | mistral-large-latest | Yes |
 | DeepSeek | `deepseek` | deepseek-coder | Yes |
 | Ollama | `ollama` | llama3.2 | No (local) |
 | ZAI | `zai` | zai-default | Yes |
-| Google Gemini | `google` | gemini-pro | Yes |
+| OpenRouter | `openrouter` | (varies) | Yes |
 
 ## Selecting a Provider
 
@@ -68,6 +71,9 @@ Retries use exponential backoff with jitter. Rate limit errors (HTTP 429) are au
 
 - [Anthropic Claude](./anthropic.md) - Claude setup and configuration
 - [OpenAI](./openai.md) - GPT models setup
+- [Google Gemini](./google.md) - Gemini setup and configuration
+- [xAI Grok](./xai.md) - Grok models setup
+- [Mistral AI](./mistral.md) - Mistral models setup
 - [Ollama](./ollama.md) - Local model setup
 - [Custom Providers](./custom.md) - Custom endpoints and proxies
 

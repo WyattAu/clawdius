@@ -28,6 +28,9 @@
 - [Overview](./providers/overview.md)
 - [Anthropic Claude](./providers/anthropic.md)
 - [OpenAI](./providers/openai.md)
+- [Google Gemini](./providers/google.md)
+- [xAI Grok](./providers/xai.md)
+- [Mistral AI](./providers/mistral.md)
 - [Ollama (Local)](./providers/ollama.md)
 - [Custom Providers](./providers/custom.md)
 
