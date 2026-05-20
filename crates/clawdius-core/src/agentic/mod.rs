@@ -51,6 +51,7 @@ pub mod sandbox;
 pub mod ship_pipeline;
 pub mod sprint;
 pub mod streaming_generator;
+pub mod task_queue;
 pub mod test_execution;
 pub mod tool_executor;
 pub mod tool_use;
