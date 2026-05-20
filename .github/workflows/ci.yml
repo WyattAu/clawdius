@@ -63,7 +63,6 @@ jobs:
 
       - name: Build release
         run: cargo build --workspace --release
-        continue-on-error: true  # CI-only: clawdius-gateway billing/usage imports fail despite passing locally
 
   cross-platform:
     name: Cross-Platform (${{ matrix.os }})

@@ -10,6 +10,7 @@
 - [Configuration](./getting-started/configuration.md)
 - [First Chat](./getting-started/first-chat.md)
 - [Basic Usage](./getting-started/basic-usage.md)
+- [Migrating from Claw Code](./getting-started/migrating-from-claw-code.md)
 
 ---
 

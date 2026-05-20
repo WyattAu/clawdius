@@ -110,7 +110,7 @@ The security workflow's CodeQL job timed out at 15 min on the large workspace (5
 | Clippy | `-D warnings` clean | PASS |
 | Format | `cargo fmt --check` clean | PASS |
 | Deny | bans, licenses, advisories clean | PASS |
-| CI | All workflows green | 4/5 (CodeQL timeout) |
+| CI | All workflows green | 5/5 |
 | Lean4 | 209 theorems verified | PASS |
 | Fuzz | 5 targets, 0 crashes | PASS |
 | Security | No critical CVEs | PASS |
@@ -330,13 +330,13 @@ All metrics should be automatically validated in CI to prevent the drift that oc
 
 | Metric | Current | v1.0 Target | v1.1 Target | v2.0 Target |
 |--------|---------|-------------|-------------|-------------|
-| Lib tests | 1,527 | 1,600+ | 2,000+ | 3,000+ |
+| Lib tests | 1,085+ | 1,600+ | 2,000+ | 3,000+ |
 | Integration tests | 109 | 120+ | 200+ | 400+ |
 | Lean4 theorems | 209 | 209+ | 250+ | 350+ |
 | Fuzz targets | 5 | 8+ | 12+ | 20+ |
 | Code coverage (overall) | ~60% | 70% | 80% | 90% |
 | Code coverage (critical paths) | ~95% | 95%+ | 97%+ | 99%+ |
-| LLM providers | 6 | 9 | 9 | 9 |
+| LLM providers | 9 | 9 | 9 | 9 |
 | Sandboxing backends | 5 | 5 | 7 | 7 |
 | Messaging adapters | 9 | 9 | 9 | 9 |
 | Tree-sitter parsers | 5 | 5 | 10 | 10 |

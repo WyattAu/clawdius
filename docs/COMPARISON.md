@@ -115,18 +115,19 @@ theorem plugin_memory_isolation (p : Plugin) (s : SystemState) :
 
 ### 5. LLM Provider Support
 
-| Provider | Clawdius | Claude Code | Cursor | Aider |
-|----------|----------|-------------|--------|-------|
-| Anthropic | Yes | Yes (Only) | Yes | Yes |
-| OpenAI | Yes | No | Yes | Yes |
-| Google Gemini | Yes | No | Partial | Yes |
-| xAI (Grok) | Yes | No | No | No |
-| Mistral | Yes | No | No | No |
-| DeepSeek | Yes | No | No | No |
-| Ollama (Local) | Yes | No | Partial | Yes |
-| Z.AI | Yes | No | No | No |
-| OpenRouter | Yes | No | Partial | Yes |
-| Custom/Open | Yes | No | Partial | Yes |
+| Provider | Clawdius | Claude Code | Cursor | Aider | Claw Code | Roo Code |
+|----------|----------|-------------|--------|-------|----------|----------|
+| Anthropic | Yes | Yes (Only) | Yes | Yes | No | Yes |
+| OpenAI | Yes | No | Yes | Yes | No | Yes |
+| Google Gemini | Yes | No | Partial | Yes | No | No |
+| xAI (Grok) | Yes | No | No | No | Yes | No |
+| Mistral | Yes | No | No | No | No | No |
+| DeepSeek | Yes | No | No | No | No | Yes |
+| Ollama (Local) | Yes | No | Partial | Yes | No | No |
+| Z.AI | Yes | No | No | No | No | No |
+| OpenRouter | Yes | No | Partial | Yes | No | No |
+| Custom/Open | Yes | No | Partial | Yes | No | No |
+| **Total** | **9** | **1** | **5** | **5** | **2** | **3** |
 
 ### 6. Code Intelligence (Graph-RAG)
 
