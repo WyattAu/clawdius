@@ -6,7 +6,7 @@
 #![allow(missing_docs)]
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
 
-use clap::Parser;
+use clap::{CommandFactory, Parser};
 
 use clawdius::cli;
 mod tui_app;
@@ -24,6 +24,20 @@ fn main() -> anyhow::Result<()> {
 
     // Parse CLI arguments
     let cli = Cli::parse();
+
+    // Generate shell completions if requested (before logging init)
+    if let Some(shell) = cli.generate_completions.as_deref() {
+        let shell = match shell {
+            "zsh" => clap_complete::Shell::Zsh,
+            "fish" => clap_complete::Shell::Fish,
+            "powershell" | "pwsh" => clap_complete::Shell::PowerShell,
+            // Default to bash for unknown shells or explicit "bash"
+            _ => clap_complete::Shell::Bash,
+        };
+        let mut cmd = Cli::command();
+        clap_complete::generate(shell, &mut cmd, "clawdius", &mut std::io::stdout());
+        return Ok(());
+    }
 
     // Initialize logging
     tracing_subscriber::fmt()

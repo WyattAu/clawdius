@@ -7,10 +7,10 @@
 
 | Attribute | Value |
 |-----------|-------|
-| **Version** | 1.0.0-rc.1 |
+| **Version** | 1.0.0-rc.2 |
 | **Status** | Active development |
-| **Last Updated** | 2026-05-14 |
-| **Rollback Checkpoint** | `9ef09772` |
+| **Last Updated** | 2026-05-20 |
+| **Rollback Checkpoint** | `c7b24481` |
 
 ## Empirical Metrics
 
@@ -60,9 +60,10 @@ Directories: `.specs/02_architecture/proofs/` (8), `.clawdius/specs/02_architect
 
 | Metric | Value | Target |
 |--------|-------|--------|
-| Cold start (`--version`) | 4.7 ms avg | <500ms PASS |
-| Cold start (`--help`) | 16.3 ms avg | <500ms PASS |
-| Binary size (release) | 24.9 MiB | N/A |
+| Cold start (`--help`) | 2.5 ms avg | <10ms PASS |
+| Cold start (release, stripped) | 2.5 ms avg | <10ms PASS |
+| Binary size (release) | 26 MiB | N/A |
+| Binary size (stripped) | 26 MiB | N/A |
 | Docker image size | 164 MB | N/A |
 | Peak heap (startup) | 1.7 KiB | <100 MiB PASS |
 

@@ -1,0 +1,194 @@
+.\" Man page for clawdius(1)
+.TH CLAWDIUS 1 "2026-05-20" "clawdius 1.0.0-rc.2" "User Commands"
+.SH NAME
+clawdius \- High-assurance Rust-native AI coding assistant
+.SH SYNOPSIS
+.B clawdius
+[\fIOPTIONS\fR] [\fICOMMAND\fR]
+.SH DESCRIPTION
+Clawdius is a high-assurance, Rust-native AI coding assistant with
+multi-provider LLM support, streaming TUI, shell completions, and
+formal verification via Lean4 proofs.
+.PP
+Supports 9 LLM providers: Anthropic, OpenAI, OpenRouter, Ollama,
+Google Gemini, xAI (Grok), Mistral AI, DeepSeek, and Groq.
+.SH OPTIONS
+.TP
+.BR \-n ", " \-\-no\-tui
+Run in headless mode (read from stdin).
+.TP
+.BR \-C ", " \-\-cwd " " \fIDIR\fR
+Set working directory.
+.TP
+.BR \-f ", " \-\-output\-format " " \fIFORMAT\fR
+Output format: text, json (default: text).
+.TP
+.BR \-q ", " \-\-quiet
+Quiet mode (no progress indicators).
+.TP
+.BR \-\-config " " \fIPATH\fR
+Path to config file (defaults to .clawdius/config.toml).
+.TP
+.BR \-\-lang " " \fILANG\fR
+Language setting.
+.TP
+.BR \-\-generate\-completions " " \fISHELL\fR
+Generate shell completions (bash, zsh, fish, powershell) to stdout.
+.SH COMMANDS
+.TP
+.B chat
+Send a chat message to the LLM.
+.TP
+.B auto
+Autonomous CI/CD mode.
+.TP
+.B init
+Initialize a new project.
+.TP
+.B setup
+Interactive setup wizard.
+.TP
+.B sessions
+List and manage sessions.
+.TP
+.B refactor
+Cross-language refactoring.
+.TP
+.B action
+Apply a code action.
+.TP
+.B test
+Generate tests for code.
+.TP
+.B doc
+Generate documentation.
+.TP
+.B verify
+Lean4 proof verification.
+.TP
+.B auth
+Manage API keys (requires keyring feature).
+.TP
+.B metrics
+Show performance metrics.
+.TP
+.B telemetry
+Configure telemetry.
+.TP
+.B index
+Index workspace for semantic search (requires vector-db feature).
+.TP
+.B context
+Query workspace context (requires vector-db feature).
+.TP
+.B checkpoint
+Manage file checkpoints.
+.TP
+.B timeline
+Manage file timeline.
+.TP
+.B modes
+Manage agent modes.
+.TP
+.B lang
+Manage language settings.
+.TP
+.B edit
+Edit a long prompt in external editor.
+.TP
+.B webhook
+Manage webhooks.
+.TP
+.B generate
+Generate code using agentic AI.
+.TP
+.B lsp
+Language Server Protocol operations.
+.TP
+.B memory
+Manage project memory (CLAWDIUS.md).
+.TP
+.B models
+Manage local LLM models (Ollama).
+.TP
+.B complete
+Get inline code completions from LLM.
+.TP
+.B analyze
+Analyze codebase for architecture drift.
+.TP
+.B watch
+Watch files for changes.
+.TP
+.B git
+Git workflow operations.
+.TP
+.B sprint
+Run an agentic sprint.
+.TP
+.B ship
+Pre-ship checks and commit message generation.
+.TP
+.B skill
+List and execute markdown skills.
+.TP
+.B server
+Start the HTTP server.
+.TP
+.B config
+View and manage configuration.
+.SH ENVIRONMENT
+.TP
+.B ANTHROPIC_API_KEY
+API key for Anthropic Claude.
+.TP
+.B OPENAI_API_KEY
+API key for OpenAI.
+.TP
+.B GOOGLE_API_KEY
+API key for Google Gemini.
+.TP
+.B XAI_API_KEY
+API key for xAI Grok.
+.TP
+.B MISTRAL_API_KEY
+API key for Mistral AI.
+.TP
+.B OPENROUTER_API_KEY
+API key for OpenRouter.
+.TP
+.B CLAWDIUS_SKIP_HOOKS
+Set to 1 to skip pre-commit hooks.
+.SH FILES
+.TP
+.I .clawdius/config.toml
+Project-specific configuration.
+.TP
+.I CLAWDIUS.md
+Project memory and instructions.
+.SH EXAMPLES
+Start the interactive TUI:
+.RS
+.B clawdius
+.RE
+.PP
+Send a single chat message:
+.RS
+.B clawdius chat "Explain this function"
+.RE
+.PP
+Generate bash completions:
+.RS
+.B clawdius --generate-completions bash > /etc/bash_completion.d/clawdius
+.RE
+.PP
+Run in headless mode:
+.RS
+.B echo "hello" | clawdius --no-tui
+.RE
+.SH SEE ALSO
+.BR clawdius-gateway(1)
+.SH REPORTING BUGS
+Report bugs at https://github.com/WyattAu/clawdius/issues
+.SH LICENSE
+Licensed under the MIT or Apache-2.0 license.

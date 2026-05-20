@@ -66,7 +66,7 @@ pub struct LlmResponseCache {
 }
 
 impl LlmResponseCache {
-    #[must_use] 
+    #[must_use]
     pub fn new(ttl: Duration, max_entries: usize) -> Self {
         Self {
             entries: RwLock::new(HashMap::new()),
@@ -78,9 +78,14 @@ impl LlmResponseCache {
 
     pub fn get(&self, messages: &[ChatMessage]) -> Option<LlmResponse> {
         let key = compute_cache_key(messages);
-        let mut entries = self.entries.write().unwrap_or_else(|e| { tracing::error!("RwLock poisoned in llm cache: {}", e); e.into_inner() });
+        let mut entries = self.entries.write().unwrap_or_else(|e| {
+            tracing::error!("RwLock poisoned in llm cache: {}", e);
+            e.into_inner()
+        });
 
-        let entry = if let Some(e) = entries.get(&key) { e } else {
+        let entry = if let Some(e) = entries.get(&key) {
+            e
+        } else {
             self.stats.misses.fetch_add(1, Ordering::Relaxed);
             return None;
         };
@@ -98,7 +103,10 @@ impl LlmResponseCache {
 
     pub fn insert(&self, messages: &[ChatMessage], response: LlmResponse) {
         let key = compute_cache_key(messages);
-        let mut entries = self.entries.write().unwrap_or_else(|e| { tracing::error!("RwLock poisoned in llm cache: {}", e); e.into_inner() });
+        let mut entries = self.entries.write().unwrap_or_else(|e| {
+            tracing::error!("RwLock poisoned in llm cache: {}", e);
+            e.into_inner()
+        });
 
         if self.max_entries > 0 && entries.len() >= self.max_entries && !entries.contains_key(&key)
         {
@@ -117,17 +125,26 @@ impl LlmResponseCache {
 
     pub fn invalidate(&self, messages: &[ChatMessage]) -> bool {
         let key = compute_cache_key(messages);
-        let mut entries = self.entries.write().unwrap_or_else(|e| { tracing::error!("RwLock poisoned in llm cache: {}", e); e.into_inner() });
+        let mut entries = self.entries.write().unwrap_or_else(|e| {
+            tracing::error!("RwLock poisoned in llm cache: {}", e);
+            e.into_inner()
+        });
         entries.remove(&key).is_some()
     }
 
     pub fn clear(&self) {
-        let mut entries = self.entries.write().unwrap_or_else(|e| { tracing::error!("RwLock poisoned in llm cache: {}", e); e.into_inner() });
+        let mut entries = self.entries.write().unwrap_or_else(|e| {
+            tracing::error!("RwLock poisoned in llm cache: {}", e);
+            e.into_inner()
+        });
         entries.clear();
     }
 
     pub fn len(&self) -> usize {
-        let entries = self.entries.read().unwrap_or_else(|e| { tracing::error!("RwLock poisoned in llm cache: {}", e); e.into_inner() });
+        let entries = self.entries.read().unwrap_or_else(|e| {
+            tracing::error!("RwLock poisoned in llm cache: {}", e);
+            e.into_inner()
+        });
         entries.len()
     }
 

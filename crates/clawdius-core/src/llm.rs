@@ -214,8 +214,8 @@
 //!
 //! [`Error`]: crate::Error
 
-mod messages;
 pub mod cache;
+mod messages;
 pub mod providers;
 pub mod rate_limiter;
 

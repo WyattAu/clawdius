@@ -1,0 +1,3777 @@
+#compdef clawdius
+
+autoload -U is-at-least
+
+_clawdius() {
+    typeset -A opt_args
+    typeset -a _arguments_options
+    local ret=1
+
+    if is-at-least 5.2; then
+        _arguments_options=(-s -S -C)
+    else
+        _arguments_options=(-s -C)
+    fi
+
+    local context curcontext="$curcontext" state line
+    _arguments "${_arguments_options[@]}" : \
+'-c+[Working directory]:CWD:_files' \
+'--cwd=[Working directory]:CWD:_files' \
+'-f+[Output format (text, json, stream-json)]:OUTPUT_FORMAT:(text json stream-json)' \
+'--output-format=[Output format (text, json, stream-json)]:OUTPUT_FORMAT:(text json stream-json)' \
+'--generate-completions=[Generate shell completions to stdout (bash|zsh|fish|powershell)]:GENERATE_COMPLETIONS:_default' \
+'-C+[Path to config file (defaults to .clawdius/config.toml)]:CONFIG:_files' \
+'--config=[Path to config file (defaults to .clawdius/config.toml)]:CONFIG:_files' \
+'-L+[Language for output (en, zh, ja, ko, de, fr, es, it, pt, ru)]:LANG:_default' \
+'--lang=[Language for output (en, zh, ja, ko, de, fr, es, it, pt, ru)]:LANG:_default' \
+'-n[Run without TUI (headless mode)]' \
+'--no-tui[Run without TUI (headless mode)]' \
+'-q[Quiet mode (no progress indicators)]' \
+'--quiet[Quiet mode (no progress indicators)]' \
+'-h[Print help]' \
+'--help[Print help]' \
+'-V[Print version]' \
+'--version[Print version]' \
+":: :_clawdius_commands" \
+"*::: :->clawdius" \
+&& ret=0
+    case $state in
+    (clawdius)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:clawdius-command-$line[1]:"
+        case $line[1] in
+            (chat)
+_arguments "${_arguments_options[@]}" : \
+'-m+[Model to use (defaults to provider'\''s default model)]:MODEL:_default' \
+'--model=[Model to use (defaults to provider'\''s default model)]:MODEL:_default' \
+'-P+[Provider to use (anthropic, openai, deepseek, ollama, zai, openrouter)]:PROVIDER:_default' \
+'--provider=[Provider to use (anthropic, openai, deepseek, ollama, zai, openrouter)]:PROVIDER:_default' \
+'-s+[Continue from session ID]:SESSION:_default' \
+'--session=[Continue from session ID]:SESSION:_default' \
+'-M+[Agent mode (code, architect, ask, debug, review, refactor, test, auto, or custom mode name)]:MODE:_default' \
+'--mode=[Agent mode (code, architect, ask, debug, review, refactor, test, auto, or custom mode name)]:MODE:_default' \
+'--generate-completions=[Generate shell completions to stdout (bash|zsh|fish|powershell)]:GENERATE_COMPLETIONS:_default' \
+'-e[Open external editor to compose message]' \
+'--editor[Open external editor to compose message]' \
+'--exit[Non-interactive mode - exit after response (auto-enabled when prompt provided)]' \
+'--quiet[Quiet mode (suppress all output except response)]' \
+'--auto-approve[Autonomous mode - auto-approve all tool executions]' \
+'-h[Print help]' \
+'--help[Print help]' \
+'::prompt -- The message to send (use '\''-'\'' for stdin):_default' \
+&& ret=0
+;;
+(auto)
+_arguments "${_arguments_options[@]}" : \
+'-m+[Model to use (defaults to provider'\''s default model)]:MODEL:_default' \
+'--model=[Model to use (defaults to provider'\''s default model)]:MODEL:_default' \
+'-P+[Provider to use (anthropic, openai, deepseek, ollama, zai, openrouter)]:PROVIDER:_default' \
+'--provider=[Provider to use (anthropic, openai, deepseek, ollama, zai, openrouter)]:PROVIDER:_default' \
+'--max-iterations=[Maximum iterations before stopping (default\: 50)]:MAX_ITERATIONS:_default' \
+'--output-format=[Output format for CI logging (text, json, github-actions)]:OUTPUT_FORMAT:_default' \
+'--generate-completions=[Generate shell completions to stdout (bash|zsh|fish|powershell)]:GENERATE_COMPLETIONS:_default' \
+'--run-tests[Run tests after changes]' \
+'--auto-commit[Commit changes automatically]' \
+'--fail-on-test-failure[Fail if tests fail after changes]' \
+'-h[Print help]' \
+'--help[Print help]' \
+':task -- Task to execute (e.g., '\''fix failing tests'\'', '\''implement feature X'\''):_default' \
+&& ret=0
+;;
+(init)
+_arguments "${_arguments_options[@]}" : \
+'--generate-completions=[Generate shell completions to stdout (bash|zsh|fish|powershell)]:GENERATE_COMPLETIONS:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+'::name -- Project name (defaults to directory name):_default' \
+&& ret=0
+;;
+(setup)
+_arguments "${_arguments_options[@]}" : \
+'-P+[Pre-select provider (anthropic, openai, ollama, zai)]:PROVIDER:_default' \
+'--provider=[Pre-select provider (anthropic, openai, ollama, zai)]:PROVIDER:_default' \
+'--generate-completions=[Generate shell completions to stdout (bash|zsh|fish|powershell)]:GENERATE_COMPLETIONS:_default' \
+'-q[Skip welcome screen]' \
+'--quick[Skip welcome screen]' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(sessions)
+_arguments "${_arguments_options[@]}" : \
+'-d+[Delete a session]:DELETE:_default' \
+'--delete=[Delete a session]:DELETE:_default' \
+'-s+[Search sessions]:SEARCH:_default' \
+'--search=[Search sessions]:SEARCH:_default' \
+'--generate-completions=[Generate shell completions to stdout (bash|zsh|fish|powershell)]:GENERATE_COMPLETIONS:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(refactor)
+_arguments "${_arguments_options[@]}" : \
+'-f+[Source language (e.g., typescript, python)]:FROM:_default' \
+'--from=[Source language (e.g., typescript, python)]:FROM:_default' \
+'-t+[Target language (e.g., rust, go)]:TO:_default' \
+'--to=[Target language (e.g., rust, go)]:TO:_default' \
+'-p+[Path to file or directory]:PATH:_files' \
+'--path=[Path to file or directory]:PATH:_files' \
+'--generate-completions=[Generate shell completions to stdout (bash|zsh|fish|powershell)]:GENERATE_COMPLETIONS:_default' \
+'--dry-run[Preview changes without applying]' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(action)
+_arguments "${_arguments_options[@]}" : \
+'-l+[Line number]:LINE:_default' \
+'--line=[Line number]:LINE:_default' \
+'-c+[Column number]:COLUMN:_default' \
+'--column=[Column number]:COLUMN:_default' \
+'-s+[End line for selection]:END_LINE:_default' \
+'--end-line=[End line for selection]:END_LINE:_default' \
+'--end-column=[End column for selection]:END_COLUMN:_default' \
+'--generate-completions=[Generate shell completions to stdout (bash|zsh|fish|powershell)]:GENERATE_COMPLETIONS:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+':action -- Action to apply (extract-function, extract-variable, inline-variable, rename, move-module, generate-tests):_default' \
+':file -- File path:_files' \
+&& ret=0
+;;
+(test)
+_arguments "${_arguments_options[@]}" : \
+'-f+[Function name to generate tests for (generates for all if not specified)]:FUNCTION:_default' \
+'--function=[Function name to generate tests for (generates for all if not specified)]:FUNCTION:_default' \
+'-o+[Output file path (defaults to <file>_test.<ext>)]:OUTPUT:_files' \
+'--output=[Output file path (defaults to <file>_test.<ext>)]:OUTPUT:_files' \
+'--generate-completions=[Generate shell completions to stdout (bash|zsh|fish|powershell)]:GENERATE_COMPLETIONS:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+':file -- File path:_files' \
+&& ret=0
+;;
+(doc)
+_arguments "${_arguments_options[@]}" : \
+'-e+[Element to document (function, struct, module)]:ELEMENT:_default' \
+'--element=[Element to document (function, struct, module)]:ELEMENT:_default' \
+'-f+[Documentation format (auto, rustdoc, jsdoc, pydoc, markdown)]:FORMAT:_default' \
+'--format=[Documentation format (auto, rustdoc, jsdoc, pydoc, markdown)]:FORMAT:_default' \
+'-o+[Output file path (defaults to stdout)]:OUTPUT:_files' \
+'--output=[Output file path (defaults to stdout)]:OUTPUT:_files' \
+'--generate-completions=[Generate shell completions to stdout (bash|zsh|fish|powershell)]:GENERATE_COMPLETIONS:_default' \
+'--inline[Include inline comments]' \
+'-h[Print help]' \
+'--help[Print help]' \
+':file -- File path:_files' \
+&& ret=0
+;;
+(verify)
+_arguments "${_arguments_options[@]}" : \
+'-p+[Path to .lean proof file or directory]:PROOF:_files' \
+'--proof=[Path to .lean proof file or directory]:PROOF:_files' \
+'--lean-path=[Path to lean binary]:LEAN_PATH:_files' \
+'--generate-completions=[Generate shell completions to stdout (bash|zsh|fish|powershell)]:GENERATE_COMPLETIONS:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(metrics)
+_arguments "${_arguments_options[@]}" : \
+'-f+[Output format (text, json, html)]:FORMAT:(text json html)' \
+'--format=[Output format (text, json, html)]:FORMAT:(text json html)' \
+'-o+[Output file path (prints to stdout if not specified)]:OUTPUT:_files' \
+'--output=[Output file path (prints to stdout if not specified)]:OUTPUT:_files' \
+'--generate-completions=[Generate shell completions to stdout (bash|zsh|fish|powershell)]:GENERATE_COMPLETIONS:_default' \
+'-r[Reset metrics after displaying]' \
+'--reset[Reset metrics after displaying]' \
+'-w[Watch mode - continuously display metrics]' \
+'--watch[Watch mode - continuously display metrics]' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(telemetry)
+_arguments "${_arguments_options[@]}" : \
+'--generate-completions=[Generate shell completions to stdout (bash|zsh|fish|powershell)]:GENERATE_COMPLETIONS:_default' \
+'-e[Enable telemetry]' \
+'--enable[Enable telemetry]' \
+'-d[Disable telemetry]' \
+'--disable[Disable telemetry]' \
+'--enable-metrics[Enable metrics collection]' \
+'--enable-crash-reporting[Enable crash reporting]' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(checkpoint)
+_arguments "${_arguments_options[@]}" : \
+'--generate-completions=[Generate shell completions to stdout (bash|zsh|fish|powershell)]:GENERATE_COMPLETIONS:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+":: :_clawdius__subcmd__checkpoint_commands" \
+"*::: :->checkpoint" \
+&& ret=0
+
+    case $state in
+    (checkpoint)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:clawdius-checkpoint-command-$line[1]:"
+        case $line[1] in
+            (create)
+_arguments "${_arguments_options[@]}" : \
+'-s+[Session ID (defaults to current session)]:SESSION:_default' \
+'--session=[Session ID (defaults to current session)]:SESSION:_default' \
+'--generate-completions=[Generate shell completions to stdout (bash|zsh|fish|powershell)]:GENERATE_COMPLETIONS:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+':description -- Description for the checkpoint:_default' \
+&& ret=0
+;;
+(list)
+_arguments "${_arguments_options[@]}" : \
+'-s+[Session ID (defaults to current session)]:SESSION:_default' \
+'--session=[Session ID (defaults to current session)]:SESSION:_default' \
+'--generate-completions=[Generate shell completions to stdout (bash|zsh|fish|powershell)]:GENERATE_COMPLETIONS:_default' \
+'-v[Show file details]' \
+'--verbose[Show file details]' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(show)
+_arguments "${_arguments_options[@]}" : \
+'--generate-completions=[Generate shell completions to stdout (bash|zsh|fish|powershell)]:GENERATE_COMPLETIONS:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+':checkpoint_id -- Checkpoint ID to show:_default' \
+&& ret=0
+;;
+(restore)
+_arguments "${_arguments_options[@]}" : \
+'--generate-completions=[Generate shell completions to stdout (bash|zsh|fish|powershell)]:GENERATE_COMPLETIONS:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+':checkpoint_id -- Checkpoint ID to restore:_default' \
+&& ret=0
+;;
+(compare)
+_arguments "${_arguments_options[@]}" : \
+'--generate-completions=[Generate shell completions to stdout (bash|zsh|fish|powershell)]:GENERATE_COMPLETIONS:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+':checkpoint_id1 -- First checkpoint ID:_default' \
+':checkpoint_id2 -- Second checkpoint ID:_default' \
+&& ret=0
+;;
+(delete)
+_arguments "${_arguments_options[@]}" : \
+'--generate-completions=[Generate shell completions to stdout (bash|zsh|fish|powershell)]:GENERATE_COMPLETIONS:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+':checkpoint_id -- Checkpoint ID to delete:_default' \
+&& ret=0
+;;
+(cleanup)
+_arguments "${_arguments_options[@]}" : \
+'-s+[Session ID (defaults to current session)]:SESSION:_default' \
+'--session=[Session ID (defaults to current session)]:SESSION:_default' \
+'-k+[Number of checkpoints to keep]:KEEP:_default' \
+'--keep=[Number of checkpoints to keep]:KEEP:_default' \
+'--generate-completions=[Generate shell completions to stdout (bash|zsh|fish|powershell)]:GENERATE_COMPLETIONS:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(timeline)
+_arguments "${_arguments_options[@]}" : \
+'-s+[Session ID (defaults to current session)]:SESSION:_default' \
+'--session=[Session ID (defaults to current session)]:SESSION:_default' \
+'--generate-completions=[Generate shell completions to stdout (bash|zsh|fish|powershell)]:GENERATE_COMPLETIONS:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+":: :_clawdius__subcmd__checkpoint__subcmd__help_commands" \
+"*::: :->help" \
+&& ret=0
+
+    case $state in
+    (help)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:clawdius-checkpoint-help-command-$line[1]:"
+        case $line[1] in
+            (create)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(list)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(show)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(restore)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(compare)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(delete)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(cleanup)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(timeline)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+;;
+(timeline)
+_arguments "${_arguments_options[@]}" : \
+'--generate-completions=[Generate shell completions to stdout (bash|zsh|fish|powershell)]:GENERATE_COMPLETIONS:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+":: :_clawdius__subcmd__timeline_commands" \
+"*::: :->timeline" \
+&& ret=0
+
+    case $state in
+    (timeline)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:clawdius-timeline-command-$line[1]:"
+        case $line[1] in
+            (create)
+_arguments "${_arguments_options[@]}" : \
+'-d+[Description for the checkpoint]:DESCRIPTION:_default' \
+'--description=[Description for the checkpoint]:DESCRIPTION:_default' \
+'--generate-completions=[Generate shell completions to stdout (bash|zsh|fish|powershell)]:GENERATE_COMPLETIONS:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+':name -- Name for the checkpoint:_default' \
+&& ret=0
+;;
+(list)
+_arguments "${_arguments_options[@]}" : \
+'--generate-completions=[Generate shell completions to stdout (bash|zsh|fish|powershell)]:GENERATE_COMPLETIONS:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(watch)
+_arguments "${_arguments_options[@]}" : \
+'-d+[Debounce interval in seconds]:DEBOUNCE_SECS:_default' \
+'--debounce-secs=[Debounce interval in seconds]:DEBOUNCE_SECS:_default' \
+'*-i+[Additional patterns to ignore (can be repeated)]:IGNORE:_default' \
+'*--ignore=[Additional patterns to ignore (can be repeated)]:IGNORE:_default' \
+'-m+[Maximum checkpoints per hour]:MAX_PER_HOUR:_default' \
+'--max-per-hour=[Maximum checkpoints per hour]:MAX_PER_HOUR:_default' \
+'--generate-completions=[Generate shell completions to stdout (bash|zsh|fish|powershell)]:GENERATE_COMPLETIONS:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(rollback)
+_arguments "${_arguments_options[@]}" : \
+'--generate-completions=[Generate shell completions to stdout (bash|zsh|fish|powershell)]:GENERATE_COMPLETIONS:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+':checkpoint_id -- Checkpoint ID to rollback to:_default' \
+&& ret=0
+;;
+(diff)
+_arguments "${_arguments_options[@]}" : \
+'--generate-completions=[Generate shell completions to stdout (bash|zsh|fish|powershell)]:GENERATE_COMPLETIONS:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+':from -- From checkpoint ID:_default' \
+':to -- To checkpoint ID:_default' \
+&& ret=0
+;;
+(history)
+_arguments "${_arguments_options[@]}" : \
+'--generate-completions=[Generate shell completions to stdout (bash|zsh|fish|powershell)]:GENERATE_COMPLETIONS:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+':file -- File path to show history for:_files' \
+&& ret=0
+;;
+(delete)
+_arguments "${_arguments_options[@]}" : \
+'--generate-completions=[Generate shell completions to stdout (bash|zsh|fish|powershell)]:GENERATE_COMPLETIONS:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+':checkpoint_id -- Checkpoint ID to delete:_default' \
+&& ret=0
+;;
+(cleanup)
+_arguments "${_arguments_options[@]}" : \
+'-k+[Number of checkpoints to keep]:KEEP:_default' \
+'--keep=[Number of checkpoints to keep]:KEEP:_default' \
+'--generate-completions=[Generate shell completions to stdout (bash|zsh|fish|powershell)]:GENERATE_COMPLETIONS:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+":: :_clawdius__subcmd__timeline__subcmd__help_commands" \
+"*::: :->help" \
+&& ret=0
+
+    case $state in
+    (help)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:clawdius-timeline-help-command-$line[1]:"
+        case $line[1] in
+            (create)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(list)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(watch)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(rollback)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(diff)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(history)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(delete)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(cleanup)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+;;
+(modes)
+_arguments "${_arguments_options[@]}" : \
+'--generate-completions=[Generate shell completions to stdout (bash|zsh|fish|powershell)]:GENERATE_COMPLETIONS:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+":: :_clawdius__subcmd__modes_commands" \
+"*::: :->modes" \
+&& ret=0
+
+    case $state in
+    (modes)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:clawdius-modes-command-$line[1]:"
+        case $line[1] in
+            (list)
+_arguments "${_arguments_options[@]}" : \
+'--generate-completions=[Generate shell completions to stdout (bash|zsh|fish|powershell)]:GENERATE_COMPLETIONS:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(create)
+_arguments "${_arguments_options[@]}" : \
+'-o+[Path to save mode configuration]:OUTPUT:_files' \
+'--output=[Path to save mode configuration]:OUTPUT:_files' \
+'--generate-completions=[Generate shell completions to stdout (bash|zsh|fish|powershell)]:GENERATE_COMPLETIONS:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+':name -- Name for the new mode:_default' \
+&& ret=0
+;;
+(show)
+_arguments "${_arguments_options[@]}" : \
+'--generate-completions=[Generate shell completions to stdout (bash|zsh|fish|powershell)]:GENERATE_COMPLETIONS:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+':name -- Mode name:_default' \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+":: :_clawdius__subcmd__modes__subcmd__help_commands" \
+"*::: :->help" \
+&& ret=0
+
+    case $state in
+    (help)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:clawdius-modes-help-command-$line[1]:"
+        case $line[1] in
+            (list)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(create)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(show)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+;;
+(lang)
+_arguments "${_arguments_options[@]}" : \
+'--generate-completions=[Generate shell completions to stdout (bash|zsh|fish|powershell)]:GENERATE_COMPLETIONS:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+":: :_clawdius__subcmd__lang_commands" \
+"*::: :->lang" \
+&& ret=0
+
+    case $state in
+    (lang)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:clawdius-lang-command-$line[1]:"
+        case $line[1] in
+            (list)
+_arguments "${_arguments_options[@]}" : \
+'--generate-completions=[Generate shell completions to stdout (bash|zsh|fish|powershell)]:GENERATE_COMPLETIONS:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(set)
+_arguments "${_arguments_options[@]}" : \
+'--generate-completions=[Generate shell completions to stdout (bash|zsh|fish|powershell)]:GENERATE_COMPLETIONS:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+':code -- Language code (en, zh, ja, ko, de, fr, es, it, pt, ru):_default' \
+&& ret=0
+;;
+(show)
+_arguments "${_arguments_options[@]}" : \
+'--generate-completions=[Generate shell completions to stdout (bash|zsh|fish|powershell)]:GENERATE_COMPLETIONS:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+":: :_clawdius__subcmd__lang__subcmd__help_commands" \
+"*::: :->help" \
+&& ret=0
+
+    case $state in
+    (help)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:clawdius-lang-help-command-$line[1]:"
+        case $line[1] in
+            (list)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(set)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(show)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+;;
+(edit)
+_arguments "${_arguments_options[@]}" : \
+'-i+[Optional initial content]:INITIAL:_default' \
+'--initial=[Optional initial content]:INITIAL:_default' \
+'-e+[Editor to use (defaults to \$EDITOR)]:EDITOR:_default' \
+'--editor=[Editor to use (defaults to \$EDITOR)]:EDITOR:_default' \
+'-x+[File extension for syntax highlighting (default\: md)]:EXTENSION:_default' \
+'--extension=[File extension for syntax highlighting (default\: md)]:EXTENSION:_default' \
+'--generate-completions=[Generate shell completions to stdout (bash|zsh|fish|powershell)]:GENERATE_COMPLETIONS:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(webhook)
+_arguments "${_arguments_options[@]}" : \
+'--generate-completions=[Generate shell completions to stdout (bash|zsh|fish|powershell)]:GENERATE_COMPLETIONS:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+":: :_clawdius__subcmd__webhook_commands" \
+"*::: :->webhook" \
+&& ret=0
+
+    case $state in
+    (webhook)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:clawdius-webhook-command-$line[1]:"
+        case $line[1] in
+            (list)
+_arguments "${_arguments_options[@]}" : \
+'--generate-completions=[Generate shell completions to stdout (bash|zsh|fish|powershell)]:GENERATE_COMPLETIONS:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(create)
+_arguments "${_arguments_options[@]}" : \
+'-E+[Events to subscribe to (comma-separated)]:EVENTS:_default' \
+'--events=[Events to subscribe to (comma-separated)]:EVENTS:_default' \
+'-s+[Secret for signature verification]:SECRET:_default' \
+'--secret=[Secret for signature verification]:SECRET:_default' \
+'--generate-completions=[Generate shell completions to stdout (bash|zsh|fish|powershell)]:GENERATE_COMPLETIONS:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+':name -- Webhook name:_default' \
+':url -- Target URL:_default' \
+&& ret=0
+;;
+(show)
+_arguments "${_arguments_options[@]}" : \
+'--generate-completions=[Generate shell completions to stdout (bash|zsh|fish|powershell)]:GENERATE_COMPLETIONS:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+':id -- Webhook ID:_default' \
+&& ret=0
+;;
+(update)
+_arguments "${_arguments_options[@]}" : \
+'-u+[New target URL]:URL:_default' \
+'--url=[New target URL]:URL:_default' \
+'-E+[New events (comma-separated)]:EVENTS:_default' \
+'--events=[New events (comma-separated)]:EVENTS:_default' \
+'--generate-completions=[Generate shell completions to stdout (bash|zsh|fish|powershell)]:GENERATE_COMPLETIONS:_default' \
+'-e[Enable webhook]' \
+'--enable[Enable webhook]' \
+'-D[Disable webhook]' \
+'--disable[Disable webhook]' \
+'-h[Print help]' \
+'--help[Print help]' \
+':id -- Webhook ID:_default' \
+&& ret=0
+;;
+(delete)
+_arguments "${_arguments_options[@]}" : \
+'--generate-completions=[Generate shell completions to stdout (bash|zsh|fish|powershell)]:GENERATE_COMPLETIONS:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+':id -- Webhook ID:_default' \
+&& ret=0
+;;
+(test)
+_arguments "${_arguments_options[@]}" : \
+'-e+[Event type to test]:EVENT:_default' \
+'--event=[Event type to test]:EVENT:_default' \
+'--generate-completions=[Generate shell completions to stdout (bash|zsh|fish|powershell)]:GENERATE_COMPLETIONS:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+':id -- Webhook ID:_default' \
+&& ret=0
+;;
+(deliveries)
+_arguments "${_arguments_options[@]}" : \
+'-n+[Number of deliveries to show]:LIMIT:_default' \
+'--limit=[Number of deliveries to show]:LIMIT:_default' \
+'--generate-completions=[Generate shell completions to stdout (bash|zsh|fish|powershell)]:GENERATE_COMPLETIONS:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+'::id -- Webhook ID (optional):_default' \
+&& ret=0
+;;
+(stats)
+_arguments "${_arguments_options[@]}" : \
+'--generate-completions=[Generate shell completions to stdout (bash|zsh|fish|powershell)]:GENERATE_COMPLETIONS:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+":: :_clawdius__subcmd__webhook__subcmd__help_commands" \
+"*::: :->help" \
+&& ret=0
+
+    case $state in
+    (help)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:clawdius-webhook-help-command-$line[1]:"
+        case $line[1] in
+            (list)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(create)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(show)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(update)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(delete)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(test)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(deliveries)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(stats)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+;;
+(generate)
+_arguments "${_arguments_options[@]}" : \
+'-f+[Target files to generate/modify (comma-separated)]:FILES:_default' \
+'--files=[Target files to generate/modify (comma-separated)]:FILES:_default' \
+'-M+[Generation mode\: single-pass, iterative, agent]:MODE:_default' \
+'--mode=[Generation mode\: single-pass, iterative, agent]:MODE:_default' \
+'-T+[Trust level for apply\: low, medium, high]:TRUST:_default' \
+'--trust=[Trust level for apply\: low, medium, high]:TRUST:_default' \
+'-t+[Test execution strategy\: sandboxed, direct, skip]:TEST_STRATEGY:_default' \
+'--test-strategy=[Test execution strategy\: sandboxed, direct, skip]:TEST_STRATEGY:_default' \
+'-i+[Max iterations for iterative/agent mode]:MAX_ITERATIONS:_default' \
+'--max-iterations=[Max iterations for iterative/agent mode]:MAX_ITERATIONS:_default' \
+'-P+[LLM provider to use]:PROVIDER:_default' \
+'--provider=[LLM provider to use]:PROVIDER:_default' \
+'-m+[Model to use]:MODEL:_default' \
+'--model=[Model to use]:MODEL:_default' \
+'-R+[Timeout in seconds for LLM operations]:TIMEOUT_SECS:_default' \
+'--timeout-secs=[Timeout in seconds for LLM operations]:TIMEOUT_SECS:_default' \
+'--generate-completions=[Generate shell completions to stdout (bash|zsh|fish|powershell)]:GENERATE_COMPLETIONS:_default' \
+'--dry-run[Dry run - preview changes without applying]' \
+'-h[Print help]' \
+'--help[Print help]' \
+':prompt -- Description of what to generate:_default' \
+&& ret=0
+;;
+(lsp)
+_arguments "${_arguments_options[@]}" : \
+'--generate-completions=[Generate shell completions to stdout (bash|zsh|fish|powershell)]:GENERATE_COMPLETIONS:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+":: :_clawdius__subcmd__lsp_commands" \
+"*::: :->lsp" \
+&& ret=0
+
+    case $state in
+    (lsp)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:clawdius-lsp-command-$line[1]:"
+        case $line[1] in
+            (start)
+_arguments "${_arguments_options[@]}" : \
+'-r+[Root URI for the workspace]:ROOT:_default' \
+'--root=[Root URI for the workspace]:ROOT:_default' \
+'--generate-completions=[Generate shell completions to stdout (bash|zsh|fish|powershell)]:GENERATE_COMPLETIONS:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+':server -- Language server command (e.g., '\''rust-analyzer'\''):_default' \
+'*::args -- Arguments for the server:_default' \
+&& ret=0
+;;
+(complete)
+_arguments "${_arguments_options[@]}" : \
+'-l+[Line number (0-indexed)]:LINE:_default' \
+'--line=[Line number (0-indexed)]:LINE:_default' \
+'-c+[Column number (0-indexed)]:COLUMN:_default' \
+'--column=[Column number (0-indexed)]:COLUMN:_default' \
+'--generate-completions=[Generate shell completions to stdout (bash|zsh|fish|powershell)]:GENERATE_COMPLETIONS:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+':uri -- File URI:_default' \
+&& ret=0
+;;
+(hover)
+_arguments "${_arguments_options[@]}" : \
+'-l+[Line number (0-indexed)]:LINE:_default' \
+'--line=[Line number (0-indexed)]:LINE:_default' \
+'-c+[Column number (0-indexed)]:COLUMN:_default' \
+'--column=[Column number (0-indexed)]:COLUMN:_default' \
+'--generate-completions=[Generate shell completions to stdout (bash|zsh|fish|powershell)]:GENERATE_COMPLETIONS:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+':uri -- File URI:_default' \
+&& ret=0
+;;
+(definition)
+_arguments "${_arguments_options[@]}" : \
+'-l+[Line number (0-indexed)]:LINE:_default' \
+'--line=[Line number (0-indexed)]:LINE:_default' \
+'-c+[Column number (0-indexed)]:COLUMN:_default' \
+'--column=[Column number (0-indexed)]:COLUMN:_default' \
+'--generate-completions=[Generate shell completions to stdout (bash|zsh|fish|powershell)]:GENERATE_COMPLETIONS:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+':uri -- File URI:_default' \
+&& ret=0
+;;
+(references)
+_arguments "${_arguments_options[@]}" : \
+'-l+[Line number (0-indexed)]:LINE:_default' \
+'--line=[Line number (0-indexed)]:LINE:_default' \
+'-c+[Column number (0-indexed)]:COLUMN:_default' \
+'--column=[Column number (0-indexed)]:COLUMN:_default' \
+'--generate-completions=[Generate shell completions to stdout (bash|zsh|fish|powershell)]:GENERATE_COMPLETIONS:_default' \
+'--include-declaration[Include declaration]' \
+'-h[Print help]' \
+'--help[Print help]' \
+':uri -- File URI:_default' \
+&& ret=0
+;;
+(symbols)
+_arguments "${_arguments_options[@]}" : \
+'--generate-completions=[Generate shell completions to stdout (bash|zsh|fish|powershell)]:GENERATE_COMPLETIONS:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+':uri -- File URI:_default' \
+&& ret=0
+;;
+(diagnostics)
+_arguments "${_arguments_options[@]}" : \
+'--generate-completions=[Generate shell completions to stdout (bash|zsh|fish|powershell)]:GENERATE_COMPLETIONS:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+':uri -- File URI:_default' \
+&& ret=0
+;;
+(code-actions)
+_arguments "${_arguments_options[@]}" : \
+'-l+[Start line (0-indexed)]:START_LINE:_default' \
+'--start-line=[Start line (0-indexed)]:START_LINE:_default' \
+'-c+[Start column (0-indexed)]:START_COLUMN:_default' \
+'--start-column=[Start column (0-indexed)]:START_COLUMN:_default' \
+'-L+[End line (0-indexed)]:END_LINE:_default' \
+'--end-line=[End line (0-indexed)]:END_LINE:_default' \
+'-C+[End column (0-indexed)]:END_COLUMN:_default' \
+'--end-column=[End column (0-indexed)]:END_COLUMN:_default' \
+'--generate-completions=[Generate shell completions to stdout (bash|zsh|fish|powershell)]:GENERATE_COMPLETIONS:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+':uri -- File URI:_default' \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+":: :_clawdius__subcmd__lsp__subcmd__help_commands" \
+"*::: :->help" \
+&& ret=0
+
+    case $state in
+    (help)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:clawdius-lsp-help-command-$line[1]:"
+        case $line[1] in
+            (start)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(complete)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(hover)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(definition)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(references)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(symbols)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(diagnostics)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(code-actions)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+;;
+(memory)
+_arguments "${_arguments_options[@]}" : \
+'--generate-completions=[Generate shell completions to stdout (bash|zsh|fish|powershell)]:GENERATE_COMPLETIONS:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+":: :_clawdius__subcmd__memory_commands" \
+"*::: :->memory" \
+&& ret=0
+
+    case $state in
+    (memory)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:clawdius-memory-command-$line[1]:"
+        case $line[1] in
+            (show)
+_arguments "${_arguments_options[@]}" : \
+'--generate-completions=[Generate shell completions to stdout (bash|zsh|fish|powershell)]:GENERATE_COMPLETIONS:_default' \
+'-i[Show as LLM-ready instructions]' \
+'--instructions[Show as LLM-ready instructions]' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(learn)
+_arguments "${_arguments_options[@]}" : \
+'-d+[Optional description]:DESCRIPTION:_default' \
+'--description=[Optional description]:DESCRIPTION:_default' \
+'--generate-completions=[Generate shell completions to stdout (bash|zsh|fish|powershell)]:GENERATE_COMPLETIONS:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+':entry_type -- Type of entry\: build, test, debug, pattern, preference:_default' \
+':content -- Entry content (key=value or command):_default' \
+&& ret=0
+;;
+(instructions)
+_arguments "${_arguments_options[@]}" : \
+'--generate-completions=[Generate shell completions to stdout (bash|zsh|fish|powershell)]:GENERATE_COMPLETIONS:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+':content -- Instructions content (or '\''-'\'' to read from stdin):_default' \
+&& ret=0
+;;
+(list)
+_arguments "${_arguments_options[@]}" : \
+'--generate-completions=[Generate shell completions to stdout (bash|zsh|fish|powershell)]:GENERATE_COMPLETIONS:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+'::category -- Category filter\: build, test, debug, patterns, preferences, all:_default' \
+&& ret=0
+;;
+(clear)
+_arguments "${_arguments_options[@]}" : \
+'--generate-completions=[Generate shell completions to stdout (bash|zsh|fish|powershell)]:GENERATE_COMPLETIONS:_default' \
+'-y[Confirm clearing all entries]' \
+'--yes[Confirm clearing all entries]' \
+'-h[Print help]' \
+'--help[Print help]' \
+'::category -- Category to clear (or '\''all'\'' for everything):_default' \
+&& ret=0
+;;
+(init)
+_arguments "${_arguments_options[@]}" : \
+'-n+[Project name]:NAME:_default' \
+'--name=[Project name]:NAME:_default' \
+'-L+[Primary language]:LANGUAGE:_default' \
+'--language=[Primary language]:LANGUAGE:_default' \
+'-f+[Framework]:FRAMEWORK:_default' \
+'--framework=[Framework]:FRAMEWORK:_default' \
+'--generate-completions=[Generate shell completions to stdout (bash|zsh|fish|powershell)]:GENERATE_COMPLETIONS:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+":: :_clawdius__subcmd__memory__subcmd__help_commands" \
+"*::: :->help" \
+&& ret=0
+
+    case $state in
+    (help)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:clawdius-memory-help-command-$line[1]:"
+        case $line[1] in
+            (show)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(learn)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(instructions)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(list)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(clear)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(init)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+;;
+(models)
+_arguments "${_arguments_options[@]}" : \
+'-H+[Ollama host]:HOST:_default' \
+'--host=[Ollama host]:HOST:_default' \
+'-p+[Ollama port]:PORT:_default' \
+'--port=[Ollama port]:PORT:_default' \
+'--generate-completions=[Generate shell completions to stdout (bash|zsh|fish|powershell)]:GENERATE_COMPLETIONS:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+":: :_clawdius__subcmd__models_commands" \
+"*::: :->models" \
+&& ret=0
+
+    case $state in
+    (models)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:clawdius-models-command-$line[1]:"
+        case $line[1] in
+            (list)
+_arguments "${_arguments_options[@]}" : \
+'--generate-completions=[Generate shell completions to stdout (bash|zsh|fish|powershell)]:GENERATE_COMPLETIONS:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(pull)
+_arguments "${_arguments_options[@]}" : \
+'--generate-completions=[Generate shell completions to stdout (bash|zsh|fish|powershell)]:GENERATE_COMPLETIONS:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+':model -- Model name to pull (e.g., llama3.2, mistral, deepseek-coder):_default' \
+&& ret=0
+;;
+(health)
+_arguments "${_arguments_options[@]}" : \
+'--generate-completions=[Generate shell completions to stdout (bash|zsh|fish|powershell)]:GENERATE_COMPLETIONS:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(current)
+_arguments "${_arguments_options[@]}" : \
+'--generate-completions=[Generate shell completions to stdout (bash|zsh|fish|powershell)]:GENERATE_COMPLETIONS:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+":: :_clawdius__subcmd__models__subcmd__help_commands" \
+"*::: :->help" \
+&& ret=0
+
+    case $state in
+    (help)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:clawdius-models-help-command-$line[1]:"
+        case $line[1] in
+            (list)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(pull)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(health)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(current)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+;;
+(complete)
+_arguments "${_arguments_options[@]}" : \
+'-l+[Programming language]:LANGUAGE:_default' \
+'--language=[Programming language]:LANGUAGE:_default' \
+'-P+[LLM provider to use]:PROVIDER:_default' \
+'--provider=[LLM provider to use]:PROVIDER:_default' \
+'-m+[Model name]:MODEL:_default' \
+'--model=[Model name]:MODEL:_default' \
+'--generate-completions=[Generate shell completions to stdout (bash|zsh|fish|powershell)]:GENERATE_COMPLETIONS:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+':file -- Source file path:_default' \
+':line -- Line number (0-indexed):_default' \
+':character -- Character position (0-indexed):_default' \
+&& ret=0
+;;
+(analyze)
+_arguments "${_arguments_options[@]}" : \
+'-f+[Output format (text, json)]:FORMAT:(text json stream-json)' \
+'--format=[Output format (text, json)]:FORMAT:(text json stream-json)' \
+'-o+[Output file path (prints to stdout if not specified)]:OUTPUT:_files' \
+'--output=[Output file path (prints to stdout if not specified)]:OUTPUT:_files' \
+'--severity=[Minimum severity level to report (low, medium, high, critical)]:SEVERITY:_default' \
+'--exclude=[Exclude patterns (comma-separated)]:EXCLUDE:_default' \
+'--generate-completions=[Generate shell completions to stdout (bash|zsh|fish|powershell)]:GENERATE_COMPLETIONS:_default' \
+'(--debt)--drift[Analyze for architecture drift only]' \
+'(--drift)--debt[Analyze for technical debt only]' \
+'-h[Print help]' \
+'--help[Print help]' \
+'::path -- Path to analyze (file or directory):_files' \
+&& ret=0
+;;
+(watch)
+_arguments "${_arguments_options[@]}" : \
+'--ignore=[Patterns to ignore (comma-separated)]:IGNORE:_default' \
+'--debounce-ms=[Debounce interval in milliseconds]:DEBOUNCE_MS:_default' \
+'--generate-completions=[Generate shell completions to stdout (bash|zsh|fish|powershell)]:GENERATE_COMPLETIONS:_default' \
+'--auto-analyze[Enable auto-analysis on changes]' \
+'-v[Enable verbose output]' \
+'--verbose[Enable verbose output]' \
+'-h[Print help]' \
+'--help[Print help]' \
+'::path -- Path to watch (file or directory):_files' \
+&& ret=0
+;;
+(git)
+_arguments "${_arguments_options[@]}" : \
+'--generate-completions=[Generate shell completions to stdout (bash|zsh|fish|powershell)]:GENERATE_COMPLETIONS:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+":: :_clawdius__subcmd__git_commands" \
+"*::: :->git" \
+&& ret=0
+
+    case $state in
+    (git)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:clawdius-git-command-$line[1]:"
+        case $line[1] in
+            (commit)
+_arguments "${_arguments_options[@]}" : \
+'-m+[Commit message hint (optional)]:MESSAGE:_default' \
+'--message=[Commit message hint (optional)]:MESSAGE:_default' \
+'--generate-completions=[Generate shell completions to stdout (bash|zsh|fish|powershell)]:GENERATE_COMPLETIONS:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+'*::files -- Files to stage (default\: all modified):_default' \
+&& ret=0
+;;
+(diff)
+_arguments "${_arguments_options[@]}" : \
+'--generate-completions=[Generate shell completions to stdout (bash|zsh|fish|powershell)]:GENERATE_COMPLETIONS:_default' \
+'-s[Show staged diff instead of working diff]' \
+'--staged[Show staged diff instead of working diff]' \
+'-h[Print help]' \
+'--help[Print help]' \
+'::file -- Specific file to diff:_default' \
+&& ret=0
+;;
+(status)
+_arguments "${_arguments_options[@]}" : \
+'--generate-completions=[Generate shell completions to stdout (bash|zsh|fish|powershell)]:GENERATE_COMPLETIONS:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+":: :_clawdius__subcmd__git__subcmd__help_commands" \
+"*::: :->help" \
+&& ret=0
+
+    case $state in
+    (help)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:clawdius-git-help-command-$line[1]:"
+        case $line[1] in
+            (commit)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(diff)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(status)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+;;
+(sprint)
+_arguments "${_arguments_options[@]}" : \
+'-n+[Maximum build-test iterations]:MAX_ITERATIONS:_default' \
+'--max-iterations=[Maximum build-test iterations]:MAX_ITERATIONS:_default' \
+'-P+[LLM provider]:PROVIDER:_default' \
+'--provider=[LLM provider]:PROVIDER:_default' \
+'-m+[Specific model to use]:MODEL:_default' \
+'--model=[Specific model to use]:MODEL:_default' \
+'--browser-qa-url=[URL for browser-based QA in the Test phase]:BROWSER_QA_URL:_default' \
+'--lsp=[LSP server command for code intelligence (e.g., --lsp "rust-analyzer")]:COMMAND:_default' \
+'--generate-completions=[Generate shell completions to stdout (bash|zsh|fish|powershell)]:GENERATE_COMPLETIONS:_default' \
+'--real-execution[Enable real command execution (build, test)]' \
+'--auto-approve[Auto-approve all phases without confirmation]' \
+'--resume[Resume from the most recent saved sprint state]' \
+'-h[Print help]' \
+'--help[Print help]' \
+':task -- Task description for the sprint:_default' \
+&& ret=0
+;;
+(ship)
+_arguments "${_arguments_options[@]}" : \
+'--generate-completions=[Generate shell completions to stdout (bash|zsh|fish|powershell)]:GENERATE_COMPLETIONS:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+":: :_clawdius__subcmd__ship_commands" \
+"*::: :->ship" \
+&& ret=0
+
+    case $state in
+    (ship)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:clawdius-ship-command-$line[1]:"
+        case $line[1] in
+            (checks)
+_arguments "${_arguments_options[@]}" : \
+'-b+[Branch name (default\: current branch)]:BRANCH:_default' \
+'--branch=[Branch name (default\: current branch)]:BRANCH:_default' \
+'*-f+[Changed files to check]:FILES:_default' \
+'*--files=[Changed files to check]:FILES:_default' \
+'--generate-completions=[Generate shell completions to stdout (bash|zsh|fish|powershell)]:GENERATE_COMPLETIONS:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(commit-message)
+_arguments "${_arguments_options[@]}" : \
+'*-f+[Changed files]:FILES:_default' \
+'*--files=[Changed files]:FILES:_default' \
+'-d+[Description of the changes]:DESCRIPTION:_default' \
+'--description=[Description of the changes]:DESCRIPTION:_default' \
+'-s+[Commit scope (e.g. "core", "api")]:SCOPE:_default' \
+'--scope=[Commit scope (e.g. "core", "api")]:SCOPE:_default' \
+'--generate-completions=[Generate shell completions to stdout (bash|zsh|fish|powershell)]:GENERATE_COMPLETIONS:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+":: :_clawdius__subcmd__ship__subcmd__help_commands" \
+"*::: :->help" \
+&& ret=0
+
+    case $state in
+    (help)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:clawdius-ship-help-command-$line[1]:"
+        case $line[1] in
+            (checks)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(commit-message)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+;;
+(skill)
+_arguments "${_arguments_options[@]}" : \
+'--generate-completions=[Generate shell completions to stdout (bash|zsh|fish|powershell)]:GENERATE_COMPLETIONS:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+":: :_clawdius__subcmd__skill_commands" \
+"*::: :->skill" \
+&& ret=0
+
+    case $state in
+    (skill)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:clawdius-skill-command-$line[1]:"
+        case $line[1] in
+            (list)
+_arguments "${_arguments_options[@]}" : \
+'--generate-completions=[Generate shell completions to stdout (bash|zsh|fish|powershell)]:GENERATE_COMPLETIONS:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(run)
+_arguments "${_arguments_options[@]}" : \
+'--generate-completions=[Generate shell completions to stdout (bash|zsh|fish|powershell)]:GENERATE_COMPLETIONS:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+':name -- Skill name:_default' \
+'::arguments -- Arguments to pass to the skill:_default' \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+":: :_clawdius__subcmd__skill__subcmd__help_commands" \
+"*::: :->help" \
+&& ret=0
+
+    case $state in
+    (help)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:clawdius-skill-help-command-$line[1]:"
+        case $line[1] in
+            (list)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(run)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+;;
+(server)
+_arguments "${_arguments_options[@]}" : \
+'--host=[]:HOST:_default' \
+'-p+[]:PORT:_default' \
+'--port=[]:PORT:_default' \
+'--generate-completions=[Generate shell completions to stdout (bash|zsh|fish|powershell)]:GENERATE_COMPLETIONS:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(config)
+_arguments "${_arguments_options[@]}" : \
+'--generate-completions=[Generate shell completions to stdout (bash|zsh|fish|powershell)]:GENERATE_COMPLETIONS:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+":: :_clawdius__subcmd__config_commands" \
+"*::: :->config" \
+&& ret=0
+
+    case $state in
+    (config)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:clawdius-config-command-$line[1]:"
+        case $line[1] in
+            (show)
+_arguments "${_arguments_options[@]}" : \
+'--generate-completions=[Generate shell completions to stdout (bash|zsh|fish|powershell)]:GENERATE_COMPLETIONS:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(get)
+_arguments "${_arguments_options[@]}" : \
+'--generate-completions=[Generate shell completions to stdout (bash|zsh|fish|powershell)]:GENERATE_COMPLETIONS:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+':key -- Config key (e.g. `llm.default_provider`, llm.anthropic.model):_default' \
+&& ret=0
+;;
+(set)
+_arguments "${_arguments_options[@]}" : \
+'--generate-completions=[Generate shell completions to stdout (bash|zsh|fish|powershell)]:GENERATE_COMPLETIONS:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+':key -- Config key (e.g. `llm.default_provider`, llm.anthropic.model, `llm.anthropic.api_key`):_default' \
+':value -- Value to set:_default' \
+&& ret=0
+;;
+(path)
+_arguments "${_arguments_options[@]}" : \
+'--generate-completions=[Generate shell completions to stdout (bash|zsh|fish|powershell)]:GENERATE_COMPLETIONS:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(list)
+_arguments "${_arguments_options[@]}" : \
+'--generate-completions=[Generate shell completions to stdout (bash|zsh|fish|powershell)]:GENERATE_COMPLETIONS:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+":: :_clawdius__subcmd__config__subcmd__help_commands" \
+"*::: :->help" \
+&& ret=0
+
+    case $state in
+    (help)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:clawdius-config-help-command-$line[1]:"
+        case $line[1] in
+            (show)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(get)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(set)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(path)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(list)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+":: :_clawdius__subcmd__help_commands" \
+"*::: :->help" \
+&& ret=0
+
+    case $state in
+    (help)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:clawdius-help-command-$line[1]:"
+        case $line[1] in
+            (chat)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(auto)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(init)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(setup)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(sessions)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(refactor)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(action)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(test)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(doc)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(verify)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(metrics)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(telemetry)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(checkpoint)
+_arguments "${_arguments_options[@]}" : \
+":: :_clawdius__subcmd__help__subcmd__checkpoint_commands" \
+"*::: :->checkpoint" \
+&& ret=0
+
+    case $state in
+    (checkpoint)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:clawdius-help-checkpoint-command-$line[1]:"
+        case $line[1] in
+            (create)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(list)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(show)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(restore)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(compare)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(delete)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(cleanup)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(timeline)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+(timeline)
+_arguments "${_arguments_options[@]}" : \
+":: :_clawdius__subcmd__help__subcmd__timeline_commands" \
+"*::: :->timeline" \
+&& ret=0
+
+    case $state in
+    (timeline)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:clawdius-help-timeline-command-$line[1]:"
+        case $line[1] in
+            (create)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(list)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(watch)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(rollback)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(diff)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(history)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(delete)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(cleanup)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+(modes)
+_arguments "${_arguments_options[@]}" : \
+":: :_clawdius__subcmd__help__subcmd__modes_commands" \
+"*::: :->modes" \
+&& ret=0
+
+    case $state in
+    (modes)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:clawdius-help-modes-command-$line[1]:"
+        case $line[1] in
+            (list)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(create)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(show)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+(lang)
+_arguments "${_arguments_options[@]}" : \
+":: :_clawdius__subcmd__help__subcmd__lang_commands" \
+"*::: :->lang" \
+&& ret=0
+
+    case $state in
+    (lang)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:clawdius-help-lang-command-$line[1]:"
+        case $line[1] in
+            (list)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(set)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(show)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+(edit)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(webhook)
+_arguments "${_arguments_options[@]}" : \
+":: :_clawdius__subcmd__help__subcmd__webhook_commands" \
+"*::: :->webhook" \
+&& ret=0
+
+    case $state in
+    (webhook)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:clawdius-help-webhook-command-$line[1]:"
+        case $line[1] in
+            (list)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(create)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(show)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(update)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(delete)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(test)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(deliveries)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(stats)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+(generate)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(lsp)
+_arguments "${_arguments_options[@]}" : \
+":: :_clawdius__subcmd__help__subcmd__lsp_commands" \
+"*::: :->lsp" \
+&& ret=0
+
+    case $state in
+    (lsp)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:clawdius-help-lsp-command-$line[1]:"
+        case $line[1] in
+            (start)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(complete)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(hover)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(definition)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(references)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(symbols)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(diagnostics)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(code-actions)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+(memory)
+_arguments "${_arguments_options[@]}" : \
+":: :_clawdius__subcmd__help__subcmd__memory_commands" \
+"*::: :->memory" \
+&& ret=0
+
+    case $state in
+    (memory)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:clawdius-help-memory-command-$line[1]:"
+        case $line[1] in
+            (show)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(learn)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(instructions)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(list)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(clear)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(init)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+(models)
+_arguments "${_arguments_options[@]}" : \
+":: :_clawdius__subcmd__help__subcmd__models_commands" \
+"*::: :->models" \
+&& ret=0
+
+    case $state in
+    (models)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:clawdius-help-models-command-$line[1]:"
+        case $line[1] in
+            (list)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(pull)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(health)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(current)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+(complete)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(analyze)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(watch)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(git)
+_arguments "${_arguments_options[@]}" : \
+":: :_clawdius__subcmd__help__subcmd__git_commands" \
+"*::: :->git" \
+&& ret=0
+
+    case $state in
+    (git)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:clawdius-help-git-command-$line[1]:"
+        case $line[1] in
+            (commit)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(diff)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(status)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+(sprint)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(ship)
+_arguments "${_arguments_options[@]}" : \
+":: :_clawdius__subcmd__help__subcmd__ship_commands" \
+"*::: :->ship" \
+&& ret=0
+
+    case $state in
+    (ship)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:clawdius-help-ship-command-$line[1]:"
+        case $line[1] in
+            (checks)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(commit-message)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+(skill)
+_arguments "${_arguments_options[@]}" : \
+":: :_clawdius__subcmd__help__subcmd__skill_commands" \
+"*::: :->skill" \
+&& ret=0
+
+    case $state in
+    (skill)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:clawdius-help-skill-command-$line[1]:"
+        case $line[1] in
+            (list)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(run)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+(server)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(config)
+_arguments "${_arguments_options[@]}" : \
+":: :_clawdius__subcmd__help__subcmd__config_commands" \
+"*::: :->config" \
+&& ret=0
+
+    case $state in
+    (config)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:clawdius-help-config-command-$line[1]:"
+        case $line[1] in
+            (show)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(get)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(set)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(path)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(list)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+}
+
+(( $+functions[_clawdius_commands] )) ||
+_clawdius_commands() {
+    local commands; commands=(
+'chat:Send a chat message to the LLM' \
+'auto:Autonomous CI/CD mode - run without interaction' \
+'init:Initialize a new Clawdius project in the current directory' \
+'setup:Interactive setup wizard for first-time users' \
+'sessions:List and manage sessions' \
+'refactor:Plan and execute a cross-language refactor' \
+'action:Apply a code action' \
+'test:Generate tests for code' \
+'doc:Generate documentation for code' \
+'verify:Run Lean4 proof verification' \
+'metrics:Show performance metrics' \
+'telemetry:Configure telemetry settings' \
+'checkpoint:Manage file checkpoints' \
+'timeline:Manage file timeline and version history' \
+'modes:Manage agent modes' \
+'lang:Manage language settings' \
+'edit:Edit a long prompt in external editor' \
+'webhook:Manage webhooks for event notifications' \
+'generate:Generate code using agentic AI' \
+'lsp:Language Server Protocol operations' \
+'memory:Manage project memory (CLAWDIUS.md)' \
+'models:Manage local LLM models (Ollama)' \
+'complete:Get inline code completions from LLM' \
+'analyze:Analyze codebase for architecture drift and technical debt' \
+'watch:Watch files for changes and trigger auto-analysis' \
+'git:Git workflow operations' \
+'sprint:Run an agentic sprint (think -> plan -> build -> review -> test -> ship -> reflect)' \
+'ship:Run pre-ship checks or generate a commit message' \
+'skill:List and execute markdown skills' \
+'server:Start the Clawdius HTTP server' \
+'config:View and manage configuration' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'clawdius commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__action_commands] )) ||
+_clawdius__subcmd__action_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius action commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__analyze_commands] )) ||
+_clawdius__subcmd__analyze_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius analyze commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__auto_commands] )) ||
+_clawdius__subcmd__auto_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius auto commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__chat_commands] )) ||
+_clawdius__subcmd__chat_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius chat commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__checkpoint_commands] )) ||
+_clawdius__subcmd__checkpoint_commands() {
+    local commands; commands=(
+'create:Create a checkpoint' \
+'list:List all checkpoints' \
+'show:Show checkpoint details' \
+'restore:Restore to a checkpoint' \
+'compare:Compare two checkpoints' \
+'delete:Delete a checkpoint' \
+'cleanup:Clean up old checkpoints' \
+'timeline:Show checkpoint timeline' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'clawdius checkpoint commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__checkpoint__subcmd__cleanup_commands] )) ||
+_clawdius__subcmd__checkpoint__subcmd__cleanup_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius checkpoint cleanup commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__checkpoint__subcmd__compare_commands] )) ||
+_clawdius__subcmd__checkpoint__subcmd__compare_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius checkpoint compare commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__checkpoint__subcmd__create_commands] )) ||
+_clawdius__subcmd__checkpoint__subcmd__create_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius checkpoint create commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__checkpoint__subcmd__delete_commands] )) ||
+_clawdius__subcmd__checkpoint__subcmd__delete_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius checkpoint delete commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__checkpoint__subcmd__help_commands] )) ||
+_clawdius__subcmd__checkpoint__subcmd__help_commands() {
+    local commands; commands=(
+'create:Create a checkpoint' \
+'list:List all checkpoints' \
+'show:Show checkpoint details' \
+'restore:Restore to a checkpoint' \
+'compare:Compare two checkpoints' \
+'delete:Delete a checkpoint' \
+'cleanup:Clean up old checkpoints' \
+'timeline:Show checkpoint timeline' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'clawdius checkpoint help commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__checkpoint__subcmd__help__subcmd__cleanup_commands] )) ||
+_clawdius__subcmd__checkpoint__subcmd__help__subcmd__cleanup_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius checkpoint help cleanup commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__checkpoint__subcmd__help__subcmd__compare_commands] )) ||
+_clawdius__subcmd__checkpoint__subcmd__help__subcmd__compare_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius checkpoint help compare commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__checkpoint__subcmd__help__subcmd__create_commands] )) ||
+_clawdius__subcmd__checkpoint__subcmd__help__subcmd__create_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius checkpoint help create commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__checkpoint__subcmd__help__subcmd__delete_commands] )) ||
+_clawdius__subcmd__checkpoint__subcmd__help__subcmd__delete_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius checkpoint help delete commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__checkpoint__subcmd__help__subcmd__help_commands] )) ||
+_clawdius__subcmd__checkpoint__subcmd__help__subcmd__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius checkpoint help help commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__checkpoint__subcmd__help__subcmd__list_commands] )) ||
+_clawdius__subcmd__checkpoint__subcmd__help__subcmd__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius checkpoint help list commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__checkpoint__subcmd__help__subcmd__restore_commands] )) ||
+_clawdius__subcmd__checkpoint__subcmd__help__subcmd__restore_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius checkpoint help restore commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__checkpoint__subcmd__help__subcmd__show_commands] )) ||
+_clawdius__subcmd__checkpoint__subcmd__help__subcmd__show_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius checkpoint help show commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__checkpoint__subcmd__help__subcmd__timeline_commands] )) ||
+_clawdius__subcmd__checkpoint__subcmd__help__subcmd__timeline_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius checkpoint help timeline commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__checkpoint__subcmd__list_commands] )) ||
+_clawdius__subcmd__checkpoint__subcmd__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius checkpoint list commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__checkpoint__subcmd__restore_commands] )) ||
+_clawdius__subcmd__checkpoint__subcmd__restore_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius checkpoint restore commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__checkpoint__subcmd__show_commands] )) ||
+_clawdius__subcmd__checkpoint__subcmd__show_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius checkpoint show commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__checkpoint__subcmd__timeline_commands] )) ||
+_clawdius__subcmd__checkpoint__subcmd__timeline_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius checkpoint timeline commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__complete_commands] )) ||
+_clawdius__subcmd__complete_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius complete commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__config_commands] )) ||
+_clawdius__subcmd__config_commands() {
+    local commands; commands=(
+'show:Show current configuration (masks API keys)' \
+'get:Get a specific config value' \
+'set:Set a specific config value' \
+'path:Show the path to the config file' \
+'list:List available config keys' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'clawdius config commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__config__subcmd__get_commands] )) ||
+_clawdius__subcmd__config__subcmd__get_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius config get commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__config__subcmd__help_commands] )) ||
+_clawdius__subcmd__config__subcmd__help_commands() {
+    local commands; commands=(
+'show:Show current configuration (masks API keys)' \
+'get:Get a specific config value' \
+'set:Set a specific config value' \
+'path:Show the path to the config file' \
+'list:List available config keys' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'clawdius config help commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__config__subcmd__help__subcmd__get_commands] )) ||
+_clawdius__subcmd__config__subcmd__help__subcmd__get_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius config help get commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__config__subcmd__help__subcmd__help_commands] )) ||
+_clawdius__subcmd__config__subcmd__help__subcmd__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius config help help commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__config__subcmd__help__subcmd__list_commands] )) ||
+_clawdius__subcmd__config__subcmd__help__subcmd__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius config help list commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__config__subcmd__help__subcmd__path_commands] )) ||
+_clawdius__subcmd__config__subcmd__help__subcmd__path_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius config help path commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__config__subcmd__help__subcmd__set_commands] )) ||
+_clawdius__subcmd__config__subcmd__help__subcmd__set_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius config help set commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__config__subcmd__help__subcmd__show_commands] )) ||
+_clawdius__subcmd__config__subcmd__help__subcmd__show_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius config help show commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__config__subcmd__list_commands] )) ||
+_clawdius__subcmd__config__subcmd__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius config list commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__config__subcmd__path_commands] )) ||
+_clawdius__subcmd__config__subcmd__path_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius config path commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__config__subcmd__set_commands] )) ||
+_clawdius__subcmd__config__subcmd__set_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius config set commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__config__subcmd__show_commands] )) ||
+_clawdius__subcmd__config__subcmd__show_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius config show commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__doc_commands] )) ||
+_clawdius__subcmd__doc_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius doc commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__edit_commands] )) ||
+_clawdius__subcmd__edit_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius edit commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__generate_commands] )) ||
+_clawdius__subcmd__generate_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius generate commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__git_commands] )) ||
+_clawdius__subcmd__git_commands() {
+    local commands; commands=(
+'commit:Stage files and create a commit with an LLM-generated message' \
+'diff:Show a diff of staged or modified files' \
+'status:Show git status summary' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'clawdius git commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__git__subcmd__commit_commands] )) ||
+_clawdius__subcmd__git__subcmd__commit_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius git commit commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__git__subcmd__diff_commands] )) ||
+_clawdius__subcmd__git__subcmd__diff_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius git diff commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__git__subcmd__help_commands] )) ||
+_clawdius__subcmd__git__subcmd__help_commands() {
+    local commands; commands=(
+'commit:Stage files and create a commit with an LLM-generated message' \
+'diff:Show a diff of staged or modified files' \
+'status:Show git status summary' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'clawdius git help commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__git__subcmd__help__subcmd__commit_commands] )) ||
+_clawdius__subcmd__git__subcmd__help__subcmd__commit_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius git help commit commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__git__subcmd__help__subcmd__diff_commands] )) ||
+_clawdius__subcmd__git__subcmd__help__subcmd__diff_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius git help diff commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__git__subcmd__help__subcmd__help_commands] )) ||
+_clawdius__subcmd__git__subcmd__help__subcmd__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius git help help commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__git__subcmd__help__subcmd__status_commands] )) ||
+_clawdius__subcmd__git__subcmd__help__subcmd__status_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius git help status commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__git__subcmd__status_commands] )) ||
+_clawdius__subcmd__git__subcmd__status_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius git status commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help_commands] )) ||
+_clawdius__subcmd__help_commands() {
+    local commands; commands=(
+'chat:Send a chat message to the LLM' \
+'auto:Autonomous CI/CD mode - run without interaction' \
+'init:Initialize a new Clawdius project in the current directory' \
+'setup:Interactive setup wizard for first-time users' \
+'sessions:List and manage sessions' \
+'refactor:Plan and execute a cross-language refactor' \
+'action:Apply a code action' \
+'test:Generate tests for code' \
+'doc:Generate documentation for code' \
+'verify:Run Lean4 proof verification' \
+'metrics:Show performance metrics' \
+'telemetry:Configure telemetry settings' \
+'checkpoint:Manage file checkpoints' \
+'timeline:Manage file timeline and version history' \
+'modes:Manage agent modes' \
+'lang:Manage language settings' \
+'edit:Edit a long prompt in external editor' \
+'webhook:Manage webhooks for event notifications' \
+'generate:Generate code using agentic AI' \
+'lsp:Language Server Protocol operations' \
+'memory:Manage project memory (CLAWDIUS.md)' \
+'models:Manage local LLM models (Ollama)' \
+'complete:Get inline code completions from LLM' \
+'analyze:Analyze codebase for architecture drift and technical debt' \
+'watch:Watch files for changes and trigger auto-analysis' \
+'git:Git workflow operations' \
+'sprint:Run an agentic sprint (think -> plan -> build -> review -> test -> ship -> reflect)' \
+'ship:Run pre-ship checks or generate a commit message' \
+'skill:List and execute markdown skills' \
+'server:Start the Clawdius HTTP server' \
+'config:View and manage configuration' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'clawdius help commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help__subcmd__action_commands] )) ||
+_clawdius__subcmd__help__subcmd__action_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius help action commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help__subcmd__analyze_commands] )) ||
+_clawdius__subcmd__help__subcmd__analyze_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius help analyze commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help__subcmd__auto_commands] )) ||
+_clawdius__subcmd__help__subcmd__auto_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius help auto commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help__subcmd__chat_commands] )) ||
+_clawdius__subcmd__help__subcmd__chat_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius help chat commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help__subcmd__checkpoint_commands] )) ||
+_clawdius__subcmd__help__subcmd__checkpoint_commands() {
+    local commands; commands=(
+'create:Create a checkpoint' \
+'list:List all checkpoints' \
+'show:Show checkpoint details' \
+'restore:Restore to a checkpoint' \
+'compare:Compare two checkpoints' \
+'delete:Delete a checkpoint' \
+'cleanup:Clean up old checkpoints' \
+'timeline:Show checkpoint timeline' \
+    )
+    _describe -t commands 'clawdius help checkpoint commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help__subcmd__checkpoint__subcmd__cleanup_commands] )) ||
+_clawdius__subcmd__help__subcmd__checkpoint__subcmd__cleanup_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius help checkpoint cleanup commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help__subcmd__checkpoint__subcmd__compare_commands] )) ||
+_clawdius__subcmd__help__subcmd__checkpoint__subcmd__compare_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius help checkpoint compare commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help__subcmd__checkpoint__subcmd__create_commands] )) ||
+_clawdius__subcmd__help__subcmd__checkpoint__subcmd__create_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius help checkpoint create commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help__subcmd__checkpoint__subcmd__delete_commands] )) ||
+_clawdius__subcmd__help__subcmd__checkpoint__subcmd__delete_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius help checkpoint delete commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help__subcmd__checkpoint__subcmd__list_commands] )) ||
+_clawdius__subcmd__help__subcmd__checkpoint__subcmd__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius help checkpoint list commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help__subcmd__checkpoint__subcmd__restore_commands] )) ||
+_clawdius__subcmd__help__subcmd__checkpoint__subcmd__restore_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius help checkpoint restore commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help__subcmd__checkpoint__subcmd__show_commands] )) ||
+_clawdius__subcmd__help__subcmd__checkpoint__subcmd__show_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius help checkpoint show commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help__subcmd__checkpoint__subcmd__timeline_commands] )) ||
+_clawdius__subcmd__help__subcmd__checkpoint__subcmd__timeline_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius help checkpoint timeline commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help__subcmd__complete_commands] )) ||
+_clawdius__subcmd__help__subcmd__complete_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius help complete commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help__subcmd__config_commands] )) ||
+_clawdius__subcmd__help__subcmd__config_commands() {
+    local commands; commands=(
+'show:Show current configuration (masks API keys)' \
+'get:Get a specific config value' \
+'set:Set a specific config value' \
+'path:Show the path to the config file' \
+'list:List available config keys' \
+    )
+    _describe -t commands 'clawdius help config commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help__subcmd__config__subcmd__get_commands] )) ||
+_clawdius__subcmd__help__subcmd__config__subcmd__get_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius help config get commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help__subcmd__config__subcmd__list_commands] )) ||
+_clawdius__subcmd__help__subcmd__config__subcmd__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius help config list commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help__subcmd__config__subcmd__path_commands] )) ||
+_clawdius__subcmd__help__subcmd__config__subcmd__path_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius help config path commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help__subcmd__config__subcmd__set_commands] )) ||
+_clawdius__subcmd__help__subcmd__config__subcmd__set_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius help config set commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help__subcmd__config__subcmd__show_commands] )) ||
+_clawdius__subcmd__help__subcmd__config__subcmd__show_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius help config show commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help__subcmd__doc_commands] )) ||
+_clawdius__subcmd__help__subcmd__doc_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius help doc commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help__subcmd__edit_commands] )) ||
+_clawdius__subcmd__help__subcmd__edit_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius help edit commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help__subcmd__generate_commands] )) ||
+_clawdius__subcmd__help__subcmd__generate_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius help generate commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help__subcmd__git_commands] )) ||
+_clawdius__subcmd__help__subcmd__git_commands() {
+    local commands; commands=(
+'commit:Stage files and create a commit with an LLM-generated message' \
+'diff:Show a diff of staged or modified files' \
+'status:Show git status summary' \
+    )
+    _describe -t commands 'clawdius help git commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help__subcmd__git__subcmd__commit_commands] )) ||
+_clawdius__subcmd__help__subcmd__git__subcmd__commit_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius help git commit commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help__subcmd__git__subcmd__diff_commands] )) ||
+_clawdius__subcmd__help__subcmd__git__subcmd__diff_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius help git diff commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help__subcmd__git__subcmd__status_commands] )) ||
+_clawdius__subcmd__help__subcmd__git__subcmd__status_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius help git status commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help__subcmd__help_commands] )) ||
+_clawdius__subcmd__help__subcmd__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius help help commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help__subcmd__init_commands] )) ||
+_clawdius__subcmd__help__subcmd__init_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius help init commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help__subcmd__lang_commands] )) ||
+_clawdius__subcmd__help__subcmd__lang_commands() {
+    local commands; commands=(
+'list:List supported languages' \
+'set:Set display language' \
+'show:Show current language' \
+    )
+    _describe -t commands 'clawdius help lang commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help__subcmd__lang__subcmd__list_commands] )) ||
+_clawdius__subcmd__help__subcmd__lang__subcmd__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius help lang list commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help__subcmd__lang__subcmd__set_commands] )) ||
+_clawdius__subcmd__help__subcmd__lang__subcmd__set_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius help lang set commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help__subcmd__lang__subcmd__show_commands] )) ||
+_clawdius__subcmd__help__subcmd__lang__subcmd__show_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius help lang show commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help__subcmd__lsp_commands] )) ||
+_clawdius__subcmd__help__subcmd__lsp_commands() {
+    local commands; commands=(
+'start:Start an LSP server for a language' \
+'complete:Get completions at a position' \
+'hover:Get hover information at a position' \
+'definition:Go to definition' \
+'references:Find references' \
+'symbols:Get document symbols' \
+'diagnostics:Get diagnostics for a file' \
+'code-actions:Get code actions for a range' \
+    )
+    _describe -t commands 'clawdius help lsp commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help__subcmd__lsp__subcmd__code-actions_commands] )) ||
+_clawdius__subcmd__help__subcmd__lsp__subcmd__code-actions_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius help lsp code-actions commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help__subcmd__lsp__subcmd__complete_commands] )) ||
+_clawdius__subcmd__help__subcmd__lsp__subcmd__complete_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius help lsp complete commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help__subcmd__lsp__subcmd__definition_commands] )) ||
+_clawdius__subcmd__help__subcmd__lsp__subcmd__definition_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius help lsp definition commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help__subcmd__lsp__subcmd__diagnostics_commands] )) ||
+_clawdius__subcmd__help__subcmd__lsp__subcmd__diagnostics_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius help lsp diagnostics commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help__subcmd__lsp__subcmd__hover_commands] )) ||
+_clawdius__subcmd__help__subcmd__lsp__subcmd__hover_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius help lsp hover commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help__subcmd__lsp__subcmd__references_commands] )) ||
+_clawdius__subcmd__help__subcmd__lsp__subcmd__references_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius help lsp references commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help__subcmd__lsp__subcmd__start_commands] )) ||
+_clawdius__subcmd__help__subcmd__lsp__subcmd__start_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius help lsp start commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help__subcmd__lsp__subcmd__symbols_commands] )) ||
+_clawdius__subcmd__help__subcmd__lsp__subcmd__symbols_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius help lsp symbols commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help__subcmd__memory_commands] )) ||
+_clawdius__subcmd__help__subcmd__memory_commands() {
+    local commands; commands=(
+'show:Show project memory (CLAWDIUS.md + learned entries)' \
+'learn:Learn a new memory entry' \
+'instructions:Set project instructions' \
+'list:List learned entries by category' \
+'clear:Clear learned entries' \
+'init:Create or update CLAWDIUS.md file' \
+    )
+    _describe -t commands 'clawdius help memory commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help__subcmd__memory__subcmd__clear_commands] )) ||
+_clawdius__subcmd__help__subcmd__memory__subcmd__clear_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius help memory clear commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help__subcmd__memory__subcmd__init_commands] )) ||
+_clawdius__subcmd__help__subcmd__memory__subcmd__init_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius help memory init commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help__subcmd__memory__subcmd__instructions_commands] )) ||
+_clawdius__subcmd__help__subcmd__memory__subcmd__instructions_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius help memory instructions commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help__subcmd__memory__subcmd__learn_commands] )) ||
+_clawdius__subcmd__help__subcmd__memory__subcmd__learn_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius help memory learn commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help__subcmd__memory__subcmd__list_commands] )) ||
+_clawdius__subcmd__help__subcmd__memory__subcmd__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius help memory list commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help__subcmd__memory__subcmd__show_commands] )) ||
+_clawdius__subcmd__help__subcmd__memory__subcmd__show_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius help memory show commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help__subcmd__metrics_commands] )) ||
+_clawdius__subcmd__help__subcmd__metrics_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius help metrics commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help__subcmd__models_commands] )) ||
+_clawdius__subcmd__help__subcmd__models_commands() {
+    local commands; commands=(
+'list:List available local models' \
+'pull:Pull a model from registry' \
+'health:Check Ollama server health' \
+'current:Show current model' \
+    )
+    _describe -t commands 'clawdius help models commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help__subcmd__models__subcmd__current_commands] )) ||
+_clawdius__subcmd__help__subcmd__models__subcmd__current_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius help models current commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help__subcmd__models__subcmd__health_commands] )) ||
+_clawdius__subcmd__help__subcmd__models__subcmd__health_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius help models health commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help__subcmd__models__subcmd__list_commands] )) ||
+_clawdius__subcmd__help__subcmd__models__subcmd__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius help models list commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help__subcmd__models__subcmd__pull_commands] )) ||
+_clawdius__subcmd__help__subcmd__models__subcmd__pull_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius help models pull commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help__subcmd__modes_commands] )) ||
+_clawdius__subcmd__help__subcmd__modes_commands() {
+    local commands; commands=(
+'list:List all available modes' \
+'create:Create a new custom mode' \
+'show:Show details of a mode' \
+    )
+    _describe -t commands 'clawdius help modes commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help__subcmd__modes__subcmd__create_commands] )) ||
+_clawdius__subcmd__help__subcmd__modes__subcmd__create_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius help modes create commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help__subcmd__modes__subcmd__list_commands] )) ||
+_clawdius__subcmd__help__subcmd__modes__subcmd__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius help modes list commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help__subcmd__modes__subcmd__show_commands] )) ||
+_clawdius__subcmd__help__subcmd__modes__subcmd__show_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius help modes show commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help__subcmd__refactor_commands] )) ||
+_clawdius__subcmd__help__subcmd__refactor_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius help refactor commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help__subcmd__server_commands] )) ||
+_clawdius__subcmd__help__subcmd__server_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius help server commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help__subcmd__sessions_commands] )) ||
+_clawdius__subcmd__help__subcmd__sessions_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius help sessions commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help__subcmd__setup_commands] )) ||
+_clawdius__subcmd__help__subcmd__setup_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius help setup commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help__subcmd__ship_commands] )) ||
+_clawdius__subcmd__help__subcmd__ship_commands() {
+    local commands; commands=(
+'checks:Run pre-ship quality checks' \
+'commit-message:Generate a conventional commit message' \
+    )
+    _describe -t commands 'clawdius help ship commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help__subcmd__ship__subcmd__checks_commands] )) ||
+_clawdius__subcmd__help__subcmd__ship__subcmd__checks_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius help ship checks commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help__subcmd__ship__subcmd__commit-message_commands] )) ||
+_clawdius__subcmd__help__subcmd__ship__subcmd__commit-message_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius help ship commit-message commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help__subcmd__skill_commands] )) ||
+_clawdius__subcmd__help__subcmd__skill_commands() {
+    local commands; commands=(
+'list:List available skills' \
+'run:Execute a skill by name' \
+    )
+    _describe -t commands 'clawdius help skill commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help__subcmd__skill__subcmd__list_commands] )) ||
+_clawdius__subcmd__help__subcmd__skill__subcmd__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius help skill list commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help__subcmd__skill__subcmd__run_commands] )) ||
+_clawdius__subcmd__help__subcmd__skill__subcmd__run_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius help skill run commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help__subcmd__sprint_commands] )) ||
+_clawdius__subcmd__help__subcmd__sprint_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius help sprint commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help__subcmd__telemetry_commands] )) ||
+_clawdius__subcmd__help__subcmd__telemetry_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius help telemetry commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help__subcmd__test_commands] )) ||
+_clawdius__subcmd__help__subcmd__test_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius help test commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help__subcmd__timeline_commands] )) ||
+_clawdius__subcmd__help__subcmd__timeline_commands() {
+    local commands; commands=(
+'create:Create a timeline checkpoint' \
+'list:List all timeline checkpoints' \
+'watch:Watch for file changes and auto-create checkpoints' \
+'rollback:Rollback to a checkpoint' \
+'diff:Show diff between two checkpoints' \
+'history:Show file history' \
+'delete:Delete a checkpoint' \
+'cleanup:Clean up old checkpoints' \
+    )
+    _describe -t commands 'clawdius help timeline commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help__subcmd__timeline__subcmd__cleanup_commands] )) ||
+_clawdius__subcmd__help__subcmd__timeline__subcmd__cleanup_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius help timeline cleanup commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help__subcmd__timeline__subcmd__create_commands] )) ||
+_clawdius__subcmd__help__subcmd__timeline__subcmd__create_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius help timeline create commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help__subcmd__timeline__subcmd__delete_commands] )) ||
+_clawdius__subcmd__help__subcmd__timeline__subcmd__delete_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius help timeline delete commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help__subcmd__timeline__subcmd__diff_commands] )) ||
+_clawdius__subcmd__help__subcmd__timeline__subcmd__diff_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius help timeline diff commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help__subcmd__timeline__subcmd__history_commands] )) ||
+_clawdius__subcmd__help__subcmd__timeline__subcmd__history_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius help timeline history commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help__subcmd__timeline__subcmd__list_commands] )) ||
+_clawdius__subcmd__help__subcmd__timeline__subcmd__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius help timeline list commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help__subcmd__timeline__subcmd__rollback_commands] )) ||
+_clawdius__subcmd__help__subcmd__timeline__subcmd__rollback_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius help timeline rollback commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help__subcmd__timeline__subcmd__watch_commands] )) ||
+_clawdius__subcmd__help__subcmd__timeline__subcmd__watch_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius help timeline watch commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help__subcmd__verify_commands] )) ||
+_clawdius__subcmd__help__subcmd__verify_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius help verify commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help__subcmd__watch_commands] )) ||
+_clawdius__subcmd__help__subcmd__watch_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius help watch commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help__subcmd__webhook_commands] )) ||
+_clawdius__subcmd__help__subcmd__webhook_commands() {
+    local commands; commands=(
+'list:List all webhooks' \
+'create:Create a new webhook' \
+'show:Show webhook details' \
+'update:Update a webhook' \
+'delete:Delete a webhook' \
+'test:Test a webhook' \
+'deliveries:Show delivery history' \
+'stats:Show webhook statistics' \
+    )
+    _describe -t commands 'clawdius help webhook commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help__subcmd__webhook__subcmd__create_commands] )) ||
+_clawdius__subcmd__help__subcmd__webhook__subcmd__create_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius help webhook create commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help__subcmd__webhook__subcmd__delete_commands] )) ||
+_clawdius__subcmd__help__subcmd__webhook__subcmd__delete_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius help webhook delete commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help__subcmd__webhook__subcmd__deliveries_commands] )) ||
+_clawdius__subcmd__help__subcmd__webhook__subcmd__deliveries_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius help webhook deliveries commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help__subcmd__webhook__subcmd__list_commands] )) ||
+_clawdius__subcmd__help__subcmd__webhook__subcmd__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius help webhook list commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help__subcmd__webhook__subcmd__show_commands] )) ||
+_clawdius__subcmd__help__subcmd__webhook__subcmd__show_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius help webhook show commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help__subcmd__webhook__subcmd__stats_commands] )) ||
+_clawdius__subcmd__help__subcmd__webhook__subcmd__stats_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius help webhook stats commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help__subcmd__webhook__subcmd__test_commands] )) ||
+_clawdius__subcmd__help__subcmd__webhook__subcmd__test_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius help webhook test commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__help__subcmd__webhook__subcmd__update_commands] )) ||
+_clawdius__subcmd__help__subcmd__webhook__subcmd__update_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius help webhook update commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__init_commands] )) ||
+_clawdius__subcmd__init_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius init commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__lang_commands] )) ||
+_clawdius__subcmd__lang_commands() {
+    local commands; commands=(
+'list:List supported languages' \
+'set:Set display language' \
+'show:Show current language' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'clawdius lang commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__lang__subcmd__help_commands] )) ||
+_clawdius__subcmd__lang__subcmd__help_commands() {
+    local commands; commands=(
+'list:List supported languages' \
+'set:Set display language' \
+'show:Show current language' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'clawdius lang help commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__lang__subcmd__help__subcmd__help_commands] )) ||
+_clawdius__subcmd__lang__subcmd__help__subcmd__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius lang help help commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__lang__subcmd__help__subcmd__list_commands] )) ||
+_clawdius__subcmd__lang__subcmd__help__subcmd__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius lang help list commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__lang__subcmd__help__subcmd__set_commands] )) ||
+_clawdius__subcmd__lang__subcmd__help__subcmd__set_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius lang help set commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__lang__subcmd__help__subcmd__show_commands] )) ||
+_clawdius__subcmd__lang__subcmd__help__subcmd__show_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius lang help show commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__lang__subcmd__list_commands] )) ||
+_clawdius__subcmd__lang__subcmd__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius lang list commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__lang__subcmd__set_commands] )) ||
+_clawdius__subcmd__lang__subcmd__set_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius lang set commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__lang__subcmd__show_commands] )) ||
+_clawdius__subcmd__lang__subcmd__show_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius lang show commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__lsp_commands] )) ||
+_clawdius__subcmd__lsp_commands() {
+    local commands; commands=(
+'start:Start an LSP server for a language' \
+'complete:Get completions at a position' \
+'hover:Get hover information at a position' \
+'definition:Go to definition' \
+'references:Find references' \
+'symbols:Get document symbols' \
+'diagnostics:Get diagnostics for a file' \
+'code-actions:Get code actions for a range' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'clawdius lsp commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__lsp__subcmd__code-actions_commands] )) ||
+_clawdius__subcmd__lsp__subcmd__code-actions_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius lsp code-actions commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__lsp__subcmd__complete_commands] )) ||
+_clawdius__subcmd__lsp__subcmd__complete_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius lsp complete commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__lsp__subcmd__definition_commands] )) ||
+_clawdius__subcmd__lsp__subcmd__definition_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius lsp definition commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__lsp__subcmd__diagnostics_commands] )) ||
+_clawdius__subcmd__lsp__subcmd__diagnostics_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius lsp diagnostics commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__lsp__subcmd__help_commands] )) ||
+_clawdius__subcmd__lsp__subcmd__help_commands() {
+    local commands; commands=(
+'start:Start an LSP server for a language' \
+'complete:Get completions at a position' \
+'hover:Get hover information at a position' \
+'definition:Go to definition' \
+'references:Find references' \
+'symbols:Get document symbols' \
+'diagnostics:Get diagnostics for a file' \
+'code-actions:Get code actions for a range' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'clawdius lsp help commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__lsp__subcmd__help__subcmd__code-actions_commands] )) ||
+_clawdius__subcmd__lsp__subcmd__help__subcmd__code-actions_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius lsp help code-actions commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__lsp__subcmd__help__subcmd__complete_commands] )) ||
+_clawdius__subcmd__lsp__subcmd__help__subcmd__complete_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius lsp help complete commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__lsp__subcmd__help__subcmd__definition_commands] )) ||
+_clawdius__subcmd__lsp__subcmd__help__subcmd__definition_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius lsp help definition commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__lsp__subcmd__help__subcmd__diagnostics_commands] )) ||
+_clawdius__subcmd__lsp__subcmd__help__subcmd__diagnostics_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius lsp help diagnostics commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__lsp__subcmd__help__subcmd__help_commands] )) ||
+_clawdius__subcmd__lsp__subcmd__help__subcmd__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius lsp help help commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__lsp__subcmd__help__subcmd__hover_commands] )) ||
+_clawdius__subcmd__lsp__subcmd__help__subcmd__hover_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius lsp help hover commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__lsp__subcmd__help__subcmd__references_commands] )) ||
+_clawdius__subcmd__lsp__subcmd__help__subcmd__references_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius lsp help references commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__lsp__subcmd__help__subcmd__start_commands] )) ||
+_clawdius__subcmd__lsp__subcmd__help__subcmd__start_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius lsp help start commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__lsp__subcmd__help__subcmd__symbols_commands] )) ||
+_clawdius__subcmd__lsp__subcmd__help__subcmd__symbols_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius lsp help symbols commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__lsp__subcmd__hover_commands] )) ||
+_clawdius__subcmd__lsp__subcmd__hover_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius lsp hover commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__lsp__subcmd__references_commands] )) ||
+_clawdius__subcmd__lsp__subcmd__references_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius lsp references commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__lsp__subcmd__start_commands] )) ||
+_clawdius__subcmd__lsp__subcmd__start_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius lsp start commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__lsp__subcmd__symbols_commands] )) ||
+_clawdius__subcmd__lsp__subcmd__symbols_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius lsp symbols commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__memory_commands] )) ||
+_clawdius__subcmd__memory_commands() {
+    local commands; commands=(
+'show:Show project memory (CLAWDIUS.md + learned entries)' \
+'learn:Learn a new memory entry' \
+'instructions:Set project instructions' \
+'list:List learned entries by category' \
+'clear:Clear learned entries' \
+'init:Create or update CLAWDIUS.md file' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'clawdius memory commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__memory__subcmd__clear_commands] )) ||
+_clawdius__subcmd__memory__subcmd__clear_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius memory clear commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__memory__subcmd__help_commands] )) ||
+_clawdius__subcmd__memory__subcmd__help_commands() {
+    local commands; commands=(
+'show:Show project memory (CLAWDIUS.md + learned entries)' \
+'learn:Learn a new memory entry' \
+'instructions:Set project instructions' \
+'list:List learned entries by category' \
+'clear:Clear learned entries' \
+'init:Create or update CLAWDIUS.md file' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'clawdius memory help commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__memory__subcmd__help__subcmd__clear_commands] )) ||
+_clawdius__subcmd__memory__subcmd__help__subcmd__clear_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius memory help clear commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__memory__subcmd__help__subcmd__help_commands] )) ||
+_clawdius__subcmd__memory__subcmd__help__subcmd__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius memory help help commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__memory__subcmd__help__subcmd__init_commands] )) ||
+_clawdius__subcmd__memory__subcmd__help__subcmd__init_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius memory help init commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__memory__subcmd__help__subcmd__instructions_commands] )) ||
+_clawdius__subcmd__memory__subcmd__help__subcmd__instructions_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius memory help instructions commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__memory__subcmd__help__subcmd__learn_commands] )) ||
+_clawdius__subcmd__memory__subcmd__help__subcmd__learn_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius memory help learn commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__memory__subcmd__help__subcmd__list_commands] )) ||
+_clawdius__subcmd__memory__subcmd__help__subcmd__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius memory help list commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__memory__subcmd__help__subcmd__show_commands] )) ||
+_clawdius__subcmd__memory__subcmd__help__subcmd__show_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius memory help show commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__memory__subcmd__init_commands] )) ||
+_clawdius__subcmd__memory__subcmd__init_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius memory init commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__memory__subcmd__instructions_commands] )) ||
+_clawdius__subcmd__memory__subcmd__instructions_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius memory instructions commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__memory__subcmd__learn_commands] )) ||
+_clawdius__subcmd__memory__subcmd__learn_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius memory learn commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__memory__subcmd__list_commands] )) ||
+_clawdius__subcmd__memory__subcmd__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius memory list commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__memory__subcmd__show_commands] )) ||
+_clawdius__subcmd__memory__subcmd__show_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius memory show commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__metrics_commands] )) ||
+_clawdius__subcmd__metrics_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius metrics commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__models_commands] )) ||
+_clawdius__subcmd__models_commands() {
+    local commands; commands=(
+'list:List available local models' \
+'pull:Pull a model from registry' \
+'health:Check Ollama server health' \
+'current:Show current model' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'clawdius models commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__models__subcmd__current_commands] )) ||
+_clawdius__subcmd__models__subcmd__current_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius models current commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__models__subcmd__health_commands] )) ||
+_clawdius__subcmd__models__subcmd__health_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius models health commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__models__subcmd__help_commands] )) ||
+_clawdius__subcmd__models__subcmd__help_commands() {
+    local commands; commands=(
+'list:List available local models' \
+'pull:Pull a model from registry' \
+'health:Check Ollama server health' \
+'current:Show current model' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'clawdius models help commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__models__subcmd__help__subcmd__current_commands] )) ||
+_clawdius__subcmd__models__subcmd__help__subcmd__current_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius models help current commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__models__subcmd__help__subcmd__health_commands] )) ||
+_clawdius__subcmd__models__subcmd__help__subcmd__health_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius models help health commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__models__subcmd__help__subcmd__help_commands] )) ||
+_clawdius__subcmd__models__subcmd__help__subcmd__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius models help help commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__models__subcmd__help__subcmd__list_commands] )) ||
+_clawdius__subcmd__models__subcmd__help__subcmd__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius models help list commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__models__subcmd__help__subcmd__pull_commands] )) ||
+_clawdius__subcmd__models__subcmd__help__subcmd__pull_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius models help pull commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__models__subcmd__list_commands] )) ||
+_clawdius__subcmd__models__subcmd__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius models list commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__models__subcmd__pull_commands] )) ||
+_clawdius__subcmd__models__subcmd__pull_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius models pull commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__modes_commands] )) ||
+_clawdius__subcmd__modes_commands() {
+    local commands; commands=(
+'list:List all available modes' \
+'create:Create a new custom mode' \
+'show:Show details of a mode' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'clawdius modes commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__modes__subcmd__create_commands] )) ||
+_clawdius__subcmd__modes__subcmd__create_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius modes create commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__modes__subcmd__help_commands] )) ||
+_clawdius__subcmd__modes__subcmd__help_commands() {
+    local commands; commands=(
+'list:List all available modes' \
+'create:Create a new custom mode' \
+'show:Show details of a mode' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'clawdius modes help commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__modes__subcmd__help__subcmd__create_commands] )) ||
+_clawdius__subcmd__modes__subcmd__help__subcmd__create_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius modes help create commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__modes__subcmd__help__subcmd__help_commands] )) ||
+_clawdius__subcmd__modes__subcmd__help__subcmd__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius modes help help commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__modes__subcmd__help__subcmd__list_commands] )) ||
+_clawdius__subcmd__modes__subcmd__help__subcmd__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius modes help list commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__modes__subcmd__help__subcmd__show_commands] )) ||
+_clawdius__subcmd__modes__subcmd__help__subcmd__show_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius modes help show commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__modes__subcmd__list_commands] )) ||
+_clawdius__subcmd__modes__subcmd__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius modes list commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__modes__subcmd__show_commands] )) ||
+_clawdius__subcmd__modes__subcmd__show_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius modes show commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__refactor_commands] )) ||
+_clawdius__subcmd__refactor_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius refactor commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__server_commands] )) ||
+_clawdius__subcmd__server_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius server commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__sessions_commands] )) ||
+_clawdius__subcmd__sessions_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius sessions commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__setup_commands] )) ||
+_clawdius__subcmd__setup_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius setup commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__ship_commands] )) ||
+_clawdius__subcmd__ship_commands() {
+    local commands; commands=(
+'checks:Run pre-ship quality checks' \
+'commit-message:Generate a conventional commit message' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'clawdius ship commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__ship__subcmd__checks_commands] )) ||
+_clawdius__subcmd__ship__subcmd__checks_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius ship checks commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__ship__subcmd__commit-message_commands] )) ||
+_clawdius__subcmd__ship__subcmd__commit-message_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius ship commit-message commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__ship__subcmd__help_commands] )) ||
+_clawdius__subcmd__ship__subcmd__help_commands() {
+    local commands; commands=(
+'checks:Run pre-ship quality checks' \
+'commit-message:Generate a conventional commit message' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'clawdius ship help commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__ship__subcmd__help__subcmd__checks_commands] )) ||
+_clawdius__subcmd__ship__subcmd__help__subcmd__checks_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius ship help checks commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__ship__subcmd__help__subcmd__commit-message_commands] )) ||
+_clawdius__subcmd__ship__subcmd__help__subcmd__commit-message_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius ship help commit-message commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__ship__subcmd__help__subcmd__help_commands] )) ||
+_clawdius__subcmd__ship__subcmd__help__subcmd__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius ship help help commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__skill_commands] )) ||
+_clawdius__subcmd__skill_commands() {
+    local commands; commands=(
+'list:List available skills' \
+'run:Execute a skill by name' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'clawdius skill commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__skill__subcmd__help_commands] )) ||
+_clawdius__subcmd__skill__subcmd__help_commands() {
+    local commands; commands=(
+'list:List available skills' \
+'run:Execute a skill by name' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'clawdius skill help commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__skill__subcmd__help__subcmd__help_commands] )) ||
+_clawdius__subcmd__skill__subcmd__help__subcmd__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius skill help help commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__skill__subcmd__help__subcmd__list_commands] )) ||
+_clawdius__subcmd__skill__subcmd__help__subcmd__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius skill help list commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__skill__subcmd__help__subcmd__run_commands] )) ||
+_clawdius__subcmd__skill__subcmd__help__subcmd__run_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius skill help run commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__skill__subcmd__list_commands] )) ||
+_clawdius__subcmd__skill__subcmd__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius skill list commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__skill__subcmd__run_commands] )) ||
+_clawdius__subcmd__skill__subcmd__run_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius skill run commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__sprint_commands] )) ||
+_clawdius__subcmd__sprint_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius sprint commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__telemetry_commands] )) ||
+_clawdius__subcmd__telemetry_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius telemetry commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__test_commands] )) ||
+_clawdius__subcmd__test_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius test commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__timeline_commands] )) ||
+_clawdius__subcmd__timeline_commands() {
+    local commands; commands=(
+'create:Create a timeline checkpoint' \
+'list:List all timeline checkpoints' \
+'watch:Watch for file changes and auto-create checkpoints' \
+'rollback:Rollback to a checkpoint' \
+'diff:Show diff between two checkpoints' \
+'history:Show file history' \
+'delete:Delete a checkpoint' \
+'cleanup:Clean up old checkpoints' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'clawdius timeline commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__timeline__subcmd__cleanup_commands] )) ||
+_clawdius__subcmd__timeline__subcmd__cleanup_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius timeline cleanup commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__timeline__subcmd__create_commands] )) ||
+_clawdius__subcmd__timeline__subcmd__create_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius timeline create commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__timeline__subcmd__delete_commands] )) ||
+_clawdius__subcmd__timeline__subcmd__delete_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius timeline delete commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__timeline__subcmd__diff_commands] )) ||
+_clawdius__subcmd__timeline__subcmd__diff_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius timeline diff commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__timeline__subcmd__help_commands] )) ||
+_clawdius__subcmd__timeline__subcmd__help_commands() {
+    local commands; commands=(
+'create:Create a timeline checkpoint' \
+'list:List all timeline checkpoints' \
+'watch:Watch for file changes and auto-create checkpoints' \
+'rollback:Rollback to a checkpoint' \
+'diff:Show diff between two checkpoints' \
+'history:Show file history' \
+'delete:Delete a checkpoint' \
+'cleanup:Clean up old checkpoints' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'clawdius timeline help commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__timeline__subcmd__help__subcmd__cleanup_commands] )) ||
+_clawdius__subcmd__timeline__subcmd__help__subcmd__cleanup_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius timeline help cleanup commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__timeline__subcmd__help__subcmd__create_commands] )) ||
+_clawdius__subcmd__timeline__subcmd__help__subcmd__create_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius timeline help create commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__timeline__subcmd__help__subcmd__delete_commands] )) ||
+_clawdius__subcmd__timeline__subcmd__help__subcmd__delete_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius timeline help delete commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__timeline__subcmd__help__subcmd__diff_commands] )) ||
+_clawdius__subcmd__timeline__subcmd__help__subcmd__diff_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius timeline help diff commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__timeline__subcmd__help__subcmd__help_commands] )) ||
+_clawdius__subcmd__timeline__subcmd__help__subcmd__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius timeline help help commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__timeline__subcmd__help__subcmd__history_commands] )) ||
+_clawdius__subcmd__timeline__subcmd__help__subcmd__history_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius timeline help history commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__timeline__subcmd__help__subcmd__list_commands] )) ||
+_clawdius__subcmd__timeline__subcmd__help__subcmd__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius timeline help list commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__timeline__subcmd__help__subcmd__rollback_commands] )) ||
+_clawdius__subcmd__timeline__subcmd__help__subcmd__rollback_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius timeline help rollback commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__timeline__subcmd__help__subcmd__watch_commands] )) ||
+_clawdius__subcmd__timeline__subcmd__help__subcmd__watch_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius timeline help watch commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__timeline__subcmd__history_commands] )) ||
+_clawdius__subcmd__timeline__subcmd__history_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius timeline history commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__timeline__subcmd__list_commands] )) ||
+_clawdius__subcmd__timeline__subcmd__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius timeline list commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__timeline__subcmd__rollback_commands] )) ||
+_clawdius__subcmd__timeline__subcmd__rollback_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius timeline rollback commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__timeline__subcmd__watch_commands] )) ||
+_clawdius__subcmd__timeline__subcmd__watch_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius timeline watch commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__verify_commands] )) ||
+_clawdius__subcmd__verify_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius verify commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__watch_commands] )) ||
+_clawdius__subcmd__watch_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius watch commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__webhook_commands] )) ||
+_clawdius__subcmd__webhook_commands() {
+    local commands; commands=(
+'list:List all webhooks' \
+'create:Create a new webhook' \
+'show:Show webhook details' \
+'update:Update a webhook' \
+'delete:Delete a webhook' \
+'test:Test a webhook' \
+'deliveries:Show delivery history' \
+'stats:Show webhook statistics' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'clawdius webhook commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__webhook__subcmd__create_commands] )) ||
+_clawdius__subcmd__webhook__subcmd__create_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius webhook create commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__webhook__subcmd__delete_commands] )) ||
+_clawdius__subcmd__webhook__subcmd__delete_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius webhook delete commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__webhook__subcmd__deliveries_commands] )) ||
+_clawdius__subcmd__webhook__subcmd__deliveries_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius webhook deliveries commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__webhook__subcmd__help_commands] )) ||
+_clawdius__subcmd__webhook__subcmd__help_commands() {
+    local commands; commands=(
+'list:List all webhooks' \
+'create:Create a new webhook' \
+'show:Show webhook details' \
+'update:Update a webhook' \
+'delete:Delete a webhook' \
+'test:Test a webhook' \
+'deliveries:Show delivery history' \
+'stats:Show webhook statistics' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'clawdius webhook help commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__webhook__subcmd__help__subcmd__create_commands] )) ||
+_clawdius__subcmd__webhook__subcmd__help__subcmd__create_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius webhook help create commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__webhook__subcmd__help__subcmd__delete_commands] )) ||
+_clawdius__subcmd__webhook__subcmd__help__subcmd__delete_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius webhook help delete commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__webhook__subcmd__help__subcmd__deliveries_commands] )) ||
+_clawdius__subcmd__webhook__subcmd__help__subcmd__deliveries_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius webhook help deliveries commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__webhook__subcmd__help__subcmd__help_commands] )) ||
+_clawdius__subcmd__webhook__subcmd__help__subcmd__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius webhook help help commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__webhook__subcmd__help__subcmd__list_commands] )) ||
+_clawdius__subcmd__webhook__subcmd__help__subcmd__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius webhook help list commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__webhook__subcmd__help__subcmd__show_commands] )) ||
+_clawdius__subcmd__webhook__subcmd__help__subcmd__show_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius webhook help show commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__webhook__subcmd__help__subcmd__stats_commands] )) ||
+_clawdius__subcmd__webhook__subcmd__help__subcmd__stats_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius webhook help stats commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__webhook__subcmd__help__subcmd__test_commands] )) ||
+_clawdius__subcmd__webhook__subcmd__help__subcmd__test_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius webhook help test commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__webhook__subcmd__help__subcmd__update_commands] )) ||
+_clawdius__subcmd__webhook__subcmd__help__subcmd__update_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius webhook help update commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__webhook__subcmd__list_commands] )) ||
+_clawdius__subcmd__webhook__subcmd__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius webhook list commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__webhook__subcmd__show_commands] )) ||
+_clawdius__subcmd__webhook__subcmd__show_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius webhook show commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__webhook__subcmd__stats_commands] )) ||
+_clawdius__subcmd__webhook__subcmd__stats_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius webhook stats commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__webhook__subcmd__test_commands] )) ||
+_clawdius__subcmd__webhook__subcmd__test_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius webhook test commands' commands "$@"
+}
+(( $+functions[_clawdius__subcmd__webhook__subcmd__update_commands] )) ||
+_clawdius__subcmd__webhook__subcmd__update_commands() {
+    local commands; commands=()
+    _describe -t commands 'clawdius webhook update commands' commands "$@"
+}
+
+if [ "$funcstack[1]" = "_clawdius" ]; then
+    _clawdius "$@"
+else
+    compdef _clawdius clawdius
+fi

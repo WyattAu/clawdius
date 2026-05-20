@@ -1666,6 +1666,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "clap_complete"
+version = "4.6.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e0a7a9bfdb35811f9e59832f0f05975114d2251b415fb534108e6f34060fd772"
+dependencies = [
+ "clap",
+]
+
+[[package]]
 name = "clap_derive"
 version = "4.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1685,13 +1694,14 @@ checksum = "c8d4a3bb8b1e0c1050499d1815f5ab16d04f0959b233085fb31653fbfc9d98f9"
 
 [[package]]
 name = "clawdius"
-version = "1.0.0-rc.1"
+version = "1.0.0-rc.2"
 dependencies = [
  "anyhow",
  "async-trait",
  "axum",
  "chrono",
  "clap",
+ "clap_complete",
  "clawdius-core",
  "clawdius-gateway",
  "criterion",
@@ -1719,7 +1729,7 @@ dependencies = [
 
 [[package]]
 name = "clawdius-code"
-version = "1.0.0-rc.1"
+version = "1.0.0-rc.2"
 dependencies = [
  "anyhow",
  "clap",
@@ -1736,7 +1746,7 @@ dependencies = [
 
 [[package]]
 name = "clawdius-core"
-version = "1.0.0-rc.1"
+version = "1.0.0-rc.2"
 dependencies = [
  "aes-gcm",
  "aho-corasick",
@@ -1817,7 +1827,7 @@ dependencies = [
 
 [[package]]
 name = "clawdius-gateway"
-version = "1.0.0-rc.1"
+version = "1.0.0-rc.2"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1843,7 +1853,7 @@ dependencies = [
 
 [[package]]
 name = "clawdius-mcp"
-version = "1.0.0-rc.1"
+version = "1.0.0-rc.2"
 dependencies = [
  "clawdius-core",
  "serde",

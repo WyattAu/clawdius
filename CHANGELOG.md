@@ -1,5 +1,37 @@
 # Changelog
 
+## [1.0.0-rc.2] - 2026-05-20
+
+### Added
+- Shell completions for bash, zsh, and fish (via `--generate-completions`)
+- xAI (Grok) provider with native genai adapter and tool calling
+- Mistral AI provider with native genai adapter and tool calling
+- Google Gemini tool calling support (gemini-2.5-flash default)
+- LLM response cache with blake3 keying (5min TTL, 1000 entries default)
+- Command autocomplete for TUI (37 commands, Tab/Shift+Tab/Enter)
+- Production roadmap document (docs/ROADMAP.md)
+- Competitor analysis: Claw Code, Roo Code (docs/COMPARISON.md, COMPETITOR_ANALYSIS_CLAW_CODE.md)
+- Provider documentation: Google Gemini, xAI Grok, Mistral AI
+- Migration guide from Claw Code
+- Cloudflare Pages deployment (clawdius-docs, clawdius-landing)
+- DNS configuration for clawdius.co.uk, docs.clawdius.co.uk
+
+### Changed
+- Provider count: 6 -> 9 (added xAI, Mistral, Gemini tool calling)
+- Tool-calling providers: 5 -> 8
+- Gateway handler now checks cache before LLM call, inserts after
+- `App::draw()` signature changed from `&self` to `&mut self`
+- CNAME updated to docs.clawdius.co.uk
+- CI release build no longer has `continue-on-error`
+- CodeQL SAST timeout increased to 30 minutes
+- Fixed duplicate clap short flags (-e for events/enable in WebhookCommands)
+- Workspace clap features: added `string` for clap_complete compatibility
+
+### Infrastructure
+- Cloudflare Pages projects created (clawdius-docs, clawdius-landing)
+- Gateway release build passes locally
+- `cargo publish --dry-run` verified for clawdius-core (253 files, 3.5MiB)
+
 ## [1.0.0-rc.1] - 2026-05-03
 
 ### Added

@@ -18,7 +18,7 @@ name = "clawdius-code"
 path = "src/main.rs"
 
 [dependencies]
-clawdius-core = { path = "../clawdius-core", version = "1.0.0-rc.1" }
+clawdius-core = { path = "../clawdius-core", version = "1.0.0-rc.2" }
 
 # CLI
 clap.workspace = true

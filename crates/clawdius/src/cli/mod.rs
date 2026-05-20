@@ -78,7 +78,13 @@ pub struct Cli {
 
     #[arg(short, long)]
     #[arg(help = "Quiet mode (no progress indicators)")]
+    /// Quiet mode (no progress indicators)
+    #[arg(short, long)]
     pub quiet: bool,
+
+    /// Generate shell completions to stdout (bash|zsh|fish|powershell)
+    #[arg(long = "generate-completions", global = true, hide = true)]
+    pub generate_completions: Option<String>,
 
     #[arg(short = 'C', long)]
     #[arg(help = "Path to config file (defaults to .clawdius/config.toml)")]
@@ -237,7 +243,7 @@ pub enum Commands {
         #[arg(help = "End line for selection")]
         end_line: Option<usize>,
 
-        #[arg(short = 'e', long)]
+        #[arg(long)]
         #[arg(help = "End column for selection")]
         end_column: Option<usize>,
     },
@@ -828,7 +834,7 @@ pub enum WebhookCommands {
         #[arg(help = "Target URL")]
         url: String,
 
-        #[arg(short, long)]
+        #[arg(short = 'E', long)]
         #[arg(help = "Events to subscribe to (comma-separated)")]
         events: Option<String>,
 
@@ -852,7 +858,7 @@ pub enum WebhookCommands {
         #[arg(help = "New target URL")]
         url: Option<String>,
 
-        #[arg(short, long)]
+        #[arg(short = 'E', long)]
         #[arg(help = "New events (comma-separated)")]
         events: Option<String>,
 
@@ -860,7 +866,7 @@ pub enum WebhookCommands {
         #[arg(help = "Enable webhook")]
         enable: bool,
 
-        #[arg(short, long)]
+        #[arg(short = 'D', long)]
         #[arg(help = "Disable webhook")]
         disable: bool,
     },
