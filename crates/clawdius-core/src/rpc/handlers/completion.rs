@@ -152,7 +152,8 @@ impl Handler for CompletionHandler {
             let messages = self.build_messages(&completion_req);
 
             let options = crate::llm::LlmChatOptions::from_mode_and_config(0.3, 256);
-            let result = tokio::time::timeout(self.timeout, llm.chat_with_options(messages, options)).await;
+            let result =
+                tokio::time::timeout(self.timeout, llm.chat_with_options(messages, options)).await;
 
             match result {
                 Ok(Ok(response)) => {

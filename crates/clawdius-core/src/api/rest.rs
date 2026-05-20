@@ -660,7 +660,10 @@ pub async fn agent_handler(
         iterations += 1;
 
         let options = crate::llm::LlmChatOptions::from_mode_and_config(0.7, 4096);
-        let response_text = match llm_client.chat_with_options(messages.clone(), options).await {
+        let response_text = match llm_client
+            .chat_with_options(messages.clone(), options)
+            .await
+        {
             Ok(text) => text,
             Err(e) => {
                 return Err((

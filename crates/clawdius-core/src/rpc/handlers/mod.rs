@@ -241,8 +241,14 @@ impl ChatHandler {
         };
 
         let _session_id = params.get("sessionId").and_then(|v| v.as_str());
-        let temperature = params.get("temperature").and_then(|v| v.as_f64()).unwrap_or(0.7);
-        let max_tokens = params.get("max_tokens").and_then(|v| v.as_u64()).unwrap_or(4096) as u32;
+        let temperature = params
+            .get("temperature")
+            .and_then(|v| v.as_f64())
+            .unwrap_or(0.7);
+        let max_tokens = params
+            .get("max_tokens")
+            .and_then(|v| v.as_u64())
+            .unwrap_or(4096) as u32;
 
         let llm = match &self.llm {
             Some(llm) => llm,
@@ -269,8 +275,13 @@ impl ChatHandler {
             },
         ];
 
-        let options = crate::llm::LlmChatOptions::from_mode_and_config(temperature, max_tokens as usize);
-        let result = tokio::time::timeout(Duration::from_secs(30), llm.chat_with_options(messages, options)).await;
+        let options =
+            crate::llm::LlmChatOptions::from_mode_and_config(temperature, max_tokens as usize);
+        let result = tokio::time::timeout(
+            Duration::from_secs(30),
+            llm.chat_with_options(messages, options),
+        )
+        .await;
 
         match result {
             Ok(Ok(response)) => {

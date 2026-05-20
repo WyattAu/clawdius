@@ -339,9 +339,14 @@ impl CompletionProvider for InlineCompletionProvider {
         }];
 
         let options = crate::llm::LlmChatOptions {
-            temperature: Some(self.config.temperature as f64), max_tokens: Some(self.config.max_tokens as u32),
+            temperature: Some(self.config.temperature as f64),
+            max_tokens: Some(self.config.max_tokens as u32),
             top_p: Some(self.config.top_p as f64),
-            stop_sequences: if self.config.stop_sequences.is_empty() { None } else { Some(self.config.stop_sequences.clone()) },
+            stop_sequences: if self.config.stop_sequences.is_empty() {
+                None
+            } else {
+                Some(self.config.stop_sequences.clone())
+            },
         };
         let raw_completion = self.llm.chat_with_options(messages, options).await?;
 

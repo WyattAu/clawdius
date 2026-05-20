@@ -41,8 +41,13 @@ pub trait LlmClient: Send + Sync {
     async fn chat(&self, messages: Vec<crate::llm::ChatMessage>) -> crate::Result<String>;
 
     /// Send a chat message with LLM options. Default delegates to chat().
-    async fn chat_with_options(&self, messages: Vec<crate::llm::ChatMessage>,
-        _options: crate::llm::LlmChatOptions) -> crate::Result<String> { self.chat(messages).await }
+    async fn chat_with_options(
+        &self,
+        messages: Vec<crate::llm::ChatMessage>,
+        _options: crate::llm::LlmChatOptions,
+    ) -> crate::Result<String> {
+        self.chat(messages).await
+    }
 
     /// Send a chat message with streaming response.
     async fn chat_stream(
