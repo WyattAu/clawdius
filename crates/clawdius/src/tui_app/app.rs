@@ -9,8 +9,8 @@ use std::sync::Arc;
 
 use super::components;
 use super::components::{
-    ChatView, DiffView, FileList, SessionEntry, SessionPicker, Spinner, SyntaxHighlighter,
-    WorkspaceSwitcher,
+    ChatView, CommandAutocomplete, DiffView, FileList, SessionEntry, SessionPicker, Spinner,
+    SyntaxHighlighter, WorkspaceSwitcher,
 };
 use super::theme;
 use super::types::{AppMode, InputMode, LayoutMode, Message, TuiEvent};
@@ -308,6 +308,8 @@ pub struct App {
     file_watcher: Option<clawdius_core::watch::FileWatcher>,
     /// Receiver for file watcher events.
     file_watcher_rx: Option<std::sync::mpsc::Receiver<Vec<clawdius_core::watch::WatchEvent>>>,
+    /// Command autocomplete popup for : commands.
+    command_autocomplete: CommandAutocomplete,
 }
 
 impl App {
@@ -347,6 +349,7 @@ impl App {
             workspace_switcher: WorkspaceSwitcher::new(),
             file_watcher: None,
             file_watcher_rx: None,
+            command_autocomplete: CommandAutocomplete::new(),
         })
     }
 
@@ -500,6 +503,7 @@ impl App {
                     self.input_mode = InputMode::Command;
                     self.input.clear();
                     self.input.push(':');
+                    self.command_autocomplete.update("");
                 },
                 KeyCode::Char('j') | KeyCode::Down => {
                     self.chat_view.scroll_down(10);
@@ -563,21 +567,56 @@ impl App {
                 KeyCode::Esc => {
                     self.input_mode = InputMode::Normal;
                     self.input.clear();
+                    self.command_autocomplete.hide();
                 },
                 KeyCode::Enter => {
+                    // If autocomplete is visible, execute selected command
+                    if self.command_autocomplete.is_visible() {
+                        if let Some(cmd) = self.command_autocomplete.selected() {
+                            self.input = format!(":{cmd}");
+                        }
+                        self.command_autocomplete.hide();
+                    }
                     self.execute_command(&self.input.clone());
                     self.input_mode = InputMode::Normal;
                     self.input.clear();
+                },
+                KeyCode::Tab => {
+                    if self.command_autocomplete.is_visible() {
+                        // Accept selected completion
+                        if let Some(cmd) = self.command_autocomplete.selected() {
+                            self.input = format!(":{cmd}");
+                        }
+                        self.command_autocomplete.hide();
+                    }
+                },
+                KeyCode::BackTab => {
+                    // Shift+Tab: navigate backwards
+                    self.command_autocomplete.previous();
+                },
+                KeyCode::Up => {
+                    self.command_autocomplete.previous();
+                },
+                KeyCode::Down => {
+                    self.command_autocomplete.next();
                 },
                 KeyCode::Backspace => {
                     self.input.pop();
                     if self.input == ":" {
                         self.input_mode = InputMode::Normal;
                         self.input.clear();
+                        self.command_autocomplete.hide();
+                    } else {
+                        // Update autocomplete with new partial
+                        let partial = self.input.trim_start_matches(':');
+                        self.command_autocomplete.update(partial);
                     }
                 },
                 KeyCode::Char(c) => {
                     self.input.push(c);
+                    // Update autocomplete with new partial
+                    let partial = self.input.trim_start_matches(':');
+                    self.command_autocomplete.update(partial);
                 },
                 _ => {},
             },
@@ -1655,7 +1694,7 @@ impl App {
     }
 
     /// Draw the TUI
-    pub fn draw(&self, f: &mut Frame<'_>) {
+    pub fn draw(&mut self, f: &mut Frame<'_>) {
         let outer_chunks = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
@@ -1737,6 +1776,12 @@ impl App {
                 theme,
             );
             f.render_widget(widget, f.area());
+        }
+
+        // Render command autocomplete popup above input area
+        if self.command_autocomplete.is_visible() {
+            let input_area = outer_chunks[2];
+            self.command_autocomplete.render(f, input_area);
         }
     }
 

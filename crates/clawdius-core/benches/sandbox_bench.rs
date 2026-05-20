@@ -36,8 +36,11 @@ fn bench_direct_backend(c: &mut Criterion) {
     group.measurement_time(Duration::from_secs(2));
     group.bench_function(BenchmarkId::new("echo", "direct"), |b| {
         b.iter(|| {
-            let result = backend
-                .execute(black_box(BENCH_COMMAND), black_box(BENCH_ARGS), black_box(cwd));
+            let result = backend.execute(
+                black_box(BENCH_COMMAND),
+                black_box(BENCH_ARGS),
+                black_box(cwd),
+            );
             assert!(result.is_ok(), "direct backend failed: {:?}", result.err());
         })
     });
@@ -54,8 +57,11 @@ fn bench_filtered_backend(c: &mut Criterion) {
     group.measurement_time(Duration::from_secs(2));
     group.bench_function(BenchmarkId::new("echo", "filtered"), |b| {
         b.iter(|| {
-            let result = backend
-                .execute(black_box(BENCH_COMMAND), black_box(BENCH_ARGS), black_box(cwd));
+            let result = backend.execute(
+                black_box(BENCH_COMMAND),
+                black_box(BENCH_ARGS),
+                black_box(cwd),
+            );
             assert!(
                 result.is_ok(),
                 "filtered backend failed: {:?}",
@@ -80,8 +86,7 @@ fn bench_executor_overhead(c: &mut Criterion) {
         group.measurement_time(Duration::from_secs(2));
         group.bench_function(BenchmarkId::new("execute", "trusted_audited"), |b| {
             b.iter(|| {
-                let result =
-                    executor.execute(black_box(BENCH_COMMAND), black_box(BENCH_ARGS), cwd);
+                let result = executor.execute(black_box(BENCH_COMMAND), black_box(BENCH_ARGS), cwd);
                 assert!(result.is_ok());
             })
         });
@@ -96,8 +101,7 @@ fn bench_executor_overhead(c: &mut Criterion) {
         group.measurement_time(Duration::from_secs(2));
         group.bench_function(BenchmarkId::new("execute", "trusted"), |b| {
             b.iter(|| {
-                let result =
-                    executor.execute(black_box(BENCH_COMMAND), black_box(BENCH_ARGS), cwd);
+                let result = executor.execute(black_box(BENCH_COMMAND), black_box(BENCH_ARGS), cwd);
                 assert!(result.is_ok());
             })
         });
@@ -110,14 +114,19 @@ fn bench_executor_overhead(c: &mut Criterion) {
     let mut group = c.benchmark_group("sandbox/executor");
     group.sample_size(20);
     group.measurement_time(Duration::from_secs(3));
-    group.bench_function(BenchmarkId::new("execute", format!("untrusted ({})", executor.backend_name())), |b| {
-        b.iter(|| {
-            let result =
-                executor.execute(black_box(BENCH_COMMAND), black_box(BENCH_ARGS), cwd);
-            // May succeed or fail depending on sandbox availability
-            let _ = black_box(result);
-        })
-    });
+    group.bench_function(
+        BenchmarkId::new(
+            "execute",
+            format!("untrusted ({})", executor.backend_name()),
+        ),
+        |b| {
+            b.iter(|| {
+                let result = executor.execute(black_box(BENCH_COMMAND), black_box(BENCH_ARGS), cwd);
+                // May succeed or fail depending on sandbox availability
+                let _ = black_box(result);
+            })
+        },
+    );
     group.finish();
 }
 
