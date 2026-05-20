@@ -170,6 +170,10 @@ harness = false
 name = "memory_bench"
 harness = false
 
+[[bench]]
+name = "sandbox_bench"
+harness = false
+
 [features]
 default = []
 keyring = ["dep:keyring"]
