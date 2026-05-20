@@ -38,7 +38,7 @@ Clawdius now supports 9 providers: Anthropic, OpenAI, Ollama, DeepSeek, OpenRout
 | Task | Priority | Effort | Status |
 |------|----------|--------|--------|
 | Tab completion for slash commands | P0 | 1d | DONE -- CommandAutocomplete component (37 commands, 5 tests) |
-| Tab completion for file paths (@path) | P1 | 1d | TODO |
+| Tab completion for file paths (@path) | P1 | 1d | DONE -- MentionAutocomplete wired into Insert mode with Tab/Shift+Tab |
 | Tab completion for modes | P2 | 0.5d | TODO |
 
 ### 1.3 Prompt Caching (COMPLETE)
@@ -147,12 +147,13 @@ Clawdius is the only coding assistant with 5 sandbox backends and Lean4 proofs. 
 
 Clawdius leads with Tree-sitter + LanceDB Graph-RAG. Claw Code and Cursor have no equivalent.
 
-| Task | Priority | Effort | Impact |
+| Task | Priority | Effort | Status |
 |------|----------|--------|--------|
-| Add 5 more Tree-sitter parsers (Java, C++, Ruby, PHP, Kotlin) | P1 | 3d | Broader language coverage |
-| Incremental indexing | P0 | 3d | Real-time code graph updates on file save |
-| Cross-file reference resolution | P1 | 5d | "Find all callers" -- IDE parity |
-| Code graph export (JSON/GraphQL) | P2 | 2d | Integration with external tools |
+| Add 4 more Tree-sitter parsers (Java, C++, Ruby, PHP) | P1 | 3d | DONE -- 9 new file extensions, 14 language tests pass |
+| Kotlin parser (blocked on tree-sitter-kotlin lacking Rust binding) | P1 | 1d | BLOCKED |
+| Incremental indexing | P0 | 3d | TODO |
+| Cross-file reference resolution | P1 | 5d | TODO |
+| Code graph export (JSON/GraphQL) | P2 | 2d | TODO |
 
 ### 4.3 Enterprise Features
 
@@ -186,12 +187,12 @@ Claw Code has lane events, a policy engine, worker lifecycle, task/team/cron reg
 
 | Task | Priority | Effort | Impact |
 |------|----------|--------|--------|
-| Agent task queue (persistent, SQLite-backed) | P0 | 5d | Foundation for orchestration |
-| Multi-agent coordination (spawn, message, collect) | P0 | 7d | Claw Code parity |
-| Policy engine (permission rules per agent) | P1 | 5d | Enterprise safety |
-| Agent recovery recipes (auto-retry, fallback) | P1 | 3d | Claw Code parity |
-| Deterministic mock service for E2E agent testing | P1 | 3d | Claw Code advantage we lack |
-| Cron/scheduled agent tasks | P2 | 3d | Claw Code parity |
+| Agent task queue (persistent, SQLite-backed) | P0 | 5d | DONE (Phase 5.1) -- 8 tests, retry logic, priority dequeue, subtasks |
+| Multi-agent coordination (spawn, message, collect) | P0 | 7d | TODO |
+| Policy engine (permission rules per agent) | P1 | 5d | TODO |
+| Agent recovery recipes (auto-retry, fallback) | P1 | 3d | PARTIAL -- retry built into TaskQueue |
+| Deterministic mock service for E2E agent testing | P1 | 3d | TODO |
+| Cron/scheduled agent tasks | P2 | 3d | TODO (schema prepared) |
 
 ---
 
@@ -310,8 +311,8 @@ Neither Clawdius nor Claw Code has browser automation (Playwright/Puppeteer). Th
 | 1 | rc.2 | 2 weeks | COMPLETE |
 | 2 | rc.3 | 2 weeks | COMPLETE (except crates.io publish) |
 | 3 | 1.0.0 | 1 week | In progress (changelog done, tag pending) |
-| 4 | 1.1.0 | 4 weeks | Planned |
-| 5 | 1.2.0 | 4 weeks | Planned |
+| 4 | 1.1.0 | 4 weeks | Partial (Tree-sitter done, gVisor TODO) |
+| 5 | 1.2.0 | 4 weeks | Partial (TaskQueue done, coordination TODO) |
 | 6 | 1.3.0 | 2 weeks | Partial (shell completions + man page done) |
 | 7 | 2.0.0 | 8 weeks | Planned |
 
@@ -335,7 +336,7 @@ All metrics should be automatically validated in CI to prevent the drift that oc
 | LLM providers | 9 | 9 | 9 | 9 |
 | Sandboxing backends | 5 | 5 | 7 | 7 |
 | Messaging adapters | 9 | 9 | 9 | 9 |
-| Tree-sitter parsers | 5 | 5 | 10 | 10 |
+| Tree-sitter parsers | 5 | 9 | 10 | 10 |
 | Boot time | 2.5ms | <10ms | <10ms | <10ms |
 | Idle memory | ~100MB | <100MB | <80MB | <60MB |
 
