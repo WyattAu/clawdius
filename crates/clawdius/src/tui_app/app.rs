@@ -9,8 +9,8 @@ use std::sync::Arc;
 
 use super::components;
 use super::components::{
-    ChatView, CommandAutocomplete, DiffView, FileList, SessionEntry, SessionPicker, Spinner,
-    SyntaxHighlighter, WorkspaceSwitcher,
+    ChatView, CommandAutocomplete, DiffView, FileList, MentionAutocomplete, SessionEntry,
+    SessionPicker, Spinner, SyntaxHighlighter, WorkspaceSwitcher,
 };
 use super::theme;
 use super::types::{AppMode, InputMode, LayoutMode, Message, TuiEvent};
@@ -310,6 +310,8 @@ pub struct App {
     file_watcher_rx: Option<std::sync::mpsc::Receiver<Vec<clawdius_core::watch::WatchEvent>>>,
     /// Command autocomplete popup for : commands.
     command_autocomplete: CommandAutocomplete,
+    /// Mention (@file, @folder, @url, etc.) autocomplete for Insert mode.
+    mention_autocomplete: MentionAutocomplete,
 }
 
 impl App {
@@ -350,6 +352,7 @@ impl App {
             file_watcher: None,
             file_watcher_rx: None,
             command_autocomplete: CommandAutocomplete::new(),
+            mention_autocomplete: MentionAutocomplete::new(),
         })
     }
 
@@ -542,14 +545,46 @@ impl App {
             InputMode::Insert => match key.code {
                 KeyCode::Esc => {
                     self.input_mode = InputMode::Normal;
+                    self.mention_autocomplete.hide();
                 },
                 KeyCode::Enter => {
+                    self.mention_autocomplete.hide();
                     if !self.input.is_empty() {
                         self.send_message().await?;
                     }
                 },
+                KeyCode::Tab => {
+                    if self.mention_autocomplete.is_visible() {
+                        // Accept selected mention
+                        if let Some(suggestion) = self.mention_autocomplete.selected() {
+                            // Replace everything from the last @ with the suggestion
+                            if let Some(at_pos) = self.input.rfind('@') {
+                                self.input.truncate(at_pos);
+                                self.input.push_str(&suggestion.value);
+                            }
+                        }
+                        self.mention_autocomplete.hide();
+                    }
+                },
+                KeyCode::BackTab => {
+                    // Shift+Tab: navigate backwards in mentions
+                    if self.mention_autocomplete.is_visible() {
+                        self.mention_autocomplete.previous();
+                    }
+                },
+                KeyCode::Up => {
+                    if self.mention_autocomplete.is_visible() {
+                        self.mention_autocomplete.previous();
+                    }
+                },
+                KeyCode::Down => {
+                    if self.mention_autocomplete.is_visible() {
+                        self.mention_autocomplete.next();
+                    }
+                },
                 KeyCode::Backspace => {
                     self.input.pop();
+                    self.update_mention_autocomplete();
                 },
                 KeyCode::Char('e')
                     if key
@@ -560,6 +595,7 @@ impl App {
                 },
                 KeyCode::Char(c) => {
                     self.input.push(c);
+                    self.update_mention_autocomplete();
                 },
                 _ => {},
             },
@@ -694,6 +730,25 @@ impl App {
             },
             _ => {},
         }
+    }
+
+    /// Update mention autocomplete based on current input.
+    /// Shows suggestions when input ends with @mention pattern.
+    fn update_mention_autocomplete(&mut self) {
+        let working_dir = std::env::current_dir().unwrap_or_default();
+        // Check if the text after the last space (or start) contains @
+        let last_word_start = self.input.rfind(' ').map_or(0, |i| i + 1);
+        let last_word = &self.input[last_word_start..];
+
+        if last_word.contains('@') {
+            let at_pos = last_word.rfind('@').unwrap_or(0);
+            let partial = &last_word[at_pos..];
+            if !partial.is_empty() {
+                self.mention_autocomplete.show(partial, &working_dir);
+                return;
+            }
+        }
+        self.mention_autocomplete.hide();
     }
 
     #[allow(clippy::too_many_lines)]
@@ -1782,6 +1837,12 @@ impl App {
         if self.command_autocomplete.is_visible() {
             let input_area = outer_chunks[2];
             self.command_autocomplete.render(f, input_area);
+        }
+
+        // Render mention autocomplete popup above input area
+        if self.mention_autocomplete.is_visible() {
+            let input_area = outer_chunks[2];
+            self.mention_autocomplete.render(f, input_area);
         }
     }
 

@@ -13,6 +13,7 @@ pub use chat::ChatView;
 pub use command_autocomplete::CommandAutocomplete;
 pub use diff_view::DiffView;
 pub use file_list::FileList;
+pub use mention_autocomplete::MentionAutocomplete;
 pub use session_picker::{SessionEntry, SessionPicker};
 pub use spinner::Spinner;
 pub use syntax::SyntaxHighlighter;
