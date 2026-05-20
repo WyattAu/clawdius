@@ -25,6 +25,10 @@ impl CodeParser {
             LanguageKind::TypeScript,
             LanguageKind::TypeScriptJsx,
             LanguageKind::Go,
+            LanguageKind::Java,
+            LanguageKind::Cpp,
+            LanguageKind::Ruby,
+            LanguageKind::Php,
         ] {
             let mut parser = Parser::new();
             parser.set_language(&lang.tree_sitter_language())?;
@@ -158,6 +162,42 @@ impl CodeParser {
                 "var_declaration" => Some(SymbolKind::Variable),
                 _ => None,
             },
+            LanguageKind::Java => match kind {
+                "class_declaration"
+                | "interface_declaration"
+                | "enum_declaration"
+                | "record_declaration" => Some(SymbolKind::Class),
+                "method_declaration" | "constructor_declaration" => Some(SymbolKind::Method),
+                "field_declaration" | "constant_declaration" => Some(SymbolKind::Field),
+                "static_import_declaration" => None,
+                _ => None,
+            },
+            LanguageKind::Cpp => match kind {
+                "function_definition" | "declaration" => Some(SymbolKind::Function),
+                "class_specifier" | "struct_specifier" => Some(SymbolKind::Class),
+                "enum_specifier" => Some(SymbolKind::Enum),
+                "namespace_definition" => Some(SymbolKind::Module),
+                "template_declaration" => None,
+                _ => None,
+            },
+            LanguageKind::Ruby => match kind {
+                "method" | "singleton_method" => Some(SymbolKind::Method),
+                "class" | "singleton_class" => Some(SymbolKind::Class),
+                "module" => Some(SymbolKind::Module),
+                "constant" => Some(SymbolKind::Constant),
+                _ => None,
+            },
+            LanguageKind::Php => match kind {
+                "function_definition" | "method_declaration" | "arrow_function" => {
+                    Some(SymbolKind::Function)
+                },
+                "class_declaration"
+                | "interface_declaration"
+                | "trait_declaration"
+                | "enum_declaration" => Some(SymbolKind::Class),
+                "const_declaration" | "define" => Some(SymbolKind::Constant),
+                _ => None,
+            },
         }
     }
 
@@ -211,6 +251,40 @@ impl CodeParser {
                     }
                     return None;
                 },
+                _ => None,
+            },
+            LanguageKind::Java => match kind {
+                "class_declaration"
+                | "interface_declaration"
+                | "enum_declaration"
+                | "record_declaration"
+                | "method_declaration"
+                | "constructor_declaration"
+                | "field_declaration"
+                | "constant_declaration" => Some("name"),
+                _ => None,
+            },
+            LanguageKind::Cpp => match kind {
+                "function_definition"
+                | "class_specifier"
+                | "struct_specifier"
+                | "enum_specifier"
+                | "namespace_definition" => Some("name"),
+                "declaration" => Some("declarator"),
+                _ => None,
+            },
+            LanguageKind::Ruby => match kind {
+                "method" | "singleton_method" | "class" | "module" => Some("name"),
+                _ => None,
+            },
+            LanguageKind::Php => match kind {
+                "class_declaration"
+                | "interface_declaration"
+                | "trait_declaration"
+                | "enum_declaration"
+                | "function_definition"
+                | "method_declaration"
+                | "const_declaration" => Some("name"),
                 _ => None,
             },
         };
@@ -271,6 +345,17 @@ impl CodeParser {
                     None
                 }
             },
+            LanguageKind::Java | LanguageKind::Cpp | LanguageKind::Ruby | LanguageKind::Php => {
+                // Extract parameters from common "parameters"/"formal_parameters" field
+                if let Some(params) = node
+                    .child_by_field_name("parameters")
+                    .or_else(|| node.child_by_field_name("formal_parameters"))
+                {
+                    Some(self.node_text(&params, source))
+                } else {
+                    None
+                }
+            },
         }
     }
 
@@ -310,6 +395,27 @@ impl CodeParser {
                 None
             },
             LanguageKind::Go => {
+                if kind == "comment" {
+                    return Some(self.node_text(&prev, source));
+                }
+                None
+            },
+            LanguageKind::Java | LanguageKind::Php => {
+                if kind == "comment" || kind == "block_comment" {
+                    let text = self.node_text(&prev, source);
+                    if text.starts_with("/**") || text.starts_with("*") || text.starts_with("//") {
+                        return Some(text);
+                    }
+                }
+                None
+            },
+            LanguageKind::Cpp => {
+                if kind == "comment" {
+                    return Some(self.node_text(&prev, source));
+                }
+                None
+            },
+            LanguageKind::Ruby => {
                 if kind == "comment" {
                     return Some(self.node_text(&prev, source));
                 }
@@ -406,6 +512,20 @@ impl CodeParser {
                 matches!(kind, "import_statement" | "export_statement")
             },
             LanguageKind::Go => matches!(kind, "import_declaration"),
+            LanguageKind::Java => matches!(kind, "import_declaration"),
+            LanguageKind::Cpp => matches!(
+                kind,
+                "preproc_include" | "using_declaration" | "namespace_using_declaration"
+            ),
+            LanguageKind::Ruby => matches!(kind, "require" | "require_relative"),
+            LanguageKind::Php => matches!(
+                kind,
+                "require_expression"
+                    | "include_expression"
+                    | "require_once_expression"
+                    | "include_once_expression"
+                    | "use_declaration"
+            ),
         };
 
         if is_import {

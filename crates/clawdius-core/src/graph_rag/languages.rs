@@ -6,11 +6,19 @@ use serde::{Deserialize, Serialize};
 use tree_sitter::Language;
 
 #[cfg(not(target_arch = "wasm32"))]
+use tree_sitter_cpp::LANGUAGE as CPP_LANGUAGE;
+#[cfg(not(target_arch = "wasm32"))]
 use tree_sitter_go::LANGUAGE as GO_LANGUAGE;
+#[cfg(not(target_arch = "wasm32"))]
+use tree_sitter_java::LANGUAGE as JAVA_LANGUAGE;
 #[cfg(not(target_arch = "wasm32"))]
 use tree_sitter_javascript::LANGUAGE as JAVASCRIPT_LANGUAGE;
 #[cfg(not(target_arch = "wasm32"))]
+use tree_sitter_php::LANGUAGE_PHP as PHP_LANGUAGE;
+#[cfg(not(target_arch = "wasm32"))]
 use tree_sitter_python::LANGUAGE as PYTHON_LANGUAGE;
+#[cfg(not(target_arch = "wasm32"))]
+use tree_sitter_ruby::LANGUAGE as RUBY_LANGUAGE;
 #[cfg(not(target_arch = "wasm32"))]
 use tree_sitter_rust::LANGUAGE as RUST_LANGUAGE;
 #[cfg(not(target_arch = "wasm32"))]
@@ -27,6 +35,10 @@ pub enum LanguageKind {
     TypeScript,
     TypeScriptJsx,
     Go,
+    Java,
+    Cpp,
+    Ruby,
+    Php,
 }
 
 impl LanguageKind {
@@ -39,6 +51,10 @@ impl LanguageKind {
             LanguageKind::TypeScript => "typescript",
             LanguageKind::TypeScriptJsx => "typescript-jsx",
             LanguageKind::Go => "go",
+            LanguageKind::Java => "java",
+            LanguageKind::Cpp => "cpp",
+            LanguageKind::Ruby => "ruby",
+            LanguageKind::Php => "php",
         }
     }
 
@@ -51,6 +67,10 @@ impl LanguageKind {
             "ts" => Some(LanguageKind::TypeScript),
             "tsx" => Some(LanguageKind::TypeScriptJsx),
             "go" => Some(LanguageKind::Go),
+            "java" | "jar" => Some(LanguageKind::Java),
+            "cpp" | "cxx" | "cc" | "c" | "h" | "hpp" | "hxx" | "hh" => Some(LanguageKind::Cpp),
+            "rb" | "ruby" => Some(LanguageKind::Ruby),
+            "php" => Some(LanguageKind::Php),
             _ => None,
         }
     }
@@ -65,6 +85,10 @@ impl LanguageKind {
             LanguageKind::TypeScript => TYPESCRIPT_LANGUAGE.into(),
             LanguageKind::TypeScriptJsx => TSX_LANGUAGE.into(),
             LanguageKind::Go => GO_LANGUAGE.into(),
+            LanguageKind::Java => JAVA_LANGUAGE.into(),
+            LanguageKind::Cpp => CPP_LANGUAGE.into(),
+            LanguageKind::Ruby => RUBY_LANGUAGE.into(),
+            LanguageKind::Php => PHP_LANGUAGE.into(),
         }
     }
 
@@ -77,6 +101,10 @@ impl LanguageKind {
             LanguageKind::TypeScript => &["ts"],
             LanguageKind::TypeScriptJsx => &["tsx"],
             LanguageKind::Go => &["go"],
+            LanguageKind::Java => &["java"],
+            LanguageKind::Cpp => &["cpp", "cxx", "cc", "c", "h", "hpp", "hxx", "hh"],
+            LanguageKind::Ruby => &["rb"],
+            LanguageKind::Php => &["php"],
         }
     }
 }
@@ -101,7 +129,8 @@ pub fn is_supported(path: &Path) -> bool {
 #[must_use]
 pub fn supported_extensions() -> Vec<&'static str> {
     vec![
-        "rs", "py", "pyi", "pyw", "js", "mjs", "cjs", "ts", "tsx", "go",
+        "rs", "py", "pyi", "pyw", "js", "mjs", "cjs", "ts", "tsx", "go", "java", "cpp", "cxx",
+        "cc", "c", "h", "hpp", "hxx", "hh", "rb", "php", "kt", "kts",
     ]
 }
 
@@ -166,6 +195,46 @@ mod tests {
     }
 
     #[test]
+    fn test_detect_language_java() {
+        assert_eq!(
+            detect_language(Path::new("Main.java")),
+            Some(LanguageKind::Java)
+        );
+    }
+
+    #[test]
+    fn test_detect_language_cpp() {
+        assert_eq!(
+            detect_language(Path::new("main.cpp")),
+            Some(LanguageKind::Cpp)
+        );
+        assert_eq!(
+            detect_language(Path::new("header.h")),
+            Some(LanguageKind::Cpp)
+        );
+        assert_eq!(
+            detect_language(Path::new("impl.cc")),
+            Some(LanguageKind::Cpp)
+        );
+    }
+
+    #[test]
+    fn test_detect_language_ruby() {
+        assert_eq!(
+            detect_language(Path::new("app.rb")),
+            Some(LanguageKind::Ruby)
+        );
+    }
+
+    #[test]
+    fn test_detect_language_php() {
+        assert_eq!(
+            detect_language(Path::new("index.php")),
+            Some(LanguageKind::Php)
+        );
+    }
+
+    #[test]
     fn test_detect_language_unknown() {
         assert_eq!(detect_language(Path::new("README.md")), None);
         assert_eq!(detect_language(Path::new("config.json")), None);
@@ -176,6 +245,10 @@ mod tests {
         assert!(is_supported(Path::new("main.rs")));
         assert!(is_supported(Path::new("app.py")));
         assert!(is_supported(Path::new("index.js")));
+        assert!(is_supported(Path::new("Main.java")));
+        assert!(is_supported(Path::new("main.cpp")));
+        assert!(is_supported(Path::new("app.rb")));
+        assert!(is_supported(Path::new("index.php")));
         assert!(!is_supported(Path::new("README.md")));
     }
 
@@ -187,6 +260,10 @@ mod tests {
         assert!(extensions.contains(&"js"));
         assert!(extensions.contains(&"ts"));
         assert!(extensions.contains(&"go"));
+        assert!(extensions.contains(&"java"));
+        assert!(extensions.contains(&"cpp"));
+        assert!(extensions.contains(&"rb"));
+        assert!(extensions.contains(&"php"));
     }
 
     #[test]
