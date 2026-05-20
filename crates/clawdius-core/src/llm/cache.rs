@@ -1,4 +1,4 @@
-use crate::llm::{ChatMessage, ChatRole, LlmResponse};
+use crate::llm::{ChatMessage, ChatRole, LlmResponse, LlmTokenUsage};
 use blake3::Hasher;
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU32, AtomicU64, Ordering};
@@ -183,7 +183,7 @@ mod tests {
     fn make_response(text: &str) -> LlmResponse {
         LlmResponse {
             text: text.to_string(),
-            usage: TokenUsage {
+            usage: LlmTokenUsage {
                 input: 10,
                 output: 20,
                 cached: 0,

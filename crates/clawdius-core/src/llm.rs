@@ -215,9 +215,11 @@
 //! [`Error`]: crate::Error
 
 mod messages;
+pub mod cache;
 pub mod providers;
 pub mod rate_limiter;
 
+pub use cache::LlmResponseCache;
 pub use messages::{ChatMessage, ChatRole};
 pub use providers::ChatWithToolsResult;
 pub use providers::Provider;
@@ -229,6 +231,37 @@ pub use providers::LlmClient;
 use serde::{Deserialize, Serialize};
 use std::future::Future;
 use std::time::Duration;
+
+/// Token usage statistics from an LLM response.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct LlmTokenUsage {
+    pub input: usize,
+    pub output: usize,
+    pub cached: usize,
+}
+
+impl LlmTokenUsage {
+    #[must_use]
+    pub fn total(&self) -> usize {
+        self.input + self.output
+    }
+}
+
+/// A cached LLM response with token usage and optional tool calls.
+#[derive(Debug, Clone)]
+pub struct LlmResponse {
+    pub text: String,
+    pub usage: LlmTokenUsage,
+    pub tool_calls: Vec<LlmToolCall>,
+}
+
+/// A tool call requested by the LLM.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LlmToolCall {
+    pub id: String,
+    pub name: String,
+    pub arguments: String,
+}
 
 /// Check if an error should be retried based on conditions
 fn should_retry(error: &Error, conditions: &[RetryCondition]) -> bool {

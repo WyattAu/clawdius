@@ -6,6 +6,7 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::time::Duration;
 
 use async_trait::async_trait;
 use tokio::sync::RwLock;
@@ -13,6 +14,7 @@ use tokio::sync::RwLock;
 use crate::adapter::{IncomingMessage, Platform};
 use crate::error::GatewayError;
 use crate::gateway::MessageHandler;
+use clawdius_core::llm::{LlmResponse, LlmResponseCache, LlmTokenUsage};
 
 /// System prompt for the gateway chat mode.
 const GATEWAY_SYSTEM_PROMPT: &str = "\
@@ -57,6 +59,9 @@ pub struct ClawdiusHandler {
 
     /// Maximum history messages to include in LLM context.
     max_history: usize,
+
+    /// LLM response cache (provider-agnostic, keyed by message hash).
+    cache: Arc<LlmResponseCache>,
 }
 
 impl ClawdiusHandler {
@@ -73,6 +78,7 @@ impl ClawdiusHandler {
             message_history: Arc::new(RwLock::new(HashMap::new())),
             system_prompt: GATEWAY_SYSTEM_PROMPT.to_string(),
             max_history: 50,
+            cache: Arc::new(LlmResponseCache::new(Duration::from_secs(300), 1000)),
         }
     }
 
@@ -109,6 +115,19 @@ impl ClawdiusHandler {
     pub const fn with_max_history(mut self, max: usize) -> Self {
         self.max_history = max;
         self
+    }
+
+    /// Set a custom response cache.
+    #[must_use]
+    pub fn with_cache(mut self, cache: Arc<LlmResponseCache>) -> Self {
+        self.cache = cache;
+        self
+    }
+
+    /// Get cache statistics.
+    #[must_use]
+    pub fn cache_stats(&self) -> clawdius_core::llm::cache::CacheStats {
+        self.cache.stats()
     }
 
     /// Get the session key for a given platform + `chat_id`.
@@ -295,18 +314,47 @@ impl MessageHandler for ClawdiusHandler {
             .build_messages(&message.platform, &message.chat_id, &message.text)
             .await?;
 
-        // 4. Call the LLM
+        // 4. Check cache for exact message match
+        if let Some(cached) = self.cache.get(&messages) {
+            self.save_to_history(
+                &message.platform,
+                &message.chat_id,
+                clawdius_core::llm::ChatRole::User,
+                &message.text,
+            )
+            .await;
+            self.save_to_history(
+                &message.platform,
+                &message.chat_id,
+                clawdius_core::llm::ChatRole::Assistant,
+                &cached.text,
+            )
+            .await;
+            return Ok(cached.text);
+        }
+
+        // 5. Call the LLM
         let llm = self.llm_client.read().await;
         let llm = llm
             .as_ref()
             .ok_or_else(|| GatewayError::Agent("LLM client not initialized".to_string()))?;
 
         let response = llm
-            .chat(messages)
+            .chat(messages.clone())
             .await
             .map_err(|e| GatewayError::Agent(format!("LLM call failed: {e}")))?;
 
-        // 5. Save to history
+        // 6. Store in cache for future identical requests
+        self.cache.insert(
+            &messages,
+            LlmResponse {
+                text: response.clone(),
+                usage: LlmTokenUsage::default(),
+                tool_calls: vec![],
+            },
+        );
+
+        // 7. Save to history
         self.save_to_history(
             &message.platform,
             &message.chat_id,
