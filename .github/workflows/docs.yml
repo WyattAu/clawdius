@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - 'docs/book/**'
+      - 'index.html'
       - '.github/workflows/docs.yml'
   workflow_dispatch:
 
@@ -21,6 +22,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -30,19 +32,21 @@ jobs:
         with:
           mdbook-version: '0.4.40'
 
-      - name: Setup mdBook plugins
-        run: |
-          cargo install mdbook-admonish mdbook-mermaid mdbook-toc || true
-
       - name: Build book
         run: |
           cd docs/book
           mdbook build
 
+      - name: Merge landing page with docs
+        run: |
+          mkdir -p site
+          cp index.html site/index.html
+          cp -r docs/book/book/* site/
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: docs/book/book
+          path: site
 
   deploy:
     environment:
