@@ -1,6 +1,6 @@
 # Clawdius Production Roadmap
 
-> Current: v1.0.0-rc.1 | Generated: 2026-05-12 | Supersedes: ROADMAP.md, ROADMAP_PATH_FORWARD.md
+> Current: v1.0.0-rc.2 | Generated: 2026-05-20 | Supersedes: ROADMAP.md, ROADMAP_PATH_FORWARD.md
 
 ## Current State (Verified)
 
@@ -277,6 +277,83 @@ Note: `--all-features` fails on `vector-db` and `telegram` features
 - FPGA-accelerated sandbox isolation (optional)
 - Quantized local LLM inference via candle-transformers
 
+## Phase 7: Quality Audit Remediation (Week 14-16)
+
+Findings from the comprehensive audit conducted 2026-05-20.
+
+### 7.1 Silent Error Discard Remediation (38+ sites)
+**Priority:** Critical
+**Actions:**
+- Replace `let _ =` with proper error handling in API persistence code:
+  - `api/rest.rs`: `record_tenant_task()`, `state.add_message()` (6 sites)
+  - `llm/model_router.rs`: `cost_tracker.record()` (3 sites)
+  - `api/sprint_handler.rs`: `record_tenant_task()` (1 site)
+- Replace `let _ =` channel sends with `.ok()` or logged errors in:
+  - `api/agent_loop.rs` (12 sites), `api/sprint_handler.rs` (8 sites)
+  - `orchestrator/worker.rs` (9 sites)
+- Use `tracing::warn!()` for non-critical drops, `?` for critical paths
+**Success:** Zero `let _ =` on Result types in `api/`, `llm/`, `messaging/` modules
+
+### 7.2 Logging Migration (40+ sites)
+**Priority:** High
+**Actions:**
+- Replace `eprintln!()` with `tracing::debug!()`/`tracing::warn!()` in:
+  - `agentic/sprint/engine.rs` (18 instances)
+  - `agentic/tool_use.rs` (5 instances)
+  - `agentic/sprint/mod.rs` (8 instances)
+  - `agentic/review_engine.rs` (2 instances)
+  - `api/sprint_handler.rs` (4 instances)
+**Success:** Zero `eprintln!()` in library code
+
+### 7.3 Gateway Adapter Hardening
+**Priority:** Medium
+**Actions:**
+- Fix hardcoded "fallback" chat_id in signal.rs, whatsapp.rs edit_message
+- Fix hardcoded "default" roomId in rocketchat.rs
+- Implement DDP real-time connection for RocketChat `start()`
+- Add integration tests per adapter with mock servers
+**Success:** All 9 adapters pass message roundtrip tests
+
+### 7.4 UUID Generation Fix
+**Priority:** High
+**Actions:**
+- Replace `uuid_v4_placeholder()` in `agentic/parallel_sprint.rs` with proper
+  `uuid::Uuid::new_v4()` calls
+- The current timestamp-based ID generation is collision-prone under concurrency
+**Success:** All IDs use cryptographically-sound UUID v4
+
+### 7.5 CI/CD Pipeline Hardening
+**Priority:** High
+**Actions:**
+- Migrate from `actions/cache@v4` to `Swatinem/rust-cache@v2` for smarter caching
+  (resolves stale cache compilation failures)
+- Pin all actions to commit SHAs (supply chain security)
+- Remove redundant `lean_action_ci.yml` (duplicates `ci.yml` lean4-proofs job)
+- Remove duplicate benchmark execution between `ci.yml` and `benchmarks.yml`
+- Make security pipeline blocking (remove `continue-on-error` from audit/vet)
+- Add GPG signing validation to release workflow
+**Success:** CI passes consistently on all platforms; security failures block merges
+
+### 7.6 Documentation Consistency
+**Priority:** Medium
+**Actions:**
+- Establish single test count source: generate badge from `cargo test -- --list`
+- Fix binary size references (currently 4 different values across docs)
+- Fix boot time references (currently 3 different values across docs)
+- Remove all references to non-existent v1.2.0
+- Remove references to non-existent Zhipu AI and Groq providers
+- Add DNS records for docs.clawdius.dev pointing to GitHub Pages
+**Success:** All metrics consistent across all documentation files
+
+### 7.7 Website and Domain Infrastructure
+**Priority:** Medium
+**Actions:**
+- Configure docs.clawdius.dev DNS (CNAME to wyattau.github.io)
+- Fix or decommission docs.clawdius.co.uk (currently returns 500)
+- Remove or fix netlify.toml if not actively using Netlify
+- Create dedicated landing page deployment (currently only docs deploy)
+**Success:** docs.clawdius.dev serves documentation; landing page deployed
+
 ## Risk Register
 
 | Risk | Probability | Impact | Mitigation |
@@ -288,6 +365,10 @@ Note: `--all-features` fails on `vector-db` and `telegram` features
 | VSCode extension bit-rot | Low | Medium | Integration tests, manual smoke test cycle |
 | Transitive CVE blocks compliance | Low | Medium | Feature-flag gating, upstream monitoring |
 | Pre-commit timeout on cold cache | Medium | Low | Skip-if-cold logic, pre-push as fallback |
+| Silent Result discard causes data loss | Medium | High | Phase 7.1 remediation of 38+ `let _ =` sites |
+| CI stale cache causes false failures | High | Medium | Migrate to rust-cache v2 (DL-009) |
+| UUID collision under concurrent sprints | Medium | High | Phase 7.4 fix timestamp-based IDs |
+| Domain misconfiguration blocks docs access | High | Medium | Phase 7.7 DNS alignment |
 
 ## Decision Log
 
@@ -301,6 +382,10 @@ Note: `--all-features` fails on `vector-db` and `telegram` features
 | DL-006 | Single source of truth: Cargo.toml version | Avoid stale version references in docs | 2026-05-12 |
 | DL-007 | Remove allow(clippy::restriction) to activate deny(unwrap_used) | restriction group overrides deny | 2026-05-14 |
 | DL-008 | Feature-flag vector-db and telegram behind default features | Compile errors in --all-features | 2026-05-14 |
+| DL-009 | Use Swatinem/rust-cache over manual actions/cache | Handles incremental caching and stale artifact cleanup | 2026-05-20 |
+| DL-010 | Block security pipeline on failures | Non-blocking security gate was masking all vulnerabilities | 2026-05-20 |
+| DL-011 | Single canonical docs domain: docs.clawdius.dev | Eliminates .co.uk/.dev mismatch; aligned with landing page | 2026-05-20 |
+| DL-012 | Merge landing page into docs deployment | GitHub Pages only supports one deployment source | 2026-05-20 |
 
 ## Appendix: Quality Gate Summary
 
