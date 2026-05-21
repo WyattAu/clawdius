@@ -1,3 +1,10 @@
+#![allow(
+    missing_docs,
+    clippy::doc_markdown,
+    clippy::missing_const_for_fn,
+    clippy::semicolon_if_nothing_returned
+)]
+
 //! Sandbox backend benchmark suite
 //!
 //! Measures execution overhead for each available sandbox backend.
@@ -18,7 +25,7 @@ const BENCH_COMMAND: &str = "echo";
 const BENCH_ARGS: &[&str] = &["hello"];
 const BENCH_CWD: &str = ".";
 
-fn make_config(tier: SandboxTier) -> SandboxConfig {
+const fn make_config(tier: SandboxTier) -> SandboxConfig {
     SandboxConfig {
         tier,
         network: false,
@@ -42,7 +49,7 @@ fn bench_direct_backend(c: &mut Criterion) {
                 black_box(cwd),
             );
             assert!(result.is_ok(), "direct backend failed: {:?}", result.err());
-        })
+        });
     });
     group.finish();
 }
@@ -67,7 +74,7 @@ fn bench_filtered_backend(c: &mut Criterion) {
                 "filtered backend failed: {:?}",
                 result.err()
             );
-        })
+        });
     });
     group.finish();
 }
@@ -88,7 +95,7 @@ fn bench_executor_overhead(c: &mut Criterion) {
             b.iter(|| {
                 let result = executor.execute(black_box(BENCH_COMMAND), black_box(BENCH_ARGS), cwd);
                 assert!(result.is_ok());
-            })
+            });
         });
         group.finish();
     }
@@ -103,7 +110,7 @@ fn bench_executor_overhead(c: &mut Criterion) {
             b.iter(|| {
                 let result = executor.execute(black_box(BENCH_COMMAND), black_box(BENCH_ARGS), cwd);
                 assert!(result.is_ok());
-            })
+            });
         });
         group.finish();
     }
@@ -124,7 +131,7 @@ fn bench_executor_overhead(c: &mut Criterion) {
                 let result = executor.execute(black_box(BENCH_COMMAND), black_box(BENCH_ARGS), cwd);
                 // May succeed or fail depending on sandbox availability
                 let _ = black_box(result);
-            })
+            });
         },
     );
     group.finish();
@@ -136,7 +143,7 @@ fn bench_backend_detection(c: &mut Criterion) {
         b.iter(|| {
             let name = detect_best_backend();
             black_box(name);
-        })
+        });
     });
 }
 
