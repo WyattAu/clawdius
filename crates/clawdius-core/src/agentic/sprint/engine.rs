@@ -60,7 +60,7 @@ impl SprintEngine {
                     use std::io::Write;
                     let _ = std::io::stderr().flush();
                 }
-                eprintln!();
+                tracing::debug!("streaming done");
                 if output.is_empty() {
                     Err(crate::Error::Llm("LLM returned empty response".to_string()))
                 } else {
@@ -102,7 +102,7 @@ impl SprintEngine {
         {
             Ok(Ok(r)) => r,
             Ok(Err(e)) => {
-                eprintln!("Phase {} error (will be retried or reported): {e}", phase);
+                tracing::debug!("Phase {} error (will be retried or reported): {e}", phase);
                 PhaseResult {
                     phase: phase.clone(),
                     status: PhaseStatus::Failed,
@@ -114,9 +114,10 @@ impl SprintEngine {
                 }
             },
             Err(_) => {
-                eprintln!(
+                tracing::debug!(
                     "Phase {} timed out after {}s",
-                    phase, state.config.phase_timeout_secs
+                    phase,
+                    state.config.phase_timeout_secs
                 );
                 PhaseResult {
                     phase: phase.clone(),
@@ -167,7 +168,7 @@ impl SprintEngine {
             }
         }
 
-        eprintln!("  [tool-use loop starting for Build phase (trying native first)]");
+        tracing::debug!("  [tool-use loop starting for Build phase (trying native first)]");
 
         match tool_use::run_native_tool_use_loop(
             llm,
@@ -180,7 +181,7 @@ impl SprintEngine {
         .await
         {
             Ok((output, tokens, files_modified)) => {
-                eprintln!(
+                tracing::debug!(
                     "  [native tool loop done: {} files modified, {} tokens]",
                     files_modified.len(),
                     tokens
@@ -196,7 +197,9 @@ impl SprintEngine {
                 }
             },
             Err(_) => {
-                eprintln!("  [native tool-use not available, falling back to parser-based loop]");
+                tracing::debug!(
+                    "  [native tool-use not available, falling back to parser-based loop]"
+                );
                 match tool_use::run_tool_use_loop(
                     llm,
                     executor,
@@ -208,7 +211,7 @@ impl SprintEngine {
                 .await
                 {
                     Ok((output, tokens, files_modified)) => {
-                        eprintln!(
+                        tracing::debug!(
                             "  [parser tool loop done: {} files modified]",
                             files_modified.len()
                         );
@@ -223,7 +226,9 @@ impl SprintEngine {
                         }
                     },
                     Err(e) => {
-                        eprintln!("Tool-use loop error: {e}. Falling back to LLM-only result.");
+                        tracing::debug!(
+                            "Tool-use loop error: {e}. Falling back to LLM-only result."
+                        );
                         result
                     },
                 }
@@ -247,7 +252,7 @@ impl SprintEngine {
         match super::execute_real_phase(self, state, phase, result).await {
             Ok(r) => r,
             Err(e) => {
-                eprintln!("Real execution error in phase {phase}: {e}");
+                tracing::debug!("Real execution error in phase {phase}: {e}");
                 PhaseResult {
                     phase: phase.clone(),
                     status: PhaseStatus::Failed,
@@ -274,7 +279,9 @@ impl SprintEngine {
         match run_multi_model_review(self, state, result.clone()).await {
             Ok(r) => r,
             Err(e) => {
-                eprintln!("Multi-model review error: {e}. Falling back to single LLM review.");
+                tracing::debug!(
+                    "Multi-model review error: {e}. Falling back to single LLM review."
+                );
                 result
             },
         }
@@ -399,9 +406,10 @@ impl SprintEngine {
             // Check sprint timeout
             let elapsed = sprint_start.elapsed().as_secs();
             if elapsed > state.config.max_duration_secs {
-                eprintln!(
+                tracing::debug!(
                     "Sprint timeout: {}s elapsed, max {}s. Stopping.",
-                    elapsed, state.config.max_duration_secs
+                    elapsed,
+                    state.config.max_duration_secs
                 );
                 state.phase_results.push(PhaseResult {
                     phase: phase.clone(),
@@ -421,7 +429,7 @@ impl SprintEngine {
             // Create checkpoint before Build phase
             if *phase == SprintPhase::Build && state.checkpoint_ref.is_none() {
                 if let Some(checkpoint) = create_checkpoint(&state.config.project_root) {
-                    eprintln!("Checkpoint created: {}", checkpoint);
+                    tracing::debug!("Checkpoint created: {}", checkpoint);
                     state.checkpoint_ref = Some(checkpoint);
                 }
             }
@@ -484,7 +492,7 @@ impl SprintEngine {
         let mut state = if resume {
             match load_latest_state(&config.project_root) {
                 Ok(Some(s)) => {
-                    eprintln!(
+                    tracing::debug!(
                         "Resuming sprint from {} ({} phases already completed)",
                         s.started_at.format("%Y-%m-%d %H:%M:%S"),
                         s.phase_results.len()
@@ -492,11 +500,11 @@ impl SprintEngine {
                     s
                 },
                 Ok(None) => {
-                    eprintln!("No saved sprint state found, starting fresh");
+                    tracing::debug!("No saved sprint state found, starting fresh");
                     SprintState::new(config)
                 },
                 Err(e) => {
-                    eprintln!("Failed to load sprint state: {e}, starting fresh");
+                    tracing::debug!("Failed to load sprint state: {e}, starting fresh");
                     SprintState::new(config)
                 },
             }
@@ -520,7 +528,7 @@ impl SprintEngine {
                 }
             }
         }
-        eprintln!(
+        tracing::debug!(
             "Starting from phase index {idx} ({})",
             phases.get(idx).map_or("end", |p| p.display_name())
         );
@@ -531,7 +539,7 @@ impl SprintEngine {
             // Create checkpoint before Build phase
             if *phase == SprintPhase::Build && state.checkpoint_ref.is_none() {
                 if let Some(checkpoint) = create_checkpoint(&state.config.project_root) {
-                    eprintln!("Checkpoint created: {}", checkpoint);
+                    tracing::debug!("Checkpoint created: {}", checkpoint);
                     state.checkpoint_ref = Some(checkpoint);
                 }
             }

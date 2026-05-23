@@ -179,10 +179,10 @@ pub async fn run_sprint(
 
     // Wrap sprint execution in a timeout to prevent indefinite hangs
     let sprint_timeout = std::time::Duration::from_secs(request.timeout_secs);
-    eprintln!("[sprint] starting with timeout={}s", request.timeout_secs);
+    tracing::debug!("[sprint] starting with timeout={}s", request.timeout_secs);
     match tokio::time::timeout(sprint_timeout, engine.run(config)).await {
         Ok(Ok(result)) => {
-            eprintln!("[sprint] completed in {}ms", start.elapsed().as_millis());
+            tracing::debug!("[sprint] completed in {}ms", start.elapsed().as_millis());
             let phase_results: Vec<serde_json::Value> = result
                 .phase_results
                 .iter()
@@ -208,11 +208,13 @@ pub async fn run_sprint(
                 if let Some(tenant_id) = store.get_tenant_id_by_api_key(&key.0) {
                     drop(store);
                     let total_tokens = result.metrics.total_tokens as usize;
-                    let _ = crate::api::auth_handler::record_tenant_task(
+                    if !crate::api::auth_handler::record_tenant_task(
                         &state,
                         &tenant_id,
                         total_tokens,
-                    );
+                    ) {
+                        tracing::warn!("tenant task recording failed");
+                    }
                 }
             }
 
@@ -245,7 +247,7 @@ pub async fn run_sprint(
             }
         },
         Ok(Err(e)) => {
-            eprintln!("[sprint] engine error: {e}");
+            tracing::debug!("[sprint] engine error: {e}");
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(serde_json::json!({
@@ -257,7 +259,7 @@ pub async fn run_sprint(
             )
         },
         Err(_) => {
-            eprintln!("[sprint] timed out after {}s", request.timeout_secs);
+            tracing::debug!("[sprint] timed out after {}s", request.timeout_secs);
             (
                 StatusCode::GATEWAY_TIMEOUT,
                 Json(serde_json::json!({

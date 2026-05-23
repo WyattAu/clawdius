@@ -497,7 +497,7 @@ pub async fn run_tool_use_loop(
         let tokens = llm.count_tokens(&response);
         total_tokens += tokens;
 
-        eprintln!(
+        tracing::debug!(
             "  [tool loop iter {}/{}] {} tokens",
             iteration + 1,
             max_iters,
@@ -524,7 +524,7 @@ pub async fn run_tool_use_loop(
             if iteration == 0 {
                 // First iteration with no tool calls — the LLM may not have understood
                 // the tool format. Send a nudge to try again with the correct format.
-                eprintln!("  [tool loop: no tool calls on first iter, sending nudge]");
+                tracing::debug!("  [tool loop: no tool calls on first iter, sending nudge]");
                 messages.push(ChatMessage {
                     role: ChatRole::User,
                     content: "You must use the tool format to make changes. For example:\n\
@@ -547,7 +547,7 @@ pub async fn run_tool_use_loop(
         let mut results = Vec::new();
         for call in &calls {
             let result = execute_tool_call(executor.as_ref(), call, project_root).await;
-            eprintln!(
+            tracing::debug!(
                 "    [{}] {} ({})",
                 call.tool,
                 if result.success { "ok" } else { "FAIL" },
@@ -761,7 +761,7 @@ pub async fn run_native_tool_use_loop(
         let tokens = llm.count_tokens(&result.text);
         total_tokens += tokens;
 
-        eprintln!(
+        tracing::debug!(
             "  [native tool loop iter {}/{}] {} tokens, {} tool calls",
             iteration + 1,
             max_iters,
@@ -779,7 +779,7 @@ pub async fn run_native_tool_use_loop(
         let mut tool_results = Vec::new();
         for tc in &result.tool_calls {
             let exec_result = execute_native_tool_call(executor, tc, project_root).await;
-            eprintln!(
+            tracing::debug!(
                 "    [{}] {} ({})",
                 tc.fn_name,
                 if exec_result.success { "ok" } else { "FAIL" },

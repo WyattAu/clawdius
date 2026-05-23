@@ -189,12 +189,12 @@ impl AgentLoop {
         event_tx: &Option<mpsc::Sender<AgentEvent>>,
     ) -> (ToolCallResult, String) {
         if let Some(tx) = event_tx {
-            let _ = tx
-                .send(AgentEvent::ToolCall {
+            tx.send(AgentEvent::ToolCall {
                     name: tc.name.clone(),
                     arguments: tc.arguments.clone(),
                 })
-                .await;
+                .await
+                .ok();
         }
 
         let result = execute_mcp_tool_call(&tc.name, &tc.arguments);
@@ -202,13 +202,13 @@ impl AgentLoop {
         let truncated_result = truncate_result(&result.result, self.config.max_tool_result_size);
 
         if let Some(tx) = event_tx {
-            let _ = tx
-                .send(AgentEvent::ToolResult {
+            tx.send(AgentEvent::ToolResult {
                     name: tc.name.clone(),
                     result: truncated_result.clone(),
                     is_error,
                 })
-                .await;
+                .await
+                .ok();
         }
 
         let tool_result = ToolCallResult {
@@ -232,12 +232,12 @@ impl AgentLoop {
 
         for tc in tool_calls {
             if let Some(tx) = event_tx {
-                let _ = tx
-                    .send(AgentEvent::ToolCall {
+                tx.send(AgentEvent::ToolCall {
                         name: tc.name.clone(),
                         arguments: tc.arguments.clone(),
                     })
-                    .await;
+                    .await
+                    .ok();
             }
             let name = tc.name.clone();
             let arguments = tc.arguments.clone();
@@ -269,13 +269,13 @@ impl AgentLoop {
                 },
                 Err(e) => {
                     if let Some(tx) = event_tx {
-                        let _ = tx
-                            .send(AgentEvent::ToolResult {
+                        tx.send(AgentEvent::ToolResult {
                                 name: "concurrent_error".to_string(),
                                 result: format!("Task join error: {e}"),
                                 is_error: true,
                             })
-                            .await;
+                            .await
+                            .ok();
                     }
                 },
             }
@@ -292,13 +292,13 @@ impl AgentLoop {
             let truncated = truncate_result(&result_str, self.config.max_tool_result_size);
 
             if let Some(tx) = event_tx {
-                let _ = tx
-                    .send(AgentEvent::ToolResult {
+                tx.send(AgentEvent::ToolResult {
                         name: tc.name.clone(),
                         result: truncated.clone(),
                         is_error,
                     })
-                    .await;
+                    .await
+                    .ok();
             }
 
             all_results.push(ToolCallResult {
@@ -342,13 +342,13 @@ impl AgentLoop {
             }
 
             if let Some(ref tx) = event_tx {
-                let _ = tx
-                    .send(AgentEvent::Iteration {
+                tx.send(AgentEvent::Iteration {
                         number: iter_num,
                         max: self.config.max_iterations,
                     })
-                    .await;
-                let _ = tx.send(AgentEvent::Thinking).await;
+                    .await
+                    .ok();
+                tx.send(AgentEvent::Thinking).await.ok();
             }
 
             let response = self.call_llm(&messages).await?;
@@ -383,12 +383,12 @@ impl AgentLoop {
                 };
 
                 if let Some(ref tx) = event_tx {
-                    let _ = tx.send(AgentEvent::Chunk(final_text.clone())).await;
-                    let _ = tx
-                        .send(AgentEvent::Done {
+                    tx.send(AgentEvent::Chunk(final_text.clone())).await.ok();
+                    tx.send(AgentEvent::Done {
                             text: final_text.clone(),
                         })
-                        .await;
+                        .await
+                        .ok();
                 }
 
                 return Ok(AgentLoopResult {
@@ -402,7 +402,7 @@ impl AgentLoop {
 
             if let Some(ref tx) = event_tx {
                 for chunk in response.text.lines() {
-                    let _ = tx.send(AgentEvent::Chunk(chunk.to_string())).await;
+                    tx.send(AgentEvent::Chunk(chunk.to_string())).await.ok();
                 }
             }
 
@@ -438,15 +438,15 @@ impl AgentLoop {
             .find(|m| m.role == ChatRole::Assistant).map_or_else(|| "Agent stopped after max iterations.".to_string(), |m| m.content.clone());
 
         if let Some(ref tx) = event_tx {
-            let _ = tx
-                .send(AgentEvent::Done {
+            tx.send(AgentEvent::Done {
                     text: format!(
                         "(Reached max iterations after {} tool calls) {}",
                         all_tool_calls.len(),
                         last_msg
                     ),
                 })
-                .await;
+                .await
+                .ok();
         }
 
         Ok(AgentLoopResult {

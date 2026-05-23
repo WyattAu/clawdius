@@ -234,11 +234,11 @@ impl ReviewEngine {
             match handle.await {
                 Ok(Ok(result)) => results.push(result),
                 Ok(Err(e)) => {
-                    eprintln!("Reviewer failed: {e}");
+                    tracing::debug!("Reviewer failed: {e}");
                     // Don't fail the entire review if one reviewer fails
                 },
                 Err(e) => {
-                    eprintln!("Reviewer task panicked: {e}");
+                    tracing::debug!("Reviewer task panicked: {e}");
                 },
             }
         }

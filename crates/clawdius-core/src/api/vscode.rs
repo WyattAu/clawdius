@@ -114,7 +114,7 @@ where
                 }
             },
             Err(e) => {
-                eprintln!("Error reading stdin: {e}");
+                tracing::debug!("Error reading stdin: {e}");
                 break Err(crate::Error::Io(e));
             },
         }

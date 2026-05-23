@@ -113,7 +113,7 @@ impl CodebaseIndexer {
                 self.index_path(root, &entry_path, chunks)?;
             } else if is_source_file(&entry_path) {
                 if let Err(e) = self.index_file(root, &entry_path, chunks) {
-                    eprintln!("Warning: Failed to index {}: {}", entry_path.display(), e);
+                    tracing::debug!("Warning: Failed to index {}: {}", entry_path.display(), e);
                 }
             }
         }

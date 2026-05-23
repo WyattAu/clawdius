@@ -306,12 +306,16 @@ impl PlatformAdapter for WhatsAppAdapter {
         Ok(())
     }
 
-    async fn edit_message(&self, _message_id: &str, new_text: &str) -> Result<(), GatewayError> {
+    async fn edit_message(&self, message_id: &str, new_text: &str) -> Result<(), GatewayError> {
         // WhatsApp does NOT support message editing.
-        // Send as a new message.
+        // Send as a new message. Extract chat_id from message_id (format: "chat_id:msg_id").
+        let chat_id = message_id.split(':').next().unwrap_or_else(|| {
+            tracing::warn!("whatsapp edit_message: no chat_id in message_id");
+            ""
+        });
         let fallback = OutgoingMessage::new(
             Platform::WhatsApp,
-            "fallback", // Caller should provide the correct chat_id
+            chat_id,
             format!("(corrected) {new_text}"),
         );
         Box::pin(self.send_message(fallback)).await

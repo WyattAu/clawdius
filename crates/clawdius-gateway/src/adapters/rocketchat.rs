@@ -224,10 +224,13 @@ impl PlatformAdapter for RocketChatAdapter {
     }
 
     async fn edit_message(&self, message_id: &str, new_text: &str) -> Result<(), GatewayError> {
-        // message_id is the Rocket.Chat message _id
+        // message_id format: "room_id:msg_id"
+        let (room_id, msg_id) = message_id
+            .split_once(':')
+            .unwrap_or(("unknown", message_id));
         let body = serde_json::json!({
-            "roomId": "default", // Would need to track roomId per message
-            "msgId": message_id,
+            "roomId": room_id,
+            "msgId": msg_id,
             "text": new_text,
         });
 
@@ -414,11 +417,12 @@ mod tests {
     #[test]
     fn test_rocketchat_edit_message_json_format() {
         let _adapter = RocketChatAdapter::new("https://rc.example.com", "tok", "uid");
-        let message_id = "msg-abc-123";
+        let message_id = "room-abc:msg-abc-123";
         let new_text = "edited content";
+        let (room_id, msg_id) = message_id.split_once(':').unwrap();
         let body = serde_json::json!({
-            "roomId": "default",
-            "msgId": message_id,
+            "roomId": room_id,
+            "msgId": msg_id,
             "text": new_text,
         });
         assert_eq!(body["msgId"], "msg-abc-123");

@@ -162,9 +162,10 @@ impl WorkspaceContextBuilder {
                 Ok(map) => map,
                 Err(e) => {
                     // Log but don't fail — one bad project shouldn't break context
-                    eprintln!(
+                    tracing::debug!(
                         "  [workspace-ctx] warning: failed to build repo-map for '{}': {}",
-                        project.name, e
+                        project.name,
+                        e
                     );
                     continue;
                 },

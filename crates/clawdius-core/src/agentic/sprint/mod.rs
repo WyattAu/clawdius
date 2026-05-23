@@ -297,7 +297,7 @@ fn create_checkpoint(project_root: &std::path::Path) -> Option<String> {
         Some(format!("stash@{{0}}"))
     } else {
         let stderr = String::from_utf8_lossy(&output.stderr);
-        eprintln!("Checkpoint creation failed: {stderr}");
+        tracing::debug!("Checkpoint creation failed: {stderr}");
         None
     }
 }
@@ -895,12 +895,12 @@ mod tests {
         let mut result = None;
         for attempt in 1..=max_retries {
             let sprint_result = engine.run(sprint_config.clone()).await.unwrap();
-            eprintln!("\n=== Sprint Result (attempt {attempt}) ===");
-            eprintln!("Success: {}", sprint_result.success);
-            eprintln!("Duration: {}ms", sprint_result.total_duration_ms);
-            eprintln!("Phases: {}", sprint_result.phase_results.len());
+            tracing::debug!("\n=== Sprint Result (attempt {attempt}) ===");
+            tracing::debug!("Success: {}", sprint_result.success);
+            tracing::debug!("Duration: {}ms", sprint_result.total_duration_ms);
+            tracing::debug!("Phases: {}", sprint_result.phase_results.len());
             for pr in &sprint_result.phase_results {
-                eprintln!(
+                tracing::debug!(
                     "  {} ({:?}): {} chars, {}ms",
                     pr.phase,
                     pr.status,
@@ -909,7 +909,7 @@ mod tests {
                 );
                 if !pr.errors.is_empty() {
                     for err in &pr.errors {
-                        eprintln!("    error: {err}");
+                        tracing::debug!("    error: {err}");
                     }
                 }
             }
@@ -927,7 +927,7 @@ mod tests {
 
             if attempt < max_retries {
                 let delay = 2000u64 * attempt as u64;
-                eprintln!("Rate limited or failed. Retrying in {delay}ms...");
+                tracing::debug!("Rate limited or failed. Retrying in {delay}ms...");
                 tokio::time::sleep(std::time::Duration::from_millis(delay)).await;
             } else {
                 result = Some(sprint_result);
@@ -970,7 +970,7 @@ mod tests {
                             || e.contains("Web call failed")
                     })
             });
-            eprintln!(
+            tracing::debug!(
                 "Sprint did not succeed (expected with free-tier rate limits). All phases rate-limited: {all_rate_limited}"
             );
         }
