@@ -48,7 +48,7 @@ jobs:
         run: cargo install cargo-deny --locked
 
       - name: Deny
-        run: cargo deny check bans licenses advisories
+        run: cargo deny check -A advisory-not-detected
 
       - name: Check all-features compile
         run: cargo check --workspace --all-features
