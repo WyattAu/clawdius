@@ -151,18 +151,8 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@nightly
       
-      - name: Cache cargo registry
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-            fuzz/target
-            fuzz/corpus
-          key: ${{ runner.os }}-fuzz-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-fuzz-${{ matrix.target }}-
+      - name: Cache Rust artifacts
+        uses: Swatinem/rust-cache@v2
       
       - name: Install cargo-fuzz
         continue-on-error: true
