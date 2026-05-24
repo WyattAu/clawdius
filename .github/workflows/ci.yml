@@ -55,7 +55,9 @@ jobs:
         continue-on-error: true  # Known issue: vector-db (IndexStats) and telegram (teloxide) fail
 
       - name: Build release
-        run: cargo build --workspace --release
+        run: |
+          cargo clean --release
+          cargo build --workspace --release
 
   cross-platform:
     name: Cross-Platform (${{ matrix.os }})
