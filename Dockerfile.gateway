@@ -66,7 +66,7 @@ USER clawdius
 WORKDIR /home/clawdius
 
 # Copy binary from builder
-COPY --from=builder /build/target/${PROFILE}/clawdius-gateway /usr/local/bin/clawdius-gateway
+COPY --from=builder /build/target/release/clawdius-gateway /usr/local/bin/clawdius-gateway
 
 # Config and data directories
 RUN mkdir -p /home/clawdius/.clawdius /home/clawdius/.config /tmp/clawdius
