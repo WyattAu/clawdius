@@ -21,6 +21,7 @@ WORKDIR /build
 
 # Copy workspace manifests first (layer cache)
 COPY Cargo.toml Cargo.lock ./
+COPY .cargo-vendor/ .cargo-vendor/
 COPY crates/clawdius/Cargo.toml crates/clawdius/Cargo.toml
 COPY crates/clawdius-core/Cargo.toml crates/clawdius-core/Cargo.toml
 COPY crates/clawdius-gateway/Cargo.toml crates/clawdius-gateway/Cargo.toml

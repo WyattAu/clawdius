@@ -58,8 +58,7 @@ jobs:
         run: |
           # Install protoc for prost-build (required by lance-encoding)
           sudo apt-get update && sudo apt-get install -y protobuf-compiler
-          cargo build --workspace --release
-        continue-on-error: true  # Known incremental compilation issue with clawdius-gateway
+          cargo build --release -p clawdius -p clawdius-code
 
   cross-platform:
     name: Cross-Platform (${{ matrix.os }})

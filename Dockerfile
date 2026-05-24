@@ -5,6 +5,7 @@ WORKDIR /app
 
 # Copy manifests first for dependency caching
 COPY Cargo.toml Cargo.lock ./
+COPY .cargo-vendor/ .cargo-vendor/
 COPY crates/clawdius/Cargo.toml crates/clawdius/Cargo.toml
 COPY crates/clawdius-core/Cargo.toml crates/clawdius-core/Cargo.toml
 COPY crates/clawdius-gateway/Cargo.toml crates/clawdius-gateway/Cargo.toml
