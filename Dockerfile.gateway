@@ -12,7 +12,7 @@
 #              clawdius-gateway serve --all
 
 # ─── Stage 1: Build ───────────────────────────────────────
-FROM rust:1.93-bookworm AS builder
+FROM rust:1.92-bookworm AS builder
 
 ARG FEATURES=all-platforms
 ARG PROFILE=release
@@ -24,6 +24,8 @@ COPY Cargo.toml Cargo.lock ./
 COPY crates/clawdius/Cargo.toml crates/clawdius/Cargo.toml
 COPY crates/clawdius-core/Cargo.toml crates/clawdius-core/Cargo.toml
 COPY crates/clawdius-gateway/Cargo.toml crates/clawdius-gateway/Cargo.toml
+COPY crates/clawdius-mcp/Cargo.toml crates/clawdius-mcp/Cargo.toml
+COPY crates/clawdius-code/Cargo.toml crates/clawdius-code/Cargo.toml
 
 # Create dummy source files for dependency caching
 RUN mkdir -p crates/clawdius/src && echo "fn main() {}" > crates/clawdius/src/main.rs
@@ -31,6 +33,8 @@ RUN mkdir -p crates/clawdius-core/src && echo "" > crates/clawdius-core/src/lib.
 RUN mkdir -p crates/clawdius-gateway/src && \
     echo "fn main() {}" > crates/clawdius-gateway/src/main.rs && \
     echo "" > crates/clawdius-gateway/src/lib.rs
+RUN mkdir -p crates/clawdius-mcp/src && echo "" > crates/clawdius-mcp/src/lib.rs
+RUN mkdir -p crates/clawdius-code/src && echo "fn main() {}" > crates/clawdius-code/src/main.rs
 
 # Pre-build dependencies (cached unless manifests change)
 RUN cargo build --profile $PROFILE -p clawdius-gateway --features "$FEATURES" 2>/dev/null || true
