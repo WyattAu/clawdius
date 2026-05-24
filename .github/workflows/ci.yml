@@ -56,7 +56,8 @@ jobs:
 
       - name: Build release
         run: |
-          cargo clean --release
+          # Install protoc for prost-build (required by lance-encoding)
+          sudo apt-get update && sudo apt-get install -y protobuf-compiler
           cargo build --workspace --release
 
   cross-platform:
