@@ -3,7 +3,6 @@ target/
 .specs/
 .lake/
 .reports/
-.cargo-vendor/
 node_modules/
 openclaw/
 ironclaw/
