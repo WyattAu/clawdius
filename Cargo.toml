@@ -193,7 +193,7 @@ multiple_crate_versions = "allow"
 
 [profile.release]
 panic = "abort"
-lto = "fat"
+lto = "thin"
 strip = "symbols"
 opt-level = 3
 codegen-units = 1

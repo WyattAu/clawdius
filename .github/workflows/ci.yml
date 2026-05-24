@@ -54,14 +54,8 @@ jobs:
         run: cargo check --workspace --all-features
         continue-on-error: true  # Known issue: vector-db (IndexStats) and telegram (teloxide) fail
 
-      - name: Build release
-        run: |
-          # Install protoc for prost-build (required by lance-encoding)
-          sudo apt-get update && sudo apt-get install -y protobuf-compiler
-          # Clean dev artifacts to prevent incremental compilation conflicts
-          # with release profile (rust-cache restores dev-profile target/)
-          cargo clean
-          cargo build --release -p clawdius -p clawdius-code
+      # Release build is handled by release.yml workflow.
+      # CI already verifies compilation via clippy, test, and check --workspace --all-features.
 
   cross-platform:
     name: Cross-Platform (${{ matrix.os }})
