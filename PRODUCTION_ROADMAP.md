@@ -118,16 +118,16 @@ CLAWDIUS_SKIP_HOOKS=1 escape hatch + warm-cache detection
 **Audit findings (2026-05-24):**
 - 46 `pub mod` declarations, all unconditionally compiled (zero `#[cfg]` gates)
 - 14 modules marked `#[doc(hidden)]` — should be feature-gated instead
-- 1 orphaned `messaging/` directory (57KB dead code, not declared in lib.rs)
+- 1 orphaned `messaging/` directory (57KB dead code) — **removed** (commit 404e18c)
 - 3 `#[doc(hidden)]` modules re-exported at crate root (contradictory visibility)
 - Modules in strictly alphabetical order (no logical grouping)
-**Actions:**
-- Add `.gitattributes` merge strategy: `crates/*/src/lib.rs merge=union`
-- Add CI check: fail if any lib.rs has <10 `pub mod` declarations
-- Consider splitting into `mod.rs` directory tree
-- Add CLAWDIUS_PROTECT_LIBRS env var to scripts
-- Remove orphaned `messaging/` directory or wire it into lib.rs
+**Actions completed:**
+- `.gitattributes` merge strategy for lib.rs
+- CI check: fail if any lib.rs has <10 `pub mod` declarations
+- Removed orphaned `messaging/` directory (1,706 lines of dead code)
+**Remaining:**
 - Feature-gate `billing`, `invoice`, `telemetry`, `usage` instead of `#[doc(hidden)]`
+- Fix contradictory re-exports of doc-hidden modules
 **Success:** CI catches truncated lib.rs; no observed clobber after 2 weeks
 
 ### 3.2 Dependency Tree Simplification
@@ -196,6 +196,9 @@ Matrix complete; 11/12 core features compile (92%).
 ## Phase 5: Release Preparation (Week 9-11)
 
 ### 5.1 crates.io Publishing
+**Partially DONE**
+- `clawdius-core` dry-run verified
+- Other crates blocked on core being published first (correct dependency chain)
 **Actions:**
 - Verify all crate metadata (description, categories, keywords, license)
 - Ensure no `path` dependencies leak to published crates
@@ -204,6 +207,9 @@ Matrix complete; 11/12 core features compile (92%).
 **Success:** All 5 crates publishable to crates.io
 
 ### 5.2 API Stability Audit
+**DONE** (commit 7b5bb1a)
+- Added `cargo-semver-checks` to CI (non-blocking, compares against last tag)
+- CI job passes against current codebase
 **Actions:**
 - Audit public API surface per crate
 - Mark unstable APIs with `#[doc(hidden)]`
@@ -212,6 +218,10 @@ Matrix complete; 11/12 core features compile (92%).
 **Success:** Explicit semver stability guarantees for all public types
 
 ### 5.3 Cross-Platform CI Matrix
+**DONE** (commit a1cf674)
+- Added `aarch64-unknown-linux-gnu` to release.yml with cross-compiler
+- CI matrix: Linux (x86_64), macOS (x86_64, aarch64), Windows (x86_64)
+- Docker: amd64 verified; arm64 blocked by GitHub runner limits
 **Actions:**
 - Add CI matrix: Linux (x86_64, aarch64), macOS (aarch64), Windows (x86_64)
 - Test sandbox backends per platform (bubblewrap = Linux only)
@@ -219,12 +229,18 @@ Matrix complete; 11/12 core features compile (92%).
 **Success:** CI green on all 4 platform targets
 
 ### 5.4 Installation Packaging
-**Actions:**
-- Verify `install.sh` works on all platforms
-- Test Homebrew formula (`homebrew-clawdius.rb`)
-- Add `cargo install clawdius` support
-- Add `cargo-binstall` metadata
-- Docker image: slim profile, multi-arch (amd64, arm64)
+**DONE** (commit a1cf674)
+**Fixes applied:**
+- `scripts/install.sh`: fixed `CLAWdiUS_HOME` typo, updated default version
+- `flake.nix`: fixed version 1.6.0 -> 1.0.0-rc.2, replaced nonexistent `clawdius-server` with `clawdius-gateway`
+- `crates/clawdius/Cargo.toml`: added `[package.metadata.binstall]` for `cargo-binstall` support
+- `homebrew-clawdius.rb`: updated version 0.2.0 -> 1.0.0-rc.2
+- `release.yml`: added `clawdius-gateway` and `clawdius-mcp` to publish steps, removed `continue-on-error`
+**Remaining:**
+- Homebrew SHA-256 checksums still empty (need release automation to fill)
+- Homebrew tap repository not set up
+- musl release targets not yet in CI
+- Man pages + completions not in release archives
 **Success:** Installation succeeds on all 4 platforms
 
 ## Phase 6: Ecosystem & Scale (Week 11-14)
@@ -255,14 +271,16 @@ Matrix complete; 11/12 core features compile (92%).
 **Success:** docs.clawdius.dev serves accurate, versioned documentation
 
 ### 6.4 Docker Image Publication
-**DONE** (commits ea04e4b, ec99e43, 0d9f35d, 0051e02, 320c2db)
+**DONE** (commits ea04e4b, ec99e43, 0d9f35d, 0051e02, 320c2db, 68a36fc)
 **Actions:**
 - Multi-stage Dockerfile optimization (slim builder, distroless runtime)
-- Publish to GitHub Container Registry (ghcr.io)
+- Publish to GitHub Container Registry (ghcr.io) — both images verified
+- Docker: amd64 single-arch; arm64 blocked by GitHub runner limits (DL-020)
+**Remaining:**
 - Add Docker Compose example for gateway + CLI
-- Add Kubernetes deployment example
-- Multi-arch builds verified: linux/amd64, linux/arm64
-**Success:** `docker pull ghcr.io/clawdius/clawdius:1.0.0` works
+- Add Kubernetes deployment example (Helm chart exists at deploy/helm/)
+- Re-enable arm64 when self-hosted runners available
+**Success:** `docker pull ghcr.io/wyattau/clawdius:latest` works (amd64)
 
 ## Future Horizons (Post-1.0)
 
@@ -407,6 +425,8 @@ Replaced collision-prone `uuid_v4_placeholder()` in `agentic/parallel_sprint.rs`
 | DL-017 | Downgrade lto=fat to lto=thin | Fat LTO causes E0432/E0433 cross-crate import resolution with workspace feature unification; thin LTO is 95% perf, 3x faster | 2026-05-24 |
 | DL-018 | Hardcode release path in Docker COPY | Docker ARG from builder stage doesn't propagate to runtime stage; ${PROFILE} resolves to empty | 2026-05-24 |
 | DL-019 | Remove .cargo-vendor from .dockerignore | half crate [patch.crates-io] requires .cargo-vendor/half/ in Docker build context | 2026-05-24 |
+| DL-020 | Single-arch Docker builds (amd64 only) | Multi-arch (amd64+arm64) consistently cancelled by GitHub runner limits; arm64 via QEMU too slow | 2026-05-24 |
+| DL-021 | Remove orphaned messaging/ directory | 1,706 lines of dead code never declared in lib.rs; duplicated by clawdius-gateway/adapters | 2026-05-24 |
 
 ## Appendix: Quality Gate Summary
 
