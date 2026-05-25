@@ -57,7 +57,7 @@
           cargoTestFlags = [ "--package" pname ];
         };
 
-        version = "1.6.0";
+        version = "1.0.0-rc.2";
 
         cargoTools = with pkgs; [
           cargo-nextest
@@ -81,7 +81,7 @@
           clawdius = buildRustBin { pname = "clawdius"; inherit version; };
           clawdius-mcp = buildRustBin { pname = "clawdius-mcp"; inherit version; };
           clawdius-code = buildRustBin { pname = "clawdius-code"; inherit version; };
-          clawdius-server = buildRustBin { pname = "clawdius-server"; inherit version; };
+          clawdius-gateway = buildRustBin { pname = "clawdius-gateway"; inherit version; };
           default = self.packages.${system}.clawdius;
         };
 

@@ -13,6 +13,11 @@ readme = "README.md"
 keywords = ["ai", "llm", "coding-assistant", "cli", "tui"]
 categories = ["command-line-utilities", "development-tools", "asynchronous"]
 
+[package.metadata.binstall]
+pkg-url = "{ repo }/releases/download/v{ version }/clawdius-{ version }-{ target }.tar.gz"
+bin-dir = "clawdius{ binary-ext }"
+pkg-fmt = "tgz"
+
 [[bin]]
 name = "clawdius"
 path = "src/main.rs"

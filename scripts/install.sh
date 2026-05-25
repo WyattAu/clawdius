@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-VERSION="${VERSION:-0.1.0}"
+VERSION="${VERSION:-1.0.0-rc.2}"
 INSTALL_DIR="${INSTALL_DIR:-/usr/local/bin}"
 CLAWDIUS_HOME="${CLAWDIUS_HOME:-$HOME/.clawdius}"
 REPO_URL="${REPO_URL:-https://github.com/clawdius/clawdius}"
@@ -97,7 +97,7 @@ init_clawdius_home() {
     log_info "Initializing ${CLAWDIUS_HOME}..."
     
     mkdir -p "${CLAWDIUS_HOME}/specs"
-    mkdir -p "${CLAWdiUS_HOME}/logs"
+    mkdir -p "${CLAWDIUS_HOME}/logs"
     mkdir -p "${CLAWDIUS_HOME}/cache"
     
     if [[ ! -f "${CLAWDIUS_HOME}/settings.toml" ]]; then

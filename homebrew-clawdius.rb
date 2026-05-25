@@ -1,7 +1,7 @@
 class Clawdius < Formula
   desc "AI-powered coding assistant with multiple LLM support"
   homepage "https://github.com/clawdius/clawdius"
-  version "0.2.0"
+  version "1.0.0-rc.2"
   license "Apache-2.0"
   
   livecheck do

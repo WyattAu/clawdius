@@ -134,6 +134,9 @@ jobs:
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             archive: tar.gz
+          - os: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
+            archive: tar.gz
           - os: macos-latest
             target: x86_64-apple-darwin
             archive: tar.gz
@@ -158,6 +161,13 @@ jobs:
           # Help openssl-sys find Homebrew OpenSSL
           echo "OPENSSL_ROOT_DIR=$(brew --prefix openssl@3 2>/dev/null || echo /usr)" >> $GITHUB_ENV
           echo "OPENSSL_DIR=$(brew --prefix openssl@3 2>/dev/null || echo /usr)" >> $GITHUB_ENV
+
+      - name: Install cross-compilation toolchain
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu
+          echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
 
       - name: Cache Rust artifacts
         uses: Swatinem/rust-cache@v2
@@ -324,15 +334,18 @@ jobs:
       
       - name: Publish clawdius-core (library)
         run: cargo publish --token ${{ secrets.CRATES_IO_TOKEN }} -p clawdius-core
-        continue-on-error: true
       
-      - name: Publish clawdius (CLI)
-        run: cargo publish --token ${{ secrets.CRATES_IO_TOKEN }} -p clawdius
-        continue-on-error: true
+      - name: Publish clawdius-gateway (messaging)
+        run: cargo publish --token ${{ secrets.CRATES_IO_TOKEN }} -p clawdius-gateway
+      
+      - name: Publish clawdius-mcp (MCP server)
+        run: cargo publish --token ${{ secrets.CRATES_IO_TOKEN }} -p clawdius-mcp
       
       - name: Publish clawdius-code (VSCode helper)
         run: cargo publish --token ${{ secrets.CRATES_IO_TOKEN }} -p clawdius-code
-        continue-on-error: true
+      
+      - name: Publish clawdius (CLI)
+        run: cargo publish --token ${{ secrets.CRATES_IO_TOKEN }} -p clawdius
 
   notify:
     name: Notify
