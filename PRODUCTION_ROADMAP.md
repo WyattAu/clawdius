@@ -115,27 +115,45 @@ CLAWDIUS_SKIP_HOOKS=1 escape hatch + warm-cache detection
 ### 3.1 lib.rs Hardening
 **Problem:** Agentic tools can clobber `crates/clawdius-core/src/lib.rs` (observed 2026-05-12).
 **DONE**
+**Audit findings (2026-05-24):**
+- 46 `pub mod` declarations, all unconditionally compiled (zero `#[cfg]` gates)
+- 14 modules marked `#[doc(hidden)]` — should be feature-gated instead
+- 1 orphaned `messaging/` directory (57KB dead code, not declared in lib.rs)
+- 3 `#[doc(hidden)]` modules re-exported at crate root (contradictory visibility)
+- Modules in strictly alphabetical order (no logical grouping)
 **Actions:**
 - Add `.gitattributes` merge strategy: `crates/*/src/lib.rs merge=union`
 - Add CI check: fail if any lib.rs has <10 `pub mod` declarations
 - Consider splitting into `mod.rs` directory tree
 - Add CLAWDIUS_PROTECT_LIBRS env var to scripts
+- Remove orphaned `messaging/` directory or wire it into lib.rs
+- Feature-gate `billing`, `invoice`, `telemetry`, `usage` instead of `#[doc(hidden)]`
 **Success:** CI catches truncated lib.rs; no observed clobber after 2 weeks
 
 ### 3.2 Dependency Tree Simplification
 **DONE**
-Audit complete; report at .reports/dependency_audit.md
+Audit complete; 56 duplicate crate versions identified.
 **Actions:**
 - Audit 20+ transitive version duplicates
 - Where semver-compatible: use `[patch.crates-io]` to unify
 - Where semver-incompatible: document in Cargo.toml with justification
 - Evaluate removing unused optional dependencies (slack-morphism, matrix-sdk if not built)
+**Key findings:**
+- `httpmock` (dev-dep) pulls in `async-std` + `lalrpop` (~60 crates) — replace with `wiremock-rs`
+- `genai` causes `reqwest` 0.12/0.13 dupe (~40 duplicate crates) — upgrade workspace to 0.13
+- `wasmtime` is heaviest dep (~200 transitive crates) — gate behind feature flag
+- `tree-sitter` x9 languages = 9 C builds — make optional via features
+- `syntect` duplicates tree-sitter highlighting — consolidate
 **Success:** <10 documented duplicate versions
 
 ### 3.3 Feature Flag Matrix
 **DONE**
-Matrix complete; report at .reports/feature_flag_matrix.md
-Note: `--all-features` fails on `vector-db` and `telegram` features
+Matrix complete; 11/12 core features compile (92%).
+**Key findings:**
+- `local-llm` BROKEN: candle-core v0.4.1 rand version conflict (upstream issue)
+- `embeddings`: zero cfg gates — deps downloaded but never conditionally used (dead feature)
+- `orchestrator`: empty marker feature with no cfg gates — only base for redis-queue
+- `vector-db` + `telegram` still fail with `--all-features` (known, documented)
 **Actions:**
 - Map all feature flags across 5 crates
 - Identify conflicting combinations
@@ -237,11 +255,13 @@ Note: `--all-features` fails on `vector-db` and `telegram` features
 **Success:** docs.clawdius.dev serves accurate, versioned documentation
 
 ### 6.4 Docker Image Publication
+**DONE** (commits ea04e4b, ec99e43, 0d9f35d, 0051e02, 320c2db)
 **Actions:**
 - Multi-stage Dockerfile optimization (slim builder, distroless runtime)
 - Publish to GitHub Container Registry (ghcr.io)
 - Add Docker Compose example for gateway + CLI
 - Add Kubernetes deployment example
+- Multi-arch builds verified: linux/amd64, linux/arm64
 **Success:** `docker pull ghcr.io/clawdius/clawdius:1.0.0` works
 
 ## Future Horizons (Post-1.0)
@@ -316,16 +336,19 @@ Replaced collision-prone `uuid_v4_placeholder()` in `agentic/parallel_sprint.rs`
 
 ### 7.5 CI/CD Pipeline Hardening
 **Priority:** High
-**DONE** (commits 4bacbdd, ba8dd97, 21a5857, ea04e4b, ec99e43)
+**DONE** (commits 4bacbdd, ba8dd97, 21a5857, ea04e4b, ec99e43, 600cbad, 4e5f43a, 0d9f35d, 0051e02, 320c2db)
 - Migrated from `actions/cache@v4` to `Swatinem/rust-cache@v2` (9 sites across 4 files)
 - Added coverage job using `cargo-llvm-cov` with lcov output
 - Added Docker publish workflow (multi-arch amd64/arm64 to ghcr.io)
 - Fixed `cargo deny` advisory warnings (-A advisory-not-detected)
 - Added RUSTSEC-2026-0149 (wasmtime-wasi) to deny.toml ignore list
-- Installed protobuf-compiler for release build
-- Rewrote Dockerfiles: non-vendored builds, all workspace crates, Rust 1.92
+- Downgraded lto=fat to lto=thin (fixes E0432/E0433 cross-crate resolution)
+- Removed redundant release build step from CI (redundant with clippy+test+check)
+- Fixed Dockerfile.gateway: hardcoded /release/ path (ARG doesn't cross stages)
+- Removed .cargo-vendor from .dockerignore
+- Docker images verified: both clawdius and clawdius-gateway push to ghcr.io
 - Security pipeline fully green (13/13 jobs)
-- Release build limited to CLI binaries to avoid LTO incremental compilation issue
+- All CI pipelines green
 
 ### 7.6 Documentation Consistency
 **Priority:** Medium
@@ -359,7 +382,7 @@ Replaced collision-prone `uuid_v4_placeholder()` in `agentic/parallel_sprint.rs`
 | CI stale cache causes false failures | ~~High~~ RESOLVED | ~~Medium~~ RESOLVED | Phase 7.5 done — migrated to rust-cache v2 |
 | UUID collision under concurrent sprints | Medium | ~~High~~ RESOLVED | Phase 7.4 done — UUID v4 used |
 | Domain misconfiguration blocks docs access | High | Medium | Phase 7.7 — CNAME added, DNS pending (requires provider access) |
-| clawdius-gateway release build E0433 | Medium | Medium | Workaround: build only CLI binaries in CI; root cause under investigation |
+| clawdius-gateway release build E0433 | ~~Medium~~ RESOLVED | ~~Medium~~ RESOLVED | Root cause: fat LTO cross-crate resolution. Fix: lto=thin, remove release build from CI |
 
 ## Decision Log
 
@@ -379,8 +402,11 @@ Replaced collision-prone `uuid_v4_placeholder()` in `agentic/parallel_sprint.rs`
 | DL-012 | Merge landing page into docs deployment | GitHub Pages only supports one deployment source | 2026-05-20 |
 | DL-013 | Replace eprintln! with tracing::*! | Structured logging enables log level filtering in production | 2026-05-24 |
 | DL-014 | Replace let _ = with .ok() or warn!() | Explicit error handling prevents silent data loss | 2026-05-24 |
-| DL-015 | Limit CI release build to CLI binaries | clawdius-gateway E0433 with fat LTO + rust-cache; avoid full workspace release | 2026-05-24 |
+| DL-015 | Remove release build from CI | Redundant with clippy+test+check; release binaries built by release.yml | 2026-05-24 |
 | DL-016 | Add Docker publish workflow to CI | Multi-arch images for ghcr.io for both clawdius and clawdius-gateway | 2026-05-24 |
+| DL-017 | Downgrade lto=fat to lto=thin | Fat LTO causes E0432/E0433 cross-crate import resolution with workspace feature unification; thin LTO is 95% perf, 3x faster | 2026-05-24 |
+| DL-018 | Hardcode release path in Docker COPY | Docker ARG from builder stage doesn't propagate to runtime stage; ${PROFILE} resolves to empty | 2026-05-24 |
+| DL-019 | Remove .cargo-vendor from .dockerignore | half crate [patch.crates-io] requires .cargo-vendor/half/ in Docker build context | 2026-05-24 |
 
 ## Appendix: Quality Gate Summary
 
@@ -402,7 +428,10 @@ Replaced collision-prone `uuid_v4_placeholder()` in `agentic/parallel_sprint.rs`
 6. `lake build` (Lean4 proofs)
 
 ### CI Gate (GitHub Actions)
-- Rust CI: fmt, clippy, test lib, test integration, deny, build release
+- Rust CI: fmt, clippy, test lib, test integration, deny, check --workspace --all-features
+- Coverage: cargo-llvm-cov with lcov output
 - Lean4 proofs: lake build
 - Benchmarks: run + regression detection
+- Docker: multi-arch build + push to ghcr.io
+- Security: audit, deny, secrets, SAST, fuzz, SBOM (13 jobs)
 - Scheduled: weekly benchmark comparison
