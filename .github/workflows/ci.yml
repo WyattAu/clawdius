@@ -57,6 +57,35 @@ jobs:
       # Release build is handled by release.yml workflow.
       # CI already verifies compilation via clippy, test, and check --workspace --all-features.
 
+  semver:
+    name: Semver Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Need full history for baseline comparison
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@1.92
+
+      - name: Cache Rust artifacts
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install cargo-semver-checks
+        run: cargo install cargo-semver-checks --locked
+
+      - name: Check semver compatibility
+        run: |
+          # Compare against the last tagged release if available
+          BASE_REF=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          if [ -n "$BASE_REF" ]; then
+            echo "Comparing against $BASE_REF"
+            cargo semver-checks --baseline-rev "$BASE_REF" 2>&1 || true
+          else
+            echo "No previous tag found, skipping semver check"
+          fi
+
   cross-platform:
     name: Cross-Platform (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
