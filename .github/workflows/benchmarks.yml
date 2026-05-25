@@ -27,7 +27,7 @@ jobs:
           fetch-depth: 0
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@1.92
 
       - name: Cache cargo registry
         uses: Swatinem/rust-cache@v2
@@ -70,7 +70,7 @@ jobs:
           fetch-depth: 0
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@1.92
 
       - name: Cache cargo registry
         uses: Swatinem/rust-cache@v2
