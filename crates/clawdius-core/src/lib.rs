@@ -29,18 +29,22 @@
 pub mod actions;
 pub mod agentic;
 pub mod agents;
+#[cfg(feature = "airgap")]
 #[doc(hidden)]
 pub mod airgap;
 pub mod analysis;
 pub mod api;
+#[cfg(feature = "audit")]
 #[doc(hidden)]
 pub mod audit;
+#[cfg(feature = "billing")]
 #[doc(hidden)]
 pub mod billing;
 pub mod capability;
 pub mod checkpoint;
 pub mod commands;
 pub mod completions;
+#[cfg(feature = "compliance")]
 #[doc(hidden)]
 pub mod compliance;
 pub mod config;
@@ -49,8 +53,10 @@ pub mod diff;
 pub mod encryption;
 pub mod error;
 pub mod graph_rag;
+#[cfg(feature = "i18n")]
 #[doc(hidden)]
 pub mod i18n;
+#[cfg(feature = "billing")]
 #[doc(hidden)]
 pub mod invoice;
 pub mod llm;
@@ -58,13 +64,16 @@ pub mod lsp;
 pub mod mcp;
 pub mod memory;
 pub mod modes;
+#[cfg(feature = "onboarding")]
 #[doc(hidden)]
 pub mod onboarding;
 pub mod orchestrator;
 pub mod output;
+#[cfg(feature = "proof")]
 #[doc(hidden)]
 pub mod proof;
 pub mod retry;
+#[cfg(feature = "rpc")]
 #[doc(hidden)]
 pub mod rpc;
 #[doc(hidden)]
@@ -79,10 +88,13 @@ pub mod timeline;
 pub mod timeout;
 pub mod tokenize;
 pub mod tools;
+#[cfg(feature = "billing")]
 #[doc(hidden)]
 pub mod usage;
+#[cfg(feature = "watch")]
 #[doc(hidden)]
 pub mod watch;
+#[cfg(feature = "webhooks")]
 #[doc(hidden)]
 pub mod webhooks;
 pub mod workspace;
@@ -102,8 +114,10 @@ pub use context::{
 pub use diff::{DiffPreview, DiffRenderer, DiffStats, DiffTheme, FileDiff};
 pub use error::{EnhancedError, Error, ErrorHelpers, Result};
 pub use memory::{MemoryEntry, MemoryMetadata, ProjectMemory};
+#[cfg(feature = "onboarding")]
 pub use onboarding::{Onboarding, OnboardingStatus};
 pub use output::OutputFormat;
+#[cfg(feature = "proof")]
 pub use proof::{LeanVerifier, ProofDefinition, ProofTemplate};
 pub use retry::{with_retry_and_circuit, CircuitBreaker, CircuitState};
 pub use session::{Session, SessionManager, SessionStore};

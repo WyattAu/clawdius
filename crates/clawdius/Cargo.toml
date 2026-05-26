@@ -78,13 +78,19 @@ name = "cli_bench"
 harness = false
 
 [features]
-default = ["mimalloc"]
+default = ["mimalloc", "billing", "i18n", "onboarding", "watch", "proof", "webhooks"]
 keyring = ["clawdius-core/keyring", "dep:keyring"]
 crash-reporting = ["clawdius-core/crash-reporting"]
 vector-db = ["clawdius-core/vector-db"]
 browser = ["clawdius-core/browser"]
 embeddings = ["clawdius-core/embeddings"]
 local-llm = ["clawdius-core/local-llm"]
+billing = ["clawdius-core/billing"]
+i18n = ["clawdius-core/i18n"]
+onboarding = ["clawdius-core/onboarding"]
+watch = ["clawdius-core/watch"]
+proof = ["clawdius-core/proof"]
+webhooks = ["clawdius-core/webhooks"]
 
 [lints]
 workspace = true

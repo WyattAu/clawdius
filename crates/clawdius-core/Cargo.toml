@@ -191,6 +191,18 @@ redis-queue = ["orchestrator", "dep:redis"]
 postgres = ["dep:tokio-postgres", "dep:deadpool-postgres"]
 mariadb = ["dep:mysql_async"]
 stripe = ["dep:stripe"]
+# Billing subsystem (billing + usage + invoice)
+billing = []
+# Infrastructure modules (zero-cost, no optional deps)
+audit = []
+compliance = []
+i18n = []
+onboarding = []
+proof = []
+rpc = []
+webhooks = []
+airgap = []
+watch = []
 
 [lints]
 workspace = true
