@@ -145,7 +145,6 @@ stripe = { version = "1.0.0-rc.5", package = "async-stripe", optional = true, de
 [dev-dependencies]
 criterion = { workspace = true }
 mockall.workspace = true
-httpmock = { workspace = true }
 proptest.workspace = true
 loom = "0.7"
 wat = "1"

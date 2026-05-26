@@ -162,7 +162,6 @@ rstest = "0.25"
 criterion = "0.5"
 tempfile = "3.17"
 mockall = "0.13"
-httpmock = "0.7"
 
 # === System Information ===
 sysinfo = "0.33"
@@ -237,7 +236,7 @@ panic = "abort"
 # - getrandom 0.3/0.4 — rand 0.9, wasmtime (our direct dep: 0.2)
 # - reqwest 0.13 — genai 0.5 (our direct dep: 0.12)
 # - rand 0.8/0.9 — proptest, criterion (different semver requirements)
-# - thiserror 1.0 — httpmock (our direct dep: 2.0)
+# - thiserror 1.0 — jsonrpsee/witx (our direct dep: 2.0)
 # - base64 0.21 — transitive (our direct dep: 0.22)
 # - petgraph 0.6 — wasmtime (our direct dep: 0.7)
 # - tower 0.4 — reqwest 0.12 (our direct dep: 0.5)
