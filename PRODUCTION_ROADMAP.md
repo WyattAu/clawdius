@@ -8,7 +8,7 @@
 |--------|-------|--------|
 | Workspace crates | 5 | Builds clean |
 | Rust files | 344 | All compile |
-| Lib tests | 1,447 | 0 failures |
+| Lib tests | 1,425 (default) / 1,447 (all features) | 0 failures |
 | Integration tests | 158 | 0 failures |
 | Deterministic / property tests | 27 pass | 0 failures |
 | Clippy | Clean (`-D warnings`) | All 5 crates |
@@ -125,9 +125,12 @@ CLAWDIUS_SKIP_HOOKS=1 escape hatch + warm-cache detection
 - `.gitattributes` merge strategy for lib.rs
 - CI check: fail if any lib.rs has <10 `pub mod` declarations
 - Removed orphaned `messaging/` directory (1,706 lines of dead code)
+**Feature gating completed** (commit a8824f0):
+- 9 modules gated: audit, billing, compliance, i18n, invoice, onboarding, proof, rpc, usage, watch, webhooks, airgap
+- telemetry and sandbox kept unconditional (used by production code)
+- Re-exports of onboarding/proof also gated
 **Remaining:**
-- Feature-gate `billing`, `invoice`, `telemetry`, `usage` instead of `#[doc(hidden)]`
-- Fix contradictory re-exports of doc-hidden modules
+- Add cfg gates to remaining doc-hidden re-exports
 **Success:** CI catches truncated lib.rs; no observed clobber after 2 weeks
 
 ### 3.2 Dependency Tree Simplification
@@ -139,7 +142,7 @@ Audit complete; 56 duplicate crate versions identified.
 - Where semver-incompatible: document in Cargo.toml with justification
 - Evaluate removing unused optional dependencies (slack-morphism, matrix-sdk if not built)
 **Key findings:**
-- `httpmock` (dev-dep) pulls in `async-std` + `lalrpop` (~60 crates) — replace with `wiremock-rs`
+- `httpmock` removed (dev-dep, never used in tests) — eliminates `async-std` + `lalrpop` (~60 crates), resolves RUSTSEC-2025-0052
 - `genai` causes `reqwest` 0.12/0.13 dupe (~40 duplicate crates) — upgrade workspace to 0.13
 - `wasmtime` is heaviest dep (~200 transitive crates) — gate behind feature flag
 - `tree-sitter` x9 languages = 9 C builds — make optional via features
@@ -427,6 +430,8 @@ Replaced collision-prone `uuid_v4_placeholder()` in `agentic/parallel_sprint.rs`
 | DL-019 | Remove .cargo-vendor from .dockerignore | half crate [patch.crates-io] requires .cargo-vendor/half/ in Docker build context | 2026-05-24 |
 | DL-020 | Single-arch Docker builds (amd64 only) | Multi-arch (amd64+arm64) consistently cancelled by GitHub runner limits; arm64 via QEMU too slow | 2026-05-24 |
 | DL-021 | Remove orphaned messaging/ directory | 1,706 lines of dead code never declared in lib.rs; duplicated by clawdius-gateway/adapters | 2026-05-24 |
+| DL-022 | Feature-gate 9 doc-hidden modules | Reduces compile time and binary size for consumers; telemetry/sandbox kept unconditional | 2026-05-26 |
+| DL-023 | Remove unused httpmock dev-dependency | Never used in tests; eliminates ~60 transitive crates (async-std, lalrpop) | 2026-05-26 |
 
 ## Appendix: Quality Gate Summary
 
