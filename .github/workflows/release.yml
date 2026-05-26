@@ -135,7 +135,13 @@ jobs:
             target: x86_64-unknown-linux-gnu
             archive: tar.gz
           - os: ubuntu-latest
+            target: x86_64-unknown-linux-musl
+            archive: tar.gz
+          - os: ubuntu-latest
             target: aarch64-unknown-linux-gnu
+            archive: tar.gz
+          - os: ubuntu-latest
+            target: aarch64-unknown-linux-musl
             archive: tar.gz
           - os: macos-latest
             target: x86_64-apple-darwin
@@ -169,6 +175,12 @@ jobs:
           sudo apt-get install -y gcc-aarch64-linux-gnu
           echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
 
+      - name: Install musl toolchain
+        if: endsWith(matrix.target, '-linux-musl')
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y musl-tools
+       
       - name: Cache Rust artifacts
         uses: Swatinem/rust-cache@v2
 
@@ -320,6 +332,49 @@ jobs:
           generate_release_notes: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update Homebrew formula checksums
+        run: |
+          VERSION="${{ needs.validate.outputs.version }}"
+          REPO="${{ github.repository }}"
+          mkdir -p /tmp/brew-assets
+          # Build mapping: target -> sha256
+          declare -A SHAS
+          for target in x86_64-unknown-linux-gnu aarch64-unknown-linux-gnu x86_64-apple-darwin aarch64-apple-darwin; do
+            ARCHIVE="clawdius-${VERSION}-${target}.tar.gz"
+            URL="https://github.com/${REPO}/releases/download/v${VERSION}/${ARCHIVE}"
+            if curl -fsSL -o "/tmp/brew-assets/${ARCHIVE}" "${URL}" 2>/dev/null; then
+              SHAS[$target]=$(shasum -a 256 "/tmp/brew-assets/${ARCHIVE}" | cut -d' ' -f1)
+              echo "${target}: ${SHAS[$target]}"
+            fi
+          done
+          # Update formula: replace sha256 "" lines keyed by the url line above them
+          python3 -c "
+          import re, sys
+          targets = {
+              'x86_64-apple-darwin': '${SHAS[x86_64-apple-darwin]:-}',
+              'aarch64-apple-darwin': '${SHAS[aarch64-apple-darwin]:-}',
+              'x86_64-unknown-linux-gnu': '${SHAS[x86_64-unknown-linux-gnu]:-}',
+              'aarch64-unknown-linux-gnu': '${SHAS[aarch64-unknown-linux-gnu]:-}',
+          }
+          with open('homebrew-clawdius.rb') as f:
+              lines = f.readlines()
+          for i, line in enumerate(lines):
+              for t, sha in targets.items():
+                  if t in line and 'url ' in line and sha:
+                      # Next sha256 line is within 2 lines
+                      for j in range(i+1, min(i+3, len(lines))):
+                          if 'sha256 \"\"' in lines[j]:
+                              lines[j] = lines[j].replace('sha256 \"\"', f'sha256 \"{sha}\"')
+                              break
+          with open('homebrew-clawdius.rb', 'w') as f:
+              f.writelines(lines)
+          "
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add homebrew-clawdius.rb
+          git diff --cached --quiet || git commit -m "chore: update homebrew checksums for v${VERSION}"
+          git push
 
   publish-crates:
     name: Publish to Crates.io

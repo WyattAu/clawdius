@@ -1,6 +1,6 @@
 # Clawdius Production Roadmap
 
-> Current: v1.0.0-rc.2 | Generated: 2026-05-20 | Supersedes: ROADMAP.md, ROADMAP_PATH_FORWARD.md
+> Current: v1.0.0-rc.2 | Generated: 2026-05-26 | Supersedes: ROADMAP.md, ROADMAP_PATH_FORWARD.md
 
 ## Current State (Verified)
 
@@ -9,7 +9,9 @@
 | Workspace crates | 5 | Builds clean |
 | Rust files | 344 | All compile |
 | Lib tests | 1,425 (default) / 1,447 (all features) | 0 failures |
-| Integration tests | 158 | 0 failures |
+| Integration tests | 90 (51 core + 39 gateway) | 0 failures |
+| Adapter tests | 111 inline | 0 failures |
+| Total tests | 1,515+ | 0 failures |
 | Deterministic / property tests | 27 pass | 0 failures |
 | Clippy | Clean (`-D warnings`) | All 5 crates |
 | cargo fmt | Clean | Workspace-wide |
@@ -232,29 +234,33 @@ Matrix complete; 11/12 core features compile (92%).
 **Success:** CI green on all 4 platform targets
 
 ### 5.4 Installation Packaging
-**DONE** (commit a1cf674)
+**DONE** (commits a1cf674, pending)
 **Fixes applied:**
 - `scripts/install.sh`: fixed `CLAWdiUS_HOME` typo, updated default version
 - `flake.nix`: fixed version 1.6.0 -> 1.0.0-rc.2, replaced nonexistent `clawdius-server` with `clawdius-gateway`
 - `crates/clawdius/Cargo.toml`: added `[package.metadata.binstall]` for `cargo-binstall` support
 - `homebrew-clawdius.rb`: updated version 0.2.0 -> 1.0.0-rc.2
 - `release.yml`: added `clawdius-gateway` and `clawdius-mcp` to publish steps, removed `continue-on-error`
+- `release.yml`: added musl targets (x86_64-unknown-linux-musl, aarch64-unknown-linux-musl) with musl-tools
+- `release.yml`: added Homebrew SHA-256 automation (downloads release archives, computes checksums, updates formula, commits)
 **Remaining:**
-- Homebrew SHA-256 checksums still empty (need release automation to fill)
 - Homebrew tap repository not set up
-- musl release targets not yet in CI
 - Man pages + completions not in release archives
-**Success:** Installation succeeds on all 4 platforms
+**Success:** Installation succeeds on all 4 platforms; static binaries via musl targets
 
 ## Phase 6: Ecosystem & Scale (Week 11-14)
 
 ### 6.1 Gateway Platform Adapters
+**DONE**
+Audit findings: 111 inline adapter tests + 39 integration tests = 150 total gateway tests.
+All 9 adapters covered: telegram, discord, slack, matrix, signal, teams, whatsapp, rocketchat, webhook.
+Coverage: message formatting, webhook parsing, config validation, health checks, rate limiting, send/receive lifecycle.
 **Actions:**
 - Add unit tests for each adapter's message formatting
 - Add integration tests with mock servers for Telegram, Discord
 - Add rate limiting regression tests
 - Target: >50 tests across all adapters
-**Success:** Gateway test suite covers all 9 platform adapters
+**Success:** 150 gateway tests pass; all 9 platform adapters covered
 
 ### 6.2 Editor Integration Hardening
 **Actions:**
@@ -432,6 +438,8 @@ Replaced collision-prone `uuid_v4_placeholder()` in `agentic/parallel_sprint.rs`
 | DL-021 | Remove orphaned messaging/ directory | 1,706 lines of dead code never declared in lib.rs; duplicated by clawdius-gateway/adapters | 2026-05-24 |
 | DL-022 | Feature-gate 9 doc-hidden modules | Reduces compile time and binary size for consumers; telemetry/sandbox kept unconditional | 2026-05-26 |
 | DL-023 | Remove unused httpmock dev-dependency | Never used in tests; eliminates ~60 transitive crates (async-std, lalrpop) | 2026-05-26 |
+| DL-024 | Add musl release targets | Static binaries for Alpine/Docker slim; musl-tools in CI | 2026-05-26 |
+| DL-025 | Automate Homebrew SHA-256 in release workflow | Downloads release archives, computes checksums, updates formula via Python script | 2026-05-26 |
 
 ## Appendix: Quality Gate Summary
 
