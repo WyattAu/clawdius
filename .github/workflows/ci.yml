@@ -208,7 +208,7 @@ jobs:
             benchmark-results-
 
       - name: Run benchmarks
-        run: cargo bench --workspace
+        run: cargo bench --workspace --benches
         continue-on-error: true  # memory_bench FOREIGN KEY panic on CI runners
 
       - name: Upload benchmark results
@@ -241,7 +241,7 @@ jobs:
             benchmark-results-
 
       - name: Run benchmarks with comparison
-        run: cargo bench --workspace -- --baseline main
+        run: cargo bench --workspace --benches -- --baseline main
 
       - name: Upload benchmark results
         uses: actions/upload-artifact@v4

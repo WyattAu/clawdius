@@ -52,10 +52,10 @@ jobs:
         run: |
           if [ "${{ github.event_name }}" = "push" ] && [ "${{ github.ref }}" = "refs/heads/main" ]; then
             # On main: save as baseline for future comparisons
-            cargo bench --workspace -- --save-baseline main
+            cargo bench --workspace --benches -- --save-baseline main
           else
             # On PRs / manual: run without saving baseline
-            cargo bench --workspace
+            cargo bench --workspace --benches
           fi
 
       - name: Upload benchmark results
@@ -109,7 +109,7 @@ jobs:
         id: regression
         run: |
           REGRESSION_OUTPUT=$(mktemp)
-          if cargo bench --workspace -- --baseline main 2>&1 | tee "$REGRESSION_OUTPUT"; then
+          if cargo bench --workspace --benches -- --baseline main 2>&1 | tee "$REGRESSION_OUTPUT"; then
             echo "result=pass" >> "$GITHUB_OUTPUT"
             echo "No performance regression detected"
           else
