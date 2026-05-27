@@ -1,15 +1,12 @@
 # Clawdius Full Stack Deployment
-# Includes Clawdius server and optional Ollama for local LLM support
+# Includes Clawdius CLI, Gateway, and optional Ollama for local LLM support
 
 version: "3.9"
 
 services:
   clawdius:
-    build:
-      context: ../..
-      dockerfile: deploy/docker/Dockerfile
-    image: clawdius/server:${CLAWDIUS_VERSION:-latest}
-    container_name: clawdius-server
+    image: ghcr.io/wyattau/clawdius:${CLAWDIUS_VERSION:-latest}
+    container_name: clawdius
     restart: unless-stopped
     ports:
       - "${CLAWDIUS_PORT:-8080}:8080"
@@ -45,6 +42,37 @@ services:
         reservations:
           cpus: "0.5"
           memory: 512M
+
+  gateway:
+    image: ghcr.io/wyattau/clawdius-gateway:${CLAWDIUS_VERSION:-latest}
+    container_name: clawdius-gateway
+    restart: unless-stopped
+    ports:
+      - "${GATEWAY_PORT:-3000}:3000"
+    volumes:
+      - gateway-config:/app/config
+    environment:
+      - GATEWAY_CONFIG=/app/config/config.toml
+      - RUST_LOG=${RUST_LOG:-info}
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - clawdius-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 512M
+        reservations:
+          cpus: "0.25"
+          memory: 128M
 
   ollama:
     image: ollama/ollama:${OLLAMA_VERSION:-latest}
@@ -134,6 +162,7 @@ volumes:
   clawdius-data:
   clawdius-config:
   clawdius-logs:
+  gateway-config:
   ollama-data:
   redis-data:
   prometheus-data:

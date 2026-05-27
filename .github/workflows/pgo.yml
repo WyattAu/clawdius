@@ -1,23 +1,80 @@
 name: PGO + BOLT Build
 on:
   workflow_dispatch:
+    inputs:
+      run_bolt:
+        description: 'Apply BOLT post-link optimization'
+        required: false
+        default: 'false'
+        type: boolean
   schedule:
     - cron: '0 3 * * 0'  # Weekly Sunday 3am UTC
 
 jobs:
   pgo:
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - name: Install BOLT
+      - uses: dtolnay/rust-toolchain@1.92
+        with:
+          components: llvm-tools-preview
+
+      - name: Install dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y llvm clang
-      - name: PGO Build
-        run: bash scripts/pgo.sh
+
+      - name: Build instrumented binary
+        run: |
+          cargo build --profile pgo-instrument -p clawdius
+
+      - name: Generate profiling data
+        run: |
+          # Run representative workload
+          ./target/pgo-instrument/clawdius --help > /dev/null 2>&1 || true
+          # Run benchmarks to exercise hot paths (best-effort)
+          cargo bench -p clawdius-core --bench core_bench -- --quick 2>/dev/null || true
+          # Merge raw profile data
+          $(rustc --print sysroot)/lib/rustlib/x86_64-unknown-linux-gnu/bin/llvm-profdata \
+            merge -o /tmp/pgo-merged.profdata default_*.profraw 2>/dev/null || \
+          llvm-profdata merge -o /tmp/pgo-merged.profdata default_*.profraw 2>/dev/null || true
+
+      - name: Build PGO-optimized binary
+        env:
+          LLVM_PROFDATA_FILE: /tmp/pgo-merged.profdata
+        run: |
+          cargo build --profile pgo-optimized -p clawdius
+          ls -lh target/pgo-optimized/clawdius
+
+      - name: Apply BOLT optimization
+        if: ${{ github.event.inputs.run_bolt == 'true' }}
+        run: |
+          if command -v llvm-bolt &>/dev/null; then
+            echo "Applying BOLT optimizations..."
+            cp target/pgo-optimized/clawdius target/pgo-optimized/clawdius.pre-bolt
+            llvm-bolt target/pgo-optimized/clawdius.pre-bolt \
+              -o target/pgo-optimized/clawdius \
+              --reorder-blocks=ext-tsp \
+              --reorder-functions=hfsort \
+              --split-functions=2 \
+              --split-all-cold \
+              --icf=1 \
+              --use-gnu-stack 2>/dev/null || echo "BOLT skipped (unsupported binary format)"
+          else
+            echo "llvm-bolt not found, skipping"
+          fi
+
       - name: Upload optimized binary
         uses: actions/upload-artifact@v4
         with:
-          name: clawdius-pgo-bolt
-          path: target/release/clawdius*
+          name: clawdius-pgo-optimized
+          path: target/pgo-optimized/clawdius
+          retention-days: 30
+
+      - name: Compare binary sizes
+        run: |
+          echo "=== Binary Size Comparison ==="
+          ls -lh target/pgo-instrument/clawdius 2>/dev/null || echo "No instrumented binary"
+          ls -lh target/pgo-optimized/clawdius 2>/dev/null || echo "No optimized binary"
+          ls -lh target/release/clawdius 2>/dev/null || echo "No release binary (build with --release for comparison)"

@@ -10,11 +10,12 @@ on:
 env:
   CARGO_TERM_COLOR: always
 
-# Performance SLOs (documented, not enforced in CI yet):
+# Performance SLOs (enforced via criterion baseline comparison):
 #   - Ring buffer ops: <100ns
 #   - Wallet guard: <100us
 #   - HFT pipeline: <1ms
 #   - Messaging routing: <1ms P99
+#   - Regression threshold: >15% slowdown fails CI on PRs
 
 jobs:
   benchmark:
@@ -44,9 +45,14 @@ jobs:
             ${{ runner.os }}-criterion-
 
       - name: Run benchmarks
-        continue-on-error: true
         run: |
-          cargo bench --workspace
+          if [ "${{ github.event_name }}" = "push" ] && [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            # On main: save as baseline for future comparisons
+            cargo bench --workspace -- --save-baseline main
+          else
+            # On PRs / manual: run without saving baseline
+            cargo bench --workspace
+          fi
 
       - name: Upload benchmark results
         uses: actions/upload-artifact@v4

@@ -18,7 +18,7 @@ preferred-dark-theme = "ayu"
 git-repository-url = "https://github.com/WyattAu/clawdius"
 git-repository-icon = "fa-github"
 edit-url-template = "https://github.com/WyattAu/clawdius/edit/main/docs/book/src/{path}"
-site-url = "/clawdius/"
+site-url = "/"
 cname = "docs.clawdius.dev"
 
 [output.html.print]

@@ -200,13 +200,42 @@ jobs:
           cargo build --release --target ${{ matrix.target }} -p clawdius
           cargo build --release --target ${{ matrix.target }} -p clawdius-code
       
+      - name: Generate shell completions and man pages (Unix)
+        if: matrix.archive == 'tar.gz'
+        run: |
+          BINARY="target/${{ matrix.target }}/release/clawdius"
+          COMPLETIONS_DIR="target/${{ matrix.target }}/release/completions"
+          mkdir -p "$COMPLETIONS_DIR"
+          # Generate completions for all supported shells
+          for shell in bash zsh fish; do
+            "$BINARY" --generate-completions "$shell" > "$COMPLETIONS_DIR/_clawdius" 2>/dev/null || true
+          done
+          # Generate man page if supported
+          MAN_DIR="target/${{ matrix.target }}/release/man"
+          mkdir -p "$MAN_DIR"
+          "$BINARY" man > "$MAN_DIR/clawdius.1" 2>/dev/null || true
+      
+      - name: Generate shell completions (Windows)
+        if: matrix.archive == 'zip'
+        run: |
+          BINARY="target/${{ matrix.target }}/release/clawdius.exe"
+          COMPLETIONS_DIR="target/${{ matrix.target }}/release/completions"
+          mkdir -p "$COMPLETIONS_DIR"
+          for shell in bash zsh fish powershell; do
+            "$BINARY" --generate-completions "$shell" > "$COMPLETIONS_DIR/_clawdius" 2>/dev/null || true
+          done
+        shell: bash
+      
       - name: Create archive (Unix)
         if: matrix.archive == 'tar.gz'
         run: |
           VERSION="${{ needs.validate.outputs.version }}"
           ARCHIVE="clawdius-${VERSION}-${{ matrix.target }}.tar.gz"
           cd target/${{ matrix.target }}/release
-          tar -czvf ../../../${ARCHIVE} clawdius clawdius-code
+          tar -czvf ../../../${ARCHIVE} \
+            clawdius clawdius-code \
+            completions/ \
+            man/clawdius.1
           sha256sum ../../../${ARCHIVE} > ../../../${ARCHIVE}.sha256
       
       - name: Create archive (Windows)
@@ -215,7 +244,7 @@ jobs:
           VERSION="${{ needs.validate.outputs.version }}"
           ARCHIVE="clawdius-${VERSION}-${{ matrix.target }}.zip"
           cd target/${{ matrix.target }}/release
-          7z a ../../../${ARCHIVE} clawdius.exe clawdius-code.exe
+          7z a ../../../${ARCHIVE} clawdius.exe clawdius-code.exe completions/
           cd ../../..
           sha256sum ${ARCHIVE} > ${ARCHIVE}.sha256
         shell: bash
@@ -333,12 +362,14 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Update Homebrew formula checksums
+      - name: Update Homebrew tap formula
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           VERSION="${{ needs.validate.outputs.version }}"
           REPO="${{ github.repository }}"
+          TAP_REPO="WyattAu/homebrew-clawdius"
           mkdir -p /tmp/brew-assets
-          # Build mapping: target -> sha256
           declare -A SHAS
           for target in x86_64-unknown-linux-gnu aarch64-unknown-linux-gnu x86_64-apple-darwin aarch64-apple-darwin; do
             ARCHIVE="clawdius-${VERSION}-${target}.tar.gz"
@@ -348,7 +379,9 @@ jobs:
               echo "${target}: ${SHAS[$target]}"
             fi
           done
-          # Update formula: replace sha256 "" lines keyed by the url line above them
+          # Clone tap repo, update formula, push
+          git clone "https://github.com/${TAP_REPO}.git" /tmp/homebrew-clawdius
+          cd /tmp/homebrew-clawdius
           python3 -c "
           import re, sys
           targets = {
@@ -357,23 +390,28 @@ jobs:
               'x86_64-unknown-linux-gnu': '${SHAS[x86_64-unknown-linux-gnu]:-}',
               'aarch64-unknown-linux-gnu': '${SHAS[aarch64-unknown-linux-gnu]:-}',
           }
-          with open('homebrew-clawdius.rb') as f:
+          formula = 'Formula/clawdius.rb'
+          with open(formula) as f:
               lines = f.readlines()
+          updated_version = False
           for i, line in enumerate(lines):
+              if 'version ' in line and '\"' in line:
+                  lines[i] = line.replace(line.split('\"')[1], '${VERSION}')
+                  updated_version = True
               for t, sha in targets.items():
                   if t in line and 'url ' in line and sha:
-                      # Next sha256 line is within 2 lines
                       for j in range(i+1, min(i+3, len(lines))):
                           if 'sha256 \"\"' in lines[j]:
                               lines[j] = lines[j].replace('sha256 \"\"', f'sha256 \"{sha}\"')
                               break
-          with open('homebrew-clawdius.rb', 'w') as f:
+          with open(formula, 'w') as f:
               f.writelines(lines)
+          print(f'Version updated: {updated_version}')
           "
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add homebrew-clawdius.rb
-          git diff --cached --quiet || git commit -m "chore: update homebrew checksums for v${VERSION}"
+          git add Formula/clawdius.rb
+          git diff --cached --quiet || git commit -m "chore: update formula to v${VERSION}"
           git push
 
   publish-crates:

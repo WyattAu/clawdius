@@ -1,43 +1,48 @@
 class Clawdius < Formula
   desc "AI-powered coding assistant with multiple LLM support"
-  homepage "https://github.com/clawdius/clawdius"
+  homepage "https://github.com/WyattAu/clawdius"
   version "1.0.0-rc.2"
   license "Apache-2.0"
-  
+  head "https://github.com/WyattAu/clawdius.git", branch: "main"
+
   livecheck do
-    url :stable
+    url :url
     strategy :github_latest
   end
-  
+
   on_macos do
     on_intel do
-      url "https://github.com/clawdius/clawdius/releases/download/v#{version}/clawdius-#{version}-x86_64-apple-darwin.tar.gz"
+      url "https://github.com/WyattAu/clawdius/releases/download/v#{version}/clawdius-#{version}-x86_64-apple-darwin.tar.gz"
       sha256 ""  # Will be filled during release
     end
     on_arm do
-      url "https://github.com/clawdius/clawdius/releases/download/v#{version}/clawdius-#{version}-aarch64-apple-darwin.tar.gz"
+      url "https://github.com/WyattAu/clawdius/releases/download/v#{version}/clawdius-#{version}-aarch64-apple-darwin.tar.gz"
       sha256 ""  # Will be filled during release
     end
   end
-  
+
   on_linux do
     on_intel do
-      url "https://github.com/clawdius/clawdius/releases/download/v#{version}/clawdius-#{version}-x86_64-unknown-linux-gnu.tar.gz"
+      url "https://github.com/WyattAu/clawdius/releases/download/v#{version}/clawdius-#{version}-x86_64-unknown-linux-gnu.tar.gz"
       sha256 ""  # Will be filled during release
     end
     on_arm do
-      url "https://github.com/clawdius/clawdius/releases/download/v#{version}/clawdius-#{version}-aarch64-unknown-linux-gnu.tar.gz"
+      url "https://github.com/WyattAu/clawdius/releases/download/v#{version}/clawdius-#{version}-aarch64-unknown-linux-gnu.tar.gz"
       sha256 ""  # Will be filled during release
     end
   end
-  
+
   def install
     bin.install "clawdius"
     bin.install "clawdius-code"
-    
-    generate_completions_from_executable(bin/"clawdius", "completions", shells: [:bash, :zsh, :fish])
-    
-    man1.install Utils.safe_popen_read(bin/"clawdius", "man") => "clawdius.1"
+
+    # Install completions from archive (generated during release build)
+    bash_completion.install "completions/_clawdius" => "clawdius" if (buildpath/"completions/_clawdius").exist?
+    zsh_completion.install "completions/_clawdius" => "_clawdius" if (buildpath/"completions/_clawdius").exist?
+    fish_completion.install "completions/_clawdius" => "clawdius.fish" if (buildpath/"completions/_clawdius").exist?
+
+    # Install man page from archive
+    man1.install "man/clawdius.1" if (buildpath/"man/clawdius.1").exist?
   end
   
   def caveats
