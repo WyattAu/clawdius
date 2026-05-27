@@ -79,7 +79,7 @@ clawdius --version
 
 ### Prerequisites
 
-- **Rust 1.75+** (recommended: latest stable)
+- **Rust 1.92+** (recommended: latest stable)
 - **C compiler** (gcc, clang, or MSVC)
 - **pkg-config** (Linux)
 
@@ -172,7 +172,7 @@ clawdius chat --message "Hello, Clawdius!"
 
 ## First-Time Setup
 
-New in v1.2.0: Use the interactive setup wizard to configure Clawdius:
+New in v1.0.0-rc.2: Use the interactive setup wizard to configure Clawdius:
 
 ```bash
 clawdius setup

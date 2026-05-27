@@ -15,5 +15,5 @@
 |----------|-------|
 | Memory (idle) | <100MB |
 | Memory (active) | <500MB |
-| Binary size | <15MB |
+| Binary size | 26 MiB (release, stripped) |
 | Startup time | <500ms |

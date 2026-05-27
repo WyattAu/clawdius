@@ -6,7 +6,7 @@ Contributions to Clawdius are welcome. This guide covers the development workflo
 
 ### Prerequisites
 
-- Rust 1.88+ (see `rust-version` in `Cargo.toml`)
+- Rust 1.92+ (see `rust-version` in `Cargo.toml`)
 - A C compiler (for `bundled` SQLite)
 - Git
 

@@ -83,7 +83,9 @@ clawdius/
 ├── crates/
 │   ├── clawdius/              # CLI application
 │   ├── clawdius-core/         # Core library
-│   ├── clawdius-code/         # VSCode helper
+│   ├── clawdius-gateway/      # Messaging gateway
+│   ├── clawdius-mcp/          # MCP server
+│   └── clawdius-code/         # VSCode helper
 ├── editors/
 │   └── vscode/                # VSCode extension
 ├── .docs/                     # Documentation

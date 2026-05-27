@@ -4,8 +4,6 @@
 # Note: -D warnings and -D clippy::all are passed via CLI in CI
 # This file captures the pedantic/nursery/cargo configurations
 
-avoid-breaking-exported-api = true
-
 # Wasmtime pulls duplicate transitive deps (wit-bindgen, wit-parser, etc.)
 # that cannot be unified without [patch] overrides breaking upstream compat.
 # Allowed in workspace Cargo.toml [workspace.lints.clippy].

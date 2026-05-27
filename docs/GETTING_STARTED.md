@@ -9,7 +9,7 @@
 
 | Requirement | Minimum | Recommended |
 |-------------|---------|-------------|
-| Rust | 1.75+ | 1.85+ |
+| Rust | 1.92+ | 1.92+ |
 | OS | Linux, macOS, Windows | Linux (Ubuntu 22.04+) |
 | Memory | 512MB | 2GB+ |
 | Disk | 100MB | 500MB+ |

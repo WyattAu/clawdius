@@ -30,29 +30,28 @@ This document tracks conflicts between applicable standards, specifications, and
 
 | Source | Document | Position |
 |--------|----------|----------|
-| basic_spec.md | §1.1 | Specifies `tokio` runtime |
-| rust_sop.md | §2.1 | Recommends `monoio` or `glommio` for >100k connections |
-| User Directive | Phase -0.5 | Mandates `monoio` |
+| basic_spec.md | Section 1.1 | Specifies `tokio` runtime |
+| rust_sop.md | Section 2.1 | Recommends `monoio` or `glommio` for >100k connections |
+| Cargo.toml | workspace | Uses `tokio` as the async runtime |
 
 #### Conflict Description
 
-The technical specification (`basic_spec.md`) specified `tokio` as the async runtime, while the Rust SOP (`rust_sop.md`) recommends `monoio` or `glommio` for high-performance scenarios. For HFT applications (Broker mode), `monoio` provides thread-per-core architecture with `io_uring` support, eliminating thread-stealing jitter.
+The technical specification (`basic_spec.md`) specified `tokio` as the async runtime, while the Rust SOP (`rust_sop.md`) recommends `monoio` or `glommio` for high-performance scenarios. After evaluation, `tokio` was selected as the runtime for the general-purpose codebase due to ecosystem maturity, while `monoio`/`glommio` remain options for future HFT-specific modules.
 
 #### Resolution
 
-**Selected:** `monoio`
+**Selected:** `tokio`
 
 **Rationale:**
-1. User directive explicitly mandates monoio
-2. Thread-per-core architecture eliminates jitter for HFT
-3. `io_uring` provides superior I/O performance
-4. Zero-GC requirement aligns with monoio design
+1. `tokio` is the de facto standard async runtime in the Rust ecosystem
+2. All major dependencies (axum, wasmtime, tower) are built on tokio
+3. Ecosystem compatibility outweighs theoretical performance gains for general use
+4. HFT-specific optimizations can be added behind feature flags in the future
 
 **Impact:**
-- All async code must use monoio APIs
-- `tokio::spawn` replaced with `monoio::spawn`
-- Timer and I/O APIs use monoio equivalents
-- Some ecosystem crates may require compatibility shims
+- All async code uses tokio APIs (`tokio::spawn`, `tokio::time`, etc.)
+- No monoio or glommio dependencies in the workspace
+- Future HFT mode may introduce optional monoio integration
 
 **Affected Requirements:**
 - REQ-5.2 (High-Frequency Ingestion)
@@ -156,7 +155,7 @@ fn parse_packet(data: &[u8]) -> Result<Packet, RichError> {
 
 | ID | Description | Resolution | Date |
 |----|-------------|------------|------|
-| CONF-001 | tokio vs monoio | monoio selected | 2026-03-01 |
+| CONF-001 | tokio vs monoio | tokio selected | 2026-03-01 |
 
 ---
 
@@ -212,7 +211,7 @@ All resolved conflicts must document:
 
 | Date | Conflict | Change |
 |------|----------|--------|
-| 2026-03-01 | CONF-001 | Resolved: monoio selected |
+| 2026-03-01 | CONF-001 | Resolved: tokio selected |
 | 2026-03-01 | CONF-002 | Documented: profile-based resolution |
 | 2026-03-01 | CONF-003 | Documented: conditional compilation |
 

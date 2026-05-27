@@ -207,9 +207,9 @@ jobs:
           COMPLETIONS_DIR="target/${{ matrix.target }}/release/completions"
           mkdir -p "$COMPLETIONS_DIR"
           # Generate completions for all supported shells
-          for shell in bash zsh fish; do
-            "$BINARY" --generate-completions "$shell" > "$COMPLETIONS_DIR/_clawdius" 2>/dev/null || true
-          done
+          "$BINARY" --generate-completions bash > "$COMPLETIONS_DIR/clawdius.bash" 2>/dev/null || true
+          "$BINARY" --generate-completions zsh > "$COMPLETIONS_DIR/_clawdius" 2>/dev/null || true
+          "$BINARY" --generate-completions fish > "$COMPLETIONS_DIR/clawdius.fish" 2>/dev/null || true
           # Generate man page if supported
           MAN_DIR="target/${{ matrix.target }}/release/man"
           mkdir -p "$MAN_DIR"
@@ -222,7 +222,13 @@ jobs:
           COMPLETIONS_DIR="target/${{ matrix.target }}/release/completions"
           mkdir -p "$COMPLETIONS_DIR"
           for shell in bash zsh fish powershell; do
-            "$BINARY" --generate-completions "$shell" > "$COMPLETIONS_DIR/_clawdius" 2>/dev/null || true
+            case "$shell" in
+              bash)       dest="$COMPLETIONS_DIR/clawdius.bash" ;;
+              zsh)        dest="$COMPLETIONS_DIR/_clawdius" ;;
+              fish)       dest="$COMPLETIONS_DIR/clawdius.fish" ;;
+              powershell) dest="$COMPLETIONS_DIR/clawdius.ps1" ;;
+            esac
+            "$BINARY" --generate-completions "$shell" > "$dest" 2>/dev/null || true
           done
         shell: bash
       

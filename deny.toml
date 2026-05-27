@@ -22,9 +22,6 @@ ignore = [
     "RUSTSEC-2025-0012", # backoff unmaintained (transitive via matrix-sdk)
     "RUSTSEC-2024-0384", # instant unmaintained (transitive)
     "RUSTSEC-2026-0049", # rustls-webpki CRL matching (blocked on lancedb >= 0.28)
-    "RUSTSEC-2026-0098", # rustls-webpki URI name constraints
-    "RUSTSEC-2026-0099", # rustls-webpki wildcard name constraints
-    "RUSTSEC-2026-0104", # rustls-webpki CRL parsing panic
     "RUSTSEC-2025-0065", # matrix-sdk-base power level panic (blocked on matrix-sdk >= 0.11)
     "RUSTSEC-2025-0135", # matrix-sdk-base DoS via join_rules
     "RUSTSEC-2026-0149", # wasmtime-wasi path_open(TRUNCATE) WRITE bypass (blocked on wasmtime >= 45)

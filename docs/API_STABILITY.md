@@ -167,7 +167,7 @@ pub fn new() -> Self { ... }
 
 All deprecations are tracked in:
 - [CHANGELOG.md](../CHANGELOG.md) - Each release lists deprecations
-- [MIGRATION.md](./MIGRATION.md) - Migration guides between versions
+- MIGRATION.md - Migration guides between versions (planned)
 
 ---
 

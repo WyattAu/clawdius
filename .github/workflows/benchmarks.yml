@@ -10,6 +10,10 @@ on:
 env:
   CARGO_TERM_COLOR: always
 
+concurrency:
+  group: "bench-${{ github.ref }}"
+  cancel-in-progress: true
+
 # Performance SLOs (enforced via criterion baseline comparison):
 #   - Ring buffer ops: <100ns
 #   - Wallet guard: <100us

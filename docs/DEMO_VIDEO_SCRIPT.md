@@ -1,4 +1,4 @@
-# Clawdius v1.2.0 Demo Video Script
+# Clawdius v1.0.0-rc.2 Demo Video Script
 
 ## Video Overview
 
@@ -254,7 +254,7 @@ developer tools, open source, 2026
 ## Distribution
 
 ### YouTube
-- Title: "Clawdius v1.2.0 - High-Assurance AI Coding Assistant in Rust"
+- Title: "Clawdius v1.0.0-rc.2 - High-Assurance AI Coding Assistant in Rust"
 - Description: Link to GitHub, docs, blog post
 - Tags: Rust, AI, LLM, developer tools
 

@@ -1,22 +1,22 @@
 # Community Launch Checklist
 
-## Clawdius v1.2.0 - Phase 2 Polish Release
+## Clawdius v1.0.0-rc.2 - Phase 2 Polish Release
 
 ### Pre-Launch
 
 - [x] Code complete and tested (1,002+ tests passing)
 - [x] Security audit clean (zero vulnerabilities)
-- [x] GitHub release published (v1.2.0)
-- [x] Git tag created (v1.2.0)
+- [x] GitHub release published (v1.0.0-rc.2)
+- [x] Git tag created (v1.0.0-rc.2)
 - [x] CHANGELOG.md updated
 - [x] VERSION.md updated
 - [x] Documentation updated for setup wizard
 
 ### Content Ready
 
-- [x] Blog post: `blog/2026-03-25-v1.2.0-launch.md`
-- [x] Twitter thread: `blog/twitter-thread-v1.2.0.md`
-- [x] Hacker News post: `blog/hacker-news-v1.2.0.md`
+- [x] Blog post: `blog/2026-03-25-v1.0.0-rc.2-launch.md`
+- [x] Twitter thread: `blog/twitter-thread-v1.0.0-rc.2.md`
+- [x] Hacker News post: `blog/hacker-news-v1.0.0-rc.2.md`
 - [x] GitHub Pages setup guide: `docs/GITHUB_PAGES_SETUP.md`
 
 ---
@@ -34,7 +34,7 @@
 
 1. Go to: https://news.ycombinator.com/submit
 2. Title: `Show HN: Clawdius – High-assurance AI coding assistant in Rust with zero vulnerabilities`
-3. Content: Copy from `blog/hacker-news-v1.2.0.md`
+3. Content: Copy from `blog/hacker-news-v1.0.0-rc.2.md`
 4. Submit
 
 **Timing:** Tuesday-Thursday, 9-11 AM PST for best visibility
@@ -43,18 +43,18 @@
 
 **r/rust:**
 1. Go to: https://www.reddit.com/r/rust/submit
-2. Title: `Show r/rust: Clawdius v1.2.0 - High-assurance AI coding assistant in Rust`
+2. Title: `Show r/rust: Clawdius v1.0.0-rc.2 - High-assurance AI coding assistant in Rust`
 3. Content: Use blog post content
 4. Flair: "Show & Tell"
 
 **r/programming:**
 1. Go to: https://www.reddit.com/r/programming/submit
-2. Title: `Clawdius v1.2.0: Rust-based AI coding assistant with formal verification`
+2. Title: `Clawdius v1.0.0-rc.2: Rust-based AI coding assistant with formal verification`
 3. Content: Link to GitHub release
 
 ### Step 4: Twitter/X (10 min)
 
-1. Use content from `blog/twitter-thread-v1.2.0.md`
+1. Use content from `blog/twitter-thread-v1.0.0-rc.2.md`
 2. Post as thread (6 tweets)
 3. Tag relevant accounts: @rustlang, @github
 
@@ -113,7 +113,7 @@
 > Yes! Use `clawdius setup --provider ollama` or `clawdius chat --provider ollama --model llama3` for 100% private operation.
 
 **Q: Is it production-ready?**
-> v1.2.0 is stable with 1,002+ tests passing, zero security vulnerabilities, and an API stability guarantee.
+> v1.0.0-rc.2 is stable with 1,002+ tests passing, zero security vulnerabilities, and an API stability guarantee.
 
 ### Negative Feedback
 

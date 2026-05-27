@@ -190,4 +190,4 @@ clawdius <command> --help          # Command-specific help
 
 ---
 
-**Version:** 1.2.0 | **Updated:** 2026-03-25
+**Version:** 1.0.0-rc.2 | **Updated:** 2026-05-27

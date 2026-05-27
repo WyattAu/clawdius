@@ -5,7 +5,7 @@
 
 [![Version](https://img.shields.io/badge/version-1.0.0--rc.2-blue.svg)](https://github.com/WyattAu/clawdius/releases)
 [![Rust](https://img.shields.io/badge/language-Rust-orange.svg)](https://www.rust-lang.org)
-[![Tests](https://img.shields.io/badge/tests-1%2C447-passing-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-2%2C019-passing-brightgreen.svg)]()
 [![Clippy](https://img.shields.io/badge/clippy-0%20warnings-success.svg)]()
 [![Lean4](https://img.shields.io/badge/Lean4-209%20theorems-blue.svg)]()
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-yellow.svg)](LICENSE)
@@ -14,7 +14,7 @@ Clawdius is a next-generation AI coding engine built in Rust. It provides a term
 
 ## Highlights
 
-- **1,447 tests, 0 failures** across 5 workspace crates
+ - **2,019 tests, 0 failures** across 5 workspace crates
 - **0 clippy warnings** (strictest `-W clippy::all`)
 - **209 Lean4 formal verification theorems** compiled and verified
 - **12/12 feature flags** compile independently
@@ -53,7 +53,7 @@ clawdius/
 ### 1. Install
 
 ```bash
-# From source (requires Rust 1.93+)
+# From source (requires Rust 1.92+)
 git clone https://github.com/WyattAu/clawdius
 cd clawdius
 cargo build --release
@@ -183,7 +183,7 @@ cargo build --release --features "keyring,embeddings,vector-db,postgres"
 
 ## Quick Start
 
-### 1. Set Up (New in v1.2.0!)
+### 1. Set Up (New in v1.0.0-rc.2!)
 ```bash
 # Interactive setup wizard (recommended)
 clawdius setup
@@ -262,7 +262,7 @@ clawdius-gateway -p telegram --port 8080 --admin-port 8081
 ## Development
 
 ```bash
-# Run all tests (1,240 tests)
+# Run all tests (2,019 tests)
 cargo test --workspace
 
 # Clippy (0 warnings)
@@ -282,7 +282,7 @@ cargo check -p clawdius-core --features postgres
 
 | Metric | Value |
 |--------|-------|
-| Test suite | 1,240 tests, 0 failures |
+| Test suite | 2,019 tests, 0 failures |
 | Clippy warnings | 0 code warnings |
 | Lean4 proofs | 16/16 verified |
 | Feature flags | 12/12 compile |

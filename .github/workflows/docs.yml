@@ -40,8 +40,11 @@ jobs:
       - name: Merge landing page with docs
         run: |
           mkdir -p site
-          cp index.html site/index.html
+          # Copy docs book content first
           cp -r docs/book/book/* site/
+          # Landing page overwrites the docs index.html -- users land on the marketing page
+          # Docs are accessible via nav links or /intro.html
+          cp index.html site/index.html
           echo "docs.clawdius.dev" > site/CNAME
 
       - name: Upload artifact

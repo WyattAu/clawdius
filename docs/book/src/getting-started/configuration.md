@@ -4,7 +4,7 @@ Clawdius is highly configurable. This guide covers the essential configuration o
 
 ## Interactive Setup (Recommended)
 
-New in v1.2.0: Use the interactive setup wizard for first-time configuration:
+New in v1.0.0-rc.2: Use the interactive setup wizard for first-time configuration:
 
 ```bash
 clawdius setup
@@ -41,12 +41,6 @@ clawdius config set api_key sk-ant-xxxxx
 export ANTHROPIC_API_KEY=sk-ant-xxxxx
 ```
 ### Set Default Provider
-```bash
-clawdius config set provider anthropic
-```
-
-### Set Default Provider
-
 ```bash
 clawdius config set provider anthropic
 ```

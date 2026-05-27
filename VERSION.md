@@ -9,7 +9,7 @@
 |-----------|-------|
 | **Version** | 1.0.0-rc.2 |
 | **Status** | Active development |
-| **Last Updated** | 2026-05-20 |
+| **Last Updated** | 2026-05-27 |
 | **Rollback Checkpoint** | `c7b24481` |
 
 ## Empirical Metrics
@@ -18,7 +18,7 @@
 |--------|-------|--------|
 | **Workspace Crates** | 5 | `Cargo.toml` |
 | **Rust Files** | 344 | `find crates -name '*.rs'` |
-| **Lean4 Proof Files** | 15 | Lake build (31/31 jobs pass) |
+| **Lean4 Proof Files** | 17 (9 + 8 in two proof dirs) | Lake build (31/31 jobs pass) |
 | **Lean4 Theorems** | 209 | `rg 'theorem ' *.lean` |
 | **Clippy** | Clean (`-D warnings`) | `cargo clippy --workspace --all-targets` |
 | **cargo fmt** | Clean | `cargo fmt --all --check` |
@@ -34,12 +34,12 @@
 
 | Crate | Lib Tests | Integration Tests | Property Tests | Adapter Tests | Status |
 |-------|-----------|-------------------|----------------|---------------|--------|
-| clawdius | 12 | 51 | 0 | 0 | All passing |
+| clawdius | 76 | 76 | 0 | 0 | All passing |
 | clawdius-core | 1,075 | 97 | 27 | 0 | All passing |
-| clawdius-gateway | 243 | 0 | 0 | 136 | All passing |
-| clawdius-mcp | 42 | 5 | 0 | 0 | All passing |
-| clawdius-code | 48 | 5 | 0 | 0 | All passing |
-| **Total** | **1,420** | **158** | **27** | **136** | **1,527 tests, 0 failures** |
+| clawdius-gateway | 184 | 28 | 0 | 136 | All passing |
+| clawdius-mcp | 42 | 12 | 0 | 0 | All passing |
+| clawdius-code | 48 | 19 | 0 | 0 | All passing |
+| **Total** | **1,425** | **232** | **27** | **136** | **2,019 tests, 0 failures** |
 
 ### Coverage Baseline
 

@@ -12,6 +12,10 @@ on:
 env:
   CARGO_TERM_COLOR: always
 
+concurrency:
+  group: "security-${{ github.ref }}"
+  cancel-in-progress: false
+
 jobs:
   audit:
     name: Dependency Audit
@@ -106,7 +110,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       
       - name: Run TruffleHog
-        uses: trufflesecurity/trufflehog@main
+        uses: trufflesecurity/trufflehog@v3.88.8
         with:
           path: ./
           base: ${{ github.event.repository.default_branch }}
@@ -136,7 +140,6 @@ jobs:
     name: Fuzz Testing
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    if: true
     strategy:
       matrix:
         target:

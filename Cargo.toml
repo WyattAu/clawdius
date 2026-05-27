@@ -4,7 +4,6 @@
 # - clawdius: CLI tool (standalone)
 # - clawdius-code: VSCode extension helper binary
 # - clawdius-core: Shared library (LLM, sessions, tools, etc.)
-# - clawdius-webview: Leptos-based WASM webview UI
 
 [workspace]
 resolver = "2"
