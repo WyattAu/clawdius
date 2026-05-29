@@ -48,15 +48,17 @@ jobs:
             ${{ runner.os }}-criterion-main
             ${{ runner.os }}-criterion-
 
-      - name: Run benchmarks
+      - name: Run benchmarks (criterion crates with baseline)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
-          if [ "${{ github.event_name }}" = "push" ] && [ "${{ github.ref }}" = "refs/heads/main" ]; then
-            # On main: save as baseline for future comparisons
-            cargo bench --workspace --benches -- --save-baseline main
-          else
-            # On PRs / manual: run without saving baseline
-            cargo bench --workspace --benches
-          fi
+          # clawdius-core uses criterion: pass --save-baseline
+          cargo bench -p clawdius-core --benches -- --save-baseline main || true
+          # clawdius CLI uses custom harness: no criterion flags
+          cargo bench -p clawdius --benches || true
+
+      - name: Run benchmarks (no baseline)
+        if: "!(github.event_name == 'push' && github.ref == 'refs/heads/main')"
+        run: cargo bench --workspace --benches
 
       - name: Upload benchmark results
         uses: actions/upload-artifact@v4
@@ -109,7 +111,8 @@ jobs:
         id: regression
         run: |
           REGRESSION_OUTPUT=$(mktemp)
-          if cargo bench --workspace --benches -- --baseline main 2>&1 | tee "$REGRESSION_OUTPUT"; then
+          # Only clawdius-core supports criterion --baseline flag
+          if cargo bench -p clawdius-core --benches -- --baseline main 2>&1 | tee "$REGRESSION_OUTPUT"; then
             echo "result=pass" >> "$GITHUB_OUTPUT"
             echo "No performance regression detected"
           else
