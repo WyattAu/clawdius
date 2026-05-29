@@ -160,7 +160,7 @@ proptest = "1.6"
 rstest = "0.25"
 criterion = "0.5"
 tempfile = "3.17"
-mockall = "0.13"
+mockall = "0.14"
 
 # === System Information ===
 sysinfo = "0.33"
