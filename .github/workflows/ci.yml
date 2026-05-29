@@ -56,7 +56,6 @@ jobs:
 
       - name: Check all-features compile
         run: cargo check --workspace --all-features
-        continue-on-error: true  # Known issue: vector-db (IndexStats) and telegram (teloxide) fail
 
       # Release build is handled by release.yml workflow.
       # CI already verifies compilation via clippy, test, and check --workspace --all-features.
