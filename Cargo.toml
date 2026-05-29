@@ -150,8 +150,8 @@ arrow-schema = "58"
 
 # === ML/Embeddings ===
 candle-core = "0.10"
-candle-nn = "0.4"
-candle-transformers = "0.4"
+candle-nn = "0.10"
+candle-transformers = "0.10"
 tokenizers = "0.15"
 hf-hub = "0.5"
 
