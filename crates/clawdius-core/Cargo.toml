@@ -137,7 +137,7 @@ sha2.workspace = true
 getrandom.workspace = true
 
 # Redis (optional, for orchestrator queue)
-redis = { version = "0.27", features = ["tokio-comp", "connection-manager"], optional = true }
+redis = { version = "1.2", features = ["tokio-comp", "connection-manager"], optional = true }
 
 # Stripe (optional, for billing)
 stripe = { version = "1.0.0-rc.5", package = "async-stripe", optional = true, default-features = false, features = ["default-tls"] }
