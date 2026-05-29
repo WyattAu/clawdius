@@ -271,3 +271,100 @@ pub(super) fn handle_git_status() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    struct StatusCounts {
+        modified: usize,
+        added: usize,
+        deleted: usize,
+        untracked: usize,
+        renamed: usize,
+        copied: usize,
+        other: usize,
+    }
+
+    fn parse_porcelain(lines: &[&str]) -> StatusCounts {
+        let mut c = StatusCounts {
+            modified: 0, added: 0, deleted: 0, untracked: 0,
+            renamed: 0, copied: 0, other: 0,
+        };
+        for line in lines {
+            if line.len() < 2 { continue; }
+            let idx = line.chars().next().unwrap_or(' ');
+            let wt = line.chars().nth(1).unwrap_or(' ');
+            match (idx, wt) {
+                ('?', _) => c.untracked += 1,
+                ('A', _) | (_, 'A') => c.added += 1,
+                ('D', _) | (_, 'D') => c.deleted += 1,
+                ('R', _) | (_, 'R') => c.renamed += 1,
+                ('C', _) | (_, 'C') => c.copied += 1,
+                ('M', _) | (_, 'M') => c.modified += 1,
+                _ => c.other += 1,
+            }
+        }
+        c
+    }
+
+    #[test]
+    fn test_parse_untracked_files() {
+        let c = parse_porcelain(&["?? newfile.txt", "??.gitignore"]);
+        assert_eq!(c.untracked, 2);
+        assert_eq!(c.modified, 0);
+    }
+
+    #[test]
+    fn test_parse_modified_files() {
+        let c = parse_porcelain(&[" M src/main.rs", "M  src/lib.rs", "MM src/both.rs"]);
+        assert_eq!(c.modified, 3);
+    }
+
+    #[test]
+    fn test_parse_added_files() {
+        let c = parse_porcelain(&["A  new.rs", " A staged_new.rs"]);
+        assert_eq!(c.added, 2);
+    }
+
+    #[test]
+    fn test_parse_deleted_files() {
+        let c = parse_porcelain(&[" D gone.rs", "D  staged_gone.rs"]);
+        assert_eq!(c.deleted, 2);
+    }
+
+    #[test]
+    fn test_parse_renamed_files() {
+        let c = parse_porcelain(&["R  old.rs -> new.rs"]);
+        assert_eq!(c.renamed, 1);
+    }
+
+    #[test]
+    fn test_parse_mixed_status() {
+        let c = parse_porcelain(&[
+            " M modified.rs",
+            "A  added.rs",
+            "?? untracked.rs",
+            "D  deleted.rs",
+            "R  renamed.rs -> new_name.rs",
+        ]);
+        assert_eq!(c.modified, 1);
+        assert_eq!(c.added, 1);
+        assert_eq!(c.untracked, 1);
+        assert_eq!(c.deleted, 1);
+        assert_eq!(c.renamed, 1);
+    }
+
+    #[test]
+    fn test_parse_empty_input() {
+        let c = parse_porcelain(&[]);
+        assert_eq!(c.modified, 0);
+        assert_eq!(c.untracked, 0);
+    }
+
+    #[test]
+    fn test_parse_short_lines_skipped() {
+        let c = parse_porcelain(&["X"]);
+        assert_eq!(c.other, 0);
+    }
+}

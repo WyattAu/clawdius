@@ -409,3 +409,89 @@ fn run_auto_analysis(files: &[PathBuf], verbose: bool) {
         println!("  ✅ No new drift or debt detected");
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use clawdius_core::analysis::{
+        ArchitectureDrift, DebtItem, DebtReport, DebtType, DriftReport,
+        DriftSeverity,
+    };
+
+    fn make_drift_report(drifts: Vec<(DriftSeverity, &str)>) -> DriftReport {
+        let mut report = DriftReport::new();
+        for (severity, msg) in drifts {
+            report.add(
+                ArchitectureDrift::new("test-rule", PathBuf::from("test.rs"), msg)
+                    .with_severity(severity),
+            );
+        }
+        report
+    }
+
+    fn make_debt_report(items: Vec<(DebtType, u8, &str)>) -> DebtReport {
+        let mut report = DebtReport::new();
+        for (dt, priority, desc) in items {
+            report.add(
+                DebtItem::new(dt, PathBuf::from("test.rs"), desc).with_priority(priority),
+            );
+        }
+        report
+    }
+
+    #[test]
+    fn filter_drift_by_severity_min_3_filters_low_and_medium() {
+        let report = make_drift_report(vec![
+            (DriftSeverity::Low, "low issue"),
+            (DriftSeverity::Medium, "medium issue"),
+            (DriftSeverity::High, "high issue"),
+            (DriftSeverity::Critical, "critical issue"),
+        ]);
+
+        let filtered = filter_drift_by_severity(&report, 3);
+        assert_eq!(filtered.len(), 2, "should keep High and Critical only");
+        let severities: Vec<&str> = filtered
+            .iter()
+            .filter_map(|v| v.get("severity").and_then(|s| s.as_str()))
+            .collect();
+        assert!(severities.contains(&"High"), "should contain High");
+        assert!(severities.contains(&"Critical"), "should contain Critical");
+    }
+
+    #[test]
+    fn filter_debt_by_priority_keeps_high_priority_only() {
+        let report = make_debt_report(vec![
+            (DebtType::CodeComplexity, 2, "low priority"),
+            (DebtType::TestingDebt, 5, "medium priority"),
+            (DebtType::SecurityDebt, 9, "high priority"),
+        ]);
+
+        let filtered = filter_debt_by_priority(&report, 3);
+        assert_eq!(filtered.len(), 1, "priority 9 maps to level 4, should pass min 3");
+        let priorities: Vec<u8> = filtered
+            .iter()
+            .filter_map(|v| v.get("priority").and_then(|p| p.as_u64()).map(|p| p as u8))
+            .collect();
+        assert!(priorities.contains(&9));
+    }
+
+    #[test]
+    fn format_analyze_text_empty_reports_no_panic() {
+        let drift = DriftReport::default();
+        let debt = DebtReport::default();
+        let output = format_analyze_text(&drift, &debt, 0, 1);
+        assert!(
+            output.contains("CLAWDIUS ANALYSIS"),
+            "should contain header, got: {output}"
+        );
+    }
+
+    #[test]
+    fn format_analyze_json_empty_reports_valid_json_with_summary() {
+        let drift = DriftReport::default();
+        let debt = DebtReport::default();
+        let output = format_analyze_json(&drift, &debt, 0, 1).unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(&output).expect("should be valid JSON");
+        assert!(parsed.get("summary").is_some(), "should contain 'summary' key");
+    }
+}

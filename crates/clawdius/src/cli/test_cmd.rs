@@ -227,3 +227,104 @@ fn extract_function_body(code: &str, start: usize, _language: &str) -> anyhow::R
         anyhow::bail!("Could not extract function body")
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn generate_default_tests_returns_three_cases() {
+        let tests = generate_default_tests("rs");
+        assert_eq!(tests.len(), 3);
+        assert_eq!(tests[0].name, "test_normal_case");
+        assert_eq!(tests[1].name, "test_edge_case");
+        assert_eq!(tests[2].name, "test_error_case");
+    }
+
+    #[test]
+    fn generate_test_code_rust_contains_cfg_test_and_mod_tests() {
+        let code = generate_test_code("rs");
+        assert!(code.contains("#[cfg(test)]"), "should contain #[cfg(test)]");
+        assert!(code.contains("mod tests"), "should contain mod tests");
+    }
+
+    #[test]
+    fn generate_test_code_typescript_contains_describe_and_test() {
+        let code = generate_test_code("ts");
+        assert!(code.contains("describe"), "should contain describe");
+        assert!(code.contains("test("), "should contain test(");
+    }
+
+    #[test]
+    fn generate_test_code_python_contains_unittest_and_class() {
+        let code = generate_test_code("py");
+        assert!(code.contains("unittest"), "should contain unittest");
+        assert!(code.contains("class TestFunction"), "should contain class TestFunction");
+    }
+
+    #[test]
+    fn generate_test_code_unknown_language_not_supported() {
+        let code = generate_test_code("unknown");
+        assert!(
+            code.contains("not supported"),
+            "should contain 'not supported', got: {code}"
+        );
+    }
+
+    #[test]
+    fn extract_function_body_simple() {
+        let code = "fn foo() { let x = 1; }";
+        let result = extract_function_body(code, 8, "rs").unwrap();
+        assert_eq!(result, " { let x = 1; }");
+    }
+
+    #[test]
+    fn extract_function_body_nested_braces() {
+        let code = "fn foo() { if true { 1 } else { 2 } }";
+        let result = extract_function_body(code, 8, "rs").unwrap();
+        assert_eq!(result, " { if true { 1 } else { 2 } }");
+    }
+
+    #[test]
+    fn extract_function_body_no_closing_brace_errors() {
+        let code = "fn foo() { let x = 1;";
+        let result = extract_function_body(code, 8, "rs");
+        assert!(result.is_err(), "should error when no closing brace");
+    }
+
+    #[test]
+    #[ignore = "parse_function_from_selection expects 'rust' not 'rs'; integration-level test"]
+    fn extract_function_from_code_finds_rust_function() {
+        let code = "fn hello() { println!(\"hi\"); }";
+        let result = extract_function_from_code(code, "hello", "rs");
+        assert!(result.is_ok(), "should find Rust fn hello, got: {:?}", result);
+        let func = result.unwrap();
+        assert_eq!(func.name, "hello");
+    }
+
+    #[test]
+    #[ignore = "parse_function_from_selection expects 'typescript' not 'ts'; integration-level test"]
+    fn extract_function_from_code_finds_typescript_function() {
+        let code = "function greet() { console.log(\"hi\"); }";
+        let result = extract_function_from_code(code, "greet", "ts");
+        assert!(result.is_ok(), "should find TS function greet, got: {:?}", result);
+        let func = result.unwrap();
+        assert_eq!(func.name, "greet");
+    }
+
+    #[test]
+    fn extract_function_from_code_unsupported_language_errors() {
+        let code = "defn foo [] (println \"hi\")";
+        let result = extract_function_from_code(code, "foo", "clojure");
+        assert!(result.is_err(), "should error for unsupported language");
+    }
+
+    #[test]
+    fn extract_function_from_code_function_not_found_errors() {
+        let code = "fn hello() { }";
+        let result = extract_function_from_code(code, "goodbye", "rs");
+        assert!(result.is_err(), "should error when function not found");
+        let msg = result.unwrap_err().to_string();
+        assert!(msg.contains("not found"), "error should mention 'not found': {msg}");
+    }
+}

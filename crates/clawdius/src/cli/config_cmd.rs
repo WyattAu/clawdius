@@ -335,4 +335,117 @@ api_key = "sk-12345678""#;
         let result = mask_api_keys("");
         assert_eq!(result, "");
     }
+
+    // --- get_config_value / set_config_value tests ---
+
+    fn default_config() -> clawdius_core::config::Config {
+        clawdius_core::config::Config::default()
+    }
+
+    #[test]
+    fn test_get_default_provider_unset() {
+        let config = default_config();
+        let value = get_config_value(&config, "llm.default_provider").unwrap();
+        assert_eq!(value, "(not set)");
+    }
+
+    #[test]
+    fn test_get_max_tokens_default() {
+        let config = default_config();
+        let value = get_config_value(&config, "llm.max_tokens").unwrap();
+        assert_eq!(value, config.llm.max_tokens.to_string());
+    }
+
+    #[test]
+    fn test_get_anthropic_model_unset() {
+        let config = default_config();
+        let value = get_config_value(&config, "llm.anthropic.model").unwrap();
+        assert_eq!(value, "(not set)");
+    }
+
+    #[test]
+    fn test_get_ollama_base_url_default() {
+        let config = default_config();
+        let value = get_config_value(&config, "llm.ollama.base_url").unwrap();
+        assert_eq!(value, "http://localhost:11434");
+    }
+
+    #[test]
+    fn test_get_unknown_key_errors() {
+        let config = default_config();
+        assert!(get_config_value(&config, "unknown.key").is_err());
+    }
+
+    #[test]
+    fn test_set_default_provider() {
+        let mut config = default_config();
+        set_config_value(&mut config, "llm.default_provider", "openai").unwrap();
+        assert_eq!(config.llm.default_provider.as_deref(), Some("openai"));
+    }
+
+    #[test]
+    fn test_set_max_tokens() {
+        let mut config = default_config();
+        set_config_value(&mut config, "llm.max_tokens", "8192").unwrap();
+        assert_eq!(config.llm.max_tokens, 8192);
+    }
+
+    #[test]
+    fn test_set_max_tokens_invalid_errors() {
+        let mut config = default_config();
+        assert!(set_config_value(&mut config, "llm.max_tokens", "not_a_number").is_err());
+    }
+
+    #[test]
+    fn test_set_anthropic_model() {
+        let mut config = default_config();
+        set_config_value(&mut config, "llm.anthropic.model", "claude-3-opus").unwrap();
+        assert_eq!(
+            config.llm.anthropic.as_ref().and_then(|p| p.model.as_deref()),
+            Some("claude-3-opus")
+        );
+    }
+
+    #[test]
+    fn test_set_anthropic_api_key() {
+        let mut config = default_config();
+        set_config_value(&mut config, "llm.anthropic.api_key", "sk-test123").unwrap();
+        assert_eq!(
+            config.llm.anthropic.as_ref().and_then(|p| p.api_key.as_deref()),
+            Some("sk-test123")
+        );
+    }
+
+    #[test]
+    fn test_set_ollama_base_url() {
+        let mut config = default_config();
+        set_config_value(&mut config, "llm.ollama.base_url", "http://custom:1234").unwrap();
+        assert_eq!(
+            config.llm.ollama.as_ref().map(|o| o.base_url.as_str()),
+            Some("http://custom:1234")
+        );
+    }
+
+    #[test]
+    fn test_set_unknown_key_errors() {
+        let mut config = default_config();
+        assert!(set_config_value(&mut config, "nonexistent.key", "value").is_err());
+    }
+
+    #[test]
+    fn test_get_set_roundtrip_anthropic_model() {
+        let mut config = default_config();
+        set_config_value(&mut config, "llm.anthropic.model", "claude-3").unwrap();
+        let value = get_config_value(&config, "llm.anthropic.model").unwrap();
+        assert_eq!(value, "claude-3");
+    }
+
+    #[test]
+    fn test_get_anthropic_api_key_masked() {
+        let mut config = default_config();
+        set_config_value(&mut config, "llm.anthropic.api_key", "sk-longapikey123").unwrap();
+        let value = get_config_value(&config, "llm.anthropic.api_key").unwrap();
+        // API keys are masked on read
+        assert_eq!(value, "***");
+    }
 }
