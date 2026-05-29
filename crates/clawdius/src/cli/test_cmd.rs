@@ -300,11 +300,7 @@ mod tests {
     fn extract_function_from_code_finds_rust_function() {
         let code = "fn hello() { println!(\"hi\"); }";
         let result = extract_function_from_code(code, "hello", "rs");
-        assert!(
-            result.is_ok(),
-            "should find Rust fn hello, got: {:?}",
-            result
-        );
+        assert!(result.is_ok(), "should find Rust fn hello, got: {result:?}");
         let func = result.unwrap();
         assert_eq!(func.name, "hello");
     }
@@ -316,8 +312,7 @@ mod tests {
         let result = extract_function_from_code(code, "greet", "ts");
         assert!(
             result.is_ok(),
-            "should find TS function greet, got: {:?}",
-            result
+            "should find TS function greet, got: {result:?}"
         );
         let func = result.unwrap();
         assert_eq!(func.name, "greet");

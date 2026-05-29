@@ -469,11 +469,12 @@ mod tests {
             1,
             "priority 9 maps to level 4, should pass min 3"
         );
-        let priorities: Vec<u8> = filtered
-            .iter()
-            .filter_map(|v| v.get("priority").and_then(|p| p.as_u64()).map(|p| p as u8))
-            .collect();
-        assert!(priorities.contains(&9));
+        let has_p9 = filtered.iter().any(|v| {
+            v.get("priority")
+                .and_then(serde_json::Value::as_u64)
+                .is_some_and(|p| p == 9)
+        });
+        assert!(has_p9);
     }
 
     #[test]

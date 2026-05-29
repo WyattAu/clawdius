@@ -274,8 +274,6 @@ pub(super) fn handle_git_status() -> anyhow::Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     struct StatusCounts {
         modified: usize,
         added: usize,
