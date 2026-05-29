@@ -146,7 +146,7 @@ similar = "2.6"
 lancedb = "0.27"
 arrow = "57"
 arrow-array = "57"
-arrow-schema = "58"
+arrow-schema = "57"
 
 # === ML/Embeddings ===
 candle-core = "0.10"

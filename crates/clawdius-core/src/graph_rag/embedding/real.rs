@@ -177,9 +177,12 @@ impl SentenceEmbedder {
     pub fn embed_sync(&self, text: &str) -> Result<Vec<f32>> {
         let (tokens, attention_mask) = self.tokenize(text)?;
 
+        let token_type_ids = tokens
+            .zeros_like()
+            .map_err(|e| Error::Model(format!("Token type ids failed: {e}")))?;
         let embeddings = self
             .model
-            .forward(&tokens, &attention_mask)
+            .forward(&tokens, &token_type_ids, Some(&attention_mask))
             .map_err(|e| Error::Model(format!("Forward pass failed: {e}")))?;
 
         let pooled = self.mean_pool_and_normalize(&embeddings, &attention_mask)?;
