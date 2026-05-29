@@ -78,7 +78,7 @@ jsonrpsee = { version = "0.24", features = ["server", "client", "ws-client"] }
 
 # === Security ===
 keyring = "3.6"
-rpassword = "7.3"
+rpassword = "7.5"
 
 # === HTTP ===
 axum = { version = "0.8", features = ["macros"] }
