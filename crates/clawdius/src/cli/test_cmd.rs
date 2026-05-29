@@ -259,7 +259,10 @@ mod tests {
     fn generate_test_code_python_contains_unittest_and_class() {
         let code = generate_test_code("py");
         assert!(code.contains("unittest"), "should contain unittest");
-        assert!(code.contains("class TestFunction"), "should contain class TestFunction");
+        assert!(
+            code.contains("class TestFunction"),
+            "should contain class TestFunction"
+        );
     }
 
     #[test]
@@ -297,7 +300,11 @@ mod tests {
     fn extract_function_from_code_finds_rust_function() {
         let code = "fn hello() { println!(\"hi\"); }";
         let result = extract_function_from_code(code, "hello", "rs");
-        assert!(result.is_ok(), "should find Rust fn hello, got: {:?}", result);
+        assert!(
+            result.is_ok(),
+            "should find Rust fn hello, got: {:?}",
+            result
+        );
         let func = result.unwrap();
         assert_eq!(func.name, "hello");
     }
@@ -307,7 +314,11 @@ mod tests {
     fn extract_function_from_code_finds_typescript_function() {
         let code = "function greet() { console.log(\"hi\"); }";
         let result = extract_function_from_code(code, "greet", "ts");
-        assert!(result.is_ok(), "should find TS function greet, got: {:?}", result);
+        assert!(
+            result.is_ok(),
+            "should find TS function greet, got: {:?}",
+            result
+        );
         let func = result.unwrap();
         assert_eq!(func.name, "greet");
     }
@@ -325,6 +336,9 @@ mod tests {
         let result = extract_function_from_code(code, "goodbye", "rs");
         assert!(result.is_err(), "should error when function not found");
         let msg = result.unwrap_err().to_string();
-        assert!(msg.contains("not found"), "error should mention 'not found': {msg}");
+        assert!(
+            msg.contains("not found"),
+            "error should mention 'not found': {msg}"
+        );
     }
 }

@@ -288,11 +288,18 @@ mod tests {
 
     fn parse_porcelain(lines: &[&str]) -> StatusCounts {
         let mut c = StatusCounts {
-            modified: 0, added: 0, deleted: 0, untracked: 0,
-            renamed: 0, copied: 0, other: 0,
+            modified: 0,
+            added: 0,
+            deleted: 0,
+            untracked: 0,
+            renamed: 0,
+            copied: 0,
+            other: 0,
         };
         for line in lines {
-            if line.len() < 2 { continue; }
+            if line.len() < 2 {
+                continue;
+            }
             let idx = line.chars().next().unwrap_or(' ');
             let wt = line.chars().nth(1).unwrap_or(' ');
             match (idx, wt) {

@@ -414,8 +414,7 @@ fn run_auto_analysis(files: &[PathBuf], verbose: bool) {
 mod tests {
     use super::*;
     use clawdius_core::analysis::{
-        ArchitectureDrift, DebtItem, DebtReport, DebtType, DriftReport,
-        DriftSeverity,
+        ArchitectureDrift, DebtItem, DebtReport, DebtType, DriftReport, DriftSeverity,
     };
 
     fn make_drift_report(drifts: Vec<(DriftSeverity, &str)>) -> DriftReport {
@@ -432,9 +431,7 @@ mod tests {
     fn make_debt_report(items: Vec<(DebtType, u8, &str)>) -> DebtReport {
         let mut report = DebtReport::new();
         for (dt, priority, desc) in items {
-            report.add(
-                DebtItem::new(dt, PathBuf::from("test.rs"), desc).with_priority(priority),
-            );
+            report.add(DebtItem::new(dt, PathBuf::from("test.rs"), desc).with_priority(priority));
         }
         report
     }
@@ -467,7 +464,11 @@ mod tests {
         ]);
 
         let filtered = filter_debt_by_priority(&report, 3);
-        assert_eq!(filtered.len(), 1, "priority 9 maps to level 4, should pass min 3");
+        assert_eq!(
+            filtered.len(),
+            1,
+            "priority 9 maps to level 4, should pass min 3"
+        );
         let priorities: Vec<u8> = filtered
             .iter()
             .filter_map(|v| v.get("priority").and_then(|p| p.as_u64()).map(|p| p as u8))
@@ -491,7 +492,11 @@ mod tests {
         let drift = DriftReport::default();
         let debt = DebtReport::default();
         let output = format_analyze_json(&drift, &debt, 0, 1).unwrap();
-        let parsed: serde_json::Value = serde_json::from_str(&output).expect("should be valid JSON");
-        assert!(parsed.get("summary").is_some(), "should contain 'summary' key");
+        let parsed: serde_json::Value =
+            serde_json::from_str(&output).expect("should be valid JSON");
+        assert!(
+            parsed.get("summary").is_some(),
+            "should contain 'summary' key"
+        );
     }
 }

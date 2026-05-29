@@ -190,9 +190,18 @@ mod tests {
     fn extract_exports_rust_finds_fn_struct_enum() {
         let code = "pub fn hello() {}\npub struct Foo {}\npub enum Bar { A, B }";
         let exports = extract_exports(code, "rs");
-        assert!(exports.contains(&"fn hello".to_string()), "should find pub fn hello");
-        assert!(exports.contains(&"struct Foo".to_string()), "should find pub struct Foo");
-        assert!(exports.contains(&"enum Bar".to_string()), "should find pub enum Bar");
+        assert!(
+            exports.contains(&"fn hello".to_string()),
+            "should find pub fn hello"
+        );
+        assert!(
+            exports.contains(&"struct Foo".to_string()),
+            "should find pub struct Foo"
+        );
+        assert!(
+            exports.contains(&"enum Bar".to_string()),
+            "should find pub enum Bar"
+        );
         assert_eq!(exports.len(), 3);
     }
 
@@ -200,25 +209,40 @@ mod tests {
     fn extract_exports_typescript_finds_function_and_class() {
         let code = "export function greet() {}\nexport class MyClass {}";
         let exports = extract_exports(code, "ts");
-        assert!(exports.contains(&"function greet".to_string()), "should find export function greet");
-        assert!(exports.contains(&"class MyClass".to_string()), "should find export class MyClass");
+        assert!(
+            exports.contains(&"function greet".to_string()),
+            "should find export function greet"
+        );
+        assert!(
+            exports.contains(&"class MyClass".to_string()),
+            "should find export class MyClass"
+        );
         assert_eq!(exports.len(), 2);
     }
 
     #[test]
     fn extract_exports_python_finds_def_and_class() {
         let exports_def = extract_exports("def foo():\n    pass", "py");
-        assert!(exports_def.contains(&"def foo".to_string()), "should find def foo");
+        assert!(
+            exports_def.contains(&"def foo".to_string()),
+            "should find def foo"
+        );
 
         let exports_class = extract_exports("class Bar:\n    pass", "py");
-        assert!(exports_class.contains(&"class Bar".to_string()), "should find class Bar");
+        assert!(
+            exports_class.contains(&"class Bar".to_string()),
+            "should find class Bar"
+        );
     }
 
     #[test]
     fn extract_exports_unknown_language_returns_empty() {
         let code = "some code here";
         let exports = extract_exports(code, "ruby");
-        assert!(exports.is_empty(), "unknown language should return empty vec");
+        assert!(
+            exports.is_empty(),
+            "unknown language should return empty vec"
+        );
     }
 
     #[test]
@@ -231,7 +255,10 @@ mod tests {
     fn extract_exports_rust_async_fn_found() {
         let code = "pub async fn fetch() {}";
         let exports = extract_exports(code, "rs");
-        assert!(exports.contains(&"fn fetch".to_string()), "should find pub async fn fetch");
+        assert!(
+            exports.contains(&"fn fetch".to_string()),
+            "should find pub async fn fetch"
+        );
         assert_eq!(exports.len(), 1);
     }
 

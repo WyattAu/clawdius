@@ -401,7 +401,11 @@ api_key = "sk-12345678""#;
         let mut config = default_config();
         set_config_value(&mut config, "llm.anthropic.model", "claude-3-opus").unwrap();
         assert_eq!(
-            config.llm.anthropic.as_ref().and_then(|p| p.model.as_deref()),
+            config
+                .llm
+                .anthropic
+                .as_ref()
+                .and_then(|p| p.model.as_deref()),
             Some("claude-3-opus")
         );
     }
@@ -411,7 +415,11 @@ api_key = "sk-12345678""#;
         let mut config = default_config();
         set_config_value(&mut config, "llm.anthropic.api_key", "sk-test123").unwrap();
         assert_eq!(
-            config.llm.anthropic.as_ref().and_then(|p| p.api_key.as_deref()),
+            config
+                .llm
+                .anthropic
+                .as_ref()
+                .and_then(|p| p.api_key.as_deref()),
             Some("sk-test123")
         );
     }
