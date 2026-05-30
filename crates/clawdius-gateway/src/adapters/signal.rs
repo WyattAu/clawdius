@@ -119,7 +119,7 @@ impl SignalAdapter {
             return Err(GatewayError::Adapter {
                 platform: "signal".to_string(),
                 message: format!("Signal API error {status}: {text}"),
-                source: None,
+                source: None, // Intentional: HTTP status errors don't have a source Error
             });
         }
 

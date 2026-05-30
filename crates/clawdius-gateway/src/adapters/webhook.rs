@@ -375,7 +375,7 @@ impl PlatformAdapter for WebhookAdapter {
             return Err(GatewayError::Adapter {
                 platform: "webhook".to_string(),
                 message: format!("webhook returned {status}: {text}"),
-                source: None,
+                source: None, // Intentional: HTTP status errors don't have a source Error
             });
         }
 

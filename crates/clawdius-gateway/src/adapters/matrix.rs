@@ -131,7 +131,7 @@ impl MatrixAdapter {
             return Err(GatewayError::Adapter {
                 platform: "matrix".to_string(),
                 message: format!("Matrix API error {status}: {text}"),
-                source: None,
+                source: None, // Intentional: HTTP status errors don't have a source Error
             });
         }
 
@@ -237,7 +237,7 @@ impl PlatformAdapter for MatrixAdapter {
                 message: format!(
                     "invalid message_id format (expected room_id:event_id): {message_id}"
                 ),
-                source: None,
+                source: None, // Intentional: no source Error available
             });
         }
 

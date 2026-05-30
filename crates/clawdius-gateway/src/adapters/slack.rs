@@ -123,7 +123,7 @@ impl SlackAdapter {
             return Err(GatewayError::Adapter {
                 platform: "slack".to_string(),
                 message: format!("Slack API error: {error}"),
-                source: None,
+                source: None, // Intentional: HTTP status errors don't have a source Error
             });
         }
 
@@ -182,7 +182,7 @@ impl PlatformAdapter for SlackAdapter {
             return Err(GatewayError::Adapter {
                 platform: "slack".to_string(),
                 message: format!("invalid message_id format (expected channel:ts): {message_id}"),
-                source: None,
+                source: None, // Intentional: no source Error available
             });
         }
 

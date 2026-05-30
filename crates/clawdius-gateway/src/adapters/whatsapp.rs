@@ -111,7 +111,7 @@ impl WhatsAppAdapter {
             return Err(GatewayError::Adapter {
                 platform: "whatsapp".to_string(),
                 message: format!("invalid webhook mode: {mode}"),
-                source: None,
+                source: None, // Intentional: no source Error available
             });
         }
 
@@ -120,7 +120,7 @@ impl WhatsAppAdapter {
                 return Err(GatewayError::Adapter {
                     platform: "whatsapp".to_string(),
                     message: "webhook verification token mismatch".to_string(),
-                    source: None,
+                    source: None, // Intentional: no source Error available
                 });
             }
         }
@@ -297,7 +297,7 @@ impl PlatformAdapter for WhatsAppAdapter {
             return Err(GatewayError::Adapter {
                 platform: "whatsapp".to_string(),
                 message: format!("send failed with {status}: {text}"),
-                source: None,
+                source: None, // Intentional: HTTP status errors don't have a source Error
             });
         }
 

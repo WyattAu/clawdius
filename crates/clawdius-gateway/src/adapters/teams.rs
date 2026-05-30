@@ -146,7 +146,7 @@ impl TeamsAdapter {
             .ok_or_else(|| GatewayError::Adapter {
                 platform: "teams".to_string(),
                 message: "no access_token in auth response".to_string(),
-                source: None,
+                source: None, // Intentional: no source Error available
             })?
             .to_string();
 
@@ -241,7 +241,7 @@ impl PlatformAdapter for TeamsAdapter {
             return Err(GatewayError::Adapter {
                 platform: "teams".to_string(),
                 message: format!("send failed with {status}: {text}"),
-                source: None,
+                source: None, // Intentional: HTTP status errors don't have a source Error
             });
         }
 
@@ -259,7 +259,7 @@ impl PlatformAdapter for TeamsAdapter {
                 message: format!(
                     "invalid message_id format (expected service_url:conversation_id:activity_id): {message_id}"
                 ),
-                source: None,
+                source: None, // Intentional: no source Error available
             });
         }
 
@@ -297,7 +297,7 @@ impl PlatformAdapter for TeamsAdapter {
             return Err(GatewayError::Adapter {
                 platform: "teams".to_string(),
                 message: format!("edit failed with {status}: {text}"),
-                source: None,
+                source: None, // Intentional: HTTP status errors don't have a source Error
             });
         }
 

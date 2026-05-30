@@ -176,7 +176,7 @@ impl PlatformAdapter for DiscordAdapter {
             return Err(GatewayError::Adapter {
                 platform: "discord".to_string(),
                 message: format!("send failed with {status}: {text}"),
-                source: None,
+                source: None, // Intentional: HTTP status errors don't have a source Error
             });
         }
 
@@ -194,7 +194,7 @@ impl PlatformAdapter for DiscordAdapter {
                 message: format!(
                     "invalid message_id format (expected channel_id:message_id): {message_id}"
                 ),
-                source: None,
+                source: None, // Intentional: no source Error available
             });
         }
 
@@ -229,7 +229,7 @@ impl PlatformAdapter for DiscordAdapter {
             return Err(GatewayError::Adapter {
                 platform: "discord".to_string(),
                 message: format!("edit failed with {status}: {text}"),
-                source: None,
+                source: None, // Intentional: HTTP status errors don't have a source Error
             });
         }
 
