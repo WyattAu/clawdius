@@ -184,7 +184,7 @@ Target: platform expansion, ecosystem growth, compliance readiness.
 | # | Risk | Likelihood | Impact | Mitigation |
 |---|------|-----------|--------|------------|
 | 1 | Upstream CVEs remain unresolved (lancedb, matrix-sdk) for >3 months | Medium | High | Evaluate [patch.crates-io] overrides; prepare fork contingency for rustls-webpki |
-| 2 | Production unwrap count delays GA release | High | Medium | Mechanically replace via clippy lint; batch by crate, starting with `clawdius-core` |
+| 2 | Production unwrap count delays GA release | Low | Medium | ~89 remaining (mostly benchmarks); core crate is deny(unwrap_used) |
 | 3 | WASM compilation requires significant refactoring (no_std boundary) | Medium | High | Phase approach: first compile core utilities, then sandbox module only |
 | 4 | Lean4 proof effort exceeds capacity, creating proof debt | Medium | Medium | Cap at 250 total theorems for v1.0.0; prioritize runtime-critical proofs |
 | 5 | Plugin SDK backward compatibility breaks as APIs stabilize | Low | High | Semantic versioning from v1.0.0; deprecation warnings in v1.x; no breaking changes before v2.0.0 |
@@ -207,7 +207,11 @@ Target: platform expansion, ecosystem growth, compliance readiness.
 | 2026-05-30 | Add 30 proptest across 5 modules | Session, encryption, sandbox, rate limit, tokenize -- covers critical runtime paths | Yes (git history) |
 | 2026-05-30 | Add 41 Lean4 theorems in 4 new proof files | WASM sandbox, RPC dispatch, ring buffer, cache consistency | Yes (git history) |
 | 2026-05-30 | Fix repository URL | Cargo.toml and package.json pointed to wrong org; affects crates.io and VSCode Marketplace | Yes (git history) |
-| 2026-05-30 | Add adapter configuration docs | 10 pages covering all 9 messaging platforms for mdbook | Yes (git history) |
+| 2026-05-30 | Sync empirical metrics across docs and landing page | VERSION.md, README.md, index.html, ROADMAP.md now reflect actual counts (284 theorems, 21 proof files, 350 Rust files) | Yes (git history) |
+| 2026-05-30 | Fix git hook non-interactive mode detection | Cold-cache prompt used `read -r` which fails in non-TTY sessions, causing hooks to silently skip. Added `[ -t 0 ]` check. | Yes (git history) |
+| 2026-05-30 | Add focus-visible accessibility to landing page | Keyboard navigation was missing visible focus indicators for interactive elements | Yes (git history) |
+| 2026-05-30 | Fix org references across all documentation | Multiple docs and scripts referenced old org `clawdius/clawdius` instead of `WyattAu/clawdius` | Yes (git history) |
+| 2026-05-30 | Update version references in .docs/ | getting_started (0.6.0), api_reference (0.7.0), user_guide (2.0.0) now all reflect 1.0.0-rc.2 | Yes (git history) |
 
 ---
 
