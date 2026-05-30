@@ -110,7 +110,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       
       - name: Run TruffleHog
-        uses: trufflesecurity/trufflehog@v3
+        uses: trufflesecurity/trufflehog@main
         with:
           path: ./
           base: ${{ github.event.repository.default_branch }}
@@ -232,7 +232,7 @@ jobs:
       
       - name: Generate SBOM
         continue-on-error: true
-        run: cargo cyclonedx --workspace --all-features --format json || echo "SBOM generation failed"
+        run: cargo cyclonedx --all-features --format json || echo "SBOM generation failed"
       
       - name: Upload SBOM
         uses: actions/upload-artifact@v4
