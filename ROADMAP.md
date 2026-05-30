@@ -44,11 +44,7 @@
 | Issue | Severity | Status |
 |-------|----------|--------|
 | 6 transitive CVEs (rustls-webpki, matrix-sdk-base) | LOW | Blocked on upstream |
-| AUR package missing | LOW | Not started |
-| VSCode extension version mismatch (0.1.0 vs 1.0.0-rc.2) | LOW | Needs bump |
-| Nix flake missing clawdius-core package export | LOW | Needs addition |
-| Docker Rust version mismatch (deploy/ uses 1.93 vs 1.92) | LOW | Needs alignment |
-| Docker-bake.hcl only covers one target | LOW | Needs expansion |
+| AUR package | LOW | PKGBUILD template created, needs CI integration |
 
 ---
 
