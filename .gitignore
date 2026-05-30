@@ -275,3 +275,26 @@ lake-manifest.json
 .cody/
 .clawdius/config.toml
 generated_code.txt
+
+# -----------------------------------------------------------------------------
+# Dead code / legacy (removed from tracking but kept locally if needed)
+# -----------------------------------------------------------------------------
+/src/
+/testbed/
+/test
+/aider/
+/openclaw/
+/picoclaw/
+/ironclaw/
+/paperclip/
+/claude-code-leak/
+/OpenManus/
+test_writer.rs
+FILES_CHANGED.txt
+demo_json_output.sh
+final_integration_test.sh
+quick_test.sh
+test_json_output.sh
+test_mentions.sh
+test_timeline.sh
+verify-implementation.sh
