@@ -1,0 +1,62 @@
+# Maintainer: Wyatt Au <wyatt@clawdius.dev>
+# PKGBUILD for clawdius - Rust-native agentic coding engine
+
+pkgname=clawdius
+pkgver=1.0.0rc.2
+pkgrel=1
+pkgdesc="Rust-native agentic coding engine with formal verification, multi-provider LLM support, and 9 messaging adapters"
+arch=('x86_64' 'aarch64')
+url="https://github.com/WyattAu/clawdius"
+license=('Apache-2.0')
+depends=(
+  'gcc-libs'
+  'openssl'
+  'sqlite'
+)
+makedepends=(
+  'rust'
+  'protobuf'
+  'cmake'
+  'pkg-config'
+)
+options=('!lto')  # LTO handled by Cargo profile
+source=(
+  "$pkgname-$pkgver.tar.gz::https://github.com/WyattAu/clawdius/archive/v${pkgver/_/-/.}.tar.gz"
+)
+sha256sums=('SKIP')  # Update after first release
+
+build() {
+  cd "$pkgname-${pkgver/_/-/.}"
+  cargo build --release --package clawdius
+}
+
+check() {
+  cd "$pkgname-${pkgver/_/-/.}"
+  cargo test --workspace --lib
+}
+
+package() {
+  cd "$pkgname-${pkgver/_/-/.}"
+  install -Dm755 "target/release/clawdius" "$pkgdir/usr/bin/clawdius"
+  install -Dm644 "LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+
+  # Shell completions
+  if [ -f "target/release/completions/clawdius.bash" ]; then
+    install -Dm644 "target/release/completions/clawdius.bash" \
+      "$pkgdir/usr/share/bash-completion/completions/clawdius"
+  fi
+  if [ -f "target/release/completions/_clawdius" ]; then
+    install -Dm644 "target/release/completions/_clawdius" \
+      "$pkgdir/usr/share/zsh/site-functions/_clawdius"
+  fi
+  if [ -f "target/release/completions/clawdius.fish" ]; then
+    install -Dm644 "target/release/completions/clawdius.fish" \
+      "$pkgdir/usr/share/fish/vendor_completions.d/clawdius.fish"
+  fi
+
+  # Man page
+  if [ -f "target/release/man/clawdius.1" ]; then
+    install -Dm644 "target/release/man/clawdius.1" \
+      "$pkgdir/usr/share/man/man1/clawdius.1"
+  fi
+}

@@ -2,7 +2,7 @@
     "name": "clawdius-code",
     "displayName": "Clawdius Code",
     "description": "AI-powered coding assistant",
-    "version": "0.1.0",
+    "version": "1.0.0-rc.2",
     "publisher": "clawdius",
     "repository": {
         "type": "git",
@@ -220,5 +220,6 @@
         "@typescript-eslint/parser": "^6.13.0",
         "eslint": "^8.54.0",
         "typescript": "^5.3.0"
-    }
+    },
+    "license": "Apache-2.0"
 }

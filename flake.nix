@@ -79,6 +79,7 @@
       {
         packages = {
           clawdius = buildRustBin { pname = "clawdius"; inherit version; };
+          clawdius-core = buildRustBin { pname = "clawdius-core"; inherit version; };
           clawdius-mcp = buildRustBin { pname = "clawdius-mcp"; inherit version; };
           clawdius-code = buildRustBin { pname = "clawdius-code"; inherit version; };
           clawdius-gateway = buildRustBin { pname = "clawdius-gateway"; inherit version; };
