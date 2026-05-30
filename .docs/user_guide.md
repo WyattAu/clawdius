@@ -1,7 +1,7 @@
 # Clawdius User Guide
 
-**Version:** 2.0.0  
-**Last Updated:** 2026-04-07
+**Version:** 1.0.0-rc.2
+**Last Updated:** 2026-05-30
 
 ---
 
@@ -87,7 +87,7 @@ Build from the monorepo to get all components:
 
 ```bash
 # Clone the monorepo
-git clone https://github.com/clawdius/clawdius
+git clone https://github.com/WyattAu/clawdius
 cd clawdius
 
 # Build all crates
@@ -1325,7 +1325,7 @@ RUST_LOG=clawdius=debug clawdius chat "Hello"
 ### 10.3 Getting Help
 
 - **Documentation:** `.docs/` directory
-- **Issues:** https://github.com/clawdius/clawdius/issues
+- **Issues:** https://github.com/WyattAu/clawdius/issues
 - **Discord:** https://discord.gg/clawdius
 
 ---
@@ -1338,7 +1338,7 @@ The monorepo allows building all components from a single repository:
 
 ```bash
 # Clone
-git clone https://github.com/clawdius/clawdius
+git clone https://github.com/WyattAu/clawdius
 cd clawdius
 
 # Build all crates

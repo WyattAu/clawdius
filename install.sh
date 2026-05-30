@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-REPO="clawdius/clawdius"
+REPO="WyattAu/clawdius"
 BINARY="clawdius"
 BINARY_CODE="clawdius-code"
 

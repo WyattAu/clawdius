@@ -9,7 +9,7 @@
 |-----------|-------|
 | **Version** | 1.0.0-rc.2 |
 | **Status** | Active development |
-| **Last Updated** | 2026-05-27 |
+| **Last Updated** | 2026-05-30 |
 | **Rollback Checkpoint** | `c7b24481` |
 
 ## Empirical Metrics
@@ -17,9 +17,9 @@
 | Metric | Value | Source |
 |--------|-------|--------|
 | **Workspace Crates** | 5 | `Cargo.toml` |
-| **Rust Files** | 344 | `find crates -name '*.rs'` |
-| **Lean4 Proof Files** | 17 (9 + 8 in two proof dirs) | Lake build (31/31 jobs pass) |
-| **Lean4 Theorems** | 209 | `rg 'theorem ' *.lean` |
+| **Rust Files** | 350 | `find crates -name '*.rs'` |
+| **Lean4 Proof Files** | 21 (10 + 11 in two proof dirs) | Lake build (31/31 jobs pass) |
+| **Lean4 Theorems** | 284 | `rg 'theorem ' *.lean` |
 | **Clippy** | Clean (`-D warnings`) | `cargo clippy --workspace --all-targets` |
 | **cargo fmt** | Clean | `cargo fmt --all --check` |
 | **cargo deny** | Clean (advisories, licenses, bans) | `cargo deny check` |

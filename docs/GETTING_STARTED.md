@@ -22,7 +22,7 @@
 
 ```bash
 # Clone and build
-git clone https://github.com/clawdius/clawdius
+git clone https://github.com/WyattAu/clawdius
 cd clawdius
 cargo build --release
 
@@ -517,4 +517,4 @@ clawdius chat
 
 ---
 
-*Need help? Join our [Discord](https://discord.gg/clawdius) or open a [GitHub Discussion](https://github.com/clawdius/clawdius/discussions).*
+*Need help? Join our [Discord](https://discord.gg/clawdius) or open a [GitHub Discussion](https://github.com/WyattAu/clawdius/discussions).*

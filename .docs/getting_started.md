@@ -1,7 +1,7 @@
 # Clawdius Getting Started Guide
 
-**Version:** 0.6.0
-**Last Updated:** 2026-03-01
+**Version:** 1.0.0-rc.2
+**Last Updated:** 2026-05-30
 
 ---
 
@@ -27,7 +27,7 @@ clawd chat
 
 | Requirement | Version | How to Install |
 |-------------|---------|----------------|
-| Rust | 1.85+ | `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \| sh` |
+| Rust | 1.92+ | `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \| sh` |
 | Cargo | Included with Rust | - |
 
 ### Optional (by platform)
@@ -63,13 +63,13 @@ cargo install clawdius
 ### Method 2: Nix
 
 ```bash
-nix shell github:clawdius/clawdius
+nix shell github:WyattAu/clawdius
 ```
 
 ### Method 3: From Source
 
 ```bash
-git clone https://github.com/clawdius/clawdius
+git clone https://github.com/WyattAu/clawdius
 cd clawdius
 cargo build --release
 sudo cp target/release/clawdius /usr/local/bin/
@@ -126,7 +126,7 @@ clawd chat
 ```
 
 ```
-Clawdius v0.6.0
+Clawdius v1.0.0-rc.2
 Phase: Context Discovery
 Provider: OpenAI (gpt-4)
 
@@ -261,6 +261,6 @@ RUST_LOG=clawdius=debug clawd chat
 
 ## Getting Help
 
-- **Issues:** https://github.com/clawdius/clawdius/issues
+- **Issues:** https://github.com/WyattAu/clawdius/issues
 - **Discord:** https://discord.gg/clawdius
 - **Docs:** `.docs/` directory

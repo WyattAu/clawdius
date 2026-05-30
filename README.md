@@ -7,7 +7,7 @@
 [![Rust](https://img.shields.io/badge/language-Rust-orange.svg)](https://www.rust-lang.org)
 [![Tests](https://img.shields.io/badge/tests-2%2C019-passing-brightgreen.svg)]()
 [![Clippy](https://img.shields.io/badge/clippy-0%20warnings-success.svg)]()
-[![Lean4](https://img.shields.io/badge/Lean4-209%20theorems-blue.svg)]()
+[![Lean4](https://img.shields.io/badge/Lean4-284%20theorems-blue.svg)]()
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-yellow.svg)](LICENSE)
 
 Clawdius is a next-generation AI coding engine built in Rust. It provides a terminal UI (TUI), CLI, and multi-platform messaging gateway for agentic coding — connecting chat platforms (Telegram, Discord, Slack, Matrix, and more) to a formal-verification-backed code generation engine.
@@ -271,8 +271,8 @@ cargo clippy --workspace -- -W clippy::all
 # Security audit
 cargo audit
 
-# Lean4 proofs (16 proofs)
-lean .specs/02_architecture/proofs/proof_*.lean
+# Lean4 proofs
+lake build
 
 # Check specific feature flag
 cargo check -p clawdius-core --features postgres
@@ -284,10 +284,10 @@ cargo check -p clawdius-core --features postgres
 |--------|-------|
 | Test suite | 2,019 tests, 0 failures |
 | Clippy warnings | 0 code warnings |
-| Lean4 proofs | 16/16 verified |
-| Feature flags | 12/12 compile |
+| Lean4 proofs | 21 files / 284 theorems, 31/31 lake jobs verified |
+| Feature flags | 15/15 compile |
 | Unsafe blocks | 0 in production |
-| Codebase | 344 files, 132,861 lines |
+| Codebase | 350 files, 132,861 lines |
 | Release binaries | 25 MB + 15 MB |
 
 ## License

@@ -14,7 +14,6 @@
 
 # CLI and entry points
 /crates/clawdius/ @WyattAu
-/crates/clawdius-server/ @WyattAu
 /src/ @WyattAu
 
 # Formal verification

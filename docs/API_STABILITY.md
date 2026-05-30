@@ -218,8 +218,8 @@ The Clawdius maintainers commit to:
 
 For questions about API stability:
 
-- **GitHub Issues:** [github.com/clawdius/clawdius/issues](https://github.com/clawdius/clawdius/issues)
-- **GitHub Discussions:** [github.com/clawdius/clawdius/discussions](https://github.com/clawdius/clawdius/discussions)
+- **GitHub Issues:** [github.com/WyattAu/clawdius/issues](https://github.com/WyattAu/clawdius/issues)
+- **GitHub Discussions:** [github.com/WyattAu/clawdius/discussions](https://github.com/WyattAu/clawdius/discussions)
 - **Discord:** [discord.gg/clawdius](https://discord.gg/clawdius)
 
 ---

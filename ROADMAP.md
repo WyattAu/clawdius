@@ -22,10 +22,10 @@
 
 | Metric | Value |
 |--------|-------|
-| Total tests | 1,626 (1,498 lib + 128 integration; 30 property-based) |
-| Lean4 theorems | 250 across 19 proof files (31/31 lake jobs pass) |
+| Total tests | 2,019 (1,425 lib + 232 integration + 27 property + 136 adapter) |
+| Lean4 theorems | 284 across 21 proof files (31/31 lake jobs pass) |
 | Dead code removed | 19,000+ lines |
-| CI/CD workflows | 8 (ci, release, pgo, security, docs, docker, benchmarks, lean_action_ci, code-review, dependabot) |
+| CI/CD workflows | 10 (ci, release, pgo, security, docs, docker, benchmarks, lean_action_ci, code-review, dependabot) |
 | Clippy | Clean (pedantic + deny unwraps on core) |
 | cargo-deny | Clean (6 transitive CVEs ignored, blocked on upstream) |
 | Blanket lint suppressions | 0 |
@@ -34,8 +34,8 @@
 | PGO profiles | Instrumented + optimized defined in `Cargo.toml` |
 | Messaging adapters | 9 (Telegram, Discord, Slack, Matrix, Signal, Teams, WhatsApp, Rocket.Chat, Webhook) |
 | Adapter config docs | 10 pages (overview + 9 platforms) |
-| Property-based tests | 30 proptest across 5 modules |
-| Line coverage | 63.27% (workspace) |
+| Property-based tests | 27 proptest across 5 modules |
+| Line coverage | ~63% (workspace) |
 | Production `.unwrap()` count | ~89 (mostly benchmarks) |
 | `--all-features` compile | PASS (was failing before audit) |
 
@@ -95,12 +95,14 @@ Mitigation while blocked: maintain ignore entries in `deny.toml` with weekly ups
 
 ### 3c. Formal Verification Expansion [COMPLETE]
 
-| Target | Proof File | Theorem Count (Goal) | Priority |
+| Target | Proof File | Theorem Count (Actual) | Priority |
 |--------|-----------|---------------------|----------|
-| WASM sandbox isolation (`crates/clawdius-core/src/sandbox.rs`) | `proof_sandbox_extended.lean` | 30 | P0 |
-| RPC dispatch correctness (`crates/clawdius-core/src/rpc/`) | `proof_rpc.lean` | 20 | P0 |
-| Ring buffer memory safety (`clawdius-core/src/memory/`) | `proof_ring_buffer_extended.lean` | 15 | P1 |
-| LLM response cache consistency (`clawdius-core/src/llm.rs`) | `proof_cache.lean` | 10 | P2 |
+| WASM sandbox isolation | `proof_sandbox_extended.lean` + `proof_sandbox.lean` | 20 | P0 |
+| RPC dispatch correctness | `proof_rpc.lean` | 9 | P0 |
+| Ring buffer memory safety | `proof_ring_buffer_extended.lean` + `proof_ring_buffer.lean` | 33 | P1 |
+| LLM response cache consistency | `proof_cache.lean` | 11 | P2 |
+| Additional proofs | 16 additional files | 211 | P1-P3 |
+| **Total** | **21 proof files** | **284 theorems** | |
 
 ### 3d. Performance Regression Baseline
 

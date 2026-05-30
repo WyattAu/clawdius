@@ -1,7 +1,7 @@
 # Clawdius API Reference
 
-**Version:** 0.7.0  
-**Last Updated:** 2026-03-06
+**Version:** 1.0.0-rc.2
+**Last Updated:** 2026-05-30
 
 ---
 

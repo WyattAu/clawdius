@@ -14,10 +14,10 @@ jobs:
   review:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@ea165f8d65b634e114876b0b
       
       - name: AI Code Review
-        uses: clawdius/clawdius/.github/actions/clawdius@main
+        uses: WyattAu/clawdius/.github/actions/clawdius@<commit-sha> # Pin to specific commit SHA
         with:
           task: 'Review the changes in this PR and suggest improvements'
           provider: 'anthropic'
@@ -38,10 +38,10 @@ jobs:
     if: contains(github.event.issue.labels.*.name, 'auto-fix')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@ea165f8d65b634e114876b0b
       
       - name: Fix Bug
-        uses: clawdius/clawdius/.github/actions/clawdius@main
+        uses: WyattAu/clawdius/.github/actions/clawdius@<commit-sha> # Pin to specific commit SHA
         with:
           task: ${{ github.event.issue.title }} - ${{ github.event.issue.body }}
           provider: 'anthropic'
@@ -66,10 +66,10 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@ea165f8d65b634e114876b0b
       
       - name: Generate Tests
-        uses: clawdius/clawdius/.github/actions/clawdius@main
+        uses: WyattAu/clawdius/.github/actions/clawdius@<commit-sha> # Pin to specific commit SHA
         with:
           task: 'Generate comprehensive unit tests for ${{ github.event.inputs.file }}'
           provider: 'anthropic'
@@ -94,10 +94,10 @@ jobs:
   refactor:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@ea165f8d65b634e114876b0b
       
       - name: Refactor
-        uses: clawdius/clawdius/.github/actions/clawdius@main
+        uses: WyattAu/clawdius/.github/actions/clawdius@<commit-sha> # Pin to specific commit SHA
         with:
           task: ${{ github.event.inputs.description }}
           provider: 'anthropic'
@@ -119,12 +119,12 @@ jobs:
   review:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@ea165f8d65b634e114876b0b
         with:
           fetch-depth: 0
       
       - name: Weekly Review
-        uses: clawdius/clawdius/.github/actions/clawdius@main
+        uses: WyattAu/clawdius/.github/actions/clawdius@<commit-sha> # Pin to specific commit SHA
         with:
           task: 'Review all code changes from the past week and create a summary report'
           provider: 'anthropic'
@@ -145,10 +145,10 @@ jobs:
       matrix:
         provider: [anthropic, openai]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@ea165f8d65b634e114876b0b
       
       - name: Analyze with ${{ matrix.provider }}
-        uses: clawdius/clawdius/.github/actions/clawdius@main
+        uses: WyattAu/clawdius/.github/actions/clawdius@<commit-sha> # Pin to specific commit SHA
         with:
           task: 'Analyze code quality and suggest improvements'
           provider: ${{ matrix.provider }}
