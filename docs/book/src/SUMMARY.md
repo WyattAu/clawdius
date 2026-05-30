@@ -85,6 +85,16 @@
 - [Vim/Neovim](./integrations/vim.md)
 - [Emacs](./integrations/emacs.md)
 - [CLI Reference](./integrations/cli.md)
+- [Messaging Adapters](./integrations/adapters.md)
+  - [Telegram](./integrations/telegram.md)
+  - [Discord](./integrations/discord.md)
+  - [Slack](./integrations/slack.md)
+  - [Matrix](./integrations/matrix.md)
+  - [Signal](./integrations/signal.md)
+  - [Microsoft Teams](./integrations/teams.md)
+  - [WhatsApp](./integrations/whatsapp.md)
+  - [Rocket.Chat](./integrations/rocketchat.md)
+  - [Webhook](./integrations/webhook.md)
 
 ---
 
