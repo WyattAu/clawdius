@@ -10,6 +10,10 @@ on:
   schedule:
     - cron: '0 3 * * 0'  # Weekly Sunday 3am UTC
 
+permissions:
+  contents: read
+  actions: write
+
 jobs:
   pgo:
     runs-on: ubuntu-latest

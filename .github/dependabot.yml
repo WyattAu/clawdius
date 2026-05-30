@@ -29,8 +29,10 @@ updates:
       - "dependencies"
       - "github-actions"
     groups:
-      all-actions:
+      major-actions:
         update-types:
           - "major"
+      minor-patch-actions:
+        update-types:
           - "minor"
           - "patch"
