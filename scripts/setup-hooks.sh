@@ -11,9 +11,20 @@ set -euo pipefail
 HOOK_DIR="$(git rev-parse --git-dir)/hooks"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
-# Source hook templates
-PRECOMMIT_SRC="$SCRIPT_DIR/../.git/hooks/pre-commit"
-PREPUSH_SRC="$SCRIPT_DIR/../.git/hooks/pre-push"
+# Prefer core.hooksPath if set, otherwise fall back to .githooks/
+CUSTOM_HOOKS_PATH="$(git config --get core.hooksPath 2>/dev/null || true)"
+if [ -n "$CUSTOM_HOOKS_PATH" ]; then
+    echo "core.hooksPath is set to: $CUSTOM_HOOKS_PATH"
+    echo "Hooks are already configured. Making them executable..."
+    chmod +x "$CUSTOM_HOOKS_PATH/pre-commit" 2>/dev/null || true
+    chmod +x "$CUSTOM_HOOKS_PATH/pre-push" 2>/dev/null || true
+    echo "Git hooks ready."
+    exit 0
+fi
+
+# Source hook templates from .githooks/
+PRECOMMIT_SRC="$SCRIPT_DIR/../.githooks/pre-commit"
+PREPUSH_SRC="$SCRIPT_DIR/../.githooks/pre-push"
 
 if [ ! -f "$PRECOMMIT_SRC" ]; then
     echo "ERROR: pre-commit hook template not found at $PRECOMMIT_SRC"

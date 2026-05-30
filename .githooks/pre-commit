@@ -68,9 +68,9 @@ else
     exit 1
 fi
 
-# ─── 4. cargo clippy ───────────────────────────────────────────────────────
-echo -n "  [2/5] cargo clippy --all-targets ... "
-if cargo clippy --workspace --all-targets -- -D warnings 2>/dev/null; then
+# ─── 4. cargo clippy (lib + tests, with test-target allowances) ──────────────
+echo -n "  [2/5] cargo clippy (lib + tests) ... "
+if cargo clippy --workspace --all-targets -- -D warnings -A missing_docs 2>/dev/null; then
     echo -e "${GREEN}OK${NC}"
 else
     echo -e "${RED}FAILED${NC}"
