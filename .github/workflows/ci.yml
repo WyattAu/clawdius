@@ -43,16 +43,16 @@ jobs:
         uses: Swatinem/rust-cache@e18b497796c1
 
       - name: Check formatting
-        run: cargo fmt --all --check
+        run: cargo fmt --all -- --check
 
       - name: Clippy
-        run: cargo clippy --workspace --all-targets -- -D warnings -A missing_docs
+        run: cargo clippy --workspace --all-targets --locked -- -D warnings -A missing_docs
 
       - name: Test lib
-        run: cargo test --workspace --lib
+        run: cargo test --workspace --lib --locked
 
       - name: Test integration
-        run: cargo test --workspace --test integration
+        run: cargo test --workspace --test integration --locked
 
       - name: Install cargo-deny
         run: cargo install cargo-deny --locked
@@ -61,7 +61,7 @@ jobs:
         run: cargo deny check -A advisory-not-detected
 
       - name: Check all-features compile
-        run: cargo check --workspace --all-features
+        run: cargo check --workspace --all-features --locked
         continue-on-error: true  # Rust 1.92 CI: rpc module may fail due to protoc/prost version mismatch
 
       # Release build is handled by release.yml workflow.
@@ -120,13 +120,13 @@ jobs:
         if: runner.os != 'Windows'
 
       - name: Check formatting
-        run: cargo fmt --all --check
+        run: cargo fmt --all -- --check
 
       - name: Clippy
-        run: cargo clippy --workspace --all-targets -- -D warnings -A missing_docs
+        run: cargo clippy --workspace --all-targets --locked -- -D warnings -A missing_docs
 
       - name: Test
-        run: cargo test --workspace --lib
+        run: cargo test --workspace --lib --locked
         continue-on-error: true  # Cross-platform runners may timeout; clippy is the primary gate
 
   lean4-proofs:
@@ -230,7 +230,7 @@ jobs:
             benchmark-results-
 
       - name: Run benchmarks
-        run: cargo bench --workspace --benches
+        run: cargo bench --workspace --benches --locked
         continue-on-error: true  # memory_bench FOREIGN KEY panic on CI runners
 
       - name: Upload benchmark results

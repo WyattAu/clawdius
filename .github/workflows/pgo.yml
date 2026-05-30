@@ -31,7 +31,7 @@ jobs:
 
       - name: Build instrumented binary
         run: |
-          cargo build --profile pgo-instrument -p clawdius
+          cargo build --profile pgo-instrument --locked -p clawdius
 
       - name: Generate profiling data
         run: |
@@ -48,7 +48,7 @@ jobs:
         env:
           LLVM_PROFDATA_FILE: /tmp/pgo-merged.profdata
         run: |
-          cargo build --profile pgo-optimized -p clawdius
+          cargo build --profile pgo-optimized --locked -p clawdius
           ls -lh target/pgo-optimized/clawdius
 
       - name: Apply BOLT optimization

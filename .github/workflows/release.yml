@@ -95,7 +95,7 @@ jobs:
           # Warn on clippy lints but don't deny — the codebase has 200+
           # pre-existing clippy suggestions across 126K LOC that will be
           # addressed incrementally. Blocking release on these is not practical.
-          cargo clippy --workspace --all-targets -- -D warnings -A missing_docs
+          cargo clippy --workspace --all-targets --locked -- -D warnings -A missing_docs
       
       - name: Run dependency checks
         run: |
@@ -119,7 +119,7 @@ jobs:
       
       - name: Run benchmarks (regression check)
         run: |
-          cargo bench --workspace -- noplot || true
+          cargo bench --workspace --locked -- noplot || true
 
   build:
     name: Build ${{ matrix.target }}
@@ -195,8 +195,8 @@ jobs:
           # We don't override them here because rustls-platform-verifier
           # (a proc-macro crate) can't be LTO'd. The profile's lto setting
           # is handled by Cargo which correctly skips incompatible crates.
-          cargo build --release --target ${{ matrix.target }} -p clawdius
-          cargo build --release --target ${{ matrix.target }} -p clawdius-code
+          cargo build --release --locked --target ${{ matrix.target }} -p clawdius
+          cargo build --release --locked --target ${{ matrix.target }} -p clawdius-code
       
       - name: Generate shell completions and man pages (Unix)
         if: matrix.archive == 'tar.gz'
@@ -454,14 +454,14 @@ jobs:
         if: needs.github-release.result == 'success'
         run: |
           VERSION="${{ needs.validate.outputs.version }}"
-          echo "✅ Release $VERSION published successfully!"
+          echo "Release $VERSION published successfully!"
           # Add Slack/Discord notification here
       
       - name: Notify on failure
         if: needs.github-release.result == 'failure'
         run: |
           VERSION="${{ needs.validate.outputs.version }}"
-          echo "❌ Release $VERSION failed!"
+          echo "Release $VERSION failed!"
           # Add Slack/Discord notification here
 
   post-release:
