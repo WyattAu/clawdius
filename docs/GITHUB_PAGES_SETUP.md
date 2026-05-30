@@ -1,6 +1,6 @@
 # GitHub Pages Setup Guide
 
-## Enable GitHub Pages for docs.clawdius.dev
+## Enable GitHub Pages for clawdius.co.uk
 
 ### Step 1: Enable GitHub Pages
 
@@ -13,11 +13,11 @@
 
 1. Add CNAME record in DNS:
    ```
-   docs.clawdius.dev → wyattau.github.io
+   clawdius.co.uk → wyattau.github.io
    ```
 
 2. In GitHub Pages settings:
-   - Custom domain: `docs.clawdius.dev`
+   - Custom domain: `clawdius.co.uk`
    - Enforce HTTPS: Yes
 
 ### Step 3: Trigger Deployment
@@ -37,7 +37,7 @@ Or manually:
 ### Step 4: Verify
 
 - Check build status: https://github.com/WyattAu/clawdius/actions
-- Once complete, docs available at: https://docs.clawdius.dev (or https://wyattau.github.io/clawdius)
+- Once complete, docs available at: https://clawdius.co.uk (or https://wyattau.github.io/clawdius)
 
 ## Alternative: Manual Build
 

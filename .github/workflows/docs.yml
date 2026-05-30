@@ -45,7 +45,7 @@ jobs:
           # Landing page overwrites the docs index.html -- users land on the marketing page
           # Docs are accessible via nav links or /intro.html
           cp index.html site/index.html
-          echo "docs.clawdius.dev" > site/CNAME
+          echo "clawdius.co.uk" > site/CNAME
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
