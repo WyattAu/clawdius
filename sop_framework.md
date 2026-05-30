@@ -74,12 +74,13 @@ To ensure these are easily accessible and editable, Clawdius will initialize the
 └── sentinel/               # Sandbox logs and capability whitelist
 ```
 
-## 5. Marketing Positioning for "Clawdius"
-You are no longer selling an AI assistant. You are selling a **"Deterministic Engineering Engine."**
+## 5. Product Positioning
 
-> **"Clawdius: High-Assurance AI for those who can't afford hallucinations. 
-> Powered by Rust. Governed by SOPs. Verified by Nexus."**
+Clawdius is a **Deterministic Engineering Engine**, not an AI assistant. The value proposition centers on formal verification, SOP governance, and hallucination elimination.
 
-By forcing the user (and the AI) to engage with the **SOPs** every time, you solve the "Lazy Developer" problem. Clawdius ensures that every project—whether it's a C++ game engine or a high-frequency trading bot—is built with the same level of architectural rigor as a flight-control system.
+> "Clawdius: High-Assurance AI for domains that cannot tolerate hallucinations.
+> Powered by Rust. Governed by SOPs. Verified by Nexus."
 
-Should we begin detailing the **initial Common SOP** to be baked into the `clawdius init` command?
+The Common SOP is baked into the `clawdius init` command to ensure every project
+inherits baseline architectural rigor regardless of domain (game engines, HFT systems,
+flight-control software, or general applications).

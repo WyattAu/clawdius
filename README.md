@@ -183,7 +183,7 @@ cargo build --release --features "keyring,embeddings,vector-db,postgres"
 
 ## Quick Start
 
-### 1. Set Up (New in v1.0.0-rc.2!)
+### 1. Set Up (New in v1.0.0-rc.2)
 ```bash
 # Interactive setup wizard (recommended)
 clawdius setup
