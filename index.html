@@ -7,184 +7,911 @@
 <meta name="description" content="Clawdius -- A formally verified, multi-provider AI coding agent built in Rust.">
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
   :root {
-    --bg: #0d1117;
-    --bg-card: #161b22;
-    --border: #30363d;
-    --text: #e6edf3;
-    --text-muted: #8b949e;
-    --accent: #58a6ff;
-    --accent-green: #3fb950;
-    --mono: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    --bg: #0a0a0a;
+    --bg-elevated: #111111;
+    --bg-panel: #141414;
+    --border: #2a2a2a;
+    --border-accent: #3a3a3a;
+    --grid-line: rgba(255, 255, 255, 0.02);
+    --text: #e8e8e8;
+    --text-muted: #777777;
+    --text-dim: #555555;
+    --accent: #00c8ff;
+    --accent-green: #00ff88;
+    --accent-warn: #ff6600;
+    --mono: 'SFMono-Regular', 'Cascadia Code', 'Fira Code', Consolas, 'Liberation Mono', Menlo, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.6);
+    --shadow-md: 0 4px 24px rgba(0, 0, 0, 0.7), 0 1px 2px rgba(0, 0, 0, 0.5);
+    --shadow-lg: 0 8px 48px rgba(0, 0, 0, 0.8), 0 2px 4px rgba(0, 0, 0, 0.4);
+    --shadow-glow-accent: 0 0 40px rgba(0, 200, 255, 0.06);
+    --shadow-glow-green: 0 0 40px rgba(0, 255, 136, 0.06);
+    --blur-sm: blur(8px);
+    --blur-md: blur(16px);
+    --blur-lg: blur(32px);
+    --transition-base: 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    --transition-slow: 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   }
-  html { font-size: 16px; }
+
+  html {
+    font-size: 16px;
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
   body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    font-family: var(--mono);
     background: var(--bg);
     color: var(--text);
-    line-height: 1.6;
+    line-height: 1.7;
     min-height: 100vh;
     display: flex;
     flex-direction: column;
+    overflow-x: hidden;
+    position: relative;
   }
-  a { color: var(--accent); text-decoration: none; }
-  a:hover { text-decoration: underline; }
-  .container { max-width: 860px; margin: 0 auto; padding: 0 1.5rem; width: 100%; }
 
-  header { padding: 3rem 0 2rem; border-bottom: 1px solid var(--border); }
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background-image:
+      linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+    background-size: 60px 60px;
+  }
+
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(24px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes blobDrift {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    33% { transform: translate(12px, -8px) scale(1.03); }
+    66% { transform: translate(-8px, 6px) scale(0.97); }
+  }
+
+  @keyframes blobDriftAlt {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    33% { transform: translate(-10px, 12px) scale(0.98); }
+    66% { transform: translate(8px, -10px) scale(1.02); }
+  }
+
+  a { color: var(--accent); text-decoration: none; transition: color var(--transition-base); }
+  a:hover { color: #ffffff; }
+
+  .container {
+    max-width: 920px;
+    margin: 0 auto;
+    padding: 0 2rem;
+    width: 100%;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* === SPATIAL LAYER: Background blobs (Amoebic + Spatial depth) === */
+
+  .spatial-blob {
+    position: fixed;
+    pointer-events: none;
+    z-index: 0;
+    filter: var(--blur-lg);
+    opacity: 0.35;
+  }
+
+  .spatial-blob--accent {
+    width: 500px;
+    height: 500px;
+    top: -120px;
+    right: -100px;
+    background: radial-gradient(circle at 40% 40%, rgba(0, 200, 255, 0.12), transparent 70%);
+    border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+    animation: blobDrift 20s ease-in-out infinite, fadeIn 2s ease-out;
+  }
+
+  .spatial-blob--green {
+    width: 400px;
+    height: 400px;
+    bottom: 10%;
+    left: -80px;
+    background: radial-gradient(circle at 60% 60%, rgba(0, 255, 136, 0.08), transparent 70%);
+    border-radius: 30% 70% 60% 40% / 50% 60% 40% 50%;
+    animation: blobDriftAlt 24s ease-in-out infinite, fadeIn 2.5s ease-out;
+  }
+
+  .spatial-blob--warm {
+    width: 300px;
+    height: 300px;
+    top: 50%;
+    right: 10%;
+    background: radial-gradient(circle at 30% 70%, rgba(255, 102, 0, 0.05), transparent 70%);
+    border-radius: 70% 30% 40% 60% / 40% 70% 30% 60%;
+    animation: blobDrift 28s ease-in-out infinite, fadeIn 3s ease-out;
+  }
+
+  /* === HEADER === */
+
+  .header-wrapper {
+    position: relative;
+    padding: 4rem 0 3rem;
+    animation: fadeInUp 0.8s ease-out both;
+  }
+
+  .header-wrapper::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: -2rem;
+    right: -2rem;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--border-accent) 20%, var(--border-accent) 80%, transparent);
+  }
+
+  header {
+    position: relative;
+  }
+
+  .header-depth-marker {
+    position: absolute;
+    top: -1.5rem;
+    left: -3.5rem;
+    font-size: 0.65rem;
+    color: var(--text-dim);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    writing-mode: vertical-rl;
+    opacity: 0;
+    animation: fadeIn 1.5s ease-out 0.5s forwards;
+  }
+
   h1 {
     font-family: var(--mono);
-    font-size: 2.5rem;
+    font-size: 3.5rem;
     font-weight: 700;
-    letter-spacing: -0.03em;
-    margin-bottom: 0.25rem;
+    letter-spacing: -0.06em;
+    line-height: 1;
+    margin-bottom: 0.75rem;
+    color: var(--text);
+    position: relative;
   }
+
+  h1 .z-index-label {
+    position: absolute;
+    top: -0.5rem;
+    right: 0;
+    font-size: 0.55rem;
+    color: var(--text-dim);
+    letter-spacing: 0.15em;
+    font-weight: 400;
+  }
+
   .tagline {
-    font-size: 1.1rem;
+    font-size: 0.95rem;
     color: var(--text-muted);
     font-family: var(--mono);
-    margin-bottom: 1rem;
+    margin-bottom: 1.5rem;
+    letter-spacing: 0.02em;
   }
-  .badges img { margin-right: 4px; margin-bottom: 4px; }
 
-  main { padding: 2.5rem 0 3rem; flex: 1; }
-  section { margin-bottom: 2.5rem; }
+  .badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0;
+    animation: fadeIn 1.2s ease-out 0.3s both;
+  }
+
+  .badges img {
+    margin-right: 4px;
+    margin-bottom: 4px;
+    height: 22px;
+  }
+
+  /* === MAIN CONTENT === */
+
+  main {
+    padding: 3rem 0 4rem;
+    flex: 1;
+    position: relative;
+  }
+
+  .section-marker {
+    position: absolute;
+    left: -3.5rem;
+    font-size: 0.6rem;
+    color: var(--text-dim);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    opacity: 0;
+    animation: fadeIn 1s ease-out 0.6s forwards;
+  }
+
+  section {
+    margin-bottom: 3.5rem;
+    position: relative;
+    opacity: 0;
+    animation: fadeInUp 0.7s ease-out forwards;
+  }
+
+  section:nth-child(1) { animation-delay: 0.2s; }
+  section:nth-child(2) { animation-delay: 0.35s; }
+  section:nth-child(3) { animation-delay: 0.5s; }
+  section:nth-child(4) { animation-delay: 0.65s; }
+  section:nth-child(5) { animation-delay: 0.8s; }
+
   h2 {
     font-family: var(--mono);
-    font-size: 1.25rem;
-    font-weight: 600;
-    margin-bottom: 1rem;
-    color: var(--accent);
-  }
-  p { color: var(--text-muted); max-width: 72ch; margin-bottom: 1rem; }
-
-  .features { list-style: none; display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem 2rem; }
-  .features li { color: var(--text-muted); font-size: 0.95rem; }
-  .features li::before { content: "> "; color: var(--accent-green); font-family: var(--mono); }
-
-  .install-box {
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 1.25rem;
-    font-family: var(--mono);
-    font-size: 0.9rem;
-    overflow-x: auto;
-  }
-  .install-box .prompt { color: var(--accent-green); user-select: none; }
-  .install-box .cmd { color: var(--text); }
-
-  .links { display: flex; gap: 1.5rem; flex-wrap: wrap; }
-  .links a {
-    display: inline-flex;
+    font-size: 0.75rem;
+    font-weight: 400;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    margin-bottom: 1.25rem;
+    color: var(--text-dim);
+    display: flex;
     align-items: center;
-    padding: 0.5rem 1.25rem;
+    gap: 0.75rem;
+  }
+
+  h2::before {
+    content: '';
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    background: var(--accent);
+    flex-shrink: 0;
+  }
+
+  h2::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+    min-width: 2rem;
+  }
+
+  .section-content {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    max-width: 72ch;
+    line-height: 1.8;
+  }
+
+  /* === SPATIAL PANEL === */
+
+  .panel {
+    background: var(--bg-panel);
     border: 1px solid var(--border);
-    border-radius: 6px;
+    border-radius: 0;
+    position: relative;
+    box-shadow: var(--shadow-md);
+    transition: box-shadow var(--transition-base), transform var(--transition-base);
+  }
+
+  .panel:hover {
+    box-shadow: var(--shadow-lg), var(--shadow-glow-accent);
+    transform: translateY(-1px);
+  }
+
+  .panel::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, var(--accent), transparent 50%);
+    opacity: 0.3;
+  }
+
+  .panel-depth {
+    position: absolute;
+    top: -1px;
+    right: -1px;
+    font-size: 0.5rem;
+    color: var(--text-dim);
+    opacity: 0;
+    transition: opacity var(--transition-base);
+    letter-spacing: 0.1em;
+  }
+
+  .panel:hover .panel-depth {
+    opacity: 0.5;
+  }
+
+  /* === FEATURES === */
+
+  .features-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    position: relative;
+  }
+
+  .feature-cell {
+    border: 1px solid var(--border);
+    padding: 1.25rem 1.5rem;
+    position: relative;
+    background: var(--bg-elevated);
+    transition: background var(--transition-base), border-color var(--transition-base);
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .feature-cell:hover {
+    background: var(--bg-panel);
+    border-color: var(--border-accent);
+  }
+
+  .feature-cell::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+    background: radial-gradient(circle at 30% 30%, rgba(0, 200, 255, 0.03), transparent 60%);
+    opacity: 0;
+    transition: opacity var(--transition-slow);
+    pointer-events: none;
+  }
+
+  .feature-cell:hover::before {
+    opacity: 1;
+  }
+
+  .feature-index {
+    font-size: 0.6rem;
+    color: var(--text-dim);
+    font-family: var(--mono);
+    min-width: 1.5rem;
+    padding-top: 0.15rem;
+    user-select: none;
+    letter-spacing: 0.05em;
+  }
+
+  .feature-text {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    line-height: 1.5;
+  }
+
+  .feature-cell:hover .feature-text {
+    color: var(--text);
+  }
+
+  .feature-coord {
+    position: absolute;
+    bottom: 4px;
+    right: 6px;
+    font-size: 0.45rem;
+    color: var(--text-dim);
+    opacity: 0;
+    transition: opacity var(--transition-base);
+    letter-spacing: 0.08em;
+  }
+
+  .feature-cell:hover .feature-coord {
+    opacity: 0.4;
+  }
+
+  /* === METRICS === */
+
+  .metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0;
+    position: relative;
+  }
+
+  .metric-cell {
+    border: 1px solid var(--border);
+    padding: 1.5rem 1rem;
+    text-align: center;
+    position: relative;
+    background: var(--bg-elevated);
+    overflow: hidden;
+    transition: background var(--transition-base), border-color var(--transition-base);
+  }
+
+  .metric-cell:hover {
+    background: var(--bg-panel);
+    border-color: var(--border-accent);
+  }
+
+  .metric-cell::after {
+    content: '';
+    position: absolute;
+    bottom: -40%;
+    right: -40%;
+    width: 80%;
+    height: 80%;
+    border-radius: 30% 70% 60% 40% / 50% 60% 40% 50%;
+    background: radial-gradient(circle, rgba(0, 255, 136, 0.04), transparent 70%);
+    pointer-events: none;
+    transition: opacity var(--transition-slow);
+    opacity: 0;
+  }
+
+  .metric-cell:hover::after {
+    opacity: 1;
+  }
+
+  .metric-val {
+    font-family: var(--mono);
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--accent-green);
+    letter-spacing: -0.04em;
+    line-height: 1;
+    margin-bottom: 0.5rem;
+    position: relative;
+    z-index: 1;
+  }
+
+  .metric-label {
+    font-size: 0.65rem;
+    color: var(--text-dim);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    position: relative;
+    z-index: 1;
+  }
+
+  .metric-bar {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent-green), transparent);
+    opacity: 0;
+    transition: opacity var(--transition-base);
+  }
+
+  .metric-cell:hover .metric-bar {
+    opacity: 0.5;
+  }
+
+  /* === INSTALL BOX === */
+
+  .install-panel {
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    padding: 1.5rem 2rem;
     font-family: var(--mono);
     font-size: 0.9rem;
-    color: var(--text);
-    background: var(--bg-card);
-    transition: border-color 0.15s;
+    position: relative;
+    box-shadow: var(--shadow-md);
+    overflow: hidden;
   }
-  .links a:hover { text-decoration: none; border-color: var(--accent); }
 
-  .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem; }
-  .metric {
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 1rem;
-    text-align: center;
+  .install-panel::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, var(--accent-green), transparent 60%);
+    opacity: 0.4;
   }
-  .metric .val { font-family: var(--mono); font-size: 1.4rem; font-weight: 700; color: var(--accent-green); }
-  .metric .label { font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem; }
+
+  .install-panel::after {
+    content: '';
+    position: absolute;
+    top: -30%;
+    left: -20%;
+    width: 60%;
+    height: 60%;
+    border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+    background: radial-gradient(circle, rgba(0, 255, 136, 0.03), transparent 60%);
+    pointer-events: none;
+  }
+
+  .install-label {
+    font-size: 0.6rem;
+    color: var(--text-dim);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .install-label::before {
+    content: '';
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    background: var(--accent-green);
+  }
+
+  .install-line {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    gap: 0;
+    flex-wrap: wrap;
+  }
+
+  .install-prompt {
+    color: var(--accent-green);
+    user-select: none;
+    margin-right: 0.25rem;
+  }
+
+  .install-cmd {
+    color: var(--text);
+    letter-spacing: 0.01em;
+  }
+
+  .install-ghost {
+    position: absolute;
+    bottom: 8px;
+    right: 12px;
+    font-size: 0.45rem;
+    color: var(--text-dim);
+    opacity: 0.3;
+    letter-spacing: 0.08em;
+  }
+
+  /* === LINKS === */
+
+  .links-row {
+    display: flex;
+    gap: 0;
+    position: relative;
+  }
+
+  .link-block {
+    flex: 1;
+    border: 1px solid var(--border);
+    padding: 1.25rem 1.5rem;
+    background: var(--bg-elevated);
+    position: relative;
+    overflow: hidden;
+    transition: background var(--transition-base), border-color var(--transition-base);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .link-block:first-child {
+    margin-right: -1px;
+  }
+
+  .link-block:hover {
+    background: var(--bg-panel);
+    border-color: var(--accent);
+    z-index: 2;
+  }
+
+  .link-block::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 40% 60% 70% 30% / 50% 40% 60% 50%;
+    background: radial-gradient(circle at 50% 50%, rgba(0, 200, 255, 0.04), transparent 70%);
+    opacity: 0;
+    transition: opacity var(--transition-slow);
+    pointer-events: none;
+  }
+
+  .link-block:hover::before {
+    opacity: 1;
+  }
+
+  .link-block a {
+    font-family: var(--mono);
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    letter-spacing: 0.04em;
+    position: relative;
+    z-index: 1;
+    text-decoration: none;
+  }
+
+  .link-block:hover a {
+    color: var(--text);
+  }
+
+  .link-arrow {
+    display: inline-block;
+    margin-left: 0.5rem;
+    color: var(--text-dim);
+    transition: color var(--transition-base), transform var(--transition-base);
+  }
+
+  .link-block:hover .link-arrow {
+    color: var(--accent);
+    transform: translateX(2px);
+  }
+
+  .link-index {
+    position: absolute;
+    top: 6px;
+    left: 8px;
+    font-size: 0.45rem;
+    color: var(--text-dim);
+    opacity: 0;
+    transition: opacity var(--transition-base);
+  }
+
+  .link-block:hover .link-index {
+    opacity: 0.3;
+  }
+
+  /* === FOOTER === */
+
+  .footer-wrapper {
+    position: relative;
+    animation: fadeIn 1s ease-out 1s both;
+  }
+
+  .footer-wrapper::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -2rem;
+    right: -2rem;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--border-accent) 20%, var(--border-accent) 80%, transparent);
+  }
 
   footer {
-    border-top: 1px solid var(--border);
-    padding: 1.5rem 0;
+    padding: 2rem 0;
     text-align: center;
-    font-size: 0.8rem;
-    color: var(--text-muted);
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    letter-spacing: 0.06em;
+    position: relative;
+    z-index: 1;
   }
 
-  @media (max-width: 600px) {
-    h1 { font-size: 1.8rem; }
-    .features { grid-template-columns: 1fr; }
-    .links { flex-direction: column; }
-    .links a { justify-content: center; }
+  .footer-coords {
+    position: absolute;
+    right: 0;
+    bottom: 2rem;
+    font-size: 0.5rem;
+    color: var(--text-dim);
+    opacity: 0.25;
+    letter-spacing: 0.1em;
+  }
+
+  /* === FLOATING DEPTH INDICATORS === */
+
+  .depth-indicator {
+    position: fixed;
+    right: 1.5rem;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    opacity: 0;
+    animation: fadeIn 1.5s ease-out 1.5s forwards;
+  }
+
+  .depth-dot {
+    width: 4px;
+    height: 4px;
+    border: 1px solid var(--text-dim);
+    transition: background var(--transition-base), border-color var(--transition-base);
+  }
+
+  .depth-dot--active {
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+
+  .depth-label {
+    font-size: 0.45rem;
+    color: var(--text-dim);
+    letter-spacing: 0.15em;
+    writing-mode: vertical-rl;
+    margin-top: 0.5rem;
+    opacity: 0.5;
+  }
+
+  /* === RESPONSIVE === */
+
+  @media (max-width: 768px) {
+    h1 { font-size: 2.5rem; }
+    .metrics-grid { grid-template-columns: 1fr 1fr; }
+    .spatial-blob { display: none; }
+    .depth-indicator { display: none; }
+    .header-depth-marker { display: none; }
+    .section-marker { display: none; }
+  }
+
+  @media (max-width: 520px) {
+    .container { padding: 0 1rem; }
+    h1 { font-size: 2rem; }
+    .features-grid { grid-template-columns: 1fr; }
+    .metrics-grid { grid-template-columns: 1fr 1fr; }
+    .links-row { flex-direction: column; }
+    .link-block:first-child { margin-right: 0; margin-bottom: -1px; }
+    .install-panel { padding: 1.25rem 1rem; }
+    .header-wrapper { padding: 2.5rem 0 2rem; }
+    main { padding: 2rem 0 3rem; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
   }
 </style>
 </head>
 <body>
-<div class="container">
 
-  <header>
-    <h1>Clawdius</h1>
-    <p class="tagline">A formally verified, multi-provider AI coding agent</p>
-    <div class="badges">
-      <img src="https://img.shields.io/badge/version-1.0.0--rc.2-blue.svg" alt="Version">
-      <img src="https://img.shields.io/badge/rust-1.92+-orange.svg" alt="Rust">
-      <img src="https://img.shields.io/badge/tests-2%2C019-passing-brightgreen.svg" alt="Tests">
-      <img src="https://img.shields.io/badge/Lean4-209%20theorems-blue.svg" alt="Lean4 Proofs">
-      <img src="https://img.shields.io/badge/License-Apache_2.0-yellow.svg" alt="License">
+  <div class="spatial-blob spatial-blob--accent" aria-hidden="true"></div>
+  <div class="spatial-blob spatial-blob--green" aria-hidden="true"></div>
+  <div class="spatial-blob spatial-blob--warm" aria-hidden="true"></div>
+
+  <nav class="depth-indicator" aria-label="Page depth indicator" aria-hidden="true">
+    <div class="depth-dot depth-dot--active"></div>
+    <div class="depth-dot"></div>
+    <div class="depth-dot"></div>
+    <span class="depth-label">DEPTH</span>
+  </nav>
+
+  <div class="container">
+
+    <div class="header-wrapper">
+      <header>
+        <span class="header-depth-marker" aria-hidden="true">z-10</span>
+        <h1>Clawdius<span class="z-index-label" aria-hidden="true">z:10</span></h1>
+        <p class="tagline">A formally verified, multi-provider AI coding agent</p>
+        <div class="badges" aria-label="Project badges">
+          <img src="https://img.shields.io/badge/version-1.0.0--rc.2-blue.svg" alt="Version 1.0.0-rc.2" width="108" height="22">
+          <img src="https://img.shields.io/badge/rust-1.92+-orange.svg" alt="Rust 1.92+" width="90" height="22">
+          <img src="https://img.shields.io/badge/tests-2%2C019-passing-brightgreen.svg" alt="2,019 tests passing" width="120" height="22">
+          <img src="https://img.shields.io/badge/Lean4-209%20theorems-blue.svg" alt="209 Lean4 theorems" width="140" height="22">
+          <img src="https://img.shields.io/badge/License-Apache_2.0-yellow.svg" alt="Apache 2.0 License" width="118" height="22">
+        </div>
+      </header>
     </div>
-  </header>
 
-  <main>
-    <section>
-      <p>
-        Clawdius is a next-generation AI coding engine built in Rust with a terminal UI, CLI, and
-        multi-platform messaging gateway. It connects chat platforms to a formal-verification-backed
-        code generation engine, supporting Anthropic, OpenAI, Google, xAI, Mistral, DeepSeek, Ollama,
-        ZAI, and OpenRouter with automatic retry. Lean4 proofs verify sandboxing, concurrency, and security invariants.
-      </p>
-    </section>
+    <main>
 
-    <section>
-      <h2>Features</h2>
-      <ul class="features">
-        <li>Multi-provider LLM with automatic retry</li>
-        <li>60 FPS terminal UI (25+ commands)</li>
-        <li>Agentic sprint execution and auto-fix</li>
-        <li>9 messaging platform adapters</li>
-        <li>Lean4 formal verification (209 theorems)</li>
-        <li>JIT sandboxing (Wasmtime WASM)</li>
-        <li>Session management with auto-compact</li>
-        <li>Architecture drift and debt analysis</li>
-      </ul>
-    </section>
+      <section aria-labelledby="overview-heading">
+        <span class="section-marker" aria-hidden="true">01/05</span>
+        <h2 id="overview-heading">Overview</h2>
+        <p class="section-content">
+          Clawdius is a next-generation AI coding engine built in Rust with a terminal UI, CLI, and
+          multi-platform messaging gateway. It connects chat platforms to a formal-verification-backed
+          code generation engine, supporting Anthropic, OpenAI, Google, xAI, Mistral, DeepSeek, Ollama,
+          ZAI, and OpenRouter with automatic retry. Lean4 proofs verify sandboxing, concurrency, and security invariants.
+        </p>
+      </section>
 
-    <section>
-      <h2>Quality</h2>
-      <div class="metrics">
-        <div class="metric"><div class="val">2,019</div><div class="label">Tests passing</div></div>
-        <div class="metric"><div class="val">0</div><div class="label">Clippy warnings</div></div>
-        <div class="metric"><div class="val">209</div><div class="label">Lean4 theorems</div></div>
-        <div class="metric"><div class="val">390</div><div class="label">Rust source files</div></div>
-      </div>
-    </section>
+      <section aria-labelledby="features-heading">
+        <span class="section-marker" aria-hidden="true">02/05</span>
+        <h2 id="features-heading">Features</h2>
+        <div class="features-grid" role="list">
+          <div class="feature-cell" role="listitem">
+            <span class="feature-index" aria-hidden="true">01</span>
+            <span class="feature-text">Multi-provider LLM with automatic retry</span>
+            <span class="feature-coord" aria-hidden="true">[0,0]</span>
+          </div>
+          <div class="feature-cell" role="listitem">
+            <span class="feature-index" aria-hidden="true">02</span>
+            <span class="feature-text">60 FPS terminal UI (25+ commands)</span>
+            <span class="feature-coord" aria-hidden="true">[0,1]</span>
+          </div>
+          <div class="feature-cell" role="listitem">
+            <span class="feature-index" aria-hidden="true">03</span>
+            <span class="feature-text">Agentic sprint execution and auto-fix</span>
+            <span class="feature-coord" aria-hidden="true">[1,0]</span>
+          </div>
+          <div class="feature-cell" role="listitem">
+            <span class="feature-index" aria-hidden="true">04</span>
+            <span class="feature-text">9 messaging platform adapters</span>
+            <span class="feature-coord" aria-hidden="true">[1,1]</span>
+          </div>
+          <div class="feature-cell" role="listitem">
+            <span class="feature-index" aria-hidden="true">05</span>
+            <span class="feature-text">Lean4 formal verification (209 theorems)</span>
+            <span class="feature-coord" aria-hidden="true">[2,0]</span>
+          </div>
+          <div class="feature-cell" role="listitem">
+            <span class="feature-index" aria-hidden="true">06</span>
+            <span class="feature-text">JIT sandboxing (Wasmtime WASM)</span>
+            <span class="feature-coord" aria-hidden="true">[2,1]</span>
+          </div>
+          <div class="feature-cell" role="listitem">
+            <span class="feature-index" aria-hidden="true">07</span>
+            <span class="feature-text">Session management with auto-compact</span>
+            <span class="feature-coord" aria-hidden="true">[3,0]</span>
+          </div>
+          <div class="feature-cell" role="listitem">
+            <span class="feature-index" aria-hidden="true">08</span>
+            <span class="feature-text">Architecture drift and debt analysis</span>
+            <span class="feature-coord" aria-hidden="true">[3,1]</span>
+          </div>
+        </div>
+      </section>
 
-    <section>
-      <h2>Install</h2>
-      <div class="install-box">
-        <span class="prompt">$ </span><span class="cmd">cargo install clawdius --version 1.0.0-rc.2</span>
-      </div>
-    </section>
+      <section aria-labelledby="quality-heading">
+        <span class="section-marker" aria-hidden="true">03/05</span>
+        <h2 id="quality-heading">Quality</h2>
+        <div class="metrics-grid" role="list" aria-label="Quality metrics">
+          <div class="metric-cell" role="listitem">
+            <div class="metric-val">2,019</div>
+            <div class="metric-label">Tests passing</div>
+            <div class="metric-bar" aria-hidden="true"></div>
+          </div>
+          <div class="metric-cell" role="listitem">
+            <div class="metric-val">0</div>
+            <div class="metric-label">Clippy warnings</div>
+            <div class="metric-bar" aria-hidden="true"></div>
+          </div>
+          <div class="metric-cell" role="listitem">
+            <div class="metric-val">209</div>
+            <div class="metric-label">Lean4 theorems</div>
+            <div class="metric-bar" aria-hidden="true"></div>
+          </div>
+          <div class="metric-cell" role="listitem">
+            <div class="metric-val">390</div>
+            <div class="metric-label">Rust source files</div>
+            <div class="metric-bar" aria-hidden="true"></div>
+          </div>
+        </div>
+      </section>
 
-    <section>
-      <h2>Links</h2>
-      <div class="links">
-        <a href="/intro.html">Documentation</a>
-        <a href="https://github.com/WyattAu/clawdius">GitHub Repository</a>
-      </div>
-    </section>
-  </main>
+      <section aria-labelledby="install-heading">
+        <span class="section-marker" aria-hidden="true">04/05</span>
+        <h2 id="install-heading">Install</h2>
+        <div class="install-panel" role="code">
+          <span class="panel-depth" aria-hidden="true">z:05</span>
+          <div class="install-label">Terminal</div>
+          <div class="install-line">
+            <span class="install-prompt" aria-hidden="true">$ </span><span class="install-cmd">cargo install clawdius --version 1.0.0-rc.2</span>
+          </div>
+          <span class="install-ghost" aria-hidden="true">v1.0.0-rc.2</span>
+        </div>
+      </section>
 
-  <footer>
-    Licensed under Apache-2.0. Built with Rust.
-  </footer>
+      <section aria-labelledby="links-heading">
+        <span class="section-marker" aria-hidden="true">05/05</span>
+        <h2 id="links-heading">Links</h2>
+        <div class="links-row" role="list">
+          <div class="link-block" role="listitem">
+            <span class="link-index" aria-hidden="true">LNK.01</span>
+            <a href="/intro.html">Documentation<span class="link-arrow" aria-hidden="true">--></span></a>
+          </div>
+          <div class="link-block" role="listitem">
+            <span class="link-index" aria-hidden="true">LNK.02</span>
+            <a href="https://github.com/WyattAu/clawdius">GitHub Repository<span class="link-arrow" aria-hidden="true">--></span></a>
+          </div>
+        </div>
+      </section>
 
-</div>
+    </main>
+
+    <div class="footer-wrapper">
+      <footer>
+        <p>Licensed under Apache-2.0. Built with Rust.</p>
+        <span class="footer-coords" aria-hidden="true">[0,0] -- EOF</span>
+      </footer>
+    </div>
+
+  </div>
+
 </body>
 </html>
