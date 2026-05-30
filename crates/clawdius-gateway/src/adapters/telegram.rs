@@ -280,10 +280,10 @@ impl PlatformAdapter for TelegramAdapter {
     }
 
     async fn edit_message(&self, message_id: &str, new_text: &str) -> Result<(), GatewayError> {
-        let mid: i32 = message_id.parse().map_err(|_| GatewayError::Adapter {
+        let mid: i32 = message_id.parse().map_err(|e| GatewayError::Adapter {
             platform: "telegram".to_string(),
             message: format!("invalid message_id: {message_id}"),
-            source: None,
+            source: Some(Box::new(e)),
         })?;
 
         self.bot

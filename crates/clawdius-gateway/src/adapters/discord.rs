@@ -77,10 +77,10 @@ impl DiscordAdapter {
     fn parse_message_id(id: &str) -> Result<serenity::model::id::MessageId, GatewayError> {
         id.parse::<u64>()
             .map(serenity::model::id::MessageId::new)
-            .map_err(|_| GatewayError::Adapter {
+            .map_err(|e| GatewayError::Adapter {
                 platform: "discord".to_string(),
                 message: format!("invalid message_id: {id}"),
-                source: None,
+                source: Some(Box::new(e)),
             })
     }
 
@@ -88,10 +88,10 @@ impl DiscordAdapter {
     fn parse_channel_id(id: &str) -> Result<serenity::model::id::ChannelId, GatewayError> {
         id.parse::<u64>()
             .map(serenity::model::id::ChannelId::new)
-            .map_err(|_| GatewayError::Adapter {
+            .map_err(|e| GatewayError::Adapter {
                 platform: "discord".to_string(),
                 message: format!("invalid channel_id: {id}"),
-                source: None,
+                source: Some(Box::new(e)),
             })
     }
 }

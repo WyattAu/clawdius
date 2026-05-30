@@ -142,7 +142,7 @@ mod tests {
     impl Vfs for InMemoryVfs {
         fn read_text(&self, path: &Path) -> std::result::Result<String, VfsError> {
             let key = self.key(path);
-            let files = self.files.lock().unwrap();
+            let files = self.files.lock().expect("files mutex poisoned");
             let data = files
                 .get(&key)
                 .ok_or_else(|| VfsError::NotFound(path.to_path_buf()))?;
@@ -152,7 +152,7 @@ mod tests {
 
         fn read_bytes(&self, path: &Path) -> std::result::Result<Vec<u8>, VfsError> {
             let key = self.key(path);
-            let files = self.files.lock().unwrap();
+            let files = self.files.lock().expect("files mutex poisoned");
             files
                 .get(&key)
                 .cloned()
@@ -161,8 +161,8 @@ mod tests {
 
         fn metadata(&self, path: &Path) -> std::result::Result<VfsMetadata, VfsError> {
             let key = self.key(path);
-            let files = self.files.lock().unwrap();
-            let dirs = self.dirs.lock().unwrap();
+            let files = self.files.lock().expect("files mutex poisoned");
+            let dirs = self.dirs.lock().expect("dirs mutex poisoned");
             if let Some(data) = files.get(&key) {
                 Ok(VfsMetadata {
                     is_file: true,
@@ -188,19 +188,19 @@ mod tests {
 
         fn exists(&self, path: &Path) -> bool {
             let key = self.key(path);
-            let files = self.files.lock().unwrap();
-            let dirs = self.dirs.lock().unwrap();
+            let files = self.files.lock().expect("files mutex poisoned");
+            let dirs = self.dirs.lock().expect("dirs mutex poisoned");
             files.contains_key(&key) || dirs.contains(&key)
         }
 
         fn is_dir(&self, path: &Path) -> bool {
             let key = self.key(path);
-            self.dirs.lock().unwrap().contains(&key)
+            self.dirs.lock().expect("dirs mutex poisoned").contains(&key)
         }
 
         fn is_file(&self, path: &Path) -> bool {
             let key = self.key(path);
-            self.files.lock().unwrap().contains_key(&key)
+            self.files.lock().expect("files mutex poisoned").contains_key(&key)
         }
 
         fn canonicalize(&self, path: &Path) -> std::result::Result<PathBuf, VfsError> {
@@ -230,7 +230,7 @@ mod tests {
                     self.create_dir_all(parent).ok(); // Ignore if already exists
                 }
             }
-            self.files.lock().unwrap().insert(key, content.to_vec());
+            self.files.lock().expect("files mutex poisoned").insert(key, content.to_vec());
             Ok(())
         }
 
@@ -241,7 +241,7 @@ mod tests {
                 self.root.join(path)
             };
             let key = resolved.to_string_lossy().to_string();
-            let mut dirs = self.dirs.lock().unwrap();
+            let mut dirs = self.dirs.lock().expect("dirs mutex poisoned");
             // Add this dir and all ancestors
             let mut current = key.clone();
             loop {
@@ -261,7 +261,7 @@ mod tests {
 
         fn remove_file(&self, path: &Path) -> std::result::Result<(), VfsError> {
             let key = self.key(path);
-            let mut files = self.files.lock().unwrap();
+            let mut files = self.files.lock().expect("files mutex poisoned");
             if files.remove(&key).is_some() {
                 Ok(())
             } else {
@@ -272,8 +272,8 @@ mod tests {
         fn remove_dir_all(&self, path: &Path) -> std::result::Result<(), VfsError> {
             let key = self.key(path);
             let prefix = format!("{key}/");
-            let mut files = self.files.lock().unwrap();
-            let mut dirs = self.dirs.lock().unwrap();
+            let mut files = self.files.lock().expect("files mutex poisoned");
+            let mut dirs = self.dirs.lock().expect("dirs mutex poisoned");
             files.retain(|k, _| !k.starts_with(&prefix) && k != &key);
             dirs.retain(|d| d != &key && !d.starts_with(&prefix));
             Ok(())
@@ -285,8 +285,8 @@ mod tests {
                 return Err(VfsError::NotADirectory(path.to_path_buf()));
             }
             let prefix = format!("{key}/");
-            let files = self.files.lock().unwrap();
-            let dirs = self.dirs.lock().unwrap();
+            let files = self.files.lock().expect("files mutex poisoned");
+            let dirs = self.dirs.lock().expect("dirs mutex poisoned");
 
             let mut entries = Vec::new();
             // Collect direct children (files)

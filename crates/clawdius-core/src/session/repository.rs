@@ -114,7 +114,7 @@ mod tests {
         }
 
         fn load_session(&self, id: &SessionId) -> Result<Option<Session>> {
-            Ok(self.sessions.lock().unwrap().get(id.as_uuid()).cloned())
+            Ok(self.sessions.lock().expect("sessions mutex poisoned").get(id.as_uuid()).cloned())
         }
 
         fn load_session_full(&self, id: &SessionId) -> Result<Option<Session>> {
@@ -123,7 +123,7 @@ mod tests {
         }
 
         fn save_message(&self, session_id: &SessionId, message: &Message) -> Result<()> {
-            let mut sessions = self.sessions.lock().unwrap();
+            let mut sessions = self.sessions.lock().expect("sessions mutex poisoned");
             if let Some(session) = sessions.get_mut(session_id.as_uuid()) {
                 session.messages.push(message.clone());
                 Ok(())
@@ -135,7 +135,7 @@ mod tests {
         }
 
         fn update_token_usage(&self, id: &SessionId, usage: &TokenUsage) -> Result<()> {
-            let mut sessions = self.sessions.lock().unwrap();
+            let mut sessions = self.sessions.lock().expect("sessions mutex poisoned");
             if let Some(session) = sessions.get_mut(id.as_uuid()) {
                 session.token_usage.add(usage);
                 Ok(())
@@ -145,11 +145,11 @@ mod tests {
         }
 
         fn list_sessions(&self) -> Result<Vec<Session>> {
-            Ok(self.sessions.lock().unwrap().values().cloned().collect())
+            Ok(self.sessions.lock().expect("sessions mutex poisoned").values().cloned().collect())
         }
 
         fn delete_session(&self, id: &SessionId) -> Result<()> {
-            self.sessions.lock().unwrap().remove(id.as_uuid());
+            self.sessions.lock().expect("sessions mutex poisoned").remove(id.as_uuid());
             Ok(())
         }
 

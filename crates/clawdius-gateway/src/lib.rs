@@ -18,13 +18,9 @@
 
 #![allow(clippy::significant_drop_tightening)]
 #![allow(clippy::type_complexity)]
-#![cfg_attr(test, allow(clippy::panic))]
 #![allow(clippy::module_name_repetitions)]
 #![allow(clippy::missing_errors_doc)]
 #![allow(clippy::missing_panics_doc)]
-#![allow(clippy::expect_used)]
-#![allow(clippy::unwrap_used)]
-#![allow(dead_code)]
 #![allow(clippy::doc_markdown)]
 #![allow(clippy::trivially_copy_pass_by_ref)]
 #![allow(clippy::redundant_closure_for_method_calls)]
@@ -41,6 +37,8 @@
 #![allow(clippy::missing_const_for_fn)]
 #![allow(clippy::unused_self)]
 #![allow(clippy::trait_duplication_in_bounds)]
+#![allow(clippy::expect_used)]
+#![cfg_attr(test, allow(clippy::unwrap_used, clippy::panic, dead_code))]
 
 pub mod adapter;
 pub mod adapters;

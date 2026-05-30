@@ -36,6 +36,7 @@ pub struct RocketChatAdapter {
     /// Rocket.Chat server URL.
     server_url: String,
     /// Bot user ID or username.
+    #[allow(dead_code)]
     user_id: String,
     /// Authentication token (X-Auth-Token header).
     auth_token: String,
