@@ -26,13 +26,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@ea165f8d65b634e114876b0b
 
       - name: Verify lib.rs integrity
         run: bash scripts/check_librs.sh
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@1.92
+        uses: dtolnay/rust-toolchain@b5826f8eb73f
         with:
           components: rustfmt, clippy
 
@@ -40,7 +40,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y protobuf-compiler
 
       - name: Cache Rust artifacts
-        uses: Swatinem/rust-cache@v2
+        uses: Swatinem/rust-cache@e18b497796c1
 
       - name: Check formatting
         run: cargo fmt --all --check
@@ -72,15 +72,15 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@ea165f8d65b634e114876b0b
         with:
           fetch-depth: 0  # Need full history for baseline comparison
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@1.92
+        uses: dtolnay/rust-toolchain@b5826f8eb73f
 
       - name: Cache Rust artifacts
-        uses: Swatinem/rust-cache@v2
+        uses: Swatinem/rust-cache@e18b497796c1
 
       - name: Install cargo-semver-checks
         run: cargo install cargo-semver-checks --locked
@@ -105,15 +105,15 @@ jobs:
       matrix:
         os: [windows-latest, macos-latest]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@ea165f8d65b634e114876b0b
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@1.92
+        uses: dtolnay/rust-toolchain@b5826f8eb73f
         with:
           components: rustfmt, clippy
 
       - name: Cache Rust artifacts
-        uses: Swatinem/rust-cache@v2
+        uses: Swatinem/rust-cache@e18b497796c1
 
       - name: Verify lib.rs integrity
         run: bash scripts/check_librs.sh
@@ -134,16 +134,16 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@ea165f8d65b634e114876b0b
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@1.92
+        uses: dtolnay/rust-toolchain@b5826f8eb73f
 
       - name: Cache Rust artifacts
-        uses: Swatinem/rust-cache@v2
+        uses: Swatinem/rust-cache@e18b497796c1
 
       - name: Cache elan
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa8
         with:
           path: ~/.elan
           key: elan-${{ runner.os }}-v4.28.0
@@ -160,23 +160,39 @@ jobs:
           export PATH="$HOME/.elan/bin:$PATH"
           lake build
 
+  publish-dry-run:
+    name: Publish Dry Run (clawdius-core)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@ea165f8d65b634e114876b0b
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@b5826f8eb73f
+
+      - name: Cache Rust artifacts
+        uses: Swatinem/rust-cache@e18b497796c1
+
+      - name: Publish dry run
+        run: cargo publish --dry-run --package clawdius-core
+
   coverage:
     name: Test Coverage
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@ea165f8d65b634e114876b0b
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@1.92
+        uses: dtolnay/rust-toolchain@b5826f8eb73f
         with:
           components: llvm-tools-preview
 
       - name: Cache Rust artifacts
-        uses: Swatinem/rust-cache@v2
+        uses: Swatinem/rust-cache@e18b497796c1
 
       - name: Install cargo-llvm-cov
-        uses: taiki-e/install-action@cargo-llvm-cov
+        uses: taiki-e/install-action@f2fe410e6743
 
       - name: Generate coverage report
         run: cargo llvm-cov --workspace --lib --summary-only 2>&1 | tail -20
@@ -185,7 +201,7 @@ jobs:
         run: cargo llvm-cov --workspace --lib --lcov --output-path lcov.info
 
       - name: Upload coverage artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6
         with:
           name: coverage-report
           path: lcov.info
@@ -197,16 +213,16 @@ jobs:
     timeout-minutes: 30
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@ea165f8d65b634e114876b0b
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@29eef336d9b2
 
       - name: Cache Rust artifacts
-        uses: Swatinem/rust-cache@v2
+        uses: Swatinem/rust-cache@e18b497796c1
 
       - name: Cache benchmark results
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa8
         with:
           path: target/criterion
           key: benchmark-results-${{ github.sha }}
@@ -218,7 +234,7 @@ jobs:
         continue-on-error: true  # memory_bench FOREIGN KEY panic on CI runners
 
       - name: Upload benchmark results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6
         with:
           name: benchmark-results
           path: target/criterion
@@ -230,16 +246,16 @@ jobs:
     timeout-minutes: 30
     if: github.event_name == 'schedule'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@ea165f8d65b634e114876b0b
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@29eef336d9b2
 
       - name: Cache Rust artifacts
-        uses: Swatinem/rust-cache@v2
+        uses: Swatinem/rust-cache@e18b497796c1
 
       - name: Restore previous baseline
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa8
         with:
           path: target/criterion
           key: benchmark-results-${{ github.sha }}
@@ -250,7 +266,7 @@ jobs:
         run: cargo bench --workspace --benches -- --baseline main
 
       - name: Upload benchmark results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6
         with:
           name: scheduled-benchmark-results
           path: target/criterion

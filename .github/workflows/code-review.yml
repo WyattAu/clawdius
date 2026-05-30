@@ -17,7 +17,7 @@ jobs:
     
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@ea165f8d65b634e114876b0b
         with:
           fetch-depth: 0
       
@@ -35,7 +35,7 @@ jobs:
       
       - name: Upload Review Logs
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6
         with:
           name: review-logs
           path: review-output/
