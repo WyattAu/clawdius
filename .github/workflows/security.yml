@@ -25,7 +25,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -45,7 +45,7 @@ jobs:
         run: cargo audit --format json > audit-report.json || true
       
       - name: Upload audit report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: audit-report
@@ -57,7 +57,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -82,7 +82,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -103,7 +103,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
       
@@ -127,15 +127,15 @@ jobs:
       security-events: write
       actions: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       
       - name: Run CodeQL Analysis
-        uses: github/codeql-action/init@v3
+        uses: github/codeql-action/init@v4
         with:
           languages: rust
       
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v3
+        uses: github/codeql-action/analyze@v4
         with:
           category: "/language:rust"
 
@@ -152,7 +152,7 @@ jobs:
           - fuzz_mention
           - fuzz_diff_engine
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@nightly
@@ -188,7 +188,7 @@ jobs:
     timeout-minutes: 15
     needs: [audit, deny]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -225,7 +225,7 @@ jobs:
     timeout-minutes: 10
     needs: [audit, deny]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -238,7 +238,7 @@ jobs:
         run: cargo cyclonedx --all-features --format json || echo "SBOM generation failed"
       
       - name: Upload SBOM
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: sbom
           path: target/*.json
