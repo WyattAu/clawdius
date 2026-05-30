@@ -484,6 +484,60 @@ instead of &Path
 
 ---
 
+## Git Hooks
+
+This project uses Git hooks managed via `core.hooksPath` (pointing to `.githooks/`). Hooks are installed automatically by `scripts/setup-hooks.sh`.
+
+### Pre-commit (fast path)
+
+Runs on every commit. Executes 5 checks sequentially:
+
+| # | Check | Command | Blocking |
+|---|-------|---------|----------|
+| 1 | lib.rs integrity | Validates `pub mod` count >= 10 in `crates/clawdius-core/src/lib.rs` | Yes |
+| 2 | Merge conflict markers | Scans staged files for `<<<<<<<` | Yes |
+| 3 | `cargo fmt` | `cargo fmt --all --check` | Yes |
+| 4 | Clippy | `cargo clippy --workspace --all-targets -- -D warnings -A missing_docs` | Yes |
+| 5 | lib tests | `cargo test --workspace --lib` | Yes |
+| 6 | `cargo deny` | `cargo deny check bans licenses advisories` | Yes (if installed) |
+| 7 | Lean4 proofs | `lake build` | Warn only (if installed) |
+
+### Pre-push (full suite)
+
+Runs on every push. Executes the complete test suite:
+
+| # | Check | Command | Timeout | Blocking |
+|---|-------|---------|---------|----------|
+| 1 | All tests | `cargo test --workspace --tests` | 600s | Yes |
+| 2 | Strict clippy | `cargo clippy --workspace --all-targets -- -D warnings` | 300s | Yes |
+| 3 | `cargo deny` | `cargo deny check bans licenses advisories` | -- | Yes (if installed) |
+| 4 | Lean4 proofs | `lake build` | -- | Yes (if installed) |
+
+### Skip mechanism
+
+Set `CLAWDIUS_SKIP_HOOKS=1` to bypass all hook checks:
+
+```bash
+CLAWDIUS_SKIP_HOOKS=1 git commit -m "WIP: commit message"
+CLAWDIUS_SKIP_HOOKS=1 git push
+```
+
+This is the only supported bypass. Do not modify or remove hook scripts to skip checks.
+
+### Cold cache detection
+
+If `target/` is missing or older than `Cargo.toml`, the hooks detect a cold cache and prompt for confirmation before proceeding (compilation may take 10+ minutes). This prevents accidental long waits during first builds.
+
+### Hook installation
+
+```bash
+bash scripts/setup-hooks.sh
+```
+
+This script detects whether `core.hooksPath` is already set to `.githooks/` and installs accordingly.
+
+---
+
 ## Development Workflow
 
 ### Branch Naming
