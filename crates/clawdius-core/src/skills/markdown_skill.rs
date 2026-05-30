@@ -87,6 +87,7 @@ fn extract_frontmatter(content: &str) -> super::Result<(Vec<FrontmatterLine>, St
     Ok((lines, body))
 }
 
+#[allow(dead_code)] // internal parse representation
 #[derive(Debug)]
 enum FrontmatterLine {
     Scalar {

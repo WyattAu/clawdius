@@ -65,6 +65,7 @@ pub struct HtmlCompressor {
     /// Whether to preserve image alt text
     preserve_images: bool,
     /// Whether to preserve code blocks
+    #[allow(dead_code)] // reserved for future selective code stripping
     preserve_code: bool,
     /// Custom tag removal patterns (regex)
     extra_strip_patterns: Vec<String>,

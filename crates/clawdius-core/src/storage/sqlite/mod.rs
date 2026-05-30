@@ -22,6 +22,7 @@ use std::path::{Path, PathBuf};
 #[derive(Debug)]
 pub struct SqliteBackend {
     conn: std::sync::Mutex<Connection>,
+    #[allow(dead_code)] // stored for future diagnostics
     path: PathBuf,
 }
 

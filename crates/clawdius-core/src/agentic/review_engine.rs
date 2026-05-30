@@ -532,10 +532,12 @@ mod tests {
     use async_trait::async_trait;
     use tokio::sync::mpsc;
 
+    #[allow(dead_code)]
     struct MockReviewLlm {
         response: String,
     }
 
+    #[allow(dead_code)]
     impl MockReviewLlm {
         fn new(response: &str) -> Self {
             Self {

@@ -17,7 +17,6 @@
 #![allow(clippy::nursery)]
 // NOTE: Do NOT blanket-allow clippy::restriction — it overrides deny(unwrap_used).
 // Restriction-group lints are suppressed individually below or in module-level allows.
-#![allow(dead_code)]
 #![allow(clippy::expect_used)]
 #![deny(clippy::unwrap_used)]
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]

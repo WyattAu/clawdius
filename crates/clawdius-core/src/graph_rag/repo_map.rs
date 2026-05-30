@@ -64,6 +64,7 @@ pub struct RepoMap {
     /// Token budget used to build this map.
     token_budget: usize,
     /// Total tokens across all discovered tags (before truncation).
+    #[allow(dead_code)] // diagnostic metric
     total_tokens: usize,
     /// Number of files indexed.
     file_count: usize,

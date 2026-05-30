@@ -490,6 +490,7 @@ impl ParallelSprintManager {
     }
 
     /// Update a session's status.
+    #[allow(dead_code)] // used internally via sprint phase transitions
     async fn update_status(
         &self,
         session_id: &SprintSessionId,
