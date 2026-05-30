@@ -19,8 +19,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@ea165f8d65b634e114876b0b
-      - uses: dtolnay/rust-toolchain@b5826f8eb73f
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@stable
         with:
           components: llvm-tools-preview
 
@@ -70,7 +70,7 @@ jobs:
           fi
 
       - name: Upload optimized binary
-        uses: actions/upload-artifact@ea165f8d65b6
+        uses: actions/upload-artifact@v7
         with:
           name: clawdius-pgo-optimized
           path: target/pgo-optimized/clawdius

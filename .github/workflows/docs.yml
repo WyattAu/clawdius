@@ -25,10 +25,10 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Checkout
-        uses: actions/checkout@ea165f8d65b634e114876b0b
+        uses: actions/checkout@v6
 
       - name: Setup mdBook
-        uses: peaceiris/actions-mdbook@ee69d230fe19
+        uses: peaceiris/actions-mdbook@v2
         with:
           mdbook-version: '0.4.40'
 
@@ -48,7 +48,7 @@ jobs:
           echo "clawdius.co.uk" > site/CNAME
 
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@56afc609e742
+        uses: actions/upload-pages-artifact@v5
         with:
           path: site
 
@@ -61,4 +61,4 @@ jobs:
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@d6db90164ac5
+        uses: actions/deploy-pages@v5

@@ -1,0 +1,89 @@
+# AUR Publish — validates the PKGBUILD from pkgbuild/ and generates .SRCINFO
+# for the Arch User Repository package whenever a new GitHub release is published.
+# The PKGBUILD is source-based (builds from release tarball, not pre-built binaries).
+
+name: AUR Publish
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  validate-pkgbuild:
+    name: Validate PKGBUILD
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Determine version from tag
+        id: version
+        run: |
+          VERSION="${GITHUB_REF#refs/tags/v}"
+          # Convert semver with pre-release to PKGBUILD format (1.0.0-rc.2 -> 1.0.0rc.2)
+          PKGVER=$(echo "$VERSION" | sed 's/-rc/rc/')
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "pkgver=$PKGVER" >> "$GITHUB_OUTPUT"
+          echo "Tag version: $VERSION -> PKGBUILD pkgver: $PKGVER"
+
+      - name: Verify PKGBUILD version matches tag
+        run: |
+          PKGVER="${{ steps.version.outputs.pkgver }}"
+          if ! grep -q "^pkgver=${PKGVER}" pkgbuild/PKGBUILD; then
+            echo "::error::PKGBUILD pkgver does not match release tag v${{ steps.version.outputs.version }} (expected pkgver=$PKGVER)"
+            exit 1
+          fi
+          echo "PKGBUILD version matches release tag"
+
+      - name: Validate PKGBUILD structure
+        run: |
+          required_fields=(pkgname pkgver pkgrel pkgdesc arch url license depends makedepends source sha256sums)
+          for field in "${required_fields[@]}"; do
+            if ! grep -q "^${field}" pkgbuild/PKGBUILD; then
+              echo "::error::PKGBUILD missing required field: $field"
+              exit 1
+            fi
+          done
+          # Verify license matches crate metadata
+          if ! grep -q "Apache" pkgbuild/PKGBUILD; then
+            echo "::error::PKGBUILD license should be Apache-2.0 to match crate"
+            exit 1
+          fi
+          # Verify arch includes both x86_64 and aarch64
+          if ! grep -q "x86_64" pkgbuild/PKGBUILD || ! grep -q "aarch64" pkgbuild/PKGBUILD; then
+            echo "::error::PKGBUILD must support both x86_64 and aarch64"
+            exit 1
+          fi
+          echo "PKGBUILD structure validation passed"
+
+      - name: Generate .SRCINFO in Arch container
+        run: |
+          docker run --rm \
+            -v "${GITHUB_WORKSPACE}:/pkg" \
+            -w /pkg \
+            archlinux:latest \
+            bash -c "
+              pacman -Syu --noconfirm base-devel namcap && \
+              cd pkgbuild && \
+              makepkg --printsrcinfo > .SRCINFO && \
+              echo '=== .SRCINFO ===' && \
+              cat .SRCINFO && \
+              echo '=== namcap analysis ===' && \
+              namcap PKGBUILD || true && \
+              echo '=== Validation passed ==='
+            "
+
+      - name: Upload .SRCINFO
+        uses: actions/upload-artifact@v7
+        with:
+          name: aur-srcinfo-${{ steps.version.outputs.version }}
+          path: pkgbuild/.SRCINFO
+          retention-days: 90

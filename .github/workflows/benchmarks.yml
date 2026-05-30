@@ -27,20 +27,20 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@ea165f8d65b634e114876b0b
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@b5826f8eb73f
+        uses: dtolnay/rust-toolchain@stable
 
       - name: Cache cargo registry
-        uses: Swatinem/rust-cache@e18b497796c1
+        uses: Swatinem/rust-cache@v2
         with:
           key: bench
 
       - name: Cache criterion data
-        uses: actions/cache@0057852bfaa8
+        uses: actions/cache@v5
         with:
           path: target/criterion
           key: ${{ runner.os }}-criterion-${{ github.ref_name }}
@@ -61,7 +61,7 @@ jobs:
         run: cargo bench --workspace --benches --locked
 
       - name: Upload benchmark results
-        uses: actions/upload-artifact@ea165f8d65b6
+        uses: actions/upload-artifact@v7
         with:
           name: benchmark-results-${{ github.sha }}
           path: target/criterion
@@ -77,20 +77,20 @@ jobs:
       pull-requests: write
       contents: read
     steps:
-      - uses: actions/checkout@ea165f8d65b634e114876b0b
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@b5826f8eb73f
+        uses: dtolnay/rust-toolchain@stable
 
       - name: Cache cargo registry
-        uses: Swatinem/rust-cache@e18b497796c1
+        uses: Swatinem/rust-cache@v2
         with:
           key: bench-regression
 
       - name: Cache criterion data
-        uses: actions/cache@0057852bfaa8
+        uses: actions/cache@v5
         with:
           path: target/criterion
           key: ${{ runner.os }}-criterion-${{ github.ref_name }}
@@ -99,7 +99,7 @@ jobs:
             ${{ runner.os }}-criterion-
 
       - name: Download benchmark results from benchmark job
-        uses: actions/download-artifact@d3f86a106a0b
+        uses: actions/download-artifact@v8
         with:
           name: benchmark-results-${{ github.sha }}
           path: target/criterion
@@ -140,7 +140,7 @@ jobs:
 
       - name: Comment on PR
         if: always()
-        uses: actions/github-script@f28e40c7f34b
+        uses: actions/github-script@v9
         with:
           script: |
             const body = `${{ steps.summary.outputs.body }}`;

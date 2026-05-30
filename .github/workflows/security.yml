@@ -25,10 +25,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@ea165f8d65b634e114876b0b
+      - uses: actions/checkout@v6
       
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@b5826f8eb73f
+        uses: dtolnay/rust-toolchain@stable
       
       - name: Install cargo-audit
         run: cargo install cargo-audit --locked
@@ -43,7 +43,7 @@ jobs:
         run: cargo audit --format json > audit-report.json || true
       
       - name: Upload audit report
-        uses: actions/upload-artifact@ea165f8d65b6
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: audit-report
@@ -55,10 +55,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@ea165f8d65b634e114876b0b
+      - uses: actions/checkout@v6
       
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@b5826f8eb73f
+        uses: dtolnay/rust-toolchain@stable
       
       - name: Install cargo-deny
         run: cargo install cargo-deny --locked
@@ -80,10 +80,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@ea165f8d65b634e114876b0b
+      - uses: actions/checkout@v6
       
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@b5826f8eb73f
+        uses: dtolnay/rust-toolchain@stable
       
       - name: Install cargo-vet
         run: cargo install cargo-vet --locked
@@ -101,17 +101,17 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@ea165f8d65b634e114876b0b
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
       
       - name: Detect secrets with Gitleaks
-        uses: gitleaks/gitleaks-action@ff98106e4c7b
+        uses: gitleaks/gitleaks-action@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       
       - name: Run TruffleHog
-        uses: trufflesecurity/trufflehog@9f0b97f1600c
+        uses: trufflesecurity/trufflehog@v3
         with:
           path: ./
           base: ${{ github.event.repository.default_branch }}
@@ -125,15 +125,15 @@ jobs:
       security-events: write
       actions: read
     steps:
-      - uses: actions/checkout@ea165f8d65b634e114876b0b
+      - uses: actions/checkout@v6
       
       - name: Run CodeQL Analysis
-        uses: github/codeql-action/init@fee9466b8957
+        uses: github/codeql-action/init@v4
         with:
           languages: rust
       
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@fee9466b8957
+        uses: github/codeql-action/analyze@v4
         with:
           category: "/language:rust"
 
@@ -150,13 +150,13 @@ jobs:
           - fuzz_mention
           - fuzz_diff_engine
     steps:
-      - uses: actions/checkout@ea165f8d65b634e114876b0b
+      - uses: actions/checkout@v6
       
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@b5826f8eb73f
+        uses: dtolnay/rust-toolchain@stable
       
       - name: Cache Rust artifacts
-        uses: Swatinem/rust-cache@e18b497796c1
+        uses: Swatinem/rust-cache@v2
       
       - name: Install cargo-fuzz
         continue-on-error: true
@@ -186,10 +186,10 @@ jobs:
     timeout-minutes: 15
     needs: [audit, deny]
     steps:
-      - uses: actions/checkout@ea165f8d65b634e114876b0b
+      - uses: actions/checkout@v6
       
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@b5826f8eb73f
+        uses: dtolnay/rust-toolchain@stable
         with:
           components: llvm-tools-preview
       
@@ -223,10 +223,10 @@ jobs:
     timeout-minutes: 10
     needs: [audit, deny]
     steps:
-      - uses: actions/checkout@ea165f8d65b634e114876b0b
+      - uses: actions/checkout@v6
       
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@b5826f8eb73f
+        uses: dtolnay/rust-toolchain@stable
       
       - name: Install cargo-cyclonedx
         run: cargo install cargo-cyclonedx --locked
@@ -234,7 +234,7 @@ jobs:
         run: cargo cyclonedx --all-features --format json || echo "SBOM generation failed"
       
       - name: Upload SBOM
-        uses: actions/upload-artifact@ea165f8d65b6
+        uses: actions/upload-artifact@v7
         with:
           name: sbom
           path: target/*.json
