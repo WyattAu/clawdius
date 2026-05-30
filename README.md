@@ -5,7 +5,7 @@
 
 [![Version](https://img.shields.io/badge/version-1.0.0--rc.2-blue.svg)](https://github.com/WyattAu/clawdius/releases)
 [![Rust](https://img.shields.io/badge/language-Rust-orange.svg)](https://www.rust-lang.org)
-[![Tests](https://img.shields.io/badge/tests-2%2C019-passing-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-2%2C178-passing-brightgreen.svg)]()
 [![Clippy](https://img.shields.io/badge/clippy-0%20warnings-success.svg)]()
 [![Lean4](https://img.shields.io/badge/Lean4-284%20theorems-blue.svg)]()
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-yellow.svg)](LICENSE)
@@ -14,12 +14,12 @@ Clawdius is a next-generation AI coding engine built in Rust. It provides a term
 
 ## Highlights
 
- - **2,019 tests, 0 failures** across 5 workspace crates
-- **0 clippy warnings** (strictest `-W clippy::all`)
-- **209 Lean4 formal verification theorems** compiled and verified
-- **12/12 feature flags** compile independently
-- **0 unsafe blocks** in production code (8 in SIMD module only)
-- **25 MB + 15 MB** release binaries (LTO fat, stripped)
+- **2,178 tests, 0 failures** across 5 workspace crates
+- **0 clippy warnings** (`-D warnings` strict)
+- **284 Lean4 formal verification theorems** compiled and verified (39/39 lake jobs)
+- **15+ feature flags** compile independently
+- **`deny(unsafe_code)`** workspace-wide; SIMD module uses `unsafe` behind feature gate
+- **25 MB + 15 MB** release binaries (LTO, stripped, `codegen-units = 1`)
 
 ## Features
 
@@ -181,35 +181,6 @@ cargo build --release --features "keyring,embeddings,vector-db,postgres"
 
 ---
 
-## Quick Start
-
-### 1. Set Up (New in v1.0.0-rc.2)
-```bash
-# Interactive setup wizard (recommended)
-clawdius setup
-
-# Or quick setup with pre-selected provider
-clawdius setup --quick --provider anthropic
-```
-
-The wizard will:
-- Guide you through provider selection (Anthropic, OpenAI, Ollama, Zhipu AI)
-- Securely store your API key using system keyring
-- Apply a settings preset (Balanced, Security, Performance, Development)
-- Verify connectivity for local LLMs (Ollama)
-
-### 2. Start Chatting
-
-```bash
-clawdius chat
-```
-
-### 3. Generate Code
-
-```bash
-clawdius generate --mode agent "Create a REST API endpoint"
-```
-
 ## Configuration
 
 ```toml
@@ -262,11 +233,11 @@ clawdius-gateway -p telegram --port 8080 --admin-port 8081
 ## Development
 
 ```bash
-# Run all tests (2,019 tests)
+# Run all tests (2,178 tests)
 cargo test --workspace
 
-# Clippy (0 warnings)
-cargo clippy --workspace -- -W clippy::all
+# Clippy (0 warnings, strict)
+cargo clippy --workspace -- -D warnings
 
 # Security audit
 cargo audit
@@ -282,13 +253,13 @@ cargo check -p clawdius-core --features postgres
 
 | Metric | Value |
 |--------|-------|
-| Test suite | 2,019 tests, 0 failures |
-| Clippy warnings | 0 code warnings |
-| Lean4 proofs | 21 files / 284 theorems, 31/31 lake jobs verified |
-| Feature flags | 15/15 compile |
-| Unsafe blocks | 0 in production |
-| Codebase | 350 files, 132,861 lines |
-| Release binaries | 25 MB + 15 MB |
+| Test suite | 2,178 tests, 0 failures |
+| Clippy warnings | 0 (`-D warnings`) |
+| Lean4 proofs | 24 files / 284 theorems, 39/39 lake jobs verified |
+| Feature flags | 15+ compile independently |
+| Unsafe code | `deny(unsafe_code)` workspace-wide; SIMD module exempted |
+| Codebase | 350 files, ~132K lines |
+| Release binaries | 25 MB (CLI) + 15 MB (Gateway) |
 
 ## License
 
