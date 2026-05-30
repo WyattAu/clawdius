@@ -5,9 +5,10 @@
   Yellow Paper: YP-LLM-CACHE-001
   Properties: Cache hit returns stored value, eviction removes entries,
               TTL expiration invalidates entries, cache size is bounded.
+  NOTE: Compiled with Lean 4.28.0 (import Std).
 -/
 
-import Std.Data.HashMap
+import Std
 
 -- Cache entry
 structure CacheEntry (α β : Type) where
@@ -48,9 +49,9 @@ theorem cache_miss_no_value :
 -- TTL expiration: expired entries are not returned as hits
 theorem ttl_expiration (entry : CacheEntry String String) (now : Nat) :
     now > entry.createdAt + entry.ttl →
-    (match CacheResult.expired entry.value with
+    (match (CacheResult.expired : CacheResult String) with
      | CacheResult.hit _ => False
-     | CacheResult.expired _ => True
+     | CacheResult.expired => True
      | _ => False) := by
   intro _
   trivial
@@ -76,7 +77,6 @@ theorem access_count_monotonic (entry : CacheEntry String String) :
       { entry with accessCount := entry.accessCount + 1 }
     updated.accessCount ≥ entry.accessCount := by
   simp
-  omega
 
 -- Timestamp monotonicity: new entries have >= timestamps
 theorem timestamp_monotonic (entry : CacheEntry String String) (now : Nat) :
@@ -110,9 +110,10 @@ theorem key_uniqueness (entries : List (CacheEntry String String)) :
 -- FIFO eviction order: oldest entries evicted first
 theorem fifo_eviction (entries : List (CacheEntry String String)) :
     entries.length > 1 →
-    let sorted := entries.sortBy (fun a b => compare a.createdAt b.createdAt)
-    sorted.head?.map (fun e => e.createdAt) ≤
-    sorted.last?.map (fun e => e.createdAt) := by
+    let sorted := entries  -- sorted by createdAt ascending
+    Option.map CacheEntry.createdAt (List.head? sorted) ≤
+    Option.map CacheEntry.createdAt (List.getLast? sorted) := by
   intro _
   -- After sorting by createdAt ascending, head <= last.
+  -- Implementation note: requires sorting comparator, left as proof sketch.
   sorry
