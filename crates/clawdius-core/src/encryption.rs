@@ -556,3 +556,82 @@ mod tests {
         assert_ne!(enc1.salt_b64, enc2.salt_b64);
     }
 }
+
+#[cfg(test)]
+mod proptests {
+    use super::*;
+    use proptest::prelude::*;
+
+    proptest! {
+        /// Encrypt-decrypt roundtrip is bijective for any plaintext
+        #[test]
+        fn prop_roundtrip_bijective(plaintext in prop::collection::vec(any::<u8>(), 0..100_000)) {
+            let key = generate_key();
+            let encrypted = encrypt(&plaintext, &key, None).unwrap();
+            let decrypted = decrypt(&encrypted, &key, None).unwrap();
+            assert_eq!(decrypted, plaintext);
+        }
+
+        /// Wrong key always fails decryption
+        #[test]
+        fn prop_wrong_key_fails(plaintext in prop::collection::vec(any::<u8>(), 1..1000)) {
+            let key1 = generate_key();
+            let key2 = {
+                let mut k = generate_key();
+                k[0] = k[0].wrapping_add(1);
+                k
+            };
+            let encrypted = encrypt(&plaintext, &key1, None).unwrap();
+            assert!(decrypt(&encrypted, &key2, None).is_err());
+        }
+
+        /// Wrong AAD always fails decryption
+        #[test]
+        fn prop_wrong_aad_fails(
+            plaintext in prop::collection::vec(any::<u8>(), 1..1000),
+            aad1 in prop::collection::vec(any::<u8>(), 0..100),
+            aad2 in prop::collection::vec(any::<u8>(), 0..100)
+        ) {
+            if aad1 == aad2 { return Ok(()); }
+            let key = generate_key();
+            let encrypted = encrypt(&plaintext, &key, Some(&aad1)).unwrap();
+            assert!(decrypt(&encrypted, &key, Some(&aad2)).is_err());
+        }
+
+        /// MasterKey roundtrip is bijective
+        #[test]
+        fn prop_master_key_roundtrip(plaintext in prop::collection::vec(any::<u8>(), 0..50_000)) {
+            let mk = MasterKey::generate();
+            let enc = mk.encrypt(&plaintext, None).unwrap();
+            let dec = mk.decrypt(&enc, None).unwrap();
+            assert_eq!(dec, plaintext);
+        }
+
+        /// Multiple encryptions produce different nonces
+        #[test]
+        fn prop_different_nonces(plaintext in prop::collection::vec(any::<u8>(), 1..1000)) {
+            let key = generate_key();
+            let enc1 = encrypt(&plaintext, &key, None).unwrap();
+            let enc2 = encrypt(&plaintext, &key, None).unwrap();
+            assert_ne!(enc1.nonce_b64, enc2.nonce_b64);
+        }
+
+        /// Ciphertext is at least as long as plaintext (GCM adds 16-byte tag)
+        #[test]
+        fn prop_ciphertext_length(plaintext in prop::collection::vec(any::<u8>(), 1..1000)) {
+            let key = generate_key();
+            let enc = encrypt(&plaintext, &key, None).unwrap();
+            let ct_bytes = BASE64_STANDARD.decode(&enc.ciphertext_b64).unwrap();
+            assert!(ct_bytes.len() >= plaintext.len());
+        }
+
+        /// Empty plaintext roundtrip works
+        #[test]
+        fn prop_empty_plaintext_roundtrip(_v: ()) {
+            let key = generate_key();
+            let enc = encrypt(&[], &key, None).unwrap();
+            let dec = decrypt(&enc, &key, None).unwrap();
+            assert!(dec.is_empty());
+        }
+    }
+}

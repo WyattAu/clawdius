@@ -303,3 +303,87 @@ mod tests {
         assert_send_sync::<RateLimitError>();
     }
 }
+
+#[cfg(test)]
+mod proptests {
+    use super::*;
+    use proptest::prelude::*;
+
+    proptest! {
+        /// Rate limiter never exceeds threshold for same user+platform
+        #[test]
+        fn prop_never_exceeds_threshold(
+            max_req in 1usize..50,
+            window_secs in 1u64..10,
+            n_calls in 0usize..100
+        ) {
+            let limiter = RateLimiter::new(max_req, window_secs);
+            let mut accepted = 0usize;
+            for _ in 0..n_calls {
+                if limiter.check(Platform::Telegram, "user1").is_ok() {
+                    accepted += 1;
+                }
+            }
+            assert!(accepted <= max_req,
+                "Accepted {accepted} requests but limit was {max_req}");
+        }
+
+        /// User isolation: exhausting user1 does not affect user2
+        #[test]
+        fn prop_user_isolation(max_req in 1usize..20, window_secs in 1u64..10) {
+            let limiter = RateLimiter::new(max_req, window_secs);
+            // Exhaust user1
+            for _ in 0..max_req + 5 {
+                limiter.check(Platform::Discord, "user1").ok();
+            }
+            assert!(limiter.check(Platform::Discord, "user1").is_err(),
+                "user1 should be rate limited");
+            assert!(limiter.check(Platform::Discord, "user2").is_ok(),
+                "user2 should NOT be rate limited");
+        }
+
+        /// Reset restores full capacity
+        #[test]
+        fn prop_reset_restores_capacity(max_req in 1usize..50, window_secs in 1u64..10) {
+            let limiter = RateLimiter::new(max_req, window_secs);
+            // Exhaust
+            for _ in 0..max_req {
+                limiter.check(Platform::Slack, "user").ok();
+            }
+            assert!(limiter.check(Platform::Slack, "user").is_err());
+            limiter.reset(Platform::Slack, "user");
+            assert!(limiter.check(Platform::Slack, "user").is_ok());
+            assert_eq!(limiter.current_count(Platform::Slack, "user"), 1);
+        }
+
+        /// Retry-after is bounded by window duration
+        #[test]
+        fn prop_retry_after_bounded(max_req in 1usize..10, window_secs in 1u64..60) {
+            let limiter = RateLimiter::new(max_req, window_secs);
+            for _ in 0..max_req {
+                limiter.check(Platform::Signal, "user").ok();
+            }
+            match limiter.check(Platform::Signal, "user") {
+                Err(e) => assert!(e.retry_after_ms <= window_secs * 1000),
+                Ok(()) => panic!("Expected rate limit error"),
+            }
+        }
+
+        /// current_count reflects accepted requests
+        #[test]
+        fn prop_current_count_accuracy(
+            max_req in 1usize..30,
+            window_secs in 1u64..10,
+            n_calls in 0usize..50
+        ) {
+            let limiter = RateLimiter::new(max_req, window_secs);
+            let mut expected = 0usize;
+            for _ in 0..n_calls {
+                if limiter.check(Platform::Teams, "user").is_ok() {
+                    expected += 1;
+                }
+            }
+            assert_eq!(limiter.current_count(Platform::Teams, "user"), expected);
+        }
+    }
+}

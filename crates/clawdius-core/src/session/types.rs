@@ -335,3 +335,79 @@ impl TokenUsage {
         self.cached += other.cached;
     }
 }
+
+#[cfg(test)]
+mod proptests {
+    use super::*;
+    use proptest::prelude::*;
+
+    proptest! {
+        /// add_message preserves ordering: messages[i].created_at <= messages[i+1].created_at
+        #[test]
+        fn prop_message_ordering(count in 0usize..50) {
+            let mut session = Session::new();
+            for _ in 0..count {
+                session.add_message(Message::assistant("proptest"));
+            }
+            for i in 1..session.messages.len() {
+                assert!(session.messages[i-1].created_at <= session.messages[i].created_at,
+                    "Messages not in order at index {}", i);
+            }
+        }
+
+        /// messages_by_role filter correctness
+        #[test]
+        fn prop_messages_by_role_filter(n_assistant in 0usize..20) {
+            let mut session = Session::new();
+            for _ in 0..n_assistant {
+                session.add_message(Message::assistant("test"));
+            }
+            session.add_message(Message::user("test"));
+            assert_eq!(session.messages_by_role(MessageRole::Assistant).count(),
+                session.messages.iter().filter(|m| m.role == MessageRole::Assistant).count());
+        }
+
+        /// last_message equals messages.last()
+        #[test]
+        fn prop_last_message_is_tail(count in 0usize..50) {
+            let mut session = Session::new();
+            for _ in 0..count {
+                session.add_message(Message::assistant("proptest"));
+            }
+            if !session.messages.is_empty() {
+                assert_eq!(session.last_message().unwrap().id, session.messages.last().unwrap().id);
+            }
+        }
+
+        /// total_tokens equals input + output
+        #[test]
+        fn prop_token_usage_arithmetic(input in 0usize..10000, output in 0usize..10000) {
+            let usage = TokenUsage { input, output, cached: 0 };
+            assert_eq!(usage.total(), input + output);
+        }
+
+        /// TokenUsage::add is monotonic
+        #[test]
+        fn prop_token_usage_monotonic(
+            input1 in 0usize..10000, output1 in 0usize..10000,
+            input2 in 0usize..10000, output2 in 0usize..10000
+        ) {
+            let mut t1 = TokenUsage { input: input1, output: output1, cached: 0 };
+            let orig_total = t1.total();
+            let t2 = TokenUsage { input: input2, output: output2, cached: 0 };
+            t1.add(&t2);
+            assert!(t1.total() >= orig_total);
+            assert!(t1.input >= input1);
+            assert!(t1.output >= output1);
+        }
+
+        /// SessionId is deterministic from same UUID
+        #[test]
+        fn prop_session_id_deterministic(uuid_bytes: [u8; 16]) {
+            let uuid = Uuid::from_bytes(uuid_bytes);
+            let id1 = SessionId::from_uuid(uuid);
+            let id2 = SessionId::from_uuid(uuid);
+            assert_eq!(id1.as_uuid(), id2.as_uuid());
+        }
+    }
+}

@@ -448,3 +448,86 @@ mod tests {
         assert!(tokens >= 9);
     }
 }
+
+#[cfg(test)]
+mod proptests {
+    use super::*;
+    use proptest::prelude::*;
+
+    proptest! {
+        /// count_tokens is deterministic
+        #[test]
+        fn prop_determinism(text in ".{0,10000}", strategy in prop::sample::select(vec![
+            TokenizerStrategy::Simple,
+            TokenizerStrategy::Code,
+            TokenizerStrategy::Natural,
+            TokenizerStrategy::BpeApproximation,
+        ])) {
+            let c1 = count_tokens(&text, strategy);
+            let c2 = count_tokens(&text, strategy);
+            assert_eq!(c1, c2);
+        }
+
+        /// Empty string produces zero for all strategies
+        #[test]
+        fn prop_empty_string_zero(strategy in prop::sample::select(vec![
+            TokenizerStrategy::Simple,
+            TokenizerStrategy::Code,
+            TokenizerStrategy::Natural,
+            TokenizerStrategy::BpeApproximation,
+        ])) {
+            assert_eq!(count_tokens("", strategy), 0);
+        }
+
+        /// Non-empty string produces at least 1 token
+        #[test]
+        fn prop_nonempty_at_least_one(text in "[a-z]{1,100}", strategy in prop::sample::select(vec![
+            TokenizerStrategy::Simple,
+            TokenizerStrategy::Code,
+            TokenizerStrategy::Natural,
+            TokenizerStrategy::BpeApproximation,
+        ])) {
+            assert!(count_tokens(&text, strategy) >= 1);
+        }
+
+        /// Simple strategy equals whitespace count
+        #[test]
+        fn prop_simple_equals_whitespace(text in ".{0,5000}") {
+            assert_eq!(count_tokens(&text, TokenizerStrategy::Simple), text.split_whitespace().count());
+        }
+
+        /// Monotonicity under concatenation for Simple strategy
+        #[test]
+        fn prop_monotonicity_simple(a in ".{0,500}", b in ".{0,500}") {
+            let count_a = count_tokens(&a, TokenizerStrategy::Simple);
+            let count_ab = count_tokens(&format!("{} {}", a, b), TokenizerStrategy::Simple);
+            assert!(count_ab >= count_a);
+        }
+
+        /// Single character produces exactly 1 token
+        #[test]
+        fn prop_single_char(text in "[a-z]", strategy in prop::sample::select(vec![
+            TokenizerStrategy::Simple,
+            TokenizerStrategy::Code,
+            TokenizerStrategy::Natural,
+            TokenizerStrategy::BpeApproximation,
+        ])) {
+            assert_eq!(count_tokens(&text, strategy), 1);
+        }
+
+        /// Whitespace-only produces zero tokens (Simple)
+        #[test]
+        fn prop_whitespace_only(ws in " \t\n\r{0,100}") {
+            assert_eq!(count_tokens(&ws, TokenizerStrategy::Simple), 0);
+        }
+
+        /// No panic on any valid UTF-8
+        #[test]
+        fn prop_no_panic_arbitrary_utf8(text in ".{0,10000}") {
+            for strategy in [TokenizerStrategy::Simple, TokenizerStrategy::Code,
+                            TokenizerStrategy::Natural, TokenizerStrategy::BpeApproximation] {
+                let _ = count_tokens(&text, strategy);
+            }
+        }
+    }
+}

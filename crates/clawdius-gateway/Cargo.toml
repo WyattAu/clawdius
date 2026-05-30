@@ -38,6 +38,7 @@ matrix-sdk = { version = "0.10", optional = true, default-features = false, feat
 
 [dev-dependencies]
 tempfile = { workspace = true }
+proptest.workspace = true
 
 [features]
 default = []

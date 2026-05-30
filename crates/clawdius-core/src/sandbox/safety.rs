@@ -932,3 +932,46 @@ mod tests {
         assert!(d.pattern_count() >= 15);
     }
 }
+
+#[cfg(test)]
+mod proptests {
+    use super::*;
+    use proptest::prelude::*;
+
+    proptest! {
+        /// Sanitizer is idempotent on clean input: no injection patterns -> no modification
+        #[test]
+        fn prop_sanitizer_idempotent_clean(input in "[a-zA-Z0-9 ]{0,1000}") {
+            let sanitizer = Sanitizer::new();
+            let result = sanitizer.scan(&input);
+            assert!(!result.was_modified);
+            assert_eq!(result.content, input);
+        }
+
+        /// Sanitizer removes all critical patterns (re-scan produces no critical)
+        #[test]
+        fn prop_sanitizer_removes_critical(input in ".{0,2000}") {
+            let sanitizer = Sanitizer::new();
+            let result = sanitizer.scan(&input);
+            // After sanitization, no critical patterns should remain
+            assert!(!sanitizer.has_critical(&result.content),
+                "Critical pattern remained after sanitization: {}", &result.content[..result.content.len().min(200)]);
+        }
+
+        /// Sanitizer never produces empty output from non-empty input
+        #[test]
+        fn prop_sanitizer_nonempty_output(input in ".{1,2000}") {
+            let sanitizer = Sanitizer::new();
+            let result = sanitizer.scan(&input);
+            assert!(!result.content.is_empty());
+        }
+
+        /// LeakDetector never panics on arbitrary input
+        #[test]
+        fn prop_leak_detector_no_panic(input in ".{0,2000}") {
+            let detector = LeakDetector::new();
+            let _ = detector.scan(&input);
+            let _ = detector.has_critical(&input);
+        }
+    }
+}

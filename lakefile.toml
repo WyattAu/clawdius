@@ -6,6 +6,7 @@ defaultTargets = [
   "ProofTokenBudgetScan", "ProofVfsSafety",
   "ProofAudit", "ProofCapability", "ProofContainer", "ProofFsm",
   "ProofHost", "ProofRingBuffer", "ProofSandbox",
+  "ProofSandboxExtended", "ProofRpc", "ProofRingBufferExtended", "ProofCache",
 ]
 
 [[lean_lib]]
@@ -85,6 +86,26 @@ roots = ["proof_ring_buffer"]
 name = "ProofSandbox"
 srcDir = ".clawdius/specs/02_architecture/proofs"
 roots = ["proof_sandbox"]
+
+[[lean_lib]]
+name = "ProofSandboxExtended"
+srcDir = ".specs/02_architecture/proofs"
+roots = ["proof_sandbox_extended"]
+
+[[lean_lib]]
+name = "ProofRpc"
+srcDir = ".specs/02_architecture/proofs"
+roots = ["proof_rpc"]
+
+[[lean_lib]]
+name = "ProofRingBufferExtended"
+srcDir = ".specs/02_architecture/proofs"
+roots = ["proof_ring_buffer_extended"]
+
+[[lean_lib]]
+name = "ProofCache"
+srcDir = ".specs/02_architecture/proofs"
+roots = ["proof_cache"]
 
 [[lean_exe]]
 name = "clawdius"
