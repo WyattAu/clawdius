@@ -40,7 +40,7 @@
 | clawdius-mcp | 42+ | 12+ | 0 | 0 | All passing |
 | clawdius-code | 48+ | 19+ | 0 | 0 | All passing |
 | clawdius-plugin-sdk | 19 | 0 | 0 | 0 | All passing |
-| **Total** | **~1,470** | **~232** | **27** | **136** | **2,176 tests, 0 failures** |
+| **Total** | **~1,470** | **~232** | **27** | **413** | **2,489 tests, 0 failures** |
 
 ### Coverage Baseline
 

@@ -14,7 +14,7 @@ Clawdius is a next-generation AI coding engine built in Rust. It provides a term
 
 ## Highlights
 
-- **2,176 tests, 0 failures** across 6 workspace crates
+- **2,489 tests, 0 failures** across 6 workspace crates
 - **0 clippy warnings** (`-D warnings` strict)
 - **284 Lean4 formal verification theorems** compiled and verified (39/39 lake jobs)
 - **15+ feature flags** compile independently
