@@ -131,7 +131,7 @@ jobs:
             echo ""
             echo "**Commit:** \`${{ github.sha }}\`"
             echo "**Branch:** \`${{ github.head_ref }}\` -> \`${{ github.base_ref }}\`"
-            echo "**Status:** ${{ steps.regression.outputs.result == 'pass' && '✅ Passed' || '❌ Regression detected' }}"
+            echo "**Status:** ${{ steps.regression.outputs.result == 'pass' && '[PASS] Passed' || '[FAIL] Regression detected' }}"
             echo ""
             echo "Regression threshold: **>15%** slowdown"
             echo ""

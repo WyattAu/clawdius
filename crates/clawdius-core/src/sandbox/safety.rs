@@ -846,7 +846,7 @@ mod tests {
     #[test]
     fn test_leak_detector_blocks_openrouter_key() {
         let d = LeakDetector::new();
-        let key = "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";
+        let key = "sk-or-v1-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
         assert!(d.has_critical(key));
     }
 

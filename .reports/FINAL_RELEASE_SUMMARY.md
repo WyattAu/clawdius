@@ -52,11 +52,11 @@ cargo build --release --features "embeddings,vector-db"
 ```
 
 ## Verification
-- ✅ All crates compile
-- ✅ 624+ tests pass
-- ✅ No HIGH/CRITICAL CVEs
-- ✅ Zero warnings
-- ✅ Release binary works
+- [PASS] All crates compile
+- [PASS] 624+ tests pass
+- [PASS] No HIGH/CRITICAL CVEs
+- [PASS] Zero warnings
+- [PASS] Release binary works
 
 ## Next Release (v0.3.0)
 - Remove monoio dependency

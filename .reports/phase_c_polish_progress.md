@@ -2,13 +2,13 @@
 
 ## Summary
 
-**Phase C (Polish) is COMPLETE!** ✅
+**Phase C (Polish) is COMPLETE!** [PASS]
 
 All polish tasks have been implemented and tested successfully.
 
 ## Completed Tasks
 
-### 1. LSP Client Bug Fix ✅
+### 1. LSP Client Bug Fix [PASS]
 
 **Problem:** The LSP reader was incorrectly reading content as lines instead of exact byte counts.
 
@@ -18,19 +18,19 @@ All polish tasks have been implemented and tested successfully.
 
 **File:** `crates/clawdius-core/src/lsp/client.rs`
 
-### 2. LSP Timeout Increase ✅
+### 2. LSP Timeout Increase [PASS]
 
 **Problem:** rust-analyzer was timing out at the default 10 second timeout.
 
 **Fix:** Increased default timeout to 30 seconds and added `with_timeout_ms()` method for customization.
 
-### 3. CLI Option Conflict Fix ✅
+### 3. CLI Option Conflict Fix [PASS]
 
 **Problem:** Both `model` and `mode` options in the `chat` command were trying to use `-m`.
 
 **Fix:** Changed `mode` to use `-M` (capital M).
 
-### 4. Integration Tests for Generate Command ✅
+### 4. Integration Tests for Generate Command [PASS]
 - [x] Create mock LLM client for testing
 - [x] Add tests for single-pass mode
 - [x] Add tests for iterative mode
@@ -40,18 +40,18 @@ All polish tasks have been implemented and tested successfully.
 - [x] Add tests for apply workflow variants
 - [x] Add tests for test execution strategies
 
-### 5. Progress Indicators ✅
+### 5. Progress Indicators [PASS]
 - [x] Add spinner for LSP connection
 - [x] Add progress indicators to generate command
 - [x] Add status messages for long operations
 - [x] Created `cli_progress.rs` with Spinner and helper functions
 
-### 6. Error Message Polish ✅
+### 6. Error Message Polish [PASS]
 - [x] Improve LSP connection error messages
 - [x] Add suggestions for common errors (e.g., "Make sure server is installed and in PATH")
-- [x] Use emoji icons for visual feedback (✅, ❌, ⚠️, ℹ️)
+- [x] Use emoji icons for visual feedback ([PASS], [FAIL], [WARN], [INFO])
 
-### 7. LSP Capabilities Display ✅
+### 7. LSP Capabilities Display [PASS]
 - [x] Fix capabilities parsing to show all available features
 - [x] Added display for: Text Synchronization, Workspace Symbols
 - [x] Added trigger characters display for completions

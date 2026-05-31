@@ -9,40 +9,40 @@ This guide explains how to set up the official Clawdius Discord server.
 ### Categories & Channels
 
 ```
-📁 WELCOME
+ WELCOME
 ├── #welcome - Welcome message and rules
 ├── #announcements - Official announcements
 ├── #code-of-conduct - Community guidelines
 └── #roles - Self-assignable roles
 
-📁 GENERAL
+ GENERAL
 ├── #general - General discussion
 ├── #introductions - Introduce yourself
 └── #off-topic - Non-Clawdius discussion
 
-📁 HELP
+ HELP
 ├── #getting-started - New user questions
 ├── #configuration - Config and setup help
 ├── #troubleshooting - Bug reports and issues
 └── #provider-support - LLM provider questions
 
-📁 DEVELOPMENT
+ DEVELOPMENT
 ├── #development - Core development discussion
 ├── #plugins - Plugin development
 ├── #architecture - System design discussions
 └── #security - Security-related topics
 
-📁 SHOWCASE
+ SHOWCASE
 ├── #show-your-work - Share your projects
 ├── #workflows - Interesting Clawdius workflows
 └── #plugins-showcase - Share your plugins
 
-📁 ENTERPRISE
+ ENTERPRISE
 ├── #enterprise-general - Enterprise discussion
 ├── #sso-integration - SSO setup help
 └── #compliance - Compliance questions
 
-📁 COMMUNITY
+ COMMUNITY
 ├── #contributing - How to contribute
 ├── #documentation - Docs improvements
 ├── #translations - i18n efforts
@@ -107,12 +107,12 @@ bot = commands.Bot(command_prefix='!', intents=intents)
 @bot.command()
 async def version(ctx):
     """Show Clawdius version"""
-    await ctx.send("🦀 Clawdius v1.0.0-rc.1")
+    await ctx.send(" Clawdius v1.0.0-rc.1")
 
 @bot.command()
 async def docs(ctx):
     """Link to documentation"""
-    await ctx.send("📚 https://docs.clawdius.dev")
+    await ctx.send(" https://docs.clawdius.dev")
 
 @bot.command()
 async def install(ctx, platform: str = "cargo"):
@@ -132,15 +132,15 @@ bot.run("YOUR_BOT_TOKEN")
 ## Welcome Message
 
 ```
-# Welcome to the Clawdius Community! 🦀
+# Welcome to the Clawdius Community! 
 
 Clawdius is the high-assurance AI coding assistant built with Rust.
 
 ## Quick Links
-- 📚 Documentation: https://docs.clawdius.dev
-- 💻 GitHub: https://github.com/WyattAu/clawdius
-- 🐛 Issues: https://github.com/WyattAu/clawdius/issues
-- 💬 Discussions: https://github.com/WyattAu/clawdius/discussions
+-  Documentation: https://docs.clawdius.dev
+-  GitHub: https://github.com/WyattAu/clawdius
+-  Issues: https://github.com/WyattAu/clawdius/issues
+-  Discussions: https://github.com/WyattAu/clawdius/discussions
 
 ## Getting Started
 1. Read the rules in #code-of-conduct
@@ -190,12 +190,12 @@ Simple quiz about Clawdius basics.
 
 ### Step 3: Role Assignment
 Users can self-assign roles in #roles:
-- 🖥️ Linux user
-- 🍎 macOS user
-- 🪟 Windows user
-- 🦀 Rust developer
-- 🐍 Python developer
-- 🟨 JavaScript developer
+-  Linux user
+-  macOS user
+-  Windows user
+-  Rust developer
+-  Python developer
+-  JavaScript developer
 
 ---
 

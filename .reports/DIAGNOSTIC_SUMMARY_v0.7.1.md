@@ -6,9 +6,9 @@
 
 ---
 
-## 🎯 Key Findings
+##  Key Findings
 
-### ✅ What's Working Well (90%+)
+### [PASS] What's Working Well (90%+)
 
 1. **Core Engine** - LLM providers, tools, streaming (100%)
 2. **Security** - Sentinel sandboxing, Brain WASM runtime (95%)
@@ -16,7 +16,7 @@
 4. **Architecture** - Clean, modular, extensible (95%)
 5. **Unique Features** - Graph-RAG, multi-language, HFT broker (90%)
 
-### ⚠️ What Needs Work
+### [WARN] What Needs Work
 
 1. **Compilation Errors** - 18 errors in cli.rs (BLOCKING)
 2. **Missing Nexus FSM** - Core differentiator not implemented (HIGH)
@@ -26,7 +26,7 @@
 
 ---
 
-## 🚨 Immediate Actions Required (v0.7.2)
+##  Immediate Actions Required (v0.7.2)
 
 ### Priority 0: Fix Compilation Errors (30 minutes)
 - **File:** `crates/clawdius/src/cli.rs`
@@ -63,34 +63,34 @@ use clawdius_core::proof::LeanVerifier;
 
 ---
 
-## 📊 Feature Status Matrix
+##  Feature Status Matrix
 
 | Feature | Status | Completion | Priority |
 |---------|--------|------------|----------|
-| LLM Providers | ✅ Working | 100% | DONE |
-| Streaming Responses | ✅ Working | 100% | DONE |
-| Session Management | ✅ Working | 100% | DONE |
-| File/Shell/Git Tools | ✅ Working | 100% | DONE |
-| VSCode Extension | ✅ Working | 100% | DONE |
-| Browser Automation | ✅ Working | 100% | DONE |
-| @Mentions | ✅ Working | 100% | DONE |
-| JSON Output | ✅ Working | 100% | DONE |
-| Graph-RAG | ✅ Working | 100% | DONE |
-| Sentinel Sandbox | ✅ Working | 100% | DONE |
-| Brain WASM | ✅ Working | 100% | DONE |
-| Timeline System | ⚠️ Partial | 60% | P1 |
-| Auto-Compact | ⚠️ Partial | 70% | P2 |
-| WASM Webview | ⚠️ Partial | 40% | P2 |
-| HFT Broker | ⚠️ Partial | 50% | P1 |
-| Lean4 Proofs | ⚠️ Partial | 30% | P1 |
-| Nexus FSM | ❌ Missing | 0% | P0 |
-| External Editor | ❌ Missing | 0% | P2 |
-| Plugin System | ❌ Missing | 0% | P2 |
-| Multi-lang TQA | ❌ Missing | 0% | P1 |
+| LLM Providers | [PASS] Working | 100% | DONE |
+| Streaming Responses | [PASS] Working | 100% | DONE |
+| Session Management | [PASS] Working | 100% | DONE |
+| File/Shell/Git Tools | [PASS] Working | 100% | DONE |
+| VSCode Extension | [PASS] Working | 100% | DONE |
+| Browser Automation | [PASS] Working | 100% | DONE |
+| @Mentions | [PASS] Working | 100% | DONE |
+| JSON Output | [PASS] Working | 100% | DONE |
+| Graph-RAG | [PASS] Working | 100% | DONE |
+| Sentinel Sandbox | [PASS] Working | 100% | DONE |
+| Brain WASM | [PASS] Working | 100% | DONE |
+| Timeline System | [WARN] Partial | 60% | P1 |
+| Auto-Compact | [WARN] Partial | 70% | P2 |
+| WASM Webview | [WARN] Partial | 40% | P2 |
+| HFT Broker | [WARN] Partial | 50% | P1 |
+| Lean4 Proofs | [WARN] Partial | 30% | P1 |
+| Nexus FSM | [FAIL] Missing | 0% | P0 |
+| External Editor | [FAIL] Missing | 0% | P2 |
+| Plugin System | [FAIL] Missing | 0% | P2 |
+| Multi-lang TQA | [FAIL] Missing | 0% | P1 |
 
 ---
 
-## 🛠️ Recommended Roadmap
+##  Recommended Roadmap
 
 ### v0.7.2 (Immediate - 1 week)
 **Focus:** Fix compilation errors
@@ -139,14 +139,14 @@ use clawdius_core::proof::LeanVerifier;
 
 ---
 
-## 📈 Technical Debt Summary
+##  Technical Debt Summary
 
 | Category | Count | Effort | Priority |
 |----------|-------|--------|----------|
 | Compilation Errors | 18 | 0.5h | P0 |
 | Documentation Warnings | 825 | 24h | P3 |
 | TODO Markers | 22 | 60h | P2 |
-| Skeleton Implementations | 0 | 0h | ✅ DONE |
+| Skeleton Implementations | 0 | 0h | [PASS] DONE |
 | Partial Features | 6 | 340h | P1 |
 | Missing Features | 4 | 340h | P1 |
 | **TOTAL** | **875** | **764.5h** | - |
@@ -155,27 +155,27 @@ use clawdius_core::proof::LeanVerifier;
 
 ---
 
-## 🔒 Security Assessment
+##  Security Assessment
 
 ### Strengths
-- ✅ 4-tier sandboxing (Sentinel)
-- ✅ WASM isolation (Brain)
-- ✅ No raw shell access
-- ✅ Secure keyring storage
+- [PASS] 4-tier sandboxing (Sentinel)
+- [PASS] WASM isolation (Brain)
+- [PASS] No raw shell access
+- [PASS] Secure keyring storage
 
 ### Gaps
-- ⚠️ Resource limits partially enforced
-- ⚠️ No network namespace isolation
-- ⚠️ Audit logging incomplete
-- ⚠️ No seccomp filters
+- [WARN] Resource limits partially enforced
+- [WARN] No network namespace isolation
+- [WARN] Audit logging incomplete
+- [WARN] No seccomp filters
 
 **Recommendation:** Implement cgroup limits and seccomp before v1.0.0
 
 ---
 
-## 🎓 Competitive Position
+##  Competitive Position
 
-### Feature Parity ✅
+### Feature Parity [PASS]
 - LLM providers (5 vs 3-5)
 - Session management
 - VSCode extension
@@ -183,7 +183,7 @@ use clawdius_core::proof::LeanVerifier;
 - @mentions system
 - JSON output
 
-### Unique Advantages 🌟
+### Unique Advantages 
 - Nexus lifecycle FSM (when implemented)
 - Lean4 proof verification
 - Graph-RAG hybrid system
@@ -191,7 +191,7 @@ use clawdius_core::proof::LeanVerifier;
 - 4-tier sandboxing
 - Multi-language TQA
 
-### Competitive Gaps ⚠️
+### Competitive Gaps [WARN]
 - File timeline (partial)
 - External editor (missing)
 - Plugin system (missing)
@@ -200,7 +200,7 @@ use clawdius_core::proof::LeanVerifier;
 
 ---
 
-## 📋 Action Checklist
+##  Action Checklist
 
 ### This Week
 - [ ] Fix compilation errors
@@ -222,7 +222,7 @@ use clawdius_core::proof::LeanVerifier;
 
 ---
 
-## 📚 Related Documents
+##  Related Documents
 
 1. **Detailed Analysis:** `.reports/DIAGNOSTIC_ANALYSIS_v0.7.1.md`
 2. **Compilation Fixes:** `.reports/COMPILATION_FIXES_NEEDED_v0.7.2.md`
@@ -232,7 +232,7 @@ use clawdius_core::proof::LeanVerifier;
 
 ---
 
-## 🎯 Success Metrics
+##  Success Metrics
 
 ### v0.7.2 Targets
 - [ ] Zero compilation errors
@@ -253,7 +253,7 @@ use clawdius_core::proof::LeanVerifier;
 
 ---
 
-## 🤝 Next Steps
+##  Next Steps
 
 1. **Review this report** with team
 2. **Prioritize** fixes and features
@@ -264,7 +264,7 @@ use clawdius_core::proof::LeanVerifier;
 
 ---
 
-## 📞 Contact
+##  Contact
 
 **Questions?** See the detailed analysis or create a GitHub issue.
 

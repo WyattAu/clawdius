@@ -33,29 +33,29 @@ This report documents the completion of the Clawdius High-Assurance Rust-Native 
 
 | Phase | Name | Status | Key Deliverables |
 |-------|------|--------|------------------|
-| -1 | Context Discovery | ✅ COMPLETE | Project structure, dependencies |
-| -0.5 | Environment Materialization | ✅ COMPLETE | Nix flake, build environment |
-| 0 | Requirements Engineering | ✅ COMPLETE | 29 requirements, 127 acceptance criteria |
-| 1 | Epistemological Discovery | ✅ COMPLETE | 3 Yellow Papers, 60 test vectors |
-| 1.25 | Cross-Lingual Knowledge Integration | ✅ COMPLETE | Knowledge graph, 66 gap analysis |
-| 1.5 | Supply Chain Hardening | ✅ COMPLETE | SBOM, cargo-deny, cargo-vet |
-| 2 | Architecture Refinement | ✅ COMPLETE | 6 Blue Papers, 3 Lean 4 sketches |
-| 2.5 | Concurrency Analysis | ✅ COMPLETE | Thread safety, deadlock analysis |
-| 3 | Security Engineering | ✅ COMPLETE | Threat model, attack surface |
-| 3.5 | Resource Management | ✅ COMPLETE | Memory budgets, handle management |
-| 4 | Performance Engineering | ✅ COMPLETE | Benchmarks, WCET analysis |
-| 4.5 | Cross-Platform Compatibility | ✅ COMPLETE | OS matrix, conditional compilation |
-| 5 | Adversarial Loop | ✅ COMPLETE | 5 prototypes, 60/60 tests passed |
-| 5.5 | Performance Regression Baseline | ✅ COMPLETE | Baseline metrics, detection strategy |
-| 6 | CI/CD Engineering | ✅ COMPLETE | 4 GitHub workflows, quality gates |
-| 6.5 | Documentation Verification | ✅ COMPLETE | Consistency checks, drift detection |
-| 7 | Narrative & Documentation | ✅ COMPLETE | User guide, API reference |
-| 7.5 | Knowledge Base Update | ✅ COMPLETE | Pattern library, lessons learned |
-| 8 | Execution Graph Generation | ✅ COMPLETE | Master plan, 47 tasks |
-| 9 | Implementation | ✅ COMPLETE | 5 milestones, all components |
-| 10 | Deployment & Operations | ✅ COMPLETE | Binary, Docker, scripts |
-| 11 | Continuous Monitoring | ✅ COMPLETE | Monitoring strategy, alerting |
-| 12 | Knowledge Transfer | ✅ COMPLETE | This report |
+| -1 | Context Discovery | [PASS] COMPLETE | Project structure, dependencies |
+| -0.5 | Environment Materialization | [PASS] COMPLETE | Nix flake, build environment |
+| 0 | Requirements Engineering | [PASS] COMPLETE | 29 requirements, 127 acceptance criteria |
+| 1 | Epistemological Discovery | [PASS] COMPLETE | 3 Yellow Papers, 60 test vectors |
+| 1.25 | Cross-Lingual Knowledge Integration | [PASS] COMPLETE | Knowledge graph, 66 gap analysis |
+| 1.5 | Supply Chain Hardening | [PASS] COMPLETE | SBOM, cargo-deny, cargo-vet |
+| 2 | Architecture Refinement | [PASS] COMPLETE | 6 Blue Papers, 3 Lean 4 sketches |
+| 2.5 | Concurrency Analysis | [PASS] COMPLETE | Thread safety, deadlock analysis |
+| 3 | Security Engineering | [PASS] COMPLETE | Threat model, attack surface |
+| 3.5 | Resource Management | [PASS] COMPLETE | Memory budgets, handle management |
+| 4 | Performance Engineering | [PASS] COMPLETE | Benchmarks, WCET analysis |
+| 4.5 | Cross-Platform Compatibility | [PASS] COMPLETE | OS matrix, conditional compilation |
+| 5 | Adversarial Loop | [PASS] COMPLETE | 5 prototypes, 60/60 tests passed |
+| 5.5 | Performance Regression Baseline | [PASS] COMPLETE | Baseline metrics, detection strategy |
+| 6 | CI/CD Engineering | [PASS] COMPLETE | 4 GitHub workflows, quality gates |
+| 6.5 | Documentation Verification | [PASS] COMPLETE | Consistency checks, drift detection |
+| 7 | Narrative & Documentation | [PASS] COMPLETE | User guide, API reference |
+| 7.5 | Knowledge Base Update | [PASS] COMPLETE | Pattern library, lessons learned |
+| 8 | Execution Graph Generation | [PASS] COMPLETE | Master plan, 47 tasks |
+| 9 | Implementation | [PASS] COMPLETE | 5 milestones, all components |
+| 10 | Deployment & Operations | [PASS] COMPLETE | Binary, Docker, scripts |
+| 11 | Continuous Monitoring | [PASS] COMPLETE | Monitoring strategy, alerting |
+| 12 | Knowledge Transfer | [PASS] COMPLETE | This report |
 
 ### 2.2 Key Artifacts by Phase
 
@@ -120,16 +120,16 @@ This report documents the completion of the Clawdius High-Assurance Rust-Native 
 
 | Requirement | Description | Status | Evidence |
 |-------------|-------------|--------|----------|
-| REQ-5.1 | Graph-RAG parse 10K files < 5s | ✅ | benchmark: 3.2s |
-| REQ-5.2 | Market data processing < 1µs | ✅ | benchmark: 23ns |
-| REQ-5.3 | Risk check < 100µs | ✅ | benchmark: 847ns |
-| REQ-5.4 | Notification dispatch < 100ms | ✅ | benchmark: 42ms |
-| REQ-6.2 | Boot to interactive < 20ms | ✅ | benchmark: 12ms |
-| REQ-7.1 | TUI 60 FPS rendering | ✅ | benchmark: 58 FPS |
-| HC-001 | Signal-to-execution < 1ms | ✅ | benchmark: 0.89ms P99 |
-| HC-002 | GC pause = 0µs | ✅ | verified: no GC in HFT mode |
-| HC-003 | Ring buffer ops < 100ns | ✅ | benchmark: 23ns P99 |
-| HC-004 | Risk check < 100µs | ✅ | benchmark: 847ns |
+| REQ-5.1 | Graph-RAG parse 10K files < 5s | [PASS] | benchmark: 3.2s |
+| REQ-5.2 | Market data processing < 1µs | [PASS] | benchmark: 23ns |
+| REQ-5.3 | Risk check < 100µs | [PASS] | benchmark: 847ns |
+| REQ-5.4 | Notification dispatch < 100ms | [PASS] | benchmark: 42ms |
+| REQ-6.2 | Boot to interactive < 20ms | [PASS] | benchmark: 12ms |
+| REQ-7.1 | TUI 60 FPS rendering | [PASS] | benchmark: 58 FPS |
+| HC-001 | Signal-to-execution < 1ms | [PASS] | benchmark: 0.89ms P99 |
+| HC-002 | GC pause = 0µs | [PASS] | verified: no GC in HFT mode |
+| HC-003 | Ring buffer ops < 100ns | [PASS] | benchmark: 23ns P99 |
+| HC-004 | Risk check < 100µs | [PASS] | benchmark: 847ns |
 
 ---
 
@@ -263,39 +263,39 @@ This report documents the completion of the Clawdius High-Assurance Rust-Native 
 
 | Document | Location | Status |
 |----------|----------|--------|
-| Requirements | `.clawdius/specs/00_requirements/` | ✅ |
-| Yellow Papers | `.clawdius/specs/01_yellow_papers/` | ✅ |
-| Blue Papers | `.clawdius/specs/02_architecture/` | ✅ |
-| Security Specs | `.clawdius/specs/03_security/` | ✅ |
-| Performance Specs | `.clawdius/specs/04_performance/` | ✅ |
-| CI/CD Config | `.clawdius/specs/07_ci_cd/` | ✅ |
-| Monitoring | `.clawdius/specs/11_continuous_monitoring/` | ✅ |
-| User Guide | `.docs/user_guide.md` | ✅ |
-| API Reference | `.docs/api_reference.md` | ✅ |
-| Architecture | `.docs/architecture_overview.md` | ✅ |
+| Requirements | `.clawdius/specs/00_requirements/` | [PASS] |
+| Yellow Papers | `.clawdius/specs/01_yellow_papers/` | [PASS] |
+| Blue Papers | `.clawdius/specs/02_architecture/` | [PASS] |
+| Security Specs | `.clawdius/specs/03_security/` | [PASS] |
+| Performance Specs | `.clawdius/specs/04_performance/` | [PASS] |
+| CI/CD Config | `.clawdius/specs/07_ci_cd/` | [PASS] |
+| Monitoring | `.clawdius/specs/11_continuous_monitoring/` | [PASS] |
+| User Guide | `.docs/user_guide.md` | [PASS] |
+| API Reference | `.docs/api_reference.md` | [PASS] |
+| Architecture | `.docs/architecture_overview.md` | [PASS] |
 
 ### 7.2 Code Complete
 
 | Component | Location | Status |
 |-----------|----------|--------|
-| Host Kernel | `src/host/` | ✅ |
-| Nexus FSM | `src/fsm/` | ✅ |
-| Sentinel | `src/sentinel/` | ✅ |
-| Brain | `src/brain/` | ✅ |
-| Graph-RAG | `src/graph_rag/` | ✅ |
-| HFT Broker | `src/broker/` | ✅ |
-| TUI | `src/tui/` | ✅ |
-| Tests | `tests/` | ✅ |
+| Host Kernel | `src/host/` | [PASS] |
+| Nexus FSM | `src/fsm/` | [PASS] |
+| Sentinel | `src/sentinel/` | [PASS] |
+| Brain | `src/brain/` | [PASS] |
+| Graph-RAG | `src/graph_rag/` | [PASS] |
+| HFT Broker | `src/broker/` | [PASS] |
+| TUI | `src/tui/` | [PASS] |
+| Tests | `tests/` | [PASS] |
 
 ### 7.3 Operations Complete
 
 | Item | Status |
 |------|--------|
-| Docker image | ✅ |
-| Deployment scripts | ✅ |
-| Monitoring dashboards | ✅ |
-| Alerting rules | ✅ |
-| Runbooks | ✅ |
+| Docker image | [PASS] |
+| Deployment scripts | [PASS] |
+| Monitoring dashboards | [PASS] |
+| Alerting rules | [PASS] |
+| Runbooks | [PASS] |
 
 ---
 
@@ -305,12 +305,12 @@ This report documents the completion of the Clawdius High-Assurance Rust-Native 
 
 | Role | Name | Date | Status |
 |------|------|------|--------|
-| Project Lead | Nexus | 2026-03-02 | ✅ APPROVED |
-| Architecture Lead | Blue Team | 2026-03-02 | ✅ APPROVED |
-| Security Lead | Sentinel | 2026-03-02 | ✅ APPROVED |
-| Performance Lead | HFT Team | 2026-03-02 | ✅ APPROVED |
-| Quality Lead | QA Agent | 2026-03-02 | ✅ APPROVED |
-| Operations Lead | SRE Team | 2026-03-02 | ✅ APPROVED |
+| Project Lead | Nexus | 2026-03-02 | [PASS] APPROVED |
+| Architecture Lead | Blue Team | 2026-03-02 | [PASS] APPROVED |
+| Security Lead | Sentinel | 2026-03-02 | [PASS] APPROVED |
+| Performance Lead | HFT Team | 2026-03-02 | [PASS] APPROVED |
+| Quality Lead | QA Agent | 2026-03-02 | [PASS] APPROVED |
+| Operations Lead | SRE Team | 2026-03-02 | [PASS] APPROVED |
 
 ### 8.2 Final Status
 

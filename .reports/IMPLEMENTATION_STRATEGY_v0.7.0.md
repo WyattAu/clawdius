@@ -198,15 +198,15 @@
 ## Success Metrics
 
 ### v0.7.0 Release Criteria:
-- ✅ All commands support JSON output
-- ✅ TODO count <10
-- ✅ Doc warnings <100
-- ✅ File timeline working
-- ✅ WASM webview polished
-- ✅ Enhanced @mentions working
-- ✅ External editor support
-- ✅ Test coverage >85%
-- ✅ Performance targets met
+- [PASS] All commands support JSON output
+- [PASS] TODO count <10
+- [PASS] Doc warnings <100
+- [PASS] File timeline working
+- [PASS] WASM webview polished
+- [PASS] Enhanced @mentions working
+- [PASS] External editor support
+- [PASS] Test coverage >85%
+- [PASS] Performance targets met
 
 ---
 

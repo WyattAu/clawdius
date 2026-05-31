@@ -15,11 +15,11 @@ Clawdius is a **Rust-native AI coding assistant** with unique differentiators in
 
 | Category | Status | Confidence |
 |----------|--------|------------|
-| **Build Status** | ✅ PASSING | 100% |
-| **Test Coverage** | ✅ 821 test functions | High |
-| **Documentation Accuracy** | ⚠️ 85% (some discrepancies) | Medium |
-| **Feature Completion** | ⚠️ 90% (some partial implementations) | Medium |
-| **Competitive Position** | 🔶 Strong security, needs UX features | High |
+| **Build Status** | [PASS] PASSING | 100% |
+| **Test Coverage** | [PASS] 821 test functions | High |
+| **Documentation Accuracy** | [WARN] 85% (some discrepancies) | Medium |
+| **Feature Completion** | [WARN] 90% (some partial implementations) | Medium |
+| **Competitive Position** |  Strong security, needs UX features | High |
 
 ### Critical Discrepancies Found
 
@@ -35,7 +35,7 @@ Clawdius is a **Rust-native AI coding assistant** with unique differentiators in
 ### 1.1 Build & Test Status
 
 ```
-Build: ✅ SUCCESS (7.49s, dev profile)
+Build: [PASS] SUCCESS (7.49s, dev profile)
 Warnings: 38 (mostly unused imports/dead code)
 Test Functions: 821
 Test Annotations: 617
@@ -47,29 +47,29 @@ Lines of Rust Code: 54,196
 
 | Feature | Claimed | Actual | Evidence | Status |
 |---------|---------|--------|----------|--------|
-| Nexus FSM Phase 3 | Complete | Scaffold + tests | `crates/clawdius-core/src/nexus/` | ⚠️ 85% |
-| File Timeline | Complete | Implementation exists | `crates/clawdius-core/src/timeline/` | ✅ Verified |
-| JSON Output | Complete | `--format` flag | `crates/clawdius-core/src/output/` | ✅ Verified |
-| WASM Webview | Complete | Leptos components | `crates/clawdius-webview/` | ✅ Verified |
-| External Editor | Complete | $EDITOR support | Documented | ✅ Verified |
-| @Mentions | Complete | Regex parsing | `crates/clawdius-core/src/context/` | ✅ Verified |
-| Browser Automation | Complete | chromiumoxide | `crates/clawdius-core/src/tools/` | ✅ Verified |
-| HFT Broker | Complete | SPSC ring buffer | `crates/clawdius-core/src/broker/` | ⚠️ 90% |
-| Graph-RAG | Complete | SQLite + tree-sitter | `crates/clawdius-core/src/graph_rag/` | ✅ Verified |
-| Sentinel Sandbox | Complete | bubblewrap/sandbox-exec | `crates/clawdius-core/src/sandbox/` | ✅ Verified |
-| Lean4 Proofs | 85% (36/42) | 85% (19 verified, 9 axiom, 5 pending) | `.clawdius/specs/02_architecture/proofs/` | ⚠️ Count mismatch |
-| VSCode Extension | 916 LOC | 197 LOC (main), 177K total | `editors/vscode/` | ⚠️ Metric unclear |
+| Nexus FSM Phase 3 | Complete | Scaffold + tests | `crates/clawdius-core/src/nexus/` | [WARN] 85% |
+| File Timeline | Complete | Implementation exists | `crates/clawdius-core/src/timeline/` | [PASS] Verified |
+| JSON Output | Complete | `--format` flag | `crates/clawdius-core/src/output/` | [PASS] Verified |
+| WASM Webview | Complete | Leptos components | `crates/clawdius-webview/` | [PASS] Verified |
+| External Editor | Complete | $EDITOR support | Documented | [PASS] Verified |
+| @Mentions | Complete | Regex parsing | `crates/clawdius-core/src/context/` | [PASS] Verified |
+| Browser Automation | Complete | chromiumoxide | `crates/clawdius-core/src/tools/` | [PASS] Verified |
+| HFT Broker | Complete | SPSC ring buffer | `crates/clawdius-core/src/broker/` | [WARN] 90% |
+| Graph-RAG | Complete | SQLite + tree-sitter | `crates/clawdius-core/src/graph_rag/` | [PASS] Verified |
+| Sentinel Sandbox | Complete | bubblewrap/sandbox-exec | `crates/clawdius-core/src/sandbox/` | [PASS] Verified |
+| Lean4 Proofs | 85% (36/42) | 85% (19 verified, 9 axiom, 5 pending) | `.clawdius/specs/02_architecture/proofs/` | [WARN] Count mismatch |
+| VSCode Extension | 916 LOC | 197 LOC (main), 177K total | `editors/vscode/` | [WARN] Metric unclear |
 
 ### 1.3 Code Quality Metrics
 
 | Metric | Value | Target | Status |
 |--------|-------|--------|--------|
-| `todo!()` macros | 0 | 0 | ✅ |
-| `unimplemented!()` macros | 0 | 0 | ✅ |
-| TODO/FIXME comments | 37 | 0 | ⚠️ Needs resolution |
-| `#[ignore]` tests | 2 | 0 | ⚠️ Minor |
-| Compilation warnings | 38 | <10 | ⚠️ Cleanup needed |
-| Dead code warnings | ~20 | 0 | ⚠️ Cleanup needed |
+| `todo!()` macros | 0 | 0 | [PASS] |
+| `unimplemented!()` macros | 0 | 0 | [PASS] |
+| TODO/FIXME comments | 37 | 0 | [WARN] Needs resolution |
+| `#[ignore]` tests | 2 | 0 | [WARN] Minor |
+| Compilation warnings | 38 | <10 | [WARN] Cleanup needed |
+| Dead code warnings | ~20 | 0 | [WARN] Cleanup needed |
 
 ---
 
@@ -99,14 +99,14 @@ Lines of Rust Code: 54,196
 
 | # | Tool | Company | Runtime | Open Source | Security | Key Strength | Pricing |
 |---|------|---------|---------|-------------|----------|--------------|---------|
-| 1 | **GitHub Copilot** | Microsoft/GitHub | Cloud | ❌ | SOC2 | Best IDE integration, multi-model | Free-$39/mo |
-| 2 | **Cursor** | Anysphere | Electron | ❌ | SOC2 | Best-in-class UX, agents | $20-$40/mo |
-| 3 | **Claude Code** | Anthropic | Node.js | ❌ | Cloud | Best code generation quality | Usage-based |
-| 4 | **Amazon Q Developer** | AWS | Cloud | ❌ | AWS IAM | AWS integration, free tier | Free-$19/mo |
-| 5 | **Google Gemini Code Assist** | Google | Cloud | ❌ | GCP IAM | Long context, Google integration | Free-$19/mo |
-| 6 | **Windsurf (Codeium)** | Codeium | Electron | ❌ | Cloud | Fast, free tier, multi-IDE | Free-$15/mo |
-| 7 | **Replit AI** | Replit | Cloud | ❌ | Cloud | Browser-based, instant deploy | Free-$20/mo |
-| 8 | **Sourcegraph Cody** | Sourcegraph | TypeScript | ⚠️ Partial | Enterprise | Code graph, deep search | Free-$9/mo |
+| 1 | **GitHub Copilot** | Microsoft/GitHub | Cloud | [FAIL] | SOC2 | Best IDE integration, multi-model | Free-$39/mo |
+| 2 | **Cursor** | Anysphere | Electron | [FAIL] | SOC2 | Best-in-class UX, agents | $20-$40/mo |
+| 3 | **Claude Code** | Anthropic | Node.js | [FAIL] | Cloud | Best code generation quality | Usage-based |
+| 4 | **Amazon Q Developer** | AWS | Cloud | [FAIL] | AWS IAM | AWS integration, free tier | Free-$19/mo |
+| 5 | **Google Gemini Code Assist** | Google | Cloud | [FAIL] | GCP IAM | Long context, Google integration | Free-$19/mo |
+| 6 | **Windsurf (Codeium)** | Codeium | Electron | [FAIL] | Cloud | Fast, free tier, multi-IDE | Free-$15/mo |
+| 7 | **Replit AI** | Replit | Cloud | [FAIL] | Cloud | Browser-based, instant deploy | Free-$20/mo |
+| 8 | **Sourcegraph Cody** | Sourcegraph | TypeScript | [WARN] Partial | Enterprise | Code graph, deep search | Free-$9/mo |
 
 #### Tier 2: Open Source / Self-Hosted
 
@@ -140,33 +140,33 @@ Lines of Rust Code: 54,196
 | Feature | Clawdius | Copilot | Cursor | Aider | Continue | Cody |
 |---------|:--------:|:-------:|:------:|:-----:|:--------:|:----:|
 | **Security** |
-| Sandboxed Execution | ✅ WASM/Container | ❌ | ⚠️ Shadow | ❌ | ❌ | ❌ |
-| Air-Gap Capable | ✅ | ❌ | ❌ | ✅ | ✅ | ⚠️ |
-| Formal Verification | ✅ Lean4 | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Sandboxed Execution | [PASS] WASM/Container | [FAIL] | [WARN] Shadow | [FAIL] | [FAIL] | [FAIL] |
+| Air-Gap Capable | [PASS] | [FAIL] | [FAIL] | [PASS] | [PASS] | [WARN] |
+| Formal Verification | [PASS] Lean4 | [FAIL] | [FAIL] | [FAIL] | [FAIL] | [FAIL] |
 | **Performance** |
-| Native Runtime | ✅ Rust | ❌ Cloud | ⚠️ Electron | ❌ Python | ❌ TS | ❌ TS |
-| <20ms Boot | ✅ | N/A | ❌ | ❌ | ❌ | ❌ |
+| Native Runtime | [PASS] Rust | [FAIL] Cloud | [WARN] Electron | [FAIL] Python | [FAIL] TS | [FAIL] TS |
+| <20ms Boot | [PASS] | N/A | [FAIL] | [FAIL] | [FAIL] | [FAIL] |
 | **Intelligence** |
-| Graph-RAG | ✅ | ⚠️ Basic | ✅ | ⚠️ Repo-map | ✅ | ✅ |
-| Multi-LLM | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Graph-RAG | [PASS] | [WARN] Basic | [PASS] | [WARN] Repo-map | [PASS] | [PASS] |
+| Multi-LLM | [PASS] | [PASS] | [PASS] | [PASS] | [PASS] | [PASS] |
 | **UX** |
-| VSCode Extension | ✅ | ✅ | ✅ IDE | ❌ | ✅ | ✅ |
-| CLI Interface | ✅ | ✅ | ✅ | ✅ | ❌ | ⚠️ |
-| TUI (Terminal UI) | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| VSCode Extension | [PASS] | [PASS] | [PASS] IDE | [FAIL] | [PASS] | [PASS] |
+| CLI Interface | [PASS] | [PASS] | [PASS] | [PASS] | [FAIL] | [WARN] |
+| TUI (Terminal UI) | [PASS] | [FAIL] | [FAIL] | [FAIL] | [FAIL] | [FAIL] |
 | **Enterprise** |
-| Self-Hosted | ✅ | ❌ | ❌ | ✅ | ✅ | ✅ |
-| Audit Logging | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ |
+| Self-Hosted | [PASS] | [FAIL] | [FAIL] | [PASS] | [PASS] | [PASS] |
+| Audit Logging | [PASS] | [PASS] | [PASS] | [FAIL] | [FAIL] | [PASS] |
 
 ### 2.4 Clawdius Competitive Advantages
 
 | Advantage | Uniqueness | Market Value |
 |-----------|------------|--------------|
-| **Sentinel Sandboxing** | 🏆 Unique | Critical for enterprise |
-| **Lean4 Formal Verification** | 🏆 Unique | Critical for safety-critical |
-| **HFT Broker Mode** | 🏆 Unique | Niche but valuable |
-| **Native Rust Performance** | 🔶 Rare | High value |
-| **Graph-RAG** | ⚠️ Shared | Medium value |
-| **Multi-language Research** | 🏆 Unique | Research value |
+| **Sentinel Sandboxing** |  Unique | Critical for enterprise |
+| **Lean4 Formal Verification** |  Unique | Critical for safety-critical |
+| **HFT Broker Mode** |  Unique | Niche but valuable |
+| **Native Rust Performance** |  Rare | High value |
+| **Graph-RAG** | [WARN] Shared | Medium value |
+| **Multi-language Research** |  Unique | Research value |
 
 ### 2.5 Competitive Gaps to Address
 
@@ -305,11 +305,11 @@ Lines of Rust Code: 54,196
 
 | Component | Purpose | Priority | Cost |
 |-----------|---------|----------|------|
-| CI/CD Pipeline | Automated testing | ✅ Exists | Low |
+| CI/CD Pipeline | Automated testing | [PASS] Exists | Low |
 | Documentation Host | docs.clawdius.dev | P1 | Low |
 | Community Platform | Discord/Discourse | P1 | Low |
 | Benchmark Lab | Performance regression | P2 | Medium |
-| Security Scanner | CVE detection | ✅ Exists | Low |
+| Security Scanner | CVE detection | [PASS] Exists | Low |
 
 ---
 

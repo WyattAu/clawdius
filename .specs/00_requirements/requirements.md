@@ -434,10 +434,10 @@ New messaging platforms SHALL be addable without modifying core code.
 
 | Quality Gate | Status |
 |---------------|--------|
-| Requirements Complete | ✅ |
-| Acceptance Criteria Defined | ✅ |
-| Traceability Established | ✅ |
-| Stakeholder Review | ⏳ Pending |
+| Requirements Complete | [PASS] |
+| Acceptance Criteria Defined | [PASS] |
+| Traceability Established | [PASS] |
+| Stakeholder Review | [PENDING] Pending |
 
 ---
 

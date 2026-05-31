@@ -21,7 +21,7 @@ All core features have been verified as **FUNCTIONAL** with real implementations
 
 ### 1. LLM Provider Integration
 
-**Status:** ✅ **WORKING**
+**Status:** [PASS] **WORKING**
 
 **Evidence:**
 - **Implementation:** `crates/clawdius-core/src/llm/` 
@@ -36,12 +36,12 @@ All core features have been verified as **FUNCTIONAL** with real implementations
   - Chat completion tests
   
 - **Dependencies:** 
-  - `genai = "0.5"` ✅
-  - `async-openai = "0.33"` ✅
-  - `reqwest = "0.12"` ✅
+  - `genai = "0.5"` [PASS]
+  - `async-openai = "0.33"` [PASS]
+  - `reqwest = "0.12"` [PASS]
   
 - **Config:** 
-  - `.clawdius/config.toml` supports provider selection ✅
+  - `.clawdius/config.toml` supports provider selection [PASS]
   - Environment variable support (ANTHROPIC_API_KEY, OPENAI_API_KEY, etc.)
   - Keyring integration (feature-gated)
 
@@ -57,7 +57,7 @@ All core features have been verified as **FUNCTIONAL** with real implementations
 
 ### 2. Streaming Responses
 
-**Status:** ✅ **WORKING**
+**Status:** [PASS] **WORKING**
 
 **Evidence:**
 - **Implementation:**
@@ -70,8 +70,8 @@ All core features have been verified as **FUNCTIONAL** with real implementations
   - Event parsing validated
   
 - **Dependencies:**
-  - `tokio = { features = ["sync"] }` ✅
-  - `futures = "0.3"` ✅
+  - `tokio = { features = ["sync"] }` [PASS]
+  - `futures = "0.3"` [PASS]
   
 - **Config:**
   - Streaming enabled by default
@@ -104,7 +104,7 @@ All core features have been verified as **FUNCTIONAL** with real implementations
 
 ### 3. Session Persistence
 
-**Status:** ✅ **WORKING**
+**Status:** [PASS] **WORKING**
 
 **Evidence:**
 - **Implementation:**
@@ -118,9 +118,9 @@ All core features have been verified as **FUNCTIONAL** with real implementations
   - Session flow tests in `tests/integration/session_flow.rs`
   
 - **Dependencies:**
-  - `rusqlite = { version = "0.38", features = ["bundled"] }` ✅
-  - `chrono = { features = ["serde"] }` ✅
-  - `uuid = { features = ["v4", "serde"] }` ✅
+  - `rusqlite = { version = "0.38", features = ["bundled"] }` [PASS]
+  - `chrono = { features = ["serde"] }` [PASS]
+  - `uuid = { features = ["v4", "serde"] }` [PASS]
   
 - **Config:**
   - Configurable database path
@@ -140,7 +140,7 @@ All core features have been verified as **FUNCTIONAL** with real implementations
 
 ### 4. File Tools
 
-**Status:** ✅ **WORKING**
+**Status:** [PASS] **WORKING**
 
 **Evidence:**
 - **Implementation:**
@@ -152,8 +152,8 @@ All core features have been verified as **FUNCTIONAL** with real implementations
   - File operations tested in integration tests
   
 - **Dependencies:**
-  - `std::fs` ✅ (standard library)
-  - `serde` for parameter serialization ✅
+  - `std::fs` [PASS] (standard library)
+  - `serde` for parameter serialization [PASS]
   
 - **Config:**
   - Path validation
@@ -182,7 +182,7 @@ All core features have been verified as **FUNCTIONAL** with real implementations
 
 ### 5. Shell Tool Execution
 
-**Status:** ✅ **WORKING**
+**Status:** [PASS] **WORKING**
 
 **Evidence:**
 - **Implementation:**
@@ -196,7 +196,7 @@ All core features have been verified as **FUNCTIONAL** with real implementations
   - `tests/sandbox_tests.rs` - Shell execution tests
   
 - **Dependencies:**
-  - `std::process::Command` ✅ (standard library)
+  - `std::process::Command` [PASS] (standard library)
   
 - **Config:**
   - `ShellSandboxConfig` with blocked commands list
@@ -228,7 +228,7 @@ All core features have been verified as **FUNCTIONAL** with real implementations
 
 ### 6. VSCode Extension
 
-**Status:** ✅ **WORKING**
+**Status:** [PASS] **WORKING**
 
 **Evidence:**
 - **Implementation:**
@@ -242,8 +242,8 @@ All core features have been verified as **FUNCTIONAL** with real implementations
   - `crates/clawdius-core/tests/integration/rpc_communication.rs`
   
 - **Dependencies:**
-  - `jsonrpsee = { features = ["server", "client", "ws-client"] }` ✅
-  - VSCode extension dependencies in `package.json` ✅
+  - `jsonrpsee = { features = ["server", "client", "ws-client"] }` [PASS]
+  - VSCode extension dependencies in `package.json` [PASS]
   
 - **Config:**
   - `editors/vscode/package.json` - Extension configuration
@@ -265,7 +265,7 @@ All core features have been verified as **FUNCTIONAL** with real implementations
 
 ### 7. Git Tool
 
-**Status:** ✅ **WORKING**
+**Status:** [PASS] **WORKING**
 
 **Evidence:**
 - **Implementation:**
@@ -277,8 +277,8 @@ All core features have been verified as **FUNCTIONAL** with real implementations
   - Git operations tested in integration tests
   
 - **Dependencies:**
-  - `git2 = "0.19"` ✅
-  - ShellTool dependency ✅
+  - `git2 = "0.19"` [PASS]
+  - ShellTool dependency [PASS]
   
 - **Config:**
   - Git command timeout
@@ -297,7 +297,7 @@ All core features have been verified as **FUNCTIONAL** with real implementations
 
 ### 8. Web Search
 
-**Status:** ✅ **WORKING**
+**Status:** [PASS] **WORKING**
 
 **Evidence:**
 - **Implementation:**
@@ -311,9 +311,9 @@ All core features have been verified as **FUNCTIONAL** with real implementations
   - Web search integration tests
   
 - **Dependencies:**
-  - `reqwest = { features = ["json", "stream"] }` ✅
-  - `regex = "1.11"` ✅
-  - `urlencoding = "2.1"` ✅
+  - `reqwest = { features = ["json", "stream"] }` [PASS]
+  - `regex = "1.11"` [PASS]
+  - `urlencoding = "2.1"` [PASS]
   
 - **Config:**
   - Provider selection
@@ -343,7 +343,7 @@ All core features have been verified as **FUNCTIONAL** with real implementations
 
 ### 9. Graph-RAG
 
-**Status:** ✅ **WORKING**
+**Status:** [PASS] **WORKING**
 
 **Evidence:**
 - **Implementation:**
@@ -357,10 +357,10 @@ All core features have been verified as **FUNCTIONAL** with real implementations
   - `tests/integration/search_workflow.rs`
   
 - **Dependencies:**
-  - `lancedb = "0.4"` ✅
-  - `tree-sitter = "0.26"` ✅
-  - `tree-sitter-{rust,python,javascript,typescript,go}` ✅
-  - `candle-{core,nn,transformers} = "0.4"` ✅
+  - `lancedb = "0.4"` [PASS]
+  - `tree-sitter = "0.26"` [PASS]
+  - `tree-sitter-{rust,python,javascript,typescript,go}` [PASS]
+  - `candle-{core,nn,transformers} = "0.4"` [PASS]
   
 - **Config:**
   - `GraphRagConfig` with database and vector paths
@@ -381,7 +381,7 @@ All core features have been verified as **FUNCTIONAL** with real implementations
 
 ### 10. Sandbox Backends
 
-**Status:** ✅ **WORKING**
+**Status:** [PASS] **WORKING**
 
 **Evidence:**
 - **Implementation:**
@@ -396,7 +396,7 @@ All core features have been verified as **FUNCTIONAL** with real implementations
   - Backend availability tests
   
 - **Dependencies:**
-  - `std::process::Command` ✅
+  - `std::process::Command` [PASS]
   - Platform-specific system tools (bwrap, sandbox-exec)
   
 - **Config:**
@@ -430,31 +430,31 @@ All core features have been verified as **FUNCTIONAL** with real implementations
 
 ### Core Dependencies (All Present)
 
-✅ **LLM Integration:**
+[PASS] **LLM Integration:**
 - genai = "0.5"
 - async-openai = "0.33"
 - reqwest = "0.12"
 
-✅ **Database:**
+[PASS] **Database:**
 - rusqlite = "0.38" with bundled feature
 
-✅ **Code Analysis:**
+[PASS] **Code Analysis:**
 - tree-sitter = "0.26"
 - tree-sitter-{rust,python,javascript,typescript,go}
 
-✅ **Vector Database:**
+[PASS] **Vector Database:**
 - lancedb = "0.4"
 - arrow, arrow-array, arrow-schema = "51"
 
-✅ **ML/Embeddings:**
+[PASS] **ML/Embeddings:**
 - candle-{core,nn,transformers} = "0.4"
 - tokenizers = "0.15"
 - hf-hub = "0.3"
 
-✅ **RPC:**
+[PASS] **RPC:**
 - jsonrpsee = "0.24" with server, client, ws-client features
 
-✅ **Utilities:**
+[PASS] **Utilities:**
 - tokio, futures, async-trait
 - serde, serde_json, toml
 - uuid, chrono, regex
@@ -466,11 +466,11 @@ All core features have been verified as **FUNCTIONAL** with real implementations
 
 All features have comprehensive configuration support:
 
-✅ **LLM Config:** Provider selection, model selection, API keys, base URLs  
-✅ **Session Config:** Database path, compaction thresholds, token limits  
-✅ **Sandbox Config:** Blocked commands, timeout, output limits, CWD restrictions  
-✅ **Graph-RAG Config:** Database paths, embedding models  
-✅ **VSCode Config:** Binary path, provider, model, auto-save  
+[PASS] **LLM Config:** Provider selection, model selection, API keys, base URLs  
+[PASS] **Session Config:** Database path, compaction thresholds, token limits  
+[PASS] **Sandbox Config:** Blocked commands, timeout, output limits, CWD restrictions  
+[PASS] **Graph-RAG Config:** Database paths, embedding models  
+[PASS] **VSCode Config:** Binary path, provider, model, auto-save  
 
 Configuration files examined:
 - `Cargo.toml` - Workspace dependencies
@@ -549,7 +549,7 @@ The Clawdius codebase demonstrates excellent engineering practices:
 
 The 81% feature completion claim appears to be conservative. Based on code analysis, the actual implementation rate is likely higher, as all examined features have complete, working implementations.
 
-**Overall Assessment:** ✅ **PRODUCTION READY**
+**Overall Assessment:** [PASS] **PRODUCTION READY**
 
 ---
 

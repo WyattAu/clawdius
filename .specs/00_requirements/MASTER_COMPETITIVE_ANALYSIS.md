@@ -209,7 +209,7 @@ packages/opencode/src/edit/cascade.ts — Cascade orchestrator
 
 ---
 
-## 4. IronClaw (nearai/ironclaw) — 474K LOC Rust ⚠️ CLOSEST COMPETITOR
+## 4. IronClaw (nearai/ironclaw) — 474K LOC Rust [WARN] CLOSEST COMPETITOR
 
 ### What It Is
 OpenClaw-inspired Rust implementation focused on privacy and security. **Our closest competitor** — also in Rust, also focused on enterprise security. WASM sandbox is the most sophisticated tool isolation in the field.

@@ -6,13 +6,13 @@
 
 ## Executive Summary
 
-⚠️ **Build Succeeds, Tests Cannot Be Verified Due to Compilation Timeout**
+[WARN] **Build Succeeds, Tests Cannot Be Verified Due to Compilation Timeout**
 
-- ✅ **Build Status:** SUCCESS (no errors)
-- ⚠️ **Test Compilation:** TIMEOUT (exceeded 300s for workspace, 180s for single crate)
-- 📊 **Estimated Test Count:** 222 test functions (via source code analysis)
-- ⚠️ **Compilation Warnings:** 59 unique warning types
-- ❌ **Test Execution:** Not possible - test binaries did not compile within timeout
+- [PASS] **Build Status:** SUCCESS (no errors)
+- [WARN] **Test Compilation:** TIMEOUT (exceeded 300s for workspace, 180s for single crate)
+-  **Estimated Test Count:** 222 test functions (via source code analysis)
+- [WARN] **Compilation Warnings:** 59 unique warning types
+- [FAIL] **Test Execution:** Not possible - test binaries did not compile within timeout
 
 ---
 
@@ -20,7 +20,7 @@
 
 ### Workspace Build
 - **Command:** `cargo build --workspace`
-- **Status:** ✅ SUCCESS
+- **Status:** [PASS] SUCCESS
 - **Duration:** Completed within 300s timeout
 - **Errors:** None
 - **Output:** All 4 crates compiled successfully
@@ -36,13 +36,13 @@
 ### Attempt 1: Full Workspace
 - **Command:** `cargo test --workspace --no-run`
 - **Timeout:** 300000ms (5 minutes)
-- **Status:** ❌ TIMEOUT
+- **Status:** [FAIL] TIMEOUT
 - **Progress:** Began compiling dependencies, did not complete
 
 ### Attempt 2: Single Crate (clawdius-core)
 - **Command:** `cargo test -p clawdius-core --lib --no-run`
 - **Timeout:** 180000ms (3 minutes)
-- **Status:** ❌ TIMEOUT
+- **Status:** [FAIL] TIMEOUT
 - **Progress:** Did not complete
 
 ### Root Cause Analysis
@@ -160,9 +160,9 @@ Major areas lacking documentation:
 - "199+ tests passing"
 
 ### Verification Status
-- ❌ **Cannot Verify:** Test compilation times out
-- ✅ **Source Analysis:** 222 test functions found in codebase
-- ⚠️ **Discrepancy:** Cannot confirm if these tests actually pass or fail
+- [FAIL] **Cannot Verify:** Test compilation times out
+- [PASS] **Source Analysis:** 222 test functions found in codebase
+- [WARN] **Discrepancy:** Cannot confirm if these tests actually pass or fail
 
 ### Notes
 - The 222 count is close to the claimed 199+, suggesting VERSION.md may be accurate
@@ -284,15 +284,15 @@ cargo test --no-run
 ## Conclusion
 
 ### What We Know
-✅ The codebase **compiles successfully** with no errors  
-✅ There are **222 test functions** in the source code  
-✅ The build produces **59 unique warning types**  
-✅ **VERSION.md's claim of 199+ tests** is plausible based on source analysis  
+[PASS] The codebase **compiles successfully** with no errors  
+[PASS] There are **222 test functions** in the source code  
+[PASS] The build produces **59 unique warning types**  
+[PASS] **VERSION.md's claim of 199+ tests** is plausible based on source analysis  
 
 ### What We Cannot Verify
-❌ **Actual test pass/fail status** - tests don't compile within timeout  
-❌ **Test execution results** - no test binaries were produced  
-❌ **Integration test functionality** - cannot run integration tests  
+[FAIL] **Actual test pass/fail status** - tests don't compile within timeout  
+[FAIL] **Test execution results** - no test binaries were produced  
+[FAIL] **Integration test functionality** - cannot run integration tests  
 
 ### Critical Path Forward
 1. **Fix compilation warnings** (improves code quality)

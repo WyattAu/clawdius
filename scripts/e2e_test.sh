@@ -14,11 +14,19 @@ USE_OPENROUTER=false
 [[ "${1:-}" == "--openrouter" ]] && USE_OPENROUTER=true
 
 if [ "$USE_OPENROUTER" = true ]; then
-    LLM_KEY="${OPENROUTER_API_KEY:-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}"
+    if [ -z "${OPENROUTER_API_KEY:-}" ]; then
+        echo "ERROR: OPENROUTER_API_KEY must be set"
+        exit 1
+    fi
+    LLM_KEY="$OPENROUTER_API_KEY"
     LLM_KEY_ENV="OPENROUTER_API_KEY"
     LLM_NAME="OpenRouter"
 else
-    LLM_KEY="${ZAI_API_KEY:-bbde645c1ba646508b612cd254f07b31.i0KHCSfIKnZvcmT8}"
+    if [ -z "${ZAI_API_KEY:-}" ]; then
+        echo "ERROR: ZAI_API_KEY must be set"
+        exit 1
+    fi
+    LLM_KEY="$ZAI_API_KEY"
     LLM_KEY_ENV="ZAI_API_KEY"
     LLM_NAME="ZAI"
 fi

@@ -15,10 +15,10 @@ Phase 5 (Adversarial Loop) has been completed successfully. All prototypes passe
 
 | Category | Result | Status |
 |----------|--------|--------|
-| Test Vectors | 100/100 passed | ✅ |
-| Security Tests | 0 critical vulnerabilities | ✅ |
-| Performance | All targets exceeded | ✅ |
-| Coverage | 97.2% branch coverage | ✅ |
+| Test Vectors | 100/100 passed | [PASS] |
+| Security Tests | 0 critical vulnerabilities | [PASS] |
+| Performance | All targets exceeded | [PASS] |
+| Coverage | 97.2% branch coverage | [PASS] |
 
 ---
 
@@ -26,7 +26,7 @@ Phase 5 (Adversarial Loop) has been completed successfully. All prototypes passe
 
 ### CPR-001: FSM Phase Transition Correctness
 
-**Status:** ✅ VALIDATED
+**Status:** [PASS] VALIDATED
 
 | Sub-requirement | Test | Result |
 |-----------------|------|--------|
@@ -43,7 +43,7 @@ Phase 5 (Adversarial Loop) has been completed successfully. All prototypes passe
 
 ### CPR-002: HFT Latency Requirements
 
-**Status:** ✅ VALIDATED
+**Status:** [PASS] VALIDATED
 
 | Sub-requirement | Test | Result |
 |-----------------|------|--------|
@@ -59,7 +59,7 @@ Phase 5 (Adversarial Loop) has been completed successfully. All prototypes passe
 
 ### CPR-003: Sandbox Isolation
 
-**Status:** ✅ VALIDATED
+**Status:** [PASS] VALIDATED
 
 | Sub-requirement | Test | Result |
 |-----------------|------|--------|
@@ -76,13 +76,13 @@ Phase 5 (Adversarial Loop) has been completed successfully. All prototypes passe
 
 ### CPR-004: Graph-RAG Performance
 
-**Status:** ⏳ DEFERRED TO PHASE 6
+**Status:** [PENDING] DEFERRED TO PHASE 6
 
 Not in scope for Phase 5 prototypes. Will be validated in Phase 6 implementation.
 
 ### CPR-005: WASM RPC Overhead
 
-**Status:** ⏳ DEFERRED TO PHASE 6
+**Status:** [PENDING] DEFERRED TO PHASE 6
 
 Not in scope for Phase 5 prototypes. Will be validated in Phase 6 implementation.
 
@@ -159,11 +159,11 @@ Not in scope for Phase 5 prototypes. Will be validated in Phase 6 implementation
 
 | Category | Target | Actual | Status |
 |----------|--------|--------|--------|
-| Nominal | 40% | 40% | ✅ |
-| Boundary | 20% | 20% | ✅ |
-| Adversarial | 15% | 15% | ✅ |
-| Regression | 10% | 10% | ✅ |
-| Property-based | 15% | 15% | ✅ |
+| Nominal | 40% | 40% | [PASS] |
+| Boundary | 20% | 20% | [PASS] |
+| Adversarial | 15% | 15% | [PASS] |
+| Regression | 10% | 10% | [PASS] |
+| Property-based | 15% | 15% | [PASS] |
 
 ### Test Vector Results by Yellow Paper
 
@@ -216,10 +216,10 @@ Not in scope for Phase 5 prototypes. Will be validated in Phase 6 implementation
 
 | Metric | Target | Actual | Status |
 |--------|--------|--------|--------|
-| Ring buffer alignment | 64 bytes | 128 bytes | ✅ |
-| False sharing | Eliminated | Verified | ✅ |
-| Hot path allocation | 0 | 0 | ✅ |
-| Memory ordering | Acquire/Release | Implemented | ✅ |
+| Ring buffer alignment | 64 bytes | 128 bytes | [PASS] |
+| False sharing | Eliminated | Verified | [PASS] |
+| Hot path allocation | 0 | 0 | [PASS] |
+| Memory ordering | Acquire/Release | Implemented | [PASS] |
 
 ---
 
@@ -259,10 +259,10 @@ Per Mega Prompt Phase 5:
 
 | Condition | Status | Action |
 |-----------|--------|--------|
-| All test vectors pass | ✅ TRUE | Proceed |
-| No critical vulnerabilities | ✅ TRUE | Proceed |
-| Performance meets baseline | ✅ TRUE | Proceed |
-| Branch coverage >95% | ✅ TRUE (97.2%) | Proceed |
+| All test vectors pass | [PASS] TRUE | Proceed |
+| No critical vulnerabilities | [PASS] TRUE | Proceed |
+| Performance meets baseline | [PASS] TRUE | Proceed |
+| Branch coverage >95% | [PASS] TRUE (97.2%) | Proceed |
 
 **Decision:** SUCCESS - Proceed to Phase 5.5
 
@@ -272,14 +272,14 @@ Per Mega Prompt Phase 5:
 
 | Artifact | Path | Status |
 |----------|------|--------|
-| FSM Prototype | `src/fsm.rs` | ✅ Extended |
-| Ring Buffer Prototype | `.clawdius/specs/06_prototypes/ring_buffer_prototype.rs` | ✅ Created |
-| Wallet Guard Prototype | `.clawdius/specs/06_prototypes/wallet_guard_prototype.rs` | ✅ Created |
-| Sentinel Prototype | `.clawdius/specs/06_prototypes/sentinel_prototype.rs` | ✅ Created |
-| HAL Mock | `.clawdius/specs/06_prototypes/hal_mock.rs` | ✅ Created |
-| Fuzzing Harness | `.clawdius/specs/06_prototypes/fuzzing_harness.rs` | ✅ Created |
-| Test Results | `.clawdius/specs/06_prototypes/test_results.md` | ✅ Created |
-| Phase 5 Report | `.reports/phase_05_prototype_results.md` | ✅ Created |
+| FSM Prototype | `src/fsm.rs` | [PASS] Extended |
+| Ring Buffer Prototype | `.clawdius/specs/06_prototypes/ring_buffer_prototype.rs` | [PASS] Created |
+| Wallet Guard Prototype | `.clawdius/specs/06_prototypes/wallet_guard_prototype.rs` | [PASS] Created |
+| Sentinel Prototype | `.clawdius/specs/06_prototypes/sentinel_prototype.rs` | [PASS] Created |
+| HAL Mock | `.clawdius/specs/06_prototypes/hal_mock.rs` | [PASS] Created |
+| Fuzzing Harness | `.clawdius/specs/06_prototypes/fuzzing_harness.rs` | [PASS] Created |
+| Test Results | `.clawdius/specs/06_prototypes/test_results.md` | [PASS] Created |
+| Phase 5 Report | `.reports/phase_05_prototype_results.md` | [PASS] Created |
 
 ---
 
@@ -287,10 +287,10 @@ Per Mega Prompt Phase 5:
 
 | Role | Approval | Date |
 |------|----------|------|
-| Breaker (Prototyper) | ✅ APPROVED | 2026-03-01 |
-| Security Review | ✅ APPROVED | 2026-03-01 |
-| Performance Lead | ✅ APPROVED | 2026-03-01 |
-| Quality Assurance | ✅ APPROVED | 2026-03-01 |
+| Breaker (Prototyper) | [PASS] APPROVED | 2026-03-01 |
+| Security Review | [PASS] APPROVED | 2026-03-01 |
+| Performance Lead | [PASS] APPROVED | 2026-03-01 |
+| Quality Assurance | [PASS] APPROVED | 2026-03-01 |
 
 ---
 

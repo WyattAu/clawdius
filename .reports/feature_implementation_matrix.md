@@ -30,18 +30,18 @@ This matrix compares **documentation claims** versus **actual code implementatio
 
 | Feature | VERSION.md Claim | PATH_FORWARD.md Claim | Feature Gap Analysis | Actual Status | Evidence | Priority |
 |---------|------------------|----------------------|---------------------|---------------|----------|----------|
-| **LLM Providers** | ✅ COMPLETE | ✅ COMPLETE | ✅ Working | ✅ Working | `crates/clawdius-core/src/llm/providers/` (5 providers) | HIGH |
-| **Streaming Responses** | ✅ COMPLETE | ✅ COMPLETE | ✅ Working | ✅ Working | `llm/providers/mod.rs:17-21` (mpsc channels) | HIGH |
-| **Session Management** | ✅ COMPLETE | ✅ COMPLETE | ❌ Missing | ✅ Working | `session/store.rs:443 lines` (SQLite persistence) | HIGH |
-| **File Tool Execution** | ✅ COMPLETE | ✅ COMPLETE | ✅ Working | ✅ Working | `tools/file.rs:4561 bytes` | HIGH |
-| **Shell Tool** | ✅ COMPLETE | ✅ COMPLETE | ✅ Working | ✅ Working | `tools/shell.rs:4484 bytes` | HIGH |
-| **Git Tool** | ✅ COMPLETE | ✅ COMPLETE | ✅ Working | ✅ Working | `tools/git.rs:3264 bytes` | HIGH |
-| **Web Search Tool** | ✅ COMPLETE | ✅ COMPLETE | ⚠️ Partial | ✅ Working | `tools/web_search.rs:15490 bytes` | MEDIUM |
-| **Browser Automation** | ✅ COMPLETE | ✅ COMPLETE | ❌ Missing | ✅ Working | `tools/browser.rs:331 lines` (chromiumoxide) | MEDIUM |
-| **Keyring Storage** | ✅ COMPLETE | ✅ COMPLETE | ❌ Missing | ✅ Working | Referenced in code | HIGH |
-| **Error Recovery** | ✅ COMPLETE | ✅ COMPLETE | ❌ Missing | ✅ Working | Retry logic implemented | HIGH |
-| **Vim Keybindings** | ✅ COMPLETE | ✅ COMPLETE | ❌ Missing | ✅ Working | `tui_app/vim.rs:366 lines` | LOW |
-| **Configuration File** | ✅ COMPLETE | ✅ COMPLETE | ✅ Working | ✅ Working | `.clawdius/config.toml` support | HIGH |
+| **LLM Providers** | [PASS] COMPLETE | [PASS] COMPLETE | [PASS] Working | [PASS] Working | `crates/clawdius-core/src/llm/providers/` (5 providers) | HIGH |
+| **Streaming Responses** | [PASS] COMPLETE | [PASS] COMPLETE | [PASS] Working | [PASS] Working | `llm/providers/mod.rs:17-21` (mpsc channels) | HIGH |
+| **Session Management** | [PASS] COMPLETE | [PASS] COMPLETE | [FAIL] Missing | [PASS] Working | `session/store.rs:443 lines` (SQLite persistence) | HIGH |
+| **File Tool Execution** | [PASS] COMPLETE | [PASS] COMPLETE | [PASS] Working | [PASS] Working | `tools/file.rs:4561 bytes` | HIGH |
+| **Shell Tool** | [PASS] COMPLETE | [PASS] COMPLETE | [PASS] Working | [PASS] Working | `tools/shell.rs:4484 bytes` | HIGH |
+| **Git Tool** | [PASS] COMPLETE | [PASS] COMPLETE | [PASS] Working | [PASS] Working | `tools/git.rs:3264 bytes` | HIGH |
+| **Web Search Tool** | [PASS] COMPLETE | [PASS] COMPLETE | [WARN] Partial | [PASS] Working | `tools/web_search.rs:15490 bytes` | MEDIUM |
+| **Browser Automation** | [PASS] COMPLETE | [PASS] COMPLETE | [FAIL] Missing | [PASS] Working | `tools/browser.rs:331 lines` (chromiumoxide) | MEDIUM |
+| **Keyring Storage** | [PASS] COMPLETE | [PASS] COMPLETE | [FAIL] Missing | [PASS] Working | Referenced in code | HIGH |
+| **Error Recovery** | [PASS] COMPLETE | [PASS] COMPLETE | [FAIL] Missing | [PASS] Working | Retry logic implemented | HIGH |
+| **Vim Keybindings** | [PASS] COMPLETE | [PASS] COMPLETE | [FAIL] Missing | [PASS] Working | `tui_app/vim.rs:366 lines` | LOW |
+| **Configuration File** | [PASS] COMPLETE | [PASS] COMPLETE | [PASS] Working | [PASS] Working | `.clawdius/config.toml` support | HIGH |
 
 ---
 
@@ -49,16 +49,16 @@ This matrix compares **documentation claims** versus **actual code implementatio
 
 | Feature | VERSION.md Claim | PATH_FORWARD.md Claim | Feature Gap Analysis | Actual Status | Evidence | Priority |
 |---------|------------------|----------------------|---------------------|---------------|----------|----------|
-| **VSCode Extension** | ✅ COMPLETE | ✅ COMPLETE | ❌ Missing | ✅ Working | `editors/vscode/src/` (916 LOC, activation working) | HIGH |
-| **Graph-RAG SQLite** | ✅ COMPLETE | ✅ COMPLETE | ❌ Missing | ✅ Working | `graph_rag/store.rs:29557 bytes` | MEDIUM |
-| **Tree-sitter Parsing** | ✅ COMPLETE | ✅ COMPLETE | ❌ Missing | ✅ Working | `graph_rag/parser.rs:19615 bytes` (5 languages) | MEDIUM |
-| **Sandbox Backends** | ✅ COMPLETE | ✅ COMPLETE | ❌ Missing | ✅ Working | `sandbox/backends/` (bubblewrap, sandbox-exec) | HIGH |
-| **Brain WASM Runtime** | ✅ COMPLETE | ✅ COMPLETE | ❌ Missing | ✅ Working | `brain/runtime.rs:172 lines` (fuel limiting) | MEDIUM |
-| **HFT Broker** | ✅ COMPLETE | ✅ COMPLETE | ❌ Missing | ✅ Working | `broker/ring_buffer.rs:141 lines` (SPSC lock-free) | LOW |
-| **LanceDB Vector Store** | ✅ COMPLETE | ✅ COMPLETE | ❌ Missing | ✅ Working | `graph_rag/vector.rs` (LanceDB integration) | MEDIUM |
-| **Multi-language Knowledge** | ✅ COMPLETE | ✅ COMPLETE | ❌ Missing | ✅ Working | `knowledge/` (5 files, 16 languages) | MEDIUM |
-| **Lean 4 Proof Verification** | ✅ COMPLETE | ✅ COMPLETE | ❌ Missing | ✅ Working | `proof/` (templates, verifier) | LOW |
-| **WASM Webview** | ✅ COMPLETE | ✅ COMPLETE | ❌ Missing | ⚠️ Partial | `clawdius-webview/src/` (286 LOC, Leptos) | LOW |
+| **VSCode Extension** | [PASS] COMPLETE | [PASS] COMPLETE | [FAIL] Missing | [PASS] Working | `editors/vscode/src/` (916 LOC, activation working) | HIGH |
+| **Graph-RAG SQLite** | [PASS] COMPLETE | [PASS] COMPLETE | [FAIL] Missing | [PASS] Working | `graph_rag/store.rs:29557 bytes` | MEDIUM |
+| **Tree-sitter Parsing** | [PASS] COMPLETE | [PASS] COMPLETE | [FAIL] Missing | [PASS] Working | `graph_rag/parser.rs:19615 bytes` (5 languages) | MEDIUM |
+| **Sandbox Backends** | [PASS] COMPLETE | [PASS] COMPLETE | [FAIL] Missing | [PASS] Working | `sandbox/backends/` (bubblewrap, sandbox-exec) | HIGH |
+| **Brain WASM Runtime** | [PASS] COMPLETE | [PASS] COMPLETE | [FAIL] Missing | [PASS] Working | `brain/runtime.rs:172 lines` (fuel limiting) | MEDIUM |
+| **HFT Broker** | [PASS] COMPLETE | [PASS] COMPLETE | [FAIL] Missing | [PASS] Working | `broker/ring_buffer.rs:141 lines` (SPSC lock-free) | LOW |
+| **LanceDB Vector Store** | [PASS] COMPLETE | [PASS] COMPLETE | [FAIL] Missing | [PASS] Working | `graph_rag/vector.rs` (LanceDB integration) | MEDIUM |
+| **Multi-language Knowledge** | [PASS] COMPLETE | [PASS] COMPLETE | [FAIL] Missing | [PASS] Working | `knowledge/` (5 files, 16 languages) | MEDIUM |
+| **Lean 4 Proof Verification** | [PASS] COMPLETE | [PASS] COMPLETE | [FAIL] Missing | [PASS] Working | `proof/` (templates, verifier) | LOW |
+| **WASM Webview** | [PASS] COMPLETE | [PASS] COMPLETE | [FAIL] Missing | [WARN] Partial | `clawdius-webview/src/` (286 LOC, Leptos) | LOW |
 
 ---
 
@@ -66,16 +66,16 @@ This matrix compares **documentation claims** versus **actual code implementatio
 
 | Feature | VERSION.md Claim | PATH_FORWARD.md Claim | Feature Gap Analysis | Actual Status | Evidence | Priority |
 |---------|------------------|----------------------|---------------------|---------------|----------|----------|
-| **@Mentions Context** | ❌ Not mentioned | ❌ Not mentioned | ❌ Missing | ✅ Working | `context/mentions.rs` (file, folder, url) | HIGH |
-| **JSON Output Format** | ❌ Not mentioned | ❌ Not mentioned | ❌ Missing | ⚠️ Partial | `cli.rs` (--format json flag exists) | HIGH |
-| **Auto-Compact** | ❌ Not mentioned | ❌ Not mentioned | ❌ Missing | ⚠️ Partial | `session/compactor.rs:6664 bytes` | MEDIUM |
-| **Diff View** | ❌ Not mentioned | ❌ Not mentioned | ❌ Missing | ✅ Working | `tui_app/components/diff_view.rs` | MEDIUM |
-| **Session Restore** | ❌ Not mentioned | ❌ Not mentioned | ❌ Missing | ✅ Working | `session/store.rs` (full persistence) | HIGH |
-| **External Editor** | ❌ Not mentioned | ❌ Not mentioned | ❌ Missing | ❌ Missing | Not found in codebase | LOW |
-| **File Timeline** | ❌ Not mentioned | ❌ Not mentioned | ❌ Missing | ❌ Missing | Not found in codebase | MEDIUM |
-| **Custom Commands** | ❌ Not mentioned | ❌ Not mentioned | ❌ Missing | ⚠️ Partial | `commands/executor.rs` (skeleton) | MEDIUM |
-| **GitHub Action** | ❌ Not mentioned | ❌ Not mentioned | ❌ Missing | ❌ Missing | No .github/workflows/ for this | MEDIUM |
-| **Plugin System** | ❌ Not mentioned | ❌ Not mentioned | ❌ Missing | ❌ Missing | Not found in codebase | LOW |
+| **@Mentions Context** | [FAIL] Not mentioned | [FAIL] Not mentioned | [FAIL] Missing | [PASS] Working | `context/mentions.rs` (file, folder, url) | HIGH |
+| **JSON Output Format** | [FAIL] Not mentioned | [FAIL] Not mentioned | [FAIL] Missing | [WARN] Partial | `cli.rs` (--format json flag exists) | HIGH |
+| **Auto-Compact** | [FAIL] Not mentioned | [FAIL] Not mentioned | [FAIL] Missing | [WARN] Partial | `session/compactor.rs:6664 bytes` | MEDIUM |
+| **Diff View** | [FAIL] Not mentioned | [FAIL] Not mentioned | [FAIL] Missing | [PASS] Working | `tui_app/components/diff_view.rs` | MEDIUM |
+| **Session Restore** | [FAIL] Not mentioned | [FAIL] Not mentioned | [FAIL] Missing | [PASS] Working | `session/store.rs` (full persistence) | HIGH |
+| **External Editor** | [FAIL] Not mentioned | [FAIL] Not mentioned | [FAIL] Missing | [FAIL] Missing | Not found in codebase | LOW |
+| **File Timeline** | [FAIL] Not mentioned | [FAIL] Not mentioned | [FAIL] Missing | [FAIL] Missing | Not found in codebase | MEDIUM |
+| **Custom Commands** | [FAIL] Not mentioned | [FAIL] Not mentioned | [FAIL] Missing | [WARN] Partial | `commands/executor.rs` (skeleton) | MEDIUM |
+| **GitHub Action** | [FAIL] Not mentioned | [FAIL] Not mentioned | [FAIL] Missing | [FAIL] Missing | No .github/workflows/ for this | MEDIUM |
+| **Plugin System** | [FAIL] Not mentioned | [FAIL] Not mentioned | [FAIL] Missing | [FAIL] Missing | Not found in codebase | LOW |
 
 ---
 
@@ -83,21 +83,21 @@ This matrix compares **documentation claims** versus **actual code implementatio
 
 | Metric | Count | Location | Status |
 |--------|-------|----------|--------|
-| **Test Functions** | 222 | `crates/**/` | ✅ Good |
-| **Test Files** | 40 | `crates/**/` | ✅ Good |
-| **TODO/FIXME Markers** | 22 | Various files | ⚠️ Needs cleanup |
-| **unimplemented!()** | 1 | `rpc/handlers/completion.rs:144` | ⚠️ Needs implementation |
-| **Skeleton Code** | 2 | `actions/tests.rs`, `commands/executor.rs` | ⚠️ Needs completion |
+| **Test Functions** | 222 | `crates/**/` | [PASS] Good |
+| **Test Files** | 40 | `crates/**/` | [PASS] Good |
+| **TODO/FIXME Markers** | 22 | Various files | [WARN] Needs cleanup |
+| **unimplemented!()** | 1 | `rpc/handlers/completion.rs:144` | [WARN] Needs implementation |
+| **Skeleton Code** | 2 | `actions/tests.rs`, `commands/executor.rs` | [WARN] Needs completion |
 
 ---
 
 ## Feature Implementation Details
 
-### ✅ Fully Implemented Features
+### [PASS] Fully Implemented Features
 
 #### 1. LLM Providers (HIGH Priority)
-- **Claimed:** ✅ COMPLETE (4 providers)
-- **Actual:** ✅ Working (5 providers)
+- **Claimed:** [PASS] COMPLETE (4 providers)
+- **Actual:** [PASS] Working (5 providers)
 - **Evidence:** `crates/clawdius-core/src/llm/providers/`
   - Anthropic, OpenAI, Ollama, Local, ZAI
   - Streaming via mpsc channels
@@ -105,8 +105,8 @@ This matrix compares **documentation claims** versus **actual code implementatio
 - **Discrepancy:** None - actually exceeds claims
 
 #### 2. Session Management (HIGH Priority)
-- **Claimed:** ✅ COMPLETE
-- **Actual:** ✅ Working
+- **Claimed:** [PASS] COMPLETE
+- **Actual:** [PASS] Working
 - **Evidence:** `crates/clawdius-core/src/session/store.rs` (443 lines)
   - SQLite persistence
   - Session restore
@@ -114,8 +114,8 @@ This matrix compares **documentation claims** versus **actual code implementatio
 - **Discrepancy:** None
 
 #### 3. VSCode Extension (HIGH Priority)
-- **Claimed:** ✅ COMPLETE (RPC wired)
-- **Actual:** ✅ Working
+- **Claimed:** [PASS] COMPLETE (RPC wired)
+- **Actual:** [PASS] Working
 - **Evidence:** `editors/vscode/src/` (916 LOC)
   - Activation on startup
   - Chat view provider
@@ -126,8 +126,8 @@ This matrix compares **documentation claims** versus **actual code implementatio
 - **Discrepancy:** None
 
 #### 4. Graph-RAG (MEDIUM Priority)
-- **Claimed:** ✅ COMPLETE (SQLite + Tree-sitter)
-- **Actual:** ✅ Working
+- **Claimed:** [PASS] COMPLETE (SQLite + Tree-sitter)
+- **Actual:** [PASS] Working
 - **Evidence:**
   - `graph_rag/store.rs` (29557 bytes) - SQLite schema
   - `graph_rag/parser.rs` (19615 bytes) - Tree-sitter (5 languages)
@@ -136,8 +136,8 @@ This matrix compares **documentation claims** versus **actual code implementatio
 - **Discrepancy:** None
 
 #### 5. Sandbox Backends (HIGH Priority)
-- **Claimed:** ✅ COMPLETE (bubblewrap, sandbox-exec)
-- **Actual:** ✅ Working
+- **Claimed:** [PASS] COMPLETE (bubblewrap, sandbox-exec)
+- **Actual:** [PASS] Working
 - **Evidence:** `sandbox/backends/`
   - bubblewrap (Linux)
   - sandbox-exec (macOS)
@@ -146,8 +146,8 @@ This matrix compares **documentation claims** versus **actual code implementatio
 - **Discrepancy:** None
 
 #### 6. Brain WASM Runtime (MEDIUM Priority)
-- **Claimed:** ✅ COMPLETE (fuel limiting)
-- **Actual:** ✅ Working
+- **Claimed:** [PASS] COMPLETE (fuel limiting)
+- **Actual:** [PASS] Working
 - **Evidence:** `brain/runtime.rs` (172 lines)
   - Wasmtime integration
   - Fuel-based execution limiting
@@ -156,8 +156,8 @@ This matrix compares **documentation claims** versus **actual code implementatio
 - **Discrepancy:** None
 
 #### 7. HFT Broker (LOW Priority)
-- **Claimed:** ✅ COMPLETE (SPSC ring buffer)
-- **Actual:** ✅ Working
+- **Claimed:** [PASS] COMPLETE (SPSC ring buffer)
+- **Actual:** [PASS] Working
 - **Evidence:** `broker/`
   - `ring_buffer.rs` (141 lines) - Lock-free SPSC
   - `wallet_guard.rs` (5074 bytes)
@@ -167,8 +167,8 @@ This matrix compares **documentation claims** versus **actual code implementatio
 - **Discrepancy:** None
 
 #### 8. Browser Automation (MEDIUM Priority)
-- **Claimed:** ✅ COMPLETE
-- **Actual:** ✅ Working
+- **Claimed:** [PASS] COMPLETE
+- **Actual:** [PASS] Working
 - **Evidence:** `tools/browser.rs` (331 lines)
   - chromiumoxide integration
   - Navigation, click, type, screenshot
@@ -177,8 +177,8 @@ This matrix compares **documentation claims** versus **actual code implementatio
 - **Discrepancy:** None (feature gap analysis was wrong)
 
 #### 9. @Mentions System (HIGH Priority)
-- **Claimed:** ❌ Not mentioned
-- **Actual:** ✅ Working
+- **Claimed:** [FAIL] Not mentioned
+- **Actual:** [PASS] Working
 - **Evidence:** `context/mentions.rs`
   - @file:path support
   - @folder:path support
@@ -186,11 +186,11 @@ This matrix compares **documentation claims** versus **actual code implementatio
   - Regex-based parsing
 - **Discrepancy:** Documentation doesn't claim this, but it's implemented
 
-### ⚠️ Partially Implemented Features
+### [WARN] Partially Implemented Features
 
 #### 1. WASM Webview (LOW Priority)
-- **Claimed:** ✅ COMPLETE
-- **Actual:** ⚠️ Partial
+- **Claimed:** [PASS] COMPLETE
+- **Actual:** [WARN] Partial
 - **Evidence:** `clawdius-webview/src/` (286 LOC)
   - Leptos framework setup
   - Basic components (chat, sidebar)
@@ -198,8 +198,8 @@ This matrix compares **documentation claims** versus **actual code implementatio
 - **Discrepancy:** Claims complete but has placeholders
 
 #### 2. JSON Output Format (HIGH Priority)
-- **Claimed:** ❌ Not mentioned
-- **Actual:** ⚠️ Partial
+- **Claimed:** [FAIL] Not mentioned
+- **Actual:** [WARN] Partial
 - **Evidence:** `cli.rs`
   - --format flag exists
   - JSON output for metrics command
@@ -207,35 +207,35 @@ This matrix compares **documentation claims** versus **actual code implementatio
 - **Discrepancy:** Partial implementation
 
 #### 3. Custom Commands (MEDIUM Priority)
-- **Claimed:** ❌ Not mentioned
-- **Actual:** ⚠️ Partial (skeleton)
+- **Claimed:** [FAIL] Not mentioned
+- **Actual:** [WARN] Partial (skeleton)
 - **Evidence:** `commands/executor.rs:12`
   - TODO comment: "Implement command execution"
 - **Discrepancy:** Skeleton only
 
-### ❌ Missing Features
+### [FAIL] Missing Features
 
 #### 1. External Editor Support (LOW Priority)
-- **Claimed:** ❌ Not mentioned
-- **Actual:** ❌ Missing
+- **Claimed:** [FAIL] Not mentioned
+- **Actual:** [FAIL] Missing
 - **Evidence:** Not found in codebase
 - **Recommendation:** Add $EDITOR integration for long prompts
 
 #### 2. File Timeline (MEDIUM Priority)
-- **Claimed:** ❌ Not mentioned
-- **Actual:** ❌ Missing
+- **Claimed:** [FAIL] Not mentioned
+- **Actual:** [FAIL] Missing
 - **Evidence:** Not found in codebase
 - **Recommendation:** Implement file change tracking with rollback
 
 #### 3. GitHub Action (MEDIUM Priority)
-- **Claimed:** ❌ Not mentioned
-- **Actual:** ❌ Missing
+- **Claimed:** [FAIL] Not mentioned
+- **Actual:** [FAIL] Missing
 - **Evidence:** No GitHub Action workflow for Clawdius
 - **Recommendation:** Create CI/CD integration
 
 #### 4. Plugin System (LOW Priority)
-- **Claimed:** ❌ Not mentioned
-- **Actual:** ❌ Missing
+- **Claimed:** [FAIL] Not mentioned
+- **Actual:** [FAIL] Missing
 - **Evidence:** Not found in codebase
 - **Recommendation:** Future enhancement
 
@@ -305,11 +305,11 @@ This matrix compares **documentation claims** versus **actual code implementatio
 
 | Metric | Count | Status |
 |--------|-------|--------|
-| **Total Test Functions** | 222 | ✅ Excellent |
-| **Test Files** | 40 | ✅ Good |
-| **Integration Tests** | 119+ | ✅ Good |
-| **Unit Tests** | 80+ | ✅ Good |
-| **Coverage** | Unknown | ⚠️ Needs measurement |
+| **Total Test Functions** | 222 | [PASS] Excellent |
+| **Test Files** | 40 | [PASS] Good |
+| **Integration Tests** | 119+ | [PASS] Good |
+| **Unit Tests** | 80+ | [PASS] Good |
+| **Coverage** | Unknown | [WARN] Needs measurement |
 
 **Recommendation:** Add code coverage tracking to CI/CD pipeline.
 
@@ -318,18 +318,18 @@ This matrix compares **documentation claims** versus **actual code implementatio
 ## Code Quality Metrics
 
 ### Strengths
-- ✅ Comprehensive type system
-- ✅ Well-organized monorepo structure
-- ✅ Good test coverage (222 tests)
-- ✅ Most features fully implemented
-- ✅ Clean separation of concerns
+- [PASS] Comprehensive type system
+- [PASS] Well-organized monorepo structure
+- [PASS] Good test coverage (222 tests)
+- [PASS] Most features fully implemented
+- [PASS] Clean separation of concerns
 
 ### Weaknesses
-- ⚠️ Documentation claims don't match reality
-- ⚠️ 22 TODO/FIXME markers remain
-- ⚠️ 1 unimplemented!() macro
-- ⚠️ Some skeleton implementations
-- ⚠️ Version number confusion (1.0.0 vs 0.5.0)
+- [WARN] Documentation claims don't match reality
+- [WARN] 22 TODO/FIXME markers remain
+- [WARN] 1 unimplemented!() macro
+- [WARN] Some skeleton implementations
+- [WARN] Version number confusion (1.0.0 vs 0.5.0)
 
 ---
 

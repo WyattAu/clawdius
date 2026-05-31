@@ -78,9 +78,9 @@ pub async fn create(&self, _description: Option<String>) -> crate::Result<Snapsh
 ```
 
 **Action**: 
-- ✅ Created GitHub issue #1: https://github.com/WyattAu/clawdius/issues/1
-- ✅ Removed TODO comment
-- ✅ Added documentation reference to issue
+- [PASS] Created GitHub issue #1: https://github.com/WyattAu/clawdius/issues/1
+- [PASS] Removed TODO comment
+- [PASS] Added documentation reference to issue
 
 **Updated Code**:
 ```rust
@@ -109,9 +109,9 @@ println!("Echo: {}", line);
 ```
 
 **Action**: 
-- ✅ Created GitHub issue #2: https://github.com/WyattAu/clawdius/issues/2
-- ✅ Removed TODO comment
-- ✅ Added documentation reference to issue
+- [PASS] Created GitHub issue #2: https://github.com/WyattAu/clawdius/issues/2
+- [PASS] Removed TODO comment
+- [PASS] Added documentation reference to issue
 
 **Updated Code**:
 ```rust
@@ -167,12 +167,12 @@ $ cargo test --workspace
 ## Summary
 
 ### Actions Taken
-1. ✅ Identified 29 TODO/FIXME markers
-2. ✅ Categorized TODOs by type (template strings vs actionable)
-3. ✅ Created 2 GitHub issues for actionable TODOs
-4. ✅ Removed actionable TODO comments from code
-5. ✅ Added issue references in code documentation
-6. ✅ Verified build and test success
+1. [PASS] Identified 29 TODO/FIXME markers
+2. [PASS] Categorized TODOs by type (template strings vs actionable)
+3. [PASS] Created 2 GitHub issues for actionable TODOs
+4. [PASS] Removed actionable TODO comments from code
+5. [PASS] Added issue references in code documentation
+6. [PASS] Verified build and test success
 
 ### Metrics
 - **Initial Count**: 29 TODO markers
@@ -182,12 +182,12 @@ $ cargo test --workspace
 - **Total Remaining**: 27 (all intentional)
 
 ### Success Criteria Met
-- ✅ TODO count <10 (0 actionable TODOs remain)
-- ✅ All removed TODOs documented
-- ✅ No functionality broken
-- ✅ Tests still pass
-- ✅ Build succeeds
-- ✅ Clear documentation of what was done
+- [PASS] TODO count <10 (0 actionable TODOs remain)
+- [PASS] All removed TODOs documented
+- [PASS] No functionality broken
+- [PASS] Tests still pass
+- [PASS] Build succeeds
+- [PASS] Clear documentation of what was done
 
 ## Recommendations
 

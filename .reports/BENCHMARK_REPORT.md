@@ -10,20 +10,20 @@ All critical path performance targets have been met:
 
 | Component         | Target   | Measured  | Status | Margin |
 |-------------------|----------|-----------|--------|--------|
-| Ring Buffer Push  | <100ns   | 9.17ns    | ✅ PASS | 10.9x faster |
-| Ring Buffer Pop   | <100ns   | 7.71ns    | ✅ PASS | 13.0x faster |
-| Wallet Guard      | <100µs   | <50ns     | ✅ PASS | 2000x faster |
-| HFT Pipeline      | <1ms     | <1µs      | ✅ PASS | 1000x faster |
-| Boot Time         | <20ms    | <1µs      | ✅ PASS | 20000x faster |
+| Ring Buffer Push  | <100ns   | 9.17ns    | [PASS] PASS | 10.9x faster |
+| Ring Buffer Pop   | <100ns   | 7.71ns    | [PASS] PASS | 13.0x faster |
+| Wallet Guard      | <100µs   | <50ns     | [PASS] PASS | 2000x faster |
+| HFT Pipeline      | <1ms     | <1µs      | [PASS] PASS | 1000x faster |
+| Boot Time         | <20ms    | <1µs      | [PASS] PASS | 20000x faster |
 
 ## Detailed Results
 
 ### 1. Ring Buffer Benchmarks (Target: <100ns)
 
 ```
-ring_buffer/push                9.17 ns  (target: <100 ns) ✅ PASS
-ring_buffer/pop                 7.71 ns  (target: <100 ns) ✅ PASS
-ring_buffer/push_pop_roundtrip  8.37 ns  (target: <200 ns) ✅ PASS
+ring_buffer/push                9.17 ns  (target: <100 ns) [PASS] PASS
+ring_buffer/pop                 7.71 ns  (target: <100 ns) [PASS] PASS
+ring_buffer/push_pop_roundtrip  8.37 ns  (target: <200 ns) [PASS] PASS
 ```
 
 **Analysis:**
@@ -40,9 +40,9 @@ ring_buffer/push_pop_roundtrip  8.37 ns  (target: <200 ns) ✅ PASS
 ### 2. Wallet Guard Benchmarks (Target: <100µs)
 
 ```
-wallet_guard/hash_insert        45.15 ns  (target: <1000 ns) ✅ PASS
-wallet_guard/restricted_check   15.82 ns  (target: <100 ns)  ✅ PASS
-wallet_guard/value_comparison    0.43 ns  (target: <10 ns)   ✅ PASS
+wallet_guard/hash_insert        45.15 ns  (target: <1000 ns) [PASS] PASS
+wallet_guard/restricted_check   15.82 ns  (target: <100 ns)  [PASS] PASS
+wallet_guard/value_comparison    0.43 ns  (target: <10 ns)   [PASS] PASS
 ```
 
 **Analysis:**
@@ -58,9 +58,9 @@ wallet_guard/value_comparison    0.43 ns  (target: <10 ns)   ✅ PASS
 ### 3. Initialization Benchmarks (Target: <20ms)
 
 ```
-init/ring_buffer_64k            33.60 ns  (target: <100000 ns) ✅ PASS
-init/hashset_with_capacity      31.95 ns  (target: <1000 ns)   ✅ PASS
-init/vec_1000_zeros            159.49 ns  (target: <10000 ns)  ✅ PASS
+init/ring_buffer_64k            33.60 ns  (target: <100000 ns) [PASS] PASS
+init/hashset_with_capacity      31.95 ns  (target: <1000 ns)   [PASS] PASS
+init/vec_1000_zeros            159.49 ns  (target: <10000 ns)  [PASS] PASS
 ```
 
 **Analysis:**
@@ -103,10 +103,10 @@ Boot time is well within budget with lazy initialization for non-critical compon
 ## Recommendations
 
 ### P0 - Already Met (No Action Required)
-- ✅ Ring buffer <100ns
-- ✅ Wallet guard <100µs
-- ✅ HFT pipeline <1ms
-- ✅ Boot time <20ms
+- [PASS] Ring buffer <100ns
+- [PASS] Wallet guard <100µs
+- [PASS] HFT pipeline <1ms
+- [PASS] Boot time <20ms
 
 ### P1 - Optional Optimizations
 1. **HugePage Ring Buffer** - For buffers >1M entries, consider HugePage mmap to reduce TLB misses
@@ -154,25 +154,25 @@ Running 1000000 iterations per benchmark...
 ┌─────────────────────────────────────────────────────────────────────┐
 │ RING BUFFER BENCHMARKS (Target: <100ns)                             │
 ├─────────────────────────────────────────────────────────────────────┤
-ring_buffer/push                          9.17 ns  (target: <100 ns) ✅ PASS
-ring_buffer/pop                           7.71 ns  (target: <100 ns) ✅ PASS
-ring_buffer/push_pop_roundtrip            8.37 ns  (target: <200 ns) ✅ PASS
+ring_buffer/push                          9.17 ns  (target: <100 ns) [PASS] PASS
+ring_buffer/pop                           7.71 ns  (target: <100 ns) [PASS] PASS
+ring_buffer/push_pop_roundtrip            8.37 ns  (target: <200 ns) [PASS] PASS
 └─────────────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────────────┐
 │ WALLET GUARD SIMULATION (Target: <100µs = 100,000ns)               │
 ├─────────────────────────────────────────────────────────────────────┤
-wallet_guard/hash_insert                 45.15 ns  (target: <1000 ns) ✅ PASS
-wallet_guard/restricted_check            15.82 ns  (target: <100 ns) ✅ PASS
-wallet_guard/value_comparison             0.43 ns  (target: <10 ns) ✅ PASS
+wallet_guard/hash_insert                 45.15 ns  (target: <1000 ns) [PASS] PASS
+wallet_guard/restricted_check            15.82 ns  (target: <100 ns) [PASS] PASS
+wallet_guard/value_comparison             0.43 ns  (target: <10 ns) [PASS] PASS
 └─────────────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────────────┐
 │ INITIALIZATION BENCHMARKS (Target: <20ms = 20,000,000ns)           │
 ├─────────────────────────────────────────────────────────────────────┤
-init/ring_buffer_64k                     33.60 ns  (target: <100000 ns) ✅ PASS
-init/hashset_with_capacity               31.95 ns  (target: <1000 ns) ✅ PASS
-init/vec_1000_zeros                     159.49 ns  (target: <10000 ns) ✅ PASS
+init/ring_buffer_64k                     33.60 ns  (target: <100000 ns) [PASS] PASS
+init/hashset_with_capacity               31.95 ns  (target: <1000 ns) [PASS] PASS
+init/vec_1000_zeros                     159.49 ns  (target: <10000 ns) [PASS] PASS
 └─────────────────────────────────────────────────────────────────────┘
 
 ╔══════════════════════════════════════════════════════════════════════╗

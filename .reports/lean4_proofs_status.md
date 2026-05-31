@@ -142,7 +142,7 @@
 # Verify all proofs compile
 for f in .clawdius/specs/02_architecture/proofs/*.lean; do
   echo "Checking $f"
-  lean "$f" && echo "  ✓ OK" || echo "  ✗ FAILED"
+  lean "$f" && echo "   OK" || echo "   FAILED"
 done
 ```
 

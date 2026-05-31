@@ -40,13 +40,18 @@ use clawdius_core::llm::providers::{ChatWithToolsResult, Tool};
 use clawdius_core::llm::*;
 use serde_json::json;
 
-const API_KEY: &str = "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";
+fn api_key() -> String {
+    std::env::var("OPENROUTER_API_KEY").unwrap_or_else(|_| {
+        eprintln!("OPENROUTER_API_KEY not set -- live model tests will fail");
+        String::new()
+    })
+}
 
 fn make_config(model: &str) -> LlmConfig {
     LlmConfig {
         provider: "openrouter".to_string(),
         model: model.to_string(),
-        api_key: Some(API_KEY.to_string()),
+        api_key: Some(api_key()),
         base_url: None,
         max_tokens: 150,
     }

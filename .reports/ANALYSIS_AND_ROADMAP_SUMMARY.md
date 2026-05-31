@@ -36,7 +36,7 @@ This document summarizes the comprehensive analysis of the Clawdius repository a
 ### Areas for Improvement
 
 1. **Skeleton Implementations** (HIGH PRIORITY)
-   - `commands/executor.rs` - ✅ **FIXED** (now fully implemented)
+   - `commands/executor.rs` - [PASS] **FIXED** (now fully implemented)
    - `actions/tests.rs` - Needs implementation
    - `checkpoint/snapshot.rs` - Needs implementation
 
@@ -59,7 +59,7 @@ This document summarizes the comprehensive analysis of the Clawdius repository a
 
 ### Immediate (Week 1-2)
 
-1. ✅ **Command Executor** - COMPLETED
+1. [PASS] **Command Executor** - COMPLETED
    - Implemented full command execution logic
    - Added variable substitution
    - Integrated with File/Shell/Git tools
@@ -121,11 +121,11 @@ This document summarizes the comprehensive analysis of the Clawdius repository a
 
 | Task | Effort | Status |
 |------|--------|--------|
-| Command executor | 8h | ✅ COMPLETE |
-| Real completions | 4h | 📋 TODO |
-| TODO cleanup | 8h | 📋 TODO |
-| Error handling | 4h | 📋 TODO |
-| Documentation warnings | 16h | 📋 TODO |
+| Command executor | 8h | [PASS] COMPLETE |
+| Real completions | 4h |  TODO |
+| TODO cleanup | 8h |  TODO |
+| Error handling | 4h |  TODO |
+| Documentation warnings | 16h |  TODO |
 
 **Deliverables:**
 - Zero skeleton implementations
@@ -207,8 +207,8 @@ This document summarizes the comprehensive analysis of the Clawdius repository a
 
 | Issue | Location | Effort | Status |
 |-------|----------|--------|--------|
-| Command executor | `commands/executor.rs` | 8h | ✅ FIXED |
-| Mock completions | `rpc/handlers/completion.rs` | 4h | 📋 TODO |
+| Command executor | `commands/executor.rs` | 8h | [PASS] FIXED |
+| Mock completions | `rpc/handlers/completion.rs` | 4h |  TODO |
 
 ### High Priority
 

@@ -235,7 +235,7 @@ proportionally or by relevance, never exceeding the total context window.
 
 | Quality Gate | Status |
 |---------------|--------|
-| Requirements Complete | ✅ |
-| Acceptance Criteria Defined | ✅ |
-| Traceability Established | ✅ |
-| Stakeholder Review | ⏳ Pending |
+| Requirements Complete | [PASS] |
+| Acceptance Criteria Defined | [PASS] |
+| Traceability Established | [PASS] |
+| Stakeholder Review | [PENDING] Pending |

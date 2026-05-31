@@ -5,7 +5,7 @@
 
 ---
 
-## 🐛 Bug Report
+##  Bug Report
 
 Use this template for reporting bugs or unexpected behavior.
 
@@ -56,7 +56,7 @@ If you have suggestions for a fix, please describe them here.
 
 ---
 
-## ✨ Feature Request
+##  Feature Request
 
 Use this template for requesting new features or enhancements.
 
@@ -104,7 +104,7 @@ How important is this feature?
 
 ---
 
-## 🔧 Technical Debt
+##  Technical Debt
 
 Use this template for tracking technical debt items.
 
@@ -176,7 +176,7 @@ Add any other context about the technical debt here.
 
 ---
 
-## 📚 Documentation Improvement
+##  Documentation Improvement
 
 Use this template for documentation improvements.
 
@@ -238,7 +238,7 @@ Add any other context about the documentation improvement here.
 
 ---
 
-## 🚀 Performance Issue
+##  Performance Issue
 
 Use this template for performance-related issues.
 
@@ -300,7 +300,7 @@ Add any other context about the performance issue here.
 
 ---
 
-## 🔒 Security Issue
+##  Security Issue
 
 Use this template for security-related issues.
 
@@ -313,7 +313,7 @@ labels: security, needs-triage
 assignees: ''
 ---
 
-⚠️ **WARNING**: For critical security vulnerabilities, please email security@clawdius.dev instead of creating a public issue.
+[WARN] **WARNING**: For critical security vulnerabilities, please email security@clawdius.dev instead of creating a public issue.
 
 ## Security Issue Description
 A clear description of the security issue.
@@ -363,7 +363,7 @@ Add any other context about the security issue here.
 
 ---
 
-## 📋 Task / Chore
+##  Task / Chore
 
 Use this template for general tasks and maintenance work.
 
@@ -422,7 +422,7 @@ Add any other context about the task here.
 
 ---
 
-## 🎯 Epic
+##  Epic
 
 Use this template for creating epics that group related issues.
 

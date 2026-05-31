@@ -15,20 +15,20 @@ Clawdius is a sophisticated, high-assurance AI agentic engine with excellent arc
 
 | Category | Score | Status |
 |----------|-------|--------|
-| **Architecture** | 95/100 | ✅ Excellent |
-| **Core Implementation** | 90/100 | ✅ Production Ready |
-| **Testing** | 92/100 | ✅ Comprehensive |
-| **Documentation** | 85/100 | ⚠️ Needs Updates |
-| **Feature Completeness** | 88/100 | ⚠️ Some Gaps |
-| **Code Quality** | 94/100 | ✅ High Standards |
+| **Architecture** | 95/100 | [PASS] Excellent |
+| **Core Implementation** | 90/100 | [PASS] Production Ready |
+| **Testing** | 92/100 | [PASS] Comprehensive |
+| **Documentation** | 85/100 | [WARN] Needs Updates |
+| **Feature Completeness** | 88/100 | [WARN] Some Gaps |
+| **Code Quality** | 94/100 | [PASS] High Standards |
 
 **Key Findings:**
-- ✅ Core engine is production-ready (LLM, tools, sandboxing)
-- ✅ Unique security features (Sentinel, Brain, Graph-RAG)
-- ⚠️ Several features documented but not implemented
-- ⚠️ Nexus lifecycle FSM exists in specs but not in code
-- ⚠️ Some advanced features partially implemented
-- ✅ Excellent test coverage (222+ tests)
+- [PASS] Core engine is production-ready (LLM, tools, sandboxing)
+- [PASS] Unique security features (Sentinel, Brain, Graph-RAG)
+- [WARN] Several features documented but not implemented
+- [WARN] Nexus lifecycle FSM exists in specs but not in code
+- [WARN] Some advanced features partially implemented
+- [PASS] Excellent test coverage (222+ tests)
 
 ---
 
@@ -37,7 +37,7 @@ Clawdius is a sophisticated, high-assurance AI agentic engine with excellent arc
 ### 1.1 Critical Missing Features (Priority 0)
 
 #### A. Nexus Lifecycle FSM Engine
-**Status:** ❌ NOT IMPLEMENTED  
+**Status:** [FAIL] NOT IMPLEMENTED  
 **Location:** Documented in `.clawdius/specs/02_architecture/BP-NEXUS-FSM-001.md`  
 **Impact:** HIGH - Core differentiating feature
 
@@ -72,7 +72,7 @@ pub mod fsm {
 ---
 
 #### B. Formal Proof Integration (Lean4)
-**Status:** ⚠️ PARTIAL - Templates only, no runtime integration  
+**Status:** [WARN] PARTIAL - Templates only, no runtime integration  
 **Location:** `crates/clawdius-core/src/proof/`  
 **Impact:** MEDIUM - Unique verification feature
 
@@ -83,10 +83,10 @@ pub mod fsm {
 - Automated proof generation hooks
 
 **Current State:**
-- ✅ Proof templates exist
-- ✅ Proof directory structure
-- ❌ No Lean4 binary integration
-- ❌ No proof execution
+- [PASS] Proof templates exist
+- [PASS] Proof directory structure
+- [FAIL] No Lean4 binary integration
+- [FAIL] No proof execution
 
 **Recommendation:**
 ```rust
@@ -113,21 +113,21 @@ impl Lean4Verifier {
 ### 1.2 High Priority Missing Features (Priority 1)
 
 #### C. HFT Broker Real-Time Integration
-**Status:** ⚠️ PARTIAL - Core components exist, no market data feeds  
+**Status:** [WARN] PARTIAL - Core components exist, no market data feeds  
 **Location:** `crates/clawdius-core/src/broker/`  
 **Impact:** MEDIUM - Financial domain feature
 
 **What's Implemented:**
-- ✅ SPSC ring buffer (lock-free)
-- ✅ Wallet Guard safety interlock
-- ✅ Arena allocator
-- ✅ Signal detection framework
+- [PASS] SPSC ring buffer (lock-free)
+- [PASS] Wallet Guard safety interlock
+- [PASS] Arena allocator
+- [PASS] Signal detection framework
 
 **What's Missing:**
-- ❌ Real market data feed integration
-- ❌ Broker API connections (Alpaca, IBKR, etc.)
-- ❌ Order execution pipeline
-- ❌ Risk management rules engine
+- [FAIL] Real market data feed integration
+- [FAIL] Broker API connections (Alpaca, IBKR, etc.)
+- [FAIL] Order execution pipeline
+- [FAIL] Risk management rules engine
 
 **Recommendation:**
 ```rust
@@ -147,20 +147,20 @@ pub struct InteractiveBrokersFeed { /* ... */ }
 ---
 
 #### D. Multi-Language Knowledge Integration
-**Status:** ⚠️ PARTIAL - Infrastructure exists, TQA not implemented  
+**Status:** [WARN] PARTIAL - Infrastructure exists, TQA not implemented  
 **Location:** `crates/clawdius-core/src/knowledge/`  
 **Impact:** MEDIUM - Research feature
 
 **What's Implemented:**
-- ✅ Knowledge graph structure
-- ✅ Concept mapping framework
-- ✅ 16 language support structure
+- [PASS] Knowledge graph structure
+- [PASS] Concept mapping framework
+- [PASS] 16 language support structure
 
 **What's Missing:**
-- ❌ Translation Quality Assurance (TQA) implementation
-- ❌ Multi-lingual literature search
-- ❌ Conflict resolution engine
-- ❌ Concept drift detection
+- [FAIL] Translation Quality Assurance (TQA) implementation
+- [FAIL] Multi-lingual literature search
+- [FAIL] Conflict resolution engine
+- [FAIL] Concept drift detection
 
 **Recommendation:**
 ```rust
@@ -188,7 +188,7 @@ pub enum TqaLevel {
 ### 1.3 Medium Priority Missing Features (Priority 2)
 
 #### E. External Editor Integration
-**Status:** ❌ NOT IMPLEMENTED  
+**Status:** [FAIL] NOT IMPLEMENTED  
 **Location:** Not found  
 **Impact:** LOW - UX improvement
 
@@ -227,7 +227,7 @@ impl ExternalEditor {
 ---
 
 #### F. Plugin System Architecture
-**Status:** ❌ NOT IMPLEMENTED  
+**Status:** [FAIL] NOT IMPLEMENTED  
 **Location:** Documented but no code  
 **Impact:** MEDIUM - Extensibility
 
@@ -264,23 +264,23 @@ pub struct PluginManager {
 ## 2. Partial Implementations
 
 ### 2.1 WASM Webview UI
-**Status:** ⚠️ PARTIAL (286 LOC)  
+**Status:** [WARN] PARTIAL (286 LOC)  
 **Location:** `crates/clawdius-webview/src/`  
 **Completion:** ~40%
 
 **What's Implemented:**
-- ✅ Leptos framework setup
-- ✅ Basic chat component
-- ✅ Sidebar navigation
-- ✅ Component structure
+- [PASS] Leptos framework setup
+- [PASS] Basic chat component
+- [PASS] Sidebar navigation
+- [PASS] Component structure
 
 **What's Missing:**
-- ❌ Session history view
-- ❌ Settings panel (placeholder exists)
-- ❌ File browser integration
-- ❌ Timeline visualization
-- ❌ Real-time updates
-- ❌ State management
+- [FAIL] Session history view
+- [FAIL] Settings panel (placeholder exists)
+- [FAIL] File browser integration
+- [FAIL] Timeline visualization
+- [FAIL] Real-time updates
+- [FAIL] State management
 
 **Recommendation:**
 1. Complete settings panel with actual configuration
@@ -294,23 +294,23 @@ pub struct PluginManager {
 ---
 
 ### 2.2 File Timeline System
-**Status:** ⚠️ PARTIAL  
+**Status:** [WARN] PARTIAL  
 **Location:** `crates/clawdius-core/src/timeline/`  
 **Completion:** ~60%
 
 **What's Implemented:**
-- ✅ Timeline store (574 LOC)
-- ✅ Checkpoint creation
-- ✅ Checkpoint listing
-- ✅ Diff generation
-- ✅ Basic rollback
+- [PASS] Timeline store (574 LOC)
+- [PASS] Checkpoint creation
+- [PASS] Checkpoint listing
+- [PASS] Diff generation
+- [PASS] Basic rollback
 
 **What's Missing:**
-- ❌ File watching integration
-- ❌ Automatic checkpoint triggers
-- ❌ Timeline visualization
-- ❌ Branch/merge support
-- ❌ Compression for old checkpoints
+- [FAIL] File watching integration
+- [FAIL] Automatic checkpoint triggers
+- [FAIL] Timeline visualization
+- [FAIL] Branch/merge support
+- [FAIL] Compression for old checkpoints
 
 **Recommendation:**
 1. Add file watcher using `notify` crate
@@ -324,20 +324,20 @@ pub struct PluginManager {
 ---
 
 ### 2.3 Auto-Compact System
-**Status:** ⚠️ PARTIAL  
+**Status:** [WARN] PARTIAL  
 **Location:** `crates/clawdius-core/src/context/compactor.rs`  
 **Completion:** ~70%
 
 **What's Implemented:**
-- ✅ Token counting
-- ✅ Compaction logic (479 LOC)
-- ✅ Summary generation
+- [PASS] Token counting
+- [PASS] Compaction logic (479 LOC)
+- [PASS] Summary generation
 
 **What's Missing:**
-- ❌ Smart context prioritization
-- ❌ Multi-level compaction
-- ❌ User-configurable thresholds
-- ❌ Preserve critical context
+- [FAIL] Smart context prioritization
+- [FAIL] Multi-level compaction
+- [FAIL] User-configurable thresholds
+- [FAIL] Preserve critical context
 
 **Recommendation:**
 1. Add priority scoring for messages
@@ -352,7 +352,7 @@ pub struct PluginManager {
 ## 3. Code Quality Issues
 
 ### 3.1 Documentation Warnings
-**Status:** ⚠️ 825 warnings  
+**Status:** [WARN] 825 warnings  
 **Impact:** LOW - Cosmetic
 
 **Breakdown:**
@@ -373,7 +373,7 @@ cargo doc --no-deps
 ---
 
 ### 3.2 TODO/FIXME Markers
-**Status:** ⚠️ 22 markers  
+**Status:** [WARN] 22 markers  
 **Impact:** MEDIUM - Technical debt
 
 **Locations:**
@@ -396,7 +396,7 @@ cargo doc --no-deps
 ---
 
 ### 3.3 Skeleton Implementations
-**Status:** ⚠️ 2 skeletons  
+**Status:** [WARN] 2 skeletons  
 **Impact:** MEDIUM - Incomplete features
 
 **Files:**
@@ -420,7 +420,7 @@ cargo doc --no-deps
 ### 4.1 Missing Architectural Components
 
 #### A. Event Bus / Message Queue
-**Status:** ❌ NOT IMPLEMENTED  
+**Status:** [FAIL] NOT IMPLEMENTED  
 **Impact:** MEDIUM - Needed for Nexus FSM
 
 **Use Cases:**
@@ -457,19 +457,19 @@ impl EventBus {
 ---
 
 #### B. Configuration Management System
-**Status:** ⚠️ PARTIAL  
+**Status:** [WARN] PARTIAL  
 **Impact:** LOW - Already functional
 
 **Current State:**
-- ✅ TOML config loading
-- ✅ Provider configuration
-- ✅ Session config
+- [PASS] TOML config loading
+- [PASS] Provider configuration
+- [PASS] Session config
 
 **What's Missing:**
-- ❌ Schema validation
-- ❌ Migration system
-- ❌ Profile support (dev/staging/prod)
-- ❌ Environment variable overrides
+- [FAIL] Schema validation
+- [FAIL] Migration system
+- [FAIL] Profile support (dev/staging/prod)
+- [FAIL] Environment variable overrides
 
 **Recommendation:**
 ```rust
@@ -494,7 +494,7 @@ impl ConfigValidator {
 ### 4.2 Performance Optimizations
 
 #### A. LRU Cache Improvements
-**Status:** ✅ IMPLEMENTED but can be optimized  
+**Status:** [PASS] IMPLEMENTED but can be optimized  
 **Location:** Completion handler
 
 **Current Implementation:**
@@ -513,14 +513,14 @@ type CompletionCache = LruCache<String, Vec<Completion>>;
 ---
 
 #### B. Graph-RAG Query Optimization
-**Status:** ⚠️ PARTIAL  
+**Status:** [WARN] PARTIAL  
 **Location:** `crates/clawdius-core/src/graph_rag/`
 
 **Current State:**
-- ✅ SQLite indexes exist
-- ✅ Query engine implemented
-- ⚠️ No query plan caching
-- ⚠️ No parallel query execution
+- [PASS] SQLite indexes exist
+- [PASS] Query engine implemented
+- [WARN] No query plan caching
+- [WARN] No parallel query execution
 
 **Recommendations:**
 1. Add query plan cache
@@ -537,19 +537,19 @@ type CompletionCache = LruCache<String, Vec<Completion>>;
 ### 5.1 Missing Test Categories
 
 #### A. Performance Benchmarks
-**Status:** ⚠️ PARTIAL  
+**Status:** [WARN] PARTIAL  
 **Location:** `benches/`
 
 **What Exists:**
-- ✅ Basic criterion benchmarks
-- ✅ Core operation benchmarks
+- [PASS] Basic criterion benchmarks
+- [PASS] Core operation benchmarks
 
 **What's Missing:**
-- ❌ LLM provider latency benchmarks
-- ❌ Graph-RAG query benchmarks
-- ❌ Sandbox overhead benchmarks
-- ❌ Memory usage benchmarks
-- ❌ Concurrent load tests
+- [FAIL] LLM provider latency benchmarks
+- [FAIL] Graph-RAG query benchmarks
+- [FAIL] Sandbox overhead benchmarks
+- [FAIL] Memory usage benchmarks
+- [FAIL] Concurrent load tests
 
 **Recommendation:**
 ```rust
@@ -575,18 +575,18 @@ fn bench_semantic_search(b: &mut Bencher) {
 ---
 
 #### B. Fuzz Testing Expansion
-**Status:** ⚠️ PARTIAL  
+**Status:** [WARN] PARTIAL  
 **Location:** `fuzz/`
 
 **What Exists:**
-- ✅ 5+ fuzz targets
-- ✅ Security-focused fuzzing
+- [PASS] 5+ fuzz targets
+- [PASS] Security-focused fuzzing
 
 **What's Missing:**
-- ❌ Parser fuzzing (tree-sitter)
-- ❌ LLM response fuzzing
-- ❌ Shell command fuzzing
-- ❌ Timeline operation fuzzing
+- [FAIL] Parser fuzzing (tree-sitter)
+- [FAIL] LLM response fuzzing
+- [FAIL] Shell command fuzzing
+- [FAIL] Timeline operation fuzzing
 
 **Recommendation:**
 ```rust
@@ -606,7 +606,7 @@ fuzz_target!(|data: &[u8]| {
 ---
 
 #### C. Integration Test Coverage
-**Status:** ✅ GOOD but can improve  
+**Status:** [PASS] GOOD but can improve  
 **Current:** 222 test functions
 
 **Missing Scenarios:**
@@ -625,15 +625,15 @@ fuzz_target!(|data: &[u8]| {
 ### 6.1 Sandbox Hardening
 
 #### A. Resource Limit Enforcement
-**Status:** ⚠️ PARTIAL  
+**Status:** [WARN] PARTIAL  
 **Impact:** HIGH - Security critical
 
 **Current State:**
-- ✅ Memory limits
-- ✅ CPU limits
-- ✅ Time limits
-- ⚠️ No network namespace isolation
-- ⚠️ No filesystem quota
+- [PASS] Memory limits
+- [PASS] CPU limits
+- [PASS] Time limits
+- [WARN] No network namespace isolation
+- [WARN] No filesystem quota
 
 **Recommendations:**
 1. Add cgroup-based resource limits
@@ -646,13 +646,13 @@ fuzz_target!(|data: &[u8]| {
 ---
 
 #### B. Audit Logging
-**Status:** ⚠️ PARTIAL  
+**Status:** [WARN] PARTIAL  
 **Impact:** MEDIUM - Compliance
 
 **Current State:**
-- ✅ Basic logging
-- ⚠️ No structured audit trail
-- ⚠️ No tamper-proof logs
+- [PASS] Basic logging
+- [WARN] No structured audit trail
+- [WARN] No tamper-proof logs
 
 **Recommendations:**
 1. Implement structured audit logging
@@ -667,7 +667,7 @@ fuzz_target!(|data: &[u8]| {
 ## 7. Documentation Improvements
 
 ### 7.1 API Documentation
-**Status:** ⚠️ PARTIAL  
+**Status:** [WARN] PARTIAL  
 **Impact:** MEDIUM - Developer experience
 
 **Issues:**
@@ -686,13 +686,13 @@ fuzz_target!(|data: &[u8]| {
 ---
 
 ### 7.2 User Documentation
-**Status:** ✅ GOOD  
+**Status:** [PASS] GOOD  
 **Impact:** LOW - Already comprehensive
 
 **What Exists:**
-- ✅ User guide
-- ✅ Architecture overview
-- ✅ API reference
+- [PASS] User guide
+- [PASS] Architecture overview
+- [PASS] API reference
 
 **What Could Improve:**
 - Add more real-world examples
@@ -710,9 +710,9 @@ fuzz_target!(|data: &[u8]| {
 **Priority:** P0  
 **Effort:** 120 hours
 
-1. ✅ Complete command executor (DONE)
-2. ✅ Fix completion handler (DONE)
-3. ⏳ Implement Nexus FSM core (80-120 hours)
+1. [PASS] Complete command executor (DONE)
+2. [PASS] Fix completion handler (DONE)
+3. [PENDING] Implement Nexus FSM core (80-120 hours)
    - Phase state machine
    - Transition engine
    - Quality gates
@@ -794,16 +794,16 @@ fuzz_target!(|data: &[u8]| {
 
 | ID | Item | Location | Effort | Priority | Status |
 |----|------|----------|--------|----------|--------|
-| TD-001 | 825 doc warnings | Global | 24h | LOW | ⏳ TODO |
-| TD-002 | 22 TODO markers | Various | 60h | MEDIUM | ⏳ TODO |
-| TD-003 | unimplemented!() | completion.rs | 4h | HIGH | ✅ FIXED |
-| TD-004 | Skeleton tests.rs | actions/tests.rs | 8h | MEDIUM | ✅ DONE |
-| TD-005 | Skeleton executor | commands/executor.rs | 8h | MEDIUM | ✅ DONE |
-| TD-006 | Partial webview | clawdius-webview | 100h | LOW | ⏳ TODO |
-| TD-007 | Partial timeline | timeline/ | 60h | MEDIUM | ⏳ TODO |
-| TD-008 | Missing Nexus FSM | nexus/ | 120h | HIGH | ⏳ TODO |
-| TD-009 | Missing Lean4 runtime | proof/ | 60h | MEDIUM | ⏳ TODO |
-| TD-010 | Missing broker feeds | broker/ | 160h | MEDIUM | ⏳ TODO |
+| TD-001 | 825 doc warnings | Global | 24h | LOW | [PENDING] TODO |
+| TD-002 | 22 TODO markers | Various | 60h | MEDIUM | [PENDING] TODO |
+| TD-003 | unimplemented!() | completion.rs | 4h | HIGH | [PASS] FIXED |
+| TD-004 | Skeleton tests.rs | actions/tests.rs | 8h | MEDIUM | [PASS] DONE |
+| TD-005 | Skeleton executor | commands/executor.rs | 8h | MEDIUM | [PASS] DONE |
+| TD-006 | Partial webview | clawdius-webview | 100h | LOW | [PENDING] TODO |
+| TD-007 | Partial timeline | timeline/ | 60h | MEDIUM | [PENDING] TODO |
+| TD-008 | Missing Nexus FSM | nexus/ | 120h | HIGH | [PENDING] TODO |
+| TD-009 | Missing Lean4 runtime | proof/ | 60h | MEDIUM | [PENDING] TODO |
+| TD-010 | Missing broker feeds | broker/ | 160h | MEDIUM | [PENDING] TODO |
 
 **Total Technical Debt:** 624 hours (~78 developer-days)
 
@@ -815,24 +815,24 @@ fuzz_target!(|data: &[u8]| {
 
 | Metric | Value | Target | Status |
 |--------|-------|--------|--------|
-| **Test Functions** | 222+ | 250+ | ✅ 88% |
-| **Test Files** | 40 | 50 | ✅ 80% |
-| **Code Coverage** | Unknown | 80%+ | ⚠️ NEEDS MEASUREMENT |
-| **Documentation Coverage** | ~70% | 95%+ | ⚠️ 825 warnings |
-| **Compilation Warnings** | 825 | 0 | ⚠️ Cosmetic only |
-| **Build Time** | ~2m | <3m | ✅ GOOD |
-| **Binary Size** | ~50MB | <100MB | ✅ GOOD |
-| **Dependencies** | 150+ | Minimize | ⚠️ AUDIT NEEDED |
+| **Test Functions** | 222+ | 250+ | [PASS] 88% |
+| **Test Files** | 40 | 50 | [PASS] 80% |
+| **Code Coverage** | Unknown | 80%+ | [WARN] NEEDS MEASUREMENT |
+| **Documentation Coverage** | ~70% | 95%+ | [WARN] 825 warnings |
+| **Compilation Warnings** | 825 | 0 | [WARN] Cosmetic only |
+| **Build Time** | ~2m | <3m | [PASS] GOOD |
+| **Binary Size** | ~50MB | <100MB | [PASS] GOOD |
+| **Dependencies** | 150+ | Minimize | [WARN] AUDIT NEEDED |
 
 ### Quality Gates
 
 | Gate | Threshold | Current | Status |
 |------|-----------|---------|--------|
-| All tests pass | 100% | 100% | ✅ PASS |
-| No clippy errors | 0 | 0 | ✅ PASS |
-| No unsafe code | 0 | Minimal | ✅ PASS |
-| Documentation | 95% | ~70% | ⚠️ FAIL |
-| Coverage | 80% | Unknown | ⚠️ UNKNOWN |
+| All tests pass | 100% | 100% | [PASS] PASS |
+| No clippy errors | 0 | 0 | [PASS] PASS |
+| No unsafe code | 0 | Minimal | [PASS] PASS |
+| Documentation | 95% | ~70% | [WARN] FAIL |
+| Coverage | 80% | Unknown | [WARN] UNKNOWN |
 
 ---
 
@@ -863,17 +863,17 @@ fuzz_target!(|data: &[u8]| {
 
 | Feature | Clawdius | Competitors | Gap |
 |---------|----------|-------------|-----|
-| LLM Providers | ✅ 5 | ✅ 3-5 | ✅ PARITY |
-| Session Management | ✅ SQLite | ✅ SQLite | ✅ PARITY |
-| VSCode Extension | ✅ Working | ✅ Working | ✅ PARITY |
-| Browser Automation | ✅ chromiumoxide | ✅ Puppeteer | ✅ PARITY |
-| @Mentions | ✅ Implemented | ✅ Implemented | ✅ PARITY |
-| JSON Output | ✅ Implemented | ✅ Implemented | ✅ PARITY |
-| File Timeline | ⚠️ Partial | ✅ Full | ⚠️ GAP |
-| Nexus FSM | ❌ Missing | ❌ N/A | ✅ UNIQUE |
-| Lean4 Proofs | ⚠️ Partial | ❌ N/A | ✅ UNIQUE |
-| HFT Broker | ⚠️ Partial | ❌ N/A | ✅ UNIQUE |
-| Sentinel Sandbox | ✅ 4-tier | ⚠️ 1-2 tier | ✅ ADVANTAGE |
+| LLM Providers | [PASS] 5 | [PASS] 3-5 | [PASS] PARITY |
+| Session Management | [PASS] SQLite | [PASS] SQLite | [PASS] PARITY |
+| VSCode Extension | [PASS] Working | [PASS] Working | [PASS] PARITY |
+| Browser Automation | [PASS] chromiumoxide | [PASS] Puppeteer | [PASS] PARITY |
+| @Mentions | [PASS] Implemented | [PASS] Implemented | [PASS] PARITY |
+| JSON Output | [PASS] Implemented | [PASS] Implemented | [PASS] PARITY |
+| File Timeline | [WARN] Partial | [PASS] Full | [WARN] GAP |
+| Nexus FSM | [FAIL] Missing | [FAIL] N/A | [PASS] UNIQUE |
+| Lean4 Proofs | [WARN] Partial | [FAIL] N/A | [PASS] UNIQUE |
+| HFT Broker | [WARN] Partial | [FAIL] N/A | [PASS] UNIQUE |
+| Sentinel Sandbox | [PASS] 4-tier | [WARN] 1-2 tier | [PASS] ADVANTAGE |
 
 **Overall:** Clawdius has achieved **feature parity** with major competitors while maintaining **unique advantages** in security, verification, and performance.
 
@@ -921,17 +921,17 @@ fuzz_target!(|data: &[u8]| {
 Clawdius is a **well-architected, production-ready** AI agentic engine with unique capabilities in security, verification, and performance. The codebase demonstrates:
 
 ### Strengths
-- ✅ **Excellent core implementation** (LLM, tools, sandboxing)
-- ✅ **Comprehensive test coverage** (222+ tests)
-- ✅ **Clean architecture** (modular, extensible)
-- ✅ **Unique features** (Sentinel, Brain, Graph-RAG, Nexus)
-- ✅ **High code quality** (94/100)
+- [PASS] **Excellent core implementation** (LLM, tools, sandboxing)
+- [PASS] **Comprehensive test coverage** (222+ tests)
+- [PASS] **Clean architecture** (modular, extensible)
+- [PASS] **Unique features** (Sentinel, Brain, Graph-RAG, Nexus)
+- [PASS] **High code quality** (94/100)
 
 ### Areas for Improvement
-- ⚠️ **Missing Nexus FSM implementation** (core differentiator)
-- ⚠️ **Partial advanced features** (HFT broker, Lean4, multi-language)
-- ⚠️ **Documentation gaps** (825 warnings)
-- ⚠️ **Some features incomplete** (webview, timeline, auto-compact)
+- [WARN] **Missing Nexus FSM implementation** (core differentiator)
+- [WARN] **Partial advanced features** (HFT broker, Lean4, multi-language)
+- [WARN] **Documentation gaps** (825 warnings)
+- [WARN] **Some features incomplete** (webview, timeline, auto-compact)
 
 ### Overall Assessment
 **Grade: A (92/100)**

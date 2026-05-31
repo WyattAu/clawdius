@@ -206,11 +206,11 @@ OpenClaw's 25+ platform support is the gold standard. Clawdius's 9-platform plan
 
 | Competitor | Edit Determinism | Context Determinism | Formal Verification | Test Count | Unsafe Code |
 |-----------|:---------------:|:------------------:|:------------------:|:----------:|:-----------:|
-| **Aider** | ✅ Post-processing deterministic | ❌ LLM summarization non-deterministic | ❌ None | 488 tests | N/A (Python) |
-| **Claude Code** | ✅ Exact match deterministic | ❌ LLM compaction non-deterministic | ❌ None | Unknown (closed source) | N/A (TypeScript) |
-| **IronClaw** | ✅ Fully deterministic | ❌ LLM summarization non-deterministic | ❌ None (fuzz only) | Unknown | Allows `unsafe` |
-| **OpenClaw** | N/A | ❌ LLM-dependent | ❌ None | Unknown | N/A (TypeScript) |
-| **Clawdius** | ✅ Post-processing deterministic | ❌ LLM compaction non-deterministic | ✅ **114 Lean4 theorems, 8 domains** | 902 tests | `#![deny(unsafe_code)]` |
+| **Aider** | [PASS] Post-processing deterministic | [FAIL] LLM summarization non-deterministic | [FAIL] None | 488 tests | N/A (Python) |
+| **Claude Code** | [PASS] Exact match deterministic | [FAIL] LLM compaction non-deterministic | [FAIL] None | Unknown (closed source) | N/A (TypeScript) |
+| **IronClaw** | [PASS] Fully deterministic | [FAIL] LLM summarization non-deterministic | [FAIL] None (fuzz only) | Unknown | Allows `unsafe` |
+| **OpenClaw** | N/A | [FAIL] LLM-dependent | [FAIL] None | Unknown | N/A (TypeScript) |
+| **Clawdius** | [PASS] Post-processing deterministic | [FAIL] LLM compaction non-deterministic | [PASS] **114 Lean4 theorems, 8 domains** | 902 tests | `#![deny(unsafe_code)]` |
 
 **Clawdius is the ONLY competitor with formal verification.** This is the core differentiator.
 
