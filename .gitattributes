@@ -13,8 +13,5 @@
 *.db binary
 *.lance binary
 
-# Protect crate root files from merge conflicts
-crates/*/src/lib.rs merge=union
-
 # Lean4 generated files
 .lake/** binary
