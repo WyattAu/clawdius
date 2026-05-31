@@ -72,6 +72,7 @@ keyring = { workspace = true, optional = true }
 [dev-dependencies]
 tempfile.workspace = true
 criterion = { workspace = true }
+rstest.workspace = true
 
 [[bench]]
 name = "cli_bench"

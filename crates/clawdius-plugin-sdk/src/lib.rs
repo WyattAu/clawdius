@@ -10,6 +10,7 @@
 //!
 //! ```ignore
 //! use clawdius_plugin_sdk::prelude::*;
+//! use std::sync::Arc;
 //!
 //! struct MyPlugin;
 //!
@@ -33,23 +34,32 @@
 //! }
 //! ```
 
-/// Plugin context and filesystem paths.
+/// Plugin initialization context and filesystem paths.
 pub mod context;
+/// Echo and dummy tools for testing.
+pub mod echo_tool;
 /// Error types for plugin operations.
 pub mod error;
-/// Procedural and declarative macros.
+/// Procedural and declarative macros for plugin registration.
 pub mod macros;
-/// Core plugin trait definition.
+/// Core [`Plugin`] trait defining the plugin lifecycle.
 pub mod plugin;
-/// Tool registration and dispatch registry.
+/// [`Tool`] trait and tool registration, invocation, and dispatch types.
 pub mod registry;
+/// Convenience [`SimplePlugin`] implementation.
+pub mod simple;
+/// Core [`Tool`] trait definition.
+pub mod tool;
 
-/// Convenience re-exports for common plugin types.
+/// Convenience re-exports for plugin authors.
 pub mod prelude {
-    pub use crate::context::PluginContext;
+    pub use crate::context::{PluginContext, PluginContextBuilder};
+    pub use crate::echo_tool::{DummyTool, EchoTool};
     pub use crate::error::{PluginError, PluginResult};
     pub use crate::plugin::Plugin;
     pub use crate::registry::{
         ToolContent, ToolContext, ToolInvocation, ToolRegistration, ToolRegistry, ToolResult,
     };
+    pub use crate::simple::SimplePlugin;
+    pub use crate::tool::Tool;
 }

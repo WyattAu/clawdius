@@ -134,6 +134,9 @@ pub mod store;
 pub mod search;
 
 #[cfg(feature = "vector-db")]
+pub mod persistent;
+
+#[cfg(feature = "vector-db")]
 pub mod vector;
 
 use serde::{Deserialize, Serialize};
@@ -149,6 +152,12 @@ pub use store::GraphStore;
 
 #[cfg(feature = "vector-db")]
 pub use vector::{SearchResult, VectorEntry, VectorStore};
+
+#[cfg(feature = "vector-db")]
+pub use persistent::{CollectionInfo, InMemoryVectorStore, PersistentVectorStore};
+
+#[cfg(feature = "lance-db")]
+pub use persistent::LanceDBVectorStore;
 
 /// Graph-RAG configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]

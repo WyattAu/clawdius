@@ -536,7 +536,7 @@ async fn test_all_tiers_create() {
         ("enterprise", "Enterprise"),
     ];
     for (input_tier, expected_tier) in &tiers {
-        let body = format!(r#"{{"tenant_id":"tier-{input_tier}","tier":"{input_tier}"}}"#,);
+        let body = format!(r#"{{"tenant_id":"tier-{input_tier}","tier":"{input_tier}"}}"#);
         let (status, resp) = post_json(&a, "/api/admin/tenants", &body).await;
         assert_eq!(status, StatusCode::CREATED);
         let v: serde_json::Value = serde_json::from_str(&resp).unwrap();

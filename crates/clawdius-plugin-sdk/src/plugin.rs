@@ -6,7 +6,7 @@ use crate::registry::ToolRegistry;
 ///
 /// Plugins are loaded dynamically and can register tools with the
 /// central tool registry. Each plugin has a lifecycle managed by the
-/// host: init -> `register_tools` -> (tool execution) -> shutdown.
+/// host: init → `register_tools` → (tool execution) → shutdown.
 pub trait Plugin: Send + Sync {
     /// Returns the unique name of this plugin.
     fn name(&self) -> &str;
@@ -21,7 +21,7 @@ pub trait Plugin: Send + Sync {
     ///
     /// # Errors
     ///
-    /// Returns [`PluginError::InitFailed`] if initialization fails.
+    /// Returns [`PluginError`] if initialization fails.
     fn init(&mut self, ctx: &PluginContext) -> Result<(), PluginError>;
 
     /// Called once after init to register tools.
@@ -31,13 +31,13 @@ pub trait Plugin: Send + Sync {
     ///
     /// # Errors
     ///
-    /// Returns [`PluginError::RegistrationFailed`] if registration fails.
+    /// Returns [`PluginError`] if tool registration fails.
     fn register_tools(&self, registry: &mut ToolRegistry) -> Result<(), PluginError>;
 
     /// Called before the plugin is unloaded.
     ///
     /// # Errors
     ///
-    /// Returns [`PluginError::ShutdownFailed`] if shutdown fails.
+    /// Returns [`PluginError`] if shutdown fails.
     fn shutdown(&mut self) -> Result<(), PluginError>;
 }

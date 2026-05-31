@@ -26,71 +26,45 @@ path = "src/lib.rs"
 
 [dependencies]
 # Async
-tokio.workspace = true
 futures.workspace = true
 async-trait.workspace = true
 async-stream.workspace = true
-tokio-stream.workspace = true
 
-# Serialization
+# Serialization (WASM-compatible)
 serde.workspace = true
 serde_json.workspace = true
 toml.workspace = true
 
-# Database
-rusqlite.workspace = true
-tokio-postgres = { workspace = true, optional = true }
-deadpool-postgres = { workspace = true, optional = true }
-mysql_async = { workspace = true, optional = true }
-
-# LLM
-reqwest.workspace = true
-genai.workspace = true
-
-# Code Analysis
-tree-sitter.workspace = true
-tree-sitter-rust.workspace = true
-tree-sitter-python.workspace = true
-tree-sitter-javascript.workspace = true
-tree-sitter-typescript.workspace = true
-tree-sitter-go.workspace = true
-tree-sitter-java.workspace = true
-tree-sitter-cpp.workspace = true
-tree-sitter-ruby.workspace = true
-tree-sitter-php.workspace = true
-
-# HTTP (REST API)
-axum.workspace = true
-tower.workspace = true
-tower-http.workspace = true
-
-# Utilities
+# Utilities (WASM-compatible)
 uuid.workspace = true
 thiserror.workspace = true
 anyhow.workspace = true
 tracing.workspace = true
-tracing-subscriber.workspace = true
-tracing-appender.workspace = true
 blake3.workspace = true
-sha3.workspace = true
 chrono.workspace = true
 regex.workspace = true
 aho-corasick.workspace = true
 petgraph.workspace = true
 lru.workspace = true
 url.workspace = true
-which.workspace = true
+parking_lot.workspace = true
 
-# Token counting
-tiktoken-rs.workspace = true
-
-# Diff
-tempfile.workspace = true
+# Diff (WASM-compatible)
 similar.workspace = true
 
-# Encoding
+# Encoding (WASM-compatible)
 base64.workspace = true
 hex = { workspace = true }
+
+# URL encoding (WASM-compatible)
+urlencoding.workspace = true
+
+# Encryption at rest (WASM-compatible with getrandom js feature)
+aes-gcm.workspace = true
+hmac.workspace = true
+sha2.workspace = true
+sha3.workspace = true
+getrandom.workspace = true
 
 # Vector Database (optional)
 lancedb = { workspace = true, optional = true }
@@ -114,33 +88,68 @@ chromiumoxide = { workspace = true, optional = true }
 # Crash Reporting (optional)
 sentry = { version = "0.32", optional = true }
 
-# File watching
-notify.workspace = true
-walkdir.workspace = true
-glob-match.workspace = true
-
-# URL encoding
-urlencoding.workspace = true
-
-# System information
-sysinfo.workspace = true
-parking_lot.workspace = true
-
-# WASI Sandbox
-wasmtime = { workspace = true }
-wasmtime-wasi.workspace = true
-
-# Encryption at rest
-aes-gcm.workspace = true
-hmac.workspace = true
-sha2.workspace = true
-getrandom.workspace = true
-
 # Redis (optional, for orchestrator queue)
 redis = { version = "1.2", features = ["tokio-comp", "connection-manager"], optional = true }
 
 # Stripe (optional, for billing)
 stripe = { version = "1.0.0-rc.5", package = "async-stripe", optional = true, default-features = false, features = ["default-tls"] }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+# Async runtime (full features with net/fs/process/signal - not available in WASM)
+tokio.workspace = true
+tokio-stream.workspace = true
+
+# LLM integration (reqwest uses tokio net, genai depends on tokio with net features)
+reqwest.workspace = true
+genai.workspace = true
+
+# HTTP server (requires tokio net)
+axum.workspace = true
+tower.workspace = true
+tower-http.workspace = true
+
+# Logging (tracing-appender uses std::fs, tracing-subscriber uses fs features)
+tracing-subscriber.workspace = true
+tracing-appender.workspace = true
+
+# Database (rusqlite is C-native SQLite)
+rusqlite.workspace = true
+tokio-postgres = { workspace = true, optional = true }
+deadpool-postgres = { workspace = true, optional = true }
+mysql_async = { workspace = true, optional = true }
+
+# Code Analysis (tree-sitter is C-native)
+tree-sitter.workspace = true
+tree-sitter-rust.workspace = true
+tree-sitter-python.workspace = true
+tree-sitter-javascript.workspace = true
+tree-sitter-typescript.workspace = true
+tree-sitter-go.workspace = true
+tree-sitter-java.workspace = true
+tree-sitter-cpp.workspace = true
+tree-sitter-ruby.workspace = true
+tree-sitter-php.workspace = true
+
+# Filesystem utilities (not available in WASM)
+which.workspace = true
+tempfile.workspace = true
+notify.workspace = true
+walkdir.workspace = true
+glob-match.workspace = true
+
+# System information (OS APIs)
+sysinfo.workspace = true
+
+# Token counting (C/C++ tokenizer)
+tiktoken-rs.workspace = true
+
+# WASI Sandbox (cannot embed WASM runtime inside WASM)
+wasmtime = { workspace = true }
+wasmtime-wasi.workspace = true
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+getrandom = { workspace = true, features = ["js"] }
+uuid = { workspace = true, features = ["v4", "serde", "js"] }
 
 [dev-dependencies]
 criterion = { workspace = true }
@@ -189,6 +198,7 @@ browser = ["dep:chromiumoxide"]
 embeddings = ["dep:tokenizers", "dep:hf-hub"]
 local-llm = ["embeddings", "dep:candle-core", "dep:candle-nn", "dep:candle-transformers"]
 vector-db = ["dep:lancedb", "dep:arrow", "dep:arrow-array", "dep:arrow-schema"]
+lance-db = ["vector-db"]
 orchestrator = []
 redis-queue = ["orchestrator", "dep:redis"]
 postgres = ["dep:tokio-postgres", "dep:deadpool-postgres"]

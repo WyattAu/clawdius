@@ -887,17 +887,18 @@ fn test_webhook_event_comma_separated() {
     use clawdius_core::webhooks::WebhookEvent;
 
     let input = "session.created,message.sent,tool.executed";
-    let count = input
-        .split(',')
-        .filter_map(|s| match s.trim() {
-            "session.created" => Some(WebhookEvent::SessionCreated),
-            "message.sent" => Some(WebhookEvent::MessageSent),
-            "tool.executed" => Some(WebhookEvent::ToolExecuted),
-            _ => None,
-        })
-        .count();
-
-    assert_eq!(count, 3);
+    assert_eq!(
+        input
+            .split(',')
+            .filter_map(|s| match s.trim() {
+                "session.created" => Some(WebhookEvent::SessionCreated),
+                "message.sent" => Some(WebhookEvent::MessageSent),
+                "tool.executed" => Some(WebhookEvent::ToolExecuted),
+                _ => None,
+            })
+            .count(),
+        3
+    );
 }
 
 #[test]
@@ -905,16 +906,17 @@ fn test_webhook_event_mixed_valid_invalid() {
     use clawdius_core::webhooks::WebhookEvent;
 
     let input = "session.created,invalid.event,message.sent";
-    let count = input
-        .split(',')
-        .filter_map(|s| match s.trim() {
-            "session.created" => Some(WebhookEvent::SessionCreated),
-            "message.sent" => Some(WebhookEvent::MessageSent),
-            _ => None,
-        })
-        .count();
-
-    assert_eq!(count, 2); // invalid filtered out
+    assert_eq!(
+        input
+            .split(',')
+            .filter_map(|s| match s.trim() {
+                "session.created" => Some(WebhookEvent::SessionCreated),
+                "message.sent" => Some(WebhookEvent::MessageSent),
+                _ => None,
+            })
+            .count(),
+        2
+    ); // invalid filtered out
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -983,18 +985,16 @@ fn test_selection_multi_line() {
     let end_col = 11;
 
     let mut selected_text = String::new();
-    for (i, line) in lines.iter().enumerate() {
-        if i < start_line || i > end_line {
-            continue;
-        }
-        if i == start_line {
+    for (i, line) in lines[start_line..=end_line].iter().enumerate() {
+        let line_idx = start_line + i;
+        if line_idx == start_line {
             selected_text.push_str(&line[start_col..]);
-        } else if i == end_line {
+        } else if line_idx == end_line {
             selected_text.push_str(&line[..end_col]);
         } else {
             selected_text.push_str(line);
         }
-        if i < end_line {
+        if line_idx < end_line {
             selected_text.push('\n');
         }
     }
