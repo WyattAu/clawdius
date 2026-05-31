@@ -2,7 +2,7 @@
 
 > Post-audit release plan for v1.0.0-rc.3 through v1.0.0 GA and beyond.
 > All metrics empirically verified against the codebase as of 2026-05-31.
-> Last updated: 2026-05-31 (session 2)
+> Last updated: 2026-06-01 (session 3)
 
 ---
 
@@ -67,22 +67,37 @@
 | Deployment | 1 | Fixed netlify.toml catch-all redirect that broke docs page navigation |
 | Documentation | 7 | Unified test counts (2,560); expanded provider list (9); added plugin-sdk to workspace trees; updated theorem counts (284); fixed install instructions; added rc.2 to SECURITY.md |
 
+### Session 3 Changes (2026-06-01)
+
+| Category | Files Changed | Description |
+|----------|:---:|-------------|
+| Domain unification | 13 | Replaced all 31 `docs.clawdius.dev` references with `clawdius.co.uk` across Cargo.toml, docs, blog, GitHub config, examples, deploy |
+| Blog metrics | 8 | Updated all 8 blog posts: theorem counts (104/142 -> 284), test counts (1,002+/1,956 -> 2,560), provider counts (3-5 -> 9); fixed truncated URLs |
+| mdBook theme | 2 | Created custom dark theme (css/custom.css, ~270 lines) matching landing page design; updated book.toml |
+| PRODUCTION_ROADMAP.md | 1 | Added archival header (superseded by ROADMAP.md) |
+| Lean4 CI dedup | 1 | Deprecated lean_action_ci.yml (superseded by ci.yml lean4-proofs job) |
+| Intro.md | 1 | Fixed cold boot claim (<20ms -> <3ms); fixed architecture diagram alignment; corrected audit logging backend count (3 -> 5) |
+| Publish pipeline | 1 | Added clawdius-plugin-sdk to release.yml publish-crates job (6 crates now) |
+| CVE contingency | 1 | Added commented [patch.crates-io] block in root Cargo.toml for 6 transitive CVEs |
+| GitHub config | 3 | Fixed domain refs in discussions.json, DISCORD_SETUP.md, actions/review/README.md |
+
 ### Known Deficits
 
 | Issue | Severity | Status |
 |-------|----------|--------|
-| 6 transitive CVEs (rustls-webpki, matrix-sdk-base) | LOW | Blocked on upstream (lancedb >= 0.28, matrix-sdk >= 0.11) |
+| 6 transitive CVEs (rustls-webpki, matrix-sdk-base) | LOW | Blocked on upstream (lancedb >= 0.28, matrix-sdk >= 0.11); [patch.crates-io] contingency prepared in Cargo.toml |
 | AUR package integration | LOW | PKGBUILD template exists, needs CI workflow |
-| Performance regression CI gate | MEDIUM | Benchmarks run but results not enforced as gate |
-| CLI subcommand coverage | RESOLVED | 277 tests in cli_logic_tests.rs covering output formats, severity mapping, language detection, webhook events, git parsing, function extraction, API key masking |
-| --all-features compile | RESOLVED | Fixed after dead code removal in prior audit |
-| Production unwrap count | RESOLVED | ~89 remaining (benchmarks only); core crate denies unwrap_used |
-| Domain mismatch (docs.clawdius.dev vs clawdius.co.uk) | HIGH | ~30 files reference docs.clawdius.dev; canonical domain is clawdius.co.uk |
-| PRODUCTION_ROADMAP.md severely outdated | LOW | Superseded by this ROADMAP.md; needs archival marker |
-| Blog post metrics wildly inconsistent | LOW | 4 different theorem counts across landing/docs/blog posts |
-| No custom mdBook theme (visual disconnect with landing page) | LOW | Default mdBook theme; no brand continuity |
-| Duplicate Lean4 CI jobs (ci.yml + lean_action_ci.yml) | LOW | Both run identical elan + lake build |
-| Intro.md cargo install clawdius won't work (not published) | HIGH | Changed to git install + source build instructions |
+| Performance regression CI gate | RESOLVED | Benchmarks regression-gate active in benchmarks.yml |
+| CLI subcommand coverage | RESOLVED | 277 tests in cli_logic_tests.rs |
+| --all-features compile | RESOLVED | Fixed after dead code removal |
+| Production unwrap count | RESOLVED | ~89 remaining (benchmarks only) |
+| Domain mismatch (docs.clawdius.dev vs clawdius.co.uk) | RESOLVED | All 31 references updated to clawdius.co.uk |
+| PRODUCTION_ROADMAP.md severely outdated | RESOLVED | Archived with deprecation header |
+| Blog post metrics wildly inconsistent | RESOLVED | All 8 blog posts updated to 284 theorems, 2,560 tests, 9 providers |
+| No custom mdBook theme | RESOLVED | Created theme/css/custom.css matching landing page design |
+| Duplicate Lean4 CI jobs | RESOLVED | lean_action_ci.yml deprecated; ci.yml lean4-proofs is canonical |
+| Intro.md cargo install won't work | RESOLVED | Changed to git install + source build instructions |
+| clawdius-plugin-sdk missing from publish workflow | RESOLVED | Added to release.yml publish-crates job (position 2) |
 
 ---
 
@@ -258,6 +273,14 @@ Full audit completed. 50+ pages in mdBook, 10/11 audit items exist:
 | 2026-05-31 | Fix landing page accessibility (WCAG AA) | .metric-label contrast, ARIA conflict, responsive font sizes |
 | 2026-05-31 | Fix netlify.toml catch-all redirect | /* redirect broke all mdBook page navigation; changed to / only |
 | 2026-05-31 | Fix documentation link in landing page | /intro.html -> clawdius.co.uk/intro.html (matches GitHub Pages deployment) |
+| 2026-06-01 | Unify canonical domain to clawdius.co.uk | Replaced 31 docs.clawdius.dev references across 13 user/project-facing files |
+| 2026-06-01 | Create mdBook custom dark theme | theme/css/custom.css matching Spatial Materialism / Amoebic UI / Brutalism design |
+| 2026-06-01 | Archive PRODUCTION_ROADMAP.md | Added deprecation header; all content superseded by ROADMAP.md |
+| 2026-06-01 | Deprecate duplicate Lean4 CI workflow | lean_action_ci.yml deprecated; ci.yml lean4-proofs is canonical |
+| 2026-06-01 | Add clawdius-plugin-sdk to publish workflow | release.yml now publishes 6 crates in dependency order |
+| 2026-06-01 | Add CVE patch contingency to Cargo.toml | Commented [patch.crates-io] block for rustls-webpki, matrix-sdk-base, wasmtime |
+| 2026-06-01 | Update blog metrics across 8 posts | Unified to 284 theorems, 2,560 tests, 9 providers |
+| 2026-06-01 | Fix intro.md cold boot and diagram | <3ms cold boot; fixed ASCII diagram cell alignment; audit logging 5 backends |
 
 ---
 

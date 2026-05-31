@@ -1,0 +1,360 @@
+/* Clawdius mdBook Theme — Spatial Materialism / Amoebic UI / Brutalism */
+
+/* ── Base ─────────────────────────────────────────────────── */
+
+* {
+  border-radius: 0 !important;
+}
+
+html {
+  font-size: 15px;
+  scrollbar-color: #2a2a2a #0a0a0a;
+}
+
+body {
+  background: #0a0a0a;
+  color: #e8e8e8;
+  font-family: 'SFMono-Regular', 'Cascadia Code', 'Fira Code', Consolas,
+    'Liberation Mono', Menlo, monospace;
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Layout ───────────────────────────────────────────────── */
+
+.page {
+  max-width: 1100px;
+}
+
+.content {
+  max-width: 850px;
+}
+
+.sidebar {
+  background: #111111 !important;
+  border-right: 1px solid #2a2a2a;
+}
+
+.sidebar-resize-handle {
+  background: #2a2a2a;
+  width: 2px;
+}
+
+/* ── Search ───────────────────────────────────────────────── */
+
+.sidebar .search-input {
+  background: #0a0a0a;
+  color: #e8e8e8;
+  border: 1px solid #2a2a2a;
+  font-family: inherit;
+}
+
+.sidebar .search-input:focus {
+  border-color: #00c8ff;
+  outline: 1px solid #00c8ff;
+}
+
+.sidebar .search-input::placeholder {
+  color: #555555;
+}
+
+.search-results a {
+  color: #e8e8e8;
+}
+
+.search-results a:hover {
+  background: #1a1a1a;
+  color: #00c8ff;
+}
+
+.search-results .search-results__item {
+  border-bottom: 1px solid #2a2a2a;
+}
+
+.search-results mark {
+  background: rgba(0, 200, 255, 0.15);
+  color: #00c8ff;
+}
+
+/* ── Menu / Nav Chrome ────────────────────────────────────── */
+
+.menu-bar {
+  background: #111111;
+  border-bottom: 1px solid #2a2a2a;
+  padding: 0.5rem 1rem;
+}
+
+.menu-bar .menu-title {
+  color: #777777;
+  font-size: 0.85rem;
+}
+
+.menu-bar .buttons button {
+  color: #777777;
+}
+
+.menu-bar .buttons button:hover,
+.menu-bar .buttons button:focus {
+  color: #00c8ff;
+}
+
+nav.main-nav {
+  background: #111111;
+}
+
+nav.main-nav a {
+  color: #777777;
+}
+
+nav.main-nav a:hover {
+  color: #e8e8e8;
+}
+
+.breadcrumbs {
+  color: #555555;
+  font-size: 0.8rem;
+}
+
+.breadcrumbs a {
+  color: #777777;
+}
+
+.breadcrumbs a:hover {
+  color: #00c8ff;
+}
+
+/* ── Typography ───────────────────────────────────────────── */
+
+a {
+  color: #00c8ff;
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+a:hover {
+  color: #00ff88;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  color: #e8e8e8;
+  font-weight: 700;
+  border: none;
+  padding: 0;
+  margin: 1.5em 0 0.6em;
+  letter-spacing: -0.02em;
+}
+
+h1 {
+  font-size: 1.8rem;
+  border-bottom: 1px solid #2a2a2a;
+  padding-bottom: 0.4em;
+}
+
+h2 {
+  font-size: 1.4rem;
+  border-bottom: 1px solid #1a1a1a;
+  padding-bottom: 0.3em;
+}
+
+h3 {
+  font-size: 1.15rem;
+}
+
+h4, h5, h6 {
+  font-size: 1rem;
+}
+
+strong, b {
+  color: #ffffff;
+  font-weight: 700;
+}
+
+p {
+  margin: 0.8em 0;
+}
+
+/* ── Code ─────────────────────────────────────────────────── */
+
+code {
+  background: #111111;
+  border: 1px solid #2a2a2a;
+  padding: 0.15em 0.4em;
+  font-family: inherit;
+  font-size: 0.88em;
+  color: #00c8ff;
+}
+
+pre {
+  background: #111111;
+  border: 1px solid #2a2a2a;
+  padding: 1rem;
+  overflow-x: auto;
+  line-height: 1.5;
+}
+
+pre code {
+  background: none;
+  border: none;
+  padding: 0;
+  color: #e8e8e8;
+  font-size: 0.85rem;
+}
+
+/* Code block header (file names) */
+pre > code:first-of-type::before {
+  content: none;
+}
+
+/* ── Blockquote ───────────────────────────────────────────── */
+
+blockquote {
+  border-left: 3px solid #00c8ff;
+  background: rgba(0, 200, 255, 0.03);
+  padding: 0.6em 1em;
+  margin: 1em 0;
+  color: #bbbbbb;
+}
+
+blockquote p {
+  margin: 0;
+}
+
+blockquote.warning {
+  border-left-color: #ff6600;
+  background: rgba(255, 102, 0, 0.04);
+}
+
+blockquote.info {
+  border-left-color: #00c8ff;
+}
+
+blockquote.tip {
+  border-left-color: #00ff88;
+  background: rgba(0, 255, 136, 0.03);
+}
+
+/* ── Tables ───────────────────────────────────────────────── */
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1em 0;
+}
+
+th, td {
+  border: 1px solid #2a2a2a;
+  padding: 0.6em 0.9em;
+  text-align: left;
+}
+
+th {
+  background: #111111;
+  font-weight: 700;
+  color: #e8e8e8;
+  border-bottom: 2px solid #2a2a2a;
+}
+
+td {
+  background: #0a0a0a;
+}
+
+tr:nth-child(even) td {
+  background: #0e0e0e;
+}
+
+/* ── Horizontal Rule ──────────────────────────────────────── */
+
+hr {
+  border: none;
+  border-top: 1px solid #2a2a2a;
+  margin: 2em 0;
+}
+
+/* ── Sidebar Links / Nav ──────────────────────────────────── */
+
+.sidebar .sidebar-scrollbox {
+  color: #999999;
+}
+
+.sidebar li a {
+  color: #999999;
+  padding: 0.3em 0.8em;
+  border-left: 2px solid transparent;
+}
+
+.sidebar li a:hover {
+  color: #e8e8e8;
+  background: #1a1a1a;
+}
+
+.sidebar li.chapter-item.active > a,
+.sidebar li a.active {
+  color: #00c8ff;
+  border-left-color: #00c8ff;
+  background: #111111;
+}
+
+.sidebar .chapter-item.expanded > .toggle {
+  color: #777777;
+}
+
+/* ── Tooltip / Theme Icon ─────────────────────────────────── */
+
+.theme-icon {
+  color: #777777;
+  opacity: 1;
+}
+
+.theme-icon:hover {
+  color: #00c8ff;
+}
+
+/* ── Scrollbar ────────────────────────────────────────────── */
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0a0a0a;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #2a2a2a;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #444444;
+}
+
+/* ── Mermaid Diagrams ─────────────────────────────────────── */
+
+.mermaid {
+  background: #111111;
+  border: 1px solid #2a2a2a;
+  padding: 1rem;
+}
+
+.mermaid svg {
+  color: #e8e8e8;
+}
+
+/* ── Print ────────────────────────────────────────────────── */
+
+@media print {
+  body {
+    background: #ffffff;
+    color: #000000;
+  }
+  pre, code {
+    border: 1px solid #cccccc;
+  }
+}
+
+/* ── Selection ────────────────────────────────────────────── */
+
+::selection {
+  background: rgba(0, 200, 255, 0.25);
+  color: #ffffff;
+}
