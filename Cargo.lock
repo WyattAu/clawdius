@@ -1672,6 +1672,7 @@ dependencies = [
  "tempfile",
  "thiserror 2.0.18",
  "tokio",
+ "tower 0.5.3",
  "tracing",
  "tracing-subscriber",
  "uuid",
@@ -1685,6 +1686,16 @@ dependencies = [
  "serde",
  "serde_json",
  "tokio",
+]
+
+[[package]]
+name = "clawdius-plugin-sdk"
+version = "1.0.0-rc.2"
+dependencies = [
+ "clawdius-core",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
 ]
 
 [[package]]

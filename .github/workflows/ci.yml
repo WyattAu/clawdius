@@ -273,3 +273,31 @@ jobs:
           name: scheduled-benchmark-results
           path: target/criterion
           retention-days: 90
+
+  wasm-check:
+    name: WASM Compilation Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@1.92.0
+
+      - name: Add wasm32-unknown-unknown target
+        run: rustup target add wasm32-unknown-unknown
+
+      - name: Cache Rust artifacts
+        uses: Swatinem/rust-cache@v2
+
+      - name: Check wasm32 compilation
+        run: cargo check -p clawdius-core --target wasm32-unknown-unknown 2>&1 | tee /tmp/wasm-check.log
+        continue-on-error: true  # wasm compilation is aspirational
+
+      - name: Upload wasm-check log
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: wasm-check-log
+          path: /tmp/wasm-check.log
+          retention-days: 30

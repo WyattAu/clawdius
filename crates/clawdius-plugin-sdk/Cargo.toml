@@ -1,0 +1,17 @@
+[package]
+name = "clawdius-plugin-sdk"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "SDK for building Clawdius plugins (WASM or native)"
+readme = "README.md"
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+clawdius-core = { path = "../clawdius-core", version = "1.0.0-rc.2" }
+
+[lints]
+workspace = true

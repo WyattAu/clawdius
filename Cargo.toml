@@ -13,6 +13,7 @@ members = [
     "crates/clawdius-gateway",
     "crates/clawdius-code",
     "crates/clawdius-mcp",
+    "crates/clawdius-plugin-sdk",
 ]
 
 [workspace.package]
