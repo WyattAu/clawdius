@@ -43,7 +43,7 @@ clap = { version = "4", features = ["derive", "env", "string"] }
 clap_complete = "4"
 
 # === Database ===
-rusqlite = { version = "0.38", features = ["bundled"] }
+rusqlite = { version = "0.40", features = ["bundled"] }
 tokio-postgres = { version = "0.7", features = ["with-serde_json-1", "with-chrono-0_4", "with-uuid-1"] }
 deadpool-postgres = "0.14"
 mysql_async = { version = "0.35", default-features = false, features = ["default-rustls"] }
