@@ -14,9 +14,10 @@ pub struct PluginContext {
 }
 
 impl PluginContext {
-    /// Creates a new PluginContext with the given plugin directory.
+    /// Creates a new `PluginContext` with the given plugin directory.
     ///
     /// The config and data directories are derived from the plugin directory.
+    #[must_use]
     pub fn new(plugin_dir: PathBuf) -> Self {
         let config_dir = plugin_dir.join("config");
         let data_dir = plugin_dir.join("data");
@@ -28,11 +29,13 @@ impl PluginContext {
     }
 
     /// Returns the path to the plugin's configuration directory.
+    #[must_use]
     pub fn config_dir(&self) -> &Path {
         &self.config_dir
     }
 
     /// Returns the path to the plugin's data directory.
+    #[must_use]
     pub fn data_dir(&self) -> &Path {
         &self.data_dir
     }

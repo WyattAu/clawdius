@@ -233,11 +233,11 @@ jetbrains-run:
 
 wasm:
 	@echo "Building WASM target..."
-	cd crates/clawdius-webview && $(CARGO) build --target wasm32-unknown-unknown
+	$(CARGO) build -p clawdius-core --target wasm32-unknown-unknown
 
 wasm-release:
 	@echo "Building WASM (release)..."
-	cd crates/clawdius-webview && $(CARGO) build --target wasm32-unknown-unknown --release
+	$(CARGO) build -p clawdius-core --target wasm32-unknown-unknown --release
 
 # ==============================================================================
 # Cleanup
@@ -264,7 +264,7 @@ clean-deep: clean
 dev:
 	@echo "Setting up development environment..."
 	$(CARGO) build --workspace
-	./scripts/setup-dev.sh || true
+	./scripts/setup-hooks.sh || true
 
 update:
 	@echo "Updating dependencies..."

@@ -12,11 +12,11 @@
     clippy::items_after_statements
 )]
 
-use clawdius::cli::{
-    Commands, LspCommands, MemoryCommands, OutputFormat, ShipAction, SkillAction,
-    WebhookCommands, Cli,
-};
 use clap::Parser;
+use clawdius::cli::{
+    Cli, Commands, LspCommands, MemoryCommands, OutputFormat, ShipAction, SkillAction,
+    WebhookCommands,
+};
 
 // ═══════════════════════════════════════════════════════════════
 // Webhook subcommand arg parsing
@@ -26,7 +26,9 @@ use clap::Parser;
 fn test_cli_webhook_list() {
     let cli = Cli::parse_from(["clawdius", "webhook", "list"]);
     match cli.command {
-        Some(Commands::Webhook { action: WebhookCommands::List }) => {},
+        Some(Commands::Webhook {
+            action: WebhookCommands::List,
+        }) => {},
         other => panic!("expected Webhook::List, got: {other:?}"),
     }
 }
@@ -34,14 +36,25 @@ fn test_cli_webhook_list() {
 #[test]
 fn test_cli_webhook_create() {
     let cli = Cli::parse_from([
-        "clawdius", "webhook", "create", "my-hook",
+        "clawdius",
+        "webhook",
+        "create",
+        "my-hook",
         "https://example.com/webhook",
-        "--events", "session.created,message.sent",
-        "--secret", "s3cret",
+        "--events",
+        "session.created,message.sent",
+        "--secret",
+        "s3cret",
     ]);
     match cli.command {
         Some(Commands::Webhook {
-            action: WebhookCommands::Create { name, url, events, secret },
+            action:
+                WebhookCommands::Create {
+                    name,
+                    url,
+                    events,
+                    secret,
+                },
         }) => {
             assert_eq!(name, "my-hook");
             assert_eq!(url, "https://example.com/webhook");
@@ -54,12 +67,16 @@ fn test_cli_webhook_create() {
 
 #[test]
 fn test_cli_webhook_create_minimal() {
-    let cli = Cli::parse_from([
-        "clawdius", "webhook", "create", "hook", "https://x.com",
-    ]);
+    let cli = Cli::parse_from(["clawdius", "webhook", "create", "hook", "https://x.com"]);
     match cli.command {
         Some(Commands::Webhook {
-            action: WebhookCommands::Create { name, url, events, secret },
+            action:
+                WebhookCommands::Create {
+                    name,
+                    url,
+                    events,
+                    secret,
+                },
         }) => {
             assert_eq!(name, "hook");
             assert_eq!(url, "https://x.com");
@@ -86,13 +103,24 @@ fn test_cli_webhook_show() {
 #[test]
 fn test_cli_webhook_update() {
     let cli = Cli::parse_from([
-        "clawdius", "webhook", "update", "wh-123",
-        "--url", "https://new.url",
+        "clawdius",
+        "webhook",
+        "update",
+        "wh-123",
+        "--url",
+        "https://new.url",
         "--enable",
     ]);
     match cli.command {
         Some(Commands::Webhook {
-            action: WebhookCommands::Update { id, url, events, enable, disable },
+            action:
+                WebhookCommands::Update {
+                    id,
+                    url,
+                    events,
+                    enable,
+                    disable,
+                },
         }) => {
             assert_eq!(id, "wh-123");
             assert_eq!(url.as_deref(), Some("https://new.url"));
@@ -133,8 +161,12 @@ fn test_cli_webhook_delete() {
 #[test]
 fn test_cli_webhook_test() {
     let cli = Cli::parse_from([
-        "clawdius", "webhook", "test", "wh-test",
-        "--event", "message.sent",
+        "clawdius",
+        "webhook",
+        "test",
+        "wh-test",
+        "--event",
+        "message.sent",
     ]);
     match cli.command {
         Some(Commands::Webhook {
@@ -163,9 +195,7 @@ fn test_cli_webhook_test_no_event() {
 
 #[test]
 fn test_cli_webhook_deliveries() {
-    let cli = Cli::parse_from([
-        "clawdius", "webhook", "deliveries", "wh-d1", "--limit", "5",
-    ]);
+    let cli = Cli::parse_from(["clawdius", "webhook", "deliveries", "wh-d1", "--limit", "5"]);
     match cli.command {
         Some(Commands::Webhook {
             action: WebhookCommands::Deliveries { id, limit },
@@ -223,8 +253,15 @@ fn test_cli_ship_checks() {
 #[test]
 fn test_cli_ship_checks_with_files() {
     let cli = Cli::parse_from([
-        "clawdius", "ship", "checks", "--branch", "main",
-        "--files", "src/main.rs", "--files", "src/lib.rs",
+        "clawdius",
+        "ship",
+        "checks",
+        "--branch",
+        "main",
+        "--files",
+        "src/main.rs",
+        "--files",
+        "src/lib.rs",
     ]);
     match cli.command {
         Some(Commands::Ship {
@@ -240,12 +277,24 @@ fn test_cli_ship_checks_with_files() {
 #[test]
 fn test_cli_ship_commit_message() {
     let cli = Cli::parse_from([
-        "clawdius", "ship", "commit-message",
-        "--files", "a.rs", "--description", "fix bug", "--scope", "core",
+        "clawdius",
+        "ship",
+        "commit-message",
+        "--files",
+        "a.rs",
+        "--description",
+        "fix bug",
+        "--scope",
+        "core",
     ]);
     match cli.command {
         Some(Commands::Ship {
-            action: ShipAction::CommitMessage { files, description, scope },
+            action:
+                ShipAction::CommitMessage {
+                    files,
+                    description,
+                    scope,
+                },
         }) => {
             assert_eq!(files, vec!["a.rs"]);
             assert_eq!(description, "fix bug");
@@ -258,12 +307,20 @@ fn test_cli_ship_commit_message() {
 #[test]
 fn test_cli_ship_commit_message_minimal() {
     let cli = Cli::parse_from([
-        "clawdius", "ship", "commit-message",
-        "--description", "add feature",
+        "clawdius",
+        "ship",
+        "commit-message",
+        "--description",
+        "add feature",
     ]);
     match cli.command {
         Some(Commands::Ship {
-            action: ShipAction::CommitMessage { files, description, scope },
+            action:
+                ShipAction::CommitMessage {
+                    files,
+                    description,
+                    scope,
+                },
         }) => {
             assert!(files.is_empty());
             assert_eq!(description, "add feature");
@@ -281,7 +338,9 @@ fn test_cli_ship_commit_message_minimal() {
 fn test_cli_skill_list() {
     let cli = Cli::parse_from(["clawdius", "skill", "list"]);
     match cli.command {
-        Some(Commands::Skill { action: SkillAction::List }) => {},
+        Some(Commands::Skill {
+            action: SkillAction::List,
+        }) => {},
         other => panic!("expected Skill::List, got: {other:?}"),
     }
 }
@@ -289,7 +348,10 @@ fn test_cli_skill_list() {
 #[test]
 fn test_cli_skill_run() {
     let cli = Cli::parse_from([
-        "clawdius", "skill", "run", "tdd",
+        "clawdius",
+        "skill",
+        "run",
+        "tdd",
         "file=test.rs module=parser",
     ]);
     match cli.command {
@@ -323,9 +385,7 @@ fn test_cli_skill_run_no_args() {
 
 #[test]
 fn test_cli_lsp_start() {
-    let cli = Cli::parse_from([
-        "clawdius", "lsp", "start", "rust-analyzer", "/workspace",
-    ]);
+    let cli = Cli::parse_from(["clawdius", "lsp", "start", "rust-analyzer", "/workspace"]);
     match cli.command {
         Some(Commands::Lsp {
             action: LspCommands::Start { server, args, root },
@@ -340,9 +400,7 @@ fn test_cli_lsp_start() {
 
 #[test]
 fn test_cli_lsp_start_with_root() {
-    let cli = Cli::parse_from([
-        "clawdius", "lsp", "start", "pylsp", "--root", "/project",
-    ]);
+    let cli = Cli::parse_from(["clawdius", "lsp", "start", "pylsp", "--root", "/project"]);
     match cli.command {
         Some(Commands::Lsp {
             action: LspCommands::Start { server, args, root },
@@ -358,7 +416,14 @@ fn test_cli_lsp_start_with_root() {
 #[test]
 fn test_cli_lsp_complete() {
     let cli = Cli::parse_from([
-        "clawdius", "lsp", "complete", "file:///main.rs", "--line", "10", "--column", "5",
+        "clawdius",
+        "lsp",
+        "complete",
+        "file:///main.rs",
+        "--line",
+        "10",
+        "--column",
+        "5",
     ]);
     match cli.command {
         Some(Commands::Lsp {
@@ -375,7 +440,14 @@ fn test_cli_lsp_complete() {
 #[test]
 fn test_cli_lsp_hover() {
     let cli = Cli::parse_from([
-        "clawdius", "lsp", "hover", "file:///lib.rs", "--line", "42", "--column", "0",
+        "clawdius",
+        "lsp",
+        "hover",
+        "file:///lib.rs",
+        "--line",
+        "42",
+        "--column",
+        "0",
     ]);
     match cli.command {
         Some(Commands::Lsp {
@@ -392,7 +464,14 @@ fn test_cli_lsp_hover() {
 #[test]
 fn test_cli_lsp_definition() {
     let cli = Cli::parse_from([
-        "clawdius", "lsp", "definition", "file:///src.rs", "--line", "7", "--column", "12",
+        "clawdius",
+        "lsp",
+        "definition",
+        "file:///src.rs",
+        "--line",
+        "7",
+        "--column",
+        "12",
     ]);
     match cli.command {
         Some(Commands::Lsp {
@@ -409,12 +488,25 @@ fn test_cli_lsp_definition() {
 #[test]
 fn test_cli_lsp_references() {
     let cli = Cli::parse_from([
-        "clawdius", "lsp", "references", "file:///mod.rs", "--line", "3", "--column", "8",
+        "clawdius",
+        "lsp",
+        "references",
+        "file:///mod.rs",
+        "--line",
+        "3",
+        "--column",
+        "8",
         "--include-declaration",
     ]);
     match cli.command {
         Some(Commands::Lsp {
-            action: LspCommands::References { uri, line, column, include_declaration },
+            action:
+                LspCommands::References {
+                    uri,
+                    line,
+                    column,
+                    include_declaration,
+                },
         }) => {
             assert_eq!(uri, "file:///mod.rs");
             assert_eq!(line, 3);
@@ -454,13 +546,29 @@ fn test_cli_lsp_diagnostics() {
 #[test]
 fn test_cli_lsp_code_actions() {
     let cli = Cli::parse_from([
-        "clawdius", "lsp", "code-actions", "file:///fix.rs",
-        "--start-line", "1", "--start-column", "0",
-        "--end-line", "5", "--end-column", "10",
+        "clawdius",
+        "lsp",
+        "code-actions",
+        "file:///fix.rs",
+        "--start-line",
+        "1",
+        "--start-column",
+        "0",
+        "--end-line",
+        "5",
+        "--end-column",
+        "10",
     ]);
     match cli.command {
         Some(Commands::Lsp {
-            action: LspCommands::CodeActions { uri, start_line, start_column, end_line, end_column },
+            action:
+                LspCommands::CodeActions {
+                    uri,
+                    start_line,
+                    start_column,
+                    end_line,
+                    end_column,
+                },
         }) => {
             assert_eq!(uri, "file:///fix.rs");
             assert_eq!(start_line, 1);
@@ -481,7 +589,12 @@ fn test_cli_memory_learn_build() {
     let cli = Cli::parse_from(["clawdius", "memory", "learn", "build", "cargo build"]);
     match cli.command {
         Some(Commands::Memory {
-            action: MemoryCommands::Learn { entry_type, content, description },
+            action:
+                MemoryCommands::Learn {
+                    entry_type,
+                    content,
+                    description,
+                },
         }) => {
             assert_eq!(entry_type, "build");
             assert_eq!(content, "cargo build");
@@ -494,12 +607,22 @@ fn test_cli_memory_learn_build() {
 #[test]
 fn test_cli_memory_learn_debug() {
     let cli = Cli::parse_from([
-        "clawdius", "memory", "learn", "debug", "borrow_error=use clone",
-        "--description", "common fix",
+        "clawdius",
+        "memory",
+        "learn",
+        "debug",
+        "borrow_error=use clone",
+        "--description",
+        "common fix",
     ]);
     match cli.command {
         Some(Commands::Memory {
-            action: MemoryCommands::Learn { entry_type, content, description },
+            action:
+                MemoryCommands::Learn {
+                    entry_type,
+                    content,
+                    description,
+                },
         }) => {
             assert_eq!(entry_type, "debug");
             assert_eq!(content, "borrow_error=use clone");
@@ -511,7 +634,12 @@ fn test_cli_memory_learn_debug() {
 
 #[test]
 fn test_cli_memory_instructions() {
-    let cli = Cli::parse_from(["clawdius", "memory", "instructions", "use Rust 2024 edition"]);
+    let cli = Cli::parse_from([
+        "clawdius",
+        "memory",
+        "instructions",
+        "use Rust 2024 edition",
+    ]);
     match cli.command {
         Some(Commands::Memory {
             action: MemoryCommands::Instructions { content },
@@ -579,12 +707,24 @@ fn test_cli_memory_clear_category() {
 #[test]
 fn test_cli_memory_init() {
     let cli = Cli::parse_from([
-        "clawdius", "memory", "init",
-        "--name", "clawdius", "--language", "rust", "--framework", "axum",
+        "clawdius",
+        "memory",
+        "init",
+        "--name",
+        "clawdius",
+        "--language",
+        "rust",
+        "--framework",
+        "axum",
     ]);
     match cli.command {
         Some(Commands::Memory {
-            action: MemoryCommands::Init { name, language, framework },
+            action:
+                MemoryCommands::Init {
+                    name,
+                    language,
+                    framework,
+                },
         }) => {
             assert_eq!(name.as_deref(), Some("clawdius"));
             assert_eq!(language.as_deref(), Some("rust"));
@@ -614,12 +754,27 @@ fn test_cli_memory_show_instructions() {
 #[test]
 fn test_cli_action_extract_function() {
     let cli = Cli::parse_from([
-        "clawdius", "action", "extract-function", "src/lib.rs",
-        "--line", "10", "--column", "0", "--end-line", "20", "--end-column", "1",
+        "clawdius",
+        "action",
+        "extract-function",
+        "src/lib.rs",
+        "--line",
+        "10",
+        "--column",
+        "0",
+        "--end-line",
+        "20",
+        "--end-column",
+        "1",
     ]);
     match cli.command {
         Some(Commands::Action {
-            action, file, line, column, end_line, end_column,
+            action,
+            file,
+            line,
+            column,
+            end_line,
+            end_column,
         }) => {
             assert_eq!(action, "extract-function");
             assert_eq!(file.to_string_lossy(), "src/lib.rs");
@@ -637,7 +792,12 @@ fn test_cli_action_generate_tests() {
     let cli = Cli::parse_from(["clawdius", "action", "generate-tests", "parser.rs"]);
     match cli.command {
         Some(Commands::Action {
-            action, file, line, column, end_line, end_column,
+            action,
+            file,
+            line,
+            column,
+            end_line,
+            end_column,
         }) => {
             assert_eq!(action, "generate-tests");
             assert_eq!(file.to_string_lossy(), "parser.rs");
@@ -715,7 +875,8 @@ fn test_webhook_event_parse_all_variants() {
 
     for (input, expected) in &cases {
         assert_eq!(
-            create_parser(input), *expected,
+            create_parser(input),
+            *expected,
             "event '{input}' should parse={expected}"
         );
     }
@@ -726,7 +887,7 @@ fn test_webhook_event_comma_separated() {
     use clawdius_core::webhooks::WebhookEvent;
 
     let input = "session.created,message.sent,tool.executed";
-    let events: Vec<_> = input
+    let count = input
         .split(',')
         .filter_map(|s| match s.trim() {
             "session.created" => Some(WebhookEvent::SessionCreated),
@@ -734,9 +895,9 @@ fn test_webhook_event_comma_separated() {
             "tool.executed" => Some(WebhookEvent::ToolExecuted),
             _ => None,
         })
-        .collect();
+        .count();
 
-    assert_eq!(events.len(), 3);
+    assert_eq!(count, 3);
 }
 
 #[test]
@@ -744,16 +905,16 @@ fn test_webhook_event_mixed_valid_invalid() {
     use clawdius_core::webhooks::WebhookEvent;
 
     let input = "session.created,invalid.event,message.sent";
-    let events: Vec<_> = input
+    let count = input
         .split(',')
         .filter_map(|s| match s.trim() {
             "session.created" => Some(WebhookEvent::SessionCreated),
             "message.sent" => Some(WebhookEvent::MessageSent),
             _ => None,
         })
-        .collect();
+        .count();
 
-    assert_eq!(events.len(), 2); // invalid filtered out
+    assert_eq!(count, 2); // invalid filtered out
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -778,7 +939,10 @@ fn test_action_language_detection() {
             .extension()
             .and_then(|e| e.to_str())
             .unwrap_or("txt");
-        assert_eq!(ext, *expected_ext, "file '{file}' should have ext '{expected_ext}'");
+        assert_eq!(
+            ext, *expected_ext,
+            "file '{file}' should have ext '{expected_ext}'"
+        );
     }
 }
 
@@ -819,13 +983,16 @@ fn test_selection_multi_line() {
     let end_col = 11;
 
     let mut selected_text = String::new();
-    for i in start_line..=end_line {
+    for (i, line) in lines.iter().enumerate() {
+        if i < start_line || i > end_line {
+            continue;
+        }
         if i == start_line {
-            selected_text.push_str(&lines[i][start_col..]);
+            selected_text.push_str(&line[start_col..]);
         } else if i == end_line {
-            selected_text.push_str(&lines[i][..end_col]);
+            selected_text.push_str(&line[..end_col]);
         } else {
-            selected_text.push_str(lines[i]);
+            selected_text.push_str(line);
         }
         if i < end_line {
             selected_text.push('\n');
@@ -911,21 +1078,18 @@ fn test_memory_learn_debug_format_validation() {
 
     // Invalid format: no equals sign
     let bad = "just a description";
-    let parts: Vec<&str> = bad.splitn(2, '=').collect();
-    assert_eq!(parts.len(), 1);
+    assert_eq!(bad.splitn(2, '=').count(), 1);
 }
 
 #[test]
 fn test_memory_learn_pattern_format_validation() {
     // Valid format: name=pattern
     let content = "builder_pattern=use builder struct with chained methods";
-    let parts: Vec<&str> = content.splitn(2, '=').collect();
-    assert_eq!(parts.len(), 2);
+    assert_eq!(content.splitn(2, '=').count(), 2);
 
     // Invalid: no equals
     let bad = "no pattern here";
-    let parts: Vec<&str> = bad.splitn(2, '=').collect();
-    assert_ne!(parts.len(), 2);
+    assert_ne!(bad.splitn(2, '=').count(), 2);
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -940,16 +1104,14 @@ fn test_skill_argument_parsing() {
 
     for param in &params {
         assert!(param.contains('='), "param '{param}' should be key=value");
-        let parts: Vec<&str> = param.splitn(2, '=').collect();
-        assert_eq!(parts.len(), 2);
+        assert_eq!(param.splitn(2, '=').count(), 2);
     }
 }
 
 #[test]
 fn test_skill_argument_parsing_empty() {
     let args = "";
-    let params: Vec<&str> = args.split_whitespace().collect();
-    assert!(params.is_empty());
+    assert!(args.split_whitespace().next().is_none());
 }
 
 #[test]
@@ -977,15 +1139,19 @@ fn test_webhook_test_event_mapping() {
     assert_eq!(default.as_str(), "session.created");
 
     // "message.sent" -> MessageSent
-    let msg = Some("message.sent".to_string()).map_or(WebhookEvent::SessionCreated, |s| match s.as_str() {
-        "message.sent" => WebhookEvent::MessageSent,
-        "tool.executed" => WebhookEvent::ToolExecuted,
-        _ => WebhookEvent::SessionCreated,
+    let msg = Some("message.sent".to_string()).map_or(WebhookEvent::SessionCreated, |s| {
+        match s.as_str() {
+            "message.sent" => WebhookEvent::MessageSent,
+            "tool.executed" => WebhookEvent::ToolExecuted,
+            _ => WebhookEvent::SessionCreated,
+        }
     });
     assert_eq!(msg.as_str(), "message.sent");
 
     // "tool.executed" -> ToolExecuted
-    let tool = Some("tool.executed".to_string()).map_or(WebhookEvent::SessionCreated, |s| match s.as_str() {
+    let tool = Some("tool.executed".to_string()).map_or(WebhookEvent::SessionCreated, |s| match s
+        .as_str()
+    {
         "message.sent" => WebhookEvent::MessageSent,
         "tool.executed" => WebhookEvent::ToolExecuted,
         _ => WebhookEvent::SessionCreated,
@@ -993,11 +1159,14 @@ fn test_webhook_test_event_mapping() {
     assert_eq!(tool.as_str(), "tool.executed");
 
     // Unknown -> SessionCreated (fallback)
-    let unknown = Some("random.event".to_string()).map_or(WebhookEvent::SessionCreated, |s| match s.as_str() {
-        "message.sent" => WebhookEvent::MessageSent,
-        "tool.executed" => WebhookEvent::ToolExecuted,
-        _ => WebhookEvent::SessionCreated,
-    });
+    let unknown =
+        Some("random.event".to_string()).map_or(WebhookEvent::SessionCreated, |s| {
+            match s.as_str() {
+                "message.sent" => WebhookEvent::MessageSent,
+                "tool.executed" => WebhookEvent::ToolExecuted,
+                _ => WebhookEvent::SessionCreated,
+            }
+        });
     assert_eq!(unknown.as_str(), "session.created");
 }
 

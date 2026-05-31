@@ -14,9 +14,9 @@ use axum::{
     body::Body,
     http::{Request, StatusCode},
 };
-use clawdius_gateway::admin::{admin_router, AdminState};
 use clawdius_core::billing::BillingManager;
 use clawdius_core::usage::TenantUsageTracker;
+use clawdius_gateway::admin::{admin_router, AdminState};
 use std::sync::Arc;
 use tower::ServiceExt;
 
@@ -31,10 +31,7 @@ fn test_admin_state() -> Arc<AdminState> {
 
 /// Helper: send a GET request and return (status, body text).
 async fn get(app: &axum::Router, path: &str) -> (StatusCode, String) {
-    let req = Request::builder()
-        .uri(path)
-        .body(Body::empty())
-        .unwrap();
+    let req = Request::builder().uri(path).body(Body::empty()).unwrap();
     let resp = app.clone().oneshot(req).await.unwrap();
     let status = resp.status();
     let body = axum::body::to_bytes(resp.into_body(), usize::MAX)
@@ -128,8 +125,18 @@ async fn test_system_info_empty() {
 async fn test_system_info_with_tenants() {
     let a = app();
     // Create two tenants first
-    post_json(&a, "/api/admin/tenants", r#"{"tenant_id":"t1","tier":"pro"}"#).await;
-    post_json(&a, "/api/admin/tenants", r#"{"tenant_id":"t2","tier":"free"}"#).await;
+    post_json(
+        &a,
+        "/api/admin/tenants",
+        r#"{"tenant_id":"t1","tier":"pro"}"#,
+    )
+    .await;
+    post_json(
+        &a,
+        "/api/admin/tenants",
+        r#"{"tenant_id":"t2","tier":"free"}"#,
+    )
+    .await;
 
     let (status, body) = get(&a, "/api/admin/system/info").await;
     assert_eq!(status, StatusCode::OK);
@@ -162,12 +169,7 @@ async fn test_create_tenant_returns_201() {
 #[tokio::test]
 async fn test_create_tenant_default_free() {
     let a = app();
-    let (status, body) = post_json(
-        &a,
-        "/api/admin/tenants",
-        r#"{"tenant_id":"free-1"}"#,
-    )
-    .await;
+    let (status, body) = post_json(&a, "/api/admin/tenants", r#"{"tenant_id":"free-1"}"#).await;
     assert_eq!(status, StatusCode::CREATED);
     let v: serde_json::Value = serde_json::from_str(&body).unwrap();
     assert_eq!(v["data"]["tier"], "Free");
@@ -216,9 +218,24 @@ async fn test_list_tenants_after_create() {
 #[tokio::test]
 async fn test_list_tenants_filter_by_tier() {
     let a = app();
-    post_json(&a, "/api/admin/tenants", r#"{"tenant_id":"flt-1","tier":"pro"}"#).await;
-    post_json(&a, "/api/admin/tenants", r#"{"tenant_id":"flt-2","tier":"free"}"#).await;
-    post_json(&a, "/api/admin/tenants", r#"{"tenant_id":"flt-3","tier":"pro"}"#).await;
+    post_json(
+        &a,
+        "/api/admin/tenants",
+        r#"{"tenant_id":"flt-1","tier":"pro"}"#,
+    )
+    .await;
+    post_json(
+        &a,
+        "/api/admin/tenants",
+        r#"{"tenant_id":"flt-2","tier":"free"}"#,
+    )
+    .await;
+    post_json(
+        &a,
+        "/api/admin/tenants",
+        r#"{"tenant_id":"flt-3","tier":"pro"}"#,
+    )
+    .await;
 
     let (status, body) = get(&a, "/api/admin/tenants?tier=pro").await;
     assert_eq!(status, StatusCode::OK);
@@ -230,8 +247,8 @@ async fn test_list_tenants_filter_by_tier() {
 async fn test_list_tenants_pagination() {
     let a = app();
     for i in 0..5 {
-        let id = format!("pag-{}", i);
-        let body = format!(r#"{{"tenant_id":"{}"}}"#, id);
+        let id = format!("pag-{i}");
+        let body = format!(r#"{{"tenant_id":"{id}"}}"#);
         post_json(&a, "/api/admin/tenants", &body).await;
     }
 
@@ -251,7 +268,12 @@ async fn test_list_tenants_pagination() {
 #[tokio::test]
 async fn test_get_tenant_found() {
     let a = app();
-    post_json(&a, "/api/admin/tenants", r#"{"tenant_id":"get-1","tier":"team"}"#).await;
+    post_json(
+        &a,
+        "/api/admin/tenants",
+        r#"{"tenant_id":"get-1","tier":"team"}"#,
+    )
+    .await;
 
     let (status, body) = get(&a, "/api/admin/tenants/get-1").await;
     assert_eq!(status, StatusCode::OK);
@@ -334,7 +356,12 @@ async fn test_reset_usage() {
 #[tokio::test]
 async fn test_get_quota_found() {
     let a = app();
-    post_json(&a, "/api/admin/tenants", r#"{"tenant_id":"qf-1","tier":"enterprise"}"#).await;
+    post_json(
+        &a,
+        "/api/admin/tenants",
+        r#"{"tenant_id":"qf-1","tier":"enterprise"}"#,
+    )
+    .await;
 
     let (status, body) = get(&a, "/api/admin/tenants/qf-1/quota").await;
     assert_eq!(status, StatusCode::OK);
@@ -372,7 +399,12 @@ async fn test_set_quota() {
 #[tokio::test]
 async fn test_get_subscription_found() {
     let a = app();
-    post_json(&a, "/api/admin/tenants", r#"{"tenant_id":"sub-1","tier":"pro"}"#).await;
+    post_json(
+        &a,
+        "/api/admin/tenants",
+        r#"{"tenant_id":"sub-1","tier":"pro"}"#,
+    )
+    .await;
 
     let (status, body) = get(&a, "/api/admin/tenants/sub-1/subscription").await;
     assert_eq!(status, StatusCode::OK);
@@ -391,7 +423,12 @@ async fn test_get_subscription_not_found() {
 #[tokio::test]
 async fn test_change_plan_success() {
     let a = app();
-    post_json(&a, "/api/admin/tenants", r#"{"tenant_id":"cp-1","tier":"free"}"#).await;
+    post_json(
+        &a,
+        "/api/admin/tenants",
+        r#"{"tenant_id":"cp-1","tier":"free"}"#,
+    )
+    .await;
 
     let (status, body) = put_json(
         &a,
@@ -413,7 +450,12 @@ async fn test_change_plan_success() {
 #[tokio::test]
 async fn test_change_plan_invalid_tier() {
     let a = app();
-    post_json(&a, "/api/admin/tenants", r#"{"tenant_id":"cp-2","tier":"free"}"#).await;
+    post_json(
+        &a,
+        "/api/admin/tenants",
+        r#"{"tenant_id":"cp-2","tier":"free"}"#,
+    )
+    .await;
 
     let (status, body) = put_json(
         &a,
@@ -428,14 +470,14 @@ async fn test_change_plan_invalid_tier() {
 #[tokio::test]
 async fn test_cancel_subscription_success() {
     let a = app();
-    post_json(&a, "/api/admin/tenants", r#"{"tenant_id":"cs-1","tier":"team"}"#).await;
-
-    let (status, body) = post_json(
+    post_json(
         &a,
-        "/api/admin/tenants/cs-1/subscription/cancel",
-        "",
+        "/api/admin/tenants",
+        r#"{"tenant_id":"cs-1","tier":"team"}"#,
     )
     .await;
+
+    let (status, body) = post_json(&a, "/api/admin/tenants/cs-1/subscription/cancel", "").await;
     assert_eq!(status, StatusCode::OK);
     let v: serde_json::Value = serde_json::from_str(&body).unwrap();
     assert_eq!(v["data"]["canceled"], true);
@@ -444,12 +486,7 @@ async fn test_cancel_subscription_success() {
 #[tokio::test]
 async fn test_cancel_subscription_not_found() {
     let a = app();
-    let (status, body) = post_json(
-        &a,
-        "/api/admin/tenants/ghost/subscription/cancel",
-        "",
-    )
-    .await;
+    let (status, _body) = post_json(&a, "/api/admin/tenants/ghost/subscription/cancel", "").await;
     assert_eq!(status, StatusCode::BAD_REQUEST);
 }
 
@@ -468,11 +505,21 @@ async fn test_unknown_route_returns_404() {
 async fn test_create_duplicate_tenant_overwrites() {
     let a = app();
     // Create first
-    let (s1, _b1) = post_json(&a, "/api/admin/tenants", r#"{"tenant_id":"dup-1","tier":"free"}"#).await;
+    let (s1, _b1) = post_json(
+        &a,
+        "/api/admin/tenants",
+        r#"{"tenant_id":"dup-1","tier":"free"}"#,
+    )
+    .await;
     assert_eq!(s1, StatusCode::CREATED);
 
     // Create again with different tier -- should overwrite
-    let (s2, b2) = post_json(&a, "/api/admin/tenants", r#"{"tenant_id":"dup-1","tier":"pro"}"#).await;
+    let (s2, b2) = post_json(
+        &a,
+        "/api/admin/tenants",
+        r#"{"tenant_id":"dup-1","tier":"pro"}"#,
+    )
+    .await;
     assert_eq!(s2, StatusCode::CREATED);
     let v: serde_json::Value = serde_json::from_str(&b2).unwrap();
     assert_eq!(v["data"]["tier"], "Pro"); // Updated
@@ -482,9 +529,14 @@ async fn test_create_duplicate_tenant_overwrites() {
 async fn test_all_tiers_create() {
     let a = app();
     // parse_tier matches lowercase; response uses Title Case
-    let tiers = [("free", "Free"), ("pro", "Pro"), ("team", "Team"), ("enterprise", "Enterprise")];
+    let tiers = [
+        ("free", "Free"),
+        ("pro", "Pro"),
+        ("team", "Team"),
+        ("enterprise", "Enterprise"),
+    ];
     for (input_tier, expected_tier) in &tiers {
-        let body = format!(r#"{{"tenant_id":"tier-{}","tier":"{}"}}"#, input_tier, input_tier);
+        let body = format!(r#"{{"tenant_id":"tier-{input_tier}","tier":"{input_tier}"}}"#,);
         let (status, resp) = post_json(&a, "/api/admin/tenants", &body).await;
         assert_eq!(status, StatusCode::CREATED);
         let v: serde_json::Value = serde_json::from_str(&resp).unwrap();

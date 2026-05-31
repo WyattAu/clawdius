@@ -3,6 +3,7 @@ use std::collections::HashMap;
 /// Describes a single content block within a tool result.
 #[derive(Debug, Clone)]
 pub enum ToolContent {
+    /// Plain text content.
     Text(String),
 }
 
@@ -58,7 +59,7 @@ pub type ToolHandlerFn = fn(&ToolInvocation) -> ToolResult;
 
 /// Registration record for a single tool.
 pub struct ToolRegistration {
-    /// Unique tool name (e.g. "my_plugin.my_tool").
+    /// Unique tool name (e.g. `"my_plugin.my_tool"`).
     pub name: String,
     /// Human-readable description for display and discovery.
     pub description: String,
@@ -76,6 +77,7 @@ pub struct ToolRegistry {
 
 impl ToolRegistry {
     /// Creates an empty tool registry.
+    #[must_use]
     pub fn new() -> Self {
         Self {
             tools: HashMap::new(),
@@ -88,21 +90,25 @@ impl ToolRegistry {
     }
 
     /// Looks up a registered tool by name.
+    #[must_use]
     pub fn get(&self, name: &str) -> Option<&ToolRegistration> {
         self.tools.get(name)
     }
 
     /// Returns references to all registered tools.
+    #[must_use]
     pub fn list_tools(&self) -> Vec<&ToolRegistration> {
         self.tools.values().collect()
     }
 
     /// Returns the number of registered tools.
+    #[must_use]
     pub fn len(&self) -> usize {
         self.tools.len()
     }
 
     /// Returns true if no tools are registered.
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.tools.is_empty()
     }

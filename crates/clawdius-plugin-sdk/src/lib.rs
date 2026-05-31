@@ -33,12 +33,18 @@
 //! }
 //! ```
 
+/// Plugin context and filesystem paths.
 pub mod context;
+/// Error types for plugin operations.
 pub mod error;
+/// Procedural and declarative macros.
 pub mod macros;
+/// Core plugin trait definition.
 pub mod plugin;
+/// Tool registration and dispatch registry.
 pub mod registry;
 
+/// Convenience re-exports for common plugin types.
 pub mod prelude {
     pub use crate::context::PluginContext;
     pub use crate::error::{PluginError, PluginResult};
