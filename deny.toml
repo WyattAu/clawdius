@@ -21,10 +21,15 @@ ignore = [
     "RUSTSEC-2024-0320", # yaml-rust via syntect
     "RUSTSEC-2025-0012", # backoff unmaintained (transitive via matrix-sdk)
     "RUSTSEC-2024-0384", # instant unmaintained (transitive)
+    # Active CVEs -- blocked on upstream dependency updates
     "RUSTSEC-2026-0049", # rustls-webpki CRL matching (blocked on lancedb >= 0.28)
+    "RUSTSEC-2026-0098", # rustls-webpki malformed OCSP (blocked on lancedb >= 0.28)
+    "RUSTSEC-2026-0099", # rustls-webpki wildcard cert matching (blocked on lancedb >= 0.28)
+    "RUSTSEC-2026-0104", # rustls-webpki Subject CN matching (blocked on lancedb >= 0.28)
     "RUSTSEC-2025-0065", # matrix-sdk-base power level panic (blocked on matrix-sdk >= 0.11)
-    "RUSTSEC-2025-0135", # matrix-sdk-base DoS via join_rules
+    "RUSTSEC-2025-0135", # matrix-sdk-base DoS via join_rules (blocked on matrix-sdk >= 0.11)
     "RUSTSEC-2026-0149", # wasmtime-wasi path_open(TRUNCATE) WRITE bypass (blocked on wasmtime >= 45)
+    "RUSTSEC-2025-0119", # adler2 deprecated API (transitive via reqwest)
 ]
 
 [licenses]
