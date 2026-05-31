@@ -65,9 +65,11 @@ impl Router for LeastConnectionsRouter {
         if healthy.is_empty() {
             return RoutingDecision::NoNodesAvailable;
         }
-        let best = healthy
-            .iter()
-            .min_by(|a, b| a.load.partial_cmp(&b.load).unwrap_or(std::cmp::Ordering::Equal));
+        let best = healthy.iter().min_by(|a, b| {
+            a.load
+                .partial_cmp(&b.load)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
         match best {
             Some(node) => RoutingDecision::RouteTo(node.id.clone()),
             None => RoutingDecision::NoNodesAvailable,
@@ -94,13 +96,11 @@ impl Router for LatencyAwareRouter {
         if healthy.is_empty() {
             return RoutingDecision::NoNodesAvailable;
         }
-        let best = healthy
-            .iter()
-            .min_by(|a, b| {
-                let la = self.latencies.get(&a.id).copied().unwrap_or(f64::MAX);
-                let lb = self.latencies.get(&b.id).copied().unwrap_or(f64::MAX);
-                la.partial_cmp(&lb).unwrap_or(std::cmp::Ordering::Equal)
-            });
+        let best = healthy.iter().min_by(|a, b| {
+            let la = self.latencies.get(&a.id).copied().unwrap_or(f64::MAX);
+            let lb = self.latencies.get(&b.id).copied().unwrap_or(f64::MAX);
+            la.partial_cmp(&lb).unwrap_or(std::cmp::Ordering::Equal)
+        });
         match best {
             Some(node) => RoutingDecision::RouteTo(node.id.clone()),
             None => RoutingDecision::NoNodesAvailable,
@@ -135,11 +135,21 @@ mod tests {
     }
 
     #[test]
-    fn round_robin_picks_first_node() {
+    fn round_robin_picks_healthy_node() {
         let router = RoundRobinRouter::new();
         let cluster = make_cluster(&["n1", "n2", "n3"]);
         let decision = router.route(&cluster);
-        assert_eq!(decision, RoutingDecision::RouteTo("n1".to_string()));
+        // HashMap iteration order is non-deterministic, so accept any healthy node.
+        match decision {
+            RoutingDecision::RouteTo(id) => {
+                assert!(
+                    ["n1", "n2", "n3"].contains(&id.as_str()),
+                    "routed to unexpected node: {id}"
+                );
+            }
+            RoutingDecision::NoNodesAvailable => panic!("expected a healthy node"),
+            RoutingDecision::RetryLater => panic!("unexpected retry"),
+        }
     }
 
     #[test]

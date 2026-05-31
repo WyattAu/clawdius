@@ -11,8 +11,6 @@ static INITIALIZED: AtomicBool = AtomicBool::new(false);
 
 /// Crash reporter for tracking errors and panics
 pub struct CrashReporter {
-    #[allow(dead_code)]
-    dsn: Option<String>,
     enabled: bool,
 }
 
@@ -36,7 +34,7 @@ impl CrashReporter {
             }
         }
 
-        Self { dsn, enabled }
+        Self { enabled }
     }
 
     /// Create a crash reporter with explicit DSN
@@ -58,7 +56,7 @@ impl CrashReporter {
             }
         }
 
-        Self { dsn, enabled }
+        Self { enabled }
     }
 
     /// Check if crash reporting is enabled

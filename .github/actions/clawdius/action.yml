@@ -74,7 +74,7 @@ runs:
               echo "Building from source..."
               git clone https://github.com/clawdius/clawdius.git /tmp/clawdius
               cd /tmp/clawdius
-              cargo build --release
+              cargo build --release --locked
               cp target/release/clawdius /usr/local/bin/
             }
           else
@@ -202,7 +202,7 @@ runs:
     
     - name: Upload Artifacts
       if: always()
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: clawdius-session
         path: |

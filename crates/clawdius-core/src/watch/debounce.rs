@@ -60,14 +60,12 @@ pub enum DebouncedEventKind {
 }
 
 /// Event debouncer
-#[allow(dead_code)]
 pub struct EventDebouncer {
     config: DebounceConfig,
     events: HashMap<PathBuf, DebouncedEvent>,
     start_time: Option<Instant>,
 }
 
-#[allow(dead_code)]
 impl EventDebouncer {
     /// Create a new debouncer
     pub fn new(config: DebounceConfig) -> Self {

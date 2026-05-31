@@ -48,18 +48,6 @@ pub struct ApiResponse<T: Serialize> {
     pub timestamp: DateTime<Utc>,
 }
 
-impl<T: Serialize> ApiResponse<T> {
-    #[allow(dead_code)]
-    fn success(data: T) -> Self {
-        Self {
-            ok: true,
-            data: Some(data),
-            error: None,
-            timestamp: Utc::now(),
-        }
-    }
-}
-
 /// Build a JSON error response with status code.
 fn error_response(status: StatusCode, msg: impl Into<String>) -> axum::response::Response {
     (

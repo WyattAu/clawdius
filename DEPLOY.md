@@ -159,7 +159,7 @@ All tenant endpoints require `Authorization: Bearer <api-key>` header where the 
 |--------|------|-------------|
 | ANY | `/webhook/{platform}` | Incoming webhook from platform |
 
-Supported platforms: `telegram`, `discord`, `matrix`, `slack`, `signal`, `whatsapp`, `rocketchat`
+Supported platforms: `telegram`, `discord`, `matrix`, `slack`, `signal`, `whatsapp`, `rocketchat`, `teams`, `webhook`
 
 ## Docker
 

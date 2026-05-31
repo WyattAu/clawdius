@@ -50,81 +50,6 @@ theorem {name}_safe : ∀ (input : {input_type}),
     .with_description("Proves that a function maintains safety invariants")
 }
 
-/// Template for bisimulation proofs
-#[allow(dead_code)]
-pub fn bisimulation_proof_template() -> ProofTemplate {
-    ProofTemplate::new(
-        "bisimulation",
-        r"/-- Bisimulation proof between {impl_a} and {impl_b} -/
-theorem {name}_bisim : ∀ (s : State) (a : Action),
-    {relation} s →
-    {relation} ({step_a} s a) ({step_b} s a) := by
-  {proof_body}",
-    )
-    .with_description("Proves bisimulation between two implementations")
-}
-
-/// Template for memory safety proofs
-#[allow(dead_code)]
-pub fn memory_safety_proof_template() -> ProofTemplate {
-    ProofTemplate::new(
-        "memory_safety",
-        r"/-- Memory safety proof for {function_name} -/
-theorem {name}_memory_safe : ∀ (ptr : {pointer_type}) (len : Nat),
-    {valid_pointer} ptr len →
-    {access_in_bounds} ({function_name} ptr) len := by
-  {proof_body}",
-    )
-    .with_description("Proves memory safety for pointer operations")
-}
-
-/// Template for cryptographic security proofs
-#[allow(dead_code)]
-pub fn crypto_security_proof_template() -> ProofTemplate {
-    ProofTemplate::new(
-        "crypto_security",
-        r"/-- Security proof for {primitive} -/
-theorem {name}_secure : ∀ (adv : Adversary) (msg : Message),
-    {advantage} adv {primitive} msg ≤ {bound} := by
-  {proof_body}",
-    )
-    .with_description("Proves cryptographic security bounds")
-}
-
-/// Template for concurrency safety proofs
-#[allow(dead_code)]
-pub fn concurrency_safety_proof_template() -> ProofTemplate {
-    ProofTemplate::new(
-        "concurrency_safety",
-        r"/-- Concurrency safety proof -/
-theorem {name}_concurrent_safe : ∀ (t1 t2 : Thread) (s : SharedState),
-    {race_free} t1 t2 s →
-    {linearizable} ({op1} t1 s) ({op2} t2 s) := by
-  {proof_body}",
-    )
-    .with_description("Proves thread safety and race freedom")
-}
-
-/// Get all built-in templates
-#[allow(dead_code)]
-pub fn all_templates() -> Vec<ProofTemplate> {
-    vec![
-        termination_proof_template(),
-        correctness_proof_template(),
-        safety_proof_template(),
-        bisimulation_proof_template(),
-        memory_safety_proof_template(),
-        crypto_security_proof_template(),
-        concurrency_safety_proof_template(),
-    ]
-}
-
-/// Find a template by name
-#[allow(dead_code)]
-pub fn find_template(name: &str) -> Option<ProofTemplate> {
-    all_templates().into_iter().find(|t| t.name == name)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -156,15 +81,8 @@ mod tests {
     }
 
     #[test]
-    fn test_find_template() {
-        let template = find_template("safety");
-        assert!(template.is_some());
-        assert_eq!(template.unwrap().name, "safety");
-    }
-
-    #[test]
-    fn test_all_templates_count() {
-        let templates = all_templates();
-        assert_eq!(templates.len(), 7);
+    fn test_safety_template() {
+        let template = safety_proof_template();
+        assert_eq!(template.name, "safety");
     }
 }

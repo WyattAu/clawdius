@@ -9,7 +9,7 @@
 Clawdius was designed from the ground up with security as a primary concern:
 
 - **5 Sandbox Backends (+ 2 Planned)**: From lightweight WASM to hardware-isolated Firecracker microVMs
-- **209 Formal Verification Theorems**: Mathematically proven correctness for critical operations
+- **284 Formal Verification Theorems**: Mathematically proven correctness for critical operations
 - **Enterprise SSO**: SAML 2.0, OIDC, Okta, Azure AD, and GitHub integration
 - **Comprehensive Audit Logging**: SQLite, Elasticsearch, and webhook backends
 
@@ -25,7 +25,7 @@ Built in Rust for maximum performance:
 ### Extensible Architecture
 
 - **Plugin System**: WASM-based plugins with 26 hook types
-- **Multiple LLM Providers**: Anthropic, OpenAI, Ollama, and custom endpoints
+- **Multiple LLM Providers**: Anthropic, OpenAI, Google Gemini, xAI (Grok), Mistral, DeepSeek, OpenRouter, Ollama, Z.AI
 - **Graph-RAG**: Enhanced context through code graph analysis
 - **Timeline & Checkpoints**: Full session history and rollback
 
@@ -34,7 +34,7 @@ Built in Rust for maximum performance:
 | Feature | Clawdius | Competitors |
 |---------|----------|-------------|
 | Sandbox Backends | 5 (+ 2 planned) | 1-3 |
-| Formal Verification | 209 theorems | None |
+| Formal Verification | 284 theorems | None |
 | Cold Boot Time | <20ms | 100-500ms |
 | Plugin System | WASM + 26 hooks | Limited or None |
 | Enterprise SSO | Full (SAML, OIDC) | Limited |
@@ -45,8 +45,13 @@ Built in Rust for maximum performance:
 ## Quick Start
 
 ```bash
-# Install from crates.io
-cargo install clawdius
+# Install from source (crate not yet published to crates.io)
+cargo install --git https://github.com/WyattAu/clawdius
+
+# Or build from source
+git clone https://github.com/WyattAu/clawdius
+cd clawdius
+cargo build --release
 
 # Run the interactive setup wizard
 clawdius setup
@@ -62,7 +67,7 @@ clawdius chat
 
 The interactive setup wizard guides you through:
 
-- **Provider Selection**: Choose from Anthropic, OpenAI, Ollama, DeepSeek, or custom endpoints
+- **Provider Selection**: Choose from Anthropic, OpenAI, Google Gemini, xAI (Grok), Mistral, DeepSeek, OpenRouter, Ollama, Z.AI
 - **API Key Configuration**: Secure storage using your system keyring
 - **Settings Presets**: Balanced, Security-focused, Performance-optimized, or Development mode
 - **Ollama Connectivity Check**: Automatic TCP verification for local LLMs

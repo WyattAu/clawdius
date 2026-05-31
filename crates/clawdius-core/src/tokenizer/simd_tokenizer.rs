@@ -271,7 +271,8 @@ mod tests {
             let simd_splits = t.count_splits(case.as_bytes());
             let scalar_splits = count_splits_scalar(case.as_bytes());
             assert_eq!(
-                simd_splits, scalar_splits,
+                simd_splits,
+                scalar_splits,
                 "mismatch for input of {} bytes",
                 case.len()
             );

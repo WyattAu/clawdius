@@ -158,7 +158,7 @@ impl AgentRole {
         }
     }
 
-    #[allow(dead_code)]
+    #[allow(dead_code)] // used in tests; reserved for deserialization
     fn from_name(name: &str) -> Option<Self> {
         match name {
             "coder" => Some(AgentRole::Coder),

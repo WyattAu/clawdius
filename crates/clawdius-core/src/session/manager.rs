@@ -21,8 +21,6 @@ struct SessionManagerInner {
     store: SessionStore,
     compactor: Compactor,
     active_session: RwLock<Option<SessionId>>,
-    #[allow(dead_code)]
-    config: Config,
 }
 
 /// Session manager for handling multiple sessions
@@ -60,7 +58,6 @@ impl SessionManager {
                 store,
                 compactor,
                 active_session: RwLock::new(None),
-                config: config.clone(),
             }),
         })
     }

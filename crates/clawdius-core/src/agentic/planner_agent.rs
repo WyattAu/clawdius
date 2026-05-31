@@ -663,7 +663,7 @@ pub enum TaskComplexity {
 
 /// Analysis result for a task.
 #[derive(Debug)]
-#[allow(dead_code)]
+#[allow(dead_code)] // struct fields used in future strategy implementations
 struct TaskAnalysis {
     complexity: TaskComplexity,
     risk_assessment: RiskAssessment,
@@ -671,7 +671,7 @@ struct TaskAnalysis {
 }
 
 /// Trait for planning strategies.
-#[allow(dead_code)]
+#[allow(dead_code)] // trait reserved for future strategy implementations
 trait PlanningStrategy: Send + Sync {
     fn name(&self) -> &str;
     fn can_handle(&self, request: &super::TaskRequest) -> bool;

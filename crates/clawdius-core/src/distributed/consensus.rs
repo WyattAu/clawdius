@@ -100,8 +100,7 @@ impl LeaderElection {
         self.state = ConsensusState::Candidate;
         self.voted_for = Some(self.node_id.clone());
         self.votes_received.clear();
-        self.votes_received
-            .insert(self.node_id.clone(), true);
+        self.votes_received.insert(self.node_id.clone(), true);
     }
 
     /// Record a vote from a peer. Returns `true` if the vote grants a majority.

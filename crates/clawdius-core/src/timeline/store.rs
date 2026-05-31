@@ -80,7 +80,6 @@ pub struct FileSnapshot {
     pub is_binary: bool,
     /// File content (stored separately)
     #[serde(skip)]
-    #[allow(dead_code)]
     pub content_path: Option<PathBuf>,
 }
 

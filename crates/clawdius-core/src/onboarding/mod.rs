@@ -174,17 +174,14 @@ impl DefaultSettings {
 /// Interactive onboarding wizard
 pub struct OnboardingWizard {
     progress: OnboardingProgress,
-    #[allow(dead_code)]
-    config_path: PathBuf,
 }
 
 impl OnboardingWizard {
     /// Create a new wizard
     #[must_use]
-    pub fn new(config_path: PathBuf) -> Self {
+    pub fn new(_config_path: PathBuf) -> Self {
         Self {
             progress: OnboardingProgress::new(),
-            config_path,
         }
     }
 

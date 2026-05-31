@@ -5,7 +5,7 @@
 
 [![Version](https://img.shields.io/badge/version-1.0.0--rc.2-blue.svg)](https://github.com/WyattAu/clawdius/releases)
 [![Rust](https://img.shields.io/badge/language-Rust-orange.svg)](https://www.rust-lang.org)
-[![Tests](https://img.shields.io/badge/tests-2%2C176-passing-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-2%2C560-passing-brightgreen.svg)]()
 [![Clippy](https://img.shields.io/badge/clippy-0%20warnings-success.svg)]()
 [![Lean4](https://img.shields.io/badge/Lean4-284%20theorems-blue.svg)]()
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-yellow.svg)](LICENSE)
@@ -23,7 +23,7 @@ Clawdius is a next-generation AI coding engine built in Rust. It provides a term
 
 ## Features
 
-- **Multi-Provider LLM** — DeepSeek, Anthropic, OpenAI, OpenRouter, Ollama, ZAI with automatic retry
+- **Multi-Provider LLM** — Anthropic, OpenAI, Google Gemini, xAI (Grok), Mistral, DeepSeek, OpenRouter, Ollama, Z.AI with automatic retry
 - **Terminal UI** — 60 FPS ratatui TUI with 25+ commands, streaming responses, file watching
 - **Agentic Engine** — Sprint execution, auto-fix, code generation with tool use (file, shell, git)
 - **Messaging Gateway** — 9 platform adapters (Telegram, Discord, Slack, Matrix, Signal, Teams, WhatsApp, Rocket.Chat, Webhook)
@@ -42,7 +42,8 @@ clawdius/
 │   ├── clawdius-core/         # Core library (101K lines)
 │   ├── clawdius-gateway/      # Messaging gateway binary (15 MB release)
 │   ├── clawdius-code/         # VSCode extension helper (JSON-RPC)
-│   └── clawdius-mcp/          # Model Context Protocol server
+│   ├── clawdius-mcp/          # Model Context Protocol server
+│   └── clawdius-plugin-sdk/   # Plugin development SDK
 ├── .specs/                    # Yellow Papers, Blue Papers, Lean4 proofs
 ├── SECURITY.md                # Dependency risk inventory
 └── Cargo.toml                 # Workspace configuration

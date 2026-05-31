@@ -22,9 +22,9 @@ mod tiktoken_backend;
 
 mod simd_tokenizer;
 
+pub use simd_tokenizer::SimdWhitespaceTokenizer;
 #[cfg(all(not(target_arch = "wasm32"), feature = "tiktoken"))]
 pub use tiktoken_backend::TiktokenCounter;
-pub use simd_tokenizer::SimdWhitespaceTokenizer;
 
 use crate::tokenize::{count_tokens, TokenizerStrategy};
 
@@ -135,8 +135,7 @@ mod tests {
     #[test]
     fn test_long_text() {
         let t = SimdWhitespaceTokenizer::new();
-        let text = "The quick brown fox jumps over the lazy dog. "
-            .repeat(100);
+        let text = "The quick brown fox jumps over the lazy dog. ".repeat(100);
         let c = t.count(&text);
         assert!(c >= 100, "long text should yield >= 100 tokens, got {c}");
     }

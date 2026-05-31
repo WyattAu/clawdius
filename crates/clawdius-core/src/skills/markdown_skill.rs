@@ -87,8 +87,8 @@ fn extract_frontmatter(content: &str) -> super::Result<(Vec<FrontmatterLine>, St
     Ok((lines, body))
 }
 
-#[allow(dead_code)] // internal parse representation
 #[derive(Debug)]
+#[allow(dead_code)] // variant fields used structurally in pattern matching
 enum FrontmatterLine {
     Scalar {
         key: String,

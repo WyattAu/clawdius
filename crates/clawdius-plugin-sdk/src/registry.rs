@@ -80,16 +80,6 @@ enum ToolEntry {
     FnPtr(ToolRegistration),
 }
 
-impl ToolEntry {
-    #[allow(dead_code)]
-    fn name(&self) -> &str {
-        match self {
-            Self::TraitObj(t) => t.name(),
-            Self::FnPtr(r) => &r.name,
-        }
-    }
-}
-
 /// Central registry that collects tools from all loaded plugins.
 ///
 /// The host creates one registry, calls `register_tools` on each plugin,

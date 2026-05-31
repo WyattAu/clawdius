@@ -7,24 +7,20 @@ use ratatui::{
 };
 use std::path::Path;
 
-#[allow(dead_code)]
 pub struct MentionAutocomplete {
     suggestions: Vec<MentionSuggestion>,
     state: ListState,
     visible: bool,
     input: String,
-    cursor_position: usize,
 }
 
 #[derive(Clone, Debug)]
-#[allow(dead_code)]
 pub struct MentionSuggestion {
     pub mention_type: String,
     pub value: String,
     pub description: String,
 }
 
-#[allow(dead_code)]
 impl MentionAutocomplete {
     pub fn new() -> Self {
         let mut state = ListState::default();
@@ -35,7 +31,6 @@ impl MentionAutocomplete {
             state,
             visible: false,
             input: String::new(),
-            cursor_position: 0,
         }
     }
 
@@ -266,51 +261,4 @@ impl Default for MentionAutocomplete {
     }
 }
 
-#[allow(dead_code)]
-pub fn highlight_mentions(text: &str) -> Vec<Span<'_>> {
-    let mut spans = Vec::new();
-    let mut last_end = 0;
 
-    let patterns = [
-        r"@file:[^\s]+",
-        r"@folder:[^\s]+",
-        r"@url:https?://[^\s]+",
-        r"@problems(?::\w+)?",
-        r"@git:(?:diff|staged|log(?::\d+)?)",
-        r"@symbol:[^\s]+",
-        r#"@search:"[^"]+""#,
-        r#"@search:(?!")[^\s]+"#,
-    ];
-
-    let mut mentions: Vec<(usize, usize)> = Vec::new();
-
-    for pattern in &patterns {
-        if let Ok(re) = regex::Regex::new(pattern) {
-            for cap in re.find_iter(text) {
-                mentions.push((cap.start(), cap.end()));
-            }
-        }
-    }
-
-    mentions.sort_by_key(|(start, _)| *start);
-    mentions.dedup();
-
-    for (start, end) in mentions {
-        if start > last_end {
-            spans.push(Span::raw(&text[last_end..start]));
-        }
-
-        let mention_style = Style::default()
-            .fg(Color::Cyan)
-            .add_modifier(Modifier::UNDERLINED);
-
-        spans.push(Span::styled(&text[start..end], mention_style));
-        last_end = end;
-    }
-
-    if last_end < text.len() {
-        spans.push(Span::raw(&text[last_end..]));
-    }
-
-    spans
-}

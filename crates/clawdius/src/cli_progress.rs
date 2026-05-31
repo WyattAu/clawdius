@@ -73,12 +73,6 @@ impl Spinner {
         }));
     }
 
-    /// Update the spinner message.
-    #[allow(dead_code)]
-    pub fn set_message(&mut self, message: impl Into<String>) {
-        self.message = message.into();
-    }
-
     /// Stop the spinner and optionally show a completion message.
     pub fn stop(mut self, completion_message: Option<&str>) {
         self.running.store(false, Ordering::SeqCst);
@@ -92,17 +86,6 @@ impl Spinner {
         }
     }
 
-    /// Stop the spinner with an error message.
-    #[allow(dead_code)]
-    pub fn stop_with_error(mut self, error_message: &str) {
-        self.running.store(false, Ordering::SeqCst);
-
-        if let Some(handle) = self.handle.take() {
-            let _ = handle.join();
-        }
-
-        println!("❌ {error_message}");
-    }
 }
 
 impl Drop for Spinner {
@@ -111,76 +94,6 @@ impl Drop for Spinner {
         if let Some(handle) = self.handle.take() {
             let _ = handle.join();
         }
-    }
-}
-
-/// Progress bar for tracking multi-step operations.
-#[allow(dead_code)]
-pub struct ProgressBar {
-    current: usize,
-    total: usize,
-    message: String,
-    width: usize,
-}
-
-#[allow(dead_code)]
-impl ProgressBar {
-    /// Create a new progress bar.
-    pub fn new(total: usize, message: impl Into<String>) -> Self {
-        Self {
-            current: 0,
-            total,
-            message: message.into(),
-            width: 40,
-        }
-    }
-
-    /// Advance the progress by one step.
-    pub fn inc(&mut self) {
-        if self.current < self.total {
-            self.current += 1;
-        }
-        self.render();
-    }
-
-    /// Set the current progress.
-    pub fn set(&mut self, current: usize) {
-        self.current = current.min(self.total);
-        self.render();
-    }
-
-    /// Render the progress bar.
-    #[allow(
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        clippy::cast_precision_loss
-    )]
-    fn render(&self) {
-        let percent = if self.total > 0 {
-            ((self.current as f64 / self.total as f64) * 100.0) as usize
-        } else {
-            100
-        };
-
-        let filled = if self.total > 0 {
-            (self.current * self.width) / self.total
-        } else {
-            self.width
-        };
-
-        let bar: String = "█".repeat(filled) + &"░".repeat(self.width - filled);
-
-        print!(
-            "\r\x1B[K{} [{}] {}% ({}/{})",
-            self.message, bar, percent, self.current, self.total
-        );
-    }
-
-    /// Complete the progress bar with a message.
-    pub fn finish(mut self, message: &str) {
-        self.current = self.total;
-        let bar: String = "█".repeat(self.width);
-        println!("\r\x1B[K{} [{}] 100% - {}", self.message, bar, message);
     }
 }
 
@@ -194,27 +107,6 @@ pub fn success(message: &str) {
     println!("✅ {message}");
 }
 
-/// Error message with optional suggestion.
-#[allow(dead_code)]
-pub fn error(message: &str, suggestion: Option<&str>) {
-    println!("❌ {message}");
-    if let Some(suggestion) = suggestion {
-        println!("   💡 {suggestion}");
-    }
-}
-
-/// Warning message.
-#[allow(dead_code)]
-pub fn warning(message: &str) {
-    println!("⚠️  {message}");
-}
-
-/// Info message.
-#[allow(dead_code)]
-pub fn info(message: &str) {
-    println!("ℹ️  {message}");
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -223,12 +115,5 @@ mod tests {
     fn test_spinner_creation() {
         let spinner = Spinner::new("Loading...");
         assert!(!spinner.running.load(Ordering::SeqCst));
-    }
-
-    #[test]
-    fn test_progress_bar_creation() {
-        let bar = ProgressBar::new(10, "Processing");
-        assert_eq!(bar.current, 0);
-        assert_eq!(bar.total, 10);
     }
 }

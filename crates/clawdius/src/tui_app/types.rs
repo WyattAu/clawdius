@@ -119,19 +119,4 @@ pub enum InputMode {
     Command,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-#[allow(dead_code)]
-pub enum VimMode {
-    #[default]
-    Normal,
-    Insert,
-    Visual,
-    Command,
-}
 
-#[allow(dead_code)]
-pub enum InputFocus {
-    Chat,
-    FileBrowser,
-    Diff,
-}

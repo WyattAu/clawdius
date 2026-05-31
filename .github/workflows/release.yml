@@ -22,6 +22,10 @@ permissions:
 env:
   CARGO_TERM_COLOR: always
 
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   validate:
     name: Validate Release
@@ -290,6 +294,7 @@ jobs:
   sbom:
     name: Generate SBOM
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs: [validate, quality-gates]
     steps:
       - uses: actions/checkout@v6
@@ -326,6 +331,7 @@ jobs:
   github-release:
     name: GitHub Release
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     needs: [validate, build, sbom]
     permissions:
       contents: write
@@ -420,6 +426,7 @@ jobs:
   publish-crates:
     name: Publish to Crates.io
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     needs: [validate, github-release]
     if: ${{ !contains(needs.validate.outputs.version, '-') }}
     steps:
@@ -446,6 +453,7 @@ jobs:
   notify:
     name: Notify
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     needs: [validate, github-release]
     if: always()
     steps:
@@ -466,8 +474,9 @@ jobs:
   post-release:
     name: Post-Release Tasks
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs: [validate, github-release]
-    if: success()
+    if: success() && !contains(needs.validate.outputs.version, '-')
     steps:
       - uses: actions/checkout@v6
         with:
@@ -497,11 +506,17 @@ jobs:
           # Commit and push
           git add VERSION.md
           git commit -m "chore: bump version to $NEW_VERSION for next development cycle"
-          git push origin main || true
+
+      - name: Push version bump
+        run: |
+          if ! git push origin main; then
+            echo "::warning::Failed to push version bump to main. Manual intervention required."
+          fi
 
   rollback:
     name: Rollback
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     if: failure() && needs.github-release.result == 'failure'
     needs: [validate, github-release]
     steps:

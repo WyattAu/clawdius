@@ -85,12 +85,12 @@ clawdius/
 │   ├── clawdius-core/         # Core library
 │   ├── clawdius-gateway/      # Messaging gateway
 │   ├── clawdius-mcp/          # MCP server
-│   └── clawdius-code/         # VSCode helper
+│   ├── clawdius-code/         # VSCode helper
+│   └── clawdius-plugin-sdk/   # Plugin development SDK
 ├── editors/
 │   └── vscode/                # VSCode extension
 ├── .docs/                     # Documentation
-├── tests/                     # Integration tests
-└── benches/                   # Benchmarks
+└── tests/                     # Integration tests
 ```
 
 ### Crate Responsibilities
@@ -304,7 +304,7 @@ fn test_full_workflow() {
 
 ### Benchmarks
 
-Benchmarks are located in `benches/` directories:
+Benchmarks are located in `crates/clawdius-core/benches/` and `crates/clawdius/benches/`:
 
 ```bash
 # Run all benchmarks

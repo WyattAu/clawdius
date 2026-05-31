@@ -216,6 +216,7 @@ rpc = []
 webhooks = []
 airgap = []
 watch = []
+# Distributed LLM routing (not default)
 distributed = []
 tiktoken = []
 

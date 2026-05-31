@@ -14,6 +14,10 @@ permissions:
 env:
   CARGO_TERM_COLOR: always
 
+concurrency:
+  group: aur-publish
+  cancel-in-progress: false
+
 jobs:
   validate-pkgbuild:
     name: Validate PKGBUILD

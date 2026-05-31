@@ -34,7 +34,6 @@ jobs:
         run: cargo install cargo-audit --locked
       
       - name: Run security audit
-        continue-on-error: true
         run: |
           cargo audit --deny warnings 2>&1 || echo "Audit has warnings (known transitive issues)"
       
@@ -201,21 +200,18 @@ jobs:
           cargo nextest run \
             --workspace \
             -E 'test(~security)' || echo "No security-specific tests found, skipping"
-        continue-on-error: true
       
       - name: Run input validation tests
         run: |
           cargo nextest run \
             --workspace \
             -E 'test(~input_validation)' || echo "No input validation tests found, skipping"
-        continue-on-error: true
       
       - name: Run sandbox escape tests
         run: |
           cargo nextest run \
             --workspace \
             -E 'test(~sandbox)' || echo "No sandbox tests found, skipping"
-        continue-on-error: true
 
   sbom:
     name: Generate SBOM

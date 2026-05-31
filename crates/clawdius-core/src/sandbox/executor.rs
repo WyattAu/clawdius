@@ -16,7 +16,6 @@ use crate::sandbox::backends::SandboxExecBackend;
 
 pub struct SandboxExecutor {
     backend: Box<dyn SandboxBackend>,
-    #[allow(dead_code)]
     tier: SandboxTier,
 }
 

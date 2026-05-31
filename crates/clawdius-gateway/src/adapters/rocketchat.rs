@@ -35,9 +35,6 @@ use crate::error::GatewayError;
 pub struct RocketChatAdapter {
     /// Rocket.Chat server URL.
     server_url: String,
-    /// Bot user ID or username.
-    #[allow(dead_code)]
-    user_id: String,
     /// Authentication token (X-Auth-Token header).
     auth_token: String,
     /// Rocket.Chat user ID (X-User-Id header).
@@ -63,7 +60,6 @@ impl RocketChatAdapter {
     ) -> Self {
         Self {
             server_url: server_url.into(),
-            user_id: String::new(),
             auth_token: auth_token.into(),
             rc_user_id: rc_user_id.into(),
             messages_processed: std::sync::atomic::AtomicU64::new(0),
