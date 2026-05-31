@@ -22,7 +22,7 @@
 
 | Metric | Value |
 |--------|-------|
-| Total tests | 2,489 (0 failures, 10 ignored) |
+| Total tests | 2,560 (0 failures, 4 ignored) |
 | Lean4 theorems | 284 across 24 proof files (39/39 lake jobs pass) |
 | CI/CD workflows | 10 (ci, release, pgo, security, docs, docker, benchmarks, lean_action_ci, code-review, dependabot) |
 | Clippy | Clean (pedantic + deny unwraps on core) |
