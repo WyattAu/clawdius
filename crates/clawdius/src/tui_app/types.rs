@@ -118,5 +118,3 @@ pub enum InputMode {
     Insert,
     Command,
 }
-
-

@@ -260,5 +260,3 @@ impl Default for MentionAutocomplete {
         Self::new()
     }
 }
-
-

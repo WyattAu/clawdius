@@ -85,7 +85,6 @@ impl Spinner {
             println!("✅ {msg}");
         }
     }
-
 }
 
 impl Drop for Spinner {

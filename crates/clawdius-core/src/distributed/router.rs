@@ -146,7 +146,7 @@ mod tests {
                     ["n1", "n2", "n3"].contains(&id.as_str()),
                     "routed to unexpected node: {id}"
                 );
-            }
+            },
             RoutingDecision::NoNodesAvailable => panic!("expected a healthy node"),
             RoutingDecision::RetryLater => panic!("unexpected retry"),
         }
