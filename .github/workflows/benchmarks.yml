@@ -32,7 +32,7 @@ jobs:
           fetch-depth: 0
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@1.92.0
 
       - name: Cache cargo registry
         uses: Swatinem/rust-cache@v2
@@ -82,7 +82,7 @@ jobs:
           fetch-depth: 0
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@1.92.0
 
       - name: Cache cargo registry
         uses: Swatinem/rust-cache@v2
@@ -160,8 +160,10 @@ jobs:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 2
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@1.92.0
       - name: Restore baseline
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v5
         with:
           path: target/criterion
           key: criterion-baseline-${{ runner.os }}
@@ -169,7 +171,7 @@ jobs:
             criterion-baseline-${{ runner.os }}
       - name: Run benchmarks against baseline
         run: |
-          cargo bench -p clawdius-core --benches -- --baseline main 2>&1 | tee benchmark-results.txt
+          cargo bench -p clawdius-core --benches --locked -- --baseline main 2>&1 | tee benchmark-results.txt
           if grep -q "Faster" benchmark-results.txt || grep -q "Slower" benchmark-results.txt; then
             echo "## Performance Regression Detected"
             echo ""
@@ -180,7 +182,7 @@ jobs:
             exit 1
           fi
       - name: Upload results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: benchmark-regression-report

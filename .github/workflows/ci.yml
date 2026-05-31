@@ -265,7 +265,7 @@ jobs:
             benchmark-results-
 
       - name: Run benchmarks with comparison
-        run: cargo bench --workspace --benches -- --baseline main
+        run: cargo bench --workspace --benches --locked -- --baseline main
 
       - name: Upload benchmark results
         uses: actions/upload-artifact@v7
@@ -291,7 +291,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
 
       - name: Check wasm32 compilation
-        run: cargo check -p clawdius-core --target wasm32-unknown-unknown 2>&1 | tee /tmp/wasm-check.log
+        run: cargo check -p clawdius-core --target wasm32-unknown-unknown --locked 2>&1 | tee /tmp/wasm-check.log
         continue-on-error: true  # wasm compilation is aspirational
 
       - name: Upload wasm-check log

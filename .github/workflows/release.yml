@@ -18,7 +18,6 @@ on:
 
 permissions:
   contents: write
-  id-token: write
 
 env:
   CARGO_TERM_COLOR: always
@@ -78,7 +77,7 @@ jobs:
       - uses: actions/checkout@v6
       
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@1.92.0
         with:
           components: clippy, rustfmt, llvm-tools-preview
       
@@ -106,15 +105,15 @@ jobs:
           cargo audit || true
       
       - name: Run tests
-        run: cargo nextest run --workspace --cargo-profile ci
+        run: cargo nextest run --workspace --cargo-profile ci --locked
       
       - name: Check coverage
         run: |
           # Run coverage without --all-features to avoid protoc dependency
           # (lance-encoding requires protoc which isn't installed on CI).
           # Coverage is informational — don't block release on threshold.
-          cargo llvm-cov --workspace --summary-only || echo "Coverage check skipped"
-          COVERAGE=$(cargo llvm-cov --workspace --summary-only 2>&1 | grep -oP '\d+\.\d+%' | head -1 | tr -d '%' || echo "0")
+          cargo llvm-cov --workspace --summary-only --locked || echo "Coverage check skipped"
+          COVERAGE=$(cargo llvm-cov --workspace --summary-only --locked 2>&1 | grep -oP '\d+\.\d+%' | head -1 | tr -d '%' || echo "0")
           echo "Line coverage: ${COVERAGE}%"
       
       - name: Run benchmarks (regression check)
@@ -154,7 +153,7 @@ jobs:
       - uses: actions/checkout@v6
       
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@1.92.0
         with:
           targets: ${{ matrix.target }}
 
@@ -296,7 +295,7 @@ jobs:
       - uses: actions/checkout@v6
       
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@1.92.0
       
       - name: Install cargo-cyclonedx
         run: cargo install cargo-cyclonedx --locked
@@ -427,22 +426,22 @@ jobs:
       - uses: actions/checkout@v6
       
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@1.92.0
       
       - name: Publish clawdius-core (library)
-        run: cargo publish --token ${{ secrets.CRATES_IO_TOKEN }} -p clawdius-core
+        run: cargo publish --token ${{ secrets.CRATES_IO_TOKEN }} -p clawdius-core --locked
       
       - name: Publish clawdius-gateway (messaging)
-        run: cargo publish --token ${{ secrets.CRATES_IO_TOKEN }} -p clawdius-gateway
+        run: cargo publish --token ${{ secrets.CRATES_IO_TOKEN }} -p clawdius-gateway --locked
       
       - name: Publish clawdius-mcp (MCP server)
-        run: cargo publish --token ${{ secrets.CRATES_IO_TOKEN }} -p clawdius-mcp
+        run: cargo publish --token ${{ secrets.CRATES_IO_TOKEN }} -p clawdius-mcp --locked
       
       - name: Publish clawdius-code (VSCode helper)
-        run: cargo publish --token ${{ secrets.CRATES_IO_TOKEN }} -p clawdius-code
+        run: cargo publish --token ${{ secrets.CRATES_IO_TOKEN }} -p clawdius-code --locked
       
       - name: Publish clawdius (CLI)
-        run: cargo publish --token ${{ secrets.CRATES_IO_TOKEN }} -p clawdius
+        run: cargo publish --token ${{ secrets.CRATES_IO_TOKEN }} -p clawdius --locked
 
   notify:
     name: Notify
