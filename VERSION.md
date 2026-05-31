@@ -9,37 +9,38 @@
 |-----------|-------|
 | **Version** | 1.0.0-rc.2 |
 | **Status** | Active development |
-| **Last Updated** | 2026-05-30 |
-| **Rollback Checkpoint** | `c7b24481` |
+| **Last Updated** | 2026-05-31 |
+| **Rollback Checkpoint** | `b6d8dc3f` |
 
 ## Empirical Metrics
 
 | Metric | Value | Source |
 |--------|-------|--------|
-| **Workspace Crates** | 5 | `Cargo.toml` |
-| **Rust Files** | 350 | `find crates -name '*.rs'` |
-| **Lean4 Proof Files** | 21 (10 + 11 in two proof dirs) | Lake build (31/31 jobs pass) |
+| **Workspace Crates** | 6 | `Cargo.toml` (core, gateway, mcp, code, plugin-sdk, binary) |
+| **Rust Files** | 350+ | `find crates -name '*.rs'` |
+| **Lean4 Proof Files** | 24 | Lake build (39/39 jobs pass) |
 | **Lean4 Theorems** | 284 | `rg 'theorem ' *.lean` |
 | **Clippy** | Clean (`-D warnings`) | `cargo clippy --workspace --all-targets` |
 | **cargo fmt** | Clean | `cargo fmt --all --check` |
 | **cargo deny** | Clean (advisories, licenses, bans) | `cargo deny check` |
-| **Lean4 lake build** | Pass (31/31 jobs) | `lake build` |
+| **Lean4 lake build** | Pass (39/39 jobs) | `lake build` |
 | **Production unwraps** | 0 (deny active on core) | `deny(clippy::unwrap_used)` |
 | **Root docs with emoji** | 0 | Python grep audit |
 | **git hooks** | pre-commit + pre-push | `CLAWDIUS_SKIP_HOOKS=1` escape hatch |
-| **Coverage (lines)** | ~60% | `cargo llvm-cov` |
+| **Coverage (lines)** | ~63% | `cargo llvm-cov` |
 | **Transitive deps** | 497 (31 duplicates) | `cargo tree --duplicates` |
 
 ### Test Counts
 
 | Crate | Lib Tests | Integration Tests | Property Tests | Adapter Tests | Status |
 |-------|-----------|-------------------|----------------|---------------|--------|
-| clawdius | 76 | 76 | 0 | 0 | All passing |
-| clawdius-core | 1,075 | 97 | 27 | 0 | All passing |
-| clawdius-gateway | 184 | 28 | 0 | 136 | All passing |
-| clawdius-mcp | 42 | 12 | 0 | 0 | All passing |
-| clawdius-code | 48 | 19 | 0 | 0 | All passing |
-| **Total** | **1,425** | **232** | **27** | **136** | **2,019 tests, 0 failures** |
+| clawdius | 76+ | 76+ | 0 | 0 | All passing |
+| clawdius-core | 1,100+ | 97+ | 27 | 0 | All passing |
+| clawdius-gateway | 184+ | 28+ | 0 | 136 | All passing |
+| clawdius-mcp | 42+ | 12+ | 0 | 0 | All passing |
+| clawdius-code | 48+ | 19+ | 0 | 0 | All passing |
+| clawdius-plugin-sdk | 19 | 0 | 0 | 0 | All passing |
+| **Total** | **~1,470** | **~232** | **27** | **136** | **2,176 tests, 0 failures** |
 
 ### Coverage Baseline
 
@@ -53,8 +54,8 @@
 
 ### Lean4 Proof Files
 
-All 15 proof files compile via `lake build` (31/31 jobs).
-Directories: `.specs/02_architecture/proofs/` (8), `.clawdius/specs/02_architecture/proofs/` (7).
+All 24 proof files compile via `lake build` (39/39 jobs).
+Directories: `.specs/02_architecture/proofs/` (8), `.clawdius/specs/02_architecture/proofs/` (16).
 
 ### Performance
 
@@ -72,20 +73,21 @@ Directories: `.specs/02_architecture/proofs/` (8), `.clawdius/specs/02_architect
 | Issue | Severity | Details |
 |-------|----------|---------|
 | 6 transitive CVEs | Low | rustls-webpki (4), matrix-sdk-base (2); documented in deny.toml |
-| `--all-features` compile fail | Medium | vector-db (IndexStats import) and telegram (teloxide API mismatch) |
+| `--all-features` compile fail | RESOLVED | Fixed after dead code removal |
 | CLI coverage 5.6% | Medium | 25+ subcommands at 0% coverage |
-| memory_bench FK bug | Low | save_message called before create_session |
+| memory_bench FK bug | Low | save_message called before create_session (benchmark only) |
 | `.cargo-vendor/half` | Low | Vendored patch crate with lint suppression |
 | Unsafe code | Low | simd.rs (SSE2/NEON), proof/templates.rs, analysis/drift.rs |
 | 31 transitive dep duplicates | Info | Documented in .reports/dependency_audit.md |
+| lib.rs merge=union | RESOLVED | Removed from .gitattributes; CI integrity check added |
 
 ### Publish Readiness
 
 | Crate | Dry-Run | Blocker |
 |-------|---------|---------|
 | clawdius-core | Pass | Must publish first |
-| clawdius-code | Fail (core not on crates.io) | Depends on core |
 | clawdius-mcp | Fail (core not on crates.io) | Depends on core |
+| clawdius-code | Fail (core not on crates.io) | Depends on core |
 | clawdius-gateway | Fail (core not on crates.io) | Missing README.md |
 | clawdius | Fail (core not on crates.io) | Depends on gateway |
 

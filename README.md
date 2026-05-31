@@ -5,7 +5,7 @@
 
 [![Version](https://img.shields.io/badge/version-1.0.0--rc.2-blue.svg)](https://github.com/WyattAu/clawdius/releases)
 [![Rust](https://img.shields.io/badge/language-Rust-orange.svg)](https://www.rust-lang.org)
-[![Tests](https://img.shields.io/badge/tests-2%2C178-passing-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-2%2C176-passing-brightgreen.svg)]()
 [![Clippy](https://img.shields.io/badge/clippy-0%20warnings-success.svg)]()
 [![Lean4](https://img.shields.io/badge/Lean4-284%20theorems-blue.svg)]()
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-yellow.svg)](LICENSE)
@@ -14,7 +14,7 @@ Clawdius is a next-generation AI coding engine built in Rust. It provides a term
 
 ## Highlights
 
-- **2,178 tests, 0 failures** across 5 workspace crates
+- **2,176 tests, 0 failures** across 6 workspace crates
 - **0 clippy warnings** (`-D warnings` strict)
 - **284 Lean4 formal verification theorems** compiled and verified (39/39 lake jobs)
 - **15+ feature flags** compile independently
