@@ -192,7 +192,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
 
       - name: Install cargo-llvm-cov
-        uses: taiki-e/install-action@v2
+        uses: taiki-e/install-action@v2.79.5
 
       - name: Generate coverage report
         run: cargo llvm-cov --workspace --lib --summary-only 2>&1 | tail -20
