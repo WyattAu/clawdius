@@ -122,7 +122,7 @@ lru = "0.16"
 
 # === Crypto (encryption at rest) ===
 aes-gcm = "0.10"
-hmac = "0.12"
+hmac = "0.13"
 sha2 = "0.10"
 hmac-sha256 = "1"
 
