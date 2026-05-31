@@ -177,6 +177,10 @@ harness = false
 name = "sandbox_bench"
 harness = false
 
+[[bench]]
+name = "performance"
+harness = false
+
 [features]
 default = []
 keyring = ["dep:keyring"]

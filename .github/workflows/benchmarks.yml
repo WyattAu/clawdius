@@ -150,3 +150,38 @@ jobs:
               issue_number: context.issue.number,
               body: body
             });
+
+  regression-gate:
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: benchmark
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 2
+      - name: Restore baseline
+        uses: actions/cache/restore@v4
+        with:
+          path: target/criterion
+          key: criterion-baseline-${{ runner.os }}
+          restore-keys: |
+            criterion-baseline-${{ runner.os }}
+      - name: Run benchmarks against baseline
+        run: |
+          cargo bench -p clawdius-core --benches -- --baseline main 2>&1 | tee benchmark-results.txt
+          if grep -q "Faster" benchmark-results.txt || grep -q "Slower" benchmark-results.txt; then
+            echo "## Performance Regression Detected"
+            echo ""
+            cat benchmark-results.txt
+            echo ""
+            echo "Threshold: >10% slowdown on any benchmark"
+            echo ""
+            exit 1
+          fi
+      - name: Upload results
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: benchmark-regression-report
+          path: benchmark-results.txt
