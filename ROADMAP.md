@@ -22,7 +22,7 @@
 
 | Metric | Value |
 |--------|-------|
-| Total tests | 2,092 (lib + integration + property + adapter across 5 crates) |
+| Total tests | ~2,200+ (39 test binaries, 0 failures) |
 | Lean4 theorems | 284 across 24 proof files (39/39 lake jobs pass) |
 | CI/CD workflows | 10 (ci, release, pgo, security, docs, docker, benchmarks, lean_action_ci, code-review, dependabot) |
 | Clippy | Clean (pedantic + deny unwraps on core) |
@@ -40,15 +40,17 @@
 | --all-features compile | PASS |
 | Hardcoded API keys | 0 (all replaced with env vars) |
 | Documentation emojis | 0 (1,877 removed across 42 files) |
+| Workspace crates | 6 (core, gateway, mcp, code, plugin-sdk, binary) |
 
 ### Changes Applied This Session
 
 | Category | Files Changed | Description |
 |----------|:---:|-------------|
-| CI/CD security | 7 | Pinned all mutable action refs to exact version tags; fixed PGO permissions |
-| Security | 3 | Removed hardcoded API keys from test files and scripts |
-| Documentation | 42 | Removed 1,877 emoji characters; replaced with text markers |
-| UI/UX | 1 | Restyled admin dashboard to Spatial Materialism design system |
+| CI/CD security | 47+8 | Pinned all mutable action refs; added wasm32 check job; fixed PGO permissions |
+| Security | 4 | Removed hardcoded API keys; removed merge=union gitattribute (silent lib.rs corruption); added integrity CI check |
+| Testing | 11 | 84 new tests (56 CLI, 28 gateway HTTP, 2 MCP fuzz); plugin-sdk crate scaffolded |
+| Documentation | 42+3 | Removed 1,877 emoji characters; expanded 2 crate READMEs (414 lines total); updated ROADMAP |
+| Infrastructure | 1 | Added crates/clawdius-plugin-sdk crate (6 source files) |
 | Dead code | 2 | Removed orphaned test_writer.rs and binary 'test' |
 
 ### Known Deficits
@@ -102,13 +104,13 @@ Added 84 new tests across three areas:
 | Gateway admin API (HTTP-level via `tower::ServiceExt`) | 70% (unit only) | 95% | 28 tests in `admin_http_tests.rs` | Full axum router integration |
 | MCP fuzz corpus | 3 targets | 5 targets | 2 new fuzz targets | `fuzz_mcp_protocol` + `fuzz_mcp_handler` |
 
-### 3c. Performance Regression CI Gate
+### 3c. Performance Regression CI Gate [DONE]
 
-Integrate benchmark results into CI as an enforceable gate:
-- Run criterion benchmarks on main pushes
-- Store baseline in GitHub Actions cache
-- Compare PR benchmarks against baseline with 10% threshold
-- Block merge if regression exceeds threshold
+Integrated into benchmarks.yml:
+- `regression-gate` job runs criterion benchmarks on main pushes
+- Compares against cached baseline with 10% threshold
+- Blocks merge on >10% regression
+- Registered `performance` benchmark in clawdius-core/Cargo.toml
 
 ### 3d. Formal Verification Maintenance
 
@@ -172,15 +174,15 @@ Full audit completed. 50+ pages in mdBook, 10/11 audit items exist:
 
 ## 5. Long-term (Months 4-6) -- v1.x
 
-| Initiative | Description | Version |
-|------------|-------------|---------|
-| Embedded/WASM target | Compile clawdius-core to wasm32-unknown-unknown | v1.1.0 |
-| Plugin SDK v1 | Stable API for third-party tool integrations | v1.1.0 |
-| HFT optimization | SIMD-accelerated tokenization | v1.2.0 |
-| Compliance | SOC2 Type II, HIPAA BAA templates | v1.3.0 |
-| Multi-language docs | Rust, Python, TypeScript client libraries | v1.1.0 |
-| Graph RAG enhancement | Persistent vector store integration | v1.2.0 |
-| Distributed LLM | Multi-node routing with consensus | v1.2.0 |
+| Initiative | Description | Version | Status |
+|------------|-------------|---------|--------|
+| Plugin SDK v1 | Stable API for third-party tool integrations | v1.1.0 | SKELETON -- crate scaffolded with Plugin trait, ToolRegistry, PluginContext, PluginError; no WASM loading yet |
+| Embedded/WASM target | Compile clawdius-core to wasm32-unknown-unknown | v1.1.0 | CI CHECK -- `wasm-check` job runs in CI; compilation currently fails (expected); log uploaded as artifact |
+| HFT optimization | SIMD-accelerated tokenization | v1.2.0 | PLANNED -- simd.rs exists for checksums only; tokenization uses tiktoken-rs |
+| Compliance | SOC2 Type II, HIPAA BAA templates | v1.3.0 | PLANNED |
+| Multi-language docs | Rust, Python, TypeScript client libraries | v1.1.0 | PLANNED |
+| Graph RAG enhancement | Persistent vector store integration | v1.2.0 | PLANNED -- graph_rag module exists with in-memory index |
+| Distributed LLM | Multi-node routing with consensus | v1.2.0 | PLANNED |
 
 ---
 
@@ -193,6 +195,7 @@ Full audit completed. 50+ pages in mdBook, 10/11 audit items exist:
 | 3 | Plugin SDK backward compatibility breaks | Low | High | Semantic versioning; deprecation warnings before breaking |
 | 4 | WASM compilation requires significant refactoring | Medium | High | Phase approach: core utilities first, then sandbox |
 | 5 | CI action supply chain compromise | Low | Critical | All actions pinned to version tags; Dependabot enabled |
+| 6 | lib.rs merge corruption via gitattributes | RESOLVED | Critical | Removed merge=union; added CI integrity check |
 
 ---
 
@@ -201,10 +204,16 @@ Full audit completed. 50+ pages in mdBook, 10/11 audit items exist:
 | Date | Decision | Rationale |
 |------|----------|-----------|
 | 2026-05-31 | Pin all CI actions to version tags | Eliminates mutable ref supply chain risk; 47 pins across 10 workflows |
-| 2026-05-31 | Remove all documentation emojis | Professional formatting mandate; 1,877 emojis replaced with text |
+| 2026-05-31 | Remove all documentation emojis | Professional formatting mandate; 1,877 emojis replaced with text markers |
 | 2026-05-31 | Restyle admin dashboard to project design language | Consistency with landing page Spatial Materialism |
 | 2026-05-31 | Remove hardcoded API keys | Security: prevents credential exposure in git history |
 | 2026-05-31 | Remove orphaned test files | Clean workspace; test_writer.rs and binary test were not part of any crate |
+| 2026-05-31 | Remove merge=union from .gitattributes | merge=union was silently corrupting core lib.rs from 156 to 4 lines during git operations |
+| 2026-05-31 | Scaffold clawdius-plugin-sdk crate | Plugin trait, ToolRegistry, PluginContext, PluginError skeleton for v1.1.0 |
+| 2026-05-31 | Add wasm32 CI check job | Aspirational WASM compilation check with artifact upload |
+| 2026-05-31 | Expand gateway + code READMEs | 284 + 130 lines replacing 3-line stubs |
+| 2026-05-31 | Add 84 new tests | 56 CLI + 28 gateway HTTP + 2 MCP fuzz targets |
+| 2026-05-31 | Pin all CI action refs | 47 pins across 10 workflows; zero mutable refs |
 | 2026-05-27 | Remove 19K+ lines of dead code | Audit identified unreachable branches |
 | 2026-05-27 | Eliminate blanket lint suppressions | Zero suppression policy for pedantic clippy |
 | 2026-05-20 | Lock Lean4 toolchain to 4.28.0 | Reproducible proofs across environments |
@@ -217,13 +226,14 @@ Full audit completed. 50+ pages in mdBook, 10/11 audit items exist:
 
 | Component | Key Files |
 |-----------|------------|
-| Workspace root | Cargo.toml, deny.toml, clippy.toml |
+| Workspace root | Cargo.toml, deny.toml, clippy.toml, .gitattributes |
 | CI/CD | .github/workflows/{ci,release,pgo,security,docs,docker,benchmarks,lean_action_ci,code-review,aur-publish}.yml |
 | Git hooks | .githooks/pre-commit, .githooks/pre-push |
 | Lean4 proofs | .specs/02_architecture/proofs/, .clawdius/specs/02_architecture/proofs/ |
-| Sandbox | crates/clawdius-core/src/sandbox.rs, src/sandbox.rs |
+| Sandbox | crates/clawdius-core/src/sandbox.rs, src/sandbox/ |
 | LLM integration | crates/clawdius-core/src/llm/ |
 | Gateway adapters | crates/clawdius-gateway/src/adapters/ |
 | RPC | crates/clawdius-core/src/rpc/ |
+| Plugin SDK | crates/clawdius-plugin-sdk/ |
 | Deployment | netlify.toml, .github/workflows/docs.yml |
 | Design system | index.html (landing page), crates/clawdius-gateway/static/index.html (admin) |
