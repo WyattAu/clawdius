@@ -216,6 +216,8 @@ rpc = []
 webhooks = []
 airgap = []
 watch = []
+distributed = []
+tiktoken = []
 
 [lints]
 workspace = true

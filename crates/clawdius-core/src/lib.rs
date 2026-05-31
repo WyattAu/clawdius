@@ -49,6 +49,7 @@ pub mod compliance;
 pub mod config;
 pub mod context;
 pub mod diff;
+pub mod distributed;
 pub mod encryption;
 pub mod error;
 pub mod graph_rag;
@@ -86,6 +87,7 @@ pub mod telemetry;
 pub mod timeline;
 pub mod timeout;
 pub mod tokenize;
+pub mod tokenizer;
 pub mod tools;
 #[cfg(feature = "billing")]
 #[doc(hidden)]
