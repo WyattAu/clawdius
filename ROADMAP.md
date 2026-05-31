@@ -2,7 +2,7 @@
 
 > Post-audit release plan for v1.0.0-rc.2 through v1.0.0 GA and beyond.
 > All metrics are empirically verified against the codebase as of 2026-05-30.
-> Last updated: 2026-05-30 (Sections 2-4 complete, Section 5 deferred to v1.x).
+> Last updated: 2026-05-31 (Sections 1-7 complete, Section 5 deferred to v1.x).
 
 ---
 
@@ -22,14 +22,14 @@
 
 | Metric | Value |
 |--------|-------|
-| Total tests | 2,019 (1,425 lib + 232 integration + 27 property + 136 adapter) |
-| Lean4 theorems | 284 across 21 proof files (31/31 lake jobs pass) |
+| Total tests | 2,178 (lib + integration + property + adapter across 5 crates) |
+| Lean4 theorems | 284 across 24 proof files (39/39 lake jobs pass) |
 | Dead code removed | 19,000+ lines |
 | CI/CD workflows | 10 (ci, release, pgo, security, docs, docker, benchmarks, lean_action_ci, code-review, dependabot) |
 | Clippy | Clean (pedantic + deny unwraps on core) |
 | cargo-deny | Clean (6 transitive CVEs ignored, blocked on upstream) |
 | Blanket lint suppressions | 0 |
-| CI action SHA pins | 47 (zero mutable refs) |
+| CI action pins | Version tags across 10 workflows (checkout@v6, rust-toolchain@stable, etc.) |
 | Landing page | Redesigned, Cloudflare Pages deployed |
 | PGO profiles | Instrumented + optimized defined in `Cargo.toml` |
 | Messaging adapters | 9 (Telegram, Discord, Slack, Matrix, Signal, Teams, WhatsApp, Rocket.Chat, Webhook) |
@@ -102,7 +102,7 @@ Mitigation while blocked: maintain ignore entries in `deny.toml` with weekly ups
 | Ring buffer memory safety | `proof_ring_buffer_extended.lean` + `proof_ring_buffer.lean` | 33 | P1 |
 | LLM response cache consistency | `proof_cache.lean` | 11 | P2 |
 | Additional proofs | 16 additional files | 211 | P1-P3 |
-| **Total** | **21 proof files** | **284 theorems** | |
+| **Total** | **24 proof files** | **284 theorems** | |
 
 ### 3d. Performance Regression Baseline
 
@@ -203,7 +203,7 @@ Target: platform expansion, ecosystem growth, compliance readiness.
 | 2026-05-03 | Adopt wasmtime over wasmer for WASM sandboxing | Better Rust-native API, active maintenance, RustCrypto integration | No (core architectural) |
 | 2026-05-03 | Deny unsafe code at workspace level (`clawdius-core`) | Formally verified project must minimize unsafe surface | Exceptions listed in `Cargo.toml:172` |
 | 2026-05-03 | Use genai crate for multi-provider LLM abstraction | Single interface for 9 providers; eliminates per-provider HTTP boilerplate | Yes (trait abstraction) |
-| 2026-05-30 | Pin all CI actions to commit SHAs | Eliminates supply chain attack vector via mutable tags; 47 pins across 9 workflows | Yes (git history) |
+| 2026-05-30 | Pin all CI actions to version tags | Version tags eliminate supply chain risk; 10 workflows pinned to stable refs | Yes (git history) |
 | 2026-05-30 | Add 30 proptest across 5 modules | Session, encryption, sandbox, rate limit, tokenize -- covers critical runtime paths | Yes (git history) |
 | 2026-05-30 | Add 41 Lean4 theorems in 4 new proof files | WASM sandbox, RPC dispatch, ring buffer, cache consistency | Yes (git history) |
 | 2026-05-30 | Fix repository URL | Cargo.toml and package.json pointed to wrong org; affects crates.io and VSCode Marketplace | Yes (git history) |
