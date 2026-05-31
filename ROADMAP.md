@@ -2,7 +2,7 @@
 
 > Post-audit release plan for v1.0.0-rc.3 through v1.0.0 GA and beyond.
 > All metrics empirically verified against the codebase as of 2026-05-31.
-> Last updated: 2026-05-31
+> Last updated: 2026-05-31 (session 2)
 
 ---
 
@@ -54,6 +54,19 @@
 | Dead code | 2 | Removed orphaned test_writer.rs and binary 'test' |
 | Build system | 1 | Fixed Makefile wasm targets (clawdius-core, not nonexistent webview); fixed dev target script reference |
 
+### Session 2 Changes (2026-05-31)
+
+| Category | Files Changed | Description |
+|----------|:---:|-------------|
+| Merge conflict | 1 | Resolved Git merge conflict markers in clawdius-core/Cargo.toml |
+| Dead code removal | 15 | Removed 25 truly dead items (stubs, unused structs, dead methods) across 11 files; fixed 15 stale #[allow(dead_code)] annotations |
+| Test fix | 1 | Fixed non-deterministic round-robin router test (HashMap iteration order) |
+| Formatting | 2 | Applied cargo fmt to tokenizer/mod.rs and simd_tokenizer.rs |
+| CI/CD hardening | 12 | Updated composite action versions (v4->v6/v5/v7/v9); fixed broken regression-gate cache key; removed continue-on-error from security audit steps; added concurrency groups (5 workflows); added timeout-minutes (7 jobs); pre-release guard; PGO cache; --locked fallback |
+| UI/UX | 2 | Added og:image, twitter:image, favicon, preconnect; fixed WCAG AA contrast; fixed broken docs link; fixed ARIA conflict; responsive metric-val |
+| Deployment | 1 | Fixed netlify.toml catch-all redirect that broke docs page navigation |
+| Documentation | 7 | Unified test counts (2,560); expanded provider list (9); added plugin-sdk to workspace trees; updated theorem counts (284); fixed install instructions; added rc.2 to SECURITY.md |
+
 ### Known Deficits
 
 | Issue | Severity | Status |
@@ -64,6 +77,12 @@
 | CLI subcommand coverage | RESOLVED | 277 tests in cli_logic_tests.rs covering output formats, severity mapping, language detection, webhook events, git parsing, function extraction, API key masking |
 | --all-features compile | RESOLVED | Fixed after dead code removal in prior audit |
 | Production unwrap count | RESOLVED | ~89 remaining (benchmarks only); core crate denies unwrap_used |
+| Domain mismatch (docs.clawdius.dev vs clawdius.co.uk) | HIGH | ~30 files reference docs.clawdius.dev; canonical domain is clawdius.co.uk |
+| PRODUCTION_ROADMAP.md severely outdated | LOW | Superseded by this ROADMAP.md; needs archival marker |
+| Blog post metrics wildly inconsistent | LOW | 4 different theorem counts across landing/docs/blog posts |
+| No custom mdBook theme (visual disconnect with landing page) | LOW | Default mdBook theme; no brand continuity |
+| Duplicate Lean4 CI jobs (ci.yml + lean_action_ci.yml) | LOW | Both run identical elan + lake build |
+| Intro.md cargo install clawdius won't work (not published) | HIGH | Changed to git install + source build instructions |
 
 ---
 
@@ -233,6 +252,12 @@ Full audit completed. 50+ pages in mdBook, 10/11 audit items exist:
 | 2026-05-31 | Create SOC2/HIPAA/GDPR compliance templates | .specs/09_compliance/ with audit-ready structures |
 | 2026-05-31 | Gate 18 WASM-incompatible deps behind cfg(not(target_arch="wasm32")) | Reduces WASM surface; transitive memchr/std issue remains upstream |
 | 2026-05-31 | Resolve merge conflict in admin_http_tests.rs | Conflicting lines were identical; removed conflict markers |
+| 2026-05-31 | Resolve merge conflict in clawdius-core/Cargo.toml | Git stashed changes left conflict markers in feature list |
+| 2026-05-31 | Remove 25 dead code items and fix 15 stale annotations | Reduced #[allow(dead_code)] from 68 to 28 across crates/ |
+| 2026-05-31 | Harden CI/CD pipelines (12 files) | Updated action versions, fixed regression-gate, added concurrency/timeout groups, removed security bypass |
+| 2026-05-31 | Fix landing page accessibility (WCAG AA) | .metric-label contrast, ARIA conflict, responsive font sizes |
+| 2026-05-31 | Fix netlify.toml catch-all redirect | /* redirect broke all mdBook page navigation; changed to / only |
+| 2026-05-31 | Fix documentation link in landing page | /intro.html -> clawdius.co.uk/intro.html (matches GitHub Pages deployment) |
 
 ---
 
