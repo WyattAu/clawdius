@@ -46,12 +46,13 @@
 
 | Category | Files Changed | Description |
 |----------|:---:|-------------|
-| CI/CD security | 47+8 | Pinned all mutable action refs; added wasm32 check job; fixed PGO permissions |
+| CI/CD security | 47+8+4+1 | Pinned all mutable action refs; pinned toolchain @stable to @1.92.0; added --locked flags (11 commands); fixed benchmarks regression-gate missing toolchain; fixed mdbook action version |
 | Security | 4 | Removed hardcoded API keys; removed merge=union gitattribute (silent lib.rs corruption); added integrity CI check |
-| Testing | 11 | 84 new tests (56 CLI, 28 gateway HTTP, 2 MCP fuzz); plugin-sdk crate scaffolded |
-| Documentation | 42+3 | Removed 1,877 emoji characters; expanded 2 crate READMEs (414 lines total); updated ROADMAP |
+| Testing | 11+6 | 84 new tests (56 CLI, 28 gateway HTTP, 2 MCP fuzz); plugin-sdk crate scaffolded; fixed 57 clippy errors in plugin-sdk and test files |
+| Documentation | 42+3+3 | Removed 1,877 emoji characters; expanded 2 crate READMEs; updated ROADMAP; updated test count metrics (2,178 -> 2,176); committed untracked spec docs |
 | Infrastructure | 1 | Added crates/clawdius-plugin-sdk crate (6 source files) |
 | Dead code | 2 | Removed orphaned test_writer.rs and binary 'test' |
+| Build system | 1 | Fixed Makefile wasm targets (clawdius-core, not nonexistent webview); fixed dev target script reference |
 
 ### Known Deficits
 
@@ -213,7 +214,13 @@ Full audit completed. 50+ pages in mdBook, 10/11 audit items exist:
 | 2026-05-31 | Add wasm32 CI check job | Aspirational WASM compilation check with artifact upload |
 | 2026-05-31 | Expand gateway + code READMEs | 284 + 130 lines replacing 3-line stubs |
 | 2026-05-31 | Add 84 new tests | 56 CLI + 28 gateway HTTP + 2 MCP fuzz targets |
-| 2026-05-31 | Pin all CI action refs | 47 pins across 10 workflows; zero mutable refs |
+| 2026-05-31 | Restore core lib.rs after merge=union corruption | lib.rs silently truncated; restored from 3f34362f and committed |
+| 2026-05-31 | Fix 57 clippy errors in plugin-sdk and tests | Missing docs, #[must_use], uninlined format args, needless collect |
+| 2026-05-31 | Pin CI toolchains @stable to @1.92.0 | Reproducibility: release, pgo, benchmarks used rolling tag |
+| 2026-05-31 | Add --locked to 11 CI cargo commands | Prevents lockfile drift in CI builds |
+| 2026-05-31 | Fix benchmarks regression-gate missing toolchain | Job ran cargo bench without installing Rust |
+| 2026-05-31 | Fix Makefile wasm/dev targets | wasm referenced nonexistent webview crate; dev referenced missing script |
+| 2026-05-31 | Fix docs workflow mdbook action v2.2.2 | Tag does not exist; corrected to v2.0.0 |
 | 2026-05-27 | Remove 19K+ lines of dead code | Audit identified unreachable branches |
 | 2026-05-27 | Eliminate blanket lint suppressions | Zero suppression policy for pedantic clippy |
 | 2026-05-20 | Lock Lean4 toolchain to 4.28.0 | Reproducible proofs across environments |
