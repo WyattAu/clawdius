@@ -92,7 +92,7 @@ chromiumoxide = { version = "0.7", default-features = false, features = ["tokio-
 # headless_chrome removed - chromiumoxide provides equivalent functionality without async-std
 
 # === Utilities ===
-uuid = { version = "1.21", features = ["v4", "serde"] }
+uuid = { version = "1.23", features = ["v4", "serde"] }
 which = "7.0"
 thiserror = "2.0"
 anyhow = "1.0"
