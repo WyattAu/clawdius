@@ -81,7 +81,7 @@ jobs:
       - uses: actions/checkout@v6
       
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@1.92.0
+        uses: dtolnay/rust-toolchain@1.100.0
         with:
           components: clippy, rustfmt, llvm-tools-preview
       
@@ -157,7 +157,7 @@ jobs:
       - uses: actions/checkout@v6
       
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@1.92.0
+        uses: dtolnay/rust-toolchain@1.100.0
         with:
           targets: ${{ matrix.target }}
 
@@ -300,7 +300,7 @@ jobs:
       - uses: actions/checkout@v6
       
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@1.92.0
+        uses: dtolnay/rust-toolchain@1.100.0
       
       - name: Install cargo-cyclonedx
         run: cargo install cargo-cyclonedx --locked
@@ -433,7 +433,7 @@ jobs:
       - uses: actions/checkout@v6
       
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@1.92.0
+        uses: dtolnay/rust-toolchain@1.100.0
       
       - name: Publish clawdius-core (library)
         run: cargo publish --token ${{ secrets.CRATES_IO_TOKEN }} -p clawdius-core --locked
