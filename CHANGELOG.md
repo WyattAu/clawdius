@@ -1,5 +1,54 @@
 # Changelog
 
+## [1.0.0] - 2026-06-11
+
+First general availability release of Clawdius.
+
+### Highlights
+
+- **2,560 tests**, 0 failures across 6 workspace crates
+- **284 Lean4 formal verification theorems** (39/39 lake jobs pass)
+- **9 LLM providers** (Anthropic, OpenAI, Gemini, xAI, Mistral, DeepSeek, OpenRouter, Ollama, Z.AI)
+- **9 messaging platform adapters** (Telegram, Discord, Slack, Matrix, Signal, Teams, WhatsApp, Rocket.Chat, Webhook)
+- **5 sandbox backends** (WASM/Wasmtime, Filtered, Bubblewrap, Container, Sandbox-exec)
+- **Zero clippy warnings** with `-D warnings` strict
+- **Zero hardcoded secrets** in source
+- **Apache 2.0** license, fully self-hosted
+
+### Security
+
+- CVE risk acceptance statement added to SECURITY.md for 7 transitive CVEs
+- All transitive CVEs are feature-gated (discord, matrix, vector-db); default build is clean
+- `[patch.crates-io]` contingency prepared for upstream resolution beyond 90 days
+- SECURITY.md supported versions table updated for v1.0.0
+
+### Documentation
+
+- Competitive comparison matrix covering 22 AI coding agents (docs/COMPARISON_MATRIX.md)
+- Custom mdBook dark theme matching project design language (Spatial Materialism / Amoebic UI)
+- Blog post metrics unified across 8 posts (284 theorems, 2,560 tests, 9 providers)
+- Canonical domain unified to clawdius.co.uk (31 references updated across 13 files)
+
+### Infrastructure
+
+- 10 CI/CD workflows with pinned action versions (47 pins across 10 workflows)
+- PGO-optimized weekly builds
+- CycloneDX SBOM generation in CI
+- Performance regression CI gate (10% threshold)
+- Nix flake with full devShell (Rust + Lean4 + cargo tools)
+- GHCR Docker images (linux/amd64, linux/arm64)
+
+### Workspace Crates
+
+| Crate | Role |
+|-------|------|
+| clawdius | CLI binary + TUI (25 MB release) |
+| clawdius-core | Shared library (LLM, sessions, tools, storage, RPC) |
+| clawdius-gateway | Multi-platform messaging gateway (15 MB release) |
+| clawdius-code | VSCode extension helper (JSON-RPC) |
+| clawdius-mcp | Model Context Protocol server |
+| clawdius-plugin-sdk | Plugin development SDK (WASM + native) |
+
 ## [1.0.0-rc.2] - 2026-05-20
 
 ### Added

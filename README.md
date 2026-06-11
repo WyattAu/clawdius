@@ -3,7 +3,7 @@
 **The High-Assurance AI Engineering Engine.**
 *Native Rust. Formal Proofs. Multi-Platform Gateway.*
 
-[![Version](https://img.shields.io/badge/version-1.0.0--rc.2-blue.svg)](https://github.com/WyattAu/clawdius/releases)
+[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/WyattAu/clawdius/releases)
 [![Rust](https://img.shields.io/badge/language-Rust-orange.svg)](https://www.rust-lang.org)
 [![Tests](https://img.shields.io/badge/tests-2%2C560-passing-brightgreen.svg)]()
 [![Clippy](https://img.shields.io/badge/clippy-0%20warnings-success.svg)]()

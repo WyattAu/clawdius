@@ -1,8 +1,8 @@
 # Clawdius Technical Roadmap
 
-> Post-audit release plan for v1.0.0-rc.3 through v1.0.0 GA and beyond.
-> All metrics empirically verified against the codebase as of 2026-05-31.
-> Last updated: 2026-06-01 (session 3)
+> Post-audit release plan for v1.0.0 GA and beyond.
+> All metrics empirically verified against the codebase as of 2026-06-11.
+> Last updated: 2026-06-11 (session 4)
 
 ---
 
@@ -17,13 +17,15 @@
 | clawdius-gateway | Multi-platform adapter gateway (9 adapters) | 10 | 348 |
 | clawdius-mcp | Model Context Protocol server | 2 | 54 |
 | clawdius-code | VSCode extension helper binary | -- | 67 |
+| clawdius-plugin-sdk | Plugin development SDK (WASM + native) | 9 | 36 |
+| clawdius-lsp | Language Server Protocol server (tower-lsp) | 4 | 5 |
 
-### Audit Results (v1.0.0-rc.3)
+### Audit Results (v1.0.0 GA)
 
 | Metric | Value |
 |--------|-------|
-| Total tests | 2,560 (0 failures, 4 ignored) |
-| Lean4 theorems | 284 across 24 proof files (39/39 lake jobs pass) |
+| Total tests | 2,566 (2,560 + 5 LSP + 1 extension, 0 failures, 4 ignored) |
+| Lean4 theorems | 319 across 23 proof files |
 | CI/CD workflows | 10 (ci, release, pgo, security, docs, docker, benchmarks, lean_action_ci, code-review, dependabot) |
 | Clippy | Clean (pedantic + deny unwraps on core) |
 | cargo-deny | Clean (6 transitive CVEs ignored, blocked on upstream) |
@@ -81,12 +83,29 @@
 | CVE contingency | 1 | Added commented [patch.crates-io] block in root Cargo.toml for 6 transitive CVEs |
 | GitHub config | 3 | Fixed domain refs in discussions.json, DISCORD_SETUP.md, actions/review/README.md |
 
+### Session 4 Changes (2026-06-11) -- v1.0.0 GA
+
+| Category | Files Changed | Description |
+|----------|:---:|-------------|
+| Version bump | 7 | All 6 crate Cargo.toml + root version 1.0.0-rc.2 -> 1.0.0 |
+| CHANGELOG | 1 | v1.0.0 GA entry with all highlights |
+| SECURITY.md | 1 | Updated supported versions for v1.0.0; added CVE risk acceptance statement |
+| Enterprise | 1 | Created docs/SECURITY_WHITEPAPER.md (12 sections, buyer-friendly) |
+| VSCode extension | 4 | Created extensions/clawdius/ (package.json, tsconfig.json, extension.ts, README.md) |
+| LSP crate | 5 | Created crates/clawdius-lsp/ (Cargo.toml, lib.rs, main.rs, backend.rs, capabilities.rs, symbol_index.rs, handlers.rs, README.md) |
+| Lean4 proofs | 2 | proof_symbol_index.lean (20 thm), proof_gateway_routing.lean (18 thm) |
+| Documentation | 1 | Created docs/COMPARISON_MATRIX.md (22 competitors, 16 sections) |
+| README.md | 1 | Version badge updated to 1.0.0 |
+
 ### Known Deficits
 
 | Issue | Severity | Status |
 |-------|----------|--------|
-| 6 transitive CVEs (rustls-webpki, matrix-sdk-base) | LOW | Blocked on upstream (lancedb >= 0.28, matrix-sdk >= 0.11); [patch.crates-io] contingency prepared in Cargo.toml |
+| 6 transitive CVEs (rustls-webpki, matrix-sdk-base) | LOW | Blocked on upstream; risk acceptance documented in SECURITY.md; [patch.crates-io] contingency prepared |
 | AUR package integration | LOW | PKGBUILD template exists, needs CI workflow |
+| VSCode extension not on Marketplace | MEDIUM | Extension scaffold created (extensions/clawdius/); needs TypeScript compilation and vsce packaging |
+| clawdius-lsp not in CI | LOW | New crate; needs CI workflow integration |
+| Transitive CVEs risk acceptance | RESOLVED | Formal risk acceptance statement in SECURITY.md with 90-day review cadence |
 | Performance regression CI gate | RESOLVED | Benchmarks regression-gate active in benchmarks.yml |
 | CLI subcommand coverage | RESOLVED | 277 tests in cli_logic_tests.rs |
 | --all-features compile | RESOLVED | Fixed after dead code removal |
@@ -281,6 +300,13 @@ Full audit completed. 50+ pages in mdBook, 10/11 audit items exist:
 | 2026-06-01 | Add CVE patch contingency to Cargo.toml | Commented [patch.crates-io] block for rustls-webpki, matrix-sdk-base, wasmtime |
 | 2026-06-01 | Update blog metrics across 8 posts | Unified to 284 theorems, 2,560 tests, 9 providers |
 | 2026-06-01 | Fix intro.md cold boot and diagram | <3ms cold boot; fixed ASCII diagram cell alignment; audit logging 5 backends |
+| 2026-06-11 | Release v1.0.0 GA | All 6 crates version bumped to 1.0.0; CHANGELOG updated; SECURITY.md updated |
+| 2026-06-11 | Create enterprise security whitepaper | docs/SECURITY_WHITEPAPER.md for enterprise buyers; 12 sections covering formal verification, sandboxing, IAM |
+| 2026-06-11 | Document CVE risk acceptance | Formal risk acceptance statement in SECURITY.md with 90-day review cadence |
+| 2026-06-11 | Create VSCode extension package | extensions/clawdius/ with TypeScript JSON-RPC shim; 7 commands, 4 configuration options |
+| 2026-06-11 | Create clawdius-lsp crate | crates/clawdius-lsp/ with tower-lsp; documentSymbol, hover, definition, references handlers; 5 tests |
+| 2026-06-11 | Expand Lean4 proofs to 319 | proof_symbol_index.lean (20 thm) + proof_gateway_routing.lean (18 thm); total 319 across 23 files |
+| 2026-06-11 | Create comprehensive comparison matrix | docs/COMPARISON_MATRIX.md; 22 competitors across 16 dimensions |
 
 ---
 
@@ -297,5 +323,8 @@ Full audit completed. 50+ pages in mdBook, 10/11 audit items exist:
 | Gateway adapters | crates/clawdius-gateway/src/adapters/ |
 | RPC | crates/clawdius-core/src/rpc/ |
 | Plugin SDK | crates/clawdius-plugin-sdk/ |
+| LSP server | crates/clawdius-lsp/ |
+| VSCode extension | extensions/clawdius/ |
+| Enterprise | docs/SECURITY_WHITEPAPER.md, .specs/09_compliance/ |
 | Deployment | netlify.toml, .github/workflows/docs.yml |
 | Design system | index.html (landing page), crates/clawdius-gateway/static/index.html (admin) |

@@ -14,10 +14,11 @@ members = [
     "crates/clawdius-code",
     "crates/clawdius-mcp",
     "crates/clawdius-plugin-sdk",
+    "crates/clawdius-lsp",
 ]
 
 [workspace.package]
-version = "1.0.0-rc.2"
+version = "1.0.0"
 edition = "2021"
 authors = ["Clawdius Team <team@clawdius.dev>"]
 license = "Apache-2.0"

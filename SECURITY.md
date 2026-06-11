@@ -14,9 +14,10 @@ Please do NOT open public issues for security vulnerabilities.
 | Version | Supported |
 |---------|-----------|
 | main branch | [OK] |
+| v1.0.0 | [OK] |
 | v1.0.0-rc.2 | [OK] |
 | v1.0.0-rc.1 | [OK] |
-| < v1.0.0 | [FAIL] |
+| < v1.0.0-rc.1 | [FAIL] |
 
 ## Transitive Dependency Risks
 
@@ -71,3 +72,16 @@ Users who do not enable these features are not affected.
 - **No telemetry** — Zero data sent to external servers without explicit user consent
 - **WASM isolation** — Brain execution sandboxed via wasmtime (feature-gated)
 - **TLS everywhere** — All network connections use TLS via rustls
+
+## Risk Acceptance Statement
+
+The following transitive CVEs are accepted under documented risk assessment:
+
+| Risk | Acceptance Rationale |
+|------|---------------------|
+| RUSTSEC-2026-0049/0098/0099/0104 (rustls-webpki) | Affects `discord` feature only (serenity -> tokio-tungstenite -> rustls -> rustls-webpki). Default build is unaffected. Certificate validation edge cases; not exploitable in Clawdius's Discord bot token authentication flow. Blocked on serenity 0.13 (unreleased). |
+| RUSTSEC-2025-0065/0135 (matrix-sdk-base) | Affects `matrix` feature only. Default build is unaffected. Session state handling issues; not triggered in Clawdius's read-only message processing. Blocked on matrix-sdk 0.16+. |
+| RUSTSEC-2026-0002 (lru) | Affects `vector-db` feature only (tantivy -> lru). `IterMut` unsoundness not triggered in Clawdius usage pattern. Low severity. |
+
+**Review cadence:** Weekly via Dependabot alerts. Re-assessment upon upstream patch releases.
+**Contingency:** `[patch.crates-io]` overrides prepared in root Cargo.toml (commented). Activate if upstream does not patch within 90 days of this assessment (2026-06-11).

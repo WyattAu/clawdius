@@ -1,0 +1,130 @@
+{
+  "name": "clawdius",
+  "displayName": "Clawdius - AI Coding Engine",
+  "description": "High-assurance AI coding engine with formal verification, multi-provider LLM, and secure sandboxing",
+  "version": "1.0.0",
+  "publisher": "clawdius",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/WyattAu/clawdius"
+  },
+  "homepage": "https://clawdius.co.uk",
+  "bugs": {
+    "url": "https://github.com/WyattAu/clawdius/issues"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Machine Learning",
+    "Debuggers",
+    "Other"
+  ],
+  "keywords": [
+    "ai",
+    "coding",
+    "assistant",
+    "llm",
+    "formal verification",
+    "rust",
+    "sandbox"
+  ],
+  "activationEvents": [
+    "onLanguage:rust",
+    "onLanguage:python",
+    "onLanguage:typescript",
+    "onLanguage:javascript",
+    "onLanguage:go",
+    "onCommand:clawdius.startServer",
+    "onCommand:clawdius.chat"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "clawdius.startServer",
+        "title": "Clawdius: Start Server"
+      },
+      {
+        "command": "clawdius.stopServer",
+        "title": "Clawdius: Stop Server"
+      },
+      {
+        "command": "clawdius.chat",
+        "title": "Clawdius: Open Chat"
+      },
+      {
+        "command": "clawdius.sprint",
+        "title": "Clawdius: Execute Sprint"
+      },
+      {
+        "command": "clawdius.analyze",
+        "title": "Clawdius: Analyze Code"
+      },
+      {
+        "command": "clawdius.verify",
+        "title": "Clawdius: Verify Proofs"
+      },
+      {
+        "command": "clawdius.checkpoint",
+        "title": "Clawdius: Create Checkpoint"
+      }
+    ],
+    "configuration": {
+      "title": "Clawdius",
+      "properties": {
+        "clawdius.binaryPath": {
+          "type": "string",
+          "default": "clawdius-code",
+          "description": "Path to the clawdius-code binary"
+        },
+        "clawdius.provider": {
+          "type": "string",
+          "enum": [
+            "anthropic",
+            "openai",
+            "gemini",
+            "deepseek",
+            "mistral",
+            "xai",
+            "openrouter",
+            "ollama",
+            "zai"
+          ],
+          "default": "anthropic",
+          "description": "Default LLM provider"
+        },
+        "clawdius.sandboxTier": {
+          "type": "string",
+          "enum": [
+            "none",
+            "filtered",
+            "bubblewrap",
+            "container",
+            "wasm"
+          ],
+          "default": "filtered",
+          "description": "Sandbox tier for code execution"
+        },
+        "clawdius.autoStart": {
+          "type": "boolean",
+          "default": false,
+          "description": "Automatically start the Clawdius server on workspace open"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "lint": "eslint src --ext ts"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.85.0",
+    "typescript": "^5.4.0"
+  }
+}

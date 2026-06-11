@@ -11,7 +11,7 @@ readme = "README.md"
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
-clawdius-core = { path = "../clawdius-core", version = "1.0.0-rc.2" }
+clawdius-core = { path = "../clawdius-core", version = "1.0.0" }
 
 [lints]
 workspace = true
