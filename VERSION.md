@@ -7,19 +7,19 @@
 
 | Attribute | Value |
 |-----------|-------|
-| **Version** | 1.0.0-rc.2 |
-| **Status** | Active development |
-| **Last Updated** | 2026-05-31 |
-| **Rollback Checkpoint** | `b6d8dc3f` |
+| **Version** | 1.0.0 |
+| **Status** | GA Release |
+| **Last Updated** | 2026-06-11 |
+| **Rollback Checkpoint** | `57d803e2` |
 
 ## Empirical Metrics
 
 | Metric | Value | Source |
 |--------|-------|--------|
-| **Workspace Crates** | 6 | `Cargo.toml` (core, gateway, mcp, code, plugin-sdk, binary) |
-| **Rust Files** | 350+ | `find crates -name '*.rs'` |
-| **Lean4 Proof Files** | 24 | Lake build (39/39 jobs pass) |
-| **Lean4 Theorems** | 284 | `rg 'theorem ' *.lean` |
+| **Workspace Crates** | 7 | `Cargo.toml` (core, gateway, mcp, code, plugin-sdk, lsp, binary) |
+| **Rust Files** | 355+ | `find crates -name '*.rs'` |
+| **Lean4 Proof Files** | 25 | Lake build |
+| **Lean4 Theorems** | 319 | `rg 'theorem ' *.lean` |
 | **Clippy** | Clean (`-D warnings`) | `cargo clippy --workspace --all-targets` |
 | **cargo fmt** | Clean | `cargo fmt --all --check` |
 | **cargo deny** | Clean (advisories, licenses, bans) | `cargo deny check` |
@@ -40,7 +40,8 @@
 | clawdius-mcp | 42+ | 12+ | 0 | 0 | All passing |
 | clawdius-code | 48+ | 19+ | 0 | 0 | All passing |
 | clawdius-plugin-sdk | 19 | 0 | 0 | 0 | All passing |
-| **Total** | **~1,470** | **~232** | **27** | **484** | **2,560 tests, 0 failures** |
+| clawdius-lsp | 5 | 0 | 0 | 0 | All passing |
+| **Total** | **~1,475** | **~232** | **27** | **484** | **2,565 tests, 0 failures** |
 
 ### Coverage Baseline
 
@@ -54,8 +55,8 @@
 
 ### Lean4 Proof Files
 
-All 24 proof files compile via `lake build` (39/39 jobs).
-Directories: `.specs/02_architecture/proofs/` (8), `.clawdius/specs/02_architecture/proofs/` (16).
+All 25 proof files compile via `lake build`.
+Directories: `.specs/02_architecture/proofs/` (15), `.clawdius/specs/02_architecture/proofs/` (7), plus agent_loop.lean, concurrent_execution.lean, etc.
 
 ### Performance
 
@@ -72,7 +73,7 @@ Directories: `.specs/02_architecture/proofs/` (8), `.clawdius/specs/02_architect
 
 | Issue | Severity | Details |
 |-------|----------|---------|
-| 6 transitive CVEs | Low | rustls-webpki (4), matrix-sdk-base (2); documented in deny.toml |
+| 6 transitive CVEs | Low | rustls-webpki (4), matrix-sdk-base (2); risk acceptance documented in SECURITY.md |
 | `--all-features` compile fail | RESOLVED | Fixed after dead code removal |
 | CLI coverage 5.6% | Medium | 25+ subcommands at 0% coverage |
 | memory_bench FK bug | Low | save_message called before create_session (benchmark only) |
@@ -86,9 +87,11 @@ Directories: `.specs/02_architecture/proofs/` (8), `.clawdius/specs/02_architect
 | Crate | Dry-Run | Blocker |
 |-------|---------|---------|
 | clawdius-core | Pass | Must publish first |
+| clawdius-plugin-sdk | Fail (core not on crates.io) | Depends on core |
+| clawdius-lsp | Fail (core not on crates.io) | Depends on core |
 | clawdius-mcp | Fail (core not on crates.io) | Depends on core |
 | clawdius-code | Fail (core not on crates.io) | Depends on core |
-| clawdius-gateway | Fail (core not on crates.io) | Missing README.md |
+| clawdius-gateway | Fail (core not on crates.io) | Depends on core |
 | clawdius | Fail (core not on crates.io) | Depends on gateway |
 
 ### Transitive CVEs (tracked in deny.toml)

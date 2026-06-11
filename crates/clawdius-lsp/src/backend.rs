@@ -1,7 +1,7 @@
 //! LSP backend implementation.
 //!
 //! Implements the tower-lsp `LanguageServer` trait, delegating to
-//! clawdius-core's existing Tree-sitter parsers and Graph-RAG engine.
+//! the symbol index for hover, definition, and references.
 
 use tower_lsp::jsonrpc::Result as LspResult;
 use tower_lsp::{Client, LanguageServer};
@@ -83,22 +83,84 @@ impl LanguageServer for ClawdiusLspBackend {
         Ok(symbols.map(DocumentSymbolResponse::Nested))
     }
 
-    async fn hover(&self, _params: HoverParams) -> LspResult<Option<Hover>> {
-        // TODO: Integrate with Graph-RAG semantic search for hover documentation
-        Ok(None)
+    async fn hover(&self, params: HoverParams) -> LspResult<Option<Hover>> {
+        let index = self.index.read().await;
+        let uri = &params.text_document_position_params.text_document.uri;
+        let line = params.text_document_position_params.position.line;
+        let character = params.text_document_position_params.position.character;
+
+        let Some(info) = index.hover(uri, line, character) else {
+            return Ok(None);
+        };
+
+        let markdown = info.to_markdown();
+        Ok(Some(Hover {
+            contents: HoverContents::Markup(MarkupContent {
+                kind: MarkupKind::Markdown,
+                value: markdown,
+            }),
+            range: None,
+        }))
     }
 
     async fn goto_definition(
         &self,
-        _params: GotoDefinitionParams,
+        params: GotoDefinitionParams,
     ) -> LspResult<Option<GotoDefinitionResponse>> {
-        // TODO: Integrate with symbol index for go-to-definition
-        Ok(None)
+        let index = self.index.read().await;
+        let uri = &params.text_document_position_params.text_document.uri;
+        let line = params.text_document_position_params.position.line;
+        let character = params.text_document_position_params.position.character;
+
+        let Some(sym) = index.goto_definition(uri, line, character) else {
+            return Ok(None);
+        };
+
+        let Ok(def_uri) = Url::parse(&sym.uri) else {
+            return Ok(None);
+        };
+
+        Ok(Some(GotoDefinitionResponse::Scalar(Location {
+            uri: def_uri,
+            range: Range::new(
+                Position::new(sym.line, sym.character),
+                Position::new(sym.line, sym.end_character),
+            ),
+        })))
     }
 
-    async fn references(&self, _params: ReferenceParams) -> LspResult<Option<Vec<Location>>> {
-        // TODO: Integrate with symbol index for find-all-references
-        Ok(None)
+    async fn references(&self, params: ReferenceParams) -> LspResult<Option<Vec<Location>>> {
+        let index = self.index.read().await;
+        let uri = &params.text_document_position.text_document.uri;
+        let line = params.text_document_position.position.line;
+        let character = params.text_document_position.position.character;
+
+        let refs = index.references(uri, line, character);
+        if refs.is_empty() {
+            return Ok(None);
+        }
+
+        let locations: Vec<Location> = refs
+            .iter()
+            .filter_map(|sym| {
+                let Ok(ref_uri) = Url::parse(&sym.uri) else {
+                    return None;
+                };
+                Some(Location {
+                    uri: ref_uri,
+                    range: Range::new(
+                        Position::new(sym.line, sym.character),
+                        Position::new(sym.line, sym.end_character),
+                    ),
+                })
+            })
+            .collect();
+
+        if locations.is_empty() {
+            Ok(None)
+        } else {
+            Ok(Some(locations))
+        }
     }
 }
 
@@ -122,8 +184,8 @@ impl ClawdiusLspBackend {
     pub async fn verify(&self, _params: Value) -> LspResult<Value> {
         Ok(serde_json::json!({
             "status": "ok",
-            "theorems": 284,
-            "proof_files": 24,
+            "theorems": 319,
+            "proof_files": 25,
             "lake_jobs": "39/39"
         }))
     }
