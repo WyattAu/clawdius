@@ -201,7 +201,7 @@ cargo install clawdius
 ```
 clawdius
 github.com/WyattAu/clawdius
-docs.clawdius.dev
+clawdius.co.uk
 ```
 
 ---
@@ -268,4 +268,4 @@ developer tools, open source, 2026
 
 ### Embed
 - Add to README.md
-- Add to docs.clawdius.dev homepage
+- Add to clawdius.co.uk homepage

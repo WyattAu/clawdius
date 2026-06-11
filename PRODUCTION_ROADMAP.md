@@ -1,3 +1,6 @@
+> **ARCHIVED** -- This file has been superseded by [ROADMAP.md](./ROADMAP.md).
+> Retained for historical reference only. Do not update.
+>
 # Clawdius Production Roadmap
 
 > Current: v1.0.0-rc.2 | Generated: 2026-05-26 | Supersedes: ROADMAP.md, ROADMAP_PATH_FORWARD.md
@@ -296,17 +299,17 @@ Coverage: message formatting, webhook parsing, config validation, health checks,
 **DONE**
 - mdBook builds clean (v0.4.40, 123-line SUMMARY.md)
 - Fixed `site-url = "/clawdius/"` to `site-url = "/"` (dedicated domain, not GitHub Pages subdir)
-- CNAME configured for `docs.clawdius.dev`
+- CNAME configured for `clawdius.co.uk`
 - GitHub Pages deployment workflow configured
 **Remaining:**
-- DNS CNAME record for `docs.clawdius.dev` (requires DNS provider access)
+- DNS CNAME record for `clawdius.co.uk` (requires DNS provider access)
 **Actions:**
 - Generate API docs from rustdoc
 - Add architecture overview diagram (C4 model from Blue Papers)
 - Add getting-started guide with verified commands
 - Add security model documentation
-- Host on docs.clawdius.dev via netlify.toml
-**Success:** docs.clawdius.dev serves accurate, versioned documentation
+- Host on clawdius.co.uk via netlify.toml
+**Success:** clawdius.co.uk serves accurate, versioned documentation
 
 ### 6.4 Docker Image Publication
 **DONE** (commits ea04e4b, ec99e43, 0d9f35d, 0051e02, 320c2db, 68a36fc)
@@ -417,10 +420,10 @@ Replaced collision-prone `uuid_v4_placeholder()` in `agentic/parallel_sprint.rs`
 **Priority:** Medium
 **Partially DONE**
 - Landing page merged into docs deployment workflow
-- CNAME file added to docs deployment for docs.clawdius.dev
+- CNAME file added to docs deployment for clawdius.co.uk
 - book.toml site-url and cname configured
-- Remaining: DNS CNAME record for docs.clawdius.dev (requires DNS provider access)
-- Remaining: docs.clawdius.co.uk decommission or fix, netlify.toml cleanup
+- Remaining: DNS CNAME record for clawdius.co.uk (requires DNS provider access)
+- Remaining: netlify.toml cleanup
 
 ## Risk Register
 
@@ -436,7 +439,7 @@ Replaced collision-prone `uuid_v4_placeholder()` in `agentic/parallel_sprint.rs`
 | Silent Result discard causes data loss | Medium | ~~High~~ RESOLVED | Phase 7.1 done — all `let _ =` on Result replaced with `.ok()` or logged |
 | CI stale cache causes false failures | ~~High~~ RESOLVED | ~~Medium~~ RESOLVED | Phase 7.5 done — migrated to rust-cache v2 |
 | UUID collision under concurrent sprints | Medium | ~~High~~ RESOLVED | Phase 7.4 done — UUID v4 used |
-| Domain misconfiguration blocks docs access | High | Medium | Phase 7.7 — CNAME added, DNS pending (requires provider access) |
+| Domain misconfiguration blocks docs access | High | Medium | Phase 7.7 — CNAME added, DNS pending (requires provider access). Docs now at clawdius.co.uk |
 | clawdius-gateway release build E0433 | ~~Medium~~ RESOLVED | ~~Medium~~ RESOLVED | Root cause: fat LTO cross-crate resolution. Fix: lto=thin, remove release build from CI |
 
 ## Decision Log
@@ -453,7 +456,7 @@ Replaced collision-prone `uuid_v4_placeholder()` in `agentic/parallel_sprint.rs`
 | DL-008 | Feature-flag vector-db and telegram behind default features | Compile errors in --all-features | 2026-05-14 |
 | DL-009 | Use Swatinem/rust-cache over manual actions/cache | Handles incremental caching and stale artifact cleanup | 2026-05-20 |
 | DL-010 | Block security pipeline on failures | Non-blocking security gate was masking all vulnerabilities | 2026-05-20 |
-| DL-011 | Single canonical docs domain: docs.clawdius.dev | Eliminates .co.uk/.dev mismatch; aligned with landing page | 2026-05-20 |
+| DL-011 | Single canonical docs domain: clawdius.co.uk | Canonical domain is clawdius.co.uk; updated from docs.clawdius.dev | 2026-05-20 |
 | DL-012 | Merge landing page into docs deployment | GitHub Pages only supports one deployment source | 2026-05-20 |
 | DL-013 | Replace eprintln! with tracing::*! | Structured logging enables log level filtering in production | 2026-05-24 |
 | DL-014 | Replace let _ = with .ok() or warn!() | Explicit error handling prevents silent data loss | 2026-05-24 |
@@ -472,7 +475,7 @@ Replaced collision-prone `uuid_v4_placeholder()` in `agentic/parallel_sprint.rs`
 | DL-027 | Save criterion baseline on main, remove continue-on-error | Benchmarks must be deterministic on main to serve as PR regression baseline | 2026-05-26 |
 | DL-028 | Add completions + man pages to release archives | Improves Homebrew/Nix install experience; avoids runtime generation deps | 2026-05-26 |
 | DL-029 | Create separate homebrew tap repo (WyattAu/homebrew-clawdius) | Release workflow pushes formula updates to tap repo, not main repo | 2026-05-26 |
-| DL-030 | Fix docs site-url from /clawdius/ to / | Dedicated domain docs.clawdius.dev doesn't need subdir prefix | 2026-05-26 |
+| DL-030 | Fix docs site-url from /clawdius/ to / | Dedicated domain clawdius.co.uk doesn't need subdir prefix | 2026-05-26 |
 
 ## Appendix: Quality Gate Summary
 

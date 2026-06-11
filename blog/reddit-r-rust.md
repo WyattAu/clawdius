@@ -18,7 +18,7 @@ Clawdius is an AI coding assistant that runs natively in Rust (no Node.js runtim
 
 - **<20ms cold boot** - Native binary, no Electron
 - **5 sandbox backends (+ 2 planned)** - WASM, gVisor, Firecracker, etc.
-- **104 formal verification proofs** - Lean4 theorems
+- **284 formal verification proofs** - Lean4 theorems
 - **Zero vulnerabilities** - Clean security audit
 - **Local LLM support** - 100% private via Ollama
 
@@ -63,16 +63,16 @@ clawdius chat --provider ollama --model llama3
 | Metric | Value |
 |--------|-------|
 | Rust LOC | 65,834 |
-| Tests | 1,002+ passing |
-| Lean4 Proofs | 104 theorems |
+| Tests | 2,560 passing |
+| Lean4 Proofs | 284 theorems |
 | Sandbox Backends | 5 (+ 2 planned) |
-| LLM Providers | 5 |
+| LLM Providers | 9 |
 
 ## Links
 
 - **GitHub:** https://github.com/WyattAu/clawdius
 - **Releases:** https://github.com/WyattAu/clawdius/releases/tag/v1.2.0
-- **Docs:** https://docs.clawdius.dev (coming soon)
+- **Docs:** https://clawdius.co.uk
 - **Discord:** https://discord.gg/clawdius
 
 Happy to answer any questions! What features would you like to see next?

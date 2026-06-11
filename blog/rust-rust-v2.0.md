@@ -25,7 +25,7 @@ The project is a Cargo workspace with 6 crates:
 - `clawdius-server` — JSON-RPC / LSP / GraphQL server
 - `clawdius-webview` — Leptos WASM frontend
 
-LLM support covers 3 working providers (Anthropic, OpenAI, Ollama) plus 2 stubs (DeepSeek, OpenRouter). Protocol stack: JSON-RPC, LSP, MCP, DAP, GraphQL, REST. No Node.js runtime anywhere in the pipeline.
+LLM support covers 9 providers including Anthropic, OpenAI, Ollama, and more. Protocol stack: JSON-RPC, LSP, MCP, DAP, GraphQL, REST. No Node.js runtime anywhere in the pipeline.
 
 Sandboxing
 
@@ -39,7 +39,7 @@ Four more exist but are stubs or experimental: WASM (wasmtime runtime, stub), Fi
 
 Formal Verification
 
-142 Lean4 theorems across 11 proof files. They cover:
+284 Lean4 theorems across 11 proof files. They cover:
 
 - Ring buffer lock-free invariants (push/pop index safety, empty-not-full, occupancy bounds)
 - Wallet guard risk check completeness (position limits, margin, drawdown)
@@ -48,7 +48,7 @@ Formal Verification
 - Plugin lifecycle properties (state machine correctness)
 - Container isolation guarantees
 
-All 142 theorems are proven — zero `sorry`. One axiom remains:
+All 284 theorems are proven — zero `sorry`. One axiom remains:
 
 ```lean
 axiom postulate_signature_unforgeable (t1 t2 : CapabilityToken) :
@@ -80,7 +80,7 @@ What Doesn't Work Yet
 
 CI and Quality
 
-1,956 tests pass across the workspace (3 skipped on CI: lean binary not installed, headless Chrome available). Clippy pedantic + nursery + deny on unwrap_used, expect_used, panic, todo is configured. Compiler warnings are zero. The release pipeline builds signed binaries for 4 platforms with SBOM generation.
+2,560 tests pass across the workspace (3 skipped on CI: lean binary not installed, headless Chrome available). Clippy pedantic + nursery + deny on unwrap_used, expect_used, panic, todo is configured. Compiler warnings are zero. The release pipeline builds signed binaries for 4 platforms with SBOM generation.
 
 **Known debt:** ~1,200 `unwrap()` calls remain in production code across 109 files. The clippy deny-on-unwrap configuration was intended to enforce zero unwraps but was added after most of the codebase was written, so existing calls weren't fixed incrementally. This is tracked for gradual remediation.
 

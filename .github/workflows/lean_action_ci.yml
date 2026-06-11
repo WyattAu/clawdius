@@ -1,3 +1,6 @@
+# DEPRECATED: This workflow is superseded by the lean4-proofs job in ci.yml.
+# This file is retained for backward compatibility only.
+# Trigger: push, pull_request, workflow_dispatch
 name: Lean Action CI
 
 on:

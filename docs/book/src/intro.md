@@ -11,13 +11,13 @@ Clawdius was designed from the ground up with security as a primary concern:
 - **5 Sandbox Backends (+ 2 Planned)**: From lightweight WASM to hardware-isolated Firecracker microVMs
 - **284 Formal Verification Theorems**: Mathematically proven correctness for critical operations
 - **Enterprise SSO**: SAML 2.0, OIDC, Okta, Azure AD, and GitHub integration
-- **Comprehensive Audit Logging**: SQLite, Elasticsearch, and webhook backends
+- **Comprehensive Audit Logging**: File, SQLite, Elasticsearch, webhook, and memory backends
 
 ### Native Performance
 
 Built in Rust for maximum performance:
 
-- **<20ms cold boot**: Faster than any competitor
+- **<3ms cold boot**: Faster than any competitor
 - **Zero-copy streaming**: Efficient real-time output
 - **Memory-efficient**: Minimal resource footprint
 - **Cross-platform**: Linux, macOS, Windows support
@@ -84,24 +84,24 @@ clawdius setup --quick --provider anthropic
 ## Architecture Overview
 
 ```
-+-------------------------------------------------------------+
-|                        Clawdius CLI |
-+-------------------------------------------------------------+
-|  +-------------+  +-------------+  +---------------------+ |
-| |   Session | |   Context | |      Timeline | |
-| |   Manager | |   Builder | |    & Checkpoints | |
-|  +-------------+  +-------------+  +---------------------+ |
-+-------------------------------------------------------------+
-|  +-------------+  +-------------+  +---------------------+ |
-| |     LLM | |   Graph- | |      Plugin | |
-| |  Providers | |    RAG | |      System | |
-|  +-------------+  +-------------+  +---------------------+ |
-+-------------------------------------------------------------+
-|  +-------------+  +-------------+  +---------------------+ |
-| |   Sandbox | |   Tool | |     Enterprise | |
-| |  Executors | |   Runner | |     Features | |
-|  +-------------+  +-------------+  +---------------------+ |
-+-------------------------------------------------------------+
++-----------------------------------------------------------------------------------------+
+|                                  Clawdius CLI                                        |
++-----------------------------------------------------------------------------------------+
+|  +-------------------------+  +-------------------------+  +-------------------------+  |
+|  |       Session           |  |       Context           |  |       Timeline          |  |
+|  |       Manager           |  |       Builder           |  |    & Checkpoints        |  |
+|  +-------------------------+  +-------------------------+  +-------------------------+  |
++-----------------------------------------------------------------------------------------+
+|  +-------------------------+  +-------------------------+  +-------------------------+  |
+|  |        LLM              |  |       Graph-            |  |       Plugin            |  |
+|  |      Providers          |  |         RAG             |  |       System            |  |
+|  +-------------------------+  +-------------------------+  +-------------------------+  |
++-----------------------------------------------------------------------------------------+
+|  +-------------------------+  +-------------------------+  +-------------------------+  |
+|  |       Sandbox           |  |        Tool             |  |     Enterprise          |  |
+|  |      Executors          |  |       Runner            |  |      Features           |  |
+|  +-------------------------+  +-------------------------+  +-------------------------+  |
++-----------------------------------------------------------------------------------------+
 ```
 
 ## What's Next?
@@ -113,7 +113,7 @@ clawdius setup --quick --provider anthropic
 
 ## Getting Help
 
-- **Documentation**: [docs.clawdius.dev](https://docs.clawdius.dev)
+- **Documentation**: [clawdius.co.uk](https://clawdius.co.uk)
 - **GitHub**: [github.com/WyattAu/clawdius](https://github.com/WyattAu/clawdius)
 - **Discord**: [Join our community](https://discord.gg/clawdius)
 - **GitHub Discussions**: For Q&A and feature requests

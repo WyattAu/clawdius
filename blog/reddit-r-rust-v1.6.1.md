@@ -1,14 +1,14 @@
 ---
 name: Reddit r/rust Post
 about: Technical Preview launch for r/rust community
-title: "Clawdius v1.6.1 Technical Preview — 122K lines of Rust, 142 Lean4 theorems, zero panics"
+title: "Clawdius v1.6.1 Technical Preview — 122K lines of Rust, 284 Lean4 theorems, zero panics"
 labels: ""
 assignees: ""
 ---
 
 ## Post Content
 
-**Title:** Clawdius v1.6.1 Technical Preview — 122K lines of Rust, 142 Lean4 theorems, zero panics
+**Title:** Clawdius v1.6.1 Technical Preview — 122K lines of Rust, 284 Lean4 theorems, zero panics
 
 Hey r/rust,
 
@@ -22,7 +22,7 @@ Clawdius is a native Rust AI coding assistant that enforces a formal R&D lifecyc
 
 - **122K lines of Rust** — zero panics, zero compiler warnings
 - **5 sandbox backends** — WASM, Filtered, Bubblewrap, Sandbox-exec, Container
-- **142 Lean4 theorems** — 100% proven (0 `sorry`, 39 axioms for external deps)
+- **284 Lean4 theorems** — 100% proven (0 `sorry`, 39 axioms for external deps)
 - **Multi-provider LLM** — Anthropic, OpenAI, Ollama, Z.AI with streaming diffs
 - **HFT broker mode** — formally verified wallet guard for automated trading
 - **Messaging gateway** — Telegram, Discord, Slack, Matrix, Signal, WhatsApp
@@ -35,7 +35,7 @@ Clawdius is a native Rust AI coding assistant that enforces a formal R&D lifecyc
 
 ## Formal Verification
 
-- 142 theorems proven in Lean4 across ring buffers, wallet guards, and sandbox isolation
+- 284 theorems proven in Lean4 across ring buffers, wallet guards, and sandbox isolation
 - 39 axioms only for external dependencies (I/O, syscalls) — all internal logic is fully proven
 - Yellow Papers (theory) + Blue Papers (IEEE 1016 specs) + SOPs (enforced per commit)
 

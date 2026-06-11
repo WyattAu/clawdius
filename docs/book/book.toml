@@ -15,6 +15,7 @@ use-default-preprocessors = true
 [output.html]
 default-theme = "rust"
 preferred-dark-theme = "ayu"
+additional-css = ["theme/css/custom.css"]
 git-repository-url = "https://github.com/WyattAu/clawdius"
 git-repository-icon = "fa-github"
 edit-url-template = "https://github.com/WyattAu/clawdius/edit/main/docs/book/src/{path}"

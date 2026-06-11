@@ -5,7 +5,14 @@
 
 use tower_lsp::jsonrpc::Result as LspResult;
 use tower_lsp::{Client, LanguageServer};
-use tower_lsp::lsp_types::*;
+use tower_lsp::lsp_types::{
+    InitializeParams, InitializeResult, ServerInfo, InitializedParams, MessageType,
+    DidOpenTextDocumentParams, DidChangeTextDocumentParams, DidCloseTextDocumentParams,
+    DidSaveTextDocumentParams, DocumentSymbolParams, DocumentSymbolResponse,
+    HoverParams, Hover, HoverContents, MarkupContent, MarkupKind,
+    GotoDefinitionParams, GotoDefinitionResponse, Url, Location, Range, Position,
+    ReferenceParams,
+};
 use serde_json::Value;
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -44,19 +51,13 @@ impl LanguageServer for ClawdiusLspBackend {
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
         let uri = &params.text_document.uri;
         let text = &params.text_document.text;
-        let mut index = self.index.write().await;
-        if let Err(e) = index.index_document(uri, text) {
-            self.client.log_message(MessageType::WARNING, format!("Index error: {e}")).await;
-        }
+        self.index.write().await.index_document(uri, text);
     }
 
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
         let uri = &params.text_document.uri;
         if let Some(change) = params.content_changes.last() {
-            let mut index = self.index.write().await;
-            if let Err(e) = index.index_document(uri, &change.text) {
-                self.client.log_message(MessageType::WARNING, format!("Index error: {e}")).await;
-            }
+            self.index.write().await.index_document(uri, &change.text);
         }
     }
 
@@ -67,10 +68,7 @@ impl LanguageServer for ClawdiusLspBackend {
     async fn did_save(&self, params: DidSaveTextDocumentParams) {
         let uri = &params.text_document.uri;
         if let Some(text) = params.text {
-            let mut index = self.index.write().await;
-            if let Err(e) = index.index_document(uri, &text) {
-                self.client.log_message(MessageType::WARNING, format!("Index error: {e}")).await;
-            }
+            self.index.write().await.index_document(uri, &text);
         }
     }
 
@@ -78,20 +76,20 @@ impl LanguageServer for ClawdiusLspBackend {
         &self,
         params: DocumentSymbolParams,
     ) -> LspResult<Option<DocumentSymbolResponse>> {
-        let index = self.index.read().await;
-        let symbols = index.document_symbols(&params.text_document.uri);
+        let symbols = self.index.read().await.document_symbols(&params.text_document.uri);
         Ok(symbols.map(DocumentSymbolResponse::Nested))
     }
 
     async fn hover(&self, params: HoverParams) -> LspResult<Option<Hover>> {
-        let index = self.index.read().await;
         let uri = &params.text_document_position_params.text_document.uri;
         let line = params.text_document_position_params.position.line;
         let character = params.text_document_position_params.position.character;
 
+        let index = self.index.read().await;
         let Some(info) = index.hover(uri, line, character) else {
             return Ok(None);
         };
+        drop(index);
 
         let markdown = info.to_markdown();
         Ok(Some(Hover {
@@ -107,34 +105,40 @@ impl LanguageServer for ClawdiusLspBackend {
         &self,
         params: GotoDefinitionParams,
     ) -> LspResult<Option<GotoDefinitionResponse>> {
-        let index = self.index.read().await;
         let uri = &params.text_document_position_params.text_document.uri;
         let line = params.text_document_position_params.position.line;
         let character = params.text_document_position_params.position.character;
 
+        let index = self.index.read().await;
         let Some(sym) = index.goto_definition(uri, line, character) else {
             return Ok(None);
         };
 
-        let Ok(def_uri) = Url::parse(&sym.uri) else {
+        let def_uri = sym.uri.clone();
+        let sym_line = sym.line;
+        let sym_char = sym.character;
+        let sym_end = sym.end_character;
+        drop(index);
+
+        let Ok(parsed_uri) = Url::parse(&def_uri) else {
             return Ok(None);
         };
 
         Ok(Some(GotoDefinitionResponse::Scalar(Location {
-            uri: def_uri,
+            uri: parsed_uri,
             range: Range::new(
-                Position::new(sym.line, sym.character),
-                Position::new(sym.line, sym.end_character),
+                Position::new(sym_line, sym_char),
+                Position::new(sym_line, sym_end),
             ),
         })))
     }
 
     async fn references(&self, params: ReferenceParams) -> LspResult<Option<Vec<Location>>> {
-        let index = self.index.read().await;
         let uri = &params.text_document_position.text_document.uri;
         let line = params.text_document_position.position.line;
         let character = params.text_document_position.position.character;
 
+        let index = self.index.read().await;
         let refs = index.references(uri, line, character);
         if refs.is_empty() {
             return Ok(None);
@@ -143,11 +147,9 @@ impl LanguageServer for ClawdiusLspBackend {
         let locations: Vec<Location> = refs
             .iter()
             .filter_map(|sym| {
-                let Ok(ref_uri) = Url::parse(&sym.uri) else {
-                    return None;
-                };
+                let parsed_uri = Url::parse(&sym.uri).ok()?;
                 Some(Location {
-                    uri: ref_uri,
+                    uri: parsed_uri,
                     range: Range::new(
                         Position::new(sym.line, sym.character),
                         Position::new(sym.line, sym.end_character),
@@ -155,6 +157,7 @@ impl LanguageServer for ClawdiusLspBackend {
                 })
             })
             .collect();
+        drop(index);
 
         if locations.is_empty() {
             Ok(None)
@@ -166,6 +169,7 @@ impl LanguageServer for ClawdiusLspBackend {
 
 impl ClawdiusLspBackend {
     /// Create a new LSP backend instance.
+    #[must_use]
     pub fn new(client: Client) -> Self {
         Self {
             client,
@@ -174,13 +178,19 @@ impl ClawdiusLspBackend {
     }
 
     /// Custom method: analyze codebase for drift and debt.
+    ///
+    /// # Errors
+    /// Returns an error if the symbol index cannot be serialized.
     pub async fn analyze(&self, _params: Value) -> LspResult<Value> {
-        let index = self.index.read().await;
-        let summary = index.summary();
+        let summary = self.index.read().await.summary();
         Ok(serde_json::to_value(summary).unwrap_or_default())
     }
 
     /// Custom method: verify Lean4 proofs.
+    ///
+    /// # Errors
+    /// This method does not currently return errors.
+    #[allow(clippy::unused_async)]
     pub async fn verify(&self, _params: Value) -> LspResult<Value> {
         Ok(serde_json::json!({
             "status": "ok",

@@ -282,7 +282,7 @@ clawdius config set sandbox.allowed_paths '["./src", "./workspace"]'
 
 ## Getting Help
 
-- **Documentation:** https://docs.clawdius.dev
+- **Documentation:** https://clawdius.co.uk
 - **GitHub Issues:** https://github.com/WyattAu/clawdius/issues
 - **Discord:** https://discord.gg/clawdius
 - **Discussions:** https://github.com/WyattAu/clawdius/discussions

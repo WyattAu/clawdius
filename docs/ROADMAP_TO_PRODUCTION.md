@@ -120,7 +120,7 @@ silently disabled. Clippy quality gate is warn-only.
 - Verify landing page metrics match VERSION.md
 - Test all internal links (SUMMARY.md -> actual files)
 - Add "Getting Started" video or walkthrough
-- Ensure CNAME (docs.clawdius.dev) is configured
+- Ensure CNAME (clawdius.co.uk) is configured
 
 **Exit Criteria:** v1.0.0 published, installable, documented.
 

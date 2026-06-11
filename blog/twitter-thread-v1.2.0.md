@@ -10,7 +10,7 @@ The high-assurance AI coding assistant built in Rust just got:
 • Better error messages
 • Zero vulnerabilities
 
-github.com/WyattAu/clawdius/r…
+https://github.com/WyattAu/clawdius
 
 ## Tweet 2/6
 
@@ -38,9 +38,9 @@ Zero vulnerabilities in cargo audit ✅
 📊 Clawdius by the numbers:
 
 - 65,834 lines of Rust
-- 1,002+ test functions
-- 104 Lean4 formal proofs
-- 5 LLM providers
+- 2,560 test functions
+- 284 Lean4 formal proofs
+- 9 LLM providers
 - 5 sandbox backends (+ 2 planned)
 
 Built for developers who can't afford hallucinations.
@@ -70,6 +70,6 @@ Or try local LLMs for 100% privacy:
 clawdius chat --provider ollama --model llama3
 ```
 
-⭐ Star us on GitHub: github.com/WyattAu/clawdius
+⭐ Star us on GitHub: https://github.com/WyattAu/clawdius
 
 #Rust #AI #LLM #OpenSource #DeveloperTools

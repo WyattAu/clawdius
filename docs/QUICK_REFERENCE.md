@@ -182,7 +182,7 @@ clawdius <command> --help          # Command-specific help
 
 ## Resources
 
-- Documentation: https://docs.clawdius.dev
+- Documentation: https://clawdius.co.uk
 - GitHub: https://github.com/WyattAu/clawdius
 - Discord: https://discord.gg/clawdius
 - Issues: https://github.com/WyattAu/clawdius/issues

@@ -112,7 +112,7 @@ async def version(ctx):
 @bot.command()
 async def docs(ctx):
     """Link to documentation"""
-    await ctx.send(" https://docs.clawdius.dev")
+    await ctx.send(" https://clawdius.co.uk")
 
 @bot.command()
 async def install(ctx, platform: str = "cargo"):
@@ -137,7 +137,7 @@ bot.run("YOUR_BOT_TOKEN")
 Clawdius is the high-assurance AI coding assistant built with Rust.
 
 ## Quick Links
--  Documentation: https://docs.clawdius.dev
+-  Documentation: https://clawdius.co.uk
 -  GitHub: https://github.com/WyattAu/clawdius
 -  Issues: https://github.com/WyattAu/clawdius/issues
 -  Discussions: https://github.com/WyattAu/clawdius/discussions

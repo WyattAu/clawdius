@@ -321,6 +321,6 @@ deploy/
 
 ## Support
 
-- Documentation: https://docs.clawdius.dev
+- Documentation: https://clawdius.co.uk
 - Issues: https://github.com/WyattAu/clawdius/issues
 - Discord: https://discord.gg/clawdius

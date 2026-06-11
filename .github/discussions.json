@@ -32,5 +32,5 @@
     }
   ],
   "enable_discussions": true,
-  "welcome_message": "Welcome to Clawdius Discussions! 🦀\n\nBefore posting, please:\n- Check the [Documentation](https://docs.clawdius.dev)\n- Search existing discussions\n- Use appropriate category\n\nBe respectful and helpful. See our [Code of Conduct](../CODE_OF_CONDUCT.md)."
+  "welcome_message": "Welcome to Clawdius Discussions! 🦀\n\nBefore posting, please:\n- Check the [Documentation](https://clawdius.co.uk)\n- Search existing discussions\n- Use appropriate category\n\nBe respectful and helpful. See our [Code of Conduct](../CODE_OF_CONDUCT.md)."
 }

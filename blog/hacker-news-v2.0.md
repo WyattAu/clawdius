@@ -6,7 +6,7 @@ Show HN: Clawdius – Open-source coding assistant with Lean4 proofs and WASM sa
 
 ## Body
 
-Clawdius is a Rust CLI for coding with LLMs. Generated code runs in sandboxed environments instead of raw shell, and core invariants are formally verified with 142 Lean4 proofs.
+Clawdius is a Rust CLI for coding with LLMs. Generated code runs in sandboxed environments instead of raw shell, and core invariants are formally verified with 284 Lean4 proofs.
 
 ```
 $ clawdius chat                            # Multi-provider LLM chat
@@ -26,7 +26,7 @@ The executor auto-selects the most restrictive backend available. Four more back
 
 Formal Verification
 
-142 Lean4 theorems prove properties of the core data structures. Example — the ring buffer index masking invariant used in the lock-free SPSC queue:
+284 Lean4 theorems prove properties of the core data structures. Example — the ring buffer index masking invariant used in the lock-free SPSC queue:
 
 ```lean
 -- x % n = x &&& (n - 1) for power-of-2 n, x < 2n
@@ -38,7 +38,7 @@ theorem pow2_mod_eq_mask (n x : Nat)
   exact (Nat.and_two_pow_sub_one_eq_mod x k).symm
 ```
 
-All 142 theorems proven, zero `sorry`. One axiom remains:
+All 284 theorems proven, zero `sorry`. One axiom remains:
 
 ```lean
 axiom postulate_signature_unforgeable (t1 t2 : CapabilityToken) :
@@ -49,7 +49,7 @@ A cryptographic assumption about Ed25519 capability token unforgeability — the
 
 Architecture
 
-6 crates, 6 protocol layers (JSON-RPC, LSP, MCP, DAP, GraphQL, REST), 4 IDE plugins (VSCode, JetBrains, Neovim, Emacs), plus `clawdius-mcp` for Claude Desktop interop. 3 working LLM providers (Anthropic, OpenAI, Ollama). ~1,200 `unwrap()` calls remain in production code (tracked for remediation). Zero compiler warnings.
+6 crates, 6 protocol layers (JSON-RPC, LSP, MCP, DAP, GraphQL, REST), 4 IDE plugins (VSCode, JetBrains, Neovim, Emacs), plus `clawdius-mcp` for Claude Desktop interop. 9 LLM providers including Anthropic, OpenAI, Ollama, and more. ~1,200 `unwrap()` calls remain in production code (tracked for remediation). Zero compiler warnings.
 
 Limitations
 

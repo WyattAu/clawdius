@@ -26,6 +26,9 @@ mod symbol_index;
 pub use backend::ClawdiusLspBackend;
 
 /// Run the LSP server over stdio.
+///
+/// # Errors
+/// Returns an error if the tracing filter cannot be parsed or the LSP service fails to start.
 pub async fn run_stdio() -> Result<()> {
     tracing_subscriber::fmt()
         .with_env_filter(EnvFilter::from_default_env().add_directive("clawdius_lsp=info".parse()?))

@@ -25,7 +25,7 @@ After using various AI coding tools, I kept running into the same problems:
 - Code runs in isolated, just-in-time sandboxes
 
 **2. Formal verification**
-- 104 Lean4 theorems proving core behavior
+- 284 Lean4 theorems proving core behavior
 - Yellow Papers establish theoretical ground truth
 - Blue Papers provide IEEE 1016-compliant specs
 
@@ -65,8 +65,8 @@ clawdius chat --provider ollama --model llama3
 ## Stats
 
 - 65,834 lines of Rust
-- 1,002+ tests passing
-- 5 LLM providers
+- 2,560 tests passing
+- 9 LLM providers
 - 5 sandbox backends (+ 2 planned)
 - Zero cargo audit vulnerabilities
 
@@ -81,4 +81,4 @@ Would love feedback from the HN community. What features would you want to see? 
 
 GitHub: https://github.com/WyattAu/clawdius
 Releases: https://github.com/WyattAu/clawdius/releases/tag/v1.2.0
-Docs: https://docs.clawdius.dev (coming soon)
+Docs: https://clawdius.co.uk
