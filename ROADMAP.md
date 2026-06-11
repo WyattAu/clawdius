@@ -24,13 +24,13 @@
 
 | Metric | Value |
 |--------|-------|
-| Total tests | 2,566 (2,560 + 5 LSP + 1 extension, 0 failures, 4 ignored) |
+| Total tests | 2,565 (0 failures, 4 ignored, 7 workspace crates) |
 | Lean4 theorems | 318 across 22 proof files |
-| CI/CD workflows | 10 (ci, release, pgo, security, docs, docker, benchmarks, lean_action_ci, code-review, dependabot) |
+| CI/CD workflows | 9 (ci, release, pgo, security, docs, docker, benchmarks, code-review, aur-publish) |
 | Clippy | Clean (pedantic + deny unwraps on core) |
 | cargo-deny | Clean (6 transitive CVEs ignored, blocked on upstream) |
 | Blanket lint suppressions | 0 |
-| CI action pins | Version tags across 10 workflows (zero mutable refs) |
+| CI action pins | Version tags across 9 workflows (zero mutable refs) |
 | Landing page | Spatial Materialism / Amoebic UI / Brutalism design |
 | Admin dashboard | Restyled to match project design language |
 | PGO profiles | Instrumented + optimized defined in Cargo.toml |
@@ -77,7 +77,7 @@
 | Blog metrics | 8 | Updated all 8 blog posts: theorem counts (104/142 -> 284), test counts (1,002+/1,956 -> 2,560), provider counts (3-5 -> 9); fixed truncated URLs |
 | mdBook theme | 2 | Created custom dark theme (css/custom.css, ~270 lines) matching landing page design; updated book.toml |
 | PRODUCTION_ROADMAP.md | 1 | Added archival header (superseded by ROADMAP.md) |
-| Lean4 CI dedup | 1 | Deprecated lean_action_ci.yml (superseded by ci.yml lean4-proofs job) |
+| Lean4 CI dedup | 1 | Deleted lean_action_ci.yml (superseded by ci.yml lean4-proofs job) |
 | Intro.md | 1 | Fixed cold boot claim (<20ms -> <3ms); fixed architecture diagram alignment; corrected audit logging backend count (3 -> 5) |
 | Publish pipeline | 1 | Added clawdius-plugin-sdk to release.yml publish-crates job (6 crates now) |
 | CVE contingency | 1 | Added commented [patch.crates-io] block in root Cargo.toml for 6 transitive CVEs |
@@ -93,7 +93,7 @@
 | Enterprise | 1 | Created docs/SECURITY_WHITEPAPER.md (12 sections, buyer-friendly) |
 | VSCode extension | 4 | Created extensions/clawdius/ (package.json, tsconfig.json, extension.ts, README.md) |
 | LSP crate | 5 | Created crates/clawdius-lsp/ (Cargo.toml, lib.rs, main.rs, backend.rs, capabilities.rs, symbol_index.rs, handlers.rs, README.md) |
-| Lean4 proofs | 2 | proof_symbol_index.lean (20 thm), proof_gateway_routing.lean (18 thm) |
+| Lean4 proofs | 2 | proof_symbol_index.lean (17 thm), proof_gateway_routing.lean (18 thm) |
 | Documentation | 1 | Created docs/COMPARISON_MATRIX.md (22 competitors, 16 sections) |
 | README.md | 1 | Version badge updated to 1.0.0 |
 
@@ -114,7 +114,7 @@
 | PRODUCTION_ROADMAP.md severely outdated | RESOLVED | Archived with deprecation header |
 | Blog post metrics wildly inconsistent | RESOLVED | All 8 blog posts updated to 318 theorems, 2,565 tests, 9 providers |
 | No custom mdBook theme | RESOLVED | Created theme/css/custom.css matching landing page design |
-| Duplicate Lean4 CI jobs | RESOLVED | lean_action_ci.yml deprecated; ci.yml lean4-proofs is canonical |
+| Duplicate Lean4 CI jobs | RESOLVED | lean_action_ci.yml deleted; ci.yml lean4-proofs is canonical |
 | Intro.md cargo install won't work | RESOLVED | Changed to git install + source build instructions |
 | clawdius-plugin-sdk missing from publish workflow | RESOLVED | Added to release.yml publish-crates job (position 2) |
 
@@ -124,7 +124,7 @@
 
 | Task | Status |
 |------|--------|
-| Pin all mutable CI action references | DONE (47 pins across 10 workflows) |
+| Pin all mutable CI action references | DONE (31 pins across 9 workflows) |
 | Remove hardcoded API keys from source | DONE (3 files) |
 | Remove all emojis from documentation | DONE (1,877 emojis across 42 files) |
 | Restyle admin dashboard to project design language | DONE |
@@ -170,13 +170,13 @@ Integrated into benchmarks.yml:
 
 | Target | Proof File | Status |
 |--------|-----------|--------|
-| WASM sandbox isolation | proof_sandbox_extended.lean + proof_sandbox.lean | 20 theorems verified |
-| RPC dispatch correctness | proof_rpc.lean | 9 theorems verified |
-| Ring buffer memory safety | proof_ring_buffer_extended.lean | 33 theorems verified |
+| WASM sandbox isolation | proof_sandbox_extended.lean + proof_sandbox.lean | 21 theorems verified (11 + 10) |
+| RPC dispatch correctness | proof_rpc.lean | 10 theorems verified |
+| Ring buffer memory safety | proof_ring_buffer_extended.lean + proof_ring_buffer.lean | 34 theorems verified (13 + 21) |
 | LLM response cache consistency | proof_cache.lean | 11 theorems verified |
-| Symbol index correctness | proof_symbol_index.lean | 20 theorems verified |
+| Symbol index correctness | proof_symbol_index.lean | 17 theorems verified |
 | Gateway routing correctness | proof_gateway_routing.lean | 18 theorems verified |
-| Additional proofs | 19 files | 208 theorems verified |
+| Additional proofs | 16 files | 207 theorems verified |
 | **Total** | **22 files** | **318 theorems** |
 
 ---
@@ -261,7 +261,7 @@ Full audit completed. 50+ pages in mdBook, 10/11 audit items exist:
 
 | Date | Decision | Rationale |
 |------|----------|-----------|
-| 2026-05-31 | Pin all CI actions to version tags | Eliminates mutable ref supply chain risk; 47 pins across 10 workflows |
+| 2026-05-31 | Pin all CI actions to version tags | Eliminates mutable ref supply chain risk; 31 pins across 9 workflows |
 | 2026-05-31 | Remove all documentation emojis | Professional formatting mandate; 1,877 emojis replaced with text markers |
 | 2026-05-31 | Restyle admin dashboard to project design language | Consistency with landing page Spatial Materialism |
 | 2026-05-31 | Remove hardcoded API keys | Security: prevents credential exposure in git history |
@@ -299,7 +299,7 @@ Full audit completed. 50+ pages in mdBook, 10/11 audit items exist:
 | 2026-06-01 | Unify canonical domain to clawdius.co.uk | Replaced 31 docs.clawdius.dev references across 13 user/project-facing files |
 | 2026-06-01 | Create mdBook custom dark theme | theme/css/custom.css matching Spatial Materialism / Amoebic UI / Brutalism design |
 | 2026-06-01 | Archive PRODUCTION_ROADMAP.md | Added deprecation header; all content superseded by ROADMAP.md |
-| 2026-06-01 | Deprecate duplicate Lean4 CI workflow | lean_action_ci.yml deprecated; ci.yml lean4-proofs is canonical |
+| 2026-06-01 | Deprecate duplicate Lean4 CI workflow | lean_action_ci.yml deleted; ci.yml lean4-proofs is canonical |
 | 2026-06-01 | Add clawdius-plugin-sdk to publish workflow | release.yml now publishes 6 crates in dependency order |
 | 2026-06-01 | Add CVE patch contingency to Cargo.toml | Commented [patch.crates-io] block for rustls-webpki, matrix-sdk-base, wasmtime |
 | 2026-06-01 | Update blog metrics across 8 posts | Unified to 284 theorems, 2,560 tests, 9 providers |
@@ -309,7 +309,7 @@ Full audit completed. 50+ pages in mdBook, 10/11 audit items exist:
 | 2026-06-11 | Document CVE risk acceptance | Formal risk acceptance statement in SECURITY.md with 90-day review cadence |
 | 2026-06-11 | Create VSCode extension package | extensions/clawdius/ with TypeScript JSON-RPC shim; 7 commands, 4 configuration options |
 | 2026-06-11 | Create clawdius-lsp crate | crates/clawdius-lsp/ with tower-lsp; documentSymbol, hover, definition, references handlers; 5 tests |
-| 2026-06-11 | Expand Lean4 proofs to 318 | proof_symbol_index.lean (20 thm) + proof_gateway_routing.lean (18 thm); total 318 across 22 files |
+| 2026-06-11 | Expand Lean4 proofs to 318 | proof_symbol_index.lean (17 thm) + proof_gateway_routing.lean (18 thm); total 318 across 22 files |
 | 2026-06-11 | Create comprehensive comparison matrix | docs/COMPARISON_MATRIX.md; 22 competitors across 16 dimensions |
 | 2026-06-11 | Fix 49 clippy errors in clawdius-lsp | Rewrote symbol_index.rs, backend.rs, capabilities.rs for pedantic clippy compliance |
 | 2026-06-11 | Raise Lean4 proof cap from 300 to 350 | 318/350 theorems across 22 files; symbol_index and gateway_routing proofs added |
@@ -324,7 +324,7 @@ Full audit completed. 50+ pages in mdBook, 10/11 audit items exist:
 | Component | Key Files |
 |-----------|------------|
 | Workspace root | Cargo.toml, deny.toml, clippy.toml, .gitattributes |
-| CI/CD | .github/workflows/{ci,release,pgo,security,docs,docker,benchmarks,lean_action_ci,code-review,aur-publish}.yml |
+| CI/CD | .github/workflows/{ci,release,pgo,security,docs,docker,benchmarks,code-review,aur-publish}.yml |
 | Git hooks | .githooks/pre-commit, .githooks/pre-push |
 | Lean4 proofs | .specs/02_architecture/proofs/ (22 files, 318 theorems) |
 | Sandbox | crates/clawdius-core/src/sandbox.rs, crates/clawdius-core/src/sandbox/backends/ (bwrap, container, filtered, gvisor, firecracker) |

@@ -56,7 +56,7 @@
 ### Lean4 Proof Files
 
 All 22 proof files compile via `lake build` (21 proof libs + 1 Clawdius lib).
-Directories: `.specs/02_architecture/proofs/` (14), `.clawdius/specs/02_architecture/proofs/` (7), plus TestFold.lean (scratch).
+Directories: `.specs/02_architecture/proofs/` (15 incl. TestFold scratch), `.clawdius/specs/02_architecture/proofs/` (7).
 
 ### Performance
 

@@ -17,7 +17,7 @@ Key security claims, each backed by verifiable evidence:
 | Protection of credentials at rest | AES-256-GCM encryption, OS-native keyring storage |
 | Audit trail integrity | 5 backend audit logging with configurable retention |
 | Identity federation | SAML 2.0, OIDC, Okta, Azure AD, GitHub SSO |
-| Supply chain integrity | 47 pinned CI actions, CycloneDX SBOM, cargo-deny |
+| Supply chain integrity | 31 pinned CI actions, CycloneDX SBOM, cargo-deny |
 | Zero secrets in source | 0 hardcoded API keys, all loaded from environment or keyring |
 
 ---
@@ -230,7 +230,7 @@ User Input
 
 | Measure | Implementation |
 |---------|---------------|
-| Action pinning | 47 version-tagged pins across 10 workflows (zero mutable refs) |
+| Action pinning | 31 version-tagged pins across 9 workflows (zero mutable refs) |
 | Toolchain pinning | Rust 1.92.0, Lean 4.28.0 (no floating tags) |
 | Lock enforcement | `--locked` flag on 11 CI cargo commands |
 | Security scanning | cargo audit, cargo deny, CodeQL, Gitleaks, TruffleHog |
@@ -318,7 +318,7 @@ Every claim in this whitepaper is independently verifiable:
 | 2,565 passing tests | `cargo test --workspace` |
 | 0 clippy warnings | `cargo clippy --workspace -- -D warnings` |
 | 0 hardcoded secrets | `grep -r "api_key\|secret\|password" crates/ --include="*.rs"` |
-| 47 pinned CI actions | Inspect `.github/workflows/*.yml` |
+| 31 pinned CI actions | Inspect `.github/workflows/*.yml` |
 | AES-256-GCM encryption | `crates/clawdius-core/src/storage/` source |
 | 5 sandbox backends | `crates/clawdius-core/src/sandbox.rs` source |
 | CycloneDX SBOM | CI artifact from release workflow |

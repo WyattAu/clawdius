@@ -31,7 +31,7 @@ First general availability release of Clawdius.
 
 ### Infrastructure
 
-- 10 CI/CD workflows with pinned action versions (47 pins across 10 workflows)
+- 9 CI/CD workflows with pinned action versions (31 pins across 9 workflows)
 - PGO-optimized weekly builds
 - CycloneDX SBOM generation in CI
 - Performance regression CI gate (10% threshold)
