@@ -25,7 +25,7 @@ After using various AI coding tools, I kept running into the same problems:
 - Code runs in isolated, just-in-time sandboxes
 
 **2. Formal verification**
-- 284 Lean4 theorems proving core behavior
+- 319 Lean4 theorems proving core behavior
 - Yellow Papers establish theoretical ground truth
 - Blue Papers provide IEEE 1016-compliant specs
 

@@ -6,7 +6,7 @@ Show HN: Clawdius – Open-source coding assistant with Lean4 proofs and WASM sa
 
 ## Body
 
-Clawdius is a Rust CLI for coding with LLMs. Generated code runs in sandboxed environments instead of raw shell, and core invariants are formally verified with 284 Lean4 proofs.
+Clawdius is a Rust CLI for coding with LLMs. Generated code runs in sandboxed environments instead of raw shell, and core invariants are formally verified with 319 Lean4 proofs.
 
 ```
 $ clawdius chat                            # Multi-provider LLM chat
@@ -26,7 +26,7 @@ The executor auto-selects the most restrictive backend available. Four more back
 
 Formal Verification
 
-284 Lean4 theorems prove properties of the core data structures. Example — the ring buffer index masking invariant used in the lock-free SPSC queue:
+319 Lean4 theorems prove properties of the core data structures. Example — the ring buffer index masking invariant used in the lock-free SPSC queue:
 
 ```lean
 -- x % n = x &&& (n - 1) for power-of-2 n, x < 2n

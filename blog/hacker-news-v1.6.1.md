@@ -9,11 +9,11 @@ Hi HN,
 
 I'm sharing the Technical Preview of Clawdius (https://github.com/WyattAu/clawdius), a Rust-native AI coding engine with formal verification and JIT sandboxing.
 
-The elevator pitch: 122K lines of Rust, 284 Lean4 theorems proven correct, zero panics, zero compiler warnings, zero CVEs. Everything an AI coding assistant generates runs in isolated sandboxes — not raw shell access.
+The elevator pitch: 122K lines of Rust, 319 Lean4 theorems proven correct, zero panics, zero compiler warnings, zero CVEs. Everything an AI coding assistant generates runs in isolated sandboxes — not raw shell access.
 
 ## Technical Highlights
 
-- **Formal verification:** 284 Lean4 theorems covering ring buffers (2ns push, 1ns pop), wallet guards (16ns), and sandbox isolation. Zero `sorry` — 39 axioms only for external I/O/syscall boundaries.
+- **Formal verification:** 319 Lean4 theorems covering ring buffers (2ns push, 1ns pop), wallet guards (16ns), and sandbox isolation. Zero `sorry` — 39 axioms only for external I/O/syscall boundaries.
 - **5 sandbox backends:** WASM, Filtered, Bubblewrap, sandbox-exec, Container. Automatically selects the most restrictive tier for the code being executed.
 - **CI rigor:** 11 quality gates including mutation testing (≥85%), 85% coverage enforcement, ASan, fuzzing, and Lean4 proof checking on every PR.
 - **cargo-vet audited:** All 8 direct `unsafe` dependencies are audited. 0 CVEs.

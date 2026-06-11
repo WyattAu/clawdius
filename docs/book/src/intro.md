@@ -9,7 +9,7 @@
 Clawdius was designed from the ground up with security as a primary concern:
 
 - **5 Sandbox Backends (+ 2 Planned)**: From lightweight WASM to hardware-isolated Firecracker microVMs
-- **284 Formal Verification Theorems**: Mathematically proven correctness for critical operations
+- **319 Formal Verification Theorems**: Mathematically proven correctness for critical operations
 - **Enterprise SSO**: SAML 2.0, OIDC, Okta, Azure AD, and GitHub integration
 - **Comprehensive Audit Logging**: File, SQLite, Elasticsearch, webhook, and memory backends
 

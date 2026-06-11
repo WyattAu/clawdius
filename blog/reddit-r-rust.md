@@ -18,7 +18,7 @@ Clawdius is an AI coding assistant that runs natively in Rust (no Node.js runtim
 
 - **<20ms cold boot** - Native binary, no Electron
 - **5 sandbox backends (+ 2 planned)** - WASM, gVisor, Firecracker, etc.
-- **284 formal verification proofs** - Lean4 theorems
+- **319 formal verification proofs** - Lean4 theorems
 - **Zero vulnerabilities** - Clean security audit
 - **Local LLM support** - 100% private via Ollama
 

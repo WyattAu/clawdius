@@ -91,7 +91,7 @@
 | Encryption at rest | AES-256-GCM | No | No | No | No | N/A | No | No | N/A | No | N/A | N/A | No | N/A | N/A | No | No | No | No |
 | Path traversal guard | Canonical path | No | Partial | No | No | N/A | No | No | N/A | No | N/A | N/A | No | N/A | N/A | Partial | No | No | No |
 | CVE tracking (deny.toml) | Yes (6 tracked) | N/A | N/A | No | No | N/A | No | No | N/A | No | N/A | N/A | No | N/A | N/A | No | No | N/A | N/A |
-| Formal verification | 284 Lean4 thm | None | None | None | None | None | None | None | None | None | None | None | None | None | None | None | None | None | None |
+| Formal verification | 319 Lean4 thm | None | None | None | None | None | None | None | None | None | None | None | None | None | None | None | None | None | None |
 
 ---
 

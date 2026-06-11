@@ -39,7 +39,7 @@ Four more exist but are stubs or experimental: WASM (wasmtime runtime, stub), Fi
 
 Formal Verification
 
-284 Lean4 theorems across 11 proof files. They cover:
+319 Lean4 theorems across 11 proof files. They cover:
 
 - Ring buffer lock-free invariants (push/pop index safety, empty-not-full, occupancy bounds)
 - Wallet guard risk check completeness (position limits, margin, drawdown)
