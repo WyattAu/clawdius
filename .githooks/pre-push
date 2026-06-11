@@ -10,16 +10,35 @@
 set -euo pipefail
 
 # Escape hatch: set CLAWDIUS_SKIP_HOOKS=1 to bypass all checks
-if [ "${CLAWDIUS_SKIP_HOOKS:-0}" = "1" ]; then
-    echo "==> Clawdius pre-push checks SKIPPED (CLAWDIUS_SKIP_HOOKS=1)"
-    exit 0
-fi
+# NOTE: lib.rs integrity check always runs regardless of skip flag.
+SKIP_HOOKS="${CLAWDIUS_SKIP_HOOKS:-0}"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 CYAN='\033[0;36m'
 NC='\033[0m'
+
+# ─── 0. lib.rs integrity check (ALWAYS runs, not skippable) ──────────────────
+# This check is NOT skippable because lib.rs corruption is a recurring issue.
+LIBRS="crates/clawdius-core/src/lib.rs"
+if [ -f "$LIBRS" ]; then
+    LINE_COUNT=$(wc -l < "$LIBRS")
+    MOD_COUNT=$(grep -c "^pub mod " "$LIBRS" || true)
+    if [ "$LINE_COUNT" -lt 100 ] || [ "$MOD_COUNT" -lt 10 ]; then
+        echo -e "${RED}BLOCKED: lib.rs integrity check failed${NC}"
+        echo "  Lines: $LINE_COUNT (expected >=100)"
+        echo "  pub mod declarations: $MOD_COUNT (expected >=10)"
+        echo "  lib.rs was likely corrupted by a git stash/merge operation."
+        echo "  Fix: git checkout HEAD -- $LIBRS"
+        exit 1
+    fi
+fi
+
+if [ "$SKIP_HOOKS" = "1" ]; then
+    echo "==> Clawdius pre-push checks SKIPPED (CLAWDIUS_SKIP_HOOKS=1)"
+    exit 0
+fi
 
 echo -e "${CYAN}==> Clawdius pre-push full verification suite${NC}"
 echo ""

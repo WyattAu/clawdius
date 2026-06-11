@@ -10,15 +10,35 @@
 set -euo pipefail
 
 # Escape hatch: set CLAWDIUS_SKIP_HOOKS=1 to bypass all checks
-if [ "${CLAWDIUS_SKIP_HOOKS:-0}" = "1" ]; then
-    echo "==> Clawdius pre-commit checks SKIPPED (CLAWDIUS_SKIP_HOOKS=1)"
-    exit 0
-fi
+# NOTE: lib.rs integrity check always runs regardless of skip flag.
+SKIP_HOOKS="${CLAWDIUS_SKIP_HOOKS:-0}"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m'
+
+# ─── 0. lib.rs integrity check (ALWAYS runs, not skippable) ──────────────────
+# This check is NOT skippable because lib.rs corruption is a recurring issue
+# caused by git stash/merge operations. See ROADMAP.md Risk #6.
+LIBRS="crates/clawdius-core/src/lib.rs"
+if [ -f "$LIBRS" ]; then
+    LINE_COUNT=$(wc -l < "$LIBRS")
+    MOD_COUNT=$(grep -c "^pub mod " "$LIBRS" || true)
+    if [ "$LINE_COUNT" -lt 100 ] || [ "$MOD_COUNT" -lt 10 ]; then
+        echo -e "${RED}BLOCKED: lib.rs integrity check failed${NC}"
+        echo "  Lines: $LINE_COUNT (expected >=100)"
+        echo "  pub mod declarations: $MOD_COUNT (expected >=10)"
+        echo "  lib.rs was likely corrupted by a git stash/merge operation."
+        echo "  Fix: git checkout HEAD -- $LIBRS"
+        exit 1
+    fi
+fi
+
+if [ "$SKIP_HOOKS" = "1" ]; then
+    echo "==> Clawdius pre-commit checks SKIPPED (CLAWDIUS_SKIP_HOOKS=1)"
+    exit 0
+fi
 
 echo "==> Clawdius pre-commit checks"
 
@@ -39,18 +59,7 @@ if [ ! -d "$TARGET_DIR" ] || [ "$CARGO_TOML" -nt "$TARGET_DIR" ]; then
     fi
 fi
 
-# ─── 1. lib.rs integrity check ──────────────────────────────────────────────
-LIBRS="crates/clawdius-core/src/lib.rs"
-if [ -f "$LIBRS" ]; then
-    MOD_COUNT=$(grep -c "^pub mod " "$LIBRS" || true)
-    if [ "$MOD_COUNT" -lt 10 ]; then
-        echo -e "${RED}BLOCKED: $LIBRS has only $MOD_COUNT pub mod declarations (expected >=10)${NC}"
-        echo "Run: git checkout HEAD -- $LIBRS"
-        exit 1
-    fi
-fi
-
-# ─── 2. Merge conflict markers ─────────────────────────────────────────────
+# ─── 1. Merge conflict markers ─────────────────────────────────────────────
 CONFLICTS=$(git diff --cached --name-only --diff-filter=ACM | xargs grep -l '<<<<<<< ' 2>/dev/null || true)
 if [ -n "$CONFLICTS" ]; then
     echo -e "${RED}BLOCKED: Merge conflict markers found in:${NC}"
@@ -58,7 +67,7 @@ if [ -n "$CONFLICTS" ]; then
     exit 1
 fi
 
-# ─── 3. cargo fmt ──────────────────────────────────────────────────────────
+# ─── 2. cargo fmt ──────────────────────────────────────────────────────────
 echo -n "  [1/5] cargo fmt --check ... "
 if cargo fmt --all --check 2>/dev/null; then
     echo -e "${GREEN}OK${NC}"
@@ -68,7 +77,7 @@ else
     exit 1
 fi
 
-# ─── 4. cargo clippy (lib + tests, with test-target allowances) ──────────────
+# ─── 3. cargo clippy (lib + tests, with test-target allowances) ──────────────
 echo -n "  [2/5] cargo clippy (lib + tests) ... "
 if cargo clippy --workspace --all-targets -- -D warnings -A missing_docs 2>/dev/null; then
     echo -e "${GREEN}OK${NC}"
@@ -78,7 +87,7 @@ else
     exit 1
 fi
 
-# ─── 5. cargo test (lib only, fast path) ───────────────────────────────────
+# ─── 4. cargo test (lib only, fast path) ───────────────────────────────────
 echo -n "  [3/5] cargo test --workspace --lib ... "
 if cargo test --workspace --lib 2>/dev/null; then
     echo -e "${GREEN}OK${NC}"
@@ -88,7 +97,7 @@ else
     exit 1
 fi
 
-# ─── 6. cargo deny ─────────────────────────────────────────────────────────
+# ─── 5. cargo deny ─────────────────────────────────────────────────────────
 echo -n "  [4/5] cargo deny check ... "
 if command -v cargo-deny &>/dev/null; then
     if cargo deny check bans licenses advisories 2>/dev/null; then
@@ -102,7 +111,7 @@ else
     echo -e "${YELLOW}SKIPPED (cargo-deny not installed)${NC}"
 fi
 
-# ─── 7. Lean4 proofs ───────────────────────────────────────────────────────
+# ─── 6. Lean4 proofs ───────────────────────────────────────────────────────
 echo -n "  [5/5] lake build ... "
 if command -v lake &>/dev/null; then
     if lake build 2>/dev/null; then
