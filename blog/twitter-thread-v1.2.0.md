@@ -39,7 +39,7 @@ Zero vulnerabilities in cargo audit ✅
 
 - 65,834 lines of Rust
 - 2,565 test functions
-- 319 Lean4 formal proofs
+- 318 Lean4 formal proofs
 - 9 LLM providers
 - 5 sandbox backends (+ 2 planned)
 

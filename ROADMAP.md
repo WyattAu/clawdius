@@ -25,7 +25,7 @@
 | Metric | Value |
 |--------|-------|
 | Total tests | 2,566 (2,560 + 5 LSP + 1 extension, 0 failures, 4 ignored) |
-| Lean4 theorems | 319 across 23 proof files |
+| Lean4 theorems | 318 across 22 proof files |
 | CI/CD workflows | 10 (ci, release, pgo, security, docs, docker, benchmarks, lean_action_ci, code-review, dependabot) |
 | Clippy | Clean (pedantic + deny unwraps on core) |
 | cargo-deny | Clean (6 transitive CVEs ignored, blocked on upstream) |
@@ -112,7 +112,7 @@
 | Production unwrap count | RESOLVED | ~89 remaining (benchmarks only) |
 | Domain mismatch (docs.clawdius.dev vs clawdius.co.uk) | RESOLVED | All 31 references updated to clawdius.co.uk |
 | PRODUCTION_ROADMAP.md severely outdated | RESOLVED | Archived with deprecation header |
-| Blog post metrics wildly inconsistent | RESOLVED | All 8 blog posts updated to 319 theorems, 2,565 tests, 9 providers |
+| Blog post metrics wildly inconsistent | RESOLVED | All 8 blog posts updated to 318 theorems, 2,565 tests, 9 providers |
 | No custom mdBook theme | RESOLVED | Created theme/css/custom.css matching landing page design |
 | Duplicate Lean4 CI jobs | RESOLVED | lean_action_ci.yml deprecated; ci.yml lean4-proofs is canonical |
 | Intro.md cargo install won't work | RESOLVED | Changed to git install + source build instructions |
@@ -177,7 +177,7 @@ Integrated into benchmarks.yml:
 | Symbol index correctness | proof_symbol_index.lean | 20 theorems verified |
 | Gateway routing correctness | proof_gateway_routing.lean | 18 theorems verified |
 | Additional proofs | 19 files | 208 theorems verified |
-| **Total** | **25 files** | **319 theorems** |
+| **Total** | **22 files** | **318 theorems** |
 
 ---
 
@@ -249,7 +249,7 @@ Full audit completed. 50+ pages in mdBook, 10/11 audit items exist:
 | # | Risk | Likelihood | Impact | Mitigation |
 |---|------|-----------|--------|------------|
 | 1 | Upstream CVEs remain unresolved >3 months | Medium | High | Prepare [patch.crates-io] fork contingency |
-| 2 | Lean4 proof debt accumulates | Medium | Medium | Cap raised to 350; 319/350 current; prioritize runtime-critical |
+| 2 | Lean4 proof debt accumulates | Medium | Medium | Cap raised to 350; 318/350 current; prioritize runtime-critical |
 | 3 | Plugin SDK backward compatibility breaks | Low | High | Semantic versioning; deprecation warnings before breaking |
 | 4 | WASM compilation requires significant refactoring | Medium | High | Phase approach: core utilities first, then sandbox |
 | 5 | CI action supply chain compromise | Low | Critical | All actions pinned to version tags; Dependabot enabled |
@@ -309,12 +309,12 @@ Full audit completed. 50+ pages in mdBook, 10/11 audit items exist:
 | 2026-06-11 | Document CVE risk acceptance | Formal risk acceptance statement in SECURITY.md with 90-day review cadence |
 | 2026-06-11 | Create VSCode extension package | extensions/clawdius/ with TypeScript JSON-RPC shim; 7 commands, 4 configuration options |
 | 2026-06-11 | Create clawdius-lsp crate | crates/clawdius-lsp/ with tower-lsp; documentSymbol, hover, definition, references handlers; 5 tests |
-| 2026-06-11 | Expand Lean4 proofs to 319 | proof_symbol_index.lean (20 thm) + proof_gateway_routing.lean (18 thm); total 319 across 23 files |
+| 2026-06-11 | Expand Lean4 proofs to 318 | proof_symbol_index.lean (20 thm) + proof_gateway_routing.lean (18 thm); total 318 across 22 files |
 | 2026-06-11 | Create comprehensive comparison matrix | docs/COMPARISON_MATRIX.md; 22 competitors across 16 dimensions |
 | 2026-06-11 | Fix 49 clippy errors in clawdius-lsp | Rewrote symbol_index.rs, backend.rs, capabilities.rs for pedantic clippy compliance |
-| 2026-06-11 | Raise Lean4 proof cap from 300 to 350 | 319/350 theorems across 25 files; symbol_index and gateway_routing proofs added |
+| 2026-06-11 | Raise Lean4 proof cap from 300 to 350 | 318/350 theorems across 22 files; symbol_index and gateway_routing proofs added |
 | 2026-06-11 | Make lib.rs integrity check unconditional | Check runs before CLAWDIUS_SKIP_HOOKS evaluation in pre-commit and pre-push; not skippable |
-| 2026-06-11 | Unify all metrics to 319 theorems, 2,565 tests | Updated 6 blog posts, SECURITY_WHITEPAPER, COMPARISON_MATRIX |
+| 2026-06-11 | Unify all metrics to 318 theorems, 2,565 tests | Updated 6 blog posts, SECURITY_WHITEPAPER, COMPARISON_MATRIX |
 | 2026-06-11 | Fix leftover conflict marker in ROADMAP.md | Removed orphaned `<<<<<<< Updated upstream` line |
 
 ---
@@ -326,7 +326,7 @@ Full audit completed. 50+ pages in mdBook, 10/11 audit items exist:
 | Workspace root | Cargo.toml, deny.toml, clippy.toml, .gitattributes |
 | CI/CD | .github/workflows/{ci,release,pgo,security,docs,docker,benchmarks,lean_action_ci,code-review,aur-publish}.yml |
 | Git hooks | .githooks/pre-commit, .githooks/pre-push |
-| Lean4 proofs | .specs/02_architecture/proofs/ (25 files, 319 theorems) |
+| Lean4 proofs | .specs/02_architecture/proofs/ (22 files, 318 theorems) |
 | Sandbox | crates/clawdius-core/src/sandbox.rs, crates/clawdius-core/src/sandbox/backends/ (bwrap, container, filtered, gvisor, firecracker) |
 | LLM integration | crates/clawdius-core/src/llm/ |
 | Gateway adapters | crates/clawdius-gateway/src/adapters/ |

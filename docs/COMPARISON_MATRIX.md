@@ -91,7 +91,7 @@
 | Encryption at rest | AES-256-GCM | No | No | No | No | N/A | No | No | N/A | No | N/A | N/A | No | N/A | N/A | No | No | No | No |
 | Path traversal guard | Canonical path | No | Partial | No | No | N/A | No | No | N/A | No | N/A | N/A | No | N/A | N/A | Partial | No | No | No |
 | CVE tracking (deny.toml) | Yes (6 tracked) | N/A | N/A | No | No | N/A | No | No | N/A | No | N/A | N/A | No | N/A | N/A | No | No | N/A | N/A |
-| Formal verification | 319 Lean4 thm | None | None | None | None | None | None | None | None | None | None | None | None | None | None | None | None | None | None |
+| Formal verification | 318 Lean4 thm | None | None | None | None | None | None | None | None | None | None | None | None | None | None | None | None | None | None |
 
 ---
 
@@ -168,7 +168,7 @@
 | Property-based tests | 27 (proptest) | Unknown | Unknown | No | No | No | No | No | No |
 | Fuzz testing | 5 targets (AFL++) | No | No | No | No | No | No | No | No |
 | CI test matrix | Linux, macOS, Win | N/A | N/A | Linux, macOS | Linux | Linux | Linux | Linux | Linux, Win |
-| Lean4 formal proofs | 319 thm / 23 files | None | None | None | None | None | None | None | None |
+| Lean4 formal proofs | 318 thm / 22 files | None | None | None | None | None | None | None | None |
 | Code coverage tracked | ~63% | N/A | N/A | No | No | No | No | No | No |
 | PGO-optimized builds | Yes | N/A | N/A | No | No | No | No | No | No |
 | SBOM generation | CycloneDX | N/A | N/A | No | No | No | No | No | No |
@@ -220,7 +220,7 @@
 
 ### Clawdius
 
-- Only agent with formal mathematical verification (319 Lean4 theorems, 23 proof files)
+- Only agent with formal mathematical verification (318 Lean4 theorems, 22 proof files)
 - Only agent with 5 sandbox backends (WASM, Filtered, Bubblewrap, Container, Sandbox-exec) and 2 planned (gVisor, Firecracker)
 - Only agent with 9 messaging platform adapters (Telegram, Discord, Slack, Matrix, Signal, Teams, WhatsApp, Rocket.Chat, Webhook)
 - Only agent with compliance templates (SOC 2, HIPAA, GDPR)
@@ -300,7 +300,7 @@ The nearest competitors by dimension:
 
 | Dimension | Clawdius | Nearest Competitor |
 |-----------|----------|-------------------|
-| Formal verification | 319 Lean4 theorems | None |
+| Formal verification | 318 Lean4 theorems | None |
 | Sandboxing | 5 backends | OpenHands (Docker), SWE-agent (Docker/E2B) |
 | Messaging | 9 adapters | None (all others are CLI/IDE-only) |
 | Enterprise SSO | SAML + OIDC + Okta + Azure AD | Devin (enterprise tier) |

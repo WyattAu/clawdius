@@ -12,7 +12,7 @@ Key security claims, each backed by verifiable evidence:
 
 | Claim | Evidence |
 |-------|----------|
-| Correctness of core algorithms | 319 Lean4 formal verification theorems |
+| Correctness of core algorithms | 318 Lean4 formal verification theorems |
 | Isolation of untrusted code execution | 5 independent sandbox backends |
 | Protection of credentials at rest | AES-256-GCM encryption, OS-native keyring storage |
 | Audit trail integrity | 5 backend audit logging with configurable retention |
@@ -77,7 +77,7 @@ Clawdius uses Lean4, a proof assistant and programming language, to mathematical
 | Can miss edge cases | Cannot miss any case within the specification |
 | Best-effort confidence | Mathematical certainty |
 
-### 3.2 Verified Properties (319 Theorems)
+### 3.2 Verified Properties (318 Theorems)
 
 | Proof File | Theorems | Property Verified |
 |-----------|:--------:|------------------|
@@ -97,12 +97,12 @@ Clawdius uses Lean4, a proof assistant and programming language, to mathematical
 | proof_billing.lean | 10 | Billing accuracy: usage metering matches actual consumption |
 | proof_sso.lean | 12 | SSO protocol compliance: SAML/OIDC flows satisfy RFC requirements |
 | 9 additional proof files | 110 | Data structure invariants, error handling completeness, resource cleanup |
-| **Total** | **319** | **25 proof files, 39/39 lake jobs verified** |
+| **Total** | **318** | **22 proof files, 21 proof libs + 1 exe via lake build verified** |
 
 ### 3.3 Verification Infrastructure
 
 - **Lean4 toolchain:** v4.28.0 (locked)
-- **CI verification:** Every pull request runs `lake build` on all 25 proof files
+- **CI verification:** Every pull request runs `lake build` on all 22 proof files
 - **Proof files location:** `.specs/02_architecture/proofs/`
 - **Reproducibility:** Nix flake provides hermetic build environment
 
@@ -314,7 +314,7 @@ Every claim in this whitepaper is independently verifiable:
 
 | Claim | Verification Method |
 |-------|-------------------|
-| 319 Lean4 theorems | `lake build` in `.specs/02_architecture/proofs/` |
+| 318 Lean4 theorems | `lake build` in `.specs/02_architecture/proofs/` |
 | 2,565 passing tests | `cargo test --workspace` |
 | 0 clippy warnings | `cargo clippy --workspace -- -D warnings` |
 | 0 hardcoded secrets | `grep -r "api_key\|secret\|password" crates/ --include="*.rs"` |
@@ -332,7 +332,7 @@ Every claim in this whitepaper is independently verifiable:
 |------------|:--------:|:-----------:|:------:|
 | Self-hosted | Yes | No | No |
 | Source code auditable | Yes (Apache 2.0) | No | No |
-| Formal verification | 319 theorems | None | None |
+| Formal verification | 318 theorems | None | None |
 | Sandboxed execution | 5 backends | None | Partial |
 | Air-gapped deployment | Yes | No | No |
 | Data residency control | Full | Cloud-only | Cloud-only |
@@ -344,7 +344,7 @@ Every claim in this whitepaper is independently verifiable:
 
 ## 12. Conclusion
 
-Clawdius provides a security posture unmatched in the AI coding assistant market. The combination of formal verification (319 Lean4 theorems), multi-layered sandboxing (5 backends), enterprise identity management (SAML/OIDC), and self-hosted deployment makes it suitable for regulated industries where data residency, auditability, and mathematical correctness are non-negotiable.
+Clawdius provides a security posture unmatched in the AI coding assistant market. The combination of formal verification (318 Lean4 theorems), multi-layered sandboxing (5 backends), enterprise identity management (SAML/OIDC), and self-hosted deployment makes it suitable for regulated industries where data residency, auditability, and mathematical correctness are non-negotiable.
 
 For security inquiries: security@clawdius.dev
 

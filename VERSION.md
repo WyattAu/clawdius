@@ -19,11 +19,11 @@
 | **Workspace Crates** | 7 | `Cargo.toml` (core, gateway, mcp, code, plugin-sdk, lsp, binary) |
 | **Rust Files** | 355+ | `find crates -name '*.rs'` |
 | **Lean4 Proof Files** | 25 | Lake build |
-| **Lean4 Theorems** | 319 | `rg 'theorem ' *.lean` |
+| **Lean4 Theorems** | 318 | `grep -rP '\btheorem\b' .clawdius/specs .specs/ --include='*.lean'` |
 | **Clippy** | Clean (`-D warnings`) | `cargo clippy --workspace --all-targets` |
 | **cargo fmt** | Clean | `cargo fmt --all --check` |
 | **cargo deny** | Clean (advisories, licenses, bans) | `cargo deny check` |
-| **Lean4 lake build** | Pass (39/39 jobs) | `lake build` |
+| **Lean4 lake build** | Pass (21 libs + 1 exe) | `lake build` |
 | **Production unwraps** | 0 (deny active on core) | `deny(clippy::unwrap_used)` |
 | **Root docs with emoji** | 0 | Python grep audit |
 | **git hooks** | pre-commit + pre-push | `CLAWDIUS_SKIP_HOOKS=1` escape hatch |
@@ -55,8 +55,8 @@
 
 ### Lean4 Proof Files
 
-All 25 proof files compile via `lake build`.
-Directories: `.specs/02_architecture/proofs/` (15), `.clawdius/specs/02_architecture/proofs/` (7), plus agent_loop.lean, concurrent_execution.lean, etc.
+All 22 proof files compile via `lake build` (21 proof libs + 1 Clawdius lib).
+Directories: `.specs/02_architecture/proofs/` (14), `.clawdius/specs/02_architecture/proofs/` (7), plus TestFold.lean (scratch).
 
 ### Performance
 

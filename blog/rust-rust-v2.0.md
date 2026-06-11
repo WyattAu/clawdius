@@ -39,7 +39,7 @@ Four more exist but are stubs or experimental: WASM (wasmtime runtime, stub), Fi
 
 Formal Verification
 
-319 Lean4 theorems across 11 proof files. They cover:
+318 Lean4 theorems across 11 proof files. They cover:
 
 - Ring buffer lock-free invariants (push/pop index safety, empty-not-full, occupancy bounds)
 - Wallet guard risk check completeness (position limits, margin, drawdown)
@@ -48,7 +48,7 @@ Formal Verification
 - Plugin lifecycle properties (state machine correctness)
 - Container isolation guarantees
 
-All 319 theorems are proven — zero `sorry`. One axiom remains:
+All 318 theorems are proven — zero `sorry`. One axiom remains:
 
 ```lean
 axiom postulate_signature_unforgeable (t1 t2 : CapabilityToken) :

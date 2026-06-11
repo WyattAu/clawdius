@@ -7,7 +7,7 @@ First general availability release of Clawdius.
 ### Highlights
 
 - **2,565 tests**, 0 failures across 7 workspace crates
-- **319 Lean4 formal verification theorems** (39/39 lake jobs pass)
+- **318 Lean4 formal verification theorems** (21 proof libs + 1 exe via lake build pass)
 - **9 LLM providers** (Anthropic, OpenAI, Gemini, xAI, Mistral, DeepSeek, OpenRouter, Ollama, Z.AI)
 - **9 messaging platform adapters** (Telegram, Discord, Slack, Matrix, Signal, Teams, WhatsApp, Rocket.Chat, Webhook)
 - **5 sandbox backends** (WASM/Wasmtime, Filtered, Bubblewrap, Container, Sandbox-exec) + 2 planned (gVisor, Firecracker)
@@ -26,7 +26,7 @@ First general availability release of Clawdius.
 
 - Competitive comparison matrix covering 22 AI coding agents (docs/COMPARISON_MATRIX.md)
 - Custom mdBook dark theme matching project design language (Spatial Materialism / Amoebic UI)
-- Blog post metrics unified across 8 posts (319 theorems, 2,565 tests, 9 providers)
+- Blog post metrics unified across 8 posts (318 theorems, 2,565 tests, 9 providers)
 - Canonical domain unified to clawdius.co.uk (31 references updated across 13 files)
 
 ### Infrastructure

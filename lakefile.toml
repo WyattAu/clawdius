@@ -7,6 +7,7 @@ defaultTargets = [
   "ProofAudit", "ProofCapability", "ProofContainer", "ProofFsm",
   "ProofHost", "ProofRingBuffer", "ProofSandbox",
   "ProofSandboxExtended", "ProofRpc", "ProofRingBufferExtended", "ProofCache",
+  "ProofSymbolIndex", "ProofGatewayRouting",
 ]
 
 [[lean_lib]]
@@ -106,6 +107,16 @@ roots = ["proof_ring_buffer_extended"]
 name = "ProofCache"
 srcDir = ".specs/02_architecture/proofs"
 roots = ["proof_cache"]
+
+[[lean_lib]]
+name = "ProofSymbolIndex"
+srcDir = ".specs/02_architecture/proofs"
+roots = ["proof_symbol_index"]
+
+[[lean_lib]]
+name = "ProofGatewayRouting"
+srcDir = ".specs/02_architecture/proofs"
+roots = ["proof_gateway_routing"]
 
 [[lean_exe]]
 name = "clawdius"

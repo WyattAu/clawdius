@@ -100,8 +100,8 @@ Returns Lean4 proof verification status:
 ```json
 {
   "status": "ok",
-  "theorems": 319,
-  "proof_files": 23,
-  "lake_jobs": "39/39"
+  "theorems": 318,
+  "proof_files": 22,
+  "lake_jobs": "21 libs + 1 exe"
 }
 ```
