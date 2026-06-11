@@ -6,11 +6,11 @@ First general availability release of Clawdius.
 
 ### Highlights
 
-- **2,560 tests**, 0 failures across 6 workspace crates
-- **284 Lean4 formal verification theorems** (39/39 lake jobs pass)
+- **2,565 tests**, 0 failures across 7 workspace crates
+- **319 Lean4 formal verification theorems** (39/39 lake jobs pass)
 - **9 LLM providers** (Anthropic, OpenAI, Gemini, xAI, Mistral, DeepSeek, OpenRouter, Ollama, Z.AI)
 - **9 messaging platform adapters** (Telegram, Discord, Slack, Matrix, Signal, Teams, WhatsApp, Rocket.Chat, Webhook)
-- **5 sandbox backends** (WASM/Wasmtime, Filtered, Bubblewrap, Container, Sandbox-exec)
+- **5 sandbox backends** (WASM/Wasmtime, Filtered, Bubblewrap, Container, Sandbox-exec) + 2 planned (gVisor, Firecracker)
 - **Zero clippy warnings** with `-D warnings` strict
 - **Zero hardcoded secrets** in source
 - **Apache 2.0** license, fully self-hosted
@@ -26,7 +26,7 @@ First general availability release of Clawdius.
 
 - Competitive comparison matrix covering 22 AI coding agents (docs/COMPARISON_MATRIX.md)
 - Custom mdBook dark theme matching project design language (Spatial Materialism / Amoebic UI)
-- Blog post metrics unified across 8 posts (284 theorems, 2,560 tests, 9 providers)
+- Blog post metrics unified across 8 posts (319 theorems, 2,565 tests, 9 providers)
 - Canonical domain unified to clawdius.co.uk (31 references updated across 13 files)
 
 ### Infrastructure
@@ -37,6 +37,16 @@ First general availability release of Clawdius.
 - Performance regression CI gate (10% threshold)
 - Nix flake with full devShell (Rust + Lean4 + cargo tools)
 - GHCR Docker images (linux/amd64, linux/arm64)
+- clawdius-lsp binary in release pipeline (3 binaries total)
+- Unconditional lib.rs integrity check in pre-commit/pre-push hooks
+
+### New Components
+
+- clawdius-lsp crate: tower-lsp server with documentSymbol, hover, goto-definition, find-references (12 tests)
+- VSCode extension: TypeScript JSON-RPC over stdio, 7 commands, 4 config options (14.33KB .vsix)
+- gVisor sandbox backend stub (docker --runtime=runsc, planned v1.7.0)
+- Firecracker sandbox backend stub (microVM, planned v1.7.0)
+- Enterprise security whitepaper (12 sections, docs/SECURITY_WHITEPAPER.md)
 
 ### Workspace Crates
 
@@ -48,6 +58,7 @@ First general availability release of Clawdius.
 | clawdius-code | VSCode extension helper (JSON-RPC) |
 | clawdius-mcp | Model Context Protocol server |
 | clawdius-plugin-sdk | Plugin development SDK (WASM + native) |
+| clawdius-lsp | Language Server Protocol server (hover, definition, references) |
 
 ## [1.0.0-rc.2] - 2026-05-20
 

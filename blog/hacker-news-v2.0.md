@@ -49,7 +49,7 @@ A cryptographic assumption about Ed25519 capability token unforgeability — the
 
 Architecture
 
-6 crates, 6 protocol layers (JSON-RPC, LSP, MCP, DAP, GraphQL, REST), 4 IDE plugins (VSCode, JetBrains, Neovim, Emacs), plus `clawdius-mcp` for Claude Desktop interop. 9 LLM providers including Anthropic, OpenAI, Ollama, and more. ~1,200 `unwrap()` calls remain in production code (tracked for remediation). Zero compiler warnings.
+7 crates, 6 protocol layers (JSON-RPC, LSP, MCP, DAP, GraphQL, REST), 4 IDE plugins (VSCode, JetBrains, Neovim, Emacs), plus `clawdius-mcp` for Claude Desktop interop. 9 LLM providers including Anthropic, OpenAI, Ollama, and more. ~1,200 `unwrap()` calls remain in production code (tracked for remediation). Zero compiler warnings.
 
 Limitations
 

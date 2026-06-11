@@ -102,7 +102,7 @@
 | Issue | Severity | Status |
 |-------|----------|--------|
 | 6 transitive CVEs (rustls-webpki, matrix-sdk-base) | LOW | Blocked on upstream; risk acceptance documented in SECURITY.md; [patch.crates-io] contingency prepared |
-| AUR package integration | LOW | PKGBUILD template exists, needs CI workflow |
+| AUR package integration | RESOLVED | aur-publish.yml validates PKGBUILD on release; generates .SRCINFO in Arch container; manual push to AUR |
 | VSCode extension not on Marketplace | MEDIUM | Extension scaffold created; .vsix packages as clawdius-1.0.0.vsix (14.33KB); needs publisher token for Marketplace upload |
 | clawdius-lsp not in CI | RESOLVED | Workspace member since v1.0.0; covered by cargo test/clippy --workspace; 12 tests, clippy-clean |
 | Transitive CVEs risk acceptance | RESOLVED | Formal risk acceptance statement in SECURITY.md with 90-day review cadence |

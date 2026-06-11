@@ -16,7 +16,7 @@ Clawdius v2.0.0 is out. It's a Rust CLI for coding with LLMs — chat, generate 
 
 Architecture
 
-The project is a Cargo workspace with 6 crates:
+The project is a Cargo workspace with 7 crates:
 
 - `clawdius` — CLI binary (clap-based, ~12K LOC)
 - `clawdius-core` — shared library (LLM, sessions, sandboxes, tools, agent system)
