@@ -12,7 +12,7 @@ A comprehensive comparison of Clawdius with other AI coding assistants.
 | **Boot Time** | <20ms | ~500ms | ~2s | ~300ms | ~500ms | ~50ms | ~100ms |
 | **Memory** | ~100MB | ~200MB | ~500MB | ~150MB | ~200MB | ~50MB | ~300MB |
 | **Sandboxing** | 5 backends (+ 2 planned) | None | Limited | None | None | Container detection | None |
-| **Formal Proofs** | 209 theorems | None | None | None | None | None | None |
+| **Formal Proofs** | 319 theorems | None | None | None | None | None | None |
 | **Enterprise SSO** | SAML/OIDC | Limited | Limited | None | None | None | None |
 | **Plugin System** | WASM | None | Limited | None | None | Registry-based | Limited |
 | **Offline/LAN** | Full | Partial | Partial | Full | Partial | Full | Partial |
@@ -270,4 +270,4 @@ Full benchmark data: [BENCHMARKS.md](./BENCHMARKS.md)
 
 ---
 
-*Last updated: 2026-03-11 | Clawdius v1.0.0-rc.1*
+*Last updated: 2026-06-11 | Clawdius v1.0.0*

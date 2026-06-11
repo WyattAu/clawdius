@@ -34,12 +34,13 @@ Built in Rust for maximum performance:
 | Feature | Clawdius | Competitors |
 |---------|----------|-------------|
 | Sandbox Backends | 5 (+ 2 planned) | 1-3 |
-| Formal Verification | 284 theorems | None |
+| Formal Verification | 319 theorems | None |
 | Cold Boot Time | <20ms | 100-500ms |
 | Plugin System | WASM + 26 hooks | Limited or None |
 | Enterprise SSO | Full (SAML, OIDC) | Limited |
-| Audit Logging | 4 backends | Basic or None |
+| Audit Logging | 5 backends | Basic or None |
 | Graph-RAG | Built-in | External add-on |
+| LSP Server | Built-in (tower-lsp) | External add-on |
 | Self-Hosted | Full support | Limited |
 
 ## Quick Start

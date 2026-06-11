@@ -85,6 +85,7 @@
 - [Vim/Neovim](./integrations/vim.md)
 - [Emacs](./integrations/emacs.md)
 - [CLI Reference](./integrations/cli.md)
+- [LSP Server](./integrations/lsp.md)
 - [Messaging Adapters](./integrations/adapters.md)
   - [Telegram](./integrations/telegram.md)
   - [Discord](./integrations/discord.md)

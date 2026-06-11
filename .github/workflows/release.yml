@@ -200,6 +200,7 @@ jobs:
           # is handled by Cargo which correctly skips incompatible crates.
           cargo build --release --locked --target ${{ matrix.target }} -p clawdius
           cargo build --release --locked --target ${{ matrix.target }} -p clawdius-code
+          cargo build --release --locked --target ${{ matrix.target }} -p clawdius-lsp
       
       - name: Generate shell completions and man pages (Unix)
         if: matrix.archive == 'tar.gz'
@@ -240,7 +241,7 @@ jobs:
           ARCHIVE="clawdius-${VERSION}-${{ matrix.target }}.tar.gz"
           cd target/${{ matrix.target }}/release
           tar -czvf ../../../${ARCHIVE} \
-            clawdius clawdius-code \
+            clawdius clawdius-code clawdius-lsp \
             completions/ \
             man/clawdius.1
           sha256sum ../../../${ARCHIVE} > ../../../${ARCHIVE}.sha256
@@ -251,7 +252,7 @@ jobs:
           VERSION="${{ needs.validate.outputs.version }}"
           ARCHIVE="clawdius-${VERSION}-${{ matrix.target }}.zip"
           cd target/${{ matrix.target }}/release
-          7z a ../../../${ARCHIVE} clawdius.exe clawdius-code.exe completions/
+          7z a ../../../${ARCHIVE} clawdius.exe clawdius-code.exe clawdius-lsp.exe completions/
           cd ../../..
           sha256sum ${ARCHIVE} > ${ARCHIVE}.sha256
         shell: bash
@@ -437,6 +438,12 @@ jobs:
       
       - name: Publish clawdius-core (library)
         run: cargo publish --token ${{ secrets.CRATES_IO_TOKEN }} -p clawdius-core --locked
+      
+      - name: Publish clawdius-plugin-sdk (plugin SDK)
+        run: cargo publish --token ${{ secrets.CRATES_IO_TOKEN }} -p clawdius-plugin-sdk --locked
+      
+      - name: Publish clawdius-lsp (LSP server)
+        run: cargo publish --token ${{ secrets.CRATES_IO_TOKEN }} -p clawdius-lsp --locked
       
       - name: Publish clawdius-gateway (messaging)
         run: cargo publish --token ${{ secrets.CRATES_IO_TOKEN }} -p clawdius-gateway --locked
