@@ -63,8 +63,8 @@ clawdius chat --provider ollama --model llama3
 | Metric | Value |
 |--------|-------|
 | Rust LOC | 65,834 |
-| Tests | 2,560 passing |
-| Lean4 Proofs | 284 theorems |
+| Tests | 2,565 passing |
+| Lean4 Proofs | 319 theorems |
 | Sandbox Backends | 5 (+ 2 planned) |
 | LLM Providers | 9 |
 

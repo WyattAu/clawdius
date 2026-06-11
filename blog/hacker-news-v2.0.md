@@ -38,7 +38,7 @@ theorem pow2_mod_eq_mask (n x : Nat)
   exact (Nat.and_two_pow_sub_one_eq_mod x k).symm
 ```
 
-All 284 theorems proven, zero `sorry`. One axiom remains:
+All 319 theorems proven, zero `sorry`. One axiom remains:
 
 ```lean
 axiom postulate_signature_unforgeable (t1 t2 : CapabilityToken) :

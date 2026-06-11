@@ -48,7 +48,7 @@ Formal Verification
 - Plugin lifecycle properties (state machine correctness)
 - Container isolation guarantees
 
-All 284 theorems are proven — zero `sorry`. One axiom remains:
+All 319 theorems are proven — zero `sorry`. One axiom remains:
 
 ```lean
 axiom postulate_signature_unforgeable (t1 t2 : CapabilityToken) :
@@ -80,7 +80,7 @@ What Doesn't Work Yet
 
 CI and Quality
 
-2,560 tests pass across the workspace (3 skipped on CI: lean binary not installed, headless Chrome available). Clippy pedantic + nursery + deny on unwrap_used, expect_used, panic, todo is configured. Compiler warnings are zero. The release pipeline builds signed binaries for 4 platforms with SBOM generation.
+2,565 tests pass across the workspace (3 skipped on CI: lean binary not installed, headless Chrome available). Clippy pedantic + nursery + deny on unwrap_used, expect_used, panic, todo is configured. Compiler warnings are zero. The release pipeline builds signed binaries for 4 platforms with SBOM generation.
 
 **Known debt:** ~1,200 `unwrap()` calls remain in production code across 109 files. The clippy deny-on-unwrap configuration was intended to enforce zero unwraps but was added after most of the codebase was written, so existing calls weren't fixed incrementally. This is tracked for gradual remediation.
 

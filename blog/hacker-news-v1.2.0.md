@@ -65,7 +65,7 @@ clawdius chat --provider ollama --model llama3
 ## Stats
 
 - 65,834 lines of Rust
-- 2,560 tests passing
+- 2,565 tests passing
 - 9 LLM providers
 - 5 sandbox backends (+ 2 planned)
 - Zero cargo audit vulnerabilities

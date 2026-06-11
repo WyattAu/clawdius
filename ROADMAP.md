@@ -103,7 +103,6 @@
 |-------|----------|--------|
 | 6 transitive CVEs (rustls-webpki, matrix-sdk-base) | LOW | Blocked on upstream; risk acceptance documented in SECURITY.md; [patch.crates-io] contingency prepared |
 | AUR package integration | LOW | PKGBUILD template exists, needs CI workflow |
-<<<<<<< Updated upstream
 | VSCode extension not on Marketplace | MEDIUM | Extension scaffold created; .vsix packages as clawdius-1.0.0.vsix (14.33KB); needs publisher token for Marketplace upload |
 | clawdius-lsp not in CI | RESOLVED | Workspace member since v1.0.0; covered by cargo test/clippy --workspace; 12 tests, clippy-clean |
 | Transitive CVEs risk acceptance | RESOLVED | Formal risk acceptance statement in SECURITY.md with 90-day review cadence |
@@ -113,7 +112,7 @@
 | Production unwrap count | RESOLVED | ~89 remaining (benchmarks only) |
 | Domain mismatch (docs.clawdius.dev vs clawdius.co.uk) | RESOLVED | All 31 references updated to clawdius.co.uk |
 | PRODUCTION_ROADMAP.md severely outdated | RESOLVED | Archived with deprecation header |
-| Blog post metrics wildly inconsistent | RESOLVED | All 8 blog posts updated to 284 theorems, 2,560 tests, 9 providers |
+| Blog post metrics wildly inconsistent | RESOLVED | All 8 blog posts updated to 319 theorems, 2,565 tests, 9 providers |
 | No custom mdBook theme | RESOLVED | Created theme/css/custom.css matching landing page design |
 | Duplicate Lean4 CI jobs | RESOLVED | lean_action_ci.yml deprecated; ci.yml lean4-proofs is canonical |
 | Intro.md cargo install won't work | RESOLVED | Changed to git install + source build instructions |
@@ -254,7 +253,7 @@ Full audit completed. 50+ pages in mdBook, 10/11 audit items exist:
 | 3 | Plugin SDK backward compatibility breaks | Low | High | Semantic versioning; deprecation warnings before breaking |
 | 4 | WASM compilation requires significant refactoring | Medium | High | Phase approach: core utilities first, then sandbox |
 | 5 | CI action supply chain compromise | Low | Critical | All actions pinned to version tags; Dependabot enabled |
-| 6 | lib.rs merge corruption via gitattributes | RESOLVED | Critical | Removed merge=union; added CI integrity check |
+| 6 | lib.rs merge corruption | RESOLVED | Critical | Unconditional integrity check in pre-commit/pre-push (not skippable); CI check in ci.yml; line count + pub mod count validation |
 
 ---
 
@@ -314,6 +313,9 @@ Full audit completed. 50+ pages in mdBook, 10/11 audit items exist:
 | 2026-06-11 | Create comprehensive comparison matrix | docs/COMPARISON_MATRIX.md; 22 competitors across 16 dimensions |
 | 2026-06-11 | Fix 49 clippy errors in clawdius-lsp | Rewrote symbol_index.rs, backend.rs, capabilities.rs for pedantic clippy compliance |
 | 2026-06-11 | Raise Lean4 proof cap from 300 to 350 | 319/350 theorems across 25 files; symbol_index and gateway_routing proofs added |
+| 2026-06-11 | Make lib.rs integrity check unconditional | Check runs before CLAWDIUS_SKIP_HOOKS evaluation in pre-commit and pre-push; not skippable |
+| 2026-06-11 | Unify all metrics to 319 theorems, 2,565 tests | Updated 6 blog posts, SECURITY_WHITEPAPER, COMPARISON_MATRIX |
+| 2026-06-11 | Fix leftover conflict marker in ROADMAP.md | Removed orphaned `<<<<<<< Updated upstream` line |
 
 ---
 

@@ -35,7 +35,7 @@ Clawdius is a native Rust AI coding assistant that enforces a formal R&D lifecyc
 
 ## Formal Verification
 
-- 284 theorems proven in Lean4 across ring buffers, wallet guards, and sandbox isolation
+- 319 theorems proven in Lean4 across ring buffers, wallet guards, and sandbox isolation
 - 39 axioms only for external dependencies (I/O, syscalls) — all internal logic is fully proven
 - Yellow Papers (theory) + Blue Papers (IEEE 1016 specs) + SOPs (enforced per commit)
 

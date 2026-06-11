@@ -164,7 +164,7 @@
 
 | Metric | Clawdius | Claude Code | Cursor | Aider | OpenHands | SWE-agent | Goose | Shell Agent | Claw Code |
 |--------|:--------:|:-----------:|:------:|:-----:|:---------:|:---------:|:-----:|:-----------:|:---------:|
-| Total tests | 2,560 | N/A (closed) | N/A (closed) | ~1,200 | ~3,500 | ~800 | ~1,500 | ~200 | ~1,100 |
+| Total tests | 2,565 | N/A (closed) | N/A (closed) | ~1,200 | ~3,500 | ~800 | ~1,500 | ~200 | ~1,100 |
 | Property-based tests | 27 (proptest) | Unknown | Unknown | No | No | No | No | No | No |
 | Fuzz testing | 5 targets (AFL++) | No | No | No | No | No | No | No | No |
 | CI test matrix | Linux, macOS, Win | N/A | N/A | Linux, macOS | Linux | Linux | Linux | Linux | Linux, Win |

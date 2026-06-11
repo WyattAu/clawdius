@@ -73,7 +73,7 @@ Clawdius uses Lean4, a proof assistant and programming language, to mathematical
 | Testing | Formal Verification |
 |---------|-------------------|
 | Checks specific cases | Proves all cases |
-| "These 2,560 test inputs work" | "For all valid inputs, the output satisfies the specification" |
+| "These 2,565 test inputs work" | "For all valid inputs, the output satisfies the specification" |
 | Can miss edge cases | Cannot miss any case within the specification |
 | Best-effort confidence | Mathematical certainty |
 
@@ -315,7 +315,7 @@ Every claim in this whitepaper is independently verifiable:
 | Claim | Verification Method |
 |-------|-------------------|
 | 284 Lean4 theorems | `lake build` in `.specs/02_architecture/proofs/` |
-| 2,560 passing tests | `cargo test --workspace` |
+| 2,565 passing tests | `cargo test --workspace` |
 | 0 clippy warnings | `cargo clippy --workspace -- -D warnings` |
 | 0 hardcoded secrets | `grep -r "api_key\|secret\|password" crates/ --include="*.rs"` |
 | 47 pinned CI actions | Inspect `.github/workflows/*.yml` |
@@ -332,7 +332,7 @@ Every claim in this whitepaper is independently verifiable:
 |------------|:--------:|:-----------:|:------:|
 | Self-hosted | Yes | No | No |
 | Source code auditable | Yes (Apache 2.0) | No | No |
-| Formal verification | 284 theorems | None | None |
+| Formal verification | 319 theorems | None | None |
 | Sandboxed execution | 5 backends | None | Partial |
 | Air-gapped deployment | Yes | No | No |
 | Data residency control | Full | Cloud-only | Cloud-only |

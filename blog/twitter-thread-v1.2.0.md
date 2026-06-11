@@ -38,7 +38,7 @@ Zero vulnerabilities in cargo audit ✅
 📊 Clawdius by the numbers:
 
 - 65,834 lines of Rust
-- 2,560 test functions
+- 2,565 test functions
 - 284 Lean4 formal proofs
 - 9 LLM providers
 - 5 sandbox backends (+ 2 planned)
