@@ -102,7 +102,7 @@ Clawdius uses Lean4, a proof assistant and programming language, to mathematical
 ### 3.3 Verification Infrastructure
 
 - **Lean4 toolchain:** v4.28.0 (locked)
-- **CI verification:** Every pull request runs `lake build` on all 24 proof files
+- **CI verification:** Every pull request runs `lake build` on all 25 proof files
 - **Proof files location:** `.specs/02_architecture/proofs/`
 - **Reproducibility:** Nix flake provides hermetic build environment
 
