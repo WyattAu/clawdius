@@ -316,6 +316,48 @@ Full audit completed. 50+ pages in mdBook, 10/11 audit items exist:
 | 2026-06-11 | Make lib.rs integrity check unconditional | Check runs before CLAWDIUS_SKIP_HOOKS evaluation in pre-commit and pre-push; not skippable |
 | 2026-06-11 | Unify all metrics to 318 theorems, 2,565 tests | Updated 6 blog posts, SECURITY_WHITEPAPER, COMPARISON_MATRIX |
 | 2026-06-11 | Fix leftover conflict marker in ROADMAP.md | Removed orphaned `<<<<<<< Updated upstream` line |
+| 2026-06-12 | Resolve diverged git history | Reset to origin/main; re-applied cargo fmt + test count fix; pushed as c5ce8c09 |
+| 2026-06-12 | Update landing page test count to 2,606 | Badge and metrics in index.html; docs workflow fixed (missing custom.css) |
+| 2026-06-12 | Fix docs deployment workflow | Added missing docs/book/theme/css/custom.css; workflow had failed 3x on absent file |
+| 2026-06-12 | Duplicate code audit across 7 crates | 8 HIGH, 9 MEDIUM, 5 LOW findings; see Duplication Audit below |
+
+---
+
+## Appendix: Duplication Audit (Session 6)
+
+### HIGH Priority (8 items)
+
+| ID | Issue | Location A | Location B | Fix |
+|----|-------|------------|------------|-----|
+| DUP-12 | Incompatible `CodeAction` trait | actions/mod.rs | actions/traits.rs | Delete traits.rs |
+| DUP-14 | 4x `ChangeType` enum | agentic, output, stream, timeline | -- | Consolidate to one |
+| DUP-15 | 3x `FileChange` struct | agentic, output, diff | -- | Consolidate to diff::FileChange |
+| DUP-08 | 2x `LlmConfig` (different fields) | config.rs | llm.rs | Rename llm.rs to ResolvedLlmConfig |
+| DUP-04 | 3x `ToolResult` | tools, agentic, plugin-sdk | -- | Consolidate to tools::ToolResult |
+| DUP-11 | Legacy sync `SessionRepository` | session/repository.rs | storage/backend.rs | Deprecate sync version |
+| DUP-10 | 2x `ToolCall` | session/types, agentic/tool_use | -- | Rename agentic to ParsedToolCall |
+| DUP-07 | Copy-pasted `mask_api_keys` | cli/config_cmd.rs | tests/cli_logic_tests.rs | Import from source |
+
+### MEDIUM Priority (9 items)
+
+| ID | Issue | Fix |
+|----|-------|-----|
+| DUP-16 | 3x `SymbolKind` | Consolidate actions to graph_rag version |
+| DUP-09 | 2x `SandboxConfig` | Rename agentic to SandboxRuntimeConfig |
+| DUP-13 | 2x `ToolCallInfo` | Rename API version to ToolCallSummary |
+| DUP-06 | `Tool` struct vs `Tool` trait | Rename core struct to ToolSpec |
+| DUP-17 | 2x `CheckpointInfo` | Derive output from timeline version |
+| DUP-19 | 3x token usage types | Add From conversions |
+| DUP-03 | 2x `WebhookConfig` | Rename gateway to WebhookAdapterConfig |
+| DUP-05 | 2x `ToolContext` | Rename plugin-sdk to PluginToolContext |
+| DUP-18 | 2x `FileInfo` | Rename for clarity |
+
+### Notes
+
+- 41 instances of `#[allow(dead_code)]` across workspace
+- lib.rs corruption root cause: AgenticSystem::apply_changes() writes FileChange to disk; tests with trust_based() overwrite lib.rs
+- CI failures on Windows/macOS are spurious (dtolnay/rust-toolchain network errors)
+- Security workflow false positives: gitleaks flags test fixture strings in cli_logic_tests.rs
 
 ---
 
