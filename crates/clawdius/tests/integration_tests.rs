@@ -24,7 +24,8 @@ use clawdius_core::config::{
 };
 use clawdius_core::llm::{create_provider, LlmProvider, ResolvedLlmConfig};
 use clawdius_core::output::{
-    stream::{ChangeType, StreamWriter},
+    format::ChangeType,
+    stream::StreamWriter,
     OutputFormat, StreamEvent,
 };
 use clawdius_core::tools::file::{
