@@ -20,7 +20,7 @@ pub(super) async fn handle_chat(
     output_format: OutputFormat,
 ) -> anyhow::Result<()> {
     use clawdius_core::llm::providers::LlmClient;
-    use clawdius_core::llm::{create_provider, ChatMessage, ChatRole, LlmConfig};
+    use clawdius_core::llm::{create_provider, ChatMessage, ChatRole, ResolvedLlmConfig};
     use clawdius_core::modes::AgentMode;
     use clawdius_core::tools::editor::ExternalEditor;
     use std::io::{self, IsTerminal, Read, Write};
@@ -102,7 +102,7 @@ pub(super) async fn handle_chat(
         )
     };
 
-    let mut llm_config = LlmConfig::from_config(&config.llm, &provider)?;
+    let mut llm_config = ResolvedLlmConfig::from_config(&config.llm, &provider)?;
     if let Some(ref m) = model {
         llm_config.model.clone_from(m);
     }

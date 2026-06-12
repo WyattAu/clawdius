@@ -39,7 +39,7 @@ use clawdius_gateway::adapters::slack::SlackAdapter;
 use clawdius_gateway::adapters::teams::TeamsAdapter;
 #[cfg(feature = "telegram")]
 use clawdius_gateway::adapters::telegram::TelegramAdapter;
-use clawdius_gateway::adapters::webhook::{WebhookAdapter, WebhookConfig};
+use clawdius_gateway::adapters::webhook::{WebhookAdapter, WebhookAdapterConfig};
 use clawdius_gateway::adapters::whatsapp::WhatsAppAdapter;
 
 use clawdius_core::billing::BillingManager;
@@ -368,7 +368,7 @@ async fn register_platform(gateway: &mut MessageGateway, platform: &Platform, cl
         },
         Platform::Webhook => {
             if let Some(outgoing_url) = cli.webhook_url.as_ref() {
-                let webhook_config = WebhookConfig {
+                let webhook_config = WebhookAdapterConfig {
                     outgoing_url: outgoing_url.clone(),
                     secret: cli.webhook_secret.clone(),
                     outgoing_headers: HashMap::new(),

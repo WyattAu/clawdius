@@ -336,6 +336,33 @@ api_key = "sk-12345678""#;
         assert_eq!(result, "");
     }
 
+    #[test]
+    fn test_mask_api_keys_exactly_8_chars() {
+        let input = r#"api_key = "12345678""#;
+        let result = mask_api_keys(input);
+        assert_eq!(result, r#"api_key = "***""#);
+    }
+
+    #[test]
+    fn test_mask_api_keys_7_chars_preserved() {
+        let input = r#"api_key = "1234567""#;
+        assert_eq!(mask_api_keys(input), input);
+    }
+
+    #[test]
+    fn test_mask_api_keys_underscore_key_name() {
+        let input = r#"my_api_key = "abcdefghij""#;
+        let result = mask_api_keys(input);
+        assert!(result.contains("my_api_key = \"***\""));
+    }
+
+    #[test]
+    fn test_mask_api_keys_key_with_prefix() {
+        let input = r#"anthropic_api_key = "sk-longkey12345""#;
+        let result = mask_api_keys(input);
+        assert!(result.contains("anthropic_api_key = \"***\""));
+    }
+
     // --- get_config_value / set_config_value tests ---
 
     fn default_config() -> clawdius_core::config::Config {

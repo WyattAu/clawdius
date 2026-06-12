@@ -58,7 +58,7 @@ pub mod prelude {
     pub use crate::error::{PluginError, PluginResult};
     pub use crate::plugin::Plugin;
     pub use crate::registry::{
-        ToolContent, ToolContext, ToolInvocation, ToolRegistration, ToolRegistry, ToolResult,
+        PluginToolContext, ToolContent, ToolInvocation, ToolRegistration, ToolRegistry, ToolResult,
     };
     pub use crate::simple::SimplePlugin;
     pub use crate::tool::Tool;

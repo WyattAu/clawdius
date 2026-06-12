@@ -22,32 +22,33 @@ pub(super) async fn handle_sprint(
 
     let config = clawdius_core::config::Config::load_or_default();
 
-    let llm_config = match clawdius_core::llm::LlmConfig::from_config(&config.llm, &provider) {
-        Ok(mut cfg) => {
-            // Override model if --model flag was provided
-            if let Some(m) = &model {
-                cfg.model.clone_from(m);
-            }
-            cfg
-        },
-        Err(e) => {
-            match output_format {
-                OutputFormat::Json => {
-                    println!(
-                        "{}",
-                        serde_json::json!({
-                            "error": e.to_string(),
-                            "provider": provider,
-                        })
-                    );
-                },
-                _ => {
-                    eprintln!("Failed to create LLM config for provider '{provider}': {e}");
-                },
-            }
-            return Ok(());
-        },
-    };
+    let llm_config =
+        match clawdius_core::llm::ResolvedLlmConfig::from_config(&config.llm, &provider) {
+            Ok(mut cfg) => {
+                // Override model if --model flag was provided
+                if let Some(m) = &model {
+                    cfg.model.clone_from(m);
+                }
+                cfg
+            },
+            Err(e) => {
+                match output_format {
+                    OutputFormat::Json => {
+                        println!(
+                            "{}",
+                            serde_json::json!({
+                                "error": e.to_string(),
+                                "provider": provider,
+                            })
+                        );
+                    },
+                    _ => {
+                        eprintln!("Failed to create LLM config for provider '{provider}': {e}");
+                    },
+                }
+                return Ok(());
+            },
+        };
 
     let provider_instance = match clawdius_core::llm::create_provider(&llm_config) {
         Ok(p) => p,

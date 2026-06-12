@@ -18,10 +18,10 @@
 //! Tools are defined with JSON Schema for parameter validation:
 //!
 //! ```rust
-//! use clawdius_core::tools::Tool;
+//! use clawdius_core::tools::ToolSpec;
 //! use serde_json::json;
 //!
-//! let tool = Tool {
+//! let tool = ToolSpec {
 //!     name: "read_file".to_string(),
 //!     description: "Read contents of a file".to_string(),
 //!     parameters: json!({
@@ -90,7 +90,7 @@ use serde::{Deserialize, Serialize};
 
 /// Tool definition
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Tool {
+pub struct ToolSpec {
     /// Tool name
     pub name: String,
     /// Tool description

@@ -919,86 +919,8 @@ fn fn_body_no_opening_brace() {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// API-key masking (mirrors config_cmd.rs)
+// API-key masking tests moved to config_cmd.rs unit tests (DUP-07)
 // ═══════════════════════════════════════════════════════════════════
-
-fn mask_api_keys(toml: &str) -> String {
-    let mut result = toml.to_string();
-    if let Ok(re) = regex::Regex::new(r#"(\w*_?key\w*\s*=\s*)"[^"]{8,}""#) {
-        result = re.replace_all(&result, r#"${1}"***""#).to_string();
-    }
-    result
-}
-
-#[test]
-fn mask_long_key() {
-    let input = r#"api_key = "sk-12345678abcdef""#;
-    assert_eq!(mask_api_keys(input), r#"api_key = "***""#);
-}
-
-#[test]
-fn mask_short_key_preserved() {
-    let input = r#"api_key = "short""#;
-    assert_eq!(mask_api_keys(input), input);
-}
-
-#[test]
-fn mask_no_key_field_preserved() {
-    let input = r#"model = "claude-3""#;
-    assert_eq!(mask_api_keys(input), input);
-}
-
-#[test]
-fn mask_multiple_keys() {
-    let input = r#"api_key = "sk-12345678"
-openai_key = "sk-87654321abcdef""#;
-    let result = mask_api_keys(input);
-    assert!(result.contains(r#"api_key = "***""#));
-    assert!(result.contains(r#"openai_key = "***""#));
-    assert!(!result.contains("sk-"));
-}
-
-#[test]
-fn mask_preserves_other_fields() {
-    let input = r#"provider = "anthropic"
-model = "claude-3-opus"
-api_key = "sk-12345678""#;
-    let result = mask_api_keys(input);
-    assert!(result.contains("provider = \"anthropic\""));
-    assert!(result.contains("model = \"claude-3-opus\""));
-}
-
-#[test]
-fn mask_empty_string() {
-    assert_eq!(mask_api_keys(""), "");
-}
-
-#[test]
-fn mask_exactly_8_chars() {
-    let input = r#"api_key = "12345678""#;
-    let result = mask_api_keys(input);
-    assert_eq!(result, r#"api_key = "***""#);
-}
-
-#[test]
-fn mask_7_chars_preserved() {
-    let input = r#"api_key = "1234567""#;
-    assert_eq!(mask_api_keys(input), input);
-}
-
-#[test]
-fn mask_underscore_key_name() {
-    let input = r#"my_api_key = "abcdefghij""#;
-    let result = mask_api_keys(input);
-    assert!(result.contains("my_api_key = \"***\""));
-}
-
-#[test]
-fn mask_key_with_prefix() {
-    let input = r#"anthropic_api_key = "sk-longkey12345""#;
-    let result = mask_api_keys(input);
-    assert!(result.contains("anthropic_api_key = \"***\""));
-}
 
 // ═══════════════════════════════════════════════════════════════════
 // Exclude patterns parsing (mirrors analyze.rs)

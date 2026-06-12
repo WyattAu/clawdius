@@ -53,7 +53,7 @@ use crate::error::GatewayError;
 
 /// Configuration for the webhook adapter.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct WebhookConfig {
+pub struct WebhookAdapterConfig {
     /// The URL to POST outgoing messages to.
     pub outgoing_url: String,
 
@@ -67,7 +67,7 @@ pub struct WebhookConfig {
     pub listen_port: u16,
 }
 
-impl Default for WebhookConfig {
+impl Default for WebhookAdapterConfig {
     fn default() -> Self {
         Self {
             outgoing_url: String::new(),
@@ -133,7 +133,7 @@ pub struct WebhookOutgoing {
 /// that don't have a dedicated adapter.
 pub struct WebhookAdapter {
     /// Webhook-specific configuration.
-    config: WebhookConfig,
+    config: WebhookAdapterConfig,
     /// Counter of messages successfully processed.
     messages_processed: std::sync::atomic::AtomicU64,
     /// Counter of errors encountered.
@@ -161,7 +161,7 @@ pub struct WebhookAdapter {
 impl WebhookAdapter {
     /// Create a new webhook adapter.
     #[must_use]
-    pub fn new(config: WebhookConfig) -> Self {
+    pub fn new(config: WebhookAdapterConfig) -> Self {
         Self {
             config,
             messages_processed: std::sync::atomic::AtomicU64::new(0),
@@ -180,7 +180,7 @@ impl WebhookAdapter {
             .as_ref()
             .ok_or_else(|| GatewayError::Config("WEBHOOK_URL not set".to_string()))?;
 
-        let webhook_config = WebhookConfig {
+        let webhook_config = WebhookAdapterConfig {
             outgoing_url: outgoing_url.clone(),
             secret: config.webhook_secret.clone(),
             #[allow(clippy::cast_possible_truncation)]
@@ -497,7 +497,7 @@ mod tests {
 
     #[test]
     fn test_webhook_config_default() {
-        let config = WebhookConfig::default();
+        let config = WebhookAdapterConfig::default();
         assert_eq!(config.outgoing_url, "");
         assert!(config.secret.is_none());
         assert_eq!(config.listen_port, 8080);
@@ -505,9 +505,9 @@ mod tests {
 
     #[test]
     fn test_webhook_adapter_new() {
-        let config = WebhookConfig {
+        let config = WebhookAdapterConfig {
             outgoing_url: "https://example.com/hook".to_string(),
-            ..WebhookConfig::default()
+            ..WebhookAdapterConfig::default()
         };
         let adapter = WebhookAdapter::new(config);
         assert_eq!(adapter.platform(), Platform::Webhook);
@@ -611,9 +611,9 @@ mod tests {
 
     #[test]
     fn test_convert_payload_minimal() {
-        let config = WebhookConfig {
+        let config = WebhookAdapterConfig {
             outgoing_url: "https://example.com".to_string(),
-            ..WebhookConfig::default()
+            ..WebhookAdapterConfig::default()
         };
         let adapter = WebhookAdapter::new(config);
         let payload = WebhookIncoming {
@@ -635,9 +635,9 @@ mod tests {
 
     #[test]
     fn test_convert_payload_with_user_and_chat() {
-        let config = WebhookConfig {
+        let config = WebhookAdapterConfig {
             outgoing_url: "https://example.com".to_string(),
-            ..WebhookConfig::default()
+            ..WebhookAdapterConfig::default()
         };
         let adapter = WebhookAdapter::new(config);
         let payload = WebhookIncoming {
@@ -664,9 +664,9 @@ mod tests {
 
     #[test]
     fn test_convert_payload_empty_text() {
-        let config = WebhookConfig {
+        let config = WebhookAdapterConfig {
             outgoing_url: "https://example.com".to_string(),
-            ..WebhookConfig::default()
+            ..WebhookAdapterConfig::default()
         };
         let adapter = WebhookAdapter::new(config);
         let payload = WebhookIncoming {
@@ -682,9 +682,9 @@ mod tests {
 
     #[test]
     fn test_convert_payload_unicode() {
-        let config = WebhookConfig {
+        let config = WebhookAdapterConfig {
             outgoing_url: "https://example.com".to_string(),
-            ..WebhookConfig::default()
+            ..WebhookAdapterConfig::default()
         };
         let adapter = WebhookAdapter::new(config);
         let payload = WebhookIncoming {
@@ -700,10 +700,10 @@ mod tests {
 
     #[test]
     fn test_sign_payload_without_secret() {
-        let config = WebhookConfig {
+        let config = WebhookAdapterConfig {
             outgoing_url: "https://example.com".to_string(),
             secret: None,
-            ..WebhookConfig::default()
+            ..WebhookAdapterConfig::default()
         };
         let adapter = WebhookAdapter::new(config);
         assert!(adapter.sign_payload(b"hello").is_none());
@@ -711,10 +711,10 @@ mod tests {
 
     #[test]
     fn test_sign_payload_with_secret() {
-        let config = WebhookConfig {
+        let config = WebhookAdapterConfig {
             outgoing_url: "https://example.com".to_string(),
             secret: Some("mysecret".to_string()),
-            ..WebhookConfig::default()
+            ..WebhookAdapterConfig::default()
         };
         let adapter = WebhookAdapter::new(config);
         let sig = adapter.sign_payload(b"hello").unwrap();
@@ -724,9 +724,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_webhook_start_stop_lifecycle() {
-        let config = WebhookConfig {
+        let config = WebhookAdapterConfig {
             outgoing_url: "https://example.com".to_string(),
-            ..WebhookConfig::default()
+            ..WebhookAdapterConfig::default()
         };
         let adapter = WebhookAdapter::new(config);
         assert!(!adapter.is_running());
@@ -740,9 +740,9 @@ mod tests {
 
     #[test]
     fn test_webhook_health_stopped() {
-        let config = WebhookConfig {
+        let config = WebhookAdapterConfig {
             outgoing_url: "https://example.com".to_string(),
-            ..WebhookConfig::default()
+            ..WebhookAdapterConfig::default()
         };
         let adapter = WebhookAdapter::new(config);
         let health = adapter.health();

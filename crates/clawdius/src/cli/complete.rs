@@ -15,7 +15,7 @@ pub(super) async fn handle_complete(
     use clawdius_core::completions::{
         CompletionProviderTrait, CompletionRequest, InlineCompletionProvider, LlmCompletionConfig,
     };
-    use clawdius_core::llm::{create_provider, LlmConfig};
+    use clawdius_core::llm::{create_provider, ResolvedLlmConfig};
     use clawdius_core::lsp::Position;
 
     let content = std::fs::read_to_string(&file)
@@ -30,7 +30,7 @@ pub(super) async fn handle_complete(
     });
 
     let config = load_config(config_path.as_deref())?;
-    let mut llm_config = LlmConfig::from_config(&config.llm, &provider)?;
+    let mut llm_config = ResolvedLlmConfig::from_config(&config.llm, &provider)?;
     if let Some(m) = model {
         llm_config.model = m;
     }

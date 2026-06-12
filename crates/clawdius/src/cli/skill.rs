@@ -103,7 +103,7 @@ pub(super) async fn handle_skill(
                 .unwrap_or("anthropic");
 
             let optional_llm: Option<Arc<dyn LlmClient>> =
-                clawdius_core::llm::LlmConfig::from_config(&config.llm, provider_name)
+                clawdius_core::llm::ResolvedLlmConfig::from_config(&config.llm, provider_name)
                     .ok()
                     .and_then(|llm_cfg| clawdius_core::llm::create_provider(&llm_cfg).ok())
                     .map(|p| Arc::new(p) as Arc<dyn LlmClient>);

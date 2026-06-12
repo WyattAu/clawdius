@@ -47,8 +47,8 @@ fn api_key() -> String {
     })
 }
 
-fn make_config(model: &str) -> LlmConfig {
-    LlmConfig {
+fn make_config(model: &str) -> ResolvedLlmConfig {
+    ResolvedLlmConfig {
         provider: "openrouter".to_string(),
         model: model.to_string(),
         api_key: Some(api_key()),

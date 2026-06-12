@@ -18,7 +18,7 @@ pub(super) async fn handle_server(host: &str, port: u16) -> anyhow::Result<()> {
         .default_provider
         .as_deref()
         .unwrap_or("anthropic");
-    match clawdius_core::llm::LlmConfig::from_config(&config.llm, provider_name)
+    match clawdius_core::llm::ResolvedLlmConfig::from_config(&config.llm, provider_name)
         .and_then(|llm_config| clawdius_core::llm::create_provider(&llm_config))
     {
         Ok(provider) => {

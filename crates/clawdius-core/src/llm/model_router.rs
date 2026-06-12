@@ -21,7 +21,7 @@ use tokio::sync::{mpsc, Mutex};
 
 use crate::error::Result;
 use crate::llm::providers::{ChatWithToolsResult, LlmClient, Tool, ToolCall};
-use crate::llm::{ChatMessage, ChatRole, LlmConfig};
+use crate::llm::{ChatMessage, ChatRole, ResolvedLlmConfig};
 use crate::llm::create_provider;
 
 /// Task type for routing decisions.
@@ -364,7 +364,7 @@ pub struct ModelRouter {
 
 impl ModelRouter {
     /// Create a new ModelRouter with default configuration.
-    pub fn new(default_config: &LlmConfig) -> Result<Self> {
+    pub fn new(default_config: &ResolvedLlmConfig) -> Result<Self> {
         let default_rule = RoutingRule::new(
             TaskType::Chat,
             &default_config.provider,
@@ -388,7 +388,7 @@ impl ModelRouter {
     }
 
     /// Create with budget limit.
-    pub fn with_budget(default_config: &LlmConfig, budget_usd: f64) -> Result<Self> {
+    pub fn with_budget(default_config: &ResolvedLlmConfig, budget_usd: f64) -> Result<Self> {
         let mut router = Self::new(default_config)?;
         router.cost_tracker = CostTracker::new(Some(budget_usd));
         Ok(router)
@@ -441,7 +441,7 @@ impl ModelRouter {
         }
 
         // Create new provider
-        let mut config = LlmConfig {
+        let mut config = ResolvedLlmConfig {
             provider: rule.provider.clone(),
             model: rule.model.clone(),
             api_key: rule.api_key.clone().or_else(|| {
@@ -453,7 +453,7 @@ impl ModelRouter {
 
         // Read from env if no explicit key
         if config.api_key.is_none() {
-            if let Ok(env_config) = LlmConfig::from_env(&rule.provider) {
+            if let Ok(env_config) = ResolvedLlmConfig::from_env(&rule.provider) {
                 config.api_key = env_config.api_key;
                 config.base_url = env_config.base_url.or(config.base_url);
             }
@@ -754,7 +754,7 @@ mod tests {
 
     #[test]
     fn test_estimate_cost() {
-        let config = LlmConfig {
+        let config = ResolvedLlmConfig {
             provider: "zai".to_string(),
             model: "glm-4.6".to_string(),
             api_key: None,
@@ -771,7 +771,7 @@ mod tests {
     #[test]
     fn test_cost_report() {
         let rt = tokio::runtime::Runtime::new().unwrap();
-        let config = LlmConfig {
+        let config = ResolvedLlmConfig {
             provider: "zai".to_string(),
             model: "glm-4.6".to_string(),
             api_key: None,

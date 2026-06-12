@@ -4,7 +4,7 @@ use crate::graph_rag::languages::{detect_language, supported_extensions};
 use crate::graph_rag::parser::CodeParser;
 use crate::graph_rag::store::GraphStore;
 use crate::llm::providers::LlmClient;
-use crate::llm::{ChatMessage, ChatRole, LlmConfig};
+use crate::llm::{ChatMessage, ChatRole, ResolvedLlmConfig};
 use crate::tools::web_search::{SearchProvider, WebSearchTool};
 use std::sync::LazyLock;
 use walkdir::WalkDir;
@@ -411,7 +411,7 @@ fn tool_generate_code(args: &serde_json::Value) -> McpToolResult {
 
     let provider_name = std::env::var("CLAWDIUS_PROVIDER").unwrap_or_else(|_| "anthropic".into());
 
-    let config = match LlmConfig::from_env(&provider_name) {
+    let config = match ResolvedLlmConfig::from_env(&provider_name) {
         Ok(c) => c,
         Err(e) => {
             return McpToolResult::error(format!(

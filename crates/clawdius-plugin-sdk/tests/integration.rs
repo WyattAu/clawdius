@@ -8,7 +8,7 @@ use std::sync::Arc;
 use clawdius_plugin_sdk::echo_tool::{DummyTool, EchoTool};
 use clawdius_plugin_sdk::error::PluginError;
 use clawdius_plugin_sdk::prelude::*;
-use clawdius_plugin_sdk::registry::{ToolContext, ToolInvocation, ToolResult};
+use clawdius_plugin_sdk::registry::{PluginToolContext, ToolInvocation, ToolResult};
 use clawdius_plugin_sdk::simple::SimplePlugin;
 use clawdius_plugin_sdk::tool::Tool;
 use serde_json::json;
@@ -66,7 +66,7 @@ fn echo_tool_execute_success() {
     let invocation = ToolInvocation {
         name: "echo".into(),
         params: json!({ "message": "hi" }),
-        context: ToolContext {
+        context: PluginToolContext {
             session_id: None,
             plugin_name: "test".into(),
         },
@@ -82,7 +82,7 @@ fn echo_tool_execute_with_prefix() {
     let invocation = ToolInvocation {
         name: "echo".into(),
         params: json!({ "message": "hello" }),
-        context: ToolContext {
+        context: PluginToolContext {
             session_id: None,
             plugin_name: "test".into(),
         },
@@ -100,7 +100,7 @@ fn dummy_tool_returns_fixed_response() {
     let invocation = ToolInvocation {
         name: "dummy".into(),
         params: json!({}),
-        context: ToolContext {
+        context: PluginToolContext {
             session_id: None,
             plugin_name: "test".into(),
         },
@@ -184,7 +184,7 @@ fn registry_invoke_trait_tool() {
         .invoke(
             "echo",
             json!({ "message": "test" }),
-            ToolContext {
+            PluginToolContext {
                 session_id: Some("sess1".into()),
                 plugin_name: "test".into(),
             },
@@ -197,7 +197,7 @@ fn registry_invoke_trait_tool() {
 fn registry_invoke_missing_tool() {
     let registry = ToolRegistry::new();
     let err = registry
-        .invoke("nope", json!({}), ToolContext::default())
+        .invoke("nope", json!({}), PluginToolContext::default())
         .expect_err("should fail");
     assert!(matches!(err, PluginError::ToolNotFound(_)));
 }
@@ -360,7 +360,7 @@ fn declare_plugin_macro_basic() {
         .invoke(
             "greet",
             json!({}),
-            ToolContext {
+            PluginToolContext {
                 session_id: None,
                 plugin_name: "macro-test".into(),
             },

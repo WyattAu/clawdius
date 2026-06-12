@@ -107,7 +107,7 @@ async fn generate_commit_message(
     config_path: Option<&PathBuf>,
 ) -> anyhow::Result<String> {
     use clawdius_core::llm::providers::LlmClient;
-    use clawdius_core::llm::{create_provider, ChatMessage, ChatRole, LlmConfig};
+    use clawdius_core::llm::{create_provider, ChatMessage, ChatRole, ResolvedLlmConfig};
 
     let config = load_config(config_path.map(PathBuf::as_path))?;
     let provider_name = config
@@ -115,7 +115,7 @@ async fn generate_commit_message(
         .default_provider
         .clone()
         .unwrap_or_else(|| "anthropic".to_string());
-    let llm_config = LlmConfig::from_config(&config.llm, &provider_name)?;
+    let llm_config = ResolvedLlmConfig::from_config(&config.llm, &provider_name)?;
     let llm_client =
         create_provider(&llm_config).map_err(|_| anyhow::anyhow!("Failed to create LLM client"))?;
 

@@ -154,14 +154,14 @@ async fn run_server() -> anyhow::Result<()> {
 fn create_llm_client(
     config: &clawdius_core::Config,
 ) -> Option<std::sync::Arc<dyn clawdius_core::llm::LlmClient>> {
-    use clawdius_core::llm::{create_provider, LlmConfig};
+    use clawdius_core::llm::{create_provider, ResolvedLlmConfig};
 
     let provider_name = match &config.llm.default_provider {
         Some(p) if !p.is_empty() => p.as_str(),
         _ => return None,
     };
 
-    let llm_config = match LlmConfig::from_config(&config.llm, provider_name) {
+    let llm_config = match ResolvedLlmConfig::from_config(&config.llm, provider_name) {
         Ok(c) => c,
         Err(e) => {
             eprintln!("Warning: failed to create LLM config for '{provider_name}': {e}");

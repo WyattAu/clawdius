@@ -56,7 +56,7 @@ mod provider_config_tests {
 
     #[test]
     fn test_anthropic_config_from_values() {
-        let config = clawdius_core::llm::LlmConfig {
+        let config = clawdius_core::llm::ResolvedLlmConfig {
             provider: "anthropic".to_string(),
             model: "claude-3-5-sonnet".to_string(),
             api_key: Some("test-api-key".to_string()),
@@ -70,7 +70,7 @@ mod provider_config_tests {
 
     #[test]
     fn test_anthropic_config_custom_model() {
-        let config = clawdius_core::llm::LlmConfig {
+        let config = clawdius_core::llm::ResolvedLlmConfig {
             provider: "anthropic".to_string(),
             model: "claude-3-opus".to_string(),
             api_key: Some("test-api-key".to_string()),
@@ -84,7 +84,7 @@ mod provider_config_tests {
 
     #[test]
     fn test_anthropic_config_missing_api_key() {
-        let config = clawdius_core::llm::LlmConfig {
+        let config = clawdius_core::llm::ResolvedLlmConfig {
             provider: "anthropic".to_string(),
             model: "claude-3-5-sonnet".to_string(),
             api_key: None,
@@ -101,7 +101,7 @@ mod provider_config_tests {
 
     #[test]
     fn test_openai_config_from_values() {
-        let config = clawdius_core::llm::LlmConfig {
+        let config = clawdius_core::llm::ResolvedLlmConfig {
             provider: "openai".to_string(),
             model: "gpt-4o".to_string(),
             api_key: Some("test-api-key".to_string()),
@@ -115,7 +115,7 @@ mod provider_config_tests {
 
     #[test]
     fn test_openai_config_custom_model() {
-        let config = clawdius_core::llm::LlmConfig {
+        let config = clawdius_core::llm::ResolvedLlmConfig {
             provider: "openai".to_string(),
             model: "gpt-4-turbo".to_string(),
             api_key: Some("test-api-key".to_string()),
@@ -129,7 +129,7 @@ mod provider_config_tests {
 
     #[test]
     fn test_openai_config_missing_api_key() {
-        let config = clawdius_core::llm::LlmConfig {
+        let config = clawdius_core::llm::ResolvedLlmConfig {
             provider: "openai".to_string(),
             model: "gpt-4o".to_string(),
             api_key: None,
@@ -143,7 +143,7 @@ mod provider_config_tests {
 
     #[test]
     fn test_ollama_config_from_values() {
-        let config = clawdius_core::llm::LlmConfig {
+        let config = clawdius_core::llm::ResolvedLlmConfig {
             provider: "ollama".to_string(),
             model: "llama3.2".to_string(),
             api_key: None,
@@ -157,7 +157,7 @@ mod provider_config_tests {
 
     #[test]
     fn test_ollama_config_custom_model() {
-        let config = clawdius_core::llm::LlmConfig {
+        let config = clawdius_core::llm::ResolvedLlmConfig {
             provider: "ollama".to_string(),
             model: "llama2".to_string(),
             api_key: None,
@@ -171,7 +171,7 @@ mod provider_config_tests {
 
     #[test]
     fn test_ollama_config_default_base_url() {
-        let config = clawdius_core::llm::LlmConfig {
+        let config = clawdius_core::llm::ResolvedLlmConfig {
             provider: "ollama".to_string(),
             model: "llama3.2".to_string(),
             api_key: None,
@@ -185,7 +185,7 @@ mod provider_config_tests {
 
     #[test]
     fn test_unknown_provider_error() {
-        let config = clawdius_core::llm::LlmConfig {
+        let config = clawdius_core::llm::ResolvedLlmConfig {
             provider: "unknown-provider".to_string(),
             model: "model".to_string(),
             api_key: Some("key".to_string()),
@@ -217,7 +217,7 @@ mod provider_config_tests {
 
     #[test]
     fn test_provider_token_counting() {
-        let config = clawdius_core::llm::LlmConfig {
+        let config = clawdius_core::llm::ResolvedLlmConfig {
             provider: "anthropic".to_string(),
             model: "claude-3-5-sonnet".to_string(),
             api_key: Some("test-key".to_string()),
@@ -886,7 +886,7 @@ mod mock_llm_client_tests {
 mod llm_config_tests {
     #[test]
     fn test_llm_config_serialization() {
-        let config = clawdius_core::llm::LlmConfig {
+        let config = clawdius_core::llm::ResolvedLlmConfig {
             provider: "anthropic".to_string(),
             model: "claude-3-5-sonnet".to_string(),
             api_key: Some("secret-key".to_string()),
@@ -908,7 +908,7 @@ mod llm_config_tests {
             "max_tokens": 8192
         }"#;
 
-        let config: clawdius_core::llm::LlmConfig = serde_json::from_str(json).unwrap();
+        let config: clawdius_core::llm::ResolvedLlmConfig = serde_json::from_str(json).unwrap();
         assert_eq!(config.provider, "openai");
         assert_eq!(config.model, "gpt-4o");
         assert_eq!(config.max_tokens, 8192);
@@ -927,7 +927,7 @@ mod llm_config_tests {
 
     #[test]
     fn test_create_provider_with_retry() {
-        let config = clawdius_core::llm::LlmConfig {
+        let config = clawdius_core::llm::ResolvedLlmConfig {
             provider: "anthropic".to_string(),
             model: "claude-3-5-sonnet".to_string(),
             api_key: Some("test-key".to_string()),
@@ -943,7 +943,7 @@ mod llm_config_tests {
     fn test_create_provider_with_custom_retry() {
         use clawdius_core::config::{RetryCondition, RetryConfig};
 
-        let config = clawdius_core::llm::LlmConfig {
+        let config = clawdius_core::llm::ResolvedLlmConfig {
             provider: "anthropic".to_string(),
             model: "claude-3-5-sonnet".to_string(),
             api_key: Some("test-key".to_string()),

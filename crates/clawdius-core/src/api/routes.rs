@@ -24,12 +24,12 @@ pub struct AgentRequest {
 pub struct AgentResponse {
     pub response: String,
     pub session_id: String,
-    pub tool_calls: Vec<ToolCallInfo>,
+    pub tool_calls: Vec<ToolCallSummary>,
     pub iterations: usize,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ToolCallInfo {
+pub struct ToolCallSummary {
     pub name: String,
     pub result_summary: String,
 }

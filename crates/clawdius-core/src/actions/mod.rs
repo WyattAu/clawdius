@@ -6,7 +6,6 @@
 pub mod docs;
 pub mod refactor;
 pub mod tests;
-pub mod traits;
 
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;

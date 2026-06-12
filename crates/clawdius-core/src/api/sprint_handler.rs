@@ -99,9 +99,9 @@ pub struct ExecuteSkillRequest {
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
-/// Create a minimal LlmConfig for test/stub use.
-fn stub_llm_config() -> crate::llm::LlmConfig {
-    crate::llm::LlmConfig {
+/// Create a minimal ResolvedLlmConfig for test/stub use.
+fn stub_llm_config() -> crate::llm::ResolvedLlmConfig {
+    crate::llm::ResolvedLlmConfig {
         provider: "openrouter".to_string(),
         model: "default".to_string(),
         api_key: None,

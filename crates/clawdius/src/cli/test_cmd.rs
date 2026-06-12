@@ -35,7 +35,7 @@ pub(super) async fn handle_test(
         match async {
             let test_generator =
                 GenerateTests::new(std::sync::Arc::new(clawdius_core::llm::create_provider(
-                    &clawdius_core::llm::LlmConfig::from_env("anthropic")?,
+                    &clawdius_core::llm::ResolvedLlmConfig::from_env("anthropic")?,
                 )?));
 
             let func = extract_function_from_code(&code, func_name, &language)?;

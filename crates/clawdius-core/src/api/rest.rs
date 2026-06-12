@@ -26,7 +26,7 @@ use crate::api::gateway::RateLimitConfig;
 use crate::api::metrics_handler;
 use crate::api::rate_limit::{rate_limit_middleware, ApiRateLimiter};
 use crate::api::routes::{
-    AgentRequest, AgentResponse, ChatRequest, ChatResponse, HealthResponse, ToolCallInfo,
+    AgentRequest, AgentResponse, ChatRequest, ChatResponse, HealthResponse, ToolCallSummary,
 };
 use crate::api::sprint_handler::{
     execute_skill, generate_commit_message, get_sprint_session, list_skills, list_sprint_sessions,
@@ -653,7 +653,7 @@ pub async fn agent_handler(
         content: request.message.clone(),
     });
 
-    let mut all_tool_calls: Vec<ToolCallInfo> = Vec::new();
+    let mut all_tool_calls: Vec<ToolCallSummary> = Vec::new();
     let mut iterations = 0;
 
     for _ in 0..MAX_AGENT_ITERATIONS {
@@ -708,7 +708,7 @@ pub async fn agent_handler(
             } else {
                 result.clone()
             };
-            all_tool_calls.push(ToolCallInfo {
+            all_tool_calls.push(ToolCallSummary {
                 name: tc.name.clone(),
                 result_summary: summary,
             });

@@ -148,13 +148,11 @@ def allPlatforms : List Platform := [
 theorem platform_count_correct :
     allPlatforms.length = 9 := by
   simp [allPlatforms]
-  decide
 
 -- Property 13: All platforms are distinct
 theorem all_platforms_distinct :
     allPlatforms.Nodup := by
   simp [allPlatforms]
-  decide
 
 -- Property 14: Rate counter count is always non-negative
 theorem rate_counter_nonneg (counter : RateCounter) :
@@ -165,7 +163,6 @@ theorem rate_counter_nonneg (counter : RateCounter) :
 theorem incremented_greater (counter : RateCounter) :
     (incrementCounter counter).count > counter.count := by
   simp [incrementCounter]
-  omega
 
 -- Property 16: Routing is deterministic (same input, same output)
 theorem routing_deterministic (msg : IncomingMessage) (tid sid : String) :

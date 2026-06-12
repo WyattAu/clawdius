@@ -16,13 +16,13 @@
 //! ## Anthropic (Claude)
 //!
 //! ```rust,no_run
-//! use clawdius_core::llm::{LlmConfig, create_provider, ChatMessage, ChatRole};
+//! use clawdius_core::llm::{ResolvedLlmConfig, create_provider, ChatMessage, ChatRole};
 //! use clawdius_core::llm::providers::LlmClient;
 //!
 //! # #[tokio::main]
 //! # async fn main() -> clawdius_core::Result<()> {
 //! // Requires ANTHROPIC_API_KEY environment variable
-//! let config = LlmConfig::from_env("anthropic")?;
+//! let config = ResolvedLlmConfig::from_env("anthropic")?;
 //! let provider = create_provider(&config)?;
 //!
 //! let messages = vec![ChatMessage {
@@ -38,13 +38,13 @@
 //! ## `OpenAI` (GPT)
 //!
 //! ```rust,no_run
-//! use clawdius_core::llm::{LlmConfig, create_provider, ChatMessage, ChatRole};
+//! use clawdius_core::llm::{ResolvedLlmConfig, create_provider, ChatMessage, ChatRole};
 //! use clawdius_core::llm::providers::LlmClient;
 //!
 //! # #[tokio::main]
 //! # async fn main() -> clawdius_core::Result<()> {
 //! // Requires OPENAI_API_KEY environment variable
-//! let config = LlmConfig::from_env("openai")?;
+//! let config = ResolvedLlmConfig::from_env("openai")?;
 //! let provider = create_provider(&config)?;
 //!
 //! let messages = vec![ChatMessage {
@@ -60,13 +60,13 @@
 //! ## OpenRouter
 //!
 //! ```rust,no_run
-//! use clawdius_core::llm::{LlmConfig, create_provider, ChatMessage, ChatRole};
+//! use clawdius_core::llm::{ResolvedLlmConfig, create_provider, ChatMessage, ChatRole};
 //! use clawdius_core::llm::providers::LlmClient;
 //!
 //! # #[tokio::main]
 //! # async fn main() -> clawdius_core::Result<()> {
 //! // Requires OPENROUTER_API_KEY environment variable
-//! let config = LlmConfig::from_env("openrouter")?;
+//! let config = ResolvedLlmConfig::from_env("openrouter")?;
 //! let provider = create_provider(&config)?;
 //!
 //! let messages = vec![ChatMessage {
@@ -82,13 +82,13 @@
 //! ## Ollama (Local Models)
 //!
 //! ```rust,no_run
-//! use clawdius_core::llm::{LlmConfig, create_provider, ChatMessage, ChatRole};
+//! use clawdius_core::llm::{ResolvedLlmConfig, create_provider, ChatMessage, ChatRole};
 //! use clawdius_core::llm::providers::LlmClient;
 //!
 //! # #[tokio::main]
 //! # async fn main() -> clawdius_core::Result<()> {
 //! // Requires Ollama running locally
-//! let config = LlmConfig::from_env("ollama")?;
+//! let config = ResolvedLlmConfig::from_env("ollama")?;
 //! let provider = create_provider(&config)?;
 //!
 //! let messages = vec![ChatMessage {
@@ -106,13 +106,13 @@
 //! The module provides sophisticated retry logic with exponential backoff:
 //!
 //! ```rust,no_run
-//! use clawdius_core::llm::{LlmConfig, create_provider_with_retry, ChatMessage, ChatRole};
+//! use clawdius_core::llm::{ResolvedLlmConfig, create_provider_with_retry, ChatMessage, ChatRole};
 //! use clawdius_core::config::RetryConfig;
 //! use clawdius_core::llm::providers::LlmClient;
 //!
 //! # #[tokio::main]
 //! # async fn main() -> clawdius_core::Result<()> {
-//! let config = LlmConfig::from_env("anthropic")?;
+//! let config = ResolvedLlmConfig::from_env("anthropic")?;
 //!
 //! // Configure retry behavior
 //! let retry_config = RetryConfig {
@@ -150,13 +150,13 @@
 //! Errors can be checked for retryability:
 //!
 //! ```rust,no_run
-//! use clawdius_core::llm::{LlmConfig, create_provider, ChatMessage, ChatRole};
+//! use clawdius_core::llm::{ResolvedLlmConfig, create_provider, ChatMessage, ChatRole};
 //! use clawdius_core::llm::providers::LlmClient;
 //! use clawdius_core::Error;
 //!
 //! # #[tokio::main]
 //! # async fn main() {
-//! let config = LlmConfig::from_env("anthropic").unwrap();
+//! let config = ResolvedLlmConfig::from_env("anthropic").unwrap();
 //! let provider = create_provider(&config).unwrap();
 //!
 //! let messages = vec![ChatMessage {
@@ -184,11 +184,11 @@
 //! All providers support token counting for context management:
 //!
 //! ```rust,no_run
-//! use clawdius_core::llm::{LlmConfig, create_provider};
+//! use clawdius_core::llm::{ResolvedLlmConfig, create_provider};
 //! use clawdius_core::llm::providers::LlmClient;
 //!
 //! # fn main() -> clawdius_core::Result<()> {
-//! let config = LlmConfig::from_env("anthropic")?;
+//! let config = ResolvedLlmConfig::from_env("anthropic")?;
 //! let provider = create_provider(&config)?;
 //!
 //! let text = "Count the tokens in this text";
@@ -362,7 +362,7 @@ where
 
 /// LLM configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct LlmConfig {
+pub struct ResolvedLlmConfig {
     /// Provider
     pub provider: String,
     /// Model
@@ -415,7 +415,7 @@ impl LlmChatOptions {
     }
 }
 
-impl LlmConfig {
+impl ResolvedLlmConfig {
     pub fn from_env(provider: &str) -> Result<Self> {
         use crate::error::ErrorHelpers;
 
@@ -901,7 +901,7 @@ impl providers::LlmClient for LlmProvider {
     }
 }
 
-pub fn create_provider(config: &LlmConfig) -> Result<LlmProvider> {
+pub fn create_provider(config: &ResolvedLlmConfig) -> Result<LlmProvider> {
     use crate::error::ErrorHelpers;
 
     match config.provider.to_lowercase().as_str() {
@@ -1001,7 +1001,7 @@ pub fn create_provider(config: &LlmConfig) -> Result<LlmProvider> {
 }
 
 pub fn create_provider_with_retry(
-    config: &LlmConfig,
+    config: &ResolvedLlmConfig,
     retry_config: Option<RetryConfig>,
 ) -> Result<LlmClientWithRetry> {
     let provider = create_provider(config)?;

@@ -22,7 +22,7 @@
 use clawdius_core::config::{
     Config, OutputConfig, RetryCondition, RetryConfig, ShellSandboxConfig,
 };
-use clawdius_core::llm::{create_provider, LlmConfig, LlmProvider};
+use clawdius_core::llm::{create_provider, LlmProvider, ResolvedLlmConfig};
 use clawdius_core::output::{
     stream::{ChangeType, StreamWriter},
     OutputFormat, StreamEvent,
@@ -56,7 +56,7 @@ fn with_env_var(key: &str, val: &str, f: impl FnOnce()) {
 #[test]
 fn test_llm_config_from_env_anthropic() {
     with_env_var("ANTHROPIC_API_KEY", "test-anthropic-key", || {
-        let config = LlmConfig::from_env("anthropic").unwrap();
+        let config = ResolvedLlmConfig::from_env("anthropic").unwrap();
         assert_eq!(config.provider, "anthropic");
         assert_eq!(config.model, "claude-3-5-sonnet-20241022");
         assert_eq!(config.api_key, Some("test-anthropic-key".to_string()));
@@ -66,7 +66,7 @@ fn test_llm_config_from_env_anthropic() {
 #[test]
 fn test_llm_config_from_env_openai() {
     with_env_var("OPENAI_API_KEY", "test-openai-key", || {
-        let config = LlmConfig::from_env("openai").unwrap();
+        let config = ResolvedLlmConfig::from_env("openai").unwrap();
         assert_eq!(config.provider, "openai");
         assert_eq!(config.model, "gpt-4o");
         assert_eq!(config.api_key, Some("test-openai-key".to_string()));
@@ -76,7 +76,7 @@ fn test_llm_config_from_env_openai() {
 #[test]
 fn test_llm_config_from_env_ollama() {
     with_env_var("OLLAMA_BASE_URL", "http://localhost:11434", || {
-        let config = LlmConfig::from_env("ollama").unwrap();
+        let config = ResolvedLlmConfig::from_env("ollama").unwrap();
         assert_eq!(config.provider, "ollama");
         assert_eq!(config.model, "llama3.2");
         assert_eq!(config.base_url, Some("http://localhost:11434".to_string()));
@@ -87,7 +87,7 @@ fn test_llm_config_from_env_ollama() {
 fn test_llm_config_missing_key() {
     with_env_var("ANTHROPIC_API_KEY", "", || {
         unsafe { std::env::remove_var("ANTHROPIC_API_KEY") };
-        let result = LlmConfig::from_env("anthropic");
+        let result = ResolvedLlmConfig::from_env("anthropic");
         assert!(result.is_err());
     });
 }
@@ -95,7 +95,7 @@ fn test_llm_config_missing_key() {
 #[test]
 fn test_create_provider_factory_anthropic() {
     with_env_var("ANTHROPIC_API_KEY", "test-key", || {
-        let config = LlmConfig::from_env("anthropic").unwrap();
+        let config = ResolvedLlmConfig::from_env("anthropic").unwrap();
         let provider = create_provider(&config).unwrap();
         match provider {
             LlmProvider::Anthropic(_) => (),
@@ -107,7 +107,7 @@ fn test_create_provider_factory_anthropic() {
 #[test]
 fn test_create_provider_factory_openai() {
     with_env_var("OPENAI_API_KEY", "test-key", || {
-        let config = LlmConfig::from_env("openai").unwrap();
+        let config = ResolvedLlmConfig::from_env("openai").unwrap();
         let provider = create_provider(&config).unwrap();
         match provider {
             LlmProvider::OpenAi(_) => (),
@@ -118,7 +118,7 @@ fn test_create_provider_factory_openai() {
 
 #[test]
 fn test_create_provider_factory_ollama() {
-    let config = LlmConfig {
+    let config = ResolvedLlmConfig {
         provider: "ollama".to_string(),
         model: "llama3.2".to_string(),
         api_key: None,
@@ -134,7 +134,7 @@ fn test_create_provider_factory_ollama() {
 
 #[test]
 fn test_create_provider_factory_unknown() {
-    let config = LlmConfig {
+    let config = ResolvedLlmConfig {
         provider: "unknown".to_string(),
         model: "test".to_string(),
         api_key: None,
@@ -508,7 +508,7 @@ max_tokens = 4096
         std::fs::write(&config_path, config_content).unwrap();
 
         let config = Config::load(&config_path).unwrap();
-        let llm_config = LlmConfig::from_config(&config.llm, "openai").unwrap();
+        let llm_config = ResolvedLlmConfig::from_config(&config.llm, "openai").unwrap();
 
         assert_eq!(llm_config.api_key, Some("env-override-key".to_string()));
     });
@@ -741,7 +741,7 @@ fn test_output_config_defaults() {
 
 #[test]
 fn test_llm_config_serialization() {
-    let config = LlmConfig {
+    let config = ResolvedLlmConfig {
         provider: "anthropic".to_string(),
         model: "claude-3-5-sonnet-20241022".to_string(),
         api_key: Some("test-key".to_string()),
@@ -753,7 +753,7 @@ fn test_llm_config_serialization() {
     assert!(json.contains("anthropic"));
     assert!(json.contains("claude-3-5-sonnet-20241022"));
 
-    let deserialized: LlmConfig = serde_json::from_str(&json).unwrap();
+    let deserialized: ResolvedLlmConfig = serde_json::from_str(&json).unwrap();
     assert_eq!(deserialized.provider, "anthropic");
 }
 

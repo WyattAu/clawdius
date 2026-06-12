@@ -4,6 +4,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::io::{self, Write};
 
+use super::format::ChangeType;
 use super::OutputFormat;
 
 /// Stream event types for real-time output
@@ -105,20 +106,6 @@ pub enum StreamEvent {
     },
 }
 
-/// Change type for file changes
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum ChangeType {
-    /// File created
-    Created,
-    /// File modified
-    Modified,
-    /// File deleted
-    Deleted,
-    /// File renamed
-    Renamed,
-}
-
 /// Final token usage
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct TokenUsageFinal {
@@ -128,6 +115,16 @@ pub struct TokenUsageFinal {
     pub output: usize,
     /// Total tokens
     pub total: usize,
+}
+
+impl From<crate::session::types::TokenUsage> for TokenUsageFinal {
+    fn from(usage: crate::session::types::TokenUsage) -> Self {
+        Self {
+            input: usage.input,
+            output: usage.output,
+            total: usage.input + usage.output,
+        }
+    }
 }
 
 impl StreamEvent {

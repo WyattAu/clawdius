@@ -866,11 +866,11 @@ mod tests {
     #[tokio::test]
     #[ignore]
     async fn test_sprint_with_openrouter() {
-        use crate::llm::{create_provider, LlmConfig};
+        use crate::llm::{create_provider, ResolvedLlmConfig};
 
         let api_key = std::env::var("OPENROUTER_API_KEY").expect("OPENROUTER_API_KEY must be set");
 
-        let config = LlmConfig {
+        let config = ResolvedLlmConfig {
             provider: "openrouter".to_string(),
             model: "google/gemma-3-4b-it:free".to_string(),
             api_key: Some(api_key),
@@ -1106,7 +1106,7 @@ mod tests {
         let config2 = SprintConfig {
             reviewers: vec![crate::agentic::review_engine::ReviewerConfig {
                 name: "Quality".to_string(),
-                llm_config: crate::llm::LlmConfig {
+                llm_config: crate::llm::ResolvedLlmConfig {
                     provider: "openrouter".to_string(),
                     model: "test".to_string(),
                     api_key: None,

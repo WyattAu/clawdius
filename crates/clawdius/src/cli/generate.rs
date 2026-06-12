@@ -21,7 +21,7 @@ pub(super) async fn handle_generate(
         AgenticSystem, ApplyWorkflow, GenerationMode, TaskContext, TaskRequest,
         TestExecutionStrategy, TrustLevel,
     };
-    use clawdius_core::llm::{create_provider, LlmConfig};
+    use clawdius_core::llm::{create_provider, ResolvedLlmConfig};
     use clawdius_core::timeout::TimeoutGuard;
 
     // Set up timeout if specified
@@ -169,7 +169,7 @@ pub(super) async fn handle_generate(
     if show_progress {
         crate::cli_progress::status("Creating LLM client...");
     }
-    let mut llm_config = LlmConfig::from_config(&config.llm, &provider)?;
+    let mut llm_config = ResolvedLlmConfig::from_config(&config.llm, &provider)?;
     if let Some(ref m) = model {
         llm_config.model.clone_from(m);
     }
@@ -258,6 +258,7 @@ pub(super) async fn handle_generate(
                         clawdius_core::agentic::ChangeType::Created => "➕",
                         clawdius_core::agentic::ChangeType::Modified => "✏️",
                         clawdius_core::agentic::ChangeType::Deleted => "🗑️",
+                        clawdius_core::agentic::ChangeType::Renamed => "📋",
                     };
                     println!(
                         "  {} {} ({})",

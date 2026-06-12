@@ -41,7 +41,7 @@ impl ToolResult {
 
 /// Context passed to tool handlers at invocation time.
 #[derive(Debug, Clone, Default)]
-pub struct ToolContext {
+pub struct PluginToolContext {
     /// The ID of the session or conversation invoking the tool.
     pub session_id: Option<String>,
     /// The ID of the plugin that registered this tool.
@@ -56,7 +56,7 @@ pub struct ToolInvocation {
     /// The parameters provided by the caller.
     pub params: serde_json::Value,
     /// Execution context including session and plugin metadata.
-    pub context: ToolContext,
+    pub context: PluginToolContext,
 }
 
 /// A function pointer type for tool handlers.
@@ -202,7 +202,7 @@ impl ToolRegistry {
         &self,
         name: &str,
         params: serde_json::Value,
-        context: ToolContext,
+        context: PluginToolContext,
     ) -> Result<ToolResult, PluginError> {
         match self.tools.get(name) {
             Some(ToolEntry::TraitObj(tool)) => {

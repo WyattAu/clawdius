@@ -11,7 +11,7 @@
 
 use clawdius_core::{
     config::{Config, RetryCondition, RetryConfig, ShellSandboxConfig},
-    llm::{create_provider, ChatMessage, ChatRole, LlmConfig as LlmRuntimeConfig},
+    llm::{create_provider, ChatMessage, ChatRole, ResolvedLlmConfig},
     output::{
         stream::{StreamEvent, StreamWriter},
         OutputFormat,
@@ -27,7 +27,7 @@ fn test_llm_config_from_env_anthropic() {
     unsafe {
         std::env::set_var("ANTHROPIC_API_KEY", "test-anthropic-key");
     }
-    let config = LlmRuntimeConfig::from_env("anthropic").unwrap();
+    let config = ResolvedLlmConfig::from_env("anthropic").unwrap();
     assert_eq!(config.provider, "anthropic");
     assert_eq!(config.model, "claude-3-5-sonnet-20241022");
     assert_eq!(config.api_key, Some("test-anthropic-key".to_string()));
@@ -41,7 +41,7 @@ fn test_llm_config_from_env_openai() {
     unsafe {
         std::env::set_var("OPENAI_API_KEY", "test-openai-key");
     }
-    let config = LlmRuntimeConfig::from_env("openai").unwrap();
+    let config = ResolvedLlmConfig::from_env("openai").unwrap();
     assert_eq!(config.provider, "openai");
     assert_eq!(config.model, "gpt-4o");
     assert_eq!(config.api_key, Some("test-openai-key".to_string()));
@@ -55,7 +55,7 @@ fn test_llm_config_from_env_ollama() {
     unsafe {
         std::env::set_var("OLLAMA_BASE_URL", "http://custom-ollama:11434");
     }
-    let config = LlmRuntimeConfig::from_env("ollama").unwrap();
+    let config = ResolvedLlmConfig::from_env("ollama").unwrap();
     assert_eq!(config.provider, "ollama");
     assert_eq!(config.model, "llama3.2");
     assert_eq!(
@@ -72,7 +72,7 @@ fn test_llm_config_from_env_zai() {
     unsafe {
         std::env::set_var("ZAI_API_KEY", "test-zai-key");
     }
-    let config = LlmRuntimeConfig::from_env("zai").unwrap();
+    let config = ResolvedLlmConfig::from_env("zai").unwrap();
     assert_eq!(config.provider, "zai");
     assert_eq!(config.model, "zai-default");
     assert_eq!(config.api_key, Some("test-zai-key".to_string()));
@@ -86,19 +86,19 @@ fn test_llm_config_missing_key() {
     unsafe {
         std::env::remove_var("ANTHROPIC_API_KEY");
     }
-    let result = LlmRuntimeConfig::from_env("anthropic");
+    let result = ResolvedLlmConfig::from_env("anthropic");
     assert!(result.is_err());
 }
 
 #[test]
 fn test_llm_config_unknown_provider() {
-    let result = LlmRuntimeConfig::from_env("unknown_provider");
+    let result = ResolvedLlmConfig::from_env("unknown_provider");
     assert!(result.is_err());
 }
 
 #[test]
 fn test_create_provider_anthropic() {
-    let config = LlmRuntimeConfig {
+    let config = ResolvedLlmConfig {
         provider: "anthropic".to_string(),
         model: "claude-3-5-sonnet".to_string(),
         api_key: Some("test-key".to_string()),
@@ -111,7 +111,7 @@ fn test_create_provider_anthropic() {
 
 #[test]
 fn test_create_provider_openai() {
-    let config = LlmRuntimeConfig {
+    let config = ResolvedLlmConfig {
         provider: "openai".to_string(),
         model: "gpt-4o".to_string(),
         api_key: Some("test-key".to_string()),
@@ -124,7 +124,7 @@ fn test_create_provider_openai() {
 
 #[test]
 fn test_create_provider_ollama() {
-    let config = LlmRuntimeConfig {
+    let config = ResolvedLlmConfig {
         provider: "ollama".to_string(),
         model: "llama3.2".to_string(),
         api_key: None,
@@ -656,7 +656,7 @@ fn test_llm_runtime_config_custom_model() {
     unsafe {
         std::env::set_var("OPENAI_API_KEY", "test-key");
     }
-    let mut config = LlmRuntimeConfig::from_env("openai").unwrap();
+    let mut config = ResolvedLlmConfig::from_env("openai").unwrap();
     config.model = "gpt-4-turbo".to_string();
 
     assert_eq!(config.model, "gpt-4-turbo");

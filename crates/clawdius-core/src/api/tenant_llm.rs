@@ -4,7 +4,7 @@ use std::sync::{Arc, RwLock};
 
 use serde::{Deserialize, Serialize};
 
-use crate::llm::{create_provider, LlmConfig, LlmProvider};
+use crate::llm::{create_provider, ResolvedLlmConfig, LlmProvider};
 use crate::{Error, Result};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -112,7 +112,7 @@ impl TenantLlmRegistry {
                     });
                 }
 
-                let llm_config = LlmConfig {
+                let llm_config = ResolvedLlmConfig {
                     provider: config.provider.clone(),
                     model: config.model.clone(),
                     api_key: config.api_key.clone(),
@@ -199,7 +199,7 @@ mod tests {
     #[test]
     fn test_set_default_provider() {
         let registry = TenantLlmRegistry::new();
-        let config = LlmConfig {
+        let config = ResolvedLlmConfig {
             provider: "ollama".to_string(),
             model: "llama3.2".to_string(),
             api_key: None,
@@ -235,7 +235,7 @@ mod tests {
     #[test]
     fn test_resolve_default_when_no_tenant() {
         let registry = TenantLlmRegistry::new();
-        let config = LlmConfig {
+        let config = ResolvedLlmConfig {
             provider: "ollama".to_string(),
             model: "llama3.2".to_string(),
             api_key: None,
@@ -250,7 +250,7 @@ mod tests {
     #[test]
     fn test_resolve_default_when_no_config() {
         let registry = TenantLlmRegistry::new();
-        let config = LlmConfig {
+        let config = ResolvedLlmConfig {
             provider: "ollama".to_string(),
             model: "llama3.2".to_string(),
             api_key: None,

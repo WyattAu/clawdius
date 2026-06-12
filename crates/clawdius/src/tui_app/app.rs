@@ -387,8 +387,8 @@ impl App {
             .as_deref()
             .unwrap_or("deepseek");
 
-        let llm_config =
-            llm::LlmConfig::from_config(&self.config.llm, provider_name).map_err(|e| {
+        let llm_config = llm::ResolvedLlmConfig::from_config(&self.config.llm, provider_name)
+            .map_err(|e| {
                 anyhow::anyhow!(
                     "Failed to create LLM config: {e}. Set the appropriate API key \
                  (e.g., DEEPSEEK_API_KEY, ANTHROPIC_API_KEY, OPENAI_API_KEY)."
@@ -1402,16 +1402,17 @@ impl App {
 
         tokio::spawn(async move {
             // Create provider
-            let llm_config =
-                match clawdius_core::llm::LlmConfig::from_config(&config_clone.llm, &provider_name)
-                {
-                    Ok(c) => c,
-                    Err(e) => {
-                        let _ = tx.send(TuiEvent::Error(format!("Config error: {e}"))).await;
-                        let _ = tx.send(TuiEvent::Done).await;
-                        return;
-                    },
-                };
+            let llm_config = match clawdius_core::llm::ResolvedLlmConfig::from_config(
+                &config_clone.llm,
+                &provider_name,
+            ) {
+                Ok(c) => c,
+                Err(e) => {
+                    let _ = tx.send(TuiEvent::Error(format!("Config error: {e}"))).await;
+                    let _ = tx.send(TuiEvent::Done).await;
+                    return;
+                },
+            };
             let provider = match clawdius_core::llm::create_provider(&llm_config) {
                 Ok(p) => p,
                 Err(e) => {
@@ -1509,16 +1510,17 @@ impl App {
         let config_clone = self.config.clone();
 
         tokio::spawn(async move {
-            let llm_config =
-                match clawdius_core::llm::LlmConfig::from_config(&config_clone.llm, &provider_name)
-                {
-                    Ok(c) => c,
-                    Err(e) => {
-                        let _ = tx.send(TuiEvent::Error(format!("Config error: {e}"))).await;
-                        let _ = tx.send(TuiEvent::Done).await;
-                        return;
-                    },
-                };
+            let llm_config = match clawdius_core::llm::ResolvedLlmConfig::from_config(
+                &config_clone.llm,
+                &provider_name,
+            ) {
+                Ok(c) => c,
+                Err(e) => {
+                    let _ = tx.send(TuiEvent::Error(format!("Config error: {e}"))).await;
+                    let _ = tx.send(TuiEvent::Done).await;
+                    return;
+                },
+            };
             let provider = match clawdius_core::llm::create_provider(&llm_config) {
                 Ok(p) => p,
                 Err(e) => {
@@ -1580,16 +1582,17 @@ impl App {
         let config_clone = self.config.clone();
 
         tokio::spawn(async move {
-            let llm_config =
-                match clawdius_core::llm::LlmConfig::from_config(&config_clone.llm, &provider_name)
-                {
-                    Ok(c) => c,
-                    Err(e) => {
-                        let _ = tx.send(TuiEvent::Error(format!("Config error: {e}"))).await;
-                        let _ = tx.send(TuiEvent::Done).await;
-                        return;
-                    },
-                };
+            let llm_config = match clawdius_core::llm::ResolvedLlmConfig::from_config(
+                &config_clone.llm,
+                &provider_name,
+            ) {
+                Ok(c) => c,
+                Err(e) => {
+                    let _ = tx.send(TuiEvent::Error(format!("Config error: {e}"))).await;
+                    let _ = tx.send(TuiEvent::Done).await;
+                    return;
+                },
+            };
             let provider = match clawdius_core::llm::create_provider(&llm_config) {
                 Ok(p) => p,
                 Err(e) => {
@@ -1660,6 +1663,7 @@ impl App {
                                         clawdius_core::agentic::ChangeType::Created => "+",
                                         clawdius_core::agentic::ChangeType::Modified => "~",
                                         clawdius_core::agentic::ChangeType::Deleted => "-",
+                                        clawdius_core::agentic::ChangeType::Renamed => ">",
                                     },
                                     change.path
                                 )))

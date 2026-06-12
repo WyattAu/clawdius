@@ -2,6 +2,7 @@ use super::types::{Message, Session, SessionId, TokenUsage};
 use crate::error::Result;
 use std::fmt;
 
+#[deprecated(since = "1.1.0", note = "Use the async `storage::backend::SessionRepository` instead")]
 pub trait SessionRepository: Send + fmt::Debug {
     fn create_session(&self, session: &Session) -> Result<()>;
     fn load_session(&self, id: &SessionId) -> Result<Option<Session>>;
@@ -13,6 +14,7 @@ pub trait SessionRepository: Send + fmt::Debug {
     fn search_messages(&self, query: &str) -> Result<Vec<(SessionId, Message)>>;
 }
 
+#[allow(deprecated)]
 /// Wrapper that makes any `SessionRepository` (including `!Sync` ones like `SessionStore`)
 /// usable as `Arc<dyn SessionRepository>` by serializing access behind a `Mutex`.
 ///
@@ -20,6 +22,7 @@ pub trait SessionRepository: Send + fmt::Debug {
 /// provides interior mutability via `std::sync::Mutex` so it can be shared across threads.
 pub struct MutexRepository<R>(std::sync::Mutex<R>);
 
+#[allow(deprecated)]
 impl<R: SessionRepository> MutexRepository<R> {
     /// Wrap a repository in a mutex for thread-safe sharing.
     pub const fn new(repo: R) -> Self {
@@ -27,12 +30,14 @@ impl<R: SessionRepository> MutexRepository<R> {
     }
 }
 
+#[allow(deprecated)]
 impl<R: SessionRepository> fmt::Debug for MutexRepository<R> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("MutexRepository").finish_non_exhaustive()
     }
 }
 
+#[allow(deprecated)]
 impl<R: SessionRepository> SessionRepository for MutexRepository<R> {
     fn create_session(&self, session: &Session) -> Result<()> {
         self.0
@@ -85,6 +90,7 @@ impl<R: SessionRepository> SessionRepository for MutexRepository<R> {
 }
 
 #[cfg(test)]
+#[allow(deprecated)]
 mod tests {
     use super::*;
     use crate::session::types::{Message, MessageRole, Session, SessionMeta, TokenUsage};

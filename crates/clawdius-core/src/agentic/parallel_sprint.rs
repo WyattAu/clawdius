@@ -6,7 +6,7 @@
 use crate::agentic::tool_executor::{ShellToolExecutor, ToolExecutor};
 use crate::agentic::{SprintConfig, SprintEngine};
 use crate::llm::providers::LlmClient;
-use crate::llm::LlmConfig;
+use crate::llm::ResolvedLlmConfig;
 use crate::Result;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -65,7 +65,7 @@ pub struct ParallelSprintConfig {
     /// Project root for this sprint
     pub project_root: PathBuf,
     /// LLM configuration for this session
-    pub llm_config: LlmConfig,
+    pub llm_config: ResolvedLlmConfig,
     /// Priority (lower = runs first). Default: 0.
     pub priority: i32,
     /// Maximum concurrent sessions. Default: 4.
@@ -75,7 +75,7 @@ pub struct ParallelSprintConfig {
 }
 
 impl ParallelSprintConfig {
-    pub fn new(task_description: &str, llm_config: LlmConfig) -> Self {
+    pub fn new(task_description: &str, llm_config: ResolvedLlmConfig) -> Self {
         Self {
             session_id: None,
             session_name: format!("Sprint-{}", uuid_v4_placeholder()),
@@ -676,7 +676,7 @@ mod tests {
     fn test_parallel_sprint_config_new() {
         let config = ParallelSprintConfig::new(
             "Build feature",
-            crate::llm::LlmConfig {
+            crate::llm::ResolvedLlmConfig {
                 provider: "openrouter".to_string(),
                 model: "test".to_string(),
                 api_key: None,
@@ -695,7 +695,7 @@ mod tests {
     fn test_parallel_sprint_config_builder() {
         let config = ParallelSprintConfig::new(
             "Test task",
-            crate::llm::LlmConfig {
+            crate::llm::ResolvedLlmConfig {
                 provider: "openrouter".to_string(),
                 model: "test".to_string(),
                 api_key: None,
@@ -717,7 +717,7 @@ mod tests {
             session_name: "Test Sprint".to_string(),
             task_description: "Do stuff".to_string(),
             project_root: PathBuf::from("/tmp"),
-            llm_config: crate::llm::LlmConfig {
+            llm_config: crate::llm::ResolvedLlmConfig {
                 provider: "openrouter".to_string(),
                 model: "test".to_string(),
                 api_key: None,
@@ -741,7 +741,7 @@ mod tests {
         let id = manager
             .submit(ParallelSprintConfig::new(
                 "Task 1",
-                crate::llm::LlmConfig {
+                crate::llm::ResolvedLlmConfig {
                     provider: "openrouter".to_string(),
                     model: "test".to_string(),
                     api_key: None,
@@ -755,7 +755,7 @@ mod tests {
         let id2 = manager
             .submit(ParallelSprintConfig::new(
                 "Task 2",
-                crate::llm::LlmConfig {
+                crate::llm::ResolvedLlmConfig {
                     provider: "openrouter".to_string(),
                     model: "test".to_string(),
                     api_key: None,
@@ -778,7 +778,7 @@ mod tests {
         let id = manager
             .submit(ParallelSprintConfig::new(
                 "Task",
-                crate::llm::LlmConfig {
+                crate::llm::ResolvedLlmConfig {
                     provider: "openrouter".to_string(),
                     model: "test".to_string(),
                     api_key: None,
@@ -808,7 +808,7 @@ mod tests {
         let _ = manager
             .submit(ParallelSprintConfig::new(
                 "Task",
-                crate::llm::LlmConfig {
+                crate::llm::ResolvedLlmConfig {
                     provider: "openrouter".to_string(),
                     model: "test".to_string(),
                     api_key: None,
@@ -822,7 +822,7 @@ mod tests {
         let _ = manager
             .submit(ParallelSprintConfig::new(
                 "Task 2",
-                crate::llm::LlmConfig {
+                crate::llm::ResolvedLlmConfig {
                     provider: "openrouter".to_string(),
                     model: "test".to_string(),
                     api_key: None,
@@ -841,7 +841,7 @@ mod tests {
         let id = manager
             .submit(ParallelSprintConfig::new(
                 "Task",
-                crate::llm::LlmConfig {
+                crate::llm::ResolvedLlmConfig {
                     provider: "openrouter".to_string(),
                     model: "test".to_string(),
                     api_key: None,
@@ -878,7 +878,7 @@ mod tests {
         let id = manager
             .submit(ParallelSprintConfig::new(
                 "Task",
-                crate::llm::LlmConfig {
+                crate::llm::ResolvedLlmConfig {
                     provider: "openrouter".to_string(),
                     model: "test".to_string(),
                     api_key: None,
@@ -906,7 +906,7 @@ mod tests {
         let id = manager
             .submit(ParallelSprintConfig::new(
                 "Task",
-                crate::llm::LlmConfig {
+                crate::llm::ResolvedLlmConfig {
                     provider: "openrouter".to_string(),
                     model: "test".to_string(),
                     api_key: None,
@@ -931,7 +931,7 @@ mod tests {
         let id = manager
             .submit(ParallelSprintConfig::new(
                 "GetTest task",
-                crate::llm::LlmConfig {
+                crate::llm::ResolvedLlmConfig {
                     provider: "openrouter".to_string(),
                     model: "test".to_string(),
                     api_key: None,
@@ -961,7 +961,7 @@ mod tests {
             let _ = manager
                 .submit(ParallelSprintConfig::new(
                     &format!("Task {}", i),
-                    crate::llm::LlmConfig {
+                    crate::llm::ResolvedLlmConfig {
                         provider: "openrouter".to_string(),
                         model: "test".to_string(),
                         api_key: None,
@@ -994,7 +994,7 @@ mod tests {
             .submit(
                 ParallelSprintConfig::new(
                     "Low priority",
-                    crate::llm::LlmConfig {
+                    crate::llm::ResolvedLlmConfig {
                         provider: "openrouter".to_string(),
                         model: "test".to_string(),
                         api_key: None,
@@ -1010,7 +1010,7 @@ mod tests {
             .submit(
                 ParallelSprintConfig::new(
                     "High priority",
-                    crate::llm::LlmConfig {
+                    crate::llm::ResolvedLlmConfig {
                         provider: "openrouter".to_string(),
                         model: "test".to_string(),
                         api_key: None,
@@ -1035,7 +1035,7 @@ mod tests {
             id: SprintSessionId::new(),
             config: ParallelSprintConfig::new(
                 "Task",
-                crate::llm::LlmConfig {
+                crate::llm::ResolvedLlmConfig {
                     provider: "openrouter".to_string(),
                     model: "test".to_string(),
                     api_key: None,

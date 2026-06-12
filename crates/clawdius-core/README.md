@@ -102,11 +102,11 @@ for s in sessions {
 ### Tool System
 
 ```rust
-use clawdius_core::tools::{Tool, ToolResult};
+use clawdius_core::tools::{ToolSpec, ToolResult};
 use serde_json::json;
 
 // Define a tool with JSON Schema parameters
-let tool = Tool {
+let tool = ToolSpec {
     name: "bash".to_string(),
     description: "Execute shell commands".to_string(),
     parameters: json!({
@@ -203,11 +203,11 @@ clawdius-core/
 ### Custom Tool Implementation
 
 ```rust
-use clawdius_core::tools::{Tool, ToolResult};
+use clawdius_core::tools::{ToolSpec, ToolResult};
 use serde_json::json;
 
 // Define a custom tool with JSON Schema parameters
-let tool = Tool {
+let tool = ToolSpec {
     name: "my_tool".to_string(),
     description: "A custom tool that processes queries".to_string(),
     parameters: json!({

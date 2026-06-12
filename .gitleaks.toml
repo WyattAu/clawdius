@@ -1,0 +1,5 @@
+[allowlist]
+  description = "Global allow list for false positives"
+  paths = [
+    '''crates/clawdius/tests/cli_logic_tests\.rs$''',
+  ]

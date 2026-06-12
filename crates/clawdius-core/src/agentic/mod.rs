@@ -87,8 +87,8 @@ pub use review_engine::{
     FusedReview, ReviewEngine, ReviewFinding, ReviewFocus, ReviewResult, ReviewerConfig,
 };
 pub use sandbox::{
-    ContainerBackend, DirectorySandbox, SandboxCheck, SandboxConfig, SandboxLevel, SandboxStats,
-    SandboxedExecutor,
+    ContainerBackend, DirectorySandbox, SandboxCheck, SandboxLevel, SandboxRuntimeConfig,
+    SandboxStats, SandboxedExecutor,
 };
 pub use ship_pipeline::{
     BenchmarkComparison, BenchmarkReport, BenchmarkResult, BenchmarkSuite, BranchProtection,
@@ -105,7 +105,7 @@ pub use test_execution::{
     SandboxBackend, TestExecutionStrategy, TestFramework, TestResult, TestRunner,
 };
 pub use tool_executor::{NoOpToolExecutor, ToolDefinition, ToolExecutor, ToolRequest, ToolResult};
-pub use tool_use::{ToolCall, ToolExecutionResult, ToolUseRound};
+pub use tool_use::{ParsedToolCall, ToolExecutionResult, ToolUseRound};
 pub use verifier_agent::{
     IssueSeverity, VerificationIssue, VerificationResult, VerificationRule, VerifierAgent,
 };
@@ -191,6 +191,7 @@ pub struct FileChange {
 
 /// Type of file change.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum ChangeType {
     /// New file created
     Created,
@@ -198,6 +199,8 @@ pub enum ChangeType {
     Modified,
     /// File deleted
     Deleted,
+    /// File renamed
+    Renamed,
 }
 
 /// A log entry.

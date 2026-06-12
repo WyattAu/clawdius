@@ -54,7 +54,7 @@ pub(super) async fn handle_doc(
 
     // Create LLM client
     let config = load_config(None)?;
-    let llm_config = clawdius_core::llm::LlmConfig::from_config(&config.llm, "anthropic")?;
+    let llm_config = clawdius_core::llm::ResolvedLlmConfig::from_config(&config.llm, "anthropic")?;
     let llm_client = std::sync::Arc::new(clawdius_core::llm::create_provider(&llm_config)?);
 
     let doc_generator = GenerateDocs::new(llm_client);

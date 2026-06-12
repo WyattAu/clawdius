@@ -425,6 +425,7 @@ impl PooledSessionStore {
     }
 }
 
+#[allow(deprecated)]
 impl SessionRepository for PooledSessionStore {
     fn create_session(&self, session: &Session) -> Result<()> {
         self.create_session(session)

@@ -170,8 +170,9 @@ impl ClawdiusHandler {
             .or(config.llm.default_provider.as_deref())
             .unwrap_or("deepseek");
 
-        let mut llm_config = clawdius_core::llm::LlmConfig::from_config(&config.llm, provider_name)
-            .map_err(|e| GatewayError::Agent(format!("LLM config failed: {e}")))?;
+        let mut llm_config =
+            clawdius_core::llm::ResolvedLlmConfig::from_config(&config.llm, provider_name)
+                .map_err(|e| GatewayError::Agent(format!("LLM config failed: {e}")))?;
 
         if let Some(ref model) = self.model {
             llm_config.model = model.clone();

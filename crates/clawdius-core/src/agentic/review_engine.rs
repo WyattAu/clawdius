@@ -4,7 +4,7 @@
 //! then fuses the results into a unified review. This is the M4 milestone.
 
 use crate::llm::providers::LlmClient;
-use crate::llm::{ChatMessage, ChatRole, LlmConfig};
+use crate::llm::{ChatMessage, ChatRole, ResolvedLlmConfig};
 use crate::Result;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -15,7 +15,7 @@ pub struct ReviewerConfig {
     /// Human-readable name for this reviewer (e.g., "Claude Code Quality")
     pub name: String,
     /// LLM configuration for this reviewer
-    pub llm_config: LlmConfig,
+    pub llm_config: ResolvedLlmConfig,
     /// Specialized review focus area
     pub focus: ReviewFocus,
 }
@@ -193,8 +193,8 @@ impl ReviewEngine {
 
     /// Create a default review engine with two reviewers:
     /// one for code quality and one for security.
-    pub fn default_dual_review(primary_config: LlmConfig) -> Self {
-        let security_config = LlmConfig {
+    pub fn default_dual_review(primary_config: ResolvedLlmConfig) -> Self {
+        let security_config = ResolvedLlmConfig {
             model: primary_config.model.clone(),
             ..primary_config.clone()
         };
@@ -772,7 +772,7 @@ mod tests {
     fn test_reviewer_config_serialization() {
         let config = ReviewerConfig {
             name: "Test".to_string(),
-            llm_config: LlmConfig {
+            llm_config: ResolvedLlmConfig {
                 provider: "openrouter".to_string(),
                 model: "test-model".to_string(),
                 api_key: Some("key".to_string()),

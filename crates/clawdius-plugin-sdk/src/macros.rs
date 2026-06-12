@@ -74,7 +74,7 @@ macro_rules! invocation {
         $crate::registry::ToolInvocation {
             name: $name.into(),
             params: serde_json::json!({ $($key: $val),* }),
-            context: $crate::registry::ToolContext {
+            context: $crate::registry::PluginToolContext {
                 session_id: None,
                 plugin_name: String::new(),
             },

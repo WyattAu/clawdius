@@ -220,6 +220,17 @@ fn is_zero(val: &usize) -> bool {
     *val == 0
 }
 
+impl From<crate::session::types::TokenUsage> for TokenUsageInfo {
+    fn from(usage: crate::session::types::TokenUsage) -> Self {
+        Self {
+            input: usage.input,
+            output: usage.output,
+            total: usage.input + usage.output,
+            cached: usage.cached,
+        }
+    }
+}
+
 impl TokenUsageInfo {
     /// Create new token usage info
     #[must_use]

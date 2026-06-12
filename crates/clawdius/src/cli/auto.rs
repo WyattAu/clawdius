@@ -17,7 +17,7 @@ pub(super) async fn handle_auto(
     output_format: OutputFormat,
 ) -> anyhow::Result<()> {
     use clawdius_core::llm::providers::LlmClient;
-    use clawdius_core::llm::{create_provider, ChatMessage, ChatRole, LlmConfig};
+    use clawdius_core::llm::{create_provider, ChatMessage, ChatRole, ResolvedLlmConfig};
     use clawdius_core::modes::AgentMode;
     use clawdius_core::output::{ActionEdit, ActionResult, OutputOptions};
     use std::io;
@@ -40,7 +40,7 @@ pub(super) async fn handle_auto(
     let modes_dir = std::env::current_dir()?.join(".clawdius").join("modes");
     let mode = AgentMode::load_by_name("auto", &modes_dir).unwrap_or(AgentMode::Auto);
 
-    let mut llm_config = LlmConfig::from_config(&config.llm, &provider)?;
+    let mut llm_config = ResolvedLlmConfig::from_config(&config.llm, &provider)?;
     if let Some(ref m) = model {
         llm_config.model.clone_from(m);
     }

@@ -105,7 +105,7 @@
 //!
 //! ```rust,no_run
 //! use clawdius_core::config::{Config, LlmConfig, ProviderConfig, RetryConfig};
-//! use clawdius_core::llm::{LlmConfig as LlmRuntimeConfig, create_provider};
+//! use clawdius_core::llm::{ResolvedLlmConfig, create_provider};
 //!
 //! # fn main() -> clawdius_core::Result<()> {
 //! let config = Config::load_or_default();
@@ -116,7 +116,7 @@
 //! }
 //!
 //! // Create runtime LLM config from file config
-//! let llm_config = LlmRuntimeConfig::from_config(&config.llm, "anthropic")?;
+//! let llm_config = ResolvedLlmConfig::from_config(&config.llm, "anthropic")?;
 //! let provider = create_provider(&llm_config)?;
 //! # Ok(())
 //! # }

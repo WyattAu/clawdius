@@ -19,7 +19,7 @@ const MAX_TOOL_OUTPUT_BYTES: usize = 128 * 1024;
 
 /// A parsed tool call from LLM output.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub struct ToolCall {
+pub struct ParsedToolCall {
     /// Tool name: "write_file", "shell", "edit_file"
     pub tool: String,
     /// Arguments as key-value pairs
@@ -32,7 +32,7 @@ pub struct ToolCall {
 #[derive(Debug, Clone)]
 pub struct ToolUseRound {
     /// Tool calls that were executed
-    pub calls: Vec<ToolCall>,
+    pub calls: Vec<ParsedToolCall>,
     /// Results of each tool call (same order)
     pub results: Vec<ToolExecutionResult>,
     /// Total tokens used in the LLM request that produced these calls
@@ -52,7 +52,7 @@ pub struct ToolExecutionResult {
 /// Supports two formats:
 /// 1. JSON code blocks: ```tool\n{"tool":"shell","args":{"command":"ls"}}\n```
 /// 2. Markdown-style: [TOOL:shell] command="ls"
-pub fn parse_tool_calls(llm_output: &str) -> Vec<ToolCall> {
+pub fn parse_tool_calls(llm_output: &str) -> Vec<ParsedToolCall> {
     let mut calls = Vec::new();
 
     // Format 1: ```tool JSON blocks
@@ -99,7 +99,7 @@ pub fn parse_tool_calls(llm_output: &str) -> Vec<ToolCall> {
                 }
 
                 if !tool.is_empty() && !args.is_empty() {
-                    calls.push(ToolCall {
+                    calls.push(ParsedToolCall {
                         tool: tool.to_string(),
                         args: serde_json::Value::Object(args),
                         raw: line.to_string(),
@@ -128,9 +128,9 @@ pub fn parse_tool_calls(llm_output: &str) -> Vec<ToolCall> {
     calls
 }
 
-/// Extract a ToolCall from a JSON value if it looks like a tool invocation.
+/// Extract a ParsedToolCall from a JSON value if it looks like a tool invocation.
 /// Supports both {"tool":"name","args":{...}} and {"tool":"name","path":"...",...} (flat args).
-fn extract_tool_from_json(json: &serde_json::Value) -> Option<ToolCall> {
+fn extract_tool_from_json(json: &serde_json::Value) -> Option<ParsedToolCall> {
     let tool_name = json.get("tool").and_then(|t| t.as_str())?;
 
     // Known tool names only
@@ -159,7 +159,7 @@ fn extract_tool_from_json(json: &serde_json::Value) -> Option<ToolCall> {
         serde_json::Value::Object(map)
     };
 
-    Some(ToolCall {
+    Some(ParsedToolCall {
         tool: tool_name.to_string(),
         args,
         raw: json.to_string(),
@@ -169,7 +169,7 @@ fn extract_tool_from_json(json: &serde_json::Value) -> Option<ToolCall> {
 /// Execute a parsed tool call via ShellToolExecutor.
 pub async fn execute_tool_call(
     executor: &dyn ToolExecutor,
-    call: &ToolCall,
+    call: &ParsedToolCall,
     project_root: &std::path::Path,
 ) -> ToolExecutionResult {
     let start = std::time::Instant::now();
@@ -694,8 +694,8 @@ async fn execute_native_tool_call(
     call: &genai::chat::ToolCall,
     project_root: &std::path::Path,
 ) -> ToolExecutionResult {
-    // Convert genai ToolCall to our internal ToolCall format for reuse
-    let internal_call = ToolCall {
+    // Convert genai ToolCall to our internal ParsedToolCall format for reuse
+    let internal_call = ParsedToolCall {
         tool: call.fn_name.clone(),
         args: call.fn_arguments.clone(),
         raw: format!(
@@ -1076,7 +1076,7 @@ And another:
     #[test]
     fn test_format_tool_results() {
         let round = ToolUseRound {
-            calls: vec![ToolCall {
+            calls: vec![ParsedToolCall {
                 tool: "write_file".to_string(),
                 args: serde_json::json!({"path": "test.rs", "content": "fn test() {}"}),
                 raw: String::new(),

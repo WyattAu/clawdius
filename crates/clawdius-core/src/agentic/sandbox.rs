@@ -49,7 +49,7 @@ impl Default for SandboxLevel {
 
 /// Configuration for sandboxed execution.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SandboxConfig {
+pub struct SandboxRuntimeConfig {
     /// Isolation level
     pub level: SandboxLevel,
     /// Root directory for sandbox (all file access restricted to this tree)
@@ -66,7 +66,7 @@ pub struct SandboxConfig {
     pub max_processes: usize,
 }
 
-impl SandboxConfig {
+impl SandboxRuntimeConfig {
     /// Create a new sandbox configuration.
     pub fn new(root: PathBuf) -> Self {
         Self {
@@ -266,7 +266,7 @@ impl DirectorySandbox {
 /// passes through without enforcement.
 pub struct SandboxedExecutor {
     inner: Arc<dyn ToolExecutor>,
-    config: SandboxConfig,
+    config: SandboxRuntimeConfig,
     directory_sandbox: DirectorySandbox,
     /// Track resource usage for the sandbox session
     stats: Arc<RwLock<SandboxStats>>,
@@ -289,7 +289,7 @@ pub struct SandboxStats {
 
 impl SandboxedExecutor {
     /// Create a new sandboxed executor wrapping the given inner executor.
-    pub fn new(inner: Arc<dyn ToolExecutor>, config: SandboxConfig) -> Self {
+    pub fn new(inner: Arc<dyn ToolExecutor>, config: SandboxRuntimeConfig) -> Self {
         let directory_sandbox = DirectorySandbox::new(config.root.clone());
         Self {
             inner,
@@ -300,13 +300,13 @@ impl SandboxedExecutor {
     }
 
     /// Create a sandboxed executor with a new ShellToolExecutor for the given root.
-    pub fn with_shell(root: PathBuf, config: SandboxConfig) -> Self {
+    pub fn with_shell(root: PathBuf, config: SandboxRuntimeConfig) -> Self {
         let inner: Arc<dyn ToolExecutor> = Arc::new(ShellToolExecutor::new(root.clone()));
         Self::new(inner, config)
     }
 
     /// Get the sandbox configuration.
-    pub fn config(&self) -> &SandboxConfig {
+    pub fn config(&self) -> &SandboxRuntimeConfig {
         &self.config
     }
 
@@ -512,7 +512,7 @@ mod tests {
 
     #[test]
     fn test_sandbox_config_builder() {
-        let config = SandboxConfig::new(PathBuf::from("/tmp/project"))
+        let config = SandboxRuntimeConfig::new(PathBuf::from("/tmp/project"))
             .with_level(SandboxLevel::Directory)
             .with_timeout(Duration::from_secs(60))
             .with_network(false)
@@ -526,18 +526,18 @@ mod tests {
 
     #[test]
     fn test_sandbox_config_permissive() {
-        let config = SandboxConfig::permissive();
+        let config = SandboxRuntimeConfig::permissive();
         assert_eq!(config.level, SandboxLevel::None);
         assert!(config.network_allowed);
     }
 
     #[test]
     fn test_sandbox_config_serialization() {
-        let config =
-            SandboxConfig::new(PathBuf::from("/tmp/project")).with_level(SandboxLevel::Directory);
+        let config = SandboxRuntimeConfig::new(PathBuf::from("/tmp/project"))
+            .with_level(SandboxLevel::Directory);
 
         let json = serde_json::to_string(&config).unwrap();
-        let parsed: SandboxConfig = serde_json::from_str(&json).unwrap();
+        let parsed: SandboxRuntimeConfig = serde_json::from_str(&json).unwrap();
         assert_eq!(parsed.level, SandboxLevel::Directory);
     }
 
@@ -644,7 +644,8 @@ mod tests {
 
     #[test]
     fn test_truncate_output_within_limit() {
-        let config = SandboxConfig::new(PathBuf::from("/tmp")).with_level(SandboxLevel::None);
+        let config =
+            SandboxRuntimeConfig::new(PathBuf::from("/tmp")).with_level(SandboxLevel::None);
         let inner: Arc<dyn ToolExecutor> = Arc::new(NoOpToolExecutor);
         let sandbox = SandboxedExecutor::new(inner, config);
 
@@ -654,7 +655,7 @@ mod tests {
 
     #[test]
     fn test_truncate_output_exceeds_limit() {
-        let config = SandboxConfig::new(PathBuf::from("/tmp"))
+        let config = SandboxRuntimeConfig::new(PathBuf::from("/tmp"))
             .with_level(SandboxLevel::None)
             .with_max_output_bytes(100);
         let inner: Arc<dyn ToolExecutor> = Arc::new(NoOpToolExecutor);
@@ -668,7 +669,7 @@ mod tests {
     #[tokio::test]
     async fn test_sandboxed_executor_stats() {
         let root = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
-        let config = SandboxConfig::permissive();
+        let config = SandboxRuntimeConfig::permissive();
         let inner: Arc<dyn ToolExecutor> = Arc::new(NoOpToolExecutor);
         let sandbox = SandboxedExecutor::new(inner, config);
 
@@ -678,7 +679,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_sandboxed_executor_has_tools() {
-        let config = SandboxConfig::permissive();
+        let config = SandboxRuntimeConfig::permissive();
         let inner: Arc<dyn ToolExecutor> = Arc::new(NoOpToolExecutor);
         let sandbox = SandboxedExecutor::new(inner, config);
 
