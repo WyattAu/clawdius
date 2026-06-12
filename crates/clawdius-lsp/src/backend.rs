@@ -3,19 +3,18 @@
 //! Implements the tower-lsp `LanguageServer` trait, delegating to
 //! the symbol index for hover, definition, and references.
 
-use tower_lsp::jsonrpc::Result as LspResult;
-use tower_lsp::{Client, LanguageServer};
-use tower_lsp::lsp_types::{
-    InitializeParams, InitializeResult, ServerInfo, InitializedParams, MessageType,
-    DidOpenTextDocumentParams, DidChangeTextDocumentParams, DidCloseTextDocumentParams,
-    DidSaveTextDocumentParams, DocumentSymbolParams, DocumentSymbolResponse,
-    HoverParams, Hover, HoverContents, MarkupContent, MarkupKind,
-    GotoDefinitionParams, GotoDefinitionResponse, Url, Location, Range, Position,
-    ReferenceParams,
-};
 use serde_json::Value;
 use std::sync::Arc;
 use tokio::sync::RwLock;
+use tower_lsp::jsonrpc::Result as LspResult;
+use tower_lsp::lsp_types::{
+    DidChangeTextDocumentParams, DidCloseTextDocumentParams, DidOpenTextDocumentParams,
+    DidSaveTextDocumentParams, DocumentSymbolParams, DocumentSymbolResponse, GotoDefinitionParams,
+    GotoDefinitionResponse, Hover, HoverContents, HoverParams, InitializeParams, InitializeResult,
+    InitializedParams, Location, MarkupContent, MarkupKind, MessageType, Position, Range,
+    ReferenceParams, ServerInfo, Url,
+};
+use tower_lsp::{Client, LanguageServer};
 
 use crate::capabilities::server_capabilities;
 use crate::symbol_index::SymbolIndex;
@@ -76,7 +75,11 @@ impl LanguageServer for ClawdiusLspBackend {
         &self,
         params: DocumentSymbolParams,
     ) -> LspResult<Option<DocumentSymbolResponse>> {
-        let symbols = self.index.read().await.document_symbols(&params.text_document.uri);
+        let symbols = self
+            .index
+            .read()
+            .await
+            .document_symbols(&params.text_document.uri);
         Ok(symbols.map(DocumentSymbolResponse::Nested))
     }
 

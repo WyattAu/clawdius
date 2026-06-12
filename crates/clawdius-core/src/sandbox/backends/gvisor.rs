@@ -81,9 +81,7 @@ impl SandboxBackend for GvisorBackend {
             docker_args.push((*arg).into());
         }
 
-        let output = Command::new("docker")
-            .args(&docker_args)
-            .output()?;
+        let output = Command::new("docker").args(&docker_args).output()?;
 
         Ok(output)
     }

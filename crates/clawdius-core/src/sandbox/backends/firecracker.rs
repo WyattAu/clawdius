@@ -49,7 +49,11 @@ impl FirecrackerBackend {
 
     /// Check if Firecracker is available.
     pub fn is_available() -> bool {
-        if Command::new("firecracker").arg("--version").output().is_err() {
+        if Command::new("firecracker")
+            .arg("--version")
+            .output()
+            .is_err()
+        {
             return false;
         }
         Path::new(DEFAULT_KERNEL).exists()
@@ -93,9 +97,7 @@ impl SandboxBackend for FirecrackerBackend {
             docker_args.push((*arg).into());
         }
 
-        let output = Command::new("docker")
-            .args(&docker_args)
-            .output()?;
+        let output = Command::new("docker").args(&docker_args).output()?;
 
         Ok(output)
     }

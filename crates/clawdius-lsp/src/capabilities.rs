@@ -1,8 +1,8 @@
 //! LSP server capabilities declaration.
 
 use tower_lsp::lsp_types::{
-    ServerCapabilities, TextDocumentSyncCapability, TextDocumentSyncOptions,
-    TextDocumentSyncKind, TextDocumentSyncSaveOptions, OneOf, HoverProviderCapability,
+    HoverProviderCapability, OneOf, ServerCapabilities, TextDocumentSyncCapability,
+    TextDocumentSyncKind, TextDocumentSyncOptions, TextDocumentSyncSaveOptions,
 };
 
 pub fn server_capabilities() -> ServerCapabilities {

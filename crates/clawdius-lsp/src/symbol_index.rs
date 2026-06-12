@@ -4,9 +4,9 @@
 //! to provide LSP-compatible symbol information, hover documentation,
 //! go-to-definition, and find-all-references.
 
-use tower_lsp::lsp_types::{DocumentSymbol, SymbolKind, Url};
 use std::collections::HashMap;
 use std::fmt::Write;
+use tower_lsp::lsp_types::{DocumentSymbol, SymbolKind, Url};
 
 /// A symbol tracked in the index with position and context.
 #[derive(Clone, Debug)]
@@ -65,15 +65,20 @@ impl SymbolIndex {
                 .push(sym.clone());
         }
 
-        self.documents.insert(uri.to_string(), DocumentData {
-            symbols: doc_symbols,
-            indexed,
-        });
+        self.documents.insert(
+            uri.to_string(),
+            DocumentData {
+                symbols: doc_symbols,
+                indexed,
+            },
+        );
     }
 
     /// Get document symbols for a URI (for textDocument/documentSymbol).
     pub fn document_symbols(&self, uri: &Url) -> Option<Vec<DocumentSymbol>> {
-        self.documents.get(&uri.to_string()).map(|d| d.symbols.clone())
+        self.documents
+            .get(&uri.to_string())
+            .map(|d| d.symbols.clone())
     }
 
     /// Get hover information for a symbol at a position.
@@ -99,7 +104,9 @@ impl SymbolIndex {
     pub fn goto_definition(&self, uri: &Url, line: u32, character: u32) -> Option<&IndexedSymbol> {
         let doc = self.documents.get(&uri.to_string())?;
 
-        let sym_name = doc.indexed.iter()
+        let sym_name = doc
+            .indexed
+            .iter()
             .find(|s| s.line == line && character <= s.end_character)?
             .name
             .clone();
@@ -114,14 +121,18 @@ impl SymbolIndex {
             return Vec::new();
         };
 
-        let Some(sym_name) = doc.indexed.iter()
+        let Some(sym_name) = doc
+            .indexed
+            .iter()
             .find(|s| s.line == line && character <= s.end_character)
             .map(|s| &s.name)
         else {
             return Vec::new();
         };
 
-        self.name_index.get(sym_name).map_or_else(Vec::new, |v| v.iter().collect())
+        self.name_index
+            .get(sym_name)
+            .map_or_else(Vec::new, |v| v.iter().collect())
     }
 
     /// Count references to a symbol name across all documents.
@@ -179,7 +190,10 @@ const fn symbol_kind_name(kind: SymbolKind) -> &'static str {
 }
 
 /// Extract symbols with context information from source text.
-fn extract_symbols_with_context(uri: &Url, text: &str) -> (Vec<DocumentSymbol>, Vec<IndexedSymbol>) {
+fn extract_symbols_with_context(
+    uri: &Url,
+    text: &str,
+) -> (Vec<DocumentSymbol>, Vec<IndexedSymbol>) {
     let ext = uri.path().rsplit('.').next().unwrap_or("");
     let lines: Vec<&str> = text.lines().collect();
     let mut doc_symbols = Vec::new();
@@ -219,45 +233,100 @@ fn extract_symbols_with_context(uri: &Url, text: &str) -> (Vec<DocumentSymbol>, 
 }
 
 #[allow(clippy::option_if_let_else)]
-fn extract_rust_symbol(line: &str, line_num: usize, line_len: usize) -> Option<(DocumentSymbol, String, SymbolKind)> {
+fn extract_rust_symbol(
+    line: &str,
+    line_num: usize,
+    line_len: usize,
+) -> Option<(DocumentSymbol, String, SymbolKind)> {
     if let Some(name) = extract_fn_name(line) {
-        Some((make_symbol(&name, SymbolKind::FUNCTION, line_num, line_len), name, SymbolKind::FUNCTION))
+        Some((
+            make_symbol(&name, SymbolKind::FUNCTION, line_num, line_len),
+            name,
+            SymbolKind::FUNCTION,
+        ))
     } else if let Some(name) = extract_struct_name(line) {
-        Some((make_symbol(&name, SymbolKind::STRUCT, line_num, line_len), name, SymbolKind::STRUCT))
+        Some((
+            make_symbol(&name, SymbolKind::STRUCT, line_num, line_len),
+            name,
+            SymbolKind::STRUCT,
+        ))
     } else if let Some(name) = extract_trait_name(line) {
-        Some((make_symbol(&name, SymbolKind::INTERFACE, line_num, line_len), name, SymbolKind::INTERFACE))
+        Some((
+            make_symbol(&name, SymbolKind::INTERFACE, line_num, line_len),
+            name,
+            SymbolKind::INTERFACE,
+        ))
     } else if let Some(name) = extract_enum_name(line) {
-        Some((make_symbol(&name, SymbolKind::ENUM, line_num, line_len), name, SymbolKind::ENUM))
+        Some((
+            make_symbol(&name, SymbolKind::ENUM, line_num, line_len),
+            name,
+            SymbolKind::ENUM,
+        ))
     } else {
-        extract_impl_name(line).map(|name| (make_symbol(&name, SymbolKind::NAMESPACE, line_num, line_len), name, SymbolKind::NAMESPACE))
+        extract_impl_name(line).map(|name| {
+            (
+                make_symbol(&name, SymbolKind::NAMESPACE, line_num, line_len),
+                name,
+                SymbolKind::NAMESPACE,
+            )
+        })
     }
 }
 
-fn extract_python_symbol(line: &str, line_num: usize, line_len: usize) -> Option<(DocumentSymbol, String, SymbolKind)> {
+fn extract_python_symbol(
+    line: &str,
+    line_num: usize,
+    line_len: usize,
+) -> Option<(DocumentSymbol, String, SymbolKind)> {
     if line.starts_with("def ") {
         line.strip_prefix("def ").map(|name| {
             let name = name.split('(').next().unwrap_or(name).trim();
-            (make_symbol(name, SymbolKind::FUNCTION, line_num, line_len), name.to_string(), SymbolKind::FUNCTION)
+            (
+                make_symbol(name, SymbolKind::FUNCTION, line_num, line_len),
+                name.to_string(),
+                SymbolKind::FUNCTION,
+            )
         })
     } else {
         line.strip_prefix("class ").map(|name| {
-            let name = name.split('(').next().unwrap_or(name).split(':').next().unwrap_or(name).trim();
-            (make_symbol(name, SymbolKind::CLASS, line_num, line_len), name.to_string(), SymbolKind::CLASS)
+            let name = name
+                .split('(')
+                .next()
+                .unwrap_or(name)
+                .split(':')
+                .next()
+                .unwrap_or(name)
+                .trim();
+            (
+                make_symbol(name, SymbolKind::CLASS, line_num, line_len),
+                name.to_string(),
+                SymbolKind::CLASS,
+            )
         })
     }
 }
 
-fn extract_go_symbol(line: &str, line_num: usize, line_len: usize) -> Option<(DocumentSymbol, String, SymbolKind)> {
+fn extract_go_symbol(
+    line: &str,
+    line_num: usize,
+    line_len: usize,
+) -> Option<(DocumentSymbol, String, SymbolKind)> {
     if line.starts_with("func ") {
         let rest = line.strip_prefix("func ").unwrap_or(line);
         let name = if rest.starts_with('(') {
             rest.find(") ").map_or(rest, |close| &rest[close + 2..])
-        } else { rest };
+        } else {
+            rest
+        };
         let name = name.split('(').next().unwrap_or(name).trim();
         if name.is_empty() {
             None
         } else {
-            Some((make_symbol(name, SymbolKind::FUNCTION, line_num, line_len), name.to_string(), SymbolKind::FUNCTION))
+            Some((
+                make_symbol(name, SymbolKind::FUNCTION, line_num, line_len),
+                name.to_string(),
+                SymbolKind::FUNCTION,
+            ))
         }
     } else {
         line.strip_prefix("type ").and_then(|rest| {
@@ -265,33 +334,66 @@ fn extract_go_symbol(line: &str, line_num: usize, line_len: usize) -> Option<(Do
             if name.is_empty() || !rest.contains("struct") {
                 None
             } else {
-                Some((make_symbol(name, SymbolKind::STRUCT, line_num, line_len), name.to_string(), SymbolKind::STRUCT))
+                Some((
+                    make_symbol(name, SymbolKind::STRUCT, line_num, line_len),
+                    name.to_string(),
+                    SymbolKind::STRUCT,
+                ))
             }
         })
     }
 }
 
-fn extract_js_symbol(line: &str, line_num: usize, line_len: usize) -> Option<(DocumentSymbol, String, SymbolKind)> {
+fn extract_js_symbol(
+    line: &str,
+    line_num: usize,
+    line_len: usize,
+) -> Option<(DocumentSymbol, String, SymbolKind)> {
     // export function must be checked before function
     if line.starts_with("export function ") {
         line.strip_prefix("export function ").and_then(|rest| {
             let name = rest.split('(').next().unwrap_or(rest).trim();
-            if name.is_empty() { None } else {
-                Some((make_symbol(name, SymbolKind::FUNCTION, line_num, line_len), name.to_string(), SymbolKind::FUNCTION))
+            if name.is_empty() {
+                None
+            } else {
+                Some((
+                    make_symbol(name, SymbolKind::FUNCTION, line_num, line_len),
+                    name.to_string(),
+                    SymbolKind::FUNCTION,
+                ))
             }
         })
     } else if line.starts_with("function ") {
         line.strip_prefix("function ").and_then(|rest| {
             let name = rest.split('(').next().unwrap_or(rest).trim();
-            if name.is_empty() { None } else {
-                Some((make_symbol(name, SymbolKind::FUNCTION, line_num, line_len), name.to_string(), SymbolKind::FUNCTION))
+            if name.is_empty() {
+                None
+            } else {
+                Some((
+                    make_symbol(name, SymbolKind::FUNCTION, line_num, line_len),
+                    name.to_string(),
+                    SymbolKind::FUNCTION,
+                ))
             }
         })
     } else {
         line.strip_prefix("class ").and_then(|rest| {
-            let name = rest.split('{').next().unwrap_or(rest).split(' ').next().unwrap_or(rest).trim();
-            if name.is_empty() { None } else {
-                Some((make_symbol(name, SymbolKind::CLASS, line_num, line_len), name.to_string(), SymbolKind::CLASS))
+            let name = rest
+                .split('{')
+                .next()
+                .unwrap_or(rest)
+                .split(' ')
+                .next()
+                .unwrap_or(rest)
+                .trim();
+            if name.is_empty() {
+                None
+            } else {
+                Some((
+                    make_symbol(name, SymbolKind::CLASS, line_num, line_len),
+                    name.to_string(),
+                    SymbolKind::CLASS,
+                ))
             }
         })
     }
@@ -332,7 +434,11 @@ fn extract_doc_comment(lines: &[&str], def_line: usize, _ext: &str) -> Option<St
 }
 
 fn extract_fn_name(line: &str) -> Option<String> {
-    if line.starts_with("pub fn ") || line.starts_with("fn ") || line.starts_with("pub async fn ") || line.starts_with("async fn ") {
+    if line.starts_with("pub fn ")
+        || line.starts_with("fn ")
+        || line.starts_with("pub async fn ")
+        || line.starts_with("async fn ")
+    {
         let stripped = line
             .strip_prefix("pub async fn ")
             .or_else(|| line.strip_prefix("async fn "))
@@ -347,8 +453,17 @@ fn extract_fn_name(line: &str) -> Option<String> {
 
 fn extract_struct_name(line: &str) -> Option<String> {
     if line.starts_with("pub struct ") || line.starts_with("struct ") {
-        let stripped = line.strip_prefix("pub struct ").or_else(|| line.strip_prefix("struct "))?;
-        let name = stripped.split('<').next()?.split('{').next()?.split(';').next()?.trim();
+        let stripped = line
+            .strip_prefix("pub struct ")
+            .or_else(|| line.strip_prefix("struct "))?;
+        let name = stripped
+            .split('<')
+            .next()?
+            .split('{')
+            .next()?
+            .split(';')
+            .next()?
+            .trim();
         Some(name.to_string())
     } else {
         None
@@ -357,8 +472,17 @@ fn extract_struct_name(line: &str) -> Option<String> {
 
 fn extract_trait_name(line: &str) -> Option<String> {
     if line.starts_with("pub trait ") || line.starts_with("trait ") {
-        let stripped = line.strip_prefix("pub trait ").or_else(|| line.strip_prefix("trait "))?;
-        let name = stripped.split('<').next()?.split('{').next()?.split(':').next()?.trim();
+        let stripped = line
+            .strip_prefix("pub trait ")
+            .or_else(|| line.strip_prefix("trait "))?;
+        let name = stripped
+            .split('<')
+            .next()?
+            .split('{')
+            .next()?
+            .split(':')
+            .next()?
+            .trim();
         Some(name.to_string())
     } else {
         None
@@ -367,8 +491,17 @@ fn extract_trait_name(line: &str) -> Option<String> {
 
 fn extract_enum_name(line: &str) -> Option<String> {
     if line.starts_with("pub enum ") || line.starts_with("enum ") {
-        let stripped = line.strip_prefix("pub enum ").or_else(|| line.strip_prefix("enum "))?;
-        let name = stripped.split('<').next()?.split('{').next()?.split(';').next()?.trim();
+        let stripped = line
+            .strip_prefix("pub enum ")
+            .or_else(|| line.strip_prefix("enum "))?;
+        let name = stripped
+            .split('<')
+            .next()?
+            .split('{')
+            .next()?
+            .split(';')
+            .next()?
+            .trim();
         Some(name.to_string())
     } else {
         None
@@ -378,7 +511,14 @@ fn extract_enum_name(line: &str) -> Option<String> {
 fn extract_impl_name(line: &str) -> Option<String> {
     if line.starts_with("impl ") {
         let stripped = line.strip_prefix("impl ")?;
-        let name = stripped.split('<').next()?.split(' ').next()?.split('{').next()?.trim();
+        let name = stripped
+            .split('<')
+            .next()?
+            .split(' ')
+            .next()?
+            .split('{')
+            .next()?
+            .trim();
         if name.is_empty() {
             None
         } else {
@@ -399,8 +539,14 @@ fn make_symbol(name: &str, kind: SymbolKind, line: usize, end_char: usize) -> Do
         kind,
         tags: None,
         deprecated: None,
-        range: Range::new(Position::new(line as u32, 0), Position::new(line as u32, end_char as u32)),
-        selection_range: Range::new(Position::new(line as u32, 0), Position::new(line as u32, end_char as u32)),
+        range: Range::new(
+            Position::new(line as u32, 0),
+            Position::new(line as u32, end_char as u32),
+        ),
+        selection_range: Range::new(
+            Position::new(line as u32, 0),
+            Position::new(line as u32, end_char as u32),
+        ),
         children: None,
     }
 }
@@ -531,7 +677,10 @@ class Calculator {}
         let uri = Url::parse("file:///test.rs").expect("valid uri");
         let (_, indexed) = extract_symbols_with_context(&uri, code);
         assert_eq!(indexed.len(), 1);
-        assert_eq!(indexed[0].doc_comment, Some("This is a doc comment".to_string()));
+        assert_eq!(
+            indexed[0].doc_comment,
+            Some("This is a doc comment".to_string())
+        );
     }
 
     #[test]
