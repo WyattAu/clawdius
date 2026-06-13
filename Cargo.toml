@@ -168,7 +168,7 @@ tempfile = "3.17"
 mockall = "0.14"
 
 # === System Information ===
-sysinfo = "0.33"
+sysinfo = "0.39"
 parking_lot = "0.12"
 
 # === High-Performance Allocator ===
