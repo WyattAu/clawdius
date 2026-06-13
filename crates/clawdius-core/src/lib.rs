@@ -64,6 +64,7 @@ pub mod llm;
 pub mod lsp;
 pub mod mcp;
 pub mod memory;
+pub mod metrics;
 pub mod modes;
 #[cfg(feature = "onboarding")]
 #[doc(hidden)]

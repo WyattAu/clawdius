@@ -38,6 +38,14 @@ async fn send_message_handler(
     }))
 }
 
+/// Prometheus metrics endpoint.
+async fn metrics_handler() -> impl axum::response::IntoResponse {
+    (
+        [("content-type", "text/plain; version=0.0.4")],
+        clawdius_core::metrics::render_metrics(),
+    )
+}
+
 /// SSE streaming endpoint for chat messages.
 /// Returns a text/event-stream with partial responses.
 async fn chat_stream_handler() -> axum::response::Response {
@@ -84,6 +92,8 @@ fn app_router() -> Router {
         .route("/api/messages/send", post(send_message_handler))
         // SSE streaming endpoint
         .route("/api/chat/stream", get(chat_stream_handler))
+        // Prometheus metrics
+        .route("/metrics", get(metrics_handler))
         // Leptos SSR fallback
         .fallback(render_app_to_stream(|| view! { <App /> }))
         .layer(cors)

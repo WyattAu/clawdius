@@ -1,0 +1,120 @@
+# Alerting rules for Clawdius (REQ-009).
+#
+# Load via Prometheus:
+#   rule_files:
+#     - /etc/prometheus/clawdius_alerting_rules.yml
+#
+# All alerts assume the clawdius gateway exposes /metrics.
+
+groups:
+  - name: clawdius-llm
+    interval: 30s
+    rules:
+      - alert: ClawdiusLLMHighErrorRate
+        expr: |
+          (
+            sum(rate(clawdius_llm_requests_total{status="error"}[5m]))
+            /
+            clamp_min(sum(rate(clawdius_llm_requests_total[5m])), 1)
+          ) > 0.10
+        for: 5m
+        labels:
+          severity: warning
+          team: clawdius
+        annotations:
+          summary: "Clawdius LLM error rate above 10% ({{ $value | humanizePercentage }})"
+          description: "LLM requests are failing at a high rate. Check provider credentials, rate limits, and network connectivity."
+
+      - alert: ClawdiusLLMHighLatencyP95
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum(rate(clawdius_llm_request_duration_seconds_bucket[5m])) by (le)
+          ) > 30
+        for: 10m
+        labels:
+          severity: warning
+          team: clawdius
+        annotations:
+          summary: "Clawdius LLM p95 latency above 30s"
+          description: "p95 LLM request latency is {{ $value }}s. Consider switching provider/model or investigating upstream slowness."
+
+      - alert: ClawdiusLLMNoRequests
+        expr: sum(rate(clawdius_llm_requests_total[10m])) == 0
+        for: 30m
+        labels:
+          severity: info
+          team: clawdius
+        annotations:
+          summary: "No Clawdius LLM requests in the last 30 minutes"
+          description: "The gateway may be idle or unreachable. Verify the service is running and accepting traffic."
+
+  - name: clawdius-tools-sandbox
+    interval: 30s
+    rules:
+      - alert: ClawdiusToolHighErrorRate
+        expr: |
+          (
+            sum(rate(clawdius_tool_executions_total{status="error"}[5m]))
+            /
+            clamp_min(sum(rate(clawdius_tool_executions_total[5m])), 1)
+          ) > 0.20
+        for: 5m
+        labels:
+          severity: warning
+          team: clawdius
+        annotations:
+          summary: "Clawdius tool error rate above 20% ({{ $value | humanizePercentage }})"
+          description: "Tool executions are failing at a high rate. Inspect failing tool: {{ $labels.tool }}."
+
+      - alert: ClawdiusSandboxHighErrorRate
+        expr: |
+          (
+            sum(rate(clawdius_sandbox_executions_total{status="error"}[5m]))
+            /
+            clamp_min(sum(rate(clawdius_sandbox_executions_total[5m])), 1)
+          ) > 0.15
+        for: 5m
+        labels:
+          severity: critical
+          team: clawdius
+        annotations:
+          summary: "Clawdius sandbox error rate above 15% ({{ $value | humanizePercentage }})"
+          description: "Sandbox executions on backend {{ $labels.backend }} are failing. The sandbox runtime may be misconfigured or out of resources."
+
+      - alert: ClawdiusSandboxSlowP95
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum(rate(clawdius_sandbox_duration_seconds_bucket[5m])) by (le, backend)
+          ) > 60
+        for: 10m
+        labels:
+          severity: warning
+          team: clawdius
+        annotations:
+          summary: "Clawdius sandbox p95 latency above 60s on {{ $labels.backend }}"
+          description: "Sandbox execution is slow. Consider scaling resources or switching the active backend."
+
+  - name: clawdius-availability
+    interval: 30s
+    rules:
+      - alert: ClawdiusMetricsMissing
+        expr: absent(clawdius_active_sessions)
+        for: 5m
+        labels:
+          severity: critical
+          team: clawdius
+        annotations:
+          summary: "Clawdius metrics endpoint is not being scraped"
+          description: "The clawdius_active_sessions gauge is absent. The gateway may be down, or the /metrics scrape is misconfigured."
+
+      - alert: ClawdiusHighSessionCount
+        expr: clawdius_active_sessions > 100
+        for: 15m
+        labels:
+          severity: warning
+          team: clawdius
+        annotations:
+          summary: "Clawdius active sessions above 100 ({{ $value }})"
+          description: "Sustained high session count may indicate resource pressure. Consider scaling the gateway."
