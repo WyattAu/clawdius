@@ -18,6 +18,8 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 tower = { workspace = true, optional = true }
 tower-http = { workspace = true, optional = true }
+futures = { workspace = true, optional = true }
+async-stream = { workspace = true, optional = true }
 
 [features]
 default = ["ssr"]
@@ -28,5 +30,7 @@ ssr = [
     "dep:axum",
     "dep:tower",
     "dep:tower-http",
+    "dep:futures",
+    "dep:async-stream",
 ]
 hydrate = ["leptos/hydrate"]

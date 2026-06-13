@@ -1976,9 +1976,11 @@ dependencies = [
 name = "clawdius-web"
 version = "1.0.0"
 dependencies = [
+ "async-stream",
  "axum",
  "clawdius-core",
  "clawdius-ui",
+ "futures",
  "leptos",
  "leptos_axum",
  "leptos_meta",

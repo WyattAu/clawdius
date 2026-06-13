@@ -1,4 +1,4 @@
-use axum::routing::get;
+use axum::routing::{get, post};
 use axum::Router;
 use clawdius_web::app::App;
 use clawdius_web::server;
@@ -7,6 +7,8 @@ use leptos_axum::render_app_to_stream;
 use serde_json::json;
 use std::net::SocketAddr;
 use tower_http::cors::CorsLayer;
+
+// API handlers
 
 async fn health_handler() -> axum::Json<serde_json::Value> {
     let status = server::get_health_status();
@@ -26,13 +28,63 @@ async fn sessions_handler() -> axum::Json<serde_json::Value> {
     axum::Json(json!({ "sessions": sessions }))
 }
 
+async fn send_message_handler(
+    axum::Json(req): axum::Json<server::SendMessageRequest>,
+) -> axum::Json<serde_json::Value> {
+    let response = server::send_message(req).await;
+    axum::Json(json!({
+        "response": response.response,
+        "session_id": response.session_id,
+    }))
+}
+
+/// SSE streaming endpoint for chat messages.
+/// Returns a text/event-stream with partial responses.
+async fn chat_stream_handler() -> axum::response::Response {
+    use axum::response::IntoResponse;
+    use axum::response::Sse;
+    use futures::stream::Stream;
+    use std::convert::Infallible;
+    use std::time::Duration;
+
+    let stream = async_stream::stream! {
+        // Initial connection event
+        yield Ok::<_, Infallible>(axum::response::sse::Event::default()
+            .event("connected")
+            .data("{}"));
+
+        // Simulated streaming response
+        for i in 0..5 {
+            tokio::time::sleep(Duration::from_millis(200)).await;
+            yield Ok::<_, Infallible>(axum::response::sse::Event::default()
+                .event("token")
+                .data(json!({
+                    "content": format!("token_{} ", i),
+                    "index": i,
+                }).to_string()));
+        }
+
+        // Done event
+        yield Ok::<_, Infallible>(axum::response::sse::Event::default()
+            .event("done")
+            .data(json!({"total_tokens": 5}).to_string()));
+    };
+
+    Sse::new(stream).into_response()
+}
+
 fn app_router() -> Router {
     let cors = CorsLayer::permissive();
 
     Router::new()
+        // API routes
         .route("/api/health", get(health_handler))
         .route("/api/models", get(models_handler))
         .route("/api/sessions", get(sessions_handler))
+        .route("/api/messages/send", post(send_message_handler))
+        // SSE streaming endpoint
+        .route("/api/chat/stream", get(chat_stream_handler))
+        // Leptos SSR fallback
         .fallback(render_app_to_stream(|| view! { <App /> }))
         .layer(cors)
 }
