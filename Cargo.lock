@@ -1964,8 +1964,10 @@ dependencies = [
 name = "clawdius-ui"
 version = "1.0.0"
 dependencies = [
+ "js-sys",
  "leptos",
  "leptos_meta",
+ "wasm-bindgen",
  "web-sys",
 ]
 
