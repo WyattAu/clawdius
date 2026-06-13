@@ -320,6 +320,10 @@ Full audit completed. 50+ pages in mdBook, 10/11 audit items exist:
 | 2026-06-12 | Update landing page test count to 2,606 | Badge and metrics in index.html; docs workflow fixed (missing custom.css) |
 | 2026-06-12 | Fix docs deployment workflow | Added missing docs/book/theme/css/custom.css; workflow had failed 3x on absent file |
 | 2026-06-12 | Duplicate code audit across 7 crates | 8 HIGH, 9 MEDIUM, 5 LOW findings; see Duplication Audit below |
+| 2026-06-13 | Feature gap analysis against 22 competitors | Empirical codebase audit; 12 PRODUCTION, 5 FUNCTIONAL, 4 STUB, 4 NONEXISTENT |
+| 2026-06-13 | Create docs/FEATURE_GAP_ANALYSIS.md | 10 requirements (3 P0, 4 P1, 3 P2) with 18-week implementation plan |
+| 2026-06-13 | Create Evergreen hardened image for Clawdius | images/clawdius/ in EvergreenImageRegistry; Dockerfile + manifest + shim + README |
+| 2026-06-13 | Z.AI/MiMo v2.5 integration assessment | Z.AI provider exists; token expired; MiMo model needs adding to model_router |
 
 ---
 

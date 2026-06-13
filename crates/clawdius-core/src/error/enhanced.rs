@@ -303,6 +303,8 @@ impl From<crate::Error> for EnhancedError {
                         "OpenAI"
                     } else if msg.contains("ZAI") {
                         "Z.AI"
+                    } else if msg.contains("OPENCODE_GO") {
+                        "OpenCode Go"
                     } else {
                         "unknown"
                     };

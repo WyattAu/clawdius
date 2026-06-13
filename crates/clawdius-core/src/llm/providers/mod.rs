@@ -11,6 +11,7 @@ pub mod google;
 pub mod local;
 pub mod ollama;
 pub mod openai;
+pub mod opencode_go;
 pub mod openrouter;
 pub mod zai;
 
@@ -93,8 +94,10 @@ pub enum Provider {
     /// custom base URL pointing to `https://api.deepseek.com`)
     DeepSeek,
     OpenRouter,
-    /// ZAI (ZhipuAI) GLM provider — supports glm-4.5, glm-4.6, glm-4.7, glm-5
+    /// ZAI (ZhipuAI) GLM provider -- supports glm-4.5, glm-4.6, glm-4.7, glm-5
     Zai,
+    /// OpenCode Go provider -- OpenAI-compatible endpoint at opencode.ai
+    OpencodeGo,
     Ollama,
     Local,
 }

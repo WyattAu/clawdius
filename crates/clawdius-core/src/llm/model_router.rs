@@ -510,6 +510,7 @@ impl ModelRouter {
             "google" => ("google", "gemini-2.0-flash"),
             "zai" => ("zai", "glm-4.6"),
             "openrouter" => ("openrouter", "google/gemma-3-4b-it:free"),
+            "opencode-go" => ("opencode-go", "mimo-v2.5"),
             _ => (primary_provider, primary_model), // fallback to same
         };
 

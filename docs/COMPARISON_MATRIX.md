@@ -2,7 +2,8 @@
 
 > Comprehensive feature comparison across 22 AI coding agents.
 > Data verified against public repositories, documentation, and pricing pages as of 2026-06-01.
-> Clawdius version: v1.0.0-rc.2.
+> Empirical codebase audit conducted 2026-06-12.
+> Clawdius version: v1.0.0 (post-session 6, 2,606 tests, 318 Lean4 theorems).
 
 ---
 
@@ -164,7 +165,7 @@
 
 | Metric | Clawdius | Claude Code | Cursor | Aider | OpenHands | SWE-agent | Goose | Shell Agent | Claw Code |
 |--------|:--------:|:-----------:|:------:|:-----:|:---------:|:---------:|:-----:|:-----------:|:---------:|
-| Total tests | 2,565 | N/A (closed) | N/A (closed) | ~1,200 | ~3,500 | ~800 | ~1,500 | ~200 | ~1,100 |
+| Total tests | 2,606 | N/A (closed) | N/A (closed) | ~1,200 | ~3,500 | ~800 | ~1,500 | ~200 | ~1,100 |
 | Property-based tests | 27 (proptest) | Unknown | Unknown | No | No | No | No | No | No |
 | Fuzz testing | 5 targets (AFL++) | No | No | No | No | No | No | No | No |
 | CI test matrix | Linux, macOS, Win | N/A | N/A | Linux, macOS | Linux | Linux | Linux | Linux | Linux, Win |
@@ -312,7 +313,43 @@ The nearest competitors by dimension:
 
 ---
 
-## 16. Methodology
+## 16. Feature Reality Assessment (2026-06-12 Audit)
+
+An empirical audit of every claimed feature was conducted by reading actual source code.
+Features classified as PRODUCTION (fully functional), FUNCTIONAL (works with limitations),
+STUB (types/scaffolding only), or NONEXISTENT (zero lines of implementation).
+
+| Feature | Claimed | Reality | Classification | Lines |
+|---------|:-------:|---------|:--------------:|------:|
+| Tree-sitter parsing | 5 langs | 10 languages | PRODUCTION | ~1,000 |
+| Graph-RAG code intelligence | Yes | Works (toy embedder) | FUNCTIONAL | ~1,400 |
+| Encryption at rest (AES-256-GCM) | Yes | HKDF + AES-GCM | PRODUCTION | ~637 |
+| MCP server | Yes | 12 tools, full dispatch | PRODUCTION | ~1,600 |
+| MCP client | Yes | Not implemented | NONEXISTENT | 0 |
+| WASM plugin runtime | Yes | Wasmtime + WASI | FUNCTIONAL | ~698 |
+| Bubblewrap sandbox | Yes | Full bwrap integration | PRODUCTION | ~117 |
+| Container sandbox (Docker) | Yes | Full Docker integration | PRODUCTION | ~150 |
+| Filtered command sandbox | Yes | Command filtering | PRODUCTION | ~50 |
+| sandbox-exec (macOS) | Yes | macOS seatbelt | PRODUCTION | ~80 |
+| Multi-tenant support | Yes | Full tenant isolation | FUNCTIONAL | ~3,500 |
+| Rate limiting | Yes | Per-user/platform | PRODUCTION | ~200 |
+| Feature flags (15+) | Yes | capability.rs | PRODUCTION | ~300 |
+| OS keyring storage | Yes | keyring crate | PRODUCTION | ~50 |
+| LSP server | Yes | Basic (pattern-match) | FUNCTIONAL | ~990 |
+| gVisor sandbox | Planned | Delegates to Docker | STUB | ~20 |
+| Firecracker sandbox | Planned | Delegates to Docker | STUB | 0 |
+| SSO/SAML/OIDC | Yes | Not implemented | NONEXISTENT | 0 |
+| Audit logging (5 backends) | Yes | In-memory Vec only | STUB | ~340 |
+| Distributed LLM routing | Planned | Types/scaffolding | STUB | ~808 |
+| Web admin dashboard | Partial | REST API, no UI | FUNCTIONAL | ~665 |
+| Container signing (cosign) | No | GPG archives only | NONEXISTENT | 0 |
+
+**Summary:** 12 features PRODUCTION, 5 FUNCTIONAL, 4 STUB, 4 NONEXISTENT.
+Full gap analysis and remediation plan: see `docs/FEATURE_GAP_ANALYSIS.md`.
+
+---
+
+## 17. Methodology
 
 - Data collected from public GitHub repositories, official documentation, and pricing pages
 - Star counts are approximate and reflect values observed on 2026-06-01

@@ -108,7 +108,9 @@ pub enum Commands {
         model: Option<String>,
 
         #[arg(short = 'P', long, default_value = "anthropic")]
-        #[arg(help = "Provider to use (anthropic, openai, deepseek, ollama, zai, openrouter)")]
+        #[arg(
+            help = "Provider to use (anthropic, openai, deepseek, ollama, zai, openrouter, opencode-go)"
+        )]
         provider: String,
 
         #[arg(short, long)]
@@ -150,7 +152,9 @@ pub enum Commands {
         model: Option<String>,
 
         #[arg(short = 'P', long, default_value = "anthropic")]
-        #[arg(help = "Provider to use (anthropic, openai, deepseek, ollama, zai, openrouter)")]
+        #[arg(
+            help = "Provider to use (anthropic, openai, deepseek, ollama, zai, openrouter, opencode-go)"
+        )]
         provider: String,
 
         #[arg(long)]

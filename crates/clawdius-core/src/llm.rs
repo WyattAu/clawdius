@@ -484,6 +484,15 @@ impl ResolvedLlmConfig {
                 })?;
                 (Some(key), None, "deepseek-chat".to_string())
             },
+            "opencode-go" | "opencode" => {
+                let key = std::env::var("OPENCODE_GO_API_KEY").map_err(|_| {
+                    Error::Config(
+                        ErrorHelpers::api_key_missing("OpenCode Go", "OPENCODE_GO_API_KEY")
+                            .to_string(),
+                    )
+                })?;
+                (Some(key), None, "mimo-v2.5".to_string())
+            },
             _ => {
                 return Err(Error::Config(
                     ErrorHelpers::unknown_provider(
@@ -496,6 +505,7 @@ impl ResolvedLlmConfig {
                             "deepseek",
                             "ollama",
                             "zai",
+                            "opencode-go",
                         ],
                     )
                     .to_string(),
@@ -700,6 +710,28 @@ impl ResolvedLlmConfig {
                 };
                 (model, Some(api_key), None)
             },
+            "opencode-go" | "opencode" => {
+                let cfg = config.opencode_go.as_ref();
+                let model = cfg
+                    .and_then(|c| c.model.clone())
+                    .unwrap_or_else(|| "mimo-v2.5".to_string());
+
+                let api_key = Self::load_api_key(
+                    "OPENCODE_GO_API_KEY",
+                    "opencode-go",
+                    &cfg.and_then(|c| c.api_key.clone()),
+                    &cfg.and_then(|c| c.api_key_env.clone()),
+                )?;
+
+                let api_key = api_key.ok_or_else(|| {
+                    Error::Config(
+                        ErrorHelpers::api_key_missing("OpenCode Go", "OPENCODE_GO_API_KEY")
+                            .to_string(),
+                    )
+                })?;
+
+                (model, Some(api_key), None)
+            },
             _ => {
                 return Err(Error::Config(
                     ErrorHelpers::unknown_provider(
@@ -712,6 +744,7 @@ impl ResolvedLlmConfig {
                             "deepseek",
                             "zai",
                             "openrouter",
+                            "opencode-go",
                         ],
                     )
                     .to_string(),
@@ -736,6 +769,7 @@ pub enum LlmProvider {
     OpenRouter(providers::openrouter::OpenRouterProvider),
     DeepSeek(providers::deepseek::DeepSeekProvider),
     Zai(providers::zai::ZaiProvider),
+    OpencodeGo(providers::opencode_go::OpencodeGoProvider),
     Ollama(providers::ollama::OllamaProvider),
     Local(providers::local::LocalLlmProvider),
 }
@@ -766,6 +800,7 @@ impl LlmClientWithRetry {
                 LlmProvider::OpenRouter(p) => p.chat(messages.clone()).await,
                 LlmProvider::DeepSeek(p) => p.chat(messages.clone()).await,
                 LlmProvider::Zai(p) => p.chat(messages.clone()).await,
+                LlmProvider::OpencodeGo(p) => p.chat(messages.clone()).await,
                 LlmProvider::Ollama(p) => p.chat(messages.clone()).await,
                 LlmProvider::Local(p) => p.chat(messages.clone()).await,
             }
@@ -798,6 +833,9 @@ impl LlmClientWithRetry {
                     p.chat_with_options(messages.clone(), options.clone()).await
                 },
                 LlmProvider::Zai(p) => p.chat_with_options(messages.clone(), options.clone()).await,
+                LlmProvider::OpencodeGo(p) => {
+                    p.chat_with_options(messages.clone(), options.clone()).await
+                },
                 LlmProvider::Ollama(p) => {
                     p.chat_with_options(messages.clone(), options.clone()).await
                 },
@@ -818,6 +856,7 @@ impl LlmClientWithRetry {
             LlmProvider::OpenRouter(p) => p.count_tokens(text),
             LlmProvider::DeepSeek(p) => p.count_tokens(text),
             LlmProvider::Zai(p) => p.count_tokens(text),
+            LlmProvider::OpencodeGo(p) => p.count_tokens(text),
             LlmProvider::Ollama(p) => p.count_tokens(text),
             LlmProvider::Local(p) => p.count_tokens(text),
         }
@@ -834,6 +873,7 @@ impl LlmClientWithRetry {
             LlmProvider::OpenRouter(p) => p.chat_with_tools(messages, tools).await,
             LlmProvider::DeepSeek(p) => p.chat_with_tools(messages, tools).await,
             LlmProvider::Zai(p) => p.chat_with_tools(messages, tools).await,
+            LlmProvider::OpencodeGo(p) => p.chat_with_tools(messages, tools).await,
             LlmProvider::Google(_) | LlmProvider::Ollama(_) | LlmProvider::Local(_) => {
                 Err(crate::Error::Llm(
                     "Tool calling not supported by this provider. Use Anthropic, OpenAI, OpenRouter, DeepSeek, or ZAI."
@@ -866,6 +906,7 @@ impl providers::LlmClient for LlmProvider {
             LlmProvider::OpenRouter(p) => p.chat(messages).await,
             LlmProvider::DeepSeek(p) => p.chat(messages).await,
             LlmProvider::Zai(p) => p.chat(messages).await,
+            LlmProvider::OpencodeGo(p) => p.chat(messages).await,
             LlmProvider::Ollama(p) => p.chat(messages).await,
             LlmProvider::Local(p) => p.chat(messages).await,
         }
@@ -882,6 +923,7 @@ impl providers::LlmClient for LlmProvider {
             LlmProvider::OpenRouter(p) => p.chat_stream(messages).await,
             LlmProvider::DeepSeek(p) => p.chat_stream(messages).await,
             LlmProvider::Zai(p) => p.chat_stream(messages).await,
+            LlmProvider::OpencodeGo(p) => p.chat_stream(messages).await,
             LlmProvider::Ollama(p) => p.chat_stream(messages).await,
             LlmProvider::Local(p) => p.chat_stream(messages).await,
         }
@@ -895,6 +937,7 @@ impl providers::LlmClient for LlmProvider {
             LlmProvider::OpenRouter(p) => p.count_tokens(text),
             LlmProvider::DeepSeek(p) => p.count_tokens(text),
             LlmProvider::Zai(p) => p.count_tokens(text),
+            LlmProvider::OpencodeGo(p) => p.count_tokens(text),
             LlmProvider::Ollama(p) => p.count_tokens(text),
             LlmProvider::Local(p) => p.count_tokens(text),
         }
@@ -952,6 +995,16 @@ pub fn create_provider(config: &ResolvedLlmConfig) -> Result<LlmProvider> {
                 Some(&config.model),
             )?))
         },
+        "opencode-go" | "opencode" | "mimo" => {
+            let api_key = config.api_key.as_ref().ok_or_else(|| {
+                Error::Config(
+                    ErrorHelpers::api_key_missing("OpenCode Go", "OPENCODE_GO_API_KEY").to_string(),
+                )
+            })?;
+            Ok(LlmProvider::OpencodeGo(
+                providers::opencode_go::OpencodeGoProvider::new(api_key, Some(&config.model))?,
+            ))
+        },
         "deepseek" => {
             let api_key = config.api_key.as_ref().ok_or_else(|| {
                 Error::Config(
@@ -992,6 +1045,7 @@ pub fn create_provider(config: &ResolvedLlmConfig) -> Result<LlmProvider> {
                     "openrouter",
                     "deepseek",
                     "zai",
+                    "opencode-go",
                     "ollama",
                 ],
             )

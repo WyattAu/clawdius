@@ -262,6 +262,16 @@ Clawdius is a high-assurance AI coding assistant that:
                 recommended: false,
                 features: vec!["100% private".to_string(), "No API costs".to_string()],
             },
+            ProviderOption {
+                id: "opencode-go".to_string(),
+                name: "OpenCode Go".to_string(),
+                description: "MiMo, GLM, DeepSeek, Qwen models via OpenCode".to_string(),
+                recommended: false,
+                features: vec![
+                    "19 models available".to_string(),
+                    "OpenAI-compatible API".to_string(),
+                ],
+            },
         ]
     }
 
@@ -366,6 +376,7 @@ impl Onboarding {
             "anthropic" => &config.llm.anthropic,
             "openai" => &config.llm.openai,
             "zai" => &config.llm.zai,
+            "opencode-go" => &config.llm.opencode_go,
             _ => return false,
         };
 

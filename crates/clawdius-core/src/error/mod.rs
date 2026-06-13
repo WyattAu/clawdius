@@ -300,6 +300,8 @@ impl Error {
                     format!("{msg}\n\nSet your OpenAI API key:\n  export OPENAI_API_KEY=your-key")
                 } else if msg.contains("ZAI") {
                     format!("{msg}\n\nSet your Z.AI API key:\n  export ZAI_API_KEY=your-key")
+                } else if msg.contains("OPENCODE_GO") {
+                    format!("{msg}\n\nSet your OpenCode Go API key:\n  export OPENCODE_GO_API_KEY=your-key")
                 } else {
                     msg.clone()
                 }

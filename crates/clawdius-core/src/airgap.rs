@@ -56,6 +56,7 @@ impl AirGapConfig {
         allowed.insert("api.anthropic.com".to_string());
         allowed.insert("openrouter.ai".to_string());
         allowed.insert("api.zai.chat".to_string());
+        allowed.insert("opencode.ai".to_string());
         allowed.insert("localhost".to_string());
         allowed.insert("127.0.0.1".to_string());
 

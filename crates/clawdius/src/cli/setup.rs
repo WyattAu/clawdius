@@ -136,9 +136,10 @@ pub(super) fn handle_setup(
         println!("  2. OpenAI GPT-4 - Widely used, fast responses");
         println!("  3. Ollama (Local) - 100% private, no API costs");
         println!("  4. Zhipu AI - Chinese optimized, cost effective");
+        println!("  5. OpenCode Go - MiMo, GLM, DeepSeek, Qwen via OpenCode");
         println!();
 
-        print!("Enter your choice (1-4) [default: 1]: ");
+        print!("Enter your choice (1-5) [default: 1]: ");
         io::stdout().flush()?;
 
         let mut input = String::new();
@@ -149,6 +150,7 @@ pub(super) fn handle_setup(
             2 => "openai".to_string(),
             3 => "ollama".to_string(),
             4 => "zai".to_string(),
+            5 => "opencode-go".to_string(),
             _ => "anthropic".to_string(),
         }
     };

@@ -380,6 +380,9 @@ pub struct LlmConfig {
     /// DeepSeek provider settings
     #[serde(default)]
     pub deepseek: Option<ProviderConfig>,
+    /// OpenCode Go provider settings
+    #[serde(default)]
+    pub opencode_go: Option<ProviderConfig>,
     /// Maximum tokens for responses (global default)
     #[serde(default = "default_max_tokens")]
     pub max_tokens: usize,

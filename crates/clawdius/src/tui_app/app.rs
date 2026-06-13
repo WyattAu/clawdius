@@ -941,7 +941,7 @@ impl App {
                         .as_deref()
                         .unwrap_or("none");
                     self.error_message = Some(format!(
-                        "Current provider: {current}\nUsage: :provider <deepseek|anthropic|openai|google|ollama|zai|openrouter>"
+                        "Current provider: {current}\nUsage: :provider <deepseek|anthropic|openai|google|ollama|zai|openrouter|opencode-go>"
                     ));
                 }
             },
