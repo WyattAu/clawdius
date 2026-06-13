@@ -154,10 +154,12 @@ unsafe fn count_splits_neon(data: &[u8]) -> usize {
         let chunk = vld1q_u8(data.as_ptr().add(i));
         let cmp = vcleq_u8(chunk, threshold);
 
-        for bit in 0..16 {
-            let lane = vgetq_lane_u8(cmp, bit);
-            let is_ws = lane != 0;
-            if is_ws {
+        // Store SIMD result to local array for per-lane inspection.
+        // (vgetq_lane_u8 requires a const lane index in Rust's aarch64 intrinsics)
+        let mut buf = [0u8; 16];
+        vst1q_u8(buf.as_mut_ptr(), cmp);
+        for &lane in &buf {
+            if lane != 0 {
                 if in_word {
                     count += 1;
                     in_word = false;
