@@ -10,7 +10,7 @@ pub enum ThemeMode {
     Light,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct ProviderConfig {
     pub name: String,
     pub models: Vec<String>,
@@ -61,6 +61,7 @@ impl Default for ConfigState {
     }
 }
 
+#[derive(Clone)]
 pub struct ConfigActions {
     pub set_provider: Callback<String>,
     pub set_model: Callback<String>,

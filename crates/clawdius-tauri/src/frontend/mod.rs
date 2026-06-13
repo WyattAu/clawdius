@@ -1,9 +1,10 @@
-//! Frontend module for the Leptos CSR application.
-//!
-//! Will contain the Leptos app that mounts into the Tauri webview.
+pub mod app;
+pub mod pages;
 
-/// Mounts the Leptos CSR application to the `#app` DOM element.
-///
-/// Currently a placeholder -- will be implemented when the Leptos app is wired
-/// into the Tauri webview.
-pub fn mount_app() {}
+pub use app::App;
+
+use leptos::prelude::*;
+
+pub fn mount_app() {
+    mount_to_body(|| view! { <App /> });
+}

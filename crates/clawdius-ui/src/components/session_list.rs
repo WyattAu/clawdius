@@ -53,9 +53,9 @@ fn format_relative_time(ts: i64) -> String {
 #[component]
 pub fn SessionList(
     #[prop(into)] sessions: Vec<SessionSummary>,
-    #[prop(optional)] active_id: Option<String>,
-    #[prop(optional)] on_select: Option<Callback<String>>,
-    #[prop(optional)] on_delete: Option<Callback<String>>,
+    active_id: Option<String>,
+    on_select: Option<Callback<String>>,
+    on_delete: Option<Callback<String>>,
 ) -> impl IntoView {
     let (search, set_search) = signal(String::new());
     let (focused_idx, set_focused_idx) = signal(0usize);

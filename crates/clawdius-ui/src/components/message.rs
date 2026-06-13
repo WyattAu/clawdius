@@ -19,7 +19,7 @@ pub enum MessageRole {
     Tool,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct ChatMessage {
     pub id: String,
     pub role: MessageRole,

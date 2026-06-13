@@ -42,6 +42,7 @@ impl Default for ChatState {
     }
 }
 
+#[derive(Clone)]
 pub struct ChatActions {
     pub send_message: Callback<String>,
     pub cancel_streaming: Callback<()>,

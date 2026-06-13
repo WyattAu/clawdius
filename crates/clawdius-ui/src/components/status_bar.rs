@@ -17,7 +17,7 @@ pub enum ConnectionStatus {
     Reconnecting,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct StatusBarState {
     pub provider: String,
     pub model: String,
