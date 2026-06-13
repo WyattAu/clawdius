@@ -76,7 +76,7 @@ ratatui = "0.30"
 crossterm = { version = "0.29", features = ["event-stream"] }
 
 # === WASM Runtime (Brain Isolation) ===
-wasmtime = "44"
+wasmtime = "45"
 
 # === JSON-RPC ===
 jsonrpsee = { version = "0.24", features = ["server", "client", "ws-client"] }
