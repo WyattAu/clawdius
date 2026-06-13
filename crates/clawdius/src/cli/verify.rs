@@ -80,3 +80,34 @@ pub(super) fn handle_verify(
 
     Ok(())
 }
+
+pub(super) async fn handle_verify_image(
+    image_ref: &str,
+    output_format: OutputFormat,
+) -> anyhow::Result<()> {
+    match output_format {
+        OutputFormat::Json => {
+            let result = clawdius_core::integrity::verify_image(image_ref).await?;
+            println!("{}", serde_json::to_string_pretty(&result)?);
+        },
+        OutputFormat::Text | OutputFormat::StreamJson => {
+            println!("Verifying image: {image_ref}");
+            let result = clawdius_core::integrity::verify_image(image_ref).await?;
+            println!(
+                "  Signature valid: {}",
+                if result.signature_valid { "yes" } else { "no" }
+            );
+            println!(
+                "  SBOM attached:   {}",
+                if result.sbom_attached { "yes" } else { "no" }
+            );
+            if let Some(ref signer) = result.signer_identity {
+                println!("  Signer identity: {signer}");
+            }
+            if !result.signature_valid {
+                anyhow::bail!("Image signature verification failed for {image_ref}");
+            }
+        },
+    }
+    Ok(())
+}

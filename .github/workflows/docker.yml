@@ -20,6 +20,7 @@ env:
 permissions:
   contents: read
   packages: write
+  id-token: write
 
 concurrency:
   group: docker-${{ github.ref }}
@@ -68,6 +69,7 @@ jobs:
             type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Build and push
+        id: build
         uses: docker/build-push-action@v6.16.0
         with:
           context: .
@@ -80,3 +82,24 @@ jobs:
           cache-to: type=gha,mode=max
           build-args: |
             RUST_VERSION=1.92
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3.8.2
+
+      - name: Sign image with GitHub OIDC
+        run: |
+          cosign sign --yes \
+            "${{ steps.meta.outputs.tags }}"@"${{ steps.build.outputs.digest }}"
+
+      - name: Generate SBOM with syft
+        uses: anchore/sbom-action@v0
+        with:
+          image: "${{ steps.meta.outputs.tags }}@${{ steps.build.outputs.digest }}"
+          format: spdx-json
+          output-file: sbom.spdx.json
+
+      - name: Attach SBOM to image
+        run: |
+          cosign attach sbom --sbom-type spdxjson \
+            --sbom sbom.spdx.json \
+            "${{ steps.meta.outputs.tags }}"@"${{ steps.build.outputs.digest }}"

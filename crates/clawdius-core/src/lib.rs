@@ -56,6 +56,7 @@ pub mod graph_rag;
 #[cfg(feature = "i18n")]
 #[doc(hidden)]
 pub mod i18n;
+pub mod integrity;
 #[cfg(feature = "billing")]
 #[doc(hidden)]
 pub mod invoice;

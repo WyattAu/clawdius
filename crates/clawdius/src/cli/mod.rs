@@ -299,6 +299,12 @@ pub enum Commands {
         lean_path: Option<PathBuf>,
     },
 
+    #[command(about = "Verify container image signature and SBOM")]
+    VerifyImage {
+        #[arg(help = "Container image reference (e.g., ghcr.io/org/clawdius:latest)")]
+        image_ref: String,
+    },
+
     #[command(about = "Manage API keys in system keyring")]
     #[cfg(feature = "keyring")]
     Auth {
@@ -1309,6 +1315,9 @@ pub async fn handle_command(
         } => doc::handle_doc(file, element, format, output, inline, output_format).await,
         Commands::Verify { proof, lean_path } => {
             verify::handle_verify(&proof, lean_path, output_format)
+        },
+        Commands::VerifyImage { image_ref } => {
+            verify::handle_verify_image(&image_ref, output_format).await
         },
         #[cfg(feature = "keyring")]
         Commands::Auth { action } => auth::handle_auth(action).await,
