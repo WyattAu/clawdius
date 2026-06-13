@@ -1,0 +1,32 @@
+[package]
+name = "clawdius-web"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Clawdius web application with Leptos SSR and Axum"
+
+[dependencies]
+clawdius-ui = { path = "../clawdius-ui" }
+clawdius-core = { path = "../clawdius-core" }
+axum = { workspace = true, optional = true }
+leptos = { version = "0.8", features = ["ssr"] }
+leptos_axum = { version = "0.8", optional = true }
+leptos_meta = { version = "0.8", features = ["ssr"] }
+tokio = { workspace = true, features = ["full"] }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tower = { workspace = true, optional = true }
+tower-http = { workspace = true, optional = true }
+
+[features]
+default = ["ssr"]
+ssr = [
+    "leptos/ssr",
+    "leptos_meta/ssr",
+    "dep:leptos_axum",
+    "dep:axum",
+    "dep:tower",
+    "dep:tower-http",
+]
+hydrate = ["leptos/hydrate"]

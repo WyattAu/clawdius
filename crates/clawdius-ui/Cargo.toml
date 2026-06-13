@@ -7,8 +7,8 @@ repository.workspace = true
 description = "Shared Leptos UI component library for Clawdius Tauri and Web apps"
 
 [dependencies]
-leptos = { version = "0.7", features = ["csr"] }
-leptos_meta = "0.7"
+leptos = { version = "0.8", features = ["csr"] }
+leptos_meta = "0.8"
 web-sys = { version = "0.3", features = ["HtmlElement", "HtmlInputElement", "Element", "Document", "Window"] }
 
 [features]

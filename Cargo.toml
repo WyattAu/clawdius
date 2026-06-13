@@ -16,6 +16,8 @@ members = [
     "crates/clawdius-plugin-sdk",
     "crates/clawdius-lsp",
     "crates/clawdius-ui",
+    "crates/clawdius-tauri",
+    "crates/clawdius-web",
 ]
 
 [workspace.package]
