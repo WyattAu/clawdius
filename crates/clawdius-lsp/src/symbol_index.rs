@@ -33,6 +33,7 @@ pub struct SymbolIndex {
 struct DocumentData {
     symbols: Vec<DocumentSymbol>,
     indexed: Vec<IndexedSymbol>,
+    text: String,
 }
 
 impl SymbolIndex {
@@ -70,6 +71,7 @@ impl SymbolIndex {
             DocumentData {
                 symbols: doc_symbols,
                 indexed,
+                text: text.to_string(),
             },
         );
     }
@@ -149,6 +151,21 @@ impl SymbolIndex {
         summary.insert("symbols".to_string(), total_symbols);
         summary.insert("unique_names".to_string(), unique_names);
         summary
+    }
+
+    /// Get all indexed symbols across all documents.
+    pub fn all_symbols(&self) -> Vec<&IndexedSymbol> {
+        self.documents
+            .values()
+            .flat_map(|d| d.indexed.iter())
+            .collect()
+    }
+
+    /// Get the raw text stored for a document.
+    pub fn document_text(&self, uri: &Url) -> Option<&str> {
+        self.documents
+            .get(&uri.to_string())
+            .map(|d| d.text.as_str())
     }
 }
 

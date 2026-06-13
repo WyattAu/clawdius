@@ -8,15 +8,19 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 use tower_lsp::jsonrpc::Result as LspResult;
 use tower_lsp::lsp_types::{
-    DidChangeTextDocumentParams, DidCloseTextDocumentParams, DidOpenTextDocumentParams,
-    DidSaveTextDocumentParams, DocumentSymbolParams, DocumentSymbolResponse, GotoDefinitionParams,
-    GotoDefinitionResponse, Hover, HoverContents, HoverParams, InitializeParams, InitializeResult,
-    InitializedParams, Location, MarkupContent, MarkupKind, MessageType, Position, Range,
-    ReferenceParams, ServerInfo, Url,
+    CompletionParams, CompletionResponse, DidChangeTextDocumentParams, DidCloseTextDocumentParams,
+    DidOpenTextDocumentParams, DidSaveTextDocumentParams, DocumentSymbolParams,
+    DocumentSymbolResponse, GotoDefinitionParams, GotoDefinitionResponse, Hover, HoverContents,
+    HoverParams, InitializeParams, InitializeResult, InitializedParams, Location, MarkupContent,
+    MarkupKind, MessageType, Position, Range, ReferenceParams, ServerInfo, Url,
 };
 use tower_lsp::{Client, LanguageServer};
 
 use crate::capabilities::server_capabilities;
+use crate::completion::{
+    completion_response, generate_completions, get_word_at_position, rust_keyword_completions,
+};
+use crate::diagnostics::analyze_diagnostics;
 use crate::symbol_index::SymbolIndex;
 
 /// State shared across all LSP handlers.
@@ -51,12 +55,20 @@ impl LanguageServer for ClawdiusLspBackend {
         let uri = &params.text_document.uri;
         let text = &params.text_document.text;
         self.index.write().await.index_document(uri, text);
+        let diagnostics = analyze_diagnostics(text);
+        self.client
+            .publish_diagnostics(params.text_document.uri, diagnostics, None)
+            .await;
     }
 
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
         let uri = &params.text_document.uri;
         if let Some(change) = params.content_changes.last() {
             self.index.write().await.index_document(uri, &change.text);
+            let diagnostics = analyze_diagnostics(&change.text);
+            self.client
+                .publish_diagnostics(params.text_document.uri, diagnostics, None)
+                .await;
         }
     }
 
@@ -66,8 +78,12 @@ impl LanguageServer for ClawdiusLspBackend {
 
     async fn did_save(&self, params: DidSaveTextDocumentParams) {
         let uri = &params.text_document.uri;
-        if let Some(text) = params.text {
-            self.index.write().await.index_document(uri, &text);
+        if let Some(text) = &params.text {
+            self.index.write().await.index_document(uri, text);
+            let diagnostics = analyze_diagnostics(text);
+            self.client
+                .publish_diagnostics(params.text_document.uri, diagnostics, None)
+                .await;
         }
     }
 
@@ -167,6 +183,23 @@ impl LanguageServer for ClawdiusLspBackend {
         } else {
             Ok(Some(locations))
         }
+    }
+
+    async fn completion(&self, params: CompletionParams) -> LspResult<Option<CompletionResponse>> {
+        let uri = &params.text_document_position.text_document.uri;
+        let position = params.text_document_position.position;
+
+        let index = self.index.read().await;
+
+        let text = index.document_text(uri).unwrap_or_default();
+        let prefix = get_word_at_position(text, position);
+
+        let symbols = index.all_symbols();
+        let mut completions = generate_completions(&symbols, &prefix, 50);
+        completions.extend(rust_keyword_completions(&prefix));
+        drop(index);
+
+        Ok(completion_response(completions))
     }
 }
 

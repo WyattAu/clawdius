@@ -9,7 +9,8 @@
 //! - `textDocument/hover` -- Documentation lookup via Graph-RAG
 //! - `textDocument/definition` -- Go-to-definition via symbol index
 //! - `textDocument/references` -- Find-all-references via symbol index
-//! - `textDocument/diagnostic` -- Architecture drift and debt detection
+//! - `textDocument/completion` -- Symbol and keyword completion
+//! - `textDocument/publishDiagnostics` -- Drift and debt diagnostics
 
 #![deny(unsafe_code)]
 #![warn(clippy::pedantic, clippy::unwrap_used, clippy::expect_used)]
@@ -19,11 +20,17 @@ use tower_lsp::{LspService, Server};
 use tracing_subscriber::EnvFilter;
 
 mod backend;
-mod capabilities;
+pub mod capabilities;
+pub mod completion;
+pub mod diagnostics;
 mod handlers;
 mod symbol_index;
 
 pub use backend::ClawdiusLspBackend;
+pub use completion::{
+    completion_response, generate_completions, get_word_at_position, rust_keyword_completions,
+};
+pub use diagnostics::analyze_diagnostics;
 
 /// Run the LSP server over stdio.
 ///

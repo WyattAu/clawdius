@@ -1,10 +1,13 @@
 //! LSP server capabilities declaration.
 
 use tower_lsp::lsp_types::{
-    HoverProviderCapability, OneOf, ServerCapabilities, TextDocumentSyncCapability,
-    TextDocumentSyncKind, TextDocumentSyncOptions, TextDocumentSyncSaveOptions,
+    CompletionOptions, DiagnosticOptions, DiagnosticServerCapabilities, HoverProviderCapability,
+    OneOf, ServerCapabilities, TextDocumentSyncCapability, TextDocumentSyncKind,
+    TextDocumentSyncOptions, TextDocumentSyncSaveOptions,
 };
 
+/// Build the [`ServerCapabilities`] advertised during initialization.
+#[must_use]
 pub fn server_capabilities() -> ServerCapabilities {
     ServerCapabilities {
         text_document_sync: Some(TextDocumentSyncCapability::Options(
@@ -20,6 +23,17 @@ pub fn server_capabilities() -> ServerCapabilities {
         hover_provider: Some(HoverProviderCapability::Simple(true)),
         definition_provider: Some(OneOf::Left(true)),
         references_provider: Some(OneOf::Left(true)),
+        completion_provider: Some(CompletionOptions {
+            resolve_provider: Some(false),
+            trigger_characters: Some(vec![".".to_string(), ":".to_string()]),
+            ..Default::default()
+        }),
+        diagnostic_provider: Some(DiagnosticServerCapabilities::Options(DiagnosticOptions {
+            inter_file_dependencies: false,
+            workspace_diagnostics: false,
+            identifier: None,
+            ..Default::default()
+        })),
         ..Default::default()
     }
 }
