@@ -1,0 +1,17 @@
+[package]
+name = "clawdius-ui"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Shared Leptos UI component library for Clawdius Tauri and Web apps"
+
+[dependencies]
+leptos = { version = "0.7", features = ["csr"] }
+leptos_meta = "0.7"
+web-sys = { version = "0.3", features = ["HtmlElement", "HtmlInputElement", "Element", "Document", "Window"] }
+
+[features]
+default = []
+ssr = ["leptos/ssr"]
+hydrate = ["leptos/hydrate"]
