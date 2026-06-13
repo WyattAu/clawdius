@@ -131,11 +131,6 @@ fn tool_result_ok_and_err() {
 
 // ── ToolRegistry ───────────────────────────────────────────────────────
 
-#[allow(dead_code)]
-fn sample_handler(invocation: &ToolInvocation) -> ToolResult {
-    ToolResult::ok(format!("handled: {}", invocation.name))
-}
-
 #[test]
 fn registry_register_trait_tool() {
     let mut registry = ToolRegistry::new();

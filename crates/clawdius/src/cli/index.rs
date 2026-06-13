@@ -4,8 +4,6 @@ use super::OutputFormat;
 use std::path::{Path, PathBuf};
 
 use clawdius_core::output::{OutputFormat as CoreOutputFormat, OutputFormatter, OutputOptions};
-#[cfg(feature = "vector-db")]
-use clawdius_core::workspace::IndexStats;
 
 pub(super) async fn handle_index(
     path: Option<PathBuf>,
@@ -86,24 +84,6 @@ pub(super) async fn handle_index(
     }
 
     Ok(())
-}
-
-#[cfg(feature = "vector-db")]
-#[allow(dead_code)]
-fn print_index_stats(stats: &IndexStats) {
-    println!("\nIndexing Complete:");
-    println!("  Files indexed: {}", stats.files_indexed);
-    println!("  Symbols found: {}", stats.symbols_found);
-    println!("  References found: {}", stats.references_found);
-    println!("  Embeddings created: {}", stats.embeddings_created);
-    println!("  Duration: {}ms", stats.duration_ms);
-
-    if !stats.errors.is_empty() {
-        println!("\nErrors ({}):", stats.errors.len());
-        for error in &stats.errors {
-            println!("  - {error}");
-        }
-    }
 }
 
 #[cfg(feature = "vector-db")]

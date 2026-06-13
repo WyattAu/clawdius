@@ -529,39 +529,6 @@ impl ReviewEngine {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use async_trait::async_trait;
-    use tokio::sync::mpsc;
-
-    #[allow(dead_code)]
-    struct MockReviewLlm {
-        response: String,
-    }
-
-    #[allow(dead_code)]
-    impl MockReviewLlm {
-        fn new(response: &str) -> Self {
-            Self {
-                response: response.to_string(),
-            }
-        }
-    }
-
-    #[async_trait]
-    impl LlmClient for MockReviewLlm {
-        async fn chat(&self, _messages: Vec<ChatMessage>) -> Result<String> {
-            Ok(self.response.clone())
-        }
-
-        async fn chat_stream(&self, _messages: Vec<ChatMessage>) -> Result<mpsc::Receiver<String>> {
-            let (tx, rx) = mpsc::channel(1);
-            let _ = tx.send(self.response.clone()).await;
-            Ok(rx)
-        }
-
-        fn count_tokens(&self, text: &str) -> usize {
-            text.split_whitespace().count()
-        }
-    }
 
     #[test]
     fn test_review_focus_display_names() {

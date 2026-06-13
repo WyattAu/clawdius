@@ -20,16 +20,9 @@ pub fn auth_routes(auth_service: Arc<AuthService>) -> Router {
         .with_state(auth_service)
 }
 
-#[derive(Deserialize)]
-struct LoginQuery {
-    #[allow(dead_code)]
-    redirect_uri: Option<String>,
-}
-
 async fn login_handler(
     Path(provider): Path<String>,
     State(service): State<Arc<AuthService>>,
-    Query(_query): Query<LoginQuery>,
 ) -> impl IntoResponse {
     match service.authorization_url(&provider) {
         Ok((url, _state, _verifier)) => Redirect::temporary(&url).into_response(),

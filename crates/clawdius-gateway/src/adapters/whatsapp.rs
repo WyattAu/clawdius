@@ -39,7 +39,6 @@ pub struct WhatsAppAdapter {
     /// WhatsApp Business access token.
     access_token: String,
     /// Phone number ID for sending messages.
-    #[allow(dead_code)]
     phone_number_id: String,
     /// Verify token for webhook verification.
     verify_token: Option<String>,
@@ -262,7 +261,11 @@ impl PlatformAdapter for WhatsAppAdapter {
     }
 
     async fn send_message(&self, message: OutgoingMessage) -> Result<(), GatewayError> {
-        let url = format!("{}/messages", self.api_url.trim_end_matches('/'));
+        let url = format!(
+            "{}/{}/messages",
+            self.api_url.trim_end_matches('/'),
+            self.phone_number_id
+        );
 
         let body = serde_json::json!({
             "messaging_product": "whatsapp",
