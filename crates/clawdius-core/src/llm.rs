@@ -214,6 +214,8 @@
 //!
 //! [`Error`]: crate::Error
 
+#[cfg(not(target_arch = "wasm32"))]
+pub mod cluster;
 pub mod cache;
 mod messages;
 pub mod providers;
