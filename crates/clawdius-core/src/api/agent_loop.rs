@@ -104,6 +104,11 @@ const SYSTEM_PROMPT: &str =
 pub struct AgentLoop {
     llm_client: Arc<dyn crate::llm::providers::LlmClient>,
     config: AgentLoopConfig,
+    /// External MCP client manager for tool dispatch.
+    /// When set, tool calls are first routed to external MCP servers.
+    /// If no external server handles the tool, falls back to built-in tools.
+    #[cfg(not(target_arch = "wasm32"))]
+    mcp_manager: Option<Arc<crate::mcp::ClientManager>>,
 }
 
 #[derive(Debug, Clone)]
@@ -117,18 +122,33 @@ impl AgentLoop {
         Self {
             llm_client,
             config: AgentLoopConfig::default(),
+            #[cfg(not(target_arch = "wasm32"))]
+            mcp_manager: None,
         }
     }
 
-    #[must_use] 
+    #[must_use]
     pub const fn with_max_iterations(mut self, max: usize) -> Self {
         self.config.max_iterations = max;
         self
     }
 
-    #[must_use] 
+    #[must_use]
     pub const fn with_config(mut self, config: AgentLoopConfig) -> Self {
         self.config = config;
+        self
+    }
+
+    /// Attach an external MCP client manager for tool dispatch.
+    ///
+    /// When set, `execute_single_tool` and `execute_concurrent_tools` will
+    /// first check if any connected MCP server provides the requested tool.
+    /// If found, the call is routed to the external server. Otherwise, the
+    /// built-in tool handler is used as fallback.
+    #[cfg(not(target_arch = "wasm32"))]
+    #[must_use]
+    pub fn with_mcp_manager(mut self, manager: Arc<crate::mcp::ClientManager>) -> Self {
+        self.mcp_manager = Some(manager);
         self
     }
 
@@ -197,6 +217,19 @@ impl AgentLoop {
                 .ok();
         }
 
+        // Try external MCP server first, fall back to built-in tools
+        #[cfg(not(target_arch = "wasm32"))]
+        let result = {
+            if let Some(ref mgr) = self.mcp_manager {
+                match Self::try_external_mcp(mgr, &tc.name, &tc.arguments).await {
+                    Some(r) => r,
+                    None => execute_mcp_tool_call(&tc.name, &tc.arguments),
+                }
+            } else {
+                execute_mcp_tool_call(&tc.name, &tc.arguments)
+            }
+        };
+        #[cfg(target_arch = "wasm32")]
         let result = execute_mcp_tool_call(&tc.name, &tc.arguments);
         let is_error = result.is_error;
         let truncated_result = truncate_result(&result.result, self.config.max_tool_result_size);
@@ -227,6 +260,54 @@ impl AgentLoop {
 
         let text = format!("Tool {} result:\n{}\n\n", tc.name, truncated_result);
         (tool_result, text)
+    }
+
+    /// Try to dispatch a tool call to an external MCP server.
+    ///
+    /// Returns `Some(result)` if an external server handled the call,
+    /// or `None` if no server provides the tool (caller should fall back).
+    #[cfg(not(target_arch = "wasm32"))]
+    async fn try_external_mcp(
+        manager: &Arc<crate::mcp::ClientManager>,
+        tool_name: &str,
+        arguments: &serde_json::Value,
+    ) -> Option<McpToolResultInner> {
+        // Check if any connected server provides this tool
+        let tools = manager.list_all_tools().await.ok()?;
+        let provider = tools.iter().find(|(_, tool)| tool.name == tool_name);
+
+        let (server_name, _) = provider?;
+
+        // Dispatch to the external server
+        match manager
+            .call_tool(server_name, tool_name, arguments.clone())
+            .await
+        {
+            Ok(result) => {
+                let is_error = result.is_error;
+                let text = result
+                    .content
+                    .iter()
+                    .filter_map(|c| match c {
+                        crate::mcp::protocol::McpContent::Text { text } => Some(text.as_str()),
+                        _ => None,
+                    })
+                    .collect::<Vec<_>>()
+                    .join("\n");
+                Some(McpToolResultInner {
+                    result: if text.is_empty() {
+                        "Tool completed (non-text content)".to_string()
+                    } else {
+                        text
+                    },
+                    is_error,
+                })
+            }
+            Err(e) => Some(McpToolResultInner {
+                result: format!("External MCP error: {e}"),
+                is_error: true,
+            }),
+        }
     }
 
     /// Execute multiple tool calls concurrently and emit events.
