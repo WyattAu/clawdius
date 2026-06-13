@@ -972,7 +972,11 @@ impl CheckpointResult {
     }
 }
 
-/// Checkpoint information
+/// Checkpoint information (output representation).
+///
+/// Derived from [`crate::timeline::CheckpointInfo`] via [`From`].
+/// Fields `name` and `total_size` are dropped in the conversion;
+/// `files_count` is renamed to `file_count`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CheckpointInfo {
     /// Checkpoint ID
@@ -983,6 +987,17 @@ pub struct CheckpointInfo {
     pub timestamp: DateTime<Utc>,
     /// File count
     pub file_count: usize,
+}
+
+impl From<crate::timeline::CheckpointInfo> for CheckpointInfo {
+    fn from(cp: crate::timeline::CheckpointInfo) -> Self {
+        Self {
+            id: cp.id.0,
+            description: cp.description.unwrap_or_default(),
+            timestamp: cp.timestamp,
+            file_count: cp.files_count,
+        }
+    }
 }
 
 /// JSON output for modes command
