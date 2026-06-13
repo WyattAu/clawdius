@@ -201,6 +201,13 @@ impl AgentLoop {
         let is_error = result.is_error;
         let truncated_result = truncate_result(&result.result, self.config.max_tool_result_size);
 
+        // Record tool execution metrics
+        clawdius_core::metrics::record_tool_execution(
+            &tc.name,
+            std::time::Duration::from_millis(0), // duration not tracked in sync path
+            !is_error,
+        );
+
         if let Some(tx) = event_tx {
             tx.send(AgentEvent::ToolResult {
                     name: tc.name.clone(),

@@ -206,6 +206,14 @@ async fn gateway_health(AxumState(state): AxumState<Arc<GatewayHealthState>>) ->
     )
 }
 
+/// Prometheus metrics endpoint.
+async fn metrics_handler() -> impl IntoResponse {
+    (
+        [(axum::http::header::CONTENT_TYPE, "text/plain; version=0.0.4")],
+        clawdius_core::metrics::render_metrics(),
+    )
+}
+
 async fn shutdown_signal() {
     let ctrl_c = async {
         tokio::signal::ctrl_c()
@@ -465,6 +473,7 @@ async fn main() -> anyhow::Result<()> {
 
     let health_router = Router::new()
         .route("/api/gateway/health", get(gateway_health))
+        .route("/metrics", get(metrics_handler))
         .with_state(health_state);
 
     let admin_app = admin_router(admin_state).merge(health_router);

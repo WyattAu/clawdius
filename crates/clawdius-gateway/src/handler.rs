@@ -340,9 +340,45 @@ impl MessageHandler for ClawdiusHandler {
             .as_ref()
             .ok_or_else(|| GatewayError::Agent("LLM client not initialized".to_string()))?;
 
-        let response = llm
-            .chat(messages.clone())
-            .await
+        let provider_name = self
+            .provider
+            .as_deref()
+            .unwrap_or("unknown");
+        let model_name = self.model.as_deref().unwrap_or("unknown");
+
+        let start = std::time::Instant::now();
+        let llm_result = llm.chat(messages.clone()).await;
+        let duration = start.elapsed();
+
+        match &llm_result {
+            Ok(response) => {
+                clawdius_core::metrics::record_llm_request(
+                    provider_name,
+                    model_name,
+                    duration,
+                    0, // prompt tokens (not available from simple chat())
+                    0, // completion tokens
+                    true,
+                );
+                clawdius_core::metrics::record_session_count(
+                    self.session_map.read().await.len(),
+                );
+                let _ = response; // already used below
+            }
+            Err(e) => {
+                clawdius_core::metrics::record_llm_request(
+                    provider_name,
+                    model_name,
+                    duration,
+                    0,
+                    0,
+                    false,
+                );
+                return Err(GatewayError::Agent(format!("LLM call failed: {e}")));
+            }
+        }
+
+        let response = llm_result
             .map_err(|e| GatewayError::Agent(format!("LLM call failed: {e}")))?;
 
         // 6. Store in cache for future identical requests
