@@ -15,6 +15,7 @@ description = "Messaging gateway for Clawdius — routes chat platform messages 
 
 [dependencies]
 clawdius-core = { path = "../clawdius-core", version = "1.0.0", features = ["billing", "audit"] }
+clawdius-auth = { path = "../clawdius-auth", version = "1.0.0", optional = true }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros", "sync", "signal"] }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
@@ -49,6 +50,7 @@ slack = ["dep:slack-morphism"]
 matrix = ["dep:matrix-sdk"]
 all-platforms = ["telegram", "discord", "slack", "matrix"]
 audit = []
+auth = ["dep:clawdius-auth"]
 
 [lints]
 workspace = true

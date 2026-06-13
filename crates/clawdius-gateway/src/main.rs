@@ -523,6 +523,25 @@ async fn main() -> anyhow::Result<()> {
 
     let admin_app = admin_router(admin_state).merge(health_router);
 
+    // Mount OIDC auth routes (if auth feature is enabled)
+    #[cfg(feature = "auth")]
+    let admin_app = {
+        let auth_config = clawdius_auth::AuthConfig::default();
+        match clawdius_auth::AuthService::new(auth_config) {
+            Ok(service) => {
+                let auth_arc = Arc::new(service);
+                tracing::info!("OIDC auth routes mounted at /login, /callback, /logout, /me, /refresh");
+                admin_app
+                    .merge(clawdius_auth::auth_routes(Arc::clone(&auth_arc)))
+                    .layer(axum::Extension(auth_arc))
+            }
+            Err(e) => {
+                tracing::warn!("Failed to initialize OIDC auth service: {e}");
+                admin_app
+            }
+        }
+    };
+
     // Start admin server
     let admin_addr = format!("{}:{}", cli.admin_host, cli.admin_port);
     let admin_listener = tokio::net::TcpListener::bind(&admin_addr).await?;

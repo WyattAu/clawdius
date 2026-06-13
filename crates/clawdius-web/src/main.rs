@@ -84,7 +84,7 @@ async fn chat_stream_handler() -> axum::response::Response {
 fn app_router() -> Router {
     let cors = CorsLayer::permissive();
 
-    Router::new()
+    let router = Router::new()
         // API routes
         .route("/api/health", get(health_handler))
         .route("/api/models", get(models_handler))
@@ -93,7 +93,28 @@ fn app_router() -> Router {
         // SSE streaming endpoint
         .route("/api/chat/stream", get(chat_stream_handler))
         // Prometheus metrics
-        .route("/metrics", get(metrics_handler))
+        .route("/metrics", get(metrics_handler));
+
+    // Mount OIDC auth routes (if auth feature is enabled)
+    #[cfg(feature = "auth")]
+    let router = {
+        let auth_config = clawdius_auth::AuthConfig::default();
+        match clawdius_auth::AuthService::new(auth_config) {
+            Ok(service) => {
+                let auth_arc = std::sync::Arc::new(service);
+                eprintln!("OIDC auth routes mounted");
+                router
+                    .merge(clawdius_auth::auth_routes(std::sync::Arc::clone(&auth_arc)))
+                    .layer(axum::Extension(auth_arc))
+            }
+            Err(e) => {
+                eprintln!("Failed to initialize OIDC auth: {e}");
+                router
+            }
+        }
+    };
+
+    router
         // Leptos SSR fallback
         .fallback(render_app_to_stream(|| view! { <App /> }))
         .layer(cors)

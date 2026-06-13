@@ -45,6 +45,18 @@ fn default_refresh_duration() -> u64 {
     604_800
 }
 
+impl Default for AuthConfig {
+    fn default() -> Self {
+        Self {
+            providers: Vec::new(),
+            jwt_secret: uuid::Uuid::new_v4().to_string(),
+            session_duration_secs: default_session_duration(),
+            refresh_duration_secs: default_refresh_duration(),
+            allowed_origins: Vec::new(),
+        }
+    }
+}
+
 impl OidcProviderConfig {
     #[must_use]
     pub fn okta(domain: &str, client_id: &str, client_secret: &str, redirect_url: &str) -> Self {

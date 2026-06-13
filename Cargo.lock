@@ -1905,6 +1905,7 @@ dependencies = [
  "axum",
  "chrono",
  "clap",
+ "clawdius-auth",
  "clawdius-core",
  "hmac-sha256",
  "matrix-sdk",
@@ -1992,6 +1993,7 @@ version = "1.0.0"
 dependencies = [
  "async-stream",
  "axum",
+ "clawdius-auth",
  "clawdius-core",
  "clawdius-ui",
  "futures",
