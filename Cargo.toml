@@ -83,7 +83,7 @@ wasmtime = "44"
 jsonrpsee = { version = "0.24", features = ["server", "client", "ws-client"] }
 
 # === Security ===
-keyring = "3.6"
+keyring = "4.0"
 rpassword = "7.5"
 
 # === HTTP ===
