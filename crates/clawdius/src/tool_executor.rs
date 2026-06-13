@@ -287,6 +287,7 @@ impl ToolExecutor for CliToolExecutor {
                                 success: false,
                                 content: format!("exit code {}: {}", result.exit_code, output),
                                 is_error: true,
+                                metadata: None,
                             }
                         } else {
                             ToolResult::success(output)

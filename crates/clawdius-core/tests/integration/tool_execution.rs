@@ -179,7 +179,7 @@ async fn test_tool_result_json_parsing_error() {
         count: usize,
     }
 
-    let parsed = result.parse_json::<TestResponse>();
+    let parsed = result.from_content::<TestResponse>();
     assert!(parsed.is_err());
 }
 

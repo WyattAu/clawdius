@@ -99,14 +99,63 @@ pub struct ToolSpec {
     pub parameters: serde_json::Value,
 }
 
-/// Tool execution result
+/// Tool execution result.
+///
+/// This is the canonical ToolResult type for clawdius-core.
+/// The agentic module re-exports this type.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ToolResult {
-    /// Success status
+    /// Whether the tool execution succeeded.
     pub success: bool,
-    /// Output or error message
-    pub output: String,
-    /// Additional metadata
+    /// The output content of the tool execution.
+    pub content: String,
+    /// Whether this result represents an error.
+    #[serde(default)]
+    pub is_error: bool,
+    /// Additional structured metadata about the result.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub metadata: Option<serde_json::Value>,
+}
+
+impl ToolResult {
+    /// Create a successful result.
+    #[must_use]
+    pub fn success(content: impl Into<String>) -> Self {
+        Self {
+            success: true,
+            content: content.into(),
+            is_error: false,
+            metadata: None,
+        }
+    }
+
+    /// Create an error result.
+    #[must_use]
+    pub fn error(content: impl Into<String>) -> Self {
+        Self {
+            success: false,
+            content: content.into(),
+            is_error: true,
+            metadata: None,
+        }
+    }
+
+    /// Create a successful result from a JSON value.
+    #[must_use]
+    pub fn parse_json(value: &serde_json::Value) -> Self {
+        Self {
+            success: true,
+            content: serde_json::to_string_pretty(value).unwrap_or_else(|_| value.to_string()),
+            is_error: false,
+            metadata: Some(value.clone()),
+        }
+    }
+
+    /// Deserialize the content field as type T.
+    ///
+    /// # Errors
+    /// Returns an error if deserialization fails.
+    pub fn from_content<T: serde::de::DeserializeOwned>(&self) -> serde_json::Result<T> {
+        serde_json::from_str(&self.content)
+    }
 }

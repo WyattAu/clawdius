@@ -684,7 +684,8 @@ fn test_tool_result_serialization() {
 
     let result = ToolResult {
         success: true,
-        output: "File written successfully".to_string(),
+        content: "File written successfully".to_string(),
+        is_error: false,
         metadata: Some(serde_json::json!({"bytes": 100})),
     };
 
@@ -694,7 +695,7 @@ fn test_tool_result_serialization() {
 
     let deserialized: ToolResult = serde_json::from_str(&json).unwrap();
     assert!(deserialized.success);
-    assert_eq!(deserialized.output, "File written successfully");
+    assert_eq!(deserialized.content, "File written successfully");
 }
 
 #[test]
@@ -703,7 +704,8 @@ fn test_tool_result_without_metadata() {
 
     let result = ToolResult {
         success: false,
-        output: "Error: file not found".to_string(),
+        content: "Error: file not found".to_string(),
+        is_error: true,
         metadata: None,
     };
 

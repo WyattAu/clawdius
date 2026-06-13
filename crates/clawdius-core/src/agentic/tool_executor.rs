@@ -51,49 +51,8 @@ impl ToolRequest {
     }
 }
 
-/// A tool execution result.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ToolResult {
-    /// Whether the tool execution succeeded
-    pub success: bool,
-    /// Result content
-    pub content: String,
-    /// Whether this is an error result
-    pub is_error: bool,
-}
-
-impl ToolResult {
-    /// Creates a successful result.
-    #[must_use]
-    pub fn success(content: impl Into<String>) -> Self {
-        Self {
-            success: true,
-            content: content.into(),
-            is_error: false,
-        }
-    }
-
-    /// Creates an error result.
-    #[must_use]
-    pub fn error(message: impl Into<String>) -> Self {
-        Self {
-            success: false,
-            content: message.into(),
-            is_error: true,
-        }
-    }
-
-    /// Parses the content as JSON.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the content is not valid JSON.
-    pub fn parse_json<T: for<'de> Deserialize<'de>>(&self) -> Result<T> {
-        serde_json::from_str(&self.content).map_err(|e| {
-            crate::error::Error::ParseError(format!("Failed to parse tool result as JSON: {}", e))
-        })
-    }
-}
+/// Re-export the canonical ToolResult from the tools module.
+pub use crate::tools::ToolResult;
 
 /// Trait for executing tools from the agentic system.
 ///
@@ -414,6 +373,7 @@ impl ShellToolExecutor {
                     success,
                     content,
                     is_error: !success,
+                    metadata: None,
                 })
             },
             Err(e) => Ok(ToolResult::error(format!("Command failed to execute: {e}"))),
