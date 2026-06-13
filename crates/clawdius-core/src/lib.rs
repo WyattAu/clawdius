@@ -66,6 +66,7 @@ pub mod mcp;
 pub mod memory;
 pub mod metrics;
 pub mod modes;
+pub mod multimodal;
 #[cfg(feature = "onboarding")]
 #[doc(hidden)]
 pub mod onboarding;
