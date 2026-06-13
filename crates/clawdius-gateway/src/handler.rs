@@ -62,6 +62,10 @@ pub struct ClawdiusHandler {
 
     /// LLM response cache (provider-agnostic, keyed by message hash).
     cache: Arc<LlmResponseCache>,
+
+    /// Optional audit logger for compliance.
+    #[cfg(feature = "audit")]
+    audit: Option<Arc<clawdius_core::audit::AuditManager>>,
 }
 
 impl ClawdiusHandler {
@@ -79,6 +83,8 @@ impl ClawdiusHandler {
             system_prompt: GATEWAY_SYSTEM_PROMPT.to_string(),
             max_history: 50,
             cache: Arc::new(LlmResponseCache::new(Duration::from_secs(300), 1000)),
+            #[cfg(feature = "audit")]
+            audit: None,
         }
     }
 
@@ -100,6 +106,17 @@ impl ClawdiusHandler {
     #[must_use]
     pub fn with_model(mut self, model: impl Into<String>) -> Self {
         self.model = Some(model.into());
+        self
+    }
+
+    /// Enable audit logging with the given manager (shared via Arc).
+    #[cfg(feature = "audit")]
+    #[must_use]
+    pub fn with_audit_manager(
+        mut self,
+        manager: Arc<clawdius_core::audit::AuditManager>,
+    ) -> Self {
+        self.audit = Some(manager);
         self
     }
 
@@ -380,6 +397,28 @@ impl MessageHandler for ClawdiusHandler {
 
         let response = llm_result
             .map_err(|e| GatewayError::Agent(format!("LLM call failed: {e}")))?;
+
+        // Audit log the chat event (if audit is configured)
+        #[cfg(feature = "audit")]
+        if let Some(ref audit) = self.audit {
+            let mut entry = clawdius_core::audit::events::chat_event(
+                &message.chat_id,
+                self.model.as_deref().unwrap_or("default"),
+            );
+            entry.user_id = Some(message.user.id.clone());
+            entry.resource = Some(format!(
+                "{}/{}",
+                message.platform.as_str(),
+                message.chat_id
+            ));
+            entry.details = serde_json::json!({
+                "provider": provider_name,
+                "duration_ms": duration.as_millis(),
+                "message_length": message.text.len(),
+                "user_name": message.user.name,
+            });
+            audit.buffer(entry);
+        }
 
         // 6. Store in cache for future identical requests
         self.cache.insert(

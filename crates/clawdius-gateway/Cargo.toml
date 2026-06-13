@@ -14,7 +14,7 @@ readme.workspace = true
 description = "Messaging gateway for Clawdius — routes chat platform messages to the agent"
 
 [dependencies]
-clawdius-core = { path = "../clawdius-core", version = "1.0.0", features = ["billing"] }
+clawdius-core = { path = "../clawdius-core", version = "1.0.0", features = ["billing", "audit"] }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros", "sync", "signal"] }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
@@ -48,6 +48,7 @@ discord = ["dep:serenity"]
 slack = ["dep:slack-morphism"]
 matrix = ["dep:matrix-sdk"]
 all-platforms = ["telegram", "discord", "slack", "matrix"]
+audit = []
 
 [lints]
 workspace = true

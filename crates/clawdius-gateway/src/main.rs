@@ -447,6 +447,51 @@ async fn main() -> anyhow::Result<()> {
     if let Some(ref model) = cli.model {
         handler = handler.with_model(model);
     }
+
+    // Initialize audit logging if config provides audit settings
+    #[cfg(feature = "audit")]
+    {
+        let config = if let Some(ref path) = cli.config {
+            clawdius_core::Config::load(path).ok()
+        } else {
+            clawdius_core::Config::load_default().ok()
+        };
+        if let Some(ref config) = config {
+            match clawdius_core::audit::AuditManager::from_config(&config.messaging.audit) {
+                Ok(manager) => {
+                    tracing::info!(
+                        "Audit logging enabled (backend: {}, flush: {}s)",
+                        config.messaging.audit.backend,
+                        config.messaging.audit.flush_interval_secs
+                    );
+
+                    // Spawn periodic flush task
+                    let flush_interval =
+                        std::time::Duration::from_secs(config.messaging.audit.flush_interval_secs);
+                    let manager = Arc::new(manager);
+
+                    let flush_mgr = Arc::clone(&manager);
+                    tokio::spawn(async move {
+                        let mut interval =
+                            tokio::time::interval(flush_interval);
+                        loop {
+                            interval.tick().await;
+                            if let Err(e) = flush_mgr.flush().await {
+                                tracing::warn!("Audit flush error: {e}");
+                            }
+                        }
+                    });
+
+                    // Pass to handler
+                    handler = handler.with_audit_manager(manager);
+                }
+                Err(e) => {
+                    tracing::warn!("Failed to initialize audit logging: {e}");
+                }
+            }
+        }
+    }
+
     gateway.set_handler(Box::new(handler)).await;
 
     // Start all adapters (uses Arc to pass callback without raw pointers)
