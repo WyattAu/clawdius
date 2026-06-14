@@ -51,7 +51,6 @@ async fn metrics_handler() -> impl axum::response::IntoResponse {
 async fn chat_stream_handler() -> axum::response::Response {
     use axum::response::IntoResponse;
     use axum::response::Sse;
-    use futures::stream::Stream;
     use std::convert::Infallible;
     use std::time::Duration;
 

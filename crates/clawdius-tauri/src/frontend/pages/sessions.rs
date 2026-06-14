@@ -11,7 +11,7 @@ use clawdius_ui::theme::spacing;
 #[component]
 pub fn SessionsPage(chat_state: RwSignal<ChatState>) -> impl IntoView {
     let (selected_session, set_selected_session) = signal(None::<String>);
-    let (search_query, set_search_query) = signal(String::new());
+    let (_search_query, _set_search_query) = signal(String::new());
 
     let sessions = Memo::new(move |_| {
         let _ = chat_state.get();

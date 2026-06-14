@@ -2,14 +2,13 @@ use leptos::prelude::*;
 use leptos::{component, view, IntoView};
 
 use clawdius_ui::components::chat_input::ChatInput;
-use clawdius_ui::components::message::{ChatMessage, Message as MessageComponent, MessageRole};
+use clawdius_ui::components::message::Message as MessageComponent;
 use clawdius_ui::components::session_list::SessionList as SessionListComponent;
 use clawdius_ui::components::session_list::SessionSummary as UiSessionSummary;
 use clawdius_ui::components::status_bar::{ConnectionStatus, StatusBar, StatusBarState};
 use clawdius_ui::hooks::use_chat::{ChatActions, ChatState};
 use clawdius_ui::hooks::use_config::ConfigState;
 use clawdius_ui::layouts::main::MainLayout;
-use clawdius_ui::theme::colors;
 
 #[component]
 pub fn ChatPage(

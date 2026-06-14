@@ -5,10 +5,14 @@
 //! where possible, with realistic fallbacks for complex integrations.
 
 use serde::{Deserialize, Serialize};
+
+#[cfg(feature = "desktop")]
 use std::time::Instant;
 
+#[cfg(feature = "desktop")]
 static STARTUP_INSTANT: std::sync::OnceLock<Instant> = std::sync::OnceLock::new();
 
+#[cfg(feature = "desktop")]
 fn startup_instant() -> &'static Instant {
     STARTUP_INSTANT.get_or_init(Instant::now)
 }
@@ -76,6 +80,7 @@ pub struct SendMessageRequest {
     pub model: Option<String>,
 }
 
+#[cfg(feature = "desktop")]
 fn default_models() -> Vec<ModelInfo> {
     vec![
         ModelInfo {

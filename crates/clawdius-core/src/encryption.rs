@@ -349,11 +349,11 @@ fn aes256gcm_encrypt(
         aead::{Aead, KeyInit},
         Aes256Gcm, Nonce,
     };
-    let cipher = Aes256Gcm::new_from_slice(key).expect("valid key length");
-    let nonce = Nonce::from_slice(nonce);
+    let cipher = Aes256Gcm::new(key.into());
+    let nonce = Nonce::from(*nonce);
     cipher
         .encrypt(
-            nonce,
+            &nonce,
             aes_gcm::aead::Payload {
                 msg: plaintext,
                 aad,
@@ -373,11 +373,11 @@ fn aes256gcm_decrypt(
         aead::{Aead, KeyInit},
         Aes256Gcm, Nonce,
     };
-    let cipher = Aes256Gcm::new_from_slice(key).expect("valid key length");
-    let nonce = Nonce::from_slice(nonce);
+    let cipher = Aes256Gcm::new(key.into());
+    let nonce = Nonce::from(*nonce);
     cipher
         .decrypt(
-            nonce,
+            &nonce,
             aes_gcm::aead::Payload {
                 msg: ciphertext,
                 aad,
