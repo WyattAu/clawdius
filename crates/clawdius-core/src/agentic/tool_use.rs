@@ -796,10 +796,10 @@ pub async fn run_native_tool_use_loop(
             }
 
             // Build a ToolResponse to send back to the LLM
-            tool_results.push(genai::chat::ToolResponse {
-                call_id: tc.call_id.clone(),
-                content: exec_result.output,
-            });
+            tool_results.push(genai::chat::ToolResponse::from_tool_call(
+                tc,
+                exec_result.output,
+            ));
         }
 
         // Append assistant response (with tool calls) to conversation
