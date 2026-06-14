@@ -5,6 +5,7 @@ use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation}
 use parking_lot::RwLock;
 use std::collections::HashMap;
 
+/// Stateful service that orchestrates OIDC authorization flows and JWT sessions.
 pub struct AuthService {
     config: AuthConfig,
     encoding_key: EncodingKey,
@@ -12,14 +13,20 @@ pub struct AuthService {
     pkce_verifiers: RwLock<HashMap<String, String>>,
 }
 
+/// Tokens issued to a client after a successful authorization code exchange.
 pub struct TokenResult {
+    /// Access token from the identity provider.
     pub access_token: String,
+    /// Signed session JWT consumed by protected endpoints.
     pub session_token: String,
+    /// Refresh token used to obtain a new session token, when issued.
     pub refresh_token: Option<String>,
+    /// Identity information for the authenticated user.
     pub user: UserInfo,
 }
 
 impl AuthService {
+    /// Create a new service from the provided configuration.
     pub fn new(config: AuthConfig) -> Result<Self> {
         let encoding_key = EncodingKey::from_secret(config.jwt_secret.as_bytes());
         let decoding_key = DecodingKey::from_secret(config.jwt_secret.as_bytes());
@@ -32,6 +39,7 @@ impl AuthService {
         })
     }
 
+    /// Build the provider authorization URL and return it with the state and PKCE verifier.
     pub fn authorization_url(&self, provider_name: &str) -> Result<(String, String, String)> {
         let provider = self.get_provider(provider_name)?;
 
@@ -54,6 +62,7 @@ impl AuthService {
         Ok((auth_url, state, verifier))
     }
 
+    /// Exchange an authorization code for access, session, and refresh tokens.
     pub async fn exchange_code(
         &self,
         provider_name: &str,
@@ -112,6 +121,7 @@ impl AuthService {
         })
     }
 
+    /// Decode and validate a session token, returning its claims.
     pub fn validate_session(&self, token: &str) -> Result<SessionClaims> {
         let token_data = decode::<SessionClaims>(token, &self.decoding_key, &Validation::default())
             .context("Invalid session token")?;
@@ -119,6 +129,7 @@ impl AuthService {
         Ok(token_data.claims)
     }
 
+    /// Issue a new session token with an extended expiration from an existing token.
     pub fn refresh_session(&self, token: &str) -> Result<String> {
         let claims = self.validate_session(token)?;
         let now = chrono::Utc::now().timestamp() as u64;

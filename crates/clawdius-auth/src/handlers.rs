@@ -10,6 +10,7 @@ use axum::{
 use serde::Deserialize;
 use std::sync::Arc;
 
+/// Build the Axum router for authentication endpoints.
 pub fn auth_routes(auth_service: Arc<AuthService>) -> Router {
     Router::new()
         .route("/login/{provider}", get(login_handler))

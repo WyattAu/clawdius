@@ -8,7 +8,9 @@ use axum::{
 };
 use std::sync::Arc;
 
+/// Axum extractor that yields the claims of the authenticated user for a request.
 pub struct AuthUser {
+    /// Validated session claims extracted from the request's bearer token.
     pub claims: SessionClaims,
 }
 
@@ -39,12 +41,18 @@ impl<S: Send + Sync> FromRequestParts<S> for AuthUser {
     }
 }
 
+/// Errors returned when authenticating an incoming request.
 #[derive(Debug)]
 pub enum AuthError {
+    /// The auth service was not registered in request extensions.
     MissingAuthService,
+    /// The Authorization header was absent from the request.
     MissingToken,
+    /// The Authorization header was present but malformed.
     InvalidTokenFormat,
+    /// The bearer token failed validation.
     InvalidToken,
+    /// The bearer token has expired.
     ExpiredToken,
 }
 

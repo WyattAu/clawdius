@@ -74,7 +74,8 @@ pub struct Tool {
 
 pub struct ToolResult {
     pub success: bool,
-    pub output: String,
+    pub content: String,
+    pub is_error: bool,
     pub metadata: Option<serde_json::Value>,
 }
 ```

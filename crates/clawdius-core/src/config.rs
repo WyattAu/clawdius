@@ -1158,14 +1158,31 @@ pub mod keyring_storage {
     static KEYRING_SERVICE: &str = "clawdius";
     static KEYRING_STORAGE: OnceLock<KeyringStorage> = OnceLock::new();
 
+    /// Tracks whether the platform-native credential store has been
+    /// initialized. In keyring v4, a default store must be selected
+    /// at runtime before `Entry::new` will succeed.
+    static STORE_INITIALIZED: std::sync::OnceLock<()> = std::sync::OnceLock::new();
+
     #[derive(Debug, Clone)]
     pub struct KeyringStorage {
         service: String,
     }
 
+    /// Select the platform-native credential store (macOS Keychain,
+    /// Windows Credential Manager, Linux Secret Service). Must be called
+    /// before the first `Entry::new`.
+    fn ensure_store_initialized() {
+        STORE_INITIALIZED.get_or_init(|| {
+            // keyring v4: select native store at runtime.
+            // `false` = prefer keyutils over secret-service on Linux.
+            let _ = keyring::use_native_store(false);
+        });
+    }
+
     impl KeyringStorage {
         #[must_use]
         pub fn new() -> Self {
+            ensure_store_initialized();
             Self {
                 service: KEYRING_SERVICE.to_string(),
             }
@@ -1176,12 +1193,12 @@ pub mod keyring_storage {
         }
 
         pub fn get_api_key(&self, provider: &str) -> crate::Result<Option<String>> {
-            let entry = keyring::Entry::new(&self.service, provider)
+            let entry = keyring_core::Entry::new(&self.service, provider)
                 .map_err(|e| crate::Error::Config(format!("Failed to access keyring: {e}")))?;
 
             match entry.get_password() {
                 Ok(key) => Ok(Some(key)),
-                Err(keyring::Error::NoEntry) => Ok(None),
+                Err(keyring_core::Error::NoEntry) => Ok(None),
                 Err(e) => Err(crate::Error::Config(format!(
                     "Failed to retrieve API key: {e}"
                 ))),
@@ -1189,7 +1206,7 @@ pub mod keyring_storage {
         }
 
         pub fn set_api_key(&self, provider: &str, key: &str) -> crate::Result<()> {
-            let entry = keyring::Entry::new(&self.service, provider)
+            let entry = keyring_core::Entry::new(&self.service, provider)
                 .map_err(|e| crate::Error::Config(format!("Failed to access keyring: {e}")))?;
 
             entry
@@ -1200,12 +1217,12 @@ pub mod keyring_storage {
         }
 
         pub fn delete_api_key(&self, provider: &str) -> crate::Result<()> {
-            let entry = keyring::Entry::new(&self.service, provider)
+            let entry = keyring_core::Entry::new(&self.service, provider)
                 .map_err(|e| crate::Error::Config(format!("Failed to access keyring: {e}")))?;
 
             match entry.delete_credential() {
                 Ok(()) => Ok(()),
-                Err(keyring::Error::NoEntry) => Ok(()),
+                Err(keyring_core::Error::NoEntry) => Ok(()),
                 Err(e) => Err(crate::Error::Config(format!(
                     "Failed to delete API key: {e}"
                 ))),

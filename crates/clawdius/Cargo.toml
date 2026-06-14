@@ -68,6 +68,7 @@ mimalloc = { workspace = true, optional = true }
 
 # Keyring (optional)
 keyring = { workspace = true, optional = true }
+keyring-core = { workspace = true, optional = true }
 
 [dev-dependencies]
 tempfile.workspace = true
@@ -80,7 +81,7 @@ harness = false
 
 [features]
 default = ["mimalloc", "billing", "i18n", "onboarding", "watch", "proof", "webhooks"]
-keyring = ["clawdius-core/keyring", "dep:keyring"]
+keyring = ["clawdius-core/keyring", "dep:keyring", "dep:keyring-core"]
 crash-reporting = ["clawdius-core/crash-reporting"]
 vector-db = ["clawdius-core/vector-db"]
 browser = ["clawdius-core/browser"]
