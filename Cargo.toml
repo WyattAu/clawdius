@@ -29,7 +29,7 @@ license = "Apache-2.0"
 repository = "https://github.com/WyattAu/clawdius"
 homepage = "https://clawdius.dev"
 documentation = "https://clawdius.co.uk"
-rust-version = "1.92"
+rust-version = "1.96"
 keywords = ["ai", "llm", "coding-assistant", "agent", "sandbox"]
 categories = ["development-tools", "command-line-utilities", "api-bindings"]
 readme = "README.md"
@@ -48,7 +48,7 @@ clap = { version = "4", features = ["derive", "env", "string"] }
 clap_complete = "4"
 
 # === Database ===
-rusqlite = { version = "0.38", features = ["bundled"] }
+rusqlite = { version = "0.40", features = ["bundled"] }
 tokio-postgres = { version = "0.7", features = ["with-serde_json-1", "with-chrono-0_4", "with-uuid-1"] }
 deadpool-postgres = "0.14"
 mysql_async = { version = "0.35", default-features = false, features = ["default-rustls"] }
@@ -105,7 +105,7 @@ anyhow = "1.0"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 tracing-appender = "0.2"
-sha3 = "0.10"
+sha3 = "0.12"
 blake3 = "1.5"
 dotenvy = "0.15"
 walkdir = "2.5"
@@ -127,9 +127,9 @@ async-trait = "0.1"
 lru = "0.16"
 
 # === Crypto (encryption at rest) ===
-aes-gcm = "0.10"
-hmac = "0.12"
-sha2 = "0.10"
+aes-gcm = "0.11.0-rc.4"
+hmac = "0.13"
+sha2 = "0.11"
 hmac-sha256 = "1"
 
 # === Randomness ===

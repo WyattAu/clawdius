@@ -165,7 +165,7 @@ async fn test_tool_result_json_parsing() {
         items: Vec<String>,
     }
 
-    let parsed: TestResponse = result.parse_json().unwrap();
+    let parsed: TestResponse = result.from_content().unwrap();
     assert_eq!(parsed.count, 42);
     assert_eq!(parsed.items.len(), 2);
 }

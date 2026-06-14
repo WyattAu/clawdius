@@ -333,7 +333,7 @@ impl TimelineStore {
     fn hash_bytes(&self, content: &[u8]) -> String {
         let mut hasher = Sha3_256::new();
         hasher.update(content);
-        format!("{:x}", hasher.finalize())
+        hex::encode(hasher.finalize())
     }
 
     /// Save file snapshot to disk

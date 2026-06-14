@@ -242,7 +242,7 @@ impl CheckpointManager {
     fn hash_content(&self, content: &str) -> String {
         let mut hasher = Sha3_256::new();
         hasher.update(content.as_bytes());
-        format!("{:x}", hasher.finalize())
+        hex::encode(hasher.finalize())
     }
 
     /// Save file snapshot to disk

@@ -376,7 +376,7 @@ impl DiffCalculator {
     pub fn hash_content(content: &str) -> String {
         let mut hasher = Sha3_256::new();
         hasher.update(content.as_bytes());
-        format!("{:x}", hasher.finalize())
+        hex::encode(hasher.finalize())
     }
 }
 

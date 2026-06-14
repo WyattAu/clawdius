@@ -319,7 +319,7 @@ fn hkdf_sha256(master_key: &[u8], salt: &[u8], info: &[u8]) -> [u8; KEY_LEN] {
 
     // HKDF-Extract: PRK = HMAC-SHA256(salt, IKM)
     let prk = {
-        use hmac::{Hmac, Mac};
+        use hmac::{Hmac, KeyInit, Mac};
         type HmacSha256 = Hmac<Sha256>;
         let mut mac = HmacSha256::new_from_slice(salt).expect("HMAC accepts any key size");
         mac.update(master_key);
@@ -346,7 +346,7 @@ fn aes256gcm_encrypt(
 ) -> Vec<u8> {
     // Use aes-gcm crate
     use aes_gcm::{
-        aead::{Aead, KeyInit, OsRng},
+        aead::{Aead, KeyInit},
         Aes256Gcm, Nonce,
     };
     let cipher = Aes256Gcm::new_from_slice(key).expect("valid key length");
