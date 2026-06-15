@@ -152,7 +152,7 @@ similar = "2.6"
 # Upgraded to 0.27.x to fix RUSTSEC-2026-0044, RUSTSEC-2026-0048, RUSTSEC-2026-0049
 lancedb = "0.27"
 arrow = "57"
-arrow-array = "57"
+arrow-array = "59"
 arrow-schema = "57"
 
 # === ML/Embeddings ===
