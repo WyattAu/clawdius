@@ -154,7 +154,6 @@ uuid = { workspace = true, features = ["v4", "serde", "js"] }
 
 [dev-dependencies]
 criterion = { workspace = true }
-mockall.workspace = true
 proptest.workspace = true
 loom = "0.7"
 wat = "1"

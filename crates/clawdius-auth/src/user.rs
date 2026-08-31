@@ -42,4 +42,7 @@ pub struct SessionClaims {
     pub exp: u64,
     /// Unique JWT identifier for this token.
     pub jti: String,
+    /// Issuer claim (required by tokenkit JWT validation).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub iss: Option<String>,
 }

@@ -31,7 +31,8 @@ uuid = { workspace = true, features = ["v4"] }
 base64 = { workspace = true }
 getrandom = { workspace = true }
 urlencoding = { workspace = true }
-jsonwebtoken = "9"
+tokenkit.workspace = true
+zeroize = "1"
 
 [lints]
 workspace = true

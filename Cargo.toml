@@ -82,6 +82,10 @@ wasmtime = "45"
 # === JSON-RPC ===
 jsonrpsee = { version = "0.24", features = ["server", "client", "ws-client"] }
 
+# === Auth shared crates ===
+salting = { path = "../salting" }
+tokenkit = { path = "../tokenkit" }
+
 # === Security ===
 keyring = "4"
 keyring-core = "1"
@@ -131,6 +135,7 @@ aes-gcm = "0.11.0-rc.4"
 hmac = "0.13"
 sha2 = "0.11"
 hmac-sha256 = "1"
+cryptkit = { path = "../cryptkit" }
 
 # === Randomness ===
 getrandom = "0.2"

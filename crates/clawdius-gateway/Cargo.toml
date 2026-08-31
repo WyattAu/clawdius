@@ -28,7 +28,7 @@ clap = { workspace = true, features = ["derive", "env"] }
 async-trait = { workspace = true }
 anyhow = { workspace = true }
 reqwest.workspace = true
-hmac-sha256.workspace = true
+cryptkit.workspace = true
 axum = { workspace = true }
 
 # Platform SDKs (optional, feature-gated)

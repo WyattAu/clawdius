@@ -260,9 +260,9 @@ impl WebhookAdapter {
         use std::fmt::Write;
 
         let secret = self.config.secret.as_ref()?;
-        let hash = hmac_sha256::HMAC::mac(body, secret.as_bytes());
+        let tag = cryptkit::hmac::hmac_sign(secret.as_bytes(), body);
         let mut hex = String::with_capacity(64);
-        for byte in hash {
+        for byte in tag {
             let _ = write!(hex, "{byte:02x}");
         }
         Some(format!("sha256={hex}"))

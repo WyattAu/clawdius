@@ -1,15 +1,14 @@
 use crate::config::{AuthConfig, OidcProviderConfig};
 use crate::user::{SessionClaims, UserInfo};
 use anyhow::{Context, Result};
-use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
 use parking_lot::RwLock;
 use std::collections::HashMap;
+use tokenkit::service::{JwtAlgorithm, JwtConfig, JwtService};
 
 /// Stateful service that orchestrates OIDC authorization flows and JWT sessions.
 pub struct AuthService {
     config: AuthConfig,
-    encoding_key: EncodingKey,
-    decoding_key: DecodingKey,
+    jwt_service: JwtService,
     pkce_verifiers: RwLock<HashMap<String, String>>,
 }
 
@@ -28,13 +27,20 @@ pub struct TokenResult {
 impl AuthService {
     /// Create a new service from the provided configuration.
     pub fn new(config: AuthConfig) -> Result<Self> {
-        let encoding_key = EncodingKey::from_secret(config.jwt_secret.as_bytes());
-        let decoding_key = DecodingKey::from_secret(config.jwt_secret.as_bytes());
+        let jwt_config = JwtConfig {
+            algorithm: JwtAlgorithm::HS256,
+            secret: zeroize::Zeroizing::new(config.jwt_secret.clone()),
+            issuer: Some("clawdius".to_string()),
+            audience: None,
+            access_token_ttl: config.session_duration_secs as i64,
+            refresh_token_ttl: config.refresh_duration_secs as i64,
+        };
+
+        let jwt_service = JwtService::new(jwt_config);
 
         Ok(Self {
             config,
-            encoding_key,
-            decoding_key,
+            jwt_service,
             pkce_verifiers: RwLock::new(HashMap::new()),
         })
     }
@@ -123,10 +129,12 @@ impl AuthService {
 
     /// Decode and validate a session token, returning its claims.
     pub fn validate_session(&self, token: &str) -> Result<SessionClaims> {
-        let token_data = decode::<SessionClaims>(token, &self.decoding_key, &Validation::default())
+        let claims: SessionClaims = self
+            .jwt_service
+            .decode(token)
             .context("Invalid session token")?;
 
-        Ok(token_data.claims)
+        Ok(claims)
     }
 
     /// Issue a new session token with an extended expiration from an existing token.
@@ -138,10 +146,11 @@ impl AuthService {
             iat: now,
             exp: now + self.config.session_duration_secs,
             jti: uuid::Uuid::new_v4().to_string(),
+            iss: Some("clawdius".to_string()),
             ..claims
         };
 
-        let token = encode(&Header::default(), &new_claims, &self.encoding_key)?;
+        let token = self.jwt_service.encode(&new_claims)?;
         Ok(token)
     }
 
@@ -164,9 +173,10 @@ impl AuthService {
             iat: now,
             exp: now + self.config.session_duration_secs,
             jti: uuid::Uuid::new_v4().to_string(),
+            iss: Some("clawdius".to_string()),
         };
 
-        Ok(encode(&Header::default(), &claims, &self.encoding_key)?)
+        Ok(self.jwt_service.encode(&claims)?)
     }
 
     fn create_refresh_token(&self, user: &UserInfo) -> String {
@@ -180,9 +190,10 @@ impl AuthService {
             iat: now,
             exp: now + self.config.refresh_duration_secs,
             jti: uuid::Uuid::new_v4().to_string(),
+            iss: Some("clawdius".to_string()),
         };
 
-        encode(&Header::default(), &claims, &self.encoding_key).unwrap_or_default()
+        self.jwt_service.encode(&claims).unwrap_or_default()
     }
 
     fn parse_id_token(&self, _id_token: &str, provider: &str) -> Result<UserInfo> {
