@@ -12,7 +12,8 @@
 
 use axum::{
     extract::{Path, Query, State},
-    http::StatusCode,
+    http::{HeaderMap, StatusCode},
+    middleware::{self, Next},
     response::IntoResponse,
     routing::{delete, get, post, put},
     Json, Router,
@@ -21,11 +22,52 @@ use chrono::{DateTime, Utc};
 use clawdius_core::billing::{BillingManager, PlanTier, Subscription};
 use clawdius_core::usage::{Quota, TenantUsageTracker};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::sync::Arc;
+
+#[cfg(feature = "auth")]
+use clawdius_auth::{rbac::RbacService, AuthService};
 
 // ─────────────────────────────────────────────────────────
 // Types
 // ─────────────────────────────────────────────────────────
+
+/// In-memory store for user-to-role mappings.
+#[derive(Clone, Default)]
+pub struct RoleStore {
+    /// user_id -> role name
+    roles: Arc<tokio::sync::RwLock<HashMap<String, String>>>,
+}
+
+impl RoleStore {
+    /// Get a user's role (defaults to "viewer" if not set).
+    pub async fn get_role(&self, user_id: &str) -> String {
+        self.roles
+            .read()
+            .await
+            .get(user_id)
+            .cloned()
+            .unwrap_or_else(|| "viewer".to_string())
+    }
+
+    /// Set a user's role.
+    pub async fn set_role(&self, user_id: &str, role: &str) {
+        self.roles
+            .write()
+            .await
+            .insert(user_id.to_string(), role.to_string());
+    }
+
+    /// Remove a user's role (reverts to default "viewer").
+    pub async fn remove_role(&self, user_id: &str) -> bool {
+        self.roles.write().await.remove(user_id).is_some()
+    }
+
+    /// List all user-role mappings.
+    pub async fn list_roles(&self) -> HashMap<String, String> {
+        self.roles.read().await.clone()
+    }
+}
 
 /// Admin API application state.
 #[allow(missing_docs)]
@@ -34,6 +76,45 @@ pub struct AdminState {
     pub usage: Arc<TenantUsageTracker>,
     /// Admin API key for authentication.
     pub api_key: String,
+    /// User role assignments.
+    pub roles: RoleStore,
+    /// Optional auth service for SSO token validation.
+    #[cfg(feature = "auth")]
+    pub auth: Option<Arc<AuthService>>,
+    /// Optional RBAC service for permission checks.
+    #[cfg(feature = "auth")]
+    pub rbac: Option<Arc<RbacService>>,
+}
+
+// ─────────────────────────────────────────────────────────
+// Auth Middleware
+// ─────────────────────────────────────────────────────────
+
+/// Axum middleware that validates the `X-API-Key` header against the admin key.
+async fn require_api_key(
+    headers: HeaderMap,
+    State(state): State<Arc<AdminState>>,
+    req: axum::http::Request<axum::body::Body>,
+    next: Next,
+) -> impl IntoResponse {
+    let provided = headers
+        .get("x-api-key")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+
+    if provided != state.api_key {
+        return (
+            StatusCode::UNAUTHORIZED,
+            Json(serde_json::json!({
+                "ok": false,
+                "error": "Invalid or missing X-API-Key header",
+                "timestamp": Utc::now().to_rfc3339(),
+            })),
+        )
+            .into_response();
+    }
+
+    next.run(req).into_response()
 }
 
 /// Generic API response wrapper.
@@ -153,9 +234,10 @@ pub struct SystemInfo {
 // Router
 // ─────────────────────────────────────────────────────────
 
-/// Build the admin API router.
+/// Build the admin API router with API key authentication.
 pub fn admin_router(state: Arc<AdminState>) -> Router {
     Router::new()
+        // Tenant management
         .route("/api/admin/tenants", post(create_tenant))
         .route("/api/admin/tenants", get(list_tenants))
         .route("/api/admin/tenants/{tenant_id}", get(get_tenant))
@@ -179,13 +261,96 @@ pub fn admin_router(state: Arc<AdminState>) -> Router {
             "/api/admin/tenants/{tenant_id}/subscription/cancel",
             post(cancel_subscription),
         )
+        // Role management
+        .route("/api/admin/roles/{user_id}", get(get_user_role))
+        .route("/api/admin/roles/{user_id}", put(set_user_role))
+        .route("/api/admin/roles/{user_id}", delete(delete_user_role))
+        .route("/api/admin/roles", get(list_all_roles))
+        // System
         .route("/api/admin/system/info", get(system_info))
         .route("/api/admin/health", get(health_check))
+        .layer(middleware::from_fn_with_state(
+            Arc::clone(&state),
+            require_api_key,
+        ))
         .with_state(state)
 }
 
 // ─────────────────────────────────────────────────────────
-// Handlers
+// Role Management Handlers
+// ─────────────────────────────────────────────────────────
+
+/// Request body for setting a user's role.
+#[derive(Debug, Deserialize)]
+pub struct SetRoleRequest {
+    pub role: String,
+}
+
+async fn get_user_role(
+    State(state): State<Arc<AdminState>>,
+    Path(user_id): Path<String>,
+) -> impl IntoResponse {
+    let role = state.roles.get_role(&user_id).await;
+    ok_response(serde_json::json!({
+        "user_id": user_id,
+        "role": role,
+    }))
+}
+
+async fn set_user_role(
+    State(state): State<Arc<AdminState>>,
+    Path(user_id): Path<String>,
+    Json(req): Json<SetRoleRequest>,
+) -> impl IntoResponse {
+    // Validate role name
+    let valid_roles = ["viewer", "user", "operator", "admin"];
+    if !valid_roles.contains(&req.role.as_str()) {
+        return error_response(
+            StatusCode::BAD_REQUEST,
+            format!(
+                "invalid role: '{}'. Must be one of: {}",
+                req.role,
+                valid_roles.join(", ")
+            ),
+        );
+    }
+
+    state.roles.set_role(&user_id, &req.role).await;
+    ok_response(serde_json::json!({
+        "user_id": user_id,
+        "role": req.role,
+        "updated": true,
+    }))
+}
+
+async fn delete_user_role(
+    State(state): State<Arc<AdminState>>,
+    Path(user_id): Path<String>,
+) -> impl IntoResponse {
+    let removed = state.roles.remove_role(&user_id).await;
+    ok_response(serde_json::json!({
+        "user_id": user_id,
+        "removed": removed,
+        "role": "viewer",
+    }))
+}
+
+async fn list_all_roles(
+    State(state): State<Arc<AdminState>>,
+) -> impl IntoResponse {
+    let roles = state.roles.list_roles().await;
+    let entries: Vec<_> = roles
+        .into_iter()
+        .map(|(user_id, role)| serde_json::json!({"user_id": user_id, "role": role}))
+        .collect();
+    ok_response(serde_json::json!({
+        "roles": entries,
+        "total": entries.len(),
+    }))
+}
+
+// ─────────────────────────────────────────────────────────
+// Existing Handlers
 // ─────────────────────────────────────────────────────────
 
 async fn create_tenant(
@@ -254,9 +419,23 @@ async fn get_tenant(
 }
 
 async fn delete_tenant(
+    headers: HeaderMap,
     State(state): State<Arc<AdminState>>,
     Path(tenant_id): Path<String>,
 ) -> impl IntoResponse {
+    #[cfg(feature = "auth")]
+    {
+        if let Err(resp) = check_rbac_permission(
+            &headers,
+            &state,
+            clawdius_auth::rbac::permissions::admin_manage_users(),
+        )
+        .await
+        {
+            return resp;
+        }
+    }
+
     match state.billing.cancel_subscription(&tenant_id) {
         Ok(()) => ok_response(serde_json::json!({ "deleted": true })),
         Err(e) => error_response(StatusCode::NOT_FOUND, e.to_string()),
@@ -292,9 +471,23 @@ async fn get_usage(
 }
 
 async fn reset_usage(
+    headers: HeaderMap,
     State(state): State<Arc<AdminState>>,
     Path(_tenant_id): Path<String>,
 ) -> impl IntoResponse {
+    #[cfg(feature = "auth")]
+    {
+        if let Err(resp) = check_rbac_permission(
+            &headers,
+            &state,
+            clawdius_auth::rbac::permissions::admin_manage_config(),
+        )
+        .await
+        {
+            return resp;
+        }
+    }
+
     state.usage.reset_all();
     state.billing.reset_all_periods();
     ok_response(serde_json::json!({ "reset": true }))
@@ -336,10 +529,24 @@ async fn get_subscription(
 }
 
 async fn change_plan(
+    headers: HeaderMap,
     State(state): State<Arc<AdminState>>,
     Path(tenant_id): Path<String>,
     Json(req): Json<ChangePlanRequest>,
 ) -> impl IntoResponse {
+    #[cfg(feature = "auth")]
+    {
+        if let Err(resp) = check_rbac_permission(
+            &headers,
+            &state,
+            clawdius_auth::rbac::permissions::admin_manage_config(),
+        )
+        .await
+        {
+            return resp;
+        }
+    }
+
     let tier_str = req.new_tier.clone();
     let new_tier = match parse_tier(Some(tier_str.as_str())) {
         Some(t) => t,
@@ -357,9 +564,23 @@ async fn change_plan(
 }
 
 async fn cancel_subscription(
+    headers: HeaderMap,
     State(state): State<Arc<AdminState>>,
     Path(tenant_id): Path<String>,
 ) -> impl IntoResponse {
+    #[cfg(feature = "auth")]
+    {
+        if let Err(resp) = check_rbac_permission(
+            &headers,
+            &state,
+            clawdius_auth::rbac::permissions::admin_manage_config(),
+        )
+        .await
+        {
+            return resp;
+        }
+    }
+
     match state.billing.cancel_subscription(&tenant_id) {
         Ok(()) => ok_response(serde_json::json!({ "canceled": true })),
         Err(e) => error_response(StatusCode::BAD_REQUEST, e.to_string()),
@@ -380,6 +601,56 @@ async fn system_info(State(state): State<Arc<AdminState>>) -> impl IntoResponse 
 
 async fn health_check() -> impl IntoResponse {
     ok_response(serde_json::json!({ "status": "healthy" }))
+}
+
+// ─────────────────────────────────────────────────────────
+// RBAC Helpers
+// ─────────────────────────────────────────────────────────
+
+/// Check if an SSO token (from Authorization header) has the required RBAC permission.
+/// Returns Ok(()) if auth is not configured (API key only) or if the token has the permission.
+/// Returns Err response if the token is missing or lacks permission.
+#[cfg(feature = "auth")]
+async fn check_rbac_permission(
+    headers: &HeaderMap,
+    state: &AdminState,
+    permission: clawdius_auth::rbac::Permission,
+) -> Result<(), impl IntoResponse> {
+    let (Some(auth), Some(rbac)) = (&state.auth, &state.rbac) else {
+        return Ok(());
+    };
+
+    // Extract Bearer token from Authorization header
+    let token = headers
+        .get("authorization")
+        .and_then(|v| v.to_str().ok())
+        .and_then(|v| v.strip_prefix("Bearer "))
+        .unwrap_or("");
+
+    if token.is_empty() {
+        return Ok(());
+    }
+
+    // Validate the token and check permission
+    match auth.validate_session(token) {
+        Ok(claims) => match rbac.check(&claims, &permission) {
+            Ok(()) => Ok(()),
+            Err(e) => Err(error_response(StatusCode::FORBIDDEN, e.to_string())),
+        },
+        Err(e) => Err(error_response(
+            StatusCode::UNAUTHORIZED,
+            format!("Invalid token: {e}"),
+        )),
+    }
+}
+
+#[cfg(not(feature = "auth"))]
+async fn check_rbac_permission(
+    _headers: &HeaderMap,
+    _state: &AdminState,
+    _perm: &str,
+) -> Result<(), axum::response::Response> {
+    Ok(())
 }
 
 // ─────────────────────────────────────────────────────────
@@ -410,6 +681,11 @@ mod tests {
             billing: Arc::new(BillingManager::new()),
             usage: Arc::new(TenantUsageTracker::new()),
             api_key: "test-key".to_string(),
+            roles: Default::default(),
+            #[cfg(feature = "auth")]
+            auth: None,
+            #[cfg(feature = "auth")]
+            rbac: None,
         })
     }
 
@@ -661,5 +937,200 @@ mod tests {
         assert_eq!(sub2.tier, PlanTier::Pro);
         let current = state.billing.get_subscription("org1").unwrap();
         assert_eq!(current.tier, PlanTier::Pro);
+    }
+
+    use axum::body::Body;
+    use axum::http::{Request, StatusCode};
+    use tower::ServiceExt;
+
+    // ─────────────────────────────────────────────────────────
+    // API Key Auth Tests
+    // ─────────────────────────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_admin_requires_api_key() {
+        let state = test_state();
+        let app = admin_router(state);
+
+        let req = Request::builder()
+            .uri("/api/admin/health")
+            .body(Body::empty())
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
+    }
+
+    #[tokio::test]
+    async fn test_admin_wrong_api_key() {
+        let state = test_state();
+        let app = admin_router(state);
+
+        let req = Request::builder()
+            .uri("/api/admin/health")
+            .header("x-api-key", "wrong-key")
+            .body(Body::empty())
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
+    }
+
+    #[tokio::test]
+    async fn test_admin_valid_api_key() {
+        let state = test_state();
+        let app = admin_router(state);
+
+        let req = Request::builder()
+            .uri("/api/admin/health")
+            .header("x-api-key", "test-key")
+            .body(Body::empty())
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // Role Management Tests
+    // ─────────────────────────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_role_store_default() {
+        let store = RoleStore::default();
+        assert_eq!(store.get_role("user1").await, "viewer");
+    }
+
+    #[tokio::test]
+    async fn test_role_store_set_and_get() {
+        let store = RoleStore::default();
+        store.set_role("user1", "admin").await;
+        assert_eq!(store.get_role("user1").await, "admin");
+    }
+
+    #[tokio::test]
+    async fn test_role_store_remove() {
+        let store = RoleStore::default();
+        store.set_role("user1", "admin").await;
+        assert!(store.remove_role("user1").await);
+        assert_eq!(store.get_role("user1").await, "viewer");
+    }
+
+    #[tokio::test]
+    async fn test_role_store_list() {
+        let store = RoleStore::default();
+        store.set_role("user1", "admin").await;
+        store.set_role("user2", "viewer").await;
+        let roles = store.list_roles().await;
+        assert_eq!(roles.len(), 2);
+        assert_eq!(roles.get("user1").unwrap(), "admin");
+    }
+
+    #[tokio::test]
+    async fn test_get_user_role_endpoint() {
+        let state = test_state();
+        state.roles.set_role("user1", "operator").await;
+        let app = admin_router(state);
+
+        let req = Request::builder()
+            .uri("/api/admin/roles/user1")
+            .header("x-api-key", "test-key")
+            .body(Body::empty())
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+
+        let body = axum::body::to_bytes(resp.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(json["data"]["role"], "operator");
+    }
+
+    #[tokio::test]
+    async fn test_set_user_role_endpoint() {
+        let state = test_state();
+        let app = admin_router(state);
+
+        let req = Request::builder()
+            .uri("/api/admin/roles/user1")
+            .method("PUT")
+            .header("x-api-key", "test-key")
+            .header("content-type", "application/json")
+            .body(Body::from(r#"{"role":"admin"}"#))
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+
+        let body = axum::body::to_bytes(resp.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(json["data"]["role"], "admin");
+    }
+
+    #[tokio::test]
+    async fn test_set_invalid_role() {
+        let state = test_state();
+        let app = admin_router(state);
+
+        let req = Request::builder()
+            .uri("/api/admin/roles/user1")
+            .method("PUT")
+            .header("x-api-key", "test-key")
+            .header("content-type", "application/json")
+            .body(Body::from(r#"{"role":"superuser"}"#))
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+    }
+
+    #[tokio::test]
+    async fn test_delete_user_role() {
+        let state = test_state();
+        state.roles.set_role("user1", "admin").await;
+        let app = admin_router(state);
+
+        let req = Request::builder()
+            .uri("/api/admin/roles/user1")
+            .method("DELETE")
+            .header("x-api-key", "test-key")
+            .body(Body::empty())
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+
+        let body = axum::body::to_bytes(resp.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(json["data"]["role"], "viewer");
+    }
+
+    #[tokio::test]
+    async fn test_list_all_roles() {
+        let state = test_state();
+        state.roles.set_role("user1", "admin").await;
+        state.roles.set_role("user2", "viewer").await;
+        let app = admin_router(state);
+
+        let req = Request::builder()
+            .uri("/api/admin/roles")
+            .header("x-api-key", "test-key")
+            .body(Body::empty())
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+
+        let body = axum::body::to_bytes(resp.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(json["data"]["total"], 2);
     }
 }
