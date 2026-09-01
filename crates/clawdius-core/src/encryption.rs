@@ -313,28 +313,20 @@ fn fill_random(buf: &mut [u8]) {
     }
 }
 
-/// HKDF-SHA256 key derivation.
+/// HKDF-SHA256 key derivation using cryptkit.
 fn hkdf_sha256(master_key: &[u8], salt: &[u8], info: &[u8]) -> [u8; KEY_LEN] {
-    use sha2::{Digest, Sha256};
-
     // HKDF-Extract: PRK = HMAC-SHA256(salt, IKM)
-    let prk = {
-        use hmac::{Hmac, KeyInit, Mac};
-        type HmacSha256 = Hmac<Sha256>;
-        let mut mac = HmacSha256::new_from_slice(salt).expect("HMAC accepts any key size");
-        mac.update(master_key);
-        mac.finalize().into_bytes().to_vec()
-    };
+    let prk = cryptkit::hmac::hmac_sign(salt, master_key);
 
     // HKDF-Expand: OKM = HMAC-SHA256(PRK, info || 0x01)
-    let mut okm = [0u8; KEY_LEN];
-    let mut h = sha2::Sha256::new();
-    h.update(&prk);
-    h.update(info);
-    h.update(&[0x01]);
-    let hash = h.finalize();
-    okm.copy_from_slice(&hash);
-    okm
+    // Concatenate PRK + info + 0x01 and hash with SHA-256
+    let mut okm_input = Vec::with_capacity(prk.len() + info.len() + 1);
+    okm_input.extend_from_slice(&prk);
+    okm_input.extend_from_slice(info);
+    okm_input.push(0x01);
+    let hash = cryptkit::hash::sha256(&okm_input);
+
+    hash
 }
 
 /// AES-256-GCM encrypt.
@@ -550,7 +542,7 @@ mod tests {
         let enc1 = encrypt(plaintext, &key, None).unwrap();
         let enc2 = encrypt(plaintext, &key, None).unwrap();
 
-        // Different nonces → different ciphertexts
+        // Different nonces -> different ciphertexts
         assert_ne!(enc1.nonce_b64, enc2.nonce_b64);
         assert_ne!(enc1.ciphertext_b64, enc2.ciphertext_b64);
         assert_ne!(enc1.salt_b64, enc2.salt_b64);

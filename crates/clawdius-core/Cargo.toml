@@ -61,8 +61,7 @@ urlencoding.workspace = true
 
 # Encryption at rest (WASM-compatible with getrandom js feature)
 aes-gcm.workspace = true
-hmac.workspace = true
-sha2.workspace = true
+cryptkit.workspace = true
 sha3.workspace = true
 getrandom.workspace = true
 
