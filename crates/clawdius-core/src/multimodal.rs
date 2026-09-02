@@ -347,4 +347,70 @@ mod tests {
         assert_eq!(text, "Hello describe this");
         assert_eq!(paths, vec!["diagram.png"]);
     }
+
+    #[test]
+    fn test_google_content_format() {
+        let img = ImageAttachment {
+            base64_data: "abc123".to_string(),
+            format: ImageFormat::Png,
+            filename: None,
+            width: None,
+            height: None,
+            size_bytes: 6,
+        };
+        let content = img.to_google_content();
+        assert_eq!(content["inline_data"]["mime_type"], "image/png");
+        assert_eq!(content["inline_data"]["data"], "abc123");
+    }
+
+    #[test]
+    fn test_multimodal_message_google_format() {
+        let img = ImageAttachment {
+            base64_data: "data".to_string(),
+            format: ImageFormat::Jpeg,
+            filename: None,
+            width: None,
+            height: None,
+            size_bytes: 4,
+        };
+        let msg = MultimodalMessage::with_image("Describe this", img);
+        let google = msg.to_google_format();
+        assert_eq!(google["role"], "user");
+        assert!(google["parts"].is_array());
+        assert_eq!(google["parts"].as_array().unwrap().len(), 2);
+    }
+
+    #[test]
+    fn test_chat_message_with_images() {
+        use crate::llm::messages::{ChatMessage, ChatRole};
+        use crate::multimodal::{ImageAttachment, ImageFormat};
+
+        let img = ImageAttachment {
+            base64_data: "test".to_string(),
+            format: ImageFormat::Png,
+            filename: None,
+            width: None,
+            height: None,
+            size_bytes: 4,
+        };
+
+        let msg = ChatMessage::with_images(
+            ChatRole::User,
+            "What's in this image?",
+            vec![img],
+        );
+
+        assert!(msg.has_images());
+        assert_eq!(msg.content, "What's in this image?");
+        assert_eq!(msg.images.as_ref().unwrap().len(), 1);
+    }
+
+    #[test]
+    fn test_chat_message_text_only() {
+        use crate::llm::messages::{ChatMessage, ChatRole};
+
+        let msg = ChatMessage::text(ChatRole::User, "Hello");
+        assert!(!msg.has_images());
+        assert!(msg.images.is_none());
+    }
 }

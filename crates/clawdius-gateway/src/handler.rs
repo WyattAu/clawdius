@@ -112,10 +112,7 @@ impl ClawdiusHandler {
     /// Enable audit logging with the given manager (shared via Arc).
     #[cfg(feature = "audit")]
     #[must_use]
-    pub fn with_audit_manager(
-        mut self,
-        manager: Arc<clawdius_core::audit::AuditManager>,
-    ) -> Self {
+    pub fn with_audit_manager(mut self, manager: Arc<clawdius_core::audit::AuditManager>) -> Self {
         self.audit = Some(manager);
         self
     }
@@ -357,10 +354,7 @@ impl MessageHandler for ClawdiusHandler {
             .as_ref()
             .ok_or_else(|| GatewayError::Agent("LLM client not initialized".to_string()))?;
 
-        let provider_name = self
-            .provider
-            .as_deref()
-            .unwrap_or("unknown");
+        let provider_name = self.provider.as_deref().unwrap_or("unknown");
         let model_name = self.model.as_deref().unwrap_or("unknown");
 
         let start = std::time::Instant::now();
@@ -377,11 +371,9 @@ impl MessageHandler for ClawdiusHandler {
                     0, // completion tokens
                     true,
                 );
-                clawdius_core::metrics::record_session_count(
-                    self.session_map.read().await.len(),
-                );
+                clawdius_core::metrics::record_session_count(self.session_map.read().await.len());
                 let _ = response; // already used below
-            }
+            },
             Err(e) => {
                 clawdius_core::metrics::record_llm_request(
                     provider_name,
@@ -392,11 +384,11 @@ impl MessageHandler for ClawdiusHandler {
                     false,
                 );
                 return Err(GatewayError::Agent(format!("LLM call failed: {e}")));
-            }
+            },
         }
 
-        let response = llm_result
-            .map_err(|e| GatewayError::Agent(format!("LLM call failed: {e}")))?;
+        let response =
+            llm_result.map_err(|e| GatewayError::Agent(format!("LLM call failed: {e}")))?;
 
         // Audit log the chat event (if audit is configured)
         #[cfg(feature = "audit")]
@@ -406,11 +398,7 @@ impl MessageHandler for ClawdiusHandler {
                 self.model.as_deref().unwrap_or("default"),
             );
             entry.user_id = Some(message.user.id.clone());
-            entry.resource = Some(format!(
-                "{}/{}",
-                message.platform.as_str(),
-                message.chat_id
-            ));
+            entry.resource = Some(format!("{}/{}", message.platform.as_str(), message.chat_id));
             entry.details = serde_json::json!({
                 "provider": provider_name,
                 "duration_ms": duration.as_millis(),

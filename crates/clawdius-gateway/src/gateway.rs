@@ -47,6 +47,14 @@ pub struct MessageGateway {
     /// Handler for processing incoming messages.
     /// This will be connected to the Clawdius agent engine.
     message_handler: RwLock<Option<Box<dyn MessageHandler>>>,
+
+    /// Optional auth service for SSO token validation.
+    #[cfg(feature = "auth")]
+    auth_service: RwLock<Option<Arc<clawdius_auth::AuthService>>>,
+
+    /// Optional RBAC service for permission checks.
+    #[cfg(feature = "auth")]
+    rbac_service: RwLock<Option<Arc<clawdius_auth::RbacService>>>,
 }
 
 /// Trait for handling incoming messages (agent engine interface).
@@ -66,6 +74,10 @@ impl MessageGateway {
             rate_limiter: Arc::new(RateLimiter::default_limiter()),
             formatter: ResponseFormatter::new(),
             message_handler: RwLock::new(None),
+            #[cfg(feature = "auth")]
+            auth_service: RwLock::new(None),
+            #[cfg(feature = "auth")]
+            rbac_service: RwLock::new(None),
         }
     }
 
@@ -78,6 +90,10 @@ impl MessageGateway {
             rate_limiter: Arc::new(RateLimiter::new(max_requests, window_secs)),
             formatter: ResponseFormatter::new(),
             message_handler: RwLock::new(None),
+            #[cfg(feature = "auth")]
+            auth_service: RwLock::new(None),
+            #[cfg(feature = "auth")]
+            rbac_service: RwLock::new(None),
         }
     }
 
@@ -111,6 +127,20 @@ impl MessageGateway {
         *h = Some(handler);
     }
 
+    /// Set the auth service for SSO token validation.
+    #[cfg(feature = "auth")]
+    pub async fn set_auth_service(&self, auth: Arc<clawdius_auth::AuthService>) {
+        let mut svc = self.auth_service.write().await;
+        *svc = Some(auth);
+    }
+
+    /// Set the RBAC service for permission checks.
+    #[cfg(feature = "auth")]
+    pub async fn set_rbac_service(&self, rbac: Arc<clawdius_auth::RbacService>) {
+        let mut svc = self.rbac_service.write().await;
+        *svc = Some(rbac);
+    }
+
     /// Process an incoming message from any platform adapter.
     ///
     /// This is the main entry point called by adapters when they
@@ -140,6 +170,36 @@ impl MessageGateway {
                 "user {} not allowed on platform {}",
                 message.user.id, platform
             )));
+        }
+
+        // 2b. Check SSO token via metadata (if auth feature is enabled)
+        #[cfg(feature = "auth")]
+        {
+            if let Some(sso_token) = message.metadata.get("sso_token").and_then(|v| v.as_str()) {
+                let auth_guard = self.auth_service.read().await;
+                let rbac_guard = self.rbac_service.read().await;
+                if let (Some(auth), Some(rbac)) = (auth_guard.as_ref(), rbac_guard.as_ref()) {
+                    match auth.validate_session(sso_token) {
+                        Ok(claims) => {
+                            // SSO token valid — update user info from claims
+                            tracing::debug!(
+                                "SSO token validated for user {} (sub={})",
+                                message.user.id,
+                                claims.sub
+                            );
+                        },
+                        Err(e) => {
+                            tracing::warn!(
+                                "SSO token validation failed for user {}: {e}",
+                                message.user.id
+                            );
+                            return Err(GatewayError::Unauthorized(format!(
+                                "invalid SSO token: {e}"
+                            )));
+                        },
+                    }
+                }
+            }
         }
 
         // 3. Check rate limit

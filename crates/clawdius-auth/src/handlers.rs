@@ -48,10 +48,16 @@ async fn callback_handler(
     State(service): State<Arc<AuthService>>,
     Query(query): Query<CallbackQuery>,
 ) -> impl IntoResponse {
-    match service
-        .exchange_code("default", &query.code, &query.state)
-        .await
-    {
+    // Resolve the provider from the state parameter instead of hardcoding
+    let provider = match service.provider_for_state(&query.state) {
+        Some(name) => name,
+        None => {
+            tracing::error!("No provider found for state parameter");
+            return (StatusCode::UNAUTHORIZED, "Invalid or expired state").into_response();
+        },
+    };
+
+    match service.exchange_code(&provider, &query.code, &query.state).await {
         Ok(result) => Json(serde_json::json!({
             "session_token": result.session_token,
             "refresh_token": result.refresh_token,
@@ -65,7 +71,13 @@ async fn callback_handler(
     }
 }
 
-async fn logout_handler() -> impl IntoResponse {
+async fn logout_handler(
+    State(service): State<Arc<AuthService>>,
+    auth: AuthUser,
+) -> impl IntoResponse {
+    if let Err(e) = service.invalidate_session(&auth.claims.jti) {
+        tracing::warn!("Session invalidation failed: {e}");
+    }
     Json(serde_json::json!({"status": "logged_out"}))
 }
 

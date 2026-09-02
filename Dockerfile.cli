@@ -11,7 +11,7 @@
 #   docker build -t clawdius --build-arg FEATURES=all-platforms -f Dockerfile.cli .
 
 # ─── Stage 1: Build ───────────────────────────────────────
-FROM rust:1.92-bookworm AS builder
+FROM rust:1.96-bookworm AS builder
 
 ARG FEATURES=""
 ARG PROFILE=release

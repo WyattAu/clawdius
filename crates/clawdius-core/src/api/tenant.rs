@@ -136,6 +136,116 @@ impl TenantStore {
         }
     }
 
+    /// Create a SQLite-backed tenant store.
+    pub fn with_sqlite(db_path: &str) -> Result<Self, Box<dyn std::error::Error>> {
+        let conn = rusqlite::Connection::open(db_path)?;
+
+        // Create tables if they don't exist
+        conn.execute_batch(
+            "CREATE TABLE IF NOT EXISTS tenants (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                tier TEXT NOT NULL DEFAULT 'free',
+                email TEXT,
+                workspace_root TEXT,
+                created_at TEXT NOT NULL,
+                last_active_at TEXT NOT NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS api_keys (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                tenant_id TEXT NOT NULL,
+                key TEXT NOT NULL UNIQUE,
+                label TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                last_used_at TEXT NOT NULL,
+                active INTEGER NOT NULL DEFAULT 1,
+                FOREIGN KEY (tenant_id) REFERENCES tenants(id)
+            );
+
+            CREATE TABLE IF NOT EXISTS tenant_usage (
+                tenant_id TEXT PRIMARY KEY,
+                tasks_total INTEGER NOT NULL DEFAULT 0,
+                tasks_hour INTEGER NOT NULL DEFAULT 0,
+                tasks_day INTEGER NOT NULL DEFAULT 0,
+                tokens_total INTEGER NOT NULL DEFAULT 0,
+                sessions_total INTEGER NOT NULL DEFAULT 0,
+                sessions_active INTEGER NOT NULL DEFAULT 0,
+                files_modified INTEGER NOT NULL DEFAULT 0,
+                FOREIGN KEY (tenant_id) REFERENCES tenants(id)
+            );"
+        )?;
+
+        let mut store = Self::new();
+
+        // Load tenants from database
+        let mut stmt = conn.prepare("SELECT id, name, tier, email, workspace_root, created_at, last_active_at FROM tenants")?;
+        let rows = stmt.query_map([], |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, String>(2)?,
+                row.get::<_, Option<String>>(3)?,
+                row.get::<_, Option<String>>(4)?,
+                row.get::<_, String>(5)?,
+                row.get::<_, String>(6)?,
+            ))
+        })?;
+
+        for row in rows {
+            let (id, name, tier_str, email, workspace_root, created_at, last_active_at) = row?;
+            let tier = TenantTier::from_str_opt(&tier_str).unwrap_or(TenantTier::Free);
+
+            // Load API keys for this tenant
+            let mut key_stmt = conn.prepare("SELECT key, label, created_at, last_used_at, active FROM api_keys WHERE tenant_id = ?")?;
+            let keys = key_stmt.query_map([&id], |row| {
+                Ok(ApiKeyEntry {
+                    key: row.get(0)?,
+                    label: row.get(1)?,
+                    created_at: chrono::DateTime::parse_from_rfc3339(&row.get::<_, String>(2)?)
+                        .map(|dt| dt.with_timezone(&chrono::Utc))
+                        .unwrap_or_else(|_| chrono::Utc::now()),
+                    last_used_at: chrono::DateTime::parse_from_rfc3339(&row.get::<_, String>(3)?)
+                        .map(|dt| dt.with_timezone(&chrono::Utc))
+                        .unwrap_or_else(|_| chrono::Utc::now()),
+                    active: row.get::<_, i32>(4)? != 0,
+                })
+            })?.collect::<Result<Vec<_>, _>>()?;
+
+            // Load usage
+            let mut usage_stmt = conn.prepare("SELECT tasks_total, tasks_hour, tasks_day, tokens_total, sessions_total, sessions_active, files_modified FROM tenant_usage WHERE tenant_id = ?")?;
+            let usage = usage_stmt.query_map([&id], |row| {
+                Ok(TenantUsage {
+                    tasks_total: row.get(0)?,
+                    tasks_hour: row.get(1)?,
+                    tasks_day: row.get(2)?,
+                    tokens_total: row.get(3)?,
+                    sessions_total: row.get(4)?,
+                    sessions_active: row.get(5)?,
+                    files_modified: row.get(6)?,
+                })
+            })?.next().transpose()?.unwrap_or_default();
+
+            store.add_tenant(Tenant {
+                id,
+                name,
+                tier,
+                api_keys: keys,
+                email,
+                workspace_root,
+                usage,
+                created_at: chrono::DateTime::parse_from_rfc3339(&created_at)
+                    .map(|dt| dt.with_timezone(&chrono::Utc))
+                    .unwrap_or_else(|_| chrono::Utc::now()),
+                last_active_at: chrono::DateTime::parse_from_rfc3339(&last_active_at)
+                    .map(|dt| dt.with_timezone(&chrono::Utc))
+                    .unwrap_or_else(|_| chrono::Utc::now()),
+            });
+        }
+
+        Ok(store)
+    }
+
     pub fn add_tenant(&mut self, tenant: Tenant) {
         self.tenants.insert(tenant.id.clone(), tenant);
     }

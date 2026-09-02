@@ -105,11 +105,11 @@ fn app_router() -> Router {
                 router
                     .merge(clawdius_auth::auth_routes(std::sync::Arc::clone(&auth_arc)))
                     .layer(axum::Extension(auth_arc))
-            }
+            },
             Err(e) => {
                 eprintln!("Failed to initialize OIDC auth: {e}");
                 router
-            }
+            },
         }
     };
 

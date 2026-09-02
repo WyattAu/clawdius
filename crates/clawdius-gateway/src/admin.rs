@@ -266,6 +266,11 @@ pub fn admin_router(state: Arc<AdminState>) -> Router {
         .route("/api/admin/roles/{user_id}", put(set_user_role))
         .route("/api/admin/roles/{user_id}", delete(delete_user_role))
         .route("/api/admin/roles", get(list_all_roles))
+        // Audit logging
+        .route("/api/admin/audit/logs", get(query_audit_logs))
+        .route("/api/admin/audit/logs/{entry_id}", get(get_audit_entry))
+        .route("/api/admin/audit/stats", get(get_audit_stats))
+        .route("/api/admin/audit/export", post(export_audit_logs))
         // System
         .route("/api/admin/system/info", get(system_info))
         .route("/api/admin/health", get(health_check))
@@ -597,6 +602,76 @@ async fn system_info(State(state): State<Arc<AdminState>>) -> impl IntoResponse 
         stripe_enabled: state.billing.is_stripe_enabled(),
         active_subscriptions: active,
     })
+}
+
+// ─────────────────────────────────────────────────────────
+// Audit Logging Handlers
+// ─────────────────────────────────────────────────────────
+
+/// Query parameters for audit log queries.
+#[derive(Debug, Deserialize)]
+pub struct AuditQueryParams {
+    /// Filter by event type.
+    pub event_type: Option<String>,
+    /// Maximum number of results (default 100).
+    pub limit: Option<usize>,
+}
+
+async fn query_audit_logs(
+    State(_state): State<Arc<AdminState>>,
+    Query(params): Query<AuditQueryParams>,
+) -> impl IntoResponse {
+    // For now, return a placeholder since AuditManager is not in AdminState
+    // In production, this would query the actual audit backend
+    let limit = params.limit.unwrap_or(100);
+    ok_response(serde_json::json!({
+        "entries": [],
+        "total": 0,
+        "limit": limit,
+        "event_type": params.event_type,
+    }))
+}
+
+async fn get_audit_entry(
+    State(_state): State<Arc<AdminState>>,
+    Path(_entry_id): Path<String>,
+) -> impl IntoResponse {
+    // Placeholder for single entry lookup
+    error_response(StatusCode::NOT_FOUND, "Audit entry not found")
+}
+
+async fn get_audit_stats(
+    State(_state): State<Arc<AdminState>>,
+) -> impl IntoResponse {
+    // Placeholder for audit statistics
+    ok_response(serde_json::json!({
+        "total_entries": 0,
+        "event_types": {},
+        "retention_days": 90,
+    }))
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ExportAuditRequest {
+    /// Start time (RFC 3339).
+    pub start_time: Option<String>,
+    /// End time (RFC 3339).
+    pub end_time: Option<String>,
+    /// Filter by event type.
+    pub event_type: Option<String>,
+    /// Export format (json or csv).
+    pub format: Option<String>,
+}
+
+async fn export_audit_logs(
+    State(_state): State<Arc<AdminState>>,
+    Json(_request): Json<ExportAuditRequest>,
+) -> impl IntoResponse {
+    // Placeholder for audit log export
+    ok_response(serde_json::json!({
+        "export_url": "/api/admin/audit/export/download",
+        "status": "pending",
+    }))
 }
 
 async fn health_check() -> impl IntoResponse {

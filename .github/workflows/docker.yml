@@ -81,7 +81,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           build-args: |
-            RUST_VERSION=1.92
+            RUST_VERSION=1.96
 
       - name: Install cosign
         uses: sigstore/cosign-installer@v3.8.2

@@ -945,62 +945,187 @@ impl AgentTeam {
         let mut contributions: HashMap<String, AgentContribution> = HashMap::new();
         let mut total_turns = 0;
 
-        for idx in &sorted_indices {
-            let subtask = &decomposition.subtasks[*idx];
-            let role = &subtask.assigned_role;
+        // Parallel execution: identify independent subtasks and run them concurrently
+        // A subtask is independent if all its dependencies are already completed
+        let mut i = 0;
+        while i < sorted_indices.len() {
+            // Find all subtasks whose dependencies are satisfied
+            let mut batch = Vec::new();
+            let mut batch_indices = Vec::new();
 
-            let prior_context = subtask
-                .depends_on
-                .iter()
-                .filter_map(|dep_id| {
-                    completed_results
-                        .get(dep_id)
-                        .map(|(s, r)| format!("[{}]: {}", s.assigned_role.name(), r))
-                })
-                .collect::<Vec<_>>()
-                .join("\n\n");
+            while i < sorted_indices.len() {
+                let idx = sorted_indices[i];
+                let subtask = &decomposition.subtasks[idx];
 
-            let user_prompt = build_worker_prompt(&subtask.description, &prior_context);
+                let deps_satisfied = subtask.depends_on.iter().all(|dep_id| {
+                    completed_results.contains_key(dep_id)
+                });
 
-            let response = self.call_agent(role, &user_prompt).await.map_err(|e| {
-                AgentError::TaskFailed(format!(
-                    "Agent {} failed on subtask '{}': {e}",
-                    role.name(),
-                    subtask.id
-                ))
-            })?;
+                if deps_satisfied {
+                    batch.push(subtask.clone());
+                    batch_indices.push(idx);
+                    i += 1;
+                } else {
+                    break;
+                }
+            }
 
-            total_turns += 1;
+            if batch.is_empty() {
+                // This shouldn't happen with a valid DAG, but safety break
+                tracing::error!("Deadlock detected in task dependency graph");
+                break;
+            }
 
-            let role_name = role.name().to_string();
-            let entry =
-                contributions
-                    .entry(role_name.clone())
-                    .or_insert_with(|| AgentContribution {
-                        role: role.clone(),
-                        message_count: 0,
-                        highlights: Vec::new(),
+            if batch.len() == 1 {
+                // Single task - run directly (no spawn overhead)
+                let subtask = &batch[0];
+                let role = &subtask.assigned_role;
+
+                let prior_context = subtask
+                    .depends_on
+                    .iter()
+                    .filter_map(|dep_id| {
+                        completed_results
+                            .get(dep_id)
+                            .map(|(s, r)| format!("[{}]: {}", s.assigned_role.name(), r))
+                    })
+                    .collect::<Vec<_>>()
+                    .join("\n\n");
+
+                let user_prompt = build_worker_prompt(&subtask.description, &prior_context);
+
+                let response = self.call_agent(role, &user_prompt).await.map_err(|e| {
+                    AgentError::TaskFailed(format!(
+                        "Agent {} failed on subtask '{}': {e}",
+                        role.name(),
+                        subtask.id
+                    ))
+                })?;
+
+                total_turns += 1;
+
+                let role_name = role.name().to_string();
+                let entry =
+                    contributions
+                        .entry(role_name.clone())
+                        .or_insert_with(|| AgentContribution {
+                            role: role.clone(),
+                            message_count: 0,
+                            highlights: Vec::new(),
+                        });
+                entry.message_count += 1;
+                let highlight = response
+                    .lines()
+                    .next()
+                    .unwrap_or(&response)
+                    .chars()
+                    .take(120)
+                    .collect::<String>();
+                entry.highlights.push(highlight);
+
+                self.broadcast(AgentMessage {
+                    id: Uuid::new_v4().to_string(),
+                    sender: role_name.clone(),
+                    recipient: "all".into(),
+                    content: response.clone(),
+                    message_type: MessageType::Response,
+                    timestamp: Utc::now(),
+                })?;
+
+                completed_results.insert(subtask.id.clone(), (subtask.clone(), response));
+            } else {
+                // Multiple independent tasks - run in parallel
+                tracing::info!("Running {} independent subtasks in parallel", batch.len());
+
+                let mut handles = Vec::new();
+
+                for subtask in &batch {
+                    let role = subtask.assigned_role.clone();
+                    let subtask_id = subtask.id.clone();
+                    let description = subtask.description.clone();
+                    let depends_on = subtask.depends_on.clone();
+
+                    let prior_context = depends_on
+                        .iter()
+                        .filter_map(|dep_id| {
+                            completed_results
+                                .get(dep_id)
+                                .map(|(s, r)| format!("[{}]: {}", s.assigned_role.name(), r))
+                        })
+                        .collect::<Vec<_>>()
+                        .join("\n\n");
+
+                    let user_prompt = build_worker_prompt(&description, &prior_context);
+                    let message_bus = self.message_bus.clone();
+                    let llm_client = Arc::clone(&self.llm_client);
+
+                    let handle = tokio::spawn(async move {
+                        let llm = llm_client.read().await;
+                        let response = if let Some(client) = llm.as_ref() {
+                            let messages = vec![ChatMessage {
+                                role: ChatRole::User,
+                                content: user_prompt,
+                                images: None,
+                            }];
+                            client.chat(messages).await.map_err(|e| {
+                                AgentError::TaskFailed(format!("LLM call failed: {e}"))
+                            })?
+                        } else {
+                            return Err(AgentError::InvalidState("No LLM client".into()));
+                        };
+
+                        let _ = message_bus.send(AgentMessage {
+                            id: Uuid::new_v4().to_string(),
+                            sender: role.name().to_string(),
+                            recipient: "all".into(),
+                            content: response.clone(),
+                            message_type: MessageType::Response,
+                            timestamp: Utc::now(),
+                        });
+
+                        Ok::<_, AgentError>((subtask_id, role, response))
                     });
-            entry.message_count += 1;
-            let highlight = response
-                .lines()
-                .next()
-                .unwrap_or(&response)
-                .chars()
-                .take(120)
-                .collect::<String>();
-            entry.highlights.push(highlight);
 
-            self.broadcast(AgentMessage {
-                id: Uuid::new_v4().to_string(),
-                sender: role_name.clone(),
-                recipient: "all".into(),
-                content: response.clone(),
-                message_type: MessageType::Response,
-                timestamp: Utc::now(),
-            })?;
+                    handles.push(handle);
+                }
 
-            completed_results.insert(subtask.id.clone(), (subtask.clone(), response));
+                // Collect results from parallel execution
+                for handle in handles {
+                    match handle.await {
+                        Ok(Ok((subtask_id, role, response))) => {
+                            total_turns += 1;
+
+                            let role_name = role.name().to_string();
+                            let entry =
+                                contributions
+                                    .entry(role_name.clone())
+                                    .or_insert_with(|| AgentContribution {
+                                        role: role.clone(),
+                                        message_count: 0,
+                                        highlights: Vec::new(),
+                                    });
+                            entry.message_count += 1;
+                            let highlight = response
+                                .lines()
+                                .next()
+                                .unwrap_or(&response)
+                                .chars()
+                                .take(120)
+                                .collect::<String>();
+                            entry.highlights.push(highlight);
+
+                            let subtask = batch.iter().find(|s| s.id == subtask_id).unwrap();
+                            completed_results.insert(subtask_id, (subtask.clone(), response));
+                        },
+                        Ok(Err(e)) => {
+                            tracing::error!("Parallel subtask failed: {e}");
+                        },
+                        Err(e) => {
+                            tracing::error!("Subtask join error: {e}");
+                        },
+                    }
+                }
+            }
         }
 
         let subtask_results: Vec<(SubTask, String)> = sorted_indices

@@ -41,6 +41,7 @@ matrix-sdk = { version = "0.10", optional = true, default-features = false, feat
 tempfile = { workspace = true }
 proptest.workspace = true
 tower = { workspace = true, features = ["util"] }
+http-body-util = "0.1"
 
 [features]
 default = []

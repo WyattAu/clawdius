@@ -105,6 +105,58 @@ fn test_cli_sprint_subcommand() {
     }
 }
 
+// ─────────────────────────────────────────────────────────
+// New Feature Tests
+// ─────────────────────────────────────────────────────────
+
+#[test]
+fn test_cli_mcp_subcommand() {
+    let cli = Cli::parse_from(["clawdius", "mcp", "serve"]);
+    match cli.command {
+        Some(Commands::Mcp { .. }) => {},
+        other => panic!("expected Mcp command, got: {other:?}"),
+    }
+}
+
+#[test]
+fn test_cli_config_show() {
+    let cli = Cli::parse_from(["clawdius", "config", "show"]);
+    match cli.command {
+        Some(Commands::Config { .. }) => {},
+        other => panic!("expected Config command, got: {other:?}"),
+    }
+}
+
+#[test]
+fn test_cli_auth_subcommand() {
+    let cli = Cli::parse_from(["clawdius", "auth", "login"]);
+    match cli.command {
+        Some(Commands::Auth { .. }) => {},
+        other => panic!("expected Auth command, got: {other:?}"),
+    }
+}
+
+// ─────────────────────────────────────────────────────────
+// Feature Integration Tests
+// ─────────────────────────────────────────────────────────
+
+#[test]
+fn test_all_cli_subcommands_exist() {
+    // Verify all subcommands can be parsed
+    let subcommands = vec![
+        vec!["clawdius", "chat", "test"],
+        vec!["clawdius", "sprint", "test"],
+        vec!["clawdius", "config", "show"],
+        vec!["clawdius", "init"],
+        vec!["clawdius", "sessions"],
+    ];
+
+    for args in subcommands {
+        let result = Cli::try_parse_from(args);
+        assert!(result.is_ok(), "Failed to parse {:?}: {:?}", args, result.err());
+    }
+}
+
 #[test]
 fn test_cli_metrics_subcommand() {
     let cli = Cli::parse_from(["clawdius", "metrics"]);

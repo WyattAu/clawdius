@@ -33,6 +33,11 @@ getrandom = { workspace = true }
 urlencoding = { workspace = true }
 tokenkit.workspace = true
 zeroize = "1"
+jsonwebtoken = "9"
+sha2 = "0.10"
+# SAML 2.0 support
+quick-xml = { version = "0.31", features = ["serialize"] }
+ring = "0.17"
 
 [lints]
 workspace = true

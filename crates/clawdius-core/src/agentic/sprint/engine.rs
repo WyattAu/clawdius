@@ -7,6 +7,7 @@ use crate::agentic::browser_daemon::BrowserDaemon;
 use crate::agentic::tool_executor::{ToolExecutor, ToolRequest};
 use crate::agentic::tool_use;
 use crate::llm::providers::LlmClient;
+use crate::llm::model_router::AgentHook;
 use crate::Result;
 use std::path::Path;
 use std::sync::Arc;
@@ -16,6 +17,8 @@ pub struct SprintEngine {
     pub(crate) tool_executor: Option<Arc<dyn ToolExecutor>>,
     pub(crate) browser_daemon: Option<Arc<BrowserDaemon>>,
     pub(crate) lsp_client: Option<Arc<tokio::sync::Mutex<crate::lsp::LspClient>>>,
+    /// Hooks for intercepting tool calls.
+    pub(crate) hooks: Vec<Arc<dyn AgentHook>>,
 }
 
 impl SprintEngine {
@@ -25,6 +28,7 @@ impl SprintEngine {
             tool_executor: None,
             browser_daemon: None,
             lsp_client: None,
+            hooks: Vec::new(),
         }
     }
 
@@ -44,6 +48,72 @@ impl SprintEngine {
     pub fn with_lsp_client(mut self, client: crate::lsp::LspClient) -> Self {
         self.lsp_client = Some(Arc::new(tokio::sync::Mutex::new(client)));
         self
+    }
+
+    /// Add a hook for intercepting tool calls.
+    #[must_use]
+    pub fn with_hook(mut self, hook: Arc<dyn AgentHook>) -> Self {
+        self.hooks.push(hook);
+        self
+    }
+
+    /// Execute a tool request with hook interception.
+    pub async fn execute_tool_with_hooks(&self, request: ToolRequest) -> Result<crate::tools::ToolResult> {
+        // Run before hooks
+        for hook in &self.hooks {
+            if !hook.before_tool_call(&request.name, &serde_json::to_string(&request.arguments).unwrap_or_default()).await {
+                return Ok(crate::tools::ToolResult {
+                    success: false,
+                    output: "Tool call blocked by hook".to_string(),
+                    duration_ms: 0,
+                });
+            }
+        }
+
+        // Execute the tool
+        let result = if let Some(executor) = &self.tool_executor {
+            executor.execute(request.clone()).await?
+        } else {
+            crate::tools::ToolResult {
+                success: false,
+                output: "No tool executor configured".to_string(),
+                duration_ms: 0,
+            }
+        };
+
+        // Run after hooks
+        for hook in &self.hooks {
+            hook.after_tool_call(&request.name, &result.output).await;
+        }
+
+        Ok(result)
+    }
+
+    /// Get browser accessibility snapshot if browser daemon is available.
+    pub async fn get_browser_snapshot(&self) -> Option<String> {
+        let daemon = self.browser_daemon.as_ref()?;
+        match daemon.snapshot().await {
+            Ok(snapshot) => Some(snapshot.to_ref_list()),
+            Err(e) => {
+                tracing::warn!("Failed to get browser snapshot: {e}");
+                None
+            }
+        }
+    }
+
+    /// Navigate browser to a URL if browser daemon is available.
+    pub async fn navigate_browser(&self, url: &str) -> Result<bool> {
+        if let Some(daemon) = &self.browser_daemon {
+            match daemon.navigate(url).await {
+                Ok(_) => Ok(true),
+                Err(e) => {
+                    tracing::warn!("Browser navigation failed: {e}");
+                    Ok(false)
+                }
+            }
+        } else {
+            Ok(false)
+        }
     }
 
     pub(crate) async fn chat_collecting_stream(

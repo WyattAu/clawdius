@@ -34,6 +34,8 @@
 //! }
 //! ```
 
+#![deny(unsafe_code)]
+
 /// Plugin initialization context and filesystem paths.
 pub mod context;
 /// Echo and dummy tools for testing.

@@ -30,6 +30,9 @@ futures.workspace = true
 async-trait.workspace = true
 async-stream.workspace = true
 
+# Internal unsafe SIMD primitives
+clawdius-unsafe = { path = "../clawdius-unsafe" }
+
 # Serialization (WASM-compatible)
 serde.workspace = true
 serde_json.workspace = true

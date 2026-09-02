@@ -9,21 +9,22 @@
 |-----------|-------|
 | **Version** | 1.0.0 |
 | **Status** | GA Release |
-| **Last Updated** | 2026-06-11 |
+| **Last Updated** | 2026-09-01 |
 | **Rollback Checkpoint** | `57d803e2` |
 
 ## Empirical Metrics
 
 | Metric | Value | Source |
 |--------|-------|--------|
-| **Workspace Crates** | 7 | `Cargo.toml` (core, gateway, mcp, code, plugin-sdk, lsp, binary) |
-| **Rust Files** | 355+ | `find crates -name '*.rs'` |
-| **Lean4 Proof Files** | 25 | Lake build |
+| **Workspace Crates** | 12 | `Cargo.toml` (core, gateway, mcp, code, plugin-sdk, lsp, ui, tauri, web, auth, unsafe, binary) |
+| **Rust Files** | 429+ | `find crates -name '*.rs'` |
+| **Rust Lines** | 162,815 | `find crates -name '*.rs' -exec wc -l {} +` |
+| **Lean4 Proof Files** | 23 | `find .specs .clawdius/specs -name '*.lean'` |
 | **Lean4 Theorems** | 318 | `grep -rP '\btheorem\b' .clawdius/specs .specs/ --include='*.lean'` |
 | **Clippy** | Clean (`-D warnings`) | `cargo clippy --workspace --all-targets` |
 | **cargo fmt** | Clean | `cargo fmt --all --check` |
 | **cargo deny** | Clean (advisories, licenses, bans) | `cargo deny check` |
-| **Lean4 lake build** | Pass (21 libs + 1 exe) | `lake build` |
+| **Lean4 lake build** | Pass (21 libs + 1 Clawdius lib + 1 exe) | `lake build` |
 | **Production unwraps** | 0 (deny active on core) | `deny(clippy::unwrap_used)` |
 | **Root docs with emoji** | 0 | Python grep audit |
 | **git hooks** | pre-commit + pre-push | `CLAWDIUS_SKIP_HOOKS=1` escape hatch |
@@ -32,16 +33,25 @@
 
 ### Test Counts
 
-| Crate | Lib Tests | Integration Tests | Property Tests | Adapter Tests | Status |
-|-------|-----------|-------------------|----------------|---------------|--------|
-| clawdius | 76+ | 76+ | 0 | 0 | All passing |
-| clawdius-core | 1,100+ | 97+ | 27 | 0 | All passing |
-| clawdius-gateway | 184+ | 28+ | 0 | 136 | All passing |
-| clawdius-mcp | 42+ | 12+ | 0 | 0 | All passing |
-| clawdius-code | 48+ | 19+ | 0 | 0 | All passing |
-| clawdius-plugin-sdk | 19 | 0 | 0 | 0 | All passing |
-| clawdius-lsp | 5 | 0 | 0 | 0 | All passing |
-| **Total** | **~1,475** | **~232** | **27** | **484** | **2,565 tests, 0 failures** |
+> **Note:** Counts below are from `#[test]` / `#[tokio::test]` static analysis
+> as of 2026-09-01. Runtime count may differ slightly due to `#[rstest]`
+> parameterized tests generating additional cases.
+
+| Crate | `#[test]` | `#[tokio::test]` | Total |
+|-------|-----------|-------------------|-------|
+| clawdius | 485 | 10 | 495 |
+| clawdius-core | 1,397 | 543 | 1,940 |
+| clawdius-gateway | 212 | 93 | 305 |
+| clawdius-code | 67 | 0 | 67 |
+| clawdius-mcp | 54 | 0 | 54 |
+| clawdius-plugin-sdk | 36 | 0 | 36 |
+| clawdius-lsp | 28 | 0 | 28 |
+| clawdius-auth | 22 | 0 | 22 |
+| workspace tests/ | 17 | 8 | 25 |
+| **Total** | **2,318** | **654** | **~3,044*** |
+
+\* Including ~72 `#[rstest]` parameterized test cases that generate additional
+runtime tests. The previous documented count of 2,565 was stale.
 
 ### Coverage Baseline
 
@@ -49,25 +59,25 @@
 |-------|-------|---------|--------|
 | clawdius-code | 100% | 100% | Excellent |
 | clawdius-mcp | 100% | 100% | Excellent |
+| clawdius-auth | 85% | 80% | Good |
 | clawdius-core | 64.4% | 66.2% | Good |
 | clawdius-gateway | 60.8% | 62.7% | Good |
 | clawdius (CLI) | 5.6% | 5.4% | Needs work (25+ subcommands uncovered) |
 
 ### Lean4 Proof Files
 
-All 22 proof files compile via `lake build` (21 proof libs + 1 Clawdius lib).
+All 23 Lean4 proof files compile via `lake build` (21 proof libs + 1 Clawdius lib + 1 exe).
 Directories: `.specs/02_architecture/proofs/` (15 incl. TestFold scratch), `.clawdius/specs/02_architecture/proofs/` (7).
 
 ### Performance
 
-| Metric | Value | Target |
-|--------|-------|--------|
-| Cold start (`--help`) | 2.5 ms avg | <10ms PASS |
-| Cold start (release, stripped) | 2.5 ms avg | <10ms PASS |
-| Binary size (release) | 26 MiB | N/A |
-| Binary size (stripped) | 26 MiB | N/A |
-| Docker image size | 164 MB | N/A |
-| Peak heap (startup) | 1.7 KiB | <100 MiB PASS |
+| Metric | Value | Target | Notes |
+|--------|-------|--------|-------|
+| Cold start (`--help`) | 2.5 ms avg | <10ms PASS | Warm OS page cache |
+| Cold start (`--version`, no cache) | 15 ms | <20ms PASS | Measured in BENCHMARKS.md |
+| Binary size (release) | 26 MiB | N/A | LTO, stripped |
+| Docker image size | 164 MB | N/A | |
+| Peak heap (startup) | 1.7 KiB | <100 MiB PASS | |
 
 ### Known Issues
 

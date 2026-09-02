@@ -20,6 +20,10 @@ All Service Level Objectives are met with significant margin.
 | Boot time | `clawdius --version` | **15 ms** | <20 ms | **1.3x** |
 | Binary size | `clawdius` (release) | **17 MB** | — | — |
 
+> **Note on boot time:** VERSION.md reports 2.5 ms for `clawdius --help` on a
+> warm OS page cache. The 15 ms figure above is a cold-start measurement of
+> `clawdius --version` on the benchmark platform. Both are within SLO.
+
 ## Methodology
 
 - **Framework**: `std::time::Instant` with `black_box` to prevent optimization

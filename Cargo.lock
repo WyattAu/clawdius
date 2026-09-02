@@ -2047,10 +2047,14 @@ dependencies = [
  "chrono",
  "clawdius-core",
  "getrandom 0.2.17",
+ "jsonwebtoken",
  "parking_lot",
+ "quick-xml 0.31.0",
  "reqwest 0.12.28",
+ "ring",
  "serde",
  "serde_json",
+ "sha2 0.10.9",
  "thiserror 2.0.18",
  "tokenkit",
  "tokio",
@@ -2099,6 +2103,7 @@ dependencies = [
  "candle-transformers",
  "chromiumoxide",
  "chrono",
+ "clawdius-unsafe",
  "criterion",
  "cryptkit",
  "deadpool-postgres",
@@ -2173,6 +2178,7 @@ dependencies = [
  "clawdius-auth",
  "clawdius-core",
  "cryptkit",
+ "http-body-util",
  "matrix-sdk",
  "proptest",
  "reqwest 0.12.28",
@@ -2251,6 +2257,10 @@ dependencies = [
  "wasm-bindgen",
  "web-sys",
 ]
+
+[[package]]
+name = "clawdius-unsafe"
+version = "0.1.0"
 
 [[package]]
 name = "clawdius-web"
@@ -10122,7 +10132,7 @@ checksum = "092791278e026273c1b65bbdcfbba3a300f2994c896bd01ab01da613c29c46f1"
 dependencies = [
  "base64 0.22.1",
  "indexmap 2.14.0",
- "quick-xml",
+ "quick-xml 0.39.4",
  "serde",
  "time",
 ]
@@ -10603,6 +10613,16 @@ name = "quick-error"
 version = "2.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a993555f31e5a609f617c12db6250dedcac1b0a85076912c436e6fc9b2c8e6a3"
+
+[[package]]
+name = "quick-xml"
+version = "0.31.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1004a344b30a54e2ee58d66a71b32d2db2feb0a31f9a2d302bf0536f15de2a33"
+dependencies = [
+ "memchr",
+ "serde",
+]
 
 [[package]]
 name = "quick-xml"
@@ -16351,7 +16371,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9c324a910fd86ebdc364a3e61ec1f11737d3b1d6c273c0239ee8ff4bc0d24b4a"
 dependencies = [
  "proc-macro2",
- "quick-xml",
+ "quick-xml 0.39.4",
  "quote",
 ]
 

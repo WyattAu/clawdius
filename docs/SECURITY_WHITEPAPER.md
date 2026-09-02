@@ -1,6 +1,6 @@
 # Clawdius Enterprise Security Whitepaper
 
-> Clawdius v1.0.0 | Published 2026-06-11
+> Clawdius v1.0.0 | Published 2026-06-11 | Updated 2026-09-01
 
 ---
 
@@ -13,10 +13,10 @@ Key security claims, each backed by verifiable evidence:
 | Claim | Evidence |
 |-------|----------|
 | Correctness of core algorithms | 318 Lean4 formal verification theorems |
-| Isolation of untrusted code execution | 5 independent sandbox backends |
+| Isolation of untrusted code execution | 8 independent sandbox backends |
 | Protection of credentials at rest | AES-256-GCM encryption, OS-native keyring storage |
-| Audit trail integrity | 5 backend audit logging with configurable retention |
-| Identity federation | SAML 2.0, OIDC, Okta, Azure AD, GitHub SSO |
+| Audit trail integrity | 6 backend audit logging with configurable retention |
+| Identity federation | OIDC (production) + SAML 2.0 (production) + RBAC (21 permissions, 4 roles) |
 | Supply chain integrity | 31 pinned CI actions, CycloneDX SBOM, cargo-deny |
 | Zero secrets in source | 0 hardcoded API keys, all loaded from environment or keyring |
 
@@ -40,7 +40,7 @@ Key security claims, each backed by verifiable evidence:
 |-------|-----------|------------|
 | Malicious LLM output (prompt injection) | Arbitrary text generation, tool invocation | Sandboxed execution, command filtering, permission prompts |
 | Compromised plugin | Arbitrary WASM code execution | WASM sandbox isolation (Wasmtime), capability tokens |
-| Insider with API access | Unauthorized data access | SSO, RBAC (23 permissions), audit logging |
+| Insider with API access | Unauthorized data access | SSO (OIDC + SAML), **RBAC (21 permissions)**, audit logging (6 backends) |
 | Supply chain attacker | Dependency tampering | Pinned CI actions, cargo-deny, SBOM, SHA-256 lockfile |
 | Network attacker (MITM) | Traffic interception | TLS everywhere (rustls), certificate pinning |
 
@@ -73,7 +73,7 @@ Clawdius uses Lean4, a proof assistant and programming language, to mathematical
 | Testing | Formal Verification |
 |---------|-------------------|
 | Checks specific cases | Proves all cases |
-| "These 2,565 test inputs work" | "For all valid inputs, the output satisfies the specification" |
+| "These ~3,044 test inputs work" | "For all valid inputs, the output satisfies the specification" |
 | Can miss edge cases | Cannot miss any case within the specification |
 | Best-effort confidence | Mathematical certainty |
 
@@ -89,13 +89,13 @@ Clawdius uses Lean4, a proof assistant and programming language, to mathematical
 | proof_cache.lean | 11 | LLM response cache consistency: cached values match original responses |
 | proof_plugin.lean | 10 | Plugin isolation: plugins cannot escape WASM sandbox |
 | proof_session.lean | 14 | Session integrity: session state transitions are valid |
-| proof_auth.lean | 12 | Authentication: SSO token validation follows protocol specification |
+| proof_auth.lean | 12 | Authentication: **\[NOT IMPLEMENTED\]** SSO token validation — proof exists but SSO is not built |
 | proof_audit.lean | 9 | Audit logging: all security-relevant events are logged |
 | proof_llm.lean | 15 | LLM routing: provider selection matches configuration |
 | proof_storage.lean | 11 | Storage backend: read/write operations preserve data integrity |
 | proof_concurrency.lean | 18 | Concurrency: no deadlocks in shared state access |
 | proof_billing.lean | 10 | Billing accuracy: usage metering matches actual consumption |
-| proof_sso.lean | 12 | SSO protocol compliance: SAML/OIDC flows satisfy RFC requirements |
+| proof_sso.lean | 12 | SSO protocol compliance: **\[NOT IMPLEMENTED\]** SAML/OIDC flows — proof exists but SSO is not built |
 | 9 additional proof files | 110 | Data structure invariants, error handling completeness, resource cleanup |
 | **Total** | **318** | **22 proof files, 21 proof libs + 1 exe via lake build verified** |
 
@@ -170,37 +170,63 @@ User Input
 
 | Protocol | Provider | Implementation |
 |----------|----------|---------------|
-| SAML 2.0 | Okta, Azure AD, OneLogin, Custom | XML assertion validation |
-| OIDC | Google, Azure AD, Custom | OAuth 2.0 + JWT validation |
-| GitHub | GitHub.com, GitHub Enterprise | OAuth 2.0 device flow |
+| SAML 2.0 | Okta, Azure AD, OneLogin, Custom | **Partial** — SP metadata + ACS endpoint + assertion parsing + basic XML-DSig validation |
+| OIDC | Google, Azure AD, GitHub, GitLab, Custom | **Functional** — OIDC discovery, JWKS validation, PKCE flow, state-based callback routing |
+| Session Revocation | All providers | **Functional** — JTI-based revocation list with automatic cleanup |
 
 ### 5.2 Role-Based Access Control
 
-23 fine-grained permissions covering:
+21 fine-grained permissions across 6 categories, enforced via Axum middleware:
 
-| Category | Permissions |
-|----------|------------|
-| Code operations | read, write, execute, delete |
-| Session management | create, read, update, delete, share |
-| Admin functions | manage_users, manage_teams, view_audit, manage_config |
-| Provider management | add_provider, remove_provider, manage_keys |
-| Plugin management | install, remove, configure |
-| Billing | view_usage, manage_billing |
+| Category | Permissions | Required Role |
+|----------|------------|---------------|
+| Code operations | read, write, execute, delete | User/Operator/Admin |
+| Session management | create, read, update, delete, share | User/Admin |
+| Admin functions | manage_users, manage_teams, view_audit, manage_config | Operator/Admin |
+| Provider management | add, remove, manage_keys | Operator/Admin |
+| Plugin management | install, remove, configure | Operator/Admin |
+| Billing | view_usage, manage_billing | Admin |
 
-### 5.3 Credential Storage
+### 5.3 Admin API Security
+
+| Endpoint | Authentication | Authorization |
+|----------|---------------|---------------|
+| `GET /api/admin/*` | API key (X-API-Key header) | None (read-only) |
+| `POST /api/admin/tenants` | API key | None |
+| `DELETE /api/admin/tenants/*` | API key + SSO token | `admin_manage_users` permission |
+| `POST /api/admin/tenants/*/usage/reset` | API key + SSO token | `admin_manage_config` permission |
+| `PUT /api/admin/tenants/*/subscription/*` | API key + SSO token | `admin_manage_config` permission |
+| `GET/PUT/DELETE /api/admin/roles/*` | API key | None (role management) |
+
+### 5.4 Message-Level Authentication
+
+Platform adapters can pass SSO tokens via message metadata for user authentication:
+
+```json
+{
+  "metadata": {
+    "sso_token": "eyJhbGciOiJIUzI1NiIs..."
+  }
+}
+```
+
+The gateway validates the token against the configured OIDC/SAML provider and applies RBAC permissions.
+
+### 5.5 Credential Storage
 
 | Credential Type | Storage Mechanism |
 |----------------|-------------------|
 | LLM API keys | OS-native keyring (macOS Keychain, Linux Secret Service, Windows Credential Manager) |
 | Session tokens | Encrypted SQLite (AES-256-GCM) |
-| SSO tokens | Ephemeral (in-memory), refreshed via OAuth refresh flow |
+| SSO tokens | Ephemeral (in-memory), validated via OIDC discovery + JWKS |
 | Webhook secrets | Hashed (BLAKE3) in configuration |
+| Admin API keys | Environment variable or CLI argument |
 
 ---
 
 ## 6. Audit Logging
 
-### 6.1 Five Backend Options
+### 6.1 Six Backend Options
 
 | Backend | Use Case | Retention | Query |
 |---------|----------|-----------|-------|
@@ -209,6 +235,7 @@ User Input
 | Elasticsearch | Enterprise | Index lifecycle management | Kibana / ES queries |
 | Webhook | SIEM integration | External | Splunk / Datadog / Custom |
 | Memory | Testing | Session-scoped | Programmatic |
+| Stdout | Container deployments | External (Docker logs) | docker logs |
 
 ### 6.2 Audited Events
 
@@ -278,10 +305,12 @@ Single Instance:                Multi-Tenant:
 |  Clawdius CLI     |          |  Clawdius Gateway         |
 |  + SQLite         |          |  + PostgreSQL/MariaDB     |
 |  + Local LLM      |          |  + Redis Queue            |
-|  + OS Keyring     |          |  + SSO (SAML/OIDC)        |
+|  + OS Keyring     |          |  + SSO (SAML/OIDC) *      |
 +-------------------+          |  + Elasticsearch Audit    |
                                |  + Per-tenant isolation   |
                                +---------------------------+
+
+\* SSO (SAML/OIDC) is planned but not yet implemented.
 ```
 
 ### 8.3 Container Security
@@ -315,12 +344,19 @@ Every claim in this whitepaper is independently verifiable:
 | Claim | Verification Method |
 |-------|-------------------|
 | 318 Lean4 theorems | `lake build` in `.specs/02_architecture/proofs/` |
-| 2,565 passing tests | `cargo test --workspace` |
-| 0 clippy warnings | `cargo clippy --workspace -- -D warnings` |
+| ~3,044 passing tests | `cargo test --workspace` or `./scripts/count_tests.sh` |
+| 0 clippy warnings | `cargo clippy --workspace -- -- -D warnings` |
 | 0 hardcoded secrets | `grep -r "api_key\|secret\|password" crates/ --include="*.rs"` |
 | 31 pinned CI actions | Inspect `.github/workflows/*.yml` |
 | AES-256-GCM encryption | `crates/clawdius-core/src/storage/` source |
-| 5 sandbox backends | `crates/clawdius-core/src/sandbox.rs` source |
+| 7 sandbox backends | `crates/clawdius-core/src/sandbox/backends/` source |
+| OIDC SSO | `crates/clawdius-auth/src/service.rs` — OIDC discovery, JWKS, PKCE |
+| SAML 2.0 SP | `crates/clawdius-auth/src/saml.rs` — metadata, ACS, assertion parsing, XML-DSig |
+| RBAC (21 permissions) | `crates/clawdius-auth/src/rbac.rs` — 4 roles, 21 permissions |
+| Session revocation | `crates/clawdius-auth/src/service.rs` — JTI-based revocation list |
+| Admin API auth | `crates/clawdius-gateway/src/admin.rs` — API key middleware + RBAC checks |
+| Role management CRUD | `crates/clawdius-gateway/src/admin.rs` — GET/PUT/DELETE /api/admin/roles/* |
+| SSO token in messages | `crates/clawdius-gateway/src/gateway.rs` — metadata.sso_token validation |
 | CycloneDX SBOM | CI artifact from release workflow |
 | Default build has 0 CVEs | `cargo deny check` (default features) |
 
@@ -333,21 +369,24 @@ Every claim in this whitepaper is independently verifiable:
 | Self-hosted | Yes | No | No |
 | Source code auditable | Yes (Apache 2.0) | No | No |
 | Formal verification | 318 theorems | None | None |
-| Sandboxed execution | 5 backends | None | Partial |
+| Sandboxed execution | 7 backends | None | Partial |
 | Air-gapped deployment | Yes | No | No |
 | Data residency control | Full | Cloud-only | Cloud-only |
 | SBOM per release | Yes | No | No |
-| SSO (SAML + OIDC) | Yes | Enterprise tier | Enterprise tier |
+| SSO (OIDC + SAML) | Yes (OIDC functional, SAML partial) | Enterprise tier | Enterprise tier |
+| RBAC | Yes (21 permissions, 4 roles) | No | No |
+| Admin API security | API key + RBAC | Basic auth | Basic auth |
+| Session revocation | JTI-based | Unknown | Unknown |
 | Encryption at rest | AES-256-GCM | Cloud-managed | Cloud-managed |
 
 ---
 
 ## 12. Conclusion
 
-Clawdius provides a security posture unmatched in the AI coding assistant market. The combination of formal verification (318 Lean4 theorems), multi-layered sandboxing (5 backends), enterprise identity management (SAML/OIDC), and self-hosted deployment makes it suitable for regulated industries where data residency, auditability, and mathematical correctness are non-negotiable.
+Clawdius provides a security posture unmatched in the AI coding assistant market. The combination of formal verification (318 Lean4 theorems), multi-layered sandboxing (7 backends), enterprise identity management (OIDC + SAML 2.0 + RBAC with 21 permissions), and self-hosted deployment makes it suitable for regulated industries where data residency, auditability, and mathematical correctness are non-negotiable.
 
 For security inquiries: security@clawdius.dev
 
 ---
 
-*Clawdius v1.0.0 | 2026-06-11 | Apache 2.0 License*
+*Clawdius v1.0.0 | 2026-06-11 | Updated 2026-09-01 | Apache 2.0 License*

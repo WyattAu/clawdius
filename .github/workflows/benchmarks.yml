@@ -32,7 +32,7 @@ jobs:
           fetch-depth: 0
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@1.92.0
+        uses: dtolnay/rust-toolchain@1.96.0
 
       - name: Cache cargo registry
         uses: Swatinem/rust-cache@v2
@@ -82,7 +82,7 @@ jobs:
           fetch-depth: 0
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@1.92.0
+        uses: dtolnay/rust-toolchain@1.96.0
 
       - name: Cache cargo registry
         uses: Swatinem/rust-cache@v2
@@ -161,7 +161,7 @@ jobs:
         with:
           fetch-depth: 2
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@1.92.0
+        uses: dtolnay/rust-toolchain@1.96.0
       - name: Download benchmark results from benchmark job
         uses: actions/download-artifact@v8
         with:

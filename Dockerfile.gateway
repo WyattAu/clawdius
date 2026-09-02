@@ -12,7 +12,7 @@
 #              clawdius-gateway serve --all
 
 # ─── Stage 1: Build ───────────────────────────────────────
-FROM rust:1.92-bookworm AS builder
+FROM rust:1.96-bookworm AS builder
 
 ARG FEATURES=all-platforms
 ARG PROFILE=release

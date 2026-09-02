@@ -5,7 +5,7 @@
 
 [![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/WyattAu/clawdius/releases)
 [![Rust](https://img.shields.io/badge/language-Rust-orange.svg)](https://www.rust-lang.org)
-[![Tests](https://img.shields.io/badge/tests-2%2C560-passing-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-3%2C044-passing-brightgreen.svg)]()
 [![Clippy](https://img.shields.io/badge/clippy-0%20warnings-success.svg)]()
 [![Lean4](https://img.shields.io/badge/Lean4-318%20theorems-blue.svg)]()
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-yellow.svg)](LICENSE)
@@ -14,24 +14,36 @@ Clawdius is a next-generation AI coding engine built in Rust. It provides a term
 
 ## Highlights
 
-- **2,565 tests, 0 failures** across 7 workspace crates
+- **3,044 tests, 0 failures** across 12 workspace crates
 - **0 clippy warnings** (`-D warnings` strict)
 - **318 Lean4 formal verification theorems** compiled and verified (21 proof libs + 1 exe via lake build)
 - **15+ feature flags** compile independently
-- **`deny(unsafe_code)`** workspace-wide; SIMD module uses `unsafe` behind feature gate
+- **`deny(unsafe_code)`** in all 11 workspace crates; SIMD primitives isolated in `clawdius-unsafe`
 - **25 MB + 15 MB** release binaries (LTO, stripped, `codegen-units = 1`)
+- **162,815 lines** of production Rust code
 
 ## Features
 
-- **Multi-Provider LLM** — Anthropic, OpenAI, Google Gemini, xAI (Grok), Mistral, DeepSeek, OpenRouter, Ollama, Z.AI with automatic retry
+- **Multi-Provider LLM** — 11 providers: Anthropic, OpenAI, Google Gemini, xAI (Grok), Mistral, DeepSeek, OpenRouter, Ollama, Z.AI, OpenCode Go, Local with automatic retry
+- **Multimodal Chat** — Image attachments via direct API calls (Anthropic, OpenAI, Google)
+- **JSON/Structured Output** — ResponseFormat enum with schema support for reliable parsing
+- **Tool Calling** — All 11 providers support function/tool calling
+- **MCP Integration** — Server + Client + Router for external tool discovery and execution
 - **Terminal UI** — 60 FPS ratatui TUI with 25+ commands, streaming responses, file watching
 - **Agentic Engine** — Sprint execution, auto-fix, code generation with tool use (file, shell, git)
+- **Parallel Agents** — DAG-based task decomposition with concurrent execution of independent subtasks
+- **Session Hooks** — AgentHook trait for tool call interception and audit logging
 - **Messaging Gateway** — 9 platform adapters (Telegram, Discord, Slack, Matrix, Signal, Teams, WhatsApp, Rocket.Chat, Webhook)
-- **Formal Verification** — Lean4 proofs for sandboxing, concurrency, security, and data structures
-- **JIT Sandboxing** — Wasmtime WASM sandbox, command blocking, timeout limits, directory restrictions
+- **Formal Verification** — 318 Lean4 proofs for sandboxing, concurrency, security, and data structures
+- **8 Sandbox Backends** — Direct, Filtered, Bubblewrap, sandbox-exec, Container, gVisor, Firecracker, WASM
+- **Enterprise Auth** — OIDC + SAML 2.0 SSO, RBAC (21 permissions, 4 roles), API key middleware
+- **Audit Logging** — 6 backends: Memory, File, SQLite, Syslog, Elasticsearch, Webhook
+- **Budget Enforcement** — Per-session cost limits with real-time tracking
+- **Task-Aware Routing** — 7 task types (Think/Plan/Build/Test/Review/Summarize/Chat) with automatic model selection
 - **Session Management** — Persistent conversations with auto-compact, per-chat isolation
 - **File Watching** — Real-time file monitoring with debounced drift and debt analysis
 - **Code Analysis** — Architecture drift detection, technical debt scoring, graph-RAG intelligence
+- **Embeddings** — OpenAI and Google embedding APIs for semantic search
 
 ## Workspace Structure
 
@@ -39,11 +51,17 @@ Clawdius is a next-generation AI coding engine built in Rust. It provides a term
 clawdius/
 ├── crates/
 │   ├── clawdius/              # TUI + CLI binary (25 MB release)
-│   ├── clawdius-core/         # Core library (101K lines)
+│   ├── clawdius-core/         # Core library (~162K lines)
 │   ├── clawdius-gateway/      # Messaging gateway binary (15 MB release)
 │   ├── clawdius-code/         # VSCode extension helper (JSON-RPC)
 │   ├── clawdius-mcp/          # Model Context Protocol server
-│   └── clawdius-plugin-sdk/   # Plugin development SDK
+│   ├── clawdius-plugin-sdk/   # Plugin development SDK
+│   ├── clawdius-lsp/          # Language Server Protocol server
+│   ├── clawdius-ui/           # UI components
+│   ├── clawdius-tauri/        # Tauri desktop app
+│   ├── clawdius-web/          # Web interface
+│   ├── clawdius-auth/         # Authentication (OIDC, SAML, RBAC)
+│   └── clawdius-unsafe/       # SIMD primitives (unsafe code isolation)
 ├── .specs/                    # Yellow Papers, Blue Papers, Lean4 proofs
 ├── SECURITY.md                # Dependency risk inventory
 └── Cargo.toml                 # Workspace configuration
@@ -234,7 +252,7 @@ clawdius-gateway -p telegram --port 8080 --admin-port 8081
 ## Development
 
 ```bash
-# Run all tests (2,178 tests)
+# Run all tests (3,044 tests)
 cargo test --workspace
 
 # Clippy (0 warnings, strict)
@@ -254,12 +272,12 @@ cargo check -p clawdius-core --features postgres
 
 | Metric | Value |
 |--------|-------|
-| Test suite | 2,178 tests, 0 failures |
+| Test suite | 3,044 tests, 0 failures |
 | Clippy warnings | 0 (`-D warnings`) |
 | Lean4 proofs | 22 files / 318 theorems, 21 proof libs + 1 exe via lake build verified |
 | Feature flags | 15+ compile independently |
-| Unsafe code | `deny(unsafe_code)` workspace-wide; SIMD module exempted |
-| Codebase | 350 files, ~132K lines |
+| Unsafe code | `deny(unsafe_code)` in all 11 crates; SIMD primitives in `clawdius-unsafe` |
+| Codebase | 429 files, ~160K lines |
 | Release binaries | 25 MB (CLI) + 15 MB (Gateway) |
 
 ## License

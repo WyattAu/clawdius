@@ -1,12 +1,14 @@
 //! Unit tests for the clawdius-auth crate.
 //!
 //! Covers config presets, JWT session lifecycle (issue, validate, refresh),
-//! PKCE verifier generation, authorization URL construction, and auth error
-//! response codes.
+//! PKCE verifier generation, authorization URL construction, auth error
+//! response codes, SAML 2.0, RBAC, and session revocation.
 
 use clawdius_auth::{
     AuthConfig, AuthError, AuthService, OidcProviderConfig, SessionClaims, UserInfo,
 };
+use clawdius_auth::rbac::{permissions, RbacPolicy, RbacService, Role};
+use clawdius_auth::saml::{parse_saml_response_xml, SamlAssertion, SamlError, SamlSpConfig};
 use tokenkit::service::{JwtAlgorithm, JwtConfig, JwtService};
 
 // ---------------------------------------------------------------------------
@@ -361,4 +363,272 @@ fn test_auth_error_debug() {
         let _ = format!("{e:?}");
     }
     assert_eq!(errors.len(), 5);
+}
+
+// ---------------------------------------------------------------------------
+// Session revocation tests
+// ---------------------------------------------------------------------------
+
+#[test]
+fn test_session_revocation() {
+    let service = make_service();
+
+    let claims = SessionClaims {
+        sub: "user".to_string(),
+        email: None,
+        name: None,
+        provider: "test".to_string(),
+        roles: vec![],
+        iat: chrono::Utc::now().timestamp() as u64,
+        exp: (chrono::Utc::now().timestamp() as u64) + 3600,
+        jti: "revoke-me".to_string(),
+        iss: Some("clawdius".to_string()),
+    };
+
+    let jwt_svc = test_jwt_service();
+    let token = jwt_svc.encode(&claims).expect("encode");
+
+    // Token should be valid before revocation
+    assert!(service.validate_session(&token).is_ok());
+
+    // Revoke the session
+    service.invalidate_session("revoke-me").expect("revoke");
+
+    // Token should now be rejected
+    assert!(service.validate_session(&token).is_err());
+}
+
+#[test]
+fn test_revocation_cleans_expired_entries() {
+    let service = make_service();
+
+    // Revoking a session should not panic
+    service.invalidate_session("test-jti").expect("revoke");
+
+    // Validate should still work for other tokens
+    let claims = SessionClaims {
+        sub: "user".to_string(),
+        email: None,
+        name: None,
+        provider: "test".to_string(),
+        roles: vec![],
+        iat: chrono::Utc::now().timestamp() as u64,
+        exp: (chrono::Utc::now().timestamp() as u64) + 3600,
+        jti: "other-jti".to_string(),
+        iss: Some("clawdius".to_string()),
+    };
+
+    let jwt_svc = test_jwt_service();
+    let token = jwt_svc.encode(&claims).expect("encode");
+    assert!(service.validate_session(&token).is_ok());
+}
+
+// ---------------------------------------------------------------------------
+// SAML tests
+// ---------------------------------------------------------------------------
+
+#[test]
+fn test_saml_sp_metadata() {
+    let config = SamlSpConfig {
+        entity_id: "https://clawdius.example.com".to_string(),
+        acs_url: "https://clawdius.example.com/saml/acs".to_string(),
+        slo_url: Some("https://clawdius.example.com/saml/slo".to_string()),
+        certificate: None,
+        idp_certificate: None,
+        enabled: true,
+    };
+
+    let metadata = config.metadata_xml();
+    assert!(metadata.contains("EntityDescriptor"));
+    assert!(metadata.contains("SPSSODescriptor"));
+    assert!(metadata.contains("AssertionConsumerService"));
+    assert!(metadata.contains("https://clawdius.example.com"));
+}
+
+#[test]
+fn test_saml_parse_minimal_response() {
+    let xml = r#"<?xml version="1.0"?>
+<samlp:Response xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol"
+    xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion">
+  <saml:Issuer>https://idp.example.com</saml:Issuer>
+  <saml:Assertion>
+    <saml:Issuer>https://idp.example.com</saml:Issuer>
+    <saml:Subject>
+      <saml:NameID>user@example.com</saml:NameID>
+    </saml:Subject>
+    <saml:AuthnStatement SessionIndex="session-123"/>
+    <saml:AttributeStatement>
+      <saml:Attribute Name="email">
+        <saml:AttributeValue>user@example.com</saml:AttributeValue>
+      </saml:Attribute>
+      <saml:Attribute Name="name">
+        <saml:AttributeValue>Test User</saml:AttributeValue>
+      </saml:Attribute>
+    </saml:AttributeStatement>
+  </saml:Assertion>
+</samlp:Response>"#;
+
+    let assertion = parse_saml_response_xml(xml, "https://idp.example.com").expect("parse");
+    assert_eq!(assertion.name_id, "user@example.com");
+    assert_eq!(assertion.attributes.email, Some("user@example.com".to_string()));
+    assert_eq!(assertion.attributes.name, Some("Test User".to_string()));
+    assert_eq!(assertion.session_index, Some("session-123".to_string()));
+    assert_eq!(assertion.issuer, "https://idp.example.com");
+}
+
+#[test]
+fn test_saml_parse_wrong_issuer() {
+    let xml = r#"<?xml version="1.0"?>
+<samlp:Response xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol"
+    xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion">
+  <saml:Issuer>https://wrong-idp.com</saml:Issuer>
+  <saml:Assertion>
+    <saml:Issuer>https://wrong-idp.com</saml:Issuer>
+    <saml:Subject>
+      <saml:NameID>user@example.com</saml:NameID>
+    </saml:Subject>
+  </saml:Assertion>
+</samlp:Response>"#;
+
+    let result = parse_saml_response_xml(xml, "https://expected-idp.com");
+    assert!(result.is_err());
+    match result.unwrap_err() {
+        SamlError::UnexpectedIssuer => {},
+        other => panic!("Expected UnexpectedIssuer, got: {other:?}"),
+    }
+}
+
+#[test]
+fn test_saml_to_user_info() {
+    let assertion = SamlAssertion {
+        name_id: "user@example.com".to_string(),
+        session_index: Some("s1".to_string()),
+        attributes: clawdius_auth::saml::SamlAttributes {
+            email: Some("user@example.com".to_string()),
+            name: Some("Test User".to_string()),
+            given_name: Some("Test".to_string()),
+            family_name: Some("User".to_string()),
+            groups: vec!["admins".to_string()],
+        },
+        issuer: "https://idp.example.com".to_string(),
+        not_before: None,
+        not_on_or_after: None,
+    };
+
+    let user_info = assertion.to_user_info("Okta");
+    assert_eq!(user_info.sub, "user@example.com");
+    assert_eq!(user_info.email, Some("user@example.com".to_string()));
+    assert_eq!(user_info.name, Some("Test User".to_string()));
+    assert_eq!(user_info.provider, "Okta");
+    assert_eq!(user_info.groups, vec!["admins".to_string()]);
+}
+
+// ---------------------------------------------------------------------------
+// RBAC tests
+// ---------------------------------------------------------------------------
+
+#[test]
+fn test_rbac_role_hierarchy() {
+    assert!(Role::Admin > Role::Operator);
+    assert!(Role::Operator > Role::User);
+    assert!(Role::User > Role::Viewer);
+}
+
+#[test]
+fn test_rbac_role_from_str() {
+    assert_eq!(Role::from_str("admin"), Some(Role::Admin));
+    assert_eq!(Role::from_str("Admin"), Some(Role::Admin));
+    assert_eq!(Role::from_str("viewer"), Some(Role::Viewer));
+    assert_eq!(Role::from_str("unknown"), None);
+}
+
+#[test]
+fn test_rbac_default_policy_viewer() {
+    let policy = RbacPolicy::default();
+    assert!(policy.has_permission(&Role::Viewer, &permissions::code_read()));
+    assert!(!policy.has_permission(&Role::Viewer, &permissions::code_write()));
+    assert!(!policy.has_permission(&Role::Viewer, &permissions::admin_manage_users()));
+}
+
+#[test]
+fn test_rbac_default_policy_user() {
+    let policy = RbacPolicy::default();
+    assert!(policy.has_permission(&Role::User, &permissions::code_read()));
+    assert!(policy.has_permission(&Role::User, &permissions::code_write()));
+    assert!(policy.has_permission(&Role::User, &permissions::code_execute()));
+    assert!(!policy.has_permission(&Role::User, &permissions::code_delete()));
+    assert!(!policy.has_permission(&Role::User, &permissions::admin_manage_users()));
+}
+
+#[test]
+fn test_rbac_default_policy_operator() {
+    let policy = RbacPolicy::default();
+    assert!(policy.has_permission(&Role::Operator, &permissions::code_delete()));
+    assert!(policy.has_permission(&Role::Operator, &permissions::provider_add()));
+    assert!(policy.has_permission(&Role::Operator, &permissions::plugin_install()));
+    assert!(policy.has_permission(&Role::Operator, &permissions::admin_view_audit()));
+    assert!(!policy.has_permission(&Role::Operator, &permissions::admin_manage_users()));
+}
+
+#[test]
+fn test_rbac_default_policy_admin() {
+    let policy = RbacPolicy::default();
+    for perm in permissions::all() {
+        assert!(
+            policy.has_permission(&Role::Admin, &perm),
+            "Admin should have {:?}",
+            perm
+        );
+    }
+}
+
+#[test]
+fn test_rbac_service_check() {
+    let rbac = RbacService::new(RbacPolicy::default());
+
+    let admin_claims = SessionClaims {
+        sub: "1".to_string(),
+        email: None,
+        name: None,
+        provider: "test".to_string(),
+        roles: vec!["admin".to_string()],
+        iat: 0,
+        exp: 9999999999,
+        jti: "test".to_string(),
+        iss: None,
+    };
+
+    assert!(rbac.check(&admin_claims, &permissions::admin_manage_users()).is_ok());
+
+    let viewer_claims = SessionClaims {
+        roles: vec!["viewer".to_string()],
+        ..admin_claims
+    };
+
+    assert!(rbac.check(&viewer_claims, &permissions::code_write()).is_err());
+}
+
+#[test]
+fn test_rbac_all_permissions_count() {
+    assert_eq!(permissions::all().len(), 21);
+}
+
+// ---------------------------------------------------------------------------
+// AuthConfig with SAML tests
+// ---------------------------------------------------------------------------
+
+#[test]
+fn test_saml_sp_config_serde() {
+    let config = SamlSpConfig {
+        entity_id: "https://sp.example.com".to_string(),
+        acs_url: "https://sp.example.com/saml/acs".to_string(),
+        slo_url: None,
+        certificate: None,
+        idp_certificate: None,
+        enabled: true,
+    };
+    let json = serde_json::to_string(&config).expect("serialize");
+    let decoded: SamlSpConfig = serde_json::from_str(&json).expect("deserialize");
+    assert_eq!(decoded.entity_id, "https://sp.example.com");
+    assert!(decoded.enabled);
 }

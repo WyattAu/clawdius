@@ -1,5 +1,6 @@
 //! Testable core logic for the MCP stdio server.
 
+#![deny(unsafe_code)]
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
 
 use clawdius_core::mcp::protocol::{McpError, McpRequest, McpResponse};

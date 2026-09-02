@@ -19,6 +19,7 @@ members = [
     "crates/clawdius-tauri",
     "crates/clawdius-web",
     "crates/clawdius-auth",
+    "crates/clawdius-unsafe",
 ]
 
 [workspace.package]

@@ -1,3 +1,4 @@
+#![deny(unsafe_code)]
 #![allow(clippy::expect_used)]
 #![allow(clippy::unwrap_used)]
 
@@ -209,7 +210,10 @@ async fn gateway_health(AxumState(state): AxumState<Arc<GatewayHealthState>>) ->
 /// Prometheus metrics endpoint.
 async fn metrics_handler() -> impl IntoResponse {
     (
-        [(axum::http::header::CONTENT_TYPE, "text/plain; version=0.0.4")],
+        [(
+            axum::http::header::CONTENT_TYPE,
+            "text/plain; version=0.0.4",
+        )],
         clawdius_core::metrics::render_metrics(),
     )
 }
@@ -472,8 +476,7 @@ async fn main() -> anyhow::Result<()> {
 
                     let flush_mgr = Arc::clone(&manager);
                     tokio::spawn(async move {
-                        let mut interval =
-                            tokio::time::interval(flush_interval);
+                        let mut interval = tokio::time::interval(flush_interval);
                         loop {
                             interval.tick().await;
                             if let Err(e) = flush_mgr.flush().await {
@@ -484,15 +487,30 @@ async fn main() -> anyhow::Result<()> {
 
                     // Pass to handler
                     handler = handler.with_audit_manager(manager);
-                }
+                },
                 Err(e) => {
                     tracing::warn!("Failed to initialize audit logging: {e}");
-                }
+                },
             }
         }
     }
 
     gateway.set_handler(Box::new(handler)).await;
+
+    // Wire auth services into gateway for SSO token validation
+    #[cfg(feature = "auth")]
+    {
+        let auth_config = clawdius_auth::AuthConfig::default();
+        if let Ok(auth_svc) = clawdius_auth::AuthService::new(auth_config) {
+            let auth_arc = Arc::new(auth_svc);
+            let rbac_arc = Arc::new(clawdius_auth::RbacService::new(
+                clawdius_auth::rbac::RbacPolicy::default(),
+            ));
+            gateway.set_auth_service(Arc::clone(&auth_arc)).await;
+            gateway.set_rbac_service(Arc::clone(&rbac_arc)).await;
+            tracing::info!("SSO token validation enabled on gateway");
+        }
+    }
 
     // Start all adapters (uses Arc to pass callback without raw pointers)
     let start_results = gateway.start_all_arc().await;
@@ -510,6 +528,11 @@ async fn main() -> anyhow::Result<()> {
         api_key: cli
             .admin_api_key
             .unwrap_or_else(|| "clawdius-admin".to_string()),
+        roles: Default::default(),
+        #[cfg(feature = "auth")]
+        auth: None,
+        #[cfg(feature = "auth")]
+        rbac: None,
     });
 
     let health_state = Arc::new(GatewayHealthState {
@@ -523,22 +546,52 @@ async fn main() -> anyhow::Result<()> {
 
     let admin_app = admin_router(admin_state).merge(health_router);
 
-    // Mount OIDC auth routes (if auth feature is enabled)
+    // Mount OIDC + SAML auth routes (if auth feature is enabled)
     #[cfg(feature = "auth")]
     let admin_app = {
         let auth_config = clawdius_auth::AuthConfig::default();
         match clawdius_auth::AuthService::new(auth_config) {
             Ok(service) => {
                 let auth_arc = Arc::new(service);
-                tracing::info!("OIDC auth routes mounted at /login, /callback, /logout, /me, /refresh");
+                let rbac_arc = Arc::new(clawdius_auth::RbacService::new(
+                    clawdius_auth::rbac::RbacPolicy::default(),
+                ));
+
+                // Rebuild admin state with auth services injected
+                let admin_state = Arc::new(AdminState {
+                    billing: Arc::clone(&admin_state.billing),
+                    usage: Arc::clone(&admin_state.usage),
+                    api_key: admin_state.api_key.clone(),
+                    roles: admin_state.roles.clone(),
+                    auth: Some(Arc::clone(&auth_arc)),
+                    rbac: Some(Arc::clone(&rbac_arc)),
+                });
+
+                let sp_config = Arc::new(clawdius_auth::SamlSpConfig {
+                    entity_id: std::env::var("SAML_ENTITY_ID")
+                        .unwrap_or_else(|_| "https://clawdius.local".to_string()),
+                    acs_url: std::env::var("SAML_ACS_URL")
+                        .unwrap_or_else(|_| "https://clawdius.local/saml/acs".to_string()),
+                    slo_url: std::env::var("SAML_SLO_URL").ok(),
+                    certificate: std::env::var("SAML_CERTIFICATE").ok(),
+                    idp_certificate: std::env::var("SAML_IDP_CERTIFICATE").ok(),
+                    enabled: true,
+                });
+                tracing::info!(
+                    "OIDC routes: /login, /callback, /logout, /me, /refresh"
+                );
+                tracing::info!(
+                    "SAML routes: /saml/metadata, /saml/acs"
+                );
                 admin_app
                     .merge(clawdius_auth::auth_routes(Arc::clone(&auth_arc)))
+                    .merge(clawdius_auth::saml_routes(sp_config))
                     .layer(axum::Extension(auth_arc))
-            }
+            },
             Err(e) => {
-                tracing::warn!("Failed to initialize OIDC auth service: {e}");
+                tracing::warn!("Failed to initialize auth service: {e}");
                 admin_app
-            }
+            },
         }
     };
 
