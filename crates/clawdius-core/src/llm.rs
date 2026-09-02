@@ -218,6 +218,7 @@
 pub mod cluster;
 pub mod cache;
 mod messages;
+pub mod model_router;
 pub mod providers;
 pub mod rate_limiter;
 

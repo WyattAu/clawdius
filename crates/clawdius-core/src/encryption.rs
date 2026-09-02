@@ -303,12 +303,138 @@ fn fill_random(buf: &mut [u8]) {
         .map(|d| d.as_nanos() as u64)
         .unwrap_or(0)
         .wrapping_add(COUNTER.fetch_add(1, Ordering::Relaxed));
-    for (i, chunk) in buf.chunks_mut(8).enumerate() {
+    let mut i = 0;
+    let len = buf.len();
+    // Process 8 bytes at a time using u64 stores
+    while i + 8 <= len {
         let val = seed
-            .wrapping_mul((i as u64).wrapping_add(1))
+            .wrapping_mul((i as u64 / 8).wrapping_add(1))
             .wrapping_add(0x9e3779b97f4a7c15);
-        for (j, byte) in chunk.iter_mut().enumerate() {
-            *byte = (val >> (j * 8)) as u8;
+        let bytes = val.to_ne_bytes();
+        buf[i..i + 8].copy_from_slice(&bytes);
+        i += 8;
+    }
+    // Process remaining bytes with u128 (16-byte chunks)
+    while i + 16 <= len {
+        let chunk_idx = i / 8;
+        let lo = seed
+            .wrapping_mul(chunk_idx.wrapping_add(1))
+            .wrapping_add(0x9e3779b97f4a7c15);
+        let hi = seed
+            .wrapping_mul(chunk_idx.wrapping_add(2))
+            .wrapping_add(0x6a09e667f3bcc908);
+        let val128 = (hi as u128) << 64 | lo as u128;
+        buf[i..i + 16].copy_from_slice(&val128.to_ne_bytes());
+        i += 16;
+    }
+    // Process remaining bytes individually
+    while i < len {
+        let chunk_idx = i / 8;
+        let val = seed
+            .wrapping_mul(chunk_idx.wrapping_add(1))
+            .wrapping_add(0x9e3779b97f4a7c15);
+        let byte_offset = i % 8;
+        buf[i] = (val >> (byte_offset * 8)) as u8;
+        i += 1;
+    }
+}
+
+// ─────────────────────────────────────────────────────────
+// SIMD-accelerated XOR operations
+// ─────────────────────────────────────────────────────────
+
+/// Build a 16-byte key block for the chunk starting at byte position `pos`
+/// within the repeating key pattern.
+#[inline]
+fn build_key_block(key: &[u8], pos: usize) -> u128 {
+    let klen = key.len();
+    let mut block = [0u8; 16];
+    let offset = pos % klen;
+    let first_chunk = (klen - offset).min(16);
+    block[..first_chunk].copy_from_slice(&key[offset..offset + first_chunk]);
+    if first_chunk < 16 {
+        let second_chunk = 16 - first_chunk;
+        let copy_len = second_chunk.min(klen);
+        block[first_chunk..first_chunk + copy_len].copy_from_slice(&key[..copy_len]);
+    }
+    u128::from_ne_bytes(block)
+}
+
+/// XOR `data` with `key` (repeating), writing result to `out`.
+///
+/// Processes 16 bytes at a time using u128 operations (portable, works on stable).
+/// Falls back to byte-by-byte for the tail.
+///
+/// `key.len()` must be > 0.
+#[inline]
+pub fn xor_encrypt(out: &mut [u8], data: &[u8], key: &[u8]) {
+    debug_assert_eq!(out.len(), data.len());
+    debug_assert!(!key.is_empty());
+    let len = data.len();
+    let klen = key.len();
+
+    if klen >= 16 && len >= 16 {
+        let mut i = 0;
+        // Process 16 bytes at a time with key repetition
+        while i + 16 <= len {
+            let key_val = build_key_block(key, i);
+            let data_chunk = u128::from_ne_bytes({
+                let mut buf = [0u8; 16];
+                buf.copy_from_slice(&data[i..i + 16]);
+                buf
+            });
+            let xor_result = data_chunk ^ key_val;
+            out[i..i + 16].copy_from_slice(&xor_result.to_ne_bytes());
+            i += 16;
+        }
+        // Scalar tail
+        while i < len {
+            out[i] = data[i] ^ key[i % klen];
+            i += 1;
+        }
+    } else {
+        // Short key or short data: scalar with repeating pattern
+        for (i, (d, o)) in data.iter().zip(out.iter_mut()).enumerate() {
+            *o = *d ^ key[i % klen];
+        }
+    }
+}
+
+/// XOR `data` with `key` — alias for `xor_encrypt` (XOR is its own inverse).
+#[inline]
+pub fn xor_decrypt(out: &mut [u8], data: &[u8], key: &[u8]) {
+    xor_encrypt(out, data, key);
+}
+
+/// In-place XOR `buf` with `key` (repeating).
+///
+/// Processes 16 bytes at a time using u128 operations.
+#[inline]
+pub fn xor_inplace(buf: &mut [u8], key: &[u8]) {
+    debug_assert!(!key.is_empty());
+    let len = buf.len();
+    let klen = key.len();
+
+    if klen >= 16 && len >= 16 {
+        let mut i = 0;
+        while i + 16 <= len {
+            let key_val = build_key_block(key, i);
+            let chunk = u128::from_ne_bytes({
+                let mut tmp = [0u8; 16];
+                tmp.copy_from_slice(&buf[i..i + 16]);
+                tmp
+            });
+            let xor_result = chunk ^ key_val;
+            buf[i..i + 16].copy_from_slice(&xor_result.to_ne_bytes());
+            i += 16;
+        }
+        while i < len {
+            buf[i] ^= key[i % klen];
+            i += 1;
+        }
+    } else {
+        for (i, byte) in buf.iter_mut().enumerate() {
+            *byte ^= key[i % klen];
         }
     }
 }
@@ -546,6 +672,96 @@ mod tests {
         assert_ne!(enc1.nonce_b64, enc2.nonce_b64);
         assert_ne!(enc1.ciphertext_b64, enc2.ciphertext_b64);
         assert_ne!(enc1.salt_b64, enc2.salt_b64);
+    }
+
+    // ── XOR SIMD tests ──
+
+    #[test]
+    fn test_xor_roundtrip() {
+        let key = b"secretkey1234567";
+        let data = b"Hello, XOR world! This is a test message.";
+        let mut encrypted = vec![0u8; data.len()];
+        let mut decrypted = vec![0u8; data.len()];
+
+        xor_encrypt(&mut encrypted, data, key);
+        assert_ne!(&encrypted, data);
+
+        xor_decrypt(&mut decrypted, &encrypted, key);
+        assert_eq!(&decrypted, data);
+    }
+
+    #[test]
+    fn test_xor_inplace_roundtrip() {
+        let key = b"mysecret";
+        let original = b"plaintext data for inplace xor test!!";
+        let mut buf = original.to_vec();
+
+        xor_inplace(&mut buf, key);
+        assert_ne!(&buf[..], original);
+
+        xor_inplace(&mut buf, key);
+        assert_eq!(&buf[..], original);
+    }
+
+    #[test]
+    fn test_xor_short_key() {
+        let key = b"ab";
+        let data = b"0123456789abcdef";
+        let mut out = vec![0u8; data.len()];
+
+        xor_encrypt(&mut out, data, key);
+        // Verify byte-by-byte correctness
+        for (i, &b) in data.iter().enumerate() {
+            assert_eq!(out[i], b ^ key[i % 2]);
+        }
+    }
+
+    #[test]
+    fn test_xor_empty_data() {
+        let key = b"key";
+        let data = b"";
+        let mut out = vec![0u8; 0];
+
+        xor_encrypt(&mut out, data, key);
+        assert!(out.is_empty());
+    }
+
+    #[test]
+    fn test_xor_16_byte_boundary() {
+        let key = b"1234567890123456"; // exactly 16 bytes
+        let data = b"Exact16ByteChunk"; // exactly 16 bytes
+        let mut out = vec![0u8; 16];
+
+        xor_encrypt(&mut out, data, key);
+        // Should be XOR of each byte
+        for i in 0..16 {
+            assert_eq!(out[i], data[i] ^ key[i]);
+        }
+    }
+
+    #[test]
+    fn test_xor_large_data() {
+        let key = b"aes-256-gcm-key-simd";
+        let data: Vec<u8> = (0..100_000).map(|i| (i % 256) as u8).collect();
+        let mut encrypted = vec![0u8; data.len()];
+        let mut decrypted = vec![0u8; data.len()];
+
+        xor_encrypt(&mut encrypted, &data, key);
+        xor_decrypt(&mut decrypted, &encrypted, key);
+        assert_eq!(decrypted, data);
+    }
+
+    #[test]
+    fn test_xor_17_byte_data() {
+        // Test the 16+1 boundary
+        let key = b"key1234567890123";
+        let data = b"12345678901234567"; // 17 bytes
+        let mut out = vec![0u8; 17];
+
+        xor_encrypt(&mut out, data, key);
+        for (i, &b) in data.iter().enumerate() {
+            assert_eq!(out[i], b ^ key[i % key.len()]);
+        }
     }
 }
 

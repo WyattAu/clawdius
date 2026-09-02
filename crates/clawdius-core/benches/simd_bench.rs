@@ -119,10 +119,73 @@ fn format_size(bytes: usize) -> String {
     }
 }
 
+fn bench_xor_simd_vs_scalar(c: &mut Criterion) {
+    let mut group = c.benchmark_group("simd/xor_vs_scalar");
+    group.sample_size(1_000);
+    let key = b"aes-256-gcm-key-simd!!";
+
+    for &size in &[64, 1024, 65536, 1_048_576] {
+        let data = make_test_data(size);
+        group.throughput(Throughput::Bytes(size as u64));
+
+        // SIMD-accelerated XOR (u128 chunks)
+        group.bench_with_input(
+            BenchmarkId::new("xor_simd_u128", format_size(size)),
+            &data,
+            |b, data| {
+                let mut out = vec![0u8; data.len()];
+                b.iter(|| {
+                    clawdius_core::encryption::xor_encrypt(
+                        black_box(&mut out),
+                        black_box(data),
+                        key,
+                    );
+                    black_box(&out);
+                });
+            },
+        );
+
+        // Scalar XOR (byte-by-byte)
+        group.bench_with_input(
+            BenchmarkId::new("xor_scalar", format_size(size)),
+            &data,
+            |b, data| {
+                let mut out = vec![0u8; data.len()];
+                b.iter(|| {
+                    for (i, byte) in data.iter().enumerate() {
+                        out[i] = byte ^ key[i % key.len()];
+                    }
+                    black_box(&out);
+                });
+            },
+        );
+
+        // In-place SIMD XOR
+        group.bench_with_input(
+            BenchmarkId::new("xor_inplace_simd", format_size(size)),
+            &data,
+            |b, data| {
+                b.iter({
+                    let data = data.clone();
+                    let key = *key;
+                    move || {
+                        let mut buf = data.clone();
+                        clawdius_core::encryption::xor_inplace(black_box(&mut buf), &key);
+                        black_box(&buf);
+                    }
+                });
+            },
+        );
+    }
+
+    group.finish();
+}
+
 criterion_group!(
     benches,
     bench_checksum,
     bench_hash,
-    bench_checksum_vs_scalar
+    bench_checksum_vs_scalar,
+    bench_xor_simd_vs_scalar
 );
 criterion_main!(benches);
