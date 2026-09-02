@@ -49,23 +49,27 @@ impl SamlSpConfig {
             )
         }).unwrap_or_default();
 
-        let cert_block = self.certificate.as_ref().map(|cert| {
-            // Extract just the base64 content (strip PEM headers)
-            let cleaned = cert
-                .lines()
-                .filter(|l| !l.starts_with("-----"))
-                .collect::<Vec<_>>()
-                .join("");
-            format!(
-                r#"    <KeyDescriptor use="signing">
+        let cert_block = self
+            .certificate
+            .as_ref()
+            .map(|cert| {
+                // Extract just the base64 content (strip PEM headers)
+                let cleaned = cert
+                    .lines()
+                    .filter(|l| !l.starts_with("-----"))
+                    .collect::<Vec<_>>()
+                    .join("");
+                format!(
+                    r#"    <KeyDescriptor use="signing">
       <ds:KeyInfo xmlns:ds="http://www.w3.org/2000/09/xmldsig#">
         <X509Data>
           <X509Certificate>{cleaned}</X509Certificate>
         </X509Data>
       </ds:KeyInfo>
     </KeyDescriptor>"#
-            )
-        }).unwrap_or_default();
+                )
+            })
+            .unwrap_or_default();
 
         format!(
             r#"<?xml version="1.0" encoding="UTF-8"?>
@@ -344,9 +348,7 @@ pub fn saml_routes(sp_config: Arc<SamlSpConfig>) -> Router {
         .with_state(sp_config)
 }
 
-async fn metadata_handler(
-    State(config): State<Arc<SamlSpConfig>>,
-) -> impl IntoResponse {
+async fn metadata_handler(State(config): State<Arc<SamlSpConfig>>) -> impl IntoResponse {
     (
         StatusCode::OK,
         [(axum::http::header::CONTENT_TYPE, "application/xml")],
@@ -383,7 +385,11 @@ async fn acs_handler(
             },
             Err(e) => {
                 tracing::error!("SAML signature verification failed: {e}");
-                return (StatusCode::UNAUTHORIZED, format!("SAML signature invalid: {e}")).into_response();
+                return (
+                    StatusCode::UNAUTHORIZED,
+                    format!("SAML signature invalid: {e}"),
+                )
+                    .into_response();
             },
         }
     } else {
@@ -406,7 +412,11 @@ async fn acs_handler(
         },
         Err(e) => {
             tracing::error!("SAML ACS failed: {e}");
-            (StatusCode::UNAUTHORIZED, format!("SAML authentication failed: {e}")).into_response()
+            (
+                StatusCode::UNAUTHORIZED,
+                format!("SAML authentication failed: {e}"),
+            )
+                .into_response()
         },
     }
 }
@@ -457,9 +467,7 @@ pub fn extract_signature(xml: &str) -> Result<Vec<u8>, SamlError> {
     }
 
     if sig_value.is_empty() {
-        return Err(SamlError::MissingElement(
-            "ds:SignatureValue".to_string(),
-        ));
+        return Err(SamlError::MissingElement("ds:SignatureValue".to_string()));
     }
 
     use base64::Engine;
@@ -555,7 +563,7 @@ pub fn canonicalize_xml(xml: &str) -> String {
                 result.push('>');
             },
             Ok(Event::Eof) => break,
-            Ok(Event::Decl(_)) => {}, // Skip XML declarations
+            Ok(Event::Decl(_)) => {},    // Skip XML declarations
             Ok(Event::DocType(_)) => {}, // Skip DTDs
             _ => {},
         }
@@ -583,10 +591,7 @@ fn xml_escape(s: &str) -> String {
 /// 1. The signature exists in the XML
 /// 2. The signature matches the IdP's certificate
 /// 3. The signed content hash matches the DigestValue
-pub fn verify_saml_signature(
-    idp_cert_pem: &str,
-    response_xml: &str,
-) -> Result<(), SamlError> {
+pub fn verify_saml_signature(idp_cert_pem: &str, response_xml: &str) -> Result<(), SamlError> {
     // Extract the signature bytes
     let signature_bytes = extract_signature(response_xml)?;
 
@@ -611,8 +616,8 @@ pub fn verify_saml_signature(
 
     // Verify digest of the assertion content
     // Extract the signed content (between <Assertion> tags)
-    let assertion_content = extract_signed_content(response_xml)
-        .map_err(|e| SamlError::ParseError(e))?;
+    let assertion_content =
+        extract_signed_content(response_xml).map_err(|e| SamlError::ParseError(e))?;
 
     use sha2::{Digest, Sha256};
     let actual_digest = Sha256::digest(assertion_content.as_bytes());
@@ -628,11 +633,13 @@ pub fn verify_saml_signature(
 /// Extract the content that was signed (the Assertion element and its children).
 fn extract_signed_content(xml: &str) -> Result<String, SamlError> {
     // Find the Assertion element boundaries
-    let assertion_start = xml.find("<saml:Assertion")
+    let assertion_start = xml
+        .find("<saml:Assertion")
         .or_else(|| xml.find("<Assertion"))
         .ok_or_else(|| SamlError::MissingElement("saml:Assertion".to_string()))?;
 
-    let assertion_end = xml.rfind("</saml:Assertion>")
+    let assertion_end = xml
+        .rfind("</saml:Assertion>")
         .or_else(|| xml.rfind("</Assertion>"))
         .ok_or_else(|| SamlError::MissingElement("</saml:Assertion>".to_string()))?;
 

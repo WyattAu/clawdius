@@ -577,12 +577,8 @@ async fn main() -> anyhow::Result<()> {
                     idp_certificate: std::env::var("SAML_IDP_CERTIFICATE").ok(),
                     enabled: true,
                 });
-                tracing::info!(
-                    "OIDC routes: /login, /callback, /logout, /me, /refresh"
-                );
-                tracing::info!(
-                    "SAML routes: /saml/metadata, /saml/acs"
-                );
+                tracing::info!("OIDC routes: /login, /callback, /logout, /me, /refresh");
+                tracing::info!("SAML routes: /saml/metadata, /saml/acs");
                 admin_app
                     .merge(clawdius_auth::auth_routes(Arc::clone(&auth_arc)))
                     .merge(clawdius_auth::saml_routes(sp_config))

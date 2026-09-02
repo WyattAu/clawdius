@@ -20,9 +20,9 @@ use async_trait::async_trait;
 use tokio::sync::{mpsc, Mutex};
 
 use crate::error::Result;
+use crate::llm::create_provider;
 use crate::llm::providers::{ChatWithToolsResult, LlmClient, Tool, ToolCall};
 use crate::llm::{ChatMessage, ChatRole, ResolvedLlmConfig};
-use crate::llm::create_provider;
 use crate::mcp::client::McpClientManager;
 use crate::mcp::protocol::McpTool as McpProtocolTool;
 
@@ -125,67 +125,176 @@ pub fn default_pricing_table() -> HashMap<String, ModelPricing> {
     let mut table = HashMap::new();
 
     // Claude models (Anthropic)
-    table.insert("claude-sonnet-4-20250514".into(), ModelPricing {
-        input_per_1m: 3.0, output_per_1m: 15.0, context_window: 200_000, max_output_tokens: 16_384, quality_tier: 5,
-    });
-    table.insert("claude-3-5-sonnet-20241022".into(), ModelPricing {
-        input_per_1m: 3.0, output_per_1m: 15.0, context_window: 200_000, max_output_tokens: 8_192, quality_tier: 4,
-    });
-    table.insert("claude-3-5-haiku-20241022".into(), ModelPricing {
-        input_per_1m: 0.8, output_per_1m: 4.0, context_window: 200_000, max_output_tokens: 8_192, quality_tier: 3,
-    });
-    table.insert("claude-3-opus-20240229".into(), ModelPricing {
-        input_per_1m: 15.0, output_per_1m: 75.0, context_window: 200_000, max_output_tokens: 4_096, quality_tier: 5,
-    });
+    table.insert(
+        "claude-sonnet-4-20250514".into(),
+        ModelPricing {
+            input_per_1m: 3.0,
+            output_per_1m: 15.0,
+            context_window: 200_000,
+            max_output_tokens: 16_384,
+            quality_tier: 5,
+        },
+    );
+    table.insert(
+        "claude-3-5-sonnet-20241022".into(),
+        ModelPricing {
+            input_per_1m: 3.0,
+            output_per_1m: 15.0,
+            context_window: 200_000,
+            max_output_tokens: 8_192,
+            quality_tier: 4,
+        },
+    );
+    table.insert(
+        "claude-3-5-haiku-20241022".into(),
+        ModelPricing {
+            input_per_1m: 0.8,
+            output_per_1m: 4.0,
+            context_window: 200_000,
+            max_output_tokens: 8_192,
+            quality_tier: 3,
+        },
+    );
+    table.insert(
+        "claude-3-opus-20240229".into(),
+        ModelPricing {
+            input_per_1m: 15.0,
+            output_per_1m: 75.0,
+            context_window: 200_000,
+            max_output_tokens: 4_096,
+            quality_tier: 5,
+        },
+    );
 
     // GPT models (OpenAI)
-    table.insert("gpt-4o".into(), ModelPricing {
-        input_per_1m: 2.5, output_per_1m: 10.0, context_window: 128_000, max_output_tokens: 16_384, quality_tier: 4,
-    });
-    table.insert("gpt-4o-mini".into(), ModelPricing {
-        input_per_1m: 0.15, output_per_1m: 0.6, context_window: 128_000, max_output_tokens: 16_384, quality_tier: 3,
-    });
-    table.insert("gpt-4-turbo".into(), ModelPricing {
-        input_per_1m: 10.0, output_per_1m: 30.0, context_window: 128_000, max_output_tokens: 4_096, quality_tier: 5,
-    });
+    table.insert(
+        "gpt-4o".into(),
+        ModelPricing {
+            input_per_1m: 2.5,
+            output_per_1m: 10.0,
+            context_window: 128_000,
+            max_output_tokens: 16_384,
+            quality_tier: 4,
+        },
+    );
+    table.insert(
+        "gpt-4o-mini".into(),
+        ModelPricing {
+            input_per_1m: 0.15,
+            output_per_1m: 0.6,
+            context_window: 128_000,
+            max_output_tokens: 16_384,
+            quality_tier: 3,
+        },
+    );
+    table.insert(
+        "gpt-4-turbo".into(),
+        ModelPricing {
+            input_per_1m: 10.0,
+            output_per_1m: 30.0,
+            context_window: 128_000,
+            max_output_tokens: 4_096,
+            quality_tier: 5,
+        },
+    );
 
     // Gemini models (Google)
-    table.insert("gemini-2.0-flash".into(), ModelPricing {
-        input_per_1m: 0.1, output_per_1m: 0.4, context_window: 1_000_000, max_output_tokens: 8_192,
-    });
-    table.insert("gemini-1.5-pro".into(), ModelPricing {
-        input_per_1m: 1.25, output_per_1m: 5.0, context_window: 2_000_000, max_output_tokens: 8_192,
-    });
+    table.insert(
+        "gemini-2.0-flash".into(),
+        ModelPricing {
+            input_per_1m: 0.1,
+            output_per_1m: 0.4,
+            context_window: 1_000_000,
+            max_output_tokens: 8_192,
+        },
+    );
+    table.insert(
+        "gemini-1.5-pro".into(),
+        ModelPricing {
+            input_per_1m: 1.25,
+            output_per_1m: 5.0,
+            context_window: 2_000_000,
+            max_output_tokens: 8_192,
+        },
+    );
 
     // GLM models (ZAI)
-    table.insert("glm-4.6".into(), ModelPricing {
-        input_per_1m: 0.5, output_per_1m: 0.5, context_window: 128_000, max_output_tokens: 4_096,
-    });
-    table.insert("glm-5-turbo".into(), ModelPricing {
-        input_per_1m: 0.5, output_per_1m: 0.5, context_window: 128_000, max_output_tokens: 4_096,
-    });
+    table.insert(
+        "glm-4.6".into(),
+        ModelPricing {
+            input_per_1m: 0.5,
+            output_per_1m: 0.5,
+            context_window: 128_000,
+            max_output_tokens: 4_096,
+        },
+    );
+    table.insert(
+        "glm-5-turbo".into(),
+        ModelPricing {
+            input_per_1m: 0.5,
+            output_per_1m: 0.5,
+            context_window: 128_000,
+            max_output_tokens: 4_096,
+        },
+    );
 
     // DeepSeek
-    table.insert("deepseek-chat".into(), ModelPricing {
-        input_per_1m: 0.14, output_per_1m: 0.28, context_window: 64_000, max_output_tokens: 8_192,
-    });
-    table.insert("deepseek-coder".into(), ModelPricing {
-        input_per_1m: 0.14, output_per_1m: 0.28, context_window: 64_000, max_output_tokens: 8_192,
-    });
+    table.insert(
+        "deepseek-chat".into(),
+        ModelPricing {
+            input_per_1m: 0.14,
+            output_per_1m: 0.28,
+            context_window: 64_000,
+            max_output_tokens: 8_192,
+        },
+    );
+    table.insert(
+        "deepseek-coder".into(),
+        ModelPricing {
+            input_per_1m: 0.14,
+            output_per_1m: 0.28,
+            context_window: 64_000,
+            max_output_tokens: 8_192,
+        },
+    );
 
     // OpenRouter prefixed models
-    table.insert("anthropic/claude-3.5-sonnet".into(), ModelPricing {
-        input_per_1m: 3.0, output_per_1m: 15.0, context_window: 200_000, max_output_tokens: 8_192,
-    });
-    table.insert("openai/gpt-4o".into(), ModelPricing {
-        input_per_1m: 2.5, output_per_1m: 10.0, context_window: 128_000, max_output_tokens: 16_384,
-    });
-    table.insert("google/gemma-3-4b-it:free".into(), ModelPricing {
-        input_per_1m: 0.0, output_per_1m: 0.0, context_window: 32_000, max_output_tokens: 4_096,
-    });
-    table.insert("openai/gpt-oss-20b:free".into(), ModelPricing {
-        input_per_1m: 0.0, output_per_1m: 0.0, context_window: 32_000, max_output_tokens: 4_096,
-    });
+    table.insert(
+        "anthropic/claude-3.5-sonnet".into(),
+        ModelPricing {
+            input_per_1m: 3.0,
+            output_per_1m: 15.0,
+            context_window: 200_000,
+            max_output_tokens: 8_192,
+        },
+    );
+    table.insert(
+        "openai/gpt-4o".into(),
+        ModelPricing {
+            input_per_1m: 2.5,
+            output_per_1m: 10.0,
+            context_window: 128_000,
+            max_output_tokens: 16_384,
+        },
+    );
+    table.insert(
+        "google/gemma-3-4b-it:free".into(),
+        ModelPricing {
+            input_per_1m: 0.0,
+            output_per_1m: 0.0,
+            context_window: 32_000,
+            max_output_tokens: 4_096,
+        },
+    );
+    table.insert(
+        "openai/gpt-oss-20b:free".into(),
+        ModelPricing {
+            input_per_1m: 0.0,
+            output_per_1m: 0.0,
+            context_window: 32_000,
+            max_output_tokens: 4_096,
+        },
+    );
 
     table
 }
@@ -284,9 +393,12 @@ impl CostTracker {
             }
         }
 
-        self.total_cost.fetch_add(cost_cents_x100, Ordering::Relaxed);
-        self.total_input_tokens.fetch_add(input_tokens as u64, Ordering::Relaxed);
-        self.total_output_tokens.fetch_add(output_tokens as u64, Ordering::Relaxed);
+        self.total_cost
+            .fetch_add(cost_cents_x100, Ordering::Relaxed);
+        self.total_input_tokens
+            .fetch_add(input_tokens as u64, Ordering::Relaxed);
+        self.total_output_tokens
+            .fetch_add(output_tokens as u64, Ordering::Relaxed);
 
         let mut per_model = self.per_model.lock().await;
         let record = per_model.entry(model.to_string()).or_default();
@@ -399,9 +511,9 @@ impl TaskHandle {
 
     /// Wait for the task to complete and return the result.
     pub async fn result(self) -> Result<String> {
-        self.result_rx.await.map_err(|_| {
-            crate::Error::Llm("Task result channel closed".to_string())
-        })?
+        self.result_rx
+            .await
+            .map_err(|_| crate::Error::Llm("Task result channel closed".to_string()))?
     }
 
     /// Check if the task is done.
@@ -526,9 +638,9 @@ impl CloudAgent {
             result_tx,
         };
 
-        self.task_queue.send(task).map_err(|_| {
-            crate::Error::Llm("Cloud agent task queue closed".to_string())
-        })?;
+        self.task_queue
+            .send(task)
+            .map_err(|_| crate::Error::Llm("Cloud agent task queue closed".to_string()))?;
 
         Ok(TaskHandle {
             id: task_id,
@@ -569,10 +681,7 @@ impl CloudAgent {
     }
 
     /// Execute a task (placeholder implementation).
-    async fn execute_task(
-        task_type: TaskType,
-        messages: Vec<ChatMessage>,
-    ) -> Result<String> {
+    async fn execute_task(task_type: TaskType, messages: Vec<ChatMessage>) -> Result<String> {
         // In production, this would create a ModelRouter and call chat()
         // For now, return a placeholder response
         let task_name = match task_type {
@@ -585,7 +694,10 @@ impl CloudAgent {
             TaskType::Chat => "chatting",
         };
 
-        let prompt = messages.last().map(|m| m.content.as_str()).unwrap_or("no input");
+        let prompt = messages
+            .last()
+            .map(|m| m.content.as_str())
+            .unwrap_or("no input");
         Ok(format!("[CloudAgent:{task_name}] Processed: {prompt}"))
     }
 }
@@ -608,9 +720,9 @@ impl TaskHandle {
 
     /// Wait for the task to complete and return the result.
     pub async fn result(self) -> Result<String> {
-        self.result_rx.await.map_err(|_| {
-            crate::Error::Llm("Task result channel closed".to_string())
-        })?
+        self.result_rx
+            .await
+            .map_err(|_| crate::Error::Llm("Task result channel closed".to_string()))?
     }
 
     /// Check if the task is done.
@@ -804,7 +916,8 @@ impl ModelRouter {
 
     /// Set the default API key for a provider.
     pub fn set_api_key(&mut self, provider: &str, key: &str) {
-        self.default_api_keys.insert(provider.to_string(), key.to_string());
+        self.default_api_keys
+            .insert(provider.to_string(), key.to_string());
     }
 
     /// Add custom pricing for a model.
@@ -846,24 +959,34 @@ impl ModelRouter {
         };
 
         // Find models that meet the quality requirement
-        let candidates: Vec<_> = self.pricing.iter()
+        let candidates: Vec<_> = self
+            .pricing
+            .iter()
             .filter(|(_, p)| p.quality_tier >= min_quality)
             .collect();
 
         if candidates.is_empty() {
             // Fallback to default rule
-            return (self.default_rule.provider.clone(), self.default_rule.model.clone());
+            return (
+                self.default_rule.provider.clone(),
+                self.default_rule.model.clone(),
+            );
         }
 
         // Sort by efficiency (quality per dollar), descending
         let mut sorted = candidates;
         sorted.sort_by(|a, b| {
-            b.1.efficiency().partial_cmp(&a.1.efficiency()).unwrap_or(std::cmp::Ordering::Equal)
+            b.1.efficiency()
+                .partial_cmp(&a.1.efficiency())
+                .unwrap_or(std::cmp::Ordering::Equal)
         });
 
         // Return the most efficient model that meets quality requirements
         let (model_name, _) = sorted[0];
-        let provider = self.default_api_keys.keys().next()
+        let provider = self
+            .default_api_keys
+            .keys()
+            .next()
             .cloned()
             .unwrap_or_else(|| "openai".to_string());
 
@@ -900,7 +1023,7 @@ impl ModelRouter {
             Err(e) => {
                 tracing::warn!("Failed to discover MCP tools: {e}");
                 return Vec::new();
-            }
+            },
         };
 
         mcp_tools
@@ -935,8 +1058,8 @@ impl ModelRouter {
         let server_name = parts[0];
         let tool_name = parts[1];
 
-        let args: serde_json::Value = serde_json::from_str(arguments)
-            .unwrap_or(serde_json::json!({}));
+        let args: serde_json::Value =
+            serde_json::from_str(arguments).unwrap_or(serde_json::json!({}));
 
         match manager.call_tool(server_name, tool_name, args).await {
             Ok(result) => {
@@ -1046,9 +1169,10 @@ impl ModelRouter {
         let mut config = ResolvedLlmConfig {
             provider: rule.provider.clone(),
             model: rule.model.clone(),
-            api_key: rule.api_key.clone().or_else(|| {
-                self.default_api_keys.get(&rule.provider).cloned()
-            }),
+            api_key: rule
+                .api_key
+                .clone()
+                .or_else(|| self.default_api_keys.get(&rule.provider).cloned()),
             base_url: rule.base_url.clone(),
             max_tokens: 4096,
         };
@@ -1097,7 +1221,12 @@ impl ModelRouter {
     }
 
     /// Estimate cost before making a request.
-    pub fn estimate_cost(&self, model: &str, input_tokens: usize, estimated_output_tokens: usize) -> f64 {
+    pub fn estimate_cost(
+        &self,
+        model: &str,
+        input_tokens: usize,
+        estimated_output_tokens: usize,
+    ) -> f64 {
         let pricing = self.get_pricing(model);
         pricing.cost(input_tokens, estimated_output_tokens)
     }
@@ -1132,18 +1261,26 @@ impl LlmClient for ModelRouter {
     async fn chat(&self, messages: Vec<ChatMessage>) -> Result<String> {
         let task = *self.current_task.lock().await;
         let rule = self.resolve_rule(task);
-        let input_tokens: usize = messages.iter().map(|m| m.content.split_whitespace().count()).sum();
+        let input_tokens: usize = messages
+            .iter()
+            .map(|m| m.content.split_whitespace().count())
+            .sum();
 
         let (provider, active_model) = match self.get_provider(rule).await {
             Ok(p) => (p, rule.model.clone()),
             Err(e) => {
                 if let Some(ref fallback) = rule.fallback {
-                    tracing::warn!("Primary model {}:{} failed: {}, trying fallback", rule.provider, rule.model, e);
+                    tracing::warn!(
+                        "Primary model {}:{} failed: {}, trying fallback",
+                        rule.provider,
+                        rule.model,
+                        e
+                    );
                     (self.get_provider(fallback).await?, fallback.model.clone())
                 } else {
                     return Err(e);
                 }
-            }
+            },
         };
 
         let result = provider.chat(messages).await;
@@ -1151,7 +1288,10 @@ impl LlmClient for ModelRouter {
         if let Ok(ref response) = result {
             let output_tokens = response.split_whitespace().count();
             let pricing = self.get_pricing(&active_model);
-            let _ = self.cost_tracker.record(&active_model, input_tokens, output_tokens, &pricing).await;
+            let _ = self
+                .cost_tracker
+                .record(&active_model, input_tokens, output_tokens, &pricing)
+                .await;
         }
 
         result
@@ -1160,7 +1300,10 @@ impl LlmClient for ModelRouter {
     async fn chat_stream(&self, messages: Vec<ChatMessage>) -> Result<mpsc::Receiver<String>> {
         let task = *self.current_task.lock().await;
         let rule = self.resolve_rule(task);
-        let input_tokens: usize = messages.iter().map(|m| m.content.split_whitespace().count()).sum();
+        let input_tokens: usize = messages
+            .iter()
+            .map(|m| m.content.split_whitespace().count())
+            .sum();
 
         let (provider, model_name) = match self.get_provider(rule).await {
             Ok(p) => (p, rule.model.clone()),
@@ -1171,14 +1314,17 @@ impl LlmClient for ModelRouter {
                 } else {
                     return Err(e);
                 }
-            }
+            },
         };
 
         let result = provider.chat_stream(messages).await;
 
         if result.is_ok() {
             let pricing = self.get_pricing(&model_name);
-            let _ = self.cost_tracker.record(&model_name, input_tokens, 100, &pricing).await;
+            let _ = self
+                .cost_tracker
+                .record(&model_name, input_tokens, 100, &pricing)
+                .await;
         }
 
         result
@@ -1191,7 +1337,10 @@ impl LlmClient for ModelRouter {
     ) -> Result<ChatWithToolsResult> {
         let task = *self.current_task.lock().await;
         let rule = self.resolve_rule(task);
-        let input_tokens: usize = messages.iter().map(|m| m.content.split_whitespace().count()).sum();
+        let input_tokens: usize = messages
+            .iter()
+            .map(|m| m.content.split_whitespace().count())
+            .sum();
 
         // Discover MCP tools and merge with provided tools
         let mcp_tools = self.discover_mcp_tools().await;
@@ -1208,7 +1357,7 @@ impl LlmClient for ModelRouter {
                 } else {
                     return Err(e);
                 }
-            }
+            },
         };
 
         let result = provider.chat_with_tools(messages, tools).await;
@@ -1217,14 +1366,18 @@ impl LlmClient for ModelRouter {
             // Run hooks on tool calls
             for hook in &self.hooks {
                 for tc in &r.tool_calls {
-                    hook.before_tool_call(&tc.function_name, &tc.arguments).await;
+                    hook.before_tool_call(&tc.function_name, &tc.arguments)
+                        .await;
                     hook.after_tool_call(&tc.function_name, &r.text).await;
                 }
             }
 
             let output_tokens = r.text.split_whitespace().count() + r.tool_calls.len() * 50;
             let pricing = self.get_pricing(&model_name);
-            let _ = self.cost_tracker.record(&model_name, input_tokens, output_tokens, &pricing).await;
+            let _ = self
+                .cost_tracker
+                .record(&model_name, input_tokens, output_tokens, &pricing)
+                .await;
         } else if let Err(ref e) = result {
             for hook in &self.hooks {
                 hook.on_error("chat_with_tools", &e.to_string()).await;
@@ -1302,8 +1455,14 @@ mod tests {
         };
 
         rt.block_on(async {
-            tracker.record("claude-sonnet-4", 1000, 500, &pricing).await.unwrap();
-            tracker.record("claude-sonnet-4", 2000, 1000, &pricing).await.unwrap();
+            tracker
+                .record("claude-sonnet-4", 1000, 500, &pricing)
+                .await
+                .unwrap();
+            tracker
+                .record("claude-sonnet-4", 2000, 1000, &pricing)
+                .await
+                .unwrap();
 
             assert!(tracker.total_usd() > 0.0);
             assert_eq!(tracker.total_input_tokens(), 3000);
@@ -1329,9 +1488,14 @@ mod tests {
 
         rt.block_on(async {
             // First request should succeed ($0.001 + $0.0025 = $0.0035)
-            tracker.record("expensive-model", 10, 5, &expensive).await.unwrap();
+            tracker
+                .record("expensive-model", 10, 5, &expensive)
+                .await
+                .unwrap();
             // Second request exceeds budget — should be rejected
-            let result = tracker.record("expensive-model", 100_000, 10_000, &expensive).await;
+            let result = tracker
+                .record("expensive-model", 100_000, 10_000, &expensive)
+                .await;
             assert!(result.is_err());
             // Budget was not exceeded because the over-budget request was rejected
             assert!(!tracker.is_over_budget());
@@ -1358,15 +1522,24 @@ mod tests {
         assert_eq!(rules.len(), 6);
 
         // Think/Plan should use cheap model
-        let think_rule = rules.iter().find(|r| r.task_type == TaskType::Think).unwrap();
+        let think_rule = rules
+            .iter()
+            .find(|r| r.task_type == TaskType::Think)
+            .unwrap();
         assert_eq!(think_rule.model, "claude-3-5-haiku-20241022");
 
         // Build should use primary model
-        let build_rule = rules.iter().find(|r| r.task_type == TaskType::Build).unwrap();
+        let build_rule = rules
+            .iter()
+            .find(|r| r.task_type == TaskType::Build)
+            .unwrap();
         assert_eq!(build_rule.model, "claude-sonnet-4-20250514");
 
         // Test should use cheap model
-        let test_rule = rules.iter().find(|r| r.task_type == TaskType::Test).unwrap();
+        let test_rule = rules
+            .iter()
+            .find(|r| r.task_type == TaskType::Test)
+            .unwrap();
         assert_eq!(test_rule.model, "claude-3-5-haiku-20241022");
     }
 
@@ -1492,7 +1665,11 @@ mod tests {
         };
 
         rt.block_on(async {
-            router.cost_tracker.record("test-model", 1000, 500, &pricing).await.unwrap();
+            router
+                .cost_tracker
+                .record("test-model", 1000, 500, &pricing)
+                .await
+                .unwrap();
             let report = router.cost_report().await;
             assert_eq!(report.per_model.len(), 1);
             assert!(!report.is_over_budget);

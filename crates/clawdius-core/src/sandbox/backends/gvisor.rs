@@ -241,7 +241,7 @@ fn run_timed(mut cmd: Command, timeout: Duration) -> Result<Output> {
                     break Err(Error::Timeout(timeout));
                 }
                 std::thread::sleep(WAIT_POLL_INTERVAL);
-            }
+            },
             Err(e) => break Err(Error::Sandbox(format!("Failed to wait on process: {e}"))),
         }
     };
@@ -264,7 +264,7 @@ fn drain<R: std::io::Read>(stream: Option<R>) -> Vec<u8> {
             let mut buf = Vec::new();
             let _ = std::io::Read::read_to_end(&mut s, &mut buf);
             buf
-        }
+        },
         None => Vec::new(),
     }
 }

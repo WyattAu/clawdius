@@ -235,8 +235,7 @@ impl SandboxBackend for FirecrackerBackend {
         let config = self.generate_config(command, args, cwd);
         let config_path = std::env::temp_dir().join(format!("fc-config-{}.json", self.vm_id));
 
-        let config_str =
-            serde_json::to_string_pretty(&config).map_err(Error::Serialization)?;
+        let config_str = serde_json::to_string_pretty(&config).map_err(Error::Serialization)?;
         if let Err(e) = std::fs::write(&config_path, config_str) {
             return Err(Error::Io(e));
         }
@@ -293,7 +292,7 @@ fn run_timed(mut cmd: Command, timeout: Duration) -> Result<Output> {
                     break Err(Error::Timeout(timeout));
                 }
                 std::thread::sleep(WAIT_POLL_INTERVAL);
-            }
+            },
             Err(e) => break Err(Error::Sandbox(format!("Failed to wait on process: {e}"))),
         }
     };
@@ -316,7 +315,7 @@ fn drain<R: std::io::Read>(stream: Option<R>) -> Vec<u8> {
             let mut buf = Vec::new();
             let _ = std::io::Read::read_to_end(&mut s, &mut buf);
             buf
-        }
+        },
         None => Vec::new(),
     }
 }
@@ -342,16 +341,16 @@ mod tests {
         let json = backend.generate_config("echo", &["hi"], Path::new("/workspace"));
 
         let boot = json.get("boot-source").expect("boot-source present");
-        assert_eq!(
-            boot["kernel_image_path"].as_str().unwrap(),
-            DEFAULT_KERNEL
-        );
+        assert_eq!(boot["kernel_image_path"].as_str().unwrap(), DEFAULT_KERNEL);
         let boot_args = boot["boot_args"].as_str().unwrap();
         assert!(boot_args.contains("clawdius_cmd="));
         assert!(boot_args.contains("echo hi"));
 
         let machine = json.get("machine-config").expect("machine-config present");
-        assert_eq!(machine["vcpu_count"].as_u64().unwrap(), u64::from(DEFAULT_VCPUS));
+        assert_eq!(
+            machine["vcpu_count"].as_u64().unwrap(),
+            u64::from(DEFAULT_VCPUS)
+        );
         assert_eq!(
             machine["mem_size_mib"].as_u64().unwrap(),
             DEFAULT_MEM_SIZE_MB

@@ -100,7 +100,11 @@ impl ImageAttachment {
         // Validate size (max 20MB for safety)
         const MAX_IMAGE_SIZE: usize = 20 * 1024 * 1024;
         if data.len() > MAX_IMAGE_SIZE {
-            anyhow::bail!("Image too large: {} bytes (max {} bytes)", data.len(), MAX_IMAGE_SIZE);
+            anyhow::bail!(
+                "Image too large: {} bytes (max {} bytes)",
+                data.len(),
+                MAX_IMAGE_SIZE
+            );
         }
 
         let base64_data = {
@@ -109,7 +113,10 @@ impl ImageAttachment {
             STANDARD.encode(data)
         };
 
-        let filename = path.and_then(|p| p.file_name()).and_then(|n| n.to_str()).map(String::from);
+        let filename = path
+            .and_then(|p| p.file_name())
+            .and_then(|n| n.to_str())
+            .map(String::from);
 
         Ok(Self {
             base64_data,
@@ -123,7 +130,11 @@ impl ImageAttachment {
 
     /// Get the data URL for this image (data:image/xxx;base64,...).
     pub fn data_url(&self) -> String {
-        format!("data:{};base64,{}", self.format.mime_type(), self.base64_data)
+        format!(
+            "data:{};base64,{}",
+            self.format.mime_type(),
+            self.base64_data
+        )
     }
 
     /// Get the content part for OpenAI API format.
@@ -282,7 +293,10 @@ mod tests {
     #[test]
     fn test_jpeg_magic_bytes() {
         let data = [0xFF, 0xD8, 0xFF, 0xE0];
-        assert_eq!(ImageFormat::from_magic_bytes(&data), Some(ImageFormat::Jpeg));
+        assert_eq!(
+            ImageFormat::from_magic_bytes(&data),
+            Some(ImageFormat::Jpeg)
+        );
     }
 
     #[test]
@@ -294,7 +308,10 @@ mod tests {
     #[test]
     fn test_webp_magic_bytes() {
         let data = b"RIFF\x00\x00\x00\x00WEBP".to_vec();
-        assert_eq!(ImageFormat::from_magic_bytes(&data), Some(ImageFormat::WebP));
+        assert_eq!(
+            ImageFormat::from_magic_bytes(&data),
+            Some(ImageFormat::WebP)
+        );
     }
 
     #[test]
@@ -394,11 +411,7 @@ mod tests {
             size_bytes: 4,
         };
 
-        let msg = ChatMessage::with_images(
-            ChatRole::User,
-            "What's in this image?",
-            vec![img],
-        );
+        let msg = ChatMessage::with_images(ChatRole::User, "What's in this image?", vec![img]);
 
         assert!(msg.has_images());
         assert_eq!(msg.content, "What's in this image?");

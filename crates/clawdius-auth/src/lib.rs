@@ -25,7 +25,9 @@ pub mod user;
 pub use config::{AuthConfig, OidcProviderConfig};
 pub use handlers::auth_routes;
 pub use middleware::{AuthError, AuthUser};
-pub use rbac::{RbacError, RbacPolicy, RbacService, RequirePermission, RequirePermissionGuard, Role};
+pub use rbac::{
+    RbacError, RbacPolicy, RbacService, RequirePermission, RequirePermissionGuard, Role,
+};
 pub use saml::{saml_routes, SamlAssertion, SamlError, SamlSpConfig};
 pub use service::{AuthService, TokenResult};
 pub use user::{SessionClaims, UserInfo};

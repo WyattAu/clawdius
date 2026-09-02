@@ -340,9 +340,7 @@ async fn delete_user_role(
     }))
 }
 
-async fn list_all_roles(
-    State(state): State<Arc<AdminState>>,
-) -> impl IntoResponse {
+async fn list_all_roles(State(state): State<Arc<AdminState>>) -> impl IntoResponse {
     let roles = state.roles.list_roles().await;
     let entries: Vec<_> = roles
         .into_iter()
@@ -640,9 +638,7 @@ async fn get_audit_entry(
     error_response(StatusCode::NOT_FOUND, "Audit entry not found")
 }
 
-async fn get_audit_stats(
-    State(_state): State<Arc<AdminState>>,
-) -> impl IntoResponse {
+async fn get_audit_stats(State(_state): State<Arc<AdminState>>) -> impl IntoResponse {
     // Placeholder for audit statistics
     ok_response(serde_json::json!({
         "total_entries": 0,

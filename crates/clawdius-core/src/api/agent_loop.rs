@@ -3,13 +3,14 @@ use crate::mcp::McpRequest;
 use crate::session::types::TokenUsage;
 use crate::Result;
 use serde::Serialize;
+use std::borrow::Cow;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::sync::mpsc;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct ToolCallResult {
-    pub name: String,
+    pub name: Cow<'static, str>,
     pub arguments: serde_json::Value,
     pub result: String,
     pub is_error: bool,
@@ -21,7 +22,7 @@ pub enum AgentTerminationReason {
     MaxIterations { iterations: usize },
     TokenBudgetExhausted { tokens_used: usize, budget: usize },
     TimeBudgetExhausted { elapsed: Duration, budget: Duration },
-    Error(String),
+    Error(Cow<'static, str>),
 }
 
 #[derive(Debug, Clone)]
@@ -43,11 +44,11 @@ pub enum AgentEvent {
     Thinking,
     Chunk(String),
     ToolCall {
-        name: String,
+        name: Cow<'static, str>,
         arguments: serde_json::Value,
     },
     ToolResult {
-        name: String,
+        name: Cow<'static, str>,
         result: String,
         is_error: bool,
     },
@@ -55,7 +56,7 @@ pub enum AgentEvent {
         text: String,
     },
     Error {
-        message: String,
+        message: Cow<'static, str>,
     },
 }
 
@@ -113,7 +114,7 @@ pub struct AgentLoop {
 
 #[derive(Debug, Clone)]
 struct ParsedToolCall {
-    name: String,
+    name: Cow<'static, str>,
     arguments: serde_json::Value,
 }
 
@@ -241,24 +242,24 @@ impl AgentLoop {
             !is_error,
         );
 
+        let tool_result = ToolCallResult {
+            name: tc.name.clone(),
+            arguments: tc.arguments.clone(),
+            result: truncated_result,
+            is_error,
+        };
+
         if let Some(tx) = event_tx {
             tx.send(AgentEvent::ToolResult {
-                    name: tc.name.clone(),
-                    result: truncated_result.clone(),
+                    name: tool_result.name.clone(),
+                    result: tool_result.result.clone(),
                     is_error,
                 })
                 .await
                 .ok();
         }
 
-        let tool_result = ToolCallResult {
-            name: tc.name.clone(),
-            arguments: tc.arguments.clone(),
-            result: truncated_result.clone(),
-            is_error,
-        };
-
-        let text = format!("Tool {} result:\n{}\n\n", tc.name, truncated_result);
+        let text = format!("Tool {} result:\n{}\n\n", tool_result.name, tool_result.result);
         (tool_result, text)
     }
 
@@ -336,7 +337,7 @@ impl AgentLoop {
         }
 
         // Collect results in deterministic order
-        let mut ordered_results: Vec<Option<(String, McpToolResultInner)>> =
+        let mut ordered_results: Vec<Option<(Cow<'static, str>, McpToolResultInner)>> =
             (0..tool_calls.len()).map(|_| None).collect();
 
         while let Some(result) = join_set.join_next().await {
@@ -358,7 +359,7 @@ impl AgentLoop {
                 Err(e) => {
                     if let Some(tx) = event_tx {
                         tx.send(AgentEvent::ToolResult {
-                                name: "concurrent_error".to_string(),
+                                name: Cow::Borrowed("concurrent_error"),
                                 result: format!("Task join error: {e}"),
                                 is_error: true,
                             })
@@ -379,24 +380,26 @@ impl AgentLoop {
             };
             let truncated = truncate_result(&result_str, self.config.max_tool_result_size);
 
+            let tool_result = ToolCallResult {
+                name: tc.name.clone(),
+                arguments: tc.arguments.clone(),
+                result: truncated,
+                is_error,
+            };
+
             if let Some(tx) = event_tx {
                 tx.send(AgentEvent::ToolResult {
-                        name: tc.name.clone(),
-                        result: truncated.clone(),
+                        name: tool_result.name.clone(),
+                        result: tool_result.result.clone(),
                         is_error,
                     })
                     .await
                     .ok();
             }
 
-            all_results.push(ToolCallResult {
-                name: tc.name.clone(),
-                arguments: tc.arguments.clone(),
-                result: truncated.clone(),
-                is_error,
-            });
+            text.push_str(&format!("Tool {} result:\n{}\n\n", tool_result.name, tool_result.result));
 
-            text.push_str(&format!("Tool {} result:\n{}\n\n", tc.name, truncated));
+            all_results.push(tool_result);
         }
 
         (all_results, text)
@@ -460,7 +463,7 @@ impl AgentLoop {
                         arguments: tc.arguments,
                     })
                     .collect();
-                (native, response.text.clone())
+                (native, String::new())
             };
 
             if tool_calls.is_empty() {
@@ -496,7 +499,7 @@ impl AgentLoop {
 
             messages.push(ChatMessage {
                 role: ChatRole::Assistant,
-                content: response.text.clone(),
+                content: response.text,
             });
 
             // Execute tool calls (single fast-path or concurrent)
@@ -525,24 +528,22 @@ impl AgentLoop {
             .rev()
             .find(|m| m.role == ChatRole::Assistant).map_or_else(|| "Agent stopped after max iterations.".to_string(), |m| m.content.clone());
 
+        let max_iter_text = format!(
+            "(Reached max iterations after {} tool calls) {}",
+            all_tool_calls.len(),
+            last_msg
+        );
+
         if let Some(ref tx) = event_tx {
             tx.send(AgentEvent::Done {
-                    text: format!(
-                        "(Reached max iterations after {} tool calls) {}",
-                        all_tool_calls.len(),
-                        last_msg
-                    ),
+                    text: max_iter_text.clone(),
                 })
                 .await
                 .ok();
         }
 
         Ok(AgentLoopResult {
-            text: format!(
-                "(Reached max iterations after {} tool calls) {}",
-                all_tool_calls.len(),
-                last_msg
-            ),
+            text: max_iter_text,
             tool_calls: all_tool_calls,
             total_usage,
             iterations: self.config.max_iterations,
@@ -610,7 +611,7 @@ fn parse_tool_calls(text: &str) -> (Vec<ParsedToolCall>, String) {
                     json.get("arguments").cloned(),
                 ) {
                     tool_calls.push(ParsedToolCall {
-                        name: name.to_string(),
+                        name: Cow::Owned(name.to_string()),
                         arguments: args,
                     });
                 }
@@ -635,7 +636,7 @@ fn parse_tool_calls(text: &str) -> (Vec<ParsedToolCall>, String) {
                         .unwrap_or_else(|_| serde_json::json!({"raw": args_str.to_string()}))
                 };
                 tool_calls.push(ParsedToolCall {
-                    name: name.to_string(),
+                    name: Cow::Owned(name.to_string()),
                     arguments: args,
                 });
             }

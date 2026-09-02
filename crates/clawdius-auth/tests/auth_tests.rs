@@ -4,11 +4,11 @@
 //! PKCE verifier generation, authorization URL construction, auth error
 //! response codes, SAML 2.0, RBAC, and session revocation.
 
+use clawdius_auth::rbac::{permissions, RbacPolicy, RbacService, Role};
+use clawdius_auth::saml::{parse_saml_response_xml, SamlAssertion, SamlError, SamlSpConfig};
 use clawdius_auth::{
     AuthConfig, AuthError, AuthService, OidcProviderConfig, SessionClaims, UserInfo,
 };
-use clawdius_auth::rbac::{permissions, RbacPolicy, RbacService, Role};
-use clawdius_auth::saml::{parse_saml_response_xml, SamlAssertion, SamlError, SamlSpConfig};
 use tokenkit::service::{JwtAlgorithm, JwtConfig, JwtService};
 
 // ---------------------------------------------------------------------------
@@ -470,7 +470,10 @@ fn test_saml_parse_minimal_response() {
 
     let assertion = parse_saml_response_xml(xml, "https://idp.example.com").expect("parse");
     assert_eq!(assertion.name_id, "user@example.com");
-    assert_eq!(assertion.attributes.email, Some("user@example.com".to_string()));
+    assert_eq!(
+        assertion.attributes.email,
+        Some("user@example.com".to_string())
+    );
     assert_eq!(assertion.attributes.name, Some("Test User".to_string()));
     assert_eq!(assertion.session_index, Some("session-123".to_string()));
     assert_eq!(assertion.issuer, "https://idp.example.com");
@@ -598,14 +601,18 @@ fn test_rbac_service_check() {
         iss: None,
     };
 
-    assert!(rbac.check(&admin_claims, &permissions::admin_manage_users()).is_ok());
+    assert!(rbac
+        .check(&admin_claims, &permissions::admin_manage_users())
+        .is_ok());
 
     let viewer_claims = SessionClaims {
         roles: vec!["viewer".to_string()],
         ..admin_claims
     };
 
-    assert!(rbac.check(&viewer_claims, &permissions::code_write()).is_err());
+    assert!(rbac
+        .check(&viewer_claims, &permissions::code_write())
+        .is_err());
 }
 
 #[test]

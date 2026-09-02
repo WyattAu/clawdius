@@ -173,13 +173,15 @@ impl TenantStore {
                 sessions_active INTEGER NOT NULL DEFAULT 0,
                 files_modified INTEGER NOT NULL DEFAULT 0,
                 FOREIGN KEY (tenant_id) REFERENCES tenants(id)
-            );"
+            );",
         )?;
 
         let mut store = Self::new();
 
         // Load tenants from database
-        let mut stmt = conn.prepare("SELECT id, name, tier, email, workspace_root, created_at, last_active_at FROM tenants")?;
+        let mut stmt = conn.prepare(
+            "SELECT id, name, tier, email, workspace_root, created_at, last_active_at FROM tenants",
+        )?;
         let rows = stmt.query_map([], |row| {
             Ok((
                 row.get::<_, String>(0)?,
@@ -198,33 +200,41 @@ impl TenantStore {
 
             // Load API keys for this tenant
             let mut key_stmt = conn.prepare("SELECT key, label, created_at, last_used_at, active FROM api_keys WHERE tenant_id = ?")?;
-            let keys = key_stmt.query_map([&id], |row| {
-                Ok(ApiKeyEntry {
-                    key: row.get(0)?,
-                    label: row.get(1)?,
-                    created_at: chrono::DateTime::parse_from_rfc3339(&row.get::<_, String>(2)?)
+            let keys = key_stmt
+                .query_map([&id], |row| {
+                    Ok(ApiKeyEntry {
+                        key: row.get(0)?,
+                        label: row.get(1)?,
+                        created_at: chrono::DateTime::parse_from_rfc3339(&row.get::<_, String>(2)?)
+                            .map(|dt| dt.with_timezone(&chrono::Utc))
+                            .unwrap_or_else(|_| chrono::Utc::now()),
+                        last_used_at: chrono::DateTime::parse_from_rfc3339(
+                            &row.get::<_, String>(3)?,
+                        )
                         .map(|dt| dt.with_timezone(&chrono::Utc))
                         .unwrap_or_else(|_| chrono::Utc::now()),
-                    last_used_at: chrono::DateTime::parse_from_rfc3339(&row.get::<_, String>(3)?)
-                        .map(|dt| dt.with_timezone(&chrono::Utc))
-                        .unwrap_or_else(|_| chrono::Utc::now()),
-                    active: row.get::<_, i32>(4)? != 0,
-                })
-            })?.collect::<Result<Vec<_>, _>>()?;
+                        active: row.get::<_, i32>(4)? != 0,
+                    })
+                })?
+                .collect::<Result<Vec<_>, _>>()?;
 
             // Load usage
             let mut usage_stmt = conn.prepare("SELECT tasks_total, tasks_hour, tasks_day, tokens_total, sessions_total, sessions_active, files_modified FROM tenant_usage WHERE tenant_id = ?")?;
-            let usage = usage_stmt.query_map([&id], |row| {
-                Ok(TenantUsage {
-                    tasks_total: row.get(0)?,
-                    tasks_hour: row.get(1)?,
-                    tasks_day: row.get(2)?,
-                    tokens_total: row.get(3)?,
-                    sessions_total: row.get(4)?,
-                    sessions_active: row.get(5)?,
-                    files_modified: row.get(6)?,
-                })
-            })?.next().transpose()?.unwrap_or_default();
+            let usage = usage_stmt
+                .query_map([&id], |row| {
+                    Ok(TenantUsage {
+                        tasks_total: row.get(0)?,
+                        tasks_hour: row.get(1)?,
+                        tasks_day: row.get(2)?,
+                        tokens_total: row.get(3)?,
+                        sessions_total: row.get(4)?,
+                        sessions_active: row.get(5)?,
+                        files_modified: row.get(6)?,
+                    })
+                })?
+                .next()
+                .transpose()?
+                .unwrap_or_default();
 
             store.add_tenant(Tenant {
                 id,

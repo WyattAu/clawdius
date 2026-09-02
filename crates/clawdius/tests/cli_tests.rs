@@ -153,7 +153,12 @@ fn test_all_cli_subcommands_exist() {
 
     for args in subcommands {
         let result = Cli::try_parse_from(args);
-        assert!(result.is_ok(), "Failed to parse {:?}: {:?}", args, result.err());
+        assert!(
+            result.is_ok(),
+            "Failed to parse {:?}: {:?}",
+            args,
+            result.err()
+        );
     }
 }
 

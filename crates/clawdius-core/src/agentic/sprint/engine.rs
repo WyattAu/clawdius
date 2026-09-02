@@ -6,8 +6,8 @@ use super::{
 use crate::agentic::browser_daemon::BrowserDaemon;
 use crate::agentic::tool_executor::{ToolExecutor, ToolRequest};
 use crate::agentic::tool_use;
-use crate::llm::providers::LlmClient;
 use crate::llm::model_router::AgentHook;
+use crate::llm::providers::LlmClient;
 use crate::Result;
 use std::path::Path;
 use std::sync::Arc;
@@ -58,10 +58,19 @@ impl SprintEngine {
     }
 
     /// Execute a tool request with hook interception.
-    pub async fn execute_tool_with_hooks(&self, request: ToolRequest) -> Result<crate::tools::ToolResult> {
+    pub async fn execute_tool_with_hooks(
+        &self,
+        request: ToolRequest,
+    ) -> Result<crate::tools::ToolResult> {
         // Run before hooks
         for hook in &self.hooks {
-            if !hook.before_tool_call(&request.name, &serde_json::to_string(&request.arguments).unwrap_or_default()).await {
+            if !hook
+                .before_tool_call(
+                    &request.name,
+                    &serde_json::to_string(&request.arguments).unwrap_or_default(),
+                )
+                .await
+            {
                 return Ok(crate::tools::ToolResult {
                     success: false,
                     output: "Tool call blocked by hook".to_string(),
@@ -97,7 +106,7 @@ impl SprintEngine {
             Err(e) => {
                 tracing::warn!("Failed to get browser snapshot: {e}");
                 None
-            }
+            },
         }
     }
 
@@ -109,7 +118,7 @@ impl SprintEngine {
                 Err(e) => {
                     tracing::warn!("Browser navigation failed: {e}");
                     Ok(false)
-                }
+                },
             }
         } else {
             Ok(false)

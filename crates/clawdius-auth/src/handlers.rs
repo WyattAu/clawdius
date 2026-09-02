@@ -57,7 +57,10 @@ async fn callback_handler(
         },
     };
 
-    match service.exchange_code(&provider, &query.code, &query.state).await {
+    match service
+        .exchange_code(&provider, &query.code, &query.state)
+        .await
+    {
         Ok(result) => Json(serde_json::json!({
             "session_token": result.session_token,
             "refresh_token": result.refresh_token,

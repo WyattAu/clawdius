@@ -152,7 +152,9 @@ impl AuthService {
             .to_string();
         let refresh_token = token_response["refresh_token"].as_str().map(String::from);
 
-        let user_info = self.validate_id_token(&id_token, &provider, &discovery).await?;
+        let user_info = self
+            .validate_id_token(&id_token, &provider, &discovery)
+            .await?;
 
         let session_token = self.create_session_token(&user_info)?;
         let refresh = refresh_token.or_else(|| Some(self.create_refresh_token(&user_info)));
@@ -261,7 +263,10 @@ impl AuthService {
             issuer: String,
         }
 
-        let doc: DiscoveryDoc = resp.json().await.context("Failed to parse OIDC discovery")?;
+        let doc: DiscoveryDoc = resp
+            .json()
+            .await
+            .context("Failed to parse OIDC discovery")?;
 
         let discovery = OidcDiscovery {
             authorization_endpoint: doc.authorization_endpoint,
@@ -350,7 +355,8 @@ impl AuthService {
             .context(format!("No matching JWK found for kid='{kid}'"))?;
 
         // Build decoding key from JWK
-        let decoding_key = DecodingKey::from_jwk(jwk).context("Failed to build DecodingKey from JWK")?;
+        let decoding_key =
+            DecodingKey::from_jwk(jwk).context("Failed to build DecodingKey from JWK")?;
 
         // Validate the token
         let mut validation = Validation::new(Algorithm::RS256);

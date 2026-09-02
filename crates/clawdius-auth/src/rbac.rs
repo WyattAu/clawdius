@@ -39,47 +39,104 @@ pub mod permissions {
     use super::Permission;
 
     // Code operations (4)
-    pub fn code_read() -> Permission { Permission::new("code", "read") }
-    pub fn code_write() -> Permission { Permission::new("code", "write") }
-    pub fn code_execute() -> Permission { Permission::new("code", "execute") }
-    pub fn code_delete() -> Permission { Permission::new("code", "delete") }
+    pub fn code_read() -> Permission {
+        Permission::new("code", "read")
+    }
+    pub fn code_write() -> Permission {
+        Permission::new("code", "write")
+    }
+    pub fn code_execute() -> Permission {
+        Permission::new("code", "execute")
+    }
+    pub fn code_delete() -> Permission {
+        Permission::new("code", "delete")
+    }
 
     // Session management (5)
-    pub fn session_create() -> Permission { Permission::new("session", "create") }
-    pub fn session_read() -> Permission { Permission::new("session", "read") }
-    pub fn session_update() -> Permission { Permission::new("session", "update") }
-    pub fn session_delete() -> Permission { Permission::new("session", "delete") }
-    pub fn session_share() -> Permission { Permission::new("session", "share") }
+    pub fn session_create() -> Permission {
+        Permission::new("session", "create")
+    }
+    pub fn session_read() -> Permission {
+        Permission::new("session", "read")
+    }
+    pub fn session_update() -> Permission {
+        Permission::new("session", "update")
+    }
+    pub fn session_delete() -> Permission {
+        Permission::new("session", "delete")
+    }
+    pub fn session_share() -> Permission {
+        Permission::new("session", "share")
+    }
 
     // Admin functions (4)
-    pub fn admin_manage_users() -> Permission { Permission::new("admin", "manage_users") }
-    pub fn admin_manage_teams() -> Permission { Permission::new("admin", "manage_teams") }
-    pub fn admin_view_audit() -> Permission { Permission::new("admin", "view_audit") }
-    pub fn admin_manage_config() -> Permission { Permission::new("admin", "manage_config") }
+    pub fn admin_manage_users() -> Permission {
+        Permission::new("admin", "manage_users")
+    }
+    pub fn admin_manage_teams() -> Permission {
+        Permission::new("admin", "manage_teams")
+    }
+    pub fn admin_view_audit() -> Permission {
+        Permission::new("admin", "view_audit")
+    }
+    pub fn admin_manage_config() -> Permission {
+        Permission::new("admin", "manage_config")
+    }
 
     // Provider management (3)
-    pub fn provider_add() -> Permission { Permission::new("provider", "add_provider") }
-    pub fn provider_remove() -> Permission { Permission::new("provider", "remove_provider") }
-    pub fn provider_manage_keys() -> Permission { Permission::new("provider", "manage_keys") }
+    pub fn provider_add() -> Permission {
+        Permission::new("provider", "add_provider")
+    }
+    pub fn provider_remove() -> Permission {
+        Permission::new("provider", "remove_provider")
+    }
+    pub fn provider_manage_keys() -> Permission {
+        Permission::new("provider", "manage_keys")
+    }
 
     // Plugin management (3)
-    pub fn plugin_install() -> Permission { Permission::new("plugin", "install") }
-    pub fn plugin_remove() -> Permission { Permission::new("plugin", "remove") }
-    pub fn plugin_configure() -> Permission { Permission::new("plugin", "configure") }
+    pub fn plugin_install() -> Permission {
+        Permission::new("plugin", "install")
+    }
+    pub fn plugin_remove() -> Permission {
+        Permission::new("plugin", "remove")
+    }
+    pub fn plugin_configure() -> Permission {
+        Permission::new("plugin", "configure")
+    }
 
     // Billing (2)
-    pub fn billing_view_usage() -> Permission { Permission::new("billing", "view_usage") }
-    pub fn billing_manage() -> Permission { Permission::new("billing", "manage_billing") }
+    pub fn billing_view_usage() -> Permission {
+        Permission::new("billing", "view_usage")
+    }
+    pub fn billing_manage() -> Permission {
+        Permission::new("billing", "manage_billing")
+    }
 
     /// All 23 permissions.
     pub fn all() -> Vec<Permission> {
         vec![
-            code_read(), code_write(), code_execute(), code_delete(),
-            session_create(), session_read(), session_update(), session_delete(), session_share(),
-            admin_manage_users(), admin_manage_teams(), admin_view_audit(), admin_manage_config(),
-            provider_add(), provider_remove(), provider_manage_keys(),
-            plugin_install(), plugin_remove(), plugin_configure(),
-            billing_view_usage(), billing_manage(),
+            code_read(),
+            code_write(),
+            code_execute(),
+            code_delete(),
+            session_create(),
+            session_read(),
+            session_update(),
+            session_delete(),
+            session_share(),
+            admin_manage_users(),
+            admin_manage_teams(),
+            admin_view_audit(),
+            admin_manage_config(),
+            provider_add(),
+            provider_remove(),
+            provider_manage_keys(),
+            plugin_install(),
+            plugin_remove(),
+            plugin_configure(),
+            billing_view_usage(),
+            billing_manage(),
         ]
     }
 }
@@ -118,23 +175,29 @@ impl Default for RbacPolicy {
         let mut role_permissions = HashMap::new();
 
         // Viewer: read-only access
-        role_permissions.insert(Role::Viewer, vec![
-            permissions::code_read(),
-            permissions::session_read(),
-            permissions::billing_view_usage(),
-        ]);
+        role_permissions.insert(
+            Role::Viewer,
+            vec![
+                permissions::code_read(),
+                permissions::session_read(),
+                permissions::billing_view_usage(),
+            ],
+        );
 
         // User: standard developer access
-        role_permissions.insert(Role::User, vec![
-            permissions::code_read(),
-            permissions::code_write(),
-            permissions::code_execute(),
-            permissions::session_create(),
-            permissions::session_read(),
-            permissions::session_update(),
-            permissions::session_delete(),
-            permissions::billing_view_usage(),
-        ]);
+        role_permissions.insert(
+            Role::User,
+            vec![
+                permissions::code_read(),
+                permissions::code_write(),
+                permissions::code_execute(),
+                permissions::session_create(),
+                permissions::session_read(),
+                permissions::session_update(),
+                permissions::session_delete(),
+                permissions::billing_view_usage(),
+            ],
+        );
 
         // Operator: can manage providers and plugins
         let mut operator_perms = role_permissions[&Role::User].clone();
@@ -169,7 +232,10 @@ impl RbacPolicy {
 
     /// Get all permissions for a role.
     pub fn permissions_for_role(&self, role: &Role) -> &[Permission] {
-        self.role_permissions.get(role).map(|v| v.as_slice()).unwrap_or(&[])
+        self.role_permissions
+            .get(role)
+            .map(|v| v.as_slice())
+            .unwrap_or(&[])
     }
 }
 
@@ -252,13 +318,12 @@ impl<S: Send + Sync> FromRequestParts<S> for RequirePermissionGuard {
                 actual_role: Role::Viewer,
             })?;
 
-        let rbac = parts
-            .extensions
-            .get::<Arc<RbacService>>()
-            .ok_or(RbacError::InsufficientPermissions {
+        let rbac = parts.extensions.get::<Arc<RbacService>>().ok_or(
+            RbacError::InsufficientPermissions {
                 required: Permission::new("", ""),
                 actual_role: Role::Viewer,
-            })?;
+            },
+        )?;
 
         rbac.check(&auth_user.claims, &permission)?;
 
@@ -267,7 +332,9 @@ impl<S: Send + Sync> FromRequestParts<S> for RequirePermissionGuard {
 }
 
 /// Middleware layer that injects RBAC service into request extensions.
-pub fn rbac_layer(rbac: Arc<RbacService>) -> tower::layer::util::MapRequestLayer<
+pub fn rbac_layer(
+    rbac: Arc<RbacService>,
+) -> tower::layer::util::MapRequestLayer<
     impl FnMut(axum::http::Request<axum::body::Body>) -> axum::http::Request<axum::body::Body> + Clone,
 > {
     tower::layer::layer_fn(move |mut req: axum::http::Request<axum::body::Body>| {
@@ -343,14 +410,18 @@ mod tests {
             iss: None,
         };
 
-        assert!(rbac.check(&admin_claims, &permissions::admin_manage_users()).is_ok());
+        assert!(rbac
+            .check(&admin_claims, &permissions::admin_manage_users())
+            .is_ok());
 
         let viewer_claims = SessionClaims {
             roles: vec!["viewer".to_string()],
             ..admin_claims
         };
 
-        assert!(rbac.check(&viewer_claims, &permissions::code_write()).is_err());
+        assert!(rbac
+            .check(&viewer_claims, &permissions::code_write())
+            .is_err());
     }
 
     #[test]

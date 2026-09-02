@@ -116,7 +116,10 @@ impl ClusterRouter {
 
         Self {
             circuit_breakers: RwLock::new(
-                nodes.iter().map(|n| (n.id.clone(), NodeCircuitBreaker::default())).collect()
+                nodes
+                    .iter()
+                    .map(|n| (n.id.clone(), NodeCircuitBreaker::default()))
+                    .collect(),
             ),
             nodes: RwLock::new(nodes),
             strategy,
@@ -147,11 +150,14 @@ impl ClusterRouter {
         let nodes = self.nodes.read();
         let breakers = self.circuit_breakers.read();
 
-        let healthy_nodes: Vec<_> = nodes.iter()
+        let healthy_nodes: Vec<_> = nodes
+            .iter()
             .filter(|n| {
-                n.healthy && breakers.get(&n.id)
-                    .map(|cb| cb.state != CircuitBreakerState::Open)
-                    .unwrap_or(true)
+                n.healthy
+                    && breakers
+                        .get(&n.id)
+                        .map(|cb| cb.state != CircuitBreakerState::Open)
+                        .unwrap_or(true)
             })
             .collect();
 
@@ -160,17 +166,20 @@ impl ClusterRouter {
         }
 
         match self.strategy {
-            LoadBalanceStrategy::LeastLoaded => {
-                healthy_nodes.into_iter()
-                    .min_by(|a, b| a.load.partial_cmp(&b.load).unwrap_or(std::cmp::Ordering::Equal))
-                    .cloned()
-            }
+            LoadBalanceStrategy::LeastLoaded => healthy_nodes
+                .into_iter()
+                .min_by(|a, b| {
+                    a.load
+                        .partial_cmp(&b.load)
+                        .unwrap_or(std::cmp::Ordering::Equal)
+                })
+                .cloned(),
             LoadBalanceStrategy::RoundRobin => {
                 let mut idx = self.round_robin_idx.write();
                 let selected = healthy_nodes[*idx % healthy_nodes.len()].clone();
                 *idx = (*idx + 1) % healthy_nodes.len().max(1);
                 Some(selected)
-            }
+            },
             LoadBalanceStrategy::Random => {
                 use std::collections::hash_map::DefaultHasher;
                 use std::hash::{Hash, Hasher};
@@ -178,10 +187,8 @@ impl ClusterRouter {
                 Instant::now().hash(&mut hasher);
                 let idx = (hasher.finish() as usize) % healthy_nodes.len();
                 Some(healthy_nodes[idx].clone())
-            }
-            LoadBalanceStrategy::Priority => {
-                healthy_nodes.into_iter().next().cloned()
-            }
+            },
+            LoadBalanceStrategy::Priority => healthy_nodes.into_iter().next().cloned(),
         }
     }
 
@@ -191,32 +198,29 @@ impl ClusterRouter {
         path: &str,
         body: &serde_json::Value,
     ) -> Result<serde_json::Value> {
-        let node = self.select_node()
-            .context("No healthy nodes available")?;
+        let node = self.select_node().context("No healthy nodes available")?;
 
         let url = format!("{}{}", node.endpoint.trim_end_matches('/'), path);
 
-        let result = self.http_client
-            .post(&url)
-            .json(body)
-            .send()
-            .await;
+        let result = self.http_client.post(&url).json(body).send().await;
 
         match result {
             Ok(resp) if resp.status().is_success() => {
                 self.record_success(&node.id);
-                resp.json().await.context("Failed to parse response from node")
-            }
+                resp.json()
+                    .await
+                    .context("Failed to parse response from node")
+            },
             Ok(resp) => {
                 self.record_failure(&node.id);
                 let status = resp.status();
                 let body = resp.text().await.unwrap_or_default();
                 anyhow::bail!("Node {} returned {}: {}", node.id, status, body)
-            }
+            },
             Err(e) => {
                 self.record_failure(&node.id);
                 anyhow::bail!("Request to node {} failed: {}", node.id, e)
-            }
+            },
         }
     }
 
@@ -252,7 +256,8 @@ impl ClusterRouter {
                 cb.state = CircuitBreakerState::Open;
                 tracing::warn!(
                     "Circuit breaker opened for node {} after {} failures",
-                    node_id, cb.consecutive_failures
+                    node_id,
+                    cb.consecutive_failures
                 );
             }
         }
@@ -269,19 +274,21 @@ impl ClusterRouter {
                     let mut nodes = self.nodes.write();
                     if let Some(n) = nodes.iter_mut().find(|n| n.id == node.id) {
                         n.healthy = true;
-                        n.last_health_check = Some(std::time::SystemTime::now()
-                            .duration_since(std::time::UNIX_EPOCH)
-                            .unwrap_or_default()
-                            .as_secs());
+                        n.last_health_check = Some(
+                            std::time::SystemTime::now()
+                                .duration_since(std::time::UNIX_EPOCH)
+                                .unwrap_or_default()
+                                .as_secs(),
+                        );
                     }
-                }
+                },
                 false => {
                     let mut nodes = self.nodes.write();
                     if let Some(n) = nodes.iter_mut().find(|n| n.id == node.id) {
                         n.healthy = false;
                     }
                     unhealthy.push(node.id.clone());
-                }
+                },
             }
         }
 
@@ -292,7 +299,9 @@ impl ClusterRouter {
     async fn check_node_health(&self, node: &ClusterNode) -> bool {
         let url = format!("{}/api/v1/health", node.endpoint.trim_end_matches('/'));
 
-        match self.http_client.get(&url)
+        match self
+            .http_client
+            .get(&url)
             .timeout(Duration::from_secs(self.health_config.timeout_secs))
             .send()
             .await
@@ -309,7 +318,8 @@ impl ClusterRouter {
 
     /// Get circuit breaker states (for monitoring).
     pub fn circuit_breaker_states(&self) -> HashMap<String, CircuitBreakerState> {
-        self.circuit_breakers.read()
+        self.circuit_breakers
+            .read()
             .iter()
             .map(|(k, v)| (k.clone(), v.state))
             .collect()
@@ -319,7 +329,9 @@ impl ClusterRouter {
     pub fn add_node(&self, node: ClusterNode) {
         let id = node.id.clone();
         self.nodes.write().push(node);
-        self.circuit_breakers.write().insert(id, NodeCircuitBreaker::default());
+        self.circuit_breakers
+            .write()
+            .insert(id, NodeCircuitBreaker::default());
     }
 
     /// Remove a node from the cluster.
@@ -356,7 +368,9 @@ fn default_strategy() -> LoadBalanceStrategy {
 impl ClusterRouter {
     /// Create from cluster configuration.
     pub fn from_config(config: ClusterConfig) -> Self {
-        let nodes: Vec<ClusterNode> = config.nodes.into_iter()
+        let nodes: Vec<ClusterNode> = config
+            .nodes
+            .into_iter()
             .map(|n| ClusterNode {
                 id: n.id,
                 endpoint: n.endpoint,
@@ -380,12 +394,20 @@ mod tests {
         let router = ClusterRouter::new(
             vec![
                 ClusterNode {
-                    id: "node-1".into(), endpoint: "http://localhost:8081".into(),
-                    healthy: true, load: 0.8, last_health_check: None, region: None,
+                    id: "node-1".into(),
+                    endpoint: "http://localhost:8081".into(),
+                    healthy: true,
+                    load: 0.8,
+                    last_health_check: None,
+                    region: None,
                 },
                 ClusterNode {
-                    id: "node-2".into(), endpoint: "http://localhost:8082".into(),
-                    healthy: true, load: 0.2, last_health_check: None, region: None,
+                    id: "node-2".into(),
+                    endpoint: "http://localhost:8082".into(),
+                    healthy: true,
+                    load: 0.2,
+                    last_health_check: None,
+                    region: None,
                 },
             ],
             LoadBalanceStrategy::LeastLoaded,
@@ -401,16 +423,28 @@ mod tests {
         let router = ClusterRouter::new(
             vec![
                 ClusterNode {
-                    id: "a".into(), endpoint: "http://a".into(),
-                    healthy: true, load: 0.0, last_health_check: None, region: None,
+                    id: "a".into(),
+                    endpoint: "http://a".into(),
+                    healthy: true,
+                    load: 0.0,
+                    last_health_check: None,
+                    region: None,
                 },
                 ClusterNode {
-                    id: "b".into(), endpoint: "http://b".into(),
-                    healthy: true, load: 0.0, last_health_check: None, region: None,
+                    id: "b".into(),
+                    endpoint: "http://b".into(),
+                    healthy: true,
+                    load: 0.0,
+                    last_health_check: None,
+                    region: None,
                 },
                 ClusterNode {
-                    id: "c".into(), endpoint: "http://c".into(),
-                    healthy: true, load: 0.0, last_health_check: None, region: None,
+                    id: "c".into(),
+                    endpoint: "http://c".into(),
+                    healthy: true,
+                    load: 0.0,
+                    last_health_check: None,
+                    region: None,
                 },
             ],
             LoadBalanceStrategy::RoundRobin,
@@ -432,19 +466,34 @@ mod tests {
     fn test_circuit_breaker_opens_on_failures() {
         let router = ClusterRouter::new(
             vec![ClusterNode {
-                id: "node-1".into(), endpoint: "http://localhost:8081".into(),
-                healthy: true, load: 0.0, last_health_check: None, region: None,
+                id: "node-1".into(),
+                endpoint: "http://localhost:8081".into(),
+                healthy: true,
+                load: 0.0,
+                last_health_check: None,
+                region: None,
             }],
             LoadBalanceStrategy::Priority,
-            HealthCheckConfig { failure_threshold: 3, success_threshold: 2, interval_secs: 10, timeout_secs: 5 },
+            HealthCheckConfig {
+                failure_threshold: 3,
+                success_threshold: 2,
+                interval_secs: 10,
+                timeout_secs: 5,
+            },
         );
 
         router.record_failure("node-1");
         router.record_failure("node-1");
-        assert_eq!(router.circuit_breaker_states().get("node-1"), Some(&CircuitBreakerState::Closed));
+        assert_eq!(
+            router.circuit_breaker_states().get("node-1"),
+            Some(&CircuitBreakerState::Closed)
+        );
 
         router.record_failure("node-1"); // 3rd failure
-        assert_eq!(router.circuit_breaker_states().get("node-1"), Some(&CircuitBreakerState::Open));
+        assert_eq!(
+            router.circuit_breaker_states().get("node-1"),
+            Some(&CircuitBreakerState::Open)
+        );
 
         // Node should not be selected when breaker is open
         assert!(router.select_node().is_none());
@@ -454,16 +503,28 @@ mod tests {
     fn test_circuit_breaker_half_open_recovery() {
         let router = ClusterRouter::new(
             vec![ClusterNode {
-                id: "node-1".into(), endpoint: "http://localhost:8081".into(),
-                healthy: true, load: 0.0, last_health_check: None, region: None,
+                id: "node-1".into(),
+                endpoint: "http://localhost:8081".into(),
+                healthy: true,
+                load: 0.0,
+                last_health_check: None,
+                region: None,
             }],
             LoadBalanceStrategy::Priority,
-            HealthCheckConfig { failure_threshold: 1, success_threshold: 1, interval_secs: 1, timeout_secs: 1 },
+            HealthCheckConfig {
+                failure_threshold: 1,
+                success_threshold: 1,
+                interval_secs: 1,
+                timeout_secs: 1,
+            },
         );
 
         // Open the breaker
         router.record_failure("node-1");
-        assert_eq!(router.circuit_breaker_states().get("node-1"), Some(&CircuitBreakerState::Open));
+        assert_eq!(
+            router.circuit_breaker_states().get("node-1"),
+            Some(&CircuitBreakerState::Open)
+        );
 
         // Manually set to half-open for testing
         {
@@ -473,7 +534,10 @@ mod tests {
 
         // Success should close the breaker
         router.record_success("node-1");
-        assert_eq!(router.circuit_breaker_states().get("node-1"), Some(&CircuitBreakerState::Closed));
+        assert_eq!(
+            router.circuit_breaker_states().get("node-1"),
+            Some(&CircuitBreakerState::Closed)
+        );
     }
 
     #[test]
@@ -482,8 +546,12 @@ mod tests {
         assert_eq!(router.nodes().len(), 1);
 
         router.add_node(ClusterNode {
-            id: "node-2".into(), endpoint: "http://localhost:8082".into(),
-            healthy: true, load: 0.0, last_health_check: None, region: None,
+            id: "node-2".into(),
+            endpoint: "http://localhost:8082".into(),
+            healthy: true,
+            load: 0.0,
+            last_health_check: None,
+            region: None,
         });
         assert_eq!(router.nodes().len(), 2);
 
@@ -495,8 +563,16 @@ mod tests {
     fn test_from_config() {
         let config = ClusterConfig {
             nodes: vec![
-                ClusterNodeConfig { id: "n1".into(), endpoint: "http://10.0.0.1:8080".into(), region: Some("us-east".into()) },
-                ClusterNodeConfig { id: "n2".into(), endpoint: "http://10.0.0.2:8080".into(), region: Some("us-east".into()) },
+                ClusterNodeConfig {
+                    id: "n1".into(),
+                    endpoint: "http://10.0.0.1:8080".into(),
+                    region: Some("us-east".into()),
+                },
+                ClusterNodeConfig {
+                    id: "n2".into(),
+                    endpoint: "http://10.0.0.2:8080".into(),
+                    region: Some("us-east".into()),
+                },
             ],
             strategy: LoadBalanceStrategy::RoundRobin,
             health_check: HealthCheckConfig::default(),

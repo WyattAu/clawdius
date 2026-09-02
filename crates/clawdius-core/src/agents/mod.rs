@@ -957,9 +957,10 @@ impl AgentTeam {
                 let idx = sorted_indices[i];
                 let subtask = &decomposition.subtasks[idx];
 
-                let deps_satisfied = subtask.depends_on.iter().all(|dep_id| {
-                    completed_results.contains_key(dep_id)
-                });
+                let deps_satisfied = subtask
+                    .depends_on
+                    .iter()
+                    .all(|dep_id| completed_results.contains_key(dep_id));
 
                 if deps_satisfied {
                     batch.push(subtask.clone());
@@ -1097,13 +1098,13 @@ impl AgentTeam {
 
                             let role_name = role.name().to_string();
                             let entry =
-                                contributions
-                                    .entry(role_name.clone())
-                                    .or_insert_with(|| AgentContribution {
+                                contributions.entry(role_name.clone()).or_insert_with(|| {
+                                    AgentContribution {
                                         role: role.clone(),
                                         message_count: 0,
                                         highlights: Vec::new(),
-                                    });
+                                    }
+                                });
                             entry.message_count += 1;
                             let highlight = response
                                 .lines()
