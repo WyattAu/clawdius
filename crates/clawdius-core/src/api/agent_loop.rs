@@ -12,7 +12,9 @@ use tokio::sync::mpsc;
 pub struct ToolCallResult {
     pub name: Cow<'static, str>,
     pub arguments: serde_json::Value,
-    pub result: String,
+    /// `Arc<str>` avoids cloning the (potentially 100 kB) tool result for each
+    /// `AgentEvent::ToolResult` dispatch — one allocation, then refcount bumps.
+    pub result: Arc<str>,
     pub is_error: bool,
 }
 
@@ -27,7 +29,8 @@ pub enum AgentTerminationReason {
 
 #[derive(Debug, Clone)]
 pub struct AgentLoopResult {
-    pub text: String,
+    /// `Arc<str>` so `Done` event can share the final text without cloning.
+    pub text: Arc<str>,
     pub tool_calls: Vec<ToolCallResult>,
     pub total_usage: TokenUsage,
     pub iterations: usize,
@@ -42,18 +45,18 @@ pub enum AgentEvent {
         max: usize,
     },
     Thinking,
-    Chunk(String),
+    Chunk(Arc<str>),
     ToolCall {
         name: Cow<'static, str>,
         arguments: serde_json::Value,
     },
     ToolResult {
         name: Cow<'static, str>,
-        result: String,
+        result: Arc<str>,
         is_error: bool,
     },
     Done {
-        text: String,
+        text: Arc<str>,
     },
     Error {
         message: Cow<'static, str>,
@@ -168,7 +171,7 @@ impl AgentLoop {
         if let Ok(result) = timeout_result { result } else {
             let elapsed = start.elapsed();
             Ok(AgentLoopResult {
-                text: "(Time budget exhausted)".to_string(),
+                text: Arc::from("(Time budget exhausted)"),
                 tool_calls: vec![],
                 total_usage: TokenUsage::default(),
                 iterations: 0,
@@ -192,7 +195,8 @@ impl AgentLoop {
                 "(Token budget exhausted after {} tokens, budget: {})",
                 total_usage.total(),
                 self.config.max_total_tokens
-            ),
+            )
+            .into(),
             tool_calls: all_tool_calls.to_vec(),
             total_usage: total_usage.clone(),
             iterations: iter_num,
@@ -245,7 +249,7 @@ impl AgentLoop {
         let tool_result = ToolCallResult {
             name: tc.name.clone(),
             arguments: tc.arguments.clone(),
-            result: truncated_result,
+            result: truncated_result.into(),
             is_error,
         };
 
@@ -360,7 +364,7 @@ impl AgentLoop {
                     if let Some(tx) = event_tx {
                         tx.send(AgentEvent::ToolResult {
                                 name: Cow::Borrowed("concurrent_error"),
-                                result: format!("Task join error: {e}"),
+                                result: format!("Task join error: {e}").into(),
                                 is_error: true,
                             })
                             .await
@@ -383,7 +387,7 @@ impl AgentLoop {
             let tool_result = ToolCallResult {
                 name: tc.name.clone(),
                 arguments: tc.arguments.clone(),
-                result: truncated,
+                result: truncated.into(),
                 is_error,
             };
 
@@ -423,7 +427,7 @@ impl AgentLoop {
 
         let mut all_tool_calls: Vec<ToolCallResult> = Vec::new();
         let mut total_usage = TokenUsage::default();
-        let mut final_text = String::new();
+        let mut final_text: Arc<str> = Arc::from("");
 
         for iteration in 0..self.config.max_iterations {
             let iter_num = iteration + 1;
@@ -471,7 +475,8 @@ impl AgentLoop {
                     response.text
                 } else {
                     remaining
-                };
+                }
+                .into();
 
                 if let Some(ref tx) = event_tx {
                     tx.send(AgentEvent::Chunk(final_text.clone())).await.ok();
@@ -493,7 +498,7 @@ impl AgentLoop {
 
             if let Some(ref tx) = event_tx {
                 for chunk in response.text.lines() {
-                    tx.send(AgentEvent::Chunk(chunk.to_string())).await.ok();
+                    tx.send(AgentEvent::Chunk(Arc::from(chunk))).await.ok();
                 }
             }
 
@@ -528,15 +533,16 @@ impl AgentLoop {
             .rev()
             .find(|m| m.role == ChatRole::Assistant).map_or_else(|| "Agent stopped after max iterations.".to_string(), |m| m.content.clone());
 
-        let max_iter_text = format!(
+        let max_iter_text: Arc<str> = format!(
             "(Reached max iterations after {} tool calls) {}",
             all_tool_calls.len(),
             last_msg
-        );
+        )
+        .into();
 
         if let Some(ref tx) = event_tx {
             tx.send(AgentEvent::Done {
-                    text: max_iter_text.clone(),
+                    text: Arc::clone(&max_iter_text),
                 })
                 .await
                 .ok();
