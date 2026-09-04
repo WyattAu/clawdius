@@ -1,112 +1,29 @@
 //! SIMD-accelerated tokenization fallback.
 //!
-//! Provides a pure-Rust, SIMD-boosted token estimator for environments where
-//! `tiktoken-rs` is unavailable (WASM builds, minimal builds, or when the C/C++
-//! BPE tokenizer cannot be linked).
+//! Token counting backends live in the [`simd-tokenizer`] crate
+//! (<https://docs.rs/simd-tokenizer>), extracted from this module. The types
+//! are re-exported here under the historical `clawdius_core::tokenizer`
+//! paths so downstream imports keep working.
 //!
 //! # Architecture
 //!
 //! | Type | Description |
 //! | --- | --- |
 //! | [`TokenCounter`] | Trait abstracting token counting |
-//! | [`SimdWhitespaceTokenizer`] | SIMD byte-scan for whitespace boundaries |
+//! | [`SimdWhitespaceTokenizer`] | SWAR byte-scan for whitespace boundaries |
 //! | [`TokenEstimator`] | Enum dispatching to the best available backend |
+//! | [`TiktokenCounter`] | Exact cl100k_base counting (feature `tiktoken`) |
 //!
-//! The `tiktoken` feature (default on, non-WASM) gates the [`TiktokenCounter`]
-//! wrapper. Without it, [`TokenEstimator`] falls back to the SIMD estimator only.
-
-#![allow(unsafe_code)]
+//! The `tiktoken` feature (non-WASM) enables the [`TiktokenCounter`]
+//! wrapper. Without it, [`TokenEstimator`] falls back to the SWAR estimator
+//! only.
 
 #[cfg(all(not(target_arch = "wasm32"), feature = "tiktoken"))]
-mod tiktoken_backend;
-
-mod simd_tokenizer;
-
-pub use simd_tokenizer::SimdWhitespaceTokenizer;
-#[cfg(all(not(target_arch = "wasm32"), feature = "tiktoken"))]
-pub use tiktoken_backend::TiktokenCounter;
-
-use crate::tokenize::{count_tokens, TokenizerStrategy};
-
-/// Abstraction over token counting backends.
-pub trait TokenCounter: Send + Sync {
-    /// Return an estimated (or exact) token count for `text`.
-    fn count(&self, text: &str) -> usize;
-
-    /// Return a human-readable name for this backend.
-    fn backend_name(&self) -> &'static str;
-}
-
-/// Enum that dispatches to the best available token counter.
-///
-/// With the `tiktoken` feature enabled on non-WASM targets this wraps a
-/// [`TiktokenCounter`]; otherwise it uses [`SimdWhitespaceTokenizer`].
-#[derive(Debug)]
-pub enum TokenEstimator {
-    /// Exact counting via tiktoken-rs (cl100k_base).
-    #[cfg(all(not(target_arch = "wasm32"), feature = "tiktoken"))]
-    Tiktoken(TiktokenCounter),
-    /// Fast SIMD-accelerated approximation.
-    Simd(SimdWhitespaceTokenizer),
-}
-
-impl TokenEstimator {
-    /// Create the best estimator available for the current target.
-    pub fn new() -> Self {
-        #[cfg(all(not(target_arch = "wasm32"), feature = "tiktoken"))]
-        {
-            Self::Tiktoken(
-                TiktokenCounter::new().expect("failed to initialise cl100k_base tokenizer"),
-            )
-        }
-        #[cfg(not(all(not(target_arch = "wasm32"), feature = "tiktoken")))]
-        {
-            Self::Simd(SimdWhitespaceTokenizer::new())
-        }
-    }
-}
-
-impl Default for TokenEstimator {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl TokenCounter for TokenEstimator {
-    fn count(&self, text: &str) -> usize {
-        match self {
-            #[cfg(all(not(target_arch = "wasm32"), feature = "tiktoken"))]
-            Self::Tiktoken(t) => t.count(text),
-            Self::Simd(s) => s.count(text),
-        }
-    }
-
-    fn backend_name(&self) -> &'static str {
-        match self {
-            #[cfg(all(not(target_arch = "wasm32"), feature = "tiktoken"))]
-            Self::Tiktoken(_) => "tiktoken(cl100k_base)",
-            Self::Simd(_) => "simd-whitespace",
-        }
-    }
-}
-
-/// Legacy-count wrapper used internally by [`SimdWhitespaceTokenizer`].
-///
-/// This is deliberately kept simple: split on whitespace, add a small
-/// overhead for punctuation that would normally become separate tokens in BPE,
-/// and apply a ~4 chars/token heuristic for whitespace-dense text.
-pub(crate) fn estimate_from_whitespace_splits(splits: usize, byte_len: usize) -> usize {
-    if splits == 0 {
-        return 0;
-    }
-    let word_tokens = splits;
-    let punct_overhead = (byte_len / 40).max(1);
-    let char_based = ((byte_len as f64) / 4.0).ceil() as usize;
-    // Weighted blend: trust word count when there are clear word boundaries,
-    // fall back to char-based when text is dense.
-    let blended = (word_tokens + punct_overhead + char_based) / 2;
-    blended.max(1)
-}
+pub use simd_tokenizer::TiktokenCounter;
+pub use simd_tokenizer::{
+    estimate_from_whitespace_splits, scalar_count_splits, SimdWhitespaceTokenizer, TokenCounter,
+    TokenEstimator,
+};
 
 #[cfg(test)]
 mod tests {
@@ -216,6 +133,8 @@ mod tests {
 
     #[test]
     fn test_simd_matches_bpe_approximation_within_bounds() {
+        use crate::tokenize::{count_tokens, TokenizerStrategy};
+
         let t = SimdWhitespaceTokenizer::new();
         let sentences = [
             "Hello, world!",
@@ -264,5 +183,55 @@ mod tests {
         let t = SimdWhitespaceTokenizer::new();
         let c = t.count("😀😂🤣😃😄😁😆😅🤪😊😎");
         assert!(c >= 1);
+    }
+
+    #[test]
+    fn test_simd_matches_scalar() {
+        let t = SimdWhitespaceTokenizer::new();
+        let cases: &[&str] = &[
+            "",
+            "a",
+            "hello world",
+            "  leading and trailing  ",
+            "tabs\there\ttoo",
+            "new\nlines\nhere",
+        ];
+        let long = "The quick brown fox jumps over the lazy dog. ".repeat(10);
+        let mut all_cases: Vec<&str> = cases.to_vec();
+        all_cases.push(&long);
+        for &case in &all_cases {
+            let simd_splits = t.count_splits(case.as_bytes());
+            let scalar_splits = scalar_count_splits(case.as_bytes());
+            assert_eq!(
+                simd_splits,
+                scalar_splits,
+                "mismatch for input of {} bytes",
+                case.len()
+            );
+        }
+    }
+
+    #[test]
+    fn test_unaligned_lengths_match_scalar() {
+        for len in [16usize, 17, 32, 33, 64, 65] {
+            let data = vec![b'x'; len];
+            let t = SimdWhitespaceTokenizer::new();
+            assert_eq!(t.count_splits(&data), scalar_count_splits(&data));
+        }
+    }
+
+    #[cfg(all(not(target_arch = "wasm32"), feature = "tiktoken"))]
+    #[test]
+    fn test_tiktoken_backend_name() {
+        let t = TiktokenCounter::new().expect("tiktoken init");
+        assert_eq!(t.backend_name(), "tiktoken(cl100k_base)");
+    }
+
+    #[cfg(all(not(target_arch = "wasm32"), feature = "tiktoken"))]
+    #[test]
+    fn test_tiktoken_count() {
+        let t = TiktokenCounter::new().expect("tiktoken init");
+        let c = t.count("hello world");
+        assert!(c >= 2, "expected >= 2, got {c}");
     }
 }
