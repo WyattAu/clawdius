@@ -40,6 +40,7 @@ toml.workspace = true
 
 # Extracted pure-seam crates (see docs/adr or commit history)
 simd-tokenizer = { version = "0.1", default-features = false }
+model-router = { version = "0.1", features = ["serde"] }
 
 # Utilities (WASM-compatible)
 uuid.workspace = true

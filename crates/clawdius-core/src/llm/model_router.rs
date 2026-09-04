@@ -4,306 +4,58 @@
 //! replacement for any single-provider LLM. It dispatches requests to
 //! different models based on:
 //!
-//! - **Task type** (think/plan → cheap, build → expensive, test → cheap, review → medium)
+//! - **Task class** (think/test/summarize → cheap, build → expensive,
+//!   plan/review/chat → mid-tier)
 //! - **Budget constraints** (per-session or per-tenant dollar limits)
 //! - **Fallback chains** (if primary model fails, try cheaper alternative)
 //!
-//! Cost tracking is done via a pricing table mapping model names to
-//! cost-per-1k-tokens (input and output).
+//! The pure routing seam — [`TaskClass`], [`ModelPricing`], [`CostTracker`],
+//! [`RoutingRule`], and [`Router`] — lives in the [`model-router`] crate
+//! (<https://docs.rs/model-router>) and is re-exported here. This module keeps
+//! the orchestration half: provider construction, the [`LlmClient`]
+//! integration, MCP tool discovery, hooks, and background agents.
+//!
+//! [`LlmClient`]: crate::llm::providers::LlmClient
 
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 
 use async_trait::async_trait;
+use genai::chat::ToolName;
 use tokio::sync::{mpsc, Mutex};
 
 use crate::error::Result;
 use crate::llm::create_provider;
-use crate::llm::providers::{ChatWithToolsResult, LlmClient, Tool, ToolCall};
+use crate::llm::providers::{ChatWithToolsResult, LlmClient, Tool};
 use crate::llm::{ChatMessage, ChatRole, ResolvedLlmConfig};
 use crate::mcp::client::McpClientManager;
-use crate::mcp::protocol::McpTool as McpProtocolTool;
+use crate::mcp::protocol::McpContent;
 
-/// Task type for routing decisions.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum TaskType {
-    /// Thinking/analysis phase — benefits from reasoning but not code generation.
-    Think,
-    /// Planning phase — structured output, moderate intelligence needed.
-    Plan,
-    /// Code generation/build phase — needs strongest model.
-    Build,
-    /// Test execution/analysis — can use cheaper model.
-    Test,
-    /// Code review — needs security awareness but not generation.
-    Review,
-    /// Summarization/compaction — cheapest acceptable model.
-    Summarize,
-    /// General chat — default routing.
-    Chat,
-}
+pub use model_router::{
+    default_pricing_table, CostReport, CostTracker, ModelCostBreakdown, ModelPricing,
+    RouteDecision, Router, RouterError, RoutingRule, TaskClass, TaskComplexity,
+};
 
-impl std::fmt::Display for TaskType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Think => write!(f, "think"),
-            Self::Plan => write!(f, "plan"),
-            Self::Build => write!(f, "build"),
-            Self::Test => write!(f, "test"),
-            Self::Review => write!(f, "review"),
-            Self::Summarize => write!(f, "summarize"),
-            Self::Chat => write!(f, "chat"),
-        }
-    }
-}
+/// Backwards-compatible alias: `TaskType` was generalized to [`TaskClass`]
+/// when the routing core was extracted to the `model-router` crate.
+///
+/// The old coding-workflow variants map as follows: `Think`/`Test`/
+/// `Summarize` → [`TaskClass::Fast`], `Plan`/`Review`/`Chat` →
+/// [`TaskClass::Balanced`], `Build` → [`TaskClass::Power`].
+pub type TaskType = TaskClass;
 
-impl TaskType {
-    /// Map from SprintPhase name to TaskType.
-    pub fn from_phase_name(phase: &str) -> Self {
-        match phase.to_lowercase().as_str() {
-            "think" => Self::Think,
-            "plan" => Self::Plan,
-            "build" | "implement" | "code" => Self::Build,
-            "test" | "verify" => Self::Test,
-            "review" | "reflect" => Self::Review,
-            _ => Self::Chat,
-        }
-    }
-}
-
-/// Per-model pricing information.
+/// Provider-qualified routing rule used by the orchestration layer.
+///
+/// The pure `model-router` crate deliberately dropped the provider concept
+/// (a model key is an opaque string matched against the pricing table).
+/// Clawdius still needs provider + credential wiring to construct clients,
+/// so that concern lives in this type.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ModelPricing {
-    /// Cost per 1M input tokens in USD.
-    pub input_per_1m: f64,
-    /// Cost per 1M output tokens in USD.
-    pub output_per_1m: f64,
-    /// Maximum context window in tokens.
-    pub context_window: usize,
-    /// Maximum output tokens.
-    pub max_output_tokens: usize,
-    /// Quality tier (1-5, 5=highest).
-    pub quality_tier: u8,
-}
-
-impl ModelPricing {
-    /// Calculate cost for a given number of input/output tokens.
-    pub fn cost(&self, input_tokens: usize, output_tokens: usize) -> f64 {
-        (input_tokens as f64 * self.input_per_1m / 1_000_000.0)
-            + (output_tokens as f64 * self.output_per_1m / 1_000_000.0)
-    }
-
-    /// Calculate cost efficiency (quality per dollar).
-    pub fn efficiency(&self) -> f64 {
-        let avg_cost = (self.input_per_1m + self.output_per_1m) / 2.0;
-        if avg_cost > 0.0 {
-            self.quality_tier as f64 / avg_cost
-        } else {
-            f64::MAX
-        }
-    }
-}
-
-/// Task complexity levels for cost-aware routing.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub enum TaskComplexity {
-    /// Simple tasks: formatting, renaming, simple refactors.
-    Simple = 1,
-    /// Medium tasks: bug fixes, small features, code review.
-    Medium = 2,
-    /// Complex tasks: architecture, multi-file refactors, complex algorithms.
-    Complex = 3,
-    /// Critical tasks: security fixes, production issues, complex debugging.
-    Critical = 4,
-}
-
-/// Built-in pricing table for popular models.
-pub fn default_pricing_table() -> HashMap<String, ModelPricing> {
-    let mut table = HashMap::new();
-
-    // Claude models (Anthropic)
-    table.insert(
-        "claude-sonnet-4-20250514".into(),
-        ModelPricing {
-            input_per_1m: 3.0,
-            output_per_1m: 15.0,
-            context_window: 200_000,
-            max_output_tokens: 16_384,
-            quality_tier: 5,
-        },
-    );
-    table.insert(
-        "claude-3-5-sonnet-20241022".into(),
-        ModelPricing {
-            input_per_1m: 3.0,
-            output_per_1m: 15.0,
-            context_window: 200_000,
-            max_output_tokens: 8_192,
-            quality_tier: 4,
-        },
-    );
-    table.insert(
-        "claude-3-5-haiku-20241022".into(),
-        ModelPricing {
-            input_per_1m: 0.8,
-            output_per_1m: 4.0,
-            context_window: 200_000,
-            max_output_tokens: 8_192,
-            quality_tier: 3,
-        },
-    );
-    table.insert(
-        "claude-3-opus-20240229".into(),
-        ModelPricing {
-            input_per_1m: 15.0,
-            output_per_1m: 75.0,
-            context_window: 200_000,
-            max_output_tokens: 4_096,
-            quality_tier: 5,
-        },
-    );
-
-    // GPT models (OpenAI)
-    table.insert(
-        "gpt-4o".into(),
-        ModelPricing {
-            input_per_1m: 2.5,
-            output_per_1m: 10.0,
-            context_window: 128_000,
-            max_output_tokens: 16_384,
-            quality_tier: 4,
-        },
-    );
-    table.insert(
-        "gpt-4o-mini".into(),
-        ModelPricing {
-            input_per_1m: 0.15,
-            output_per_1m: 0.6,
-            context_window: 128_000,
-            max_output_tokens: 16_384,
-            quality_tier: 3,
-        },
-    );
-    table.insert(
-        "gpt-4-turbo".into(),
-        ModelPricing {
-            input_per_1m: 10.0,
-            output_per_1m: 30.0,
-            context_window: 128_000,
-            max_output_tokens: 4_096,
-            quality_tier: 5,
-        },
-    );
-
-    // Gemini models (Google)
-    table.insert(
-        "gemini-2.0-flash".into(),
-        ModelPricing {
-            input_per_1m: 0.1,
-            output_per_1m: 0.4,
-            context_window: 1_000_000,
-            max_output_tokens: 8_192,
-        },
-    );
-    table.insert(
-        "gemini-1.5-pro".into(),
-        ModelPricing {
-            input_per_1m: 1.25,
-            output_per_1m: 5.0,
-            context_window: 2_000_000,
-            max_output_tokens: 8_192,
-        },
-    );
-
-    // GLM models (ZAI)
-    table.insert(
-        "glm-4.6".into(),
-        ModelPricing {
-            input_per_1m: 0.5,
-            output_per_1m: 0.5,
-            context_window: 128_000,
-            max_output_tokens: 4_096,
-        },
-    );
-    table.insert(
-        "glm-5-turbo".into(),
-        ModelPricing {
-            input_per_1m: 0.5,
-            output_per_1m: 0.5,
-            context_window: 128_000,
-            max_output_tokens: 4_096,
-        },
-    );
-
-    // DeepSeek
-    table.insert(
-        "deepseek-chat".into(),
-        ModelPricing {
-            input_per_1m: 0.14,
-            output_per_1m: 0.28,
-            context_window: 64_000,
-            max_output_tokens: 8_192,
-        },
-    );
-    table.insert(
-        "deepseek-coder".into(),
-        ModelPricing {
-            input_per_1m: 0.14,
-            output_per_1m: 0.28,
-            context_window: 64_000,
-            max_output_tokens: 8_192,
-        },
-    );
-
-    // OpenRouter prefixed models
-    table.insert(
-        "anthropic/claude-3.5-sonnet".into(),
-        ModelPricing {
-            input_per_1m: 3.0,
-            output_per_1m: 15.0,
-            context_window: 200_000,
-            max_output_tokens: 8_192,
-        },
-    );
-    table.insert(
-        "openai/gpt-4o".into(),
-        ModelPricing {
-            input_per_1m: 2.5,
-            output_per_1m: 10.0,
-            context_window: 128_000,
-            max_output_tokens: 16_384,
-        },
-    );
-    table.insert(
-        "google/gemma-3-4b-it:free".into(),
-        ModelPricing {
-            input_per_1m: 0.0,
-            output_per_1m: 0.0,
-            context_window: 32_000,
-            max_output_tokens: 4_096,
-        },
-    );
-    table.insert(
-        "openai/gpt-oss-20b:free".into(),
-        ModelPricing {
-            input_per_1m: 0.0,
-            output_per_1m: 0.0,
-            context_window: 32_000,
-            max_output_tokens: 4_096,
-        },
-    );
-
-    table
-}
-
-/// Routing rule: which model to use for which task type.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RoutingRule {
-    /// Task type this rule applies to.
-    pub task_type: TaskType,
+pub struct ProviderRule {
+    /// Task class this rule applies to.
+    pub task_type: TaskClass,
     /// Provider name (e.g., "zai", "anthropic", "openrouter").
     pub provider: String,
     /// Model name (e.g., "glm-4.6", "claude-sonnet-4-20250514").
@@ -313,12 +65,12 @@ pub struct RoutingRule {
     /// Base URL override (if needed).
     pub base_url: Option<String>,
     /// Fallback provider/model if primary fails.
-    pub fallback: Option<Box<RoutingRule>>,
+    pub fallback: Option<Box<ProviderRule>>,
 }
 
-impl RoutingRule {
+impl ProviderRule {
     /// Create a simple routing rule.
-    pub fn new(task_type: TaskType, provider: &str, model: &str) -> Self {
+    pub fn new(task_type: TaskClass, provider: &str, model: &str) -> Self {
         Self {
             task_type,
             provider: provider.to_string(),
@@ -330,157 +82,10 @@ impl RoutingRule {
     }
 
     /// Create with fallback.
-    pub fn with_fallback(mut self, fallback: RoutingRule) -> Self {
+    pub fn with_fallback(mut self, fallback: ProviderRule) -> Self {
         self.fallback = Some(Box::new(fallback));
         self
     }
-}
-
-/// Cost tracking accumulator.
-#[derive(Debug, Clone)]
-pub struct CostTracker {
-    /// Total cost in USD (atomic for concurrent access).
-    total_cost: Arc<AtomicU64>, // stored as cents * 100 (fixed-point)
-    /// Total input tokens.
-    total_input_tokens: Arc<AtomicU64>,
-    /// Total output tokens.
-    total_output_tokens: Arc<AtomicU64>,
-    /// Per-model cost breakdown.
-    per_model: Arc<Mutex<HashMap<String, ModelCostRecord>>>,
-    /// Budget limit in USD (None = unlimited).
-    budget_limit_usd: Option<f64>,
-}
-
-#[derive(Debug, Clone, Default)]
-struct ModelCostRecord {
-    input_tokens: u64,
-    output_tokens: u64,
-    cost_cents_x100: u64, // fixed-point: divide by 10000 for USD
-    request_count: u64,
-}
-
-impl CostTracker {
-    /// Create a new cost tracker.
-    pub fn new(budget_limit_usd: Option<f64>) -> Self {
-        Self {
-            total_cost: Arc::new(AtomicU64::new(0)),
-            total_input_tokens: Arc::new(AtomicU64::new(0)),
-            total_output_tokens: Arc::new(AtomicU64::new(0)),
-            per_model: Arc::new(Mutex::new(HashMap::new())),
-            budget_limit_usd,
-        }
-    }
-
-    /// Record token usage and cost.
-    pub async fn record(
-        &self,
-        model: &str,
-        input_tokens: usize,
-        output_tokens: usize,
-        pricing: &ModelPricing,
-    ) -> Result<()> {
-        let cost_usd = pricing.cost(input_tokens, output_tokens);
-        let cost_cents_x100 = (cost_usd * 10000.0) as u64;
-
-        // Check budget
-        if let Some(limit) = self.budget_limit_usd {
-            let current = self.total_cost.load(Ordering::Relaxed) as f64 / 10000.0;
-            if current + cost_usd > limit {
-                return Err(crate::Error::Llm(format!(
-                    "Budget exceeded: ${:.4} + ${:.4} > ${:.2}",
-                    current, cost_usd, limit
-                )));
-            }
-        }
-
-        self.total_cost
-            .fetch_add(cost_cents_x100, Ordering::Relaxed);
-        self.total_input_tokens
-            .fetch_add(input_tokens as u64, Ordering::Relaxed);
-        self.total_output_tokens
-            .fetch_add(output_tokens as u64, Ordering::Relaxed);
-
-        let mut per_model = self.per_model.lock().await;
-        let record = per_model.entry(model.to_string()).or_default();
-        record.input_tokens += input_tokens as u64;
-        record.output_tokens += output_tokens as u64;
-        record.cost_cents_x100 += cost_cents_x100;
-        record.request_count += 1;
-
-        tracing::debug!(
-            model = model,
-            input = input_tokens,
-            output = output_tokens,
-            cost_usd = format!("{:.4}", cost_usd),
-            total_usd = format!("{:.4}", self.total_usd()),
-            "model routing cost recorded"
-        );
-
-        Ok(())
-    }
-
-    /// Get total cost in USD.
-    pub fn total_usd(&self) -> f64 {
-        self.total_cost.load(Ordering::Relaxed) as f64 / 10000.0
-    }
-
-    /// Get total input tokens.
-    pub fn total_input_tokens(&self) -> u64 {
-        self.total_input_tokens.load(Ordering::Relaxed)
-    }
-
-    /// Get total output tokens.
-    pub fn total_output_tokens(&self) -> u64 {
-        self.total_output_tokens.load(Ordering::Relaxed)
-    }
-
-    /// Get per-model cost breakdown.
-    pub async fn per_model_breakdown(&self) -> HashMap<String, ModelCostBreakdown> {
-        let per_model = self.per_model.lock().await;
-        per_model
-            .iter()
-            .map(|(model, record)| {
-                (
-                    model.clone(),
-                    ModelCostBreakdown {
-                        input_tokens: record.input_tokens,
-                        output_tokens: record.output_tokens,
-                        cost_usd: record.cost_cents_x100 as f64 / 10000.0,
-                        request_count: record.request_count,
-                    },
-                )
-            })
-            .collect()
-    }
-
-    /// Check if budget has been exceeded.
-    pub fn is_over_budget(&self) -> bool {
-        if let Some(limit) = self.budget_limit_usd {
-            self.total_usd() >= limit
-        } else {
-            false
-        }
-    }
-}
-
-/// Per-model cost breakdown for reporting.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ModelCostBreakdown {
-    pub input_tokens: u64,
-    pub output_tokens: u64,
-    pub cost_usd: f64,
-    pub request_count: u64,
-}
-
-/// Cost report summarizing all usage.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CostReport {
-    pub total_cost_usd: f64,
-    pub total_input_tokens: u64,
-    pub total_output_tokens: u64,
-    pub per_model: HashMap<String, ModelCostBreakdown>,
-    pub budget_limit_usd: Option<f64>,
-    pub is_over_budget: bool,
 }
 
 /// Task handle for background agent execution.
@@ -496,10 +101,15 @@ pub struct TaskHandle {
 /// Status of a background task.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum TaskStatus {
+    /// Task is queued waiting for execution.
     Queued,
+    /// Task is currently running.
     Running,
+    /// Task completed successfully.
     Completed,
+    /// Task failed with an error.
     Failed(String),
+    /// Task was cancelled.
     Cancelled,
 }
 
@@ -566,29 +176,14 @@ pub struct CloudAgent {
 struct CloudTask {
     /// Unique task identifier.
     id: String,
-    /// Task type for routing.
-    task_type: TaskType,
+    /// Task class for routing.
+    task_type: TaskClass,
     /// Messages to process.
     messages: Vec<ChatMessage>,
     /// Status handle.
     status: Arc<tokio::sync::RwLock<TaskStatus>>,
     /// Result sender.
     result_tx: tokio::sync::oneshot::Sender<Result<String>>,
-}
-
-/// Status of a cloud agent task.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum TaskStatus {
-    /// Task is queued waiting for execution.
-    Queued,
-    /// Task is currently running.
-    Running,
-    /// Task completed successfully.
-    Completed,
-    /// Task failed with an error.
-    Failed(String),
-    /// Task was cancelled.
-    Cancelled,
 }
 
 impl CloudAgent {
@@ -616,7 +211,7 @@ impl CloudAgent {
     /// Submit a task for background execution.
     pub async fn submit(
         &self,
-        task_type: TaskType,
+        task_type: TaskClass,
         messages: Vec<ChatMessage>,
     ) -> Result<TaskHandle> {
         // Check concurrency limit
@@ -681,17 +276,14 @@ impl CloudAgent {
     }
 
     /// Execute a task (placeholder implementation).
-    async fn execute_task(task_type: TaskType, messages: Vec<ChatMessage>) -> Result<String> {
+    async fn execute_task(task_type: TaskClass, messages: Vec<ChatMessage>) -> Result<String> {
         // In production, this would create a ModelRouter and call chat()
         // For now, return a placeholder response
         let task_name = match task_type {
-            TaskType::Think => "thinking",
-            TaskType::Plan => "planning",
-            TaskType::Build => "building",
-            TaskType::Test => "testing",
-            TaskType::Review => "reviewing",
-            TaskType::Summarize => "summarizing",
-            TaskType::Chat => "chatting",
+            TaskClass::Fast => "thinking",
+            TaskClass::Balanced => "planning",
+            TaskClass::Power => "building",
+            TaskClass::Embedding => "embedding",
         };
 
         let prompt = messages
@@ -702,45 +294,13 @@ impl CloudAgent {
     }
 }
 
-/// Handle for tracking a cloud agent task.
-pub struct TaskHandle {
-    /// Unique task identifier.
-    pub id: String,
-    /// Current status.
-    status: Arc<tokio::sync::RwLock<TaskStatus>>,
-    /// Result channel.
-    result_rx: tokio::sync::oneshot::Receiver<Result<String>>,
-}
-
-impl TaskHandle {
-    /// Get the current status.
-    pub async fn status(&self) -> TaskStatus {
-        self.status.read().await.clone()
-    }
-
-    /// Wait for the task to complete and return the result.
-    pub async fn result(self) -> Result<String> {
-        self.result_rx
-            .await
-            .map_err(|_| crate::Error::Llm("Task result channel closed".to_string()))?
-    }
-
-    /// Check if the task is done.
-    pub async fn is_done(&self) -> bool {
-        matches!(
-            *self.status.read().await,
-            TaskStatus::Completed | TaskStatus::Failed(_) | TaskStatus::Cancelled
-        )
-    }
-}
-
 /// A step in a dynamic workflow.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WorkflowStep {
     /// Unique step identifier.
     pub id: String,
-    /// Task type for this step.
-    pub task_type: TaskType,
+    /// Task class for this step.
+    pub task_type: TaskClass,
     /// Prompt/instructions for this step.
     pub prompt: String,
     /// IDs of steps this depends on (must complete before this runs).
@@ -818,7 +378,10 @@ impl DynamicWorkflow {
             // Execute ready steps in parallel
             let mut handles = Vec::new();
             for step in &ready {
-                let messages = vec![ChatMessage::text(ChatRole::User, &step.prompt)];
+                let messages = vec![ChatMessage {
+                    role: ChatRole::User,
+                    content: step.prompt.clone(),
+                }];
                 let handle = self.cloud_agent.submit(step.task_type, messages).await?;
                 handles.push((step.id.clone(), handle));
             }
@@ -851,16 +414,16 @@ impl Default for DynamicWorkflow {
 pub struct ModelRouter {
     /// Provider instances keyed by (provider, model) tuple.
     providers: Arc<Mutex<HashMap<(String, String), Arc<dyn LlmClient>>>>,
-    /// Routing rules: task_type → primary rule.
-    rules: HashMap<TaskType, RoutingRule>,
+    /// Routing rules: task_class → primary rule.
+    rules: HashMap<TaskClass, ProviderRule>,
     /// Default rule when no specific rule matches.
-    default_rule: RoutingRule,
+    default_rule: ProviderRule,
     /// Pricing table.
-    pricing: HashMap<String, ModelPricing>,
+    pricing: BTreeMap<String, ModelPricing>,
     /// Cost tracker.
     cost_tracker: CostTracker,
-    /// Current task type (set per-request).
-    current_task: Arc<Mutex<Option<TaskType>>>,
+    /// Current task class (set per-request).
+    current_task: Arc<Mutex<Option<TaskClass>>>,
     /// Default API key for providers that need one.
     default_api_keys: HashMap<String, String>,
     /// Active hooks for tool call interception.
@@ -876,8 +439,8 @@ pub struct ModelRouter {
 impl ModelRouter {
     /// Create a new ModelRouter with default configuration.
     pub fn new(default_config: &ResolvedLlmConfig) -> Result<Self> {
-        let default_rule = RoutingRule::new(
-            TaskType::Chat,
+        let default_rule = ProviderRule::new(
+            TaskClass::Balanced,
             &default_config.provider,
             &default_config.model,
         );
@@ -909,8 +472,8 @@ impl ModelRouter {
         Ok(router)
     }
 
-    /// Add a routing rule for a specific task type.
-    pub fn add_rule(&mut self, rule: RoutingRule) {
+    /// Add a routing rule for a specific task class.
+    pub fn add_rule(&mut self, rule: ProviderRule) {
         self.rules.insert(rule.task_type, rule);
     }
 
@@ -925,13 +488,18 @@ impl ModelRouter {
         self.pricing.insert(model.to_string(), pricing);
     }
 
-    /// Set the current task type for routing.
-    pub async fn set_task(&self, task: TaskType) {
+    /// Set the maximum number of concurrent subagents.
+    pub fn set_max_subagents(&mut self, max: usize) {
+        self.max_subagents = max;
+    }
+
+    /// Set the current task class for routing.
+    pub async fn set_task(&self, task: TaskClass) {
         let mut current = self.current_task.lock().await;
         *current = Some(task);
     }
 
-    /// Clear the current task type (revert to default routing).
+    /// Clear the current task class (revert to default routing).
     pub async fn clear_task(&self) {
         let mut current = self.current_task.lock().await;
         *current = None;
@@ -951,12 +519,7 @@ impl ModelRouter {
     ///
     /// Returns (provider, model) tuple for the optimal model.
     pub fn select_model_for_complexity(&self, complexity: TaskComplexity) -> (String, String) {
-        let min_quality = match complexity {
-            TaskComplexity::Simple => 2,
-            TaskComplexity::Medium => 3,
-            TaskComplexity::Complex => 4,
-            TaskComplexity::Critical => 5,
-        };
+        let min_quality = complexity.min_quality_tier();
 
         // Find models that meet the quality requirement
         let candidates: Vec<_> = self
@@ -1001,15 +564,7 @@ impl ModelRouter {
 
     /// Get cost report with budget status.
     pub async fn cost_report_with_budget(&self) -> CostReport {
-        let report = self.cost_report().await;
-        CostReport {
-            total_cost_usd: report.total_cost_usd,
-            total_input_tokens: report.total_input_tokens,
-            total_output_tokens: report.total_output_tokens,
-            per_model: report.per_model,
-            budget_limit_usd: self.cost_tracker.budget_limit_usd,
-            is_over_budget: self.cost_tracker.is_over_budget(),
-        }
+        self.cost_tracker.report()
     }
 
     /// Discover MCP tools and convert to genai Tool format.
@@ -1030,12 +585,12 @@ impl ModelRouter {
             .into_iter()
             .map(|(server, tool)| {
                 let name = format!("mcp_{}_{}", server, tool.name);
-                let description = tool.description.clone().unwrap_or_default();
-                let params = tool.input_schema.clone().unwrap_or(serde_json::json!({}));
                 Tool {
-                    name,
-                    description,
-                    parameters: params,
+                    name: name.into(),
+                    description: Some(tool.description),
+                    schema: Some(tool.input_schema),
+                    strict: None,
+                    config: None,
                 }
             })
             .collect()
@@ -1068,7 +623,7 @@ impl ModelRouter {
                     .content
                     .iter()
                     .filter_map(|c| match &c {
-                        super::mcp::protocol::McpContent::Text { text } => Some(text.as_str()),
+                        McpContent::Text { text } => Some(text.as_str()),
                         _ => None,
                     })
                     .collect::<Vec<_>>()
@@ -1087,7 +642,7 @@ impl ModelRouter {
     /// Spawn a subagent to run a task in the background.
     pub async fn spawn_subagent(
         &self,
-        task_type: TaskType,
+        task_type: TaskClass,
         messages: Vec<ChatMessage>,
     ) -> Result<TaskHandle> {
         if self.active_subagents.load(Ordering::Relaxed) >= self.max_subagents as u64 {
@@ -1147,7 +702,7 @@ impl ModelRouter {
     }
 
     /// Resolve which rule to use for the current task.
-    fn resolve_rule(&self, task: Option<TaskType>) -> &RoutingRule {
+    fn resolve_rule(&self, task: Option<TaskClass>) -> &ProviderRule {
         match task {
             Some(t) => self.rules.get(&t).unwrap_or(&self.default_rule),
             None => &self.default_rule,
@@ -1155,7 +710,7 @@ impl ModelRouter {
     }
 
     /// Get or create a provider for a routing rule.
-    async fn get_provider(&self, rule: &RoutingRule) -> Result<Arc<dyn LlmClient>> {
+    async fn get_provider(&self, rule: &ProviderRule) -> Result<Arc<dyn LlmClient>> {
         let key = (rule.provider.clone(), rule.model.clone());
 
         {
@@ -1195,12 +750,7 @@ impl ModelRouter {
 
     /// Get pricing for a model (fallback to defaults if not in table).
     fn get_pricing(&self, model: &str) -> ModelPricing {
-        self.pricing.get(model).cloned().unwrap_or(ModelPricing {
-            input_per_1m: 1.0,
-            output_per_1m: 3.0,
-            context_window: 128_000,
-            max_output_tokens: 4_096,
-        })
+        self.pricing.get(model).cloned().unwrap_or_default()
     }
 
     /// Get the cost tracker reference.
@@ -1210,31 +760,13 @@ impl ModelRouter {
 
     /// Generate a cost report.
     pub async fn cost_report(&self) -> CostReport {
-        CostReport {
-            total_cost_usd: self.cost_tracker.total_usd(),
-            total_input_tokens: self.cost_tracker.total_input_tokens(),
-            total_output_tokens: self.cost_tracker.total_output_tokens(),
-            per_model: self.cost_tracker.per_model_breakdown().await,
-            budget_limit_usd: self.cost_tracker.budget_limit_usd,
-            is_over_budget: self.cost_tracker.is_over_budget(),
-        }
-    }
-
-    /// Estimate cost before making a request.
-    pub fn estimate_cost(
-        &self,
-        model: &str,
-        input_tokens: usize,
-        estimated_output_tokens: usize,
-    ) -> f64 {
-        let pricing = self.get_pricing(model);
-        pricing.cost(input_tokens, estimated_output_tokens)
+        self.cost_tracker.report()
     }
 
     /// Build default routing rules for a typical setup.
     /// Uses the given provider/model as the "expensive" primary,
     /// and tries to find a cheaper model for think/test/summarize.
-    pub fn default_rules(primary_provider: &str, primary_model: &str) -> Vec<RoutingRule> {
+    pub fn default_rules(primary_provider: &str, primary_model: &str) -> Vec<ProviderRule> {
         let (cheap_provider, cheap_model) = match primary_provider {
             "anthropic" => ("anthropic", "claude-3-5-haiku-20241022"),
             "openai" => ("openai", "gpt-4o-mini"),
@@ -1246,12 +778,12 @@ impl ModelRouter {
         };
 
         vec![
-            RoutingRule::new(TaskType::Think, cheap_provider, cheap_model),
-            RoutingRule::new(TaskType::Plan, cheap_provider, cheap_model),
-            RoutingRule::new(TaskType::Build, primary_provider, primary_model),
-            RoutingRule::new(TaskType::Test, cheap_provider, cheap_model),
-            RoutingRule::new(TaskType::Review, primary_provider, primary_model),
-            RoutingRule::new(TaskType::Summarize, cheap_provider, cheap_model),
+            ProviderRule::new(TaskClass::Fast, cheap_provider, cheap_model),
+            ProviderRule::new(TaskClass::Balanced, cheap_provider, cheap_model),
+            ProviderRule::new(TaskClass::Power, primary_provider, primary_model),
+            ProviderRule::new(TaskClass::Fast, cheap_provider, cheap_model),
+            ProviderRule::new(TaskClass::Balanced, primary_provider, primary_model),
+            ProviderRule::new(TaskClass::Fast, cheap_provider, cheap_model),
         ]
     }
 }
@@ -1290,8 +822,7 @@ impl LlmClient for ModelRouter {
             let pricing = self.get_pricing(&active_model);
             let _ = self
                 .cost_tracker
-                .record(&active_model, input_tokens, output_tokens, &pricing)
-                .await;
+                .record(&active_model, input_tokens, output_tokens, &pricing);
         }
 
         result
@@ -1323,8 +854,7 @@ impl LlmClient for ModelRouter {
             let pricing = self.get_pricing(&model_name);
             let _ = self
                 .cost_tracker
-                .record(&model_name, input_tokens, 100, &pricing)
-                .await;
+                .record(&model_name, input_tokens, 100, &pricing);
         }
 
         result
@@ -1366,9 +896,9 @@ impl LlmClient for ModelRouter {
             // Run hooks on tool calls
             for hook in &self.hooks {
                 for tc in &r.tool_calls {
-                    hook.before_tool_call(&tc.function_name, &tc.arguments)
+                    hook.before_tool_call(&tc.fn_name, &tc.fn_arguments.to_string())
                         .await;
-                    hook.after_tool_call(&tc.function_name, &r.text).await;
+                    hook.after_tool_call(&tc.fn_name, &r.text).await;
                 }
             }
 
@@ -1376,8 +906,7 @@ impl LlmClient for ModelRouter {
             let pricing = self.get_pricing(&model_name);
             let _ = self
                 .cost_tracker
-                .record(&model_name, input_tokens, output_tokens, &pricing)
-                .await;
+                .record(&model_name, input_tokens, output_tokens, &pricing);
         } else if let Err(ref e) = result {
             for hook in &self.hooks {
                 hook.on_error("chat_with_tools", &e.to_string()).await;
@@ -1390,13 +919,6 @@ impl LlmClient for ModelRouter {
     fn count_tokens(&self, text: &str) -> usize {
         text.split_whitespace().count()
     }
-
-    async fn embed(&self, text: &str) -> Result<Vec<f32>> {
-        let task = *self.current_task.lock().await;
-        let rule = self.resolve_rule(task);
-        let provider = self.get_provider(rule).await?;
-        provider.embed(text).await
-    }
 }
 
 #[cfg(test)]
@@ -1404,23 +926,21 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_task_type_from_phase() {
-        assert_eq!(TaskType::from_phase_name("think"), TaskType::Think);
-        assert_eq!(TaskType::from_phase_name("Think"), TaskType::Think);
-        assert_eq!(TaskType::from_phase_name("build"), TaskType::Build);
-        assert_eq!(TaskType::from_phase_name("test"), TaskType::Test);
-        assert_eq!(TaskType::from_phase_name("review"), TaskType::Review);
-        assert_eq!(TaskType::from_phase_name("unknown"), TaskType::Chat);
+    fn test_task_class_from_phase() {
+        assert_eq!(TaskClass::for_phase_name("think"), TaskClass::Fast);
+        assert_eq!(TaskClass::for_phase_name("Think"), TaskClass::Fast);
+        assert_eq!(TaskClass::for_phase_name("build"), TaskClass::Power);
+        assert_eq!(TaskClass::for_phase_name("test"), TaskClass::Fast);
+        assert_eq!(TaskClass::for_phase_name("review"), TaskClass::Balanced);
+        assert_eq!(TaskClass::for_phase_name("unknown"), TaskClass::Balanced);
     }
 
     #[test]
     fn test_model_pricing_cost() {
-        let claude_sonnet = ModelPricing {
-            input_per_1m: 3.0,
-            output_per_1m: 15.0,
-            context_window: 200_000,
-            max_output_tokens: 16_384,
-        };
+        let claude_sonnet = ModelPricing::new(3.0, 15.0)
+            .with_context_window(200_000)
+            .with_max_output_tokens(16_384)
+            .with_quality_tier(5);
 
         // 1k input, 500 output tokens
         let cost = claude_sonnet.cost(1000, 500);
@@ -1433,12 +953,9 @@ mod tests {
 
     #[test]
     fn test_free_model_has_zero_cost() {
-        let free = ModelPricing {
-            input_per_1m: 0.0,
-            output_per_1m: 0.0,
-            context_window: 32_000,
-            max_output_tokens: 4_096,
-        };
+        let free = ModelPricing::new(0.0, 0.0)
+            .with_context_window(32_000)
+            .with_max_output_tokens(4_096);
         assert_eq!(free.cost(1_000_000, 1_000_000), 0.0);
     }
 
@@ -1447,61 +964,47 @@ mod tests {
         let rt = tokio::runtime::Runtime::new().unwrap();
         let tracker = CostTracker::new(None);
 
-        let pricing = ModelPricing {
-            input_per_1m: 3.0,
-            output_per_1m: 15.0,
-            context_window: 200_000,
-            max_output_tokens: 16_384,
-        };
+        let pricing = ModelPricing::new(3.0, 15.0)
+            .with_context_window(200_000)
+            .with_max_output_tokens(16_384)
+            .with_quality_tier(5);
 
-        rt.block_on(async {
-            tracker
-                .record("claude-sonnet-4", 1000, 500, &pricing)
-                .await
-                .unwrap();
-            tracker
-                .record("claude-sonnet-4", 2000, 1000, &pricing)
-                .await
-                .unwrap();
+        tracker
+            .record("claude-sonnet-4", 1000, 500, &pricing)
+            .unwrap();
+        tracker
+            .record("claude-sonnet-4", 2000, 1000, &pricing)
+            .unwrap();
 
-            assert!(tracker.total_usd() > 0.0);
-            assert_eq!(tracker.total_input_tokens(), 3000);
-            assert_eq!(tracker.total_output_tokens(), 1500);
+        assert!(tracker.total_usd() > 0.0);
+        assert_eq!(tracker.total_input_tokens(), 3000);
+        assert_eq!(tracker.total_output_tokens(), 1500);
 
-            let breakdown = tracker.per_model_breakdown().await;
-            assert!(breakdown.contains_key("claude-sonnet-4"));
-            assert_eq!(breakdown["claude-sonnet-4"].request_count, 2);
-        });
+        let breakdown = tracker.per_model_breakdown();
+        assert!(breakdown.contains_key("claude-sonnet-4"));
+        assert_eq!(breakdown["claude-sonnet-4"].request_count, 2);
     }
 
     #[test]
     fn test_cost_tracker_budget_enforcement() {
-        let rt = tokio::runtime::Runtime::new().unwrap();
         let tracker = CostTracker::new(Some(0.01)); // $0.01 budget
 
-        let expensive = ModelPricing {
-            input_per_1m: 100.0,
-            output_per_1m: 500.0,
-            context_window: 200_000,
-            max_output_tokens: 16_384,
-        };
+        let expensive = ModelPricing::new(100.0, 500.0)
+            .with_context_window(200_000)
+            .with_max_output_tokens(16_384)
+            .with_quality_tier(5);
 
-        rt.block_on(async {
-            // First request should succeed ($0.001 + $0.0025 = $0.0035)
-            tracker
-                .record("expensive-model", 10, 5, &expensive)
-                .await
-                .unwrap();
-            // Second request exceeds budget — should be rejected
-            let result = tracker
-                .record("expensive-model", 100_000, 10_000, &expensive)
-                .await;
-            assert!(result.is_err());
-            // Budget was not exceeded because the over-budget request was rejected
-            assert!(!tracker.is_over_budget());
-            // But total is close to budget
-            assert!(tracker.total_usd() < 0.01);
-        });
+        // First request should succeed ($0.001 + $0.0025 = $0.0035)
+        tracker
+            .record("expensive-model", 10, 5, &expensive)
+            .unwrap();
+        // Second request exceeds budget — should be rejected
+        let result = tracker.record("expensive-model", 100_000, 10_000, &expensive);
+        assert!(result.is_err());
+        // Budget was not exceeded because the over-budget request was rejected
+        assert!(!tracker.is_over_budget());
+        // But total is close to budget
+        assert!(tracker.total_usd() < 0.01);
     }
 
     #[test]
@@ -1521,26 +1024,19 @@ mod tests {
         let rules = ModelRouter::default_rules("anthropic", "claude-sonnet-4-20250514");
         assert_eq!(rules.len(), 6);
 
-        // Think/Plan should use cheap model
-        let think_rule = rules
+        // Think/Plan/Test/Summarize (Fast) should use cheap model
+        let fast_rule = rules
             .iter()
-            .find(|r| r.task_type == TaskType::Think)
+            .find(|r| r.task_type == TaskClass::Fast)
             .unwrap();
-        assert_eq!(think_rule.model, "claude-3-5-haiku-20241022");
+        assert_eq!(fast_rule.model, "claude-3-5-haiku-20241022");
 
-        // Build should use primary model
-        let build_rule = rules
+        // Build (Power) should use primary model
+        let power_rule = rules
             .iter()
-            .find(|r| r.task_type == TaskType::Build)
+            .find(|r| r.task_type == TaskClass::Power)
             .unwrap();
-        assert_eq!(build_rule.model, "claude-sonnet-4-20250514");
-
-        // Test should use cheap model
-        let test_rule = rules
-            .iter()
-            .find(|r| r.task_type == TaskType::Test)
-            .unwrap();
-        assert_eq!(test_rule.model, "claude-3-5-haiku-20241022");
+        assert_eq!(power_rule.model, "claude-sonnet-4-20250514");
     }
 
     #[tokio::test]
@@ -1575,8 +1071,11 @@ mod tests {
         router.active_subagents.store(2, Ordering::Relaxed);
 
         // Should fail when at limit
-        let messages = vec![ChatMessage::text(ChatRole::User, "test")];
-        let result = router.spawn_subagent(TaskType::Chat, messages).await;
+        let messages = vec![ChatMessage {
+            role: ChatRole::User,
+            content: "test".to_string(),
+        }];
+        let result = router.spawn_subagent(TaskClass::Balanced, messages).await;
         assert!(result.is_err());
     }
 
@@ -1637,17 +1136,16 @@ mod tests {
         let router = ModelRouter::new(&config).unwrap();
 
         // Simple tasks should select a cheaper model
-        let (provider, model) = router.select_model_for_complexity(TaskComplexity::Simple);
+        let (_provider, model) = router.select_model_for_complexity(TaskComplexity::Simple);
         assert!(!model.is_empty());
 
         // Critical tasks should select a higher quality model
-        let (provider, model) = router.select_model_for_complexity(TaskComplexity::Critical);
+        let (_provider, model) = router.select_model_for_complexity(TaskComplexity::Critical);
         assert!(!model.is_empty());
     }
 
-    #[test]
-    fn test_cost_report() {
-        let rt = tokio::runtime::Runtime::new().unwrap();
+    #[tokio::test]
+    async fn test_cost_report() {
         let config = ResolvedLlmConfig {
             provider: "zai".to_string(),
             model: "glm-4.6".to_string(),
@@ -1657,24 +1155,18 @@ mod tests {
         };
         let router = ModelRouter::with_budget(&config, 10.0).unwrap();
 
-        let pricing = ModelPricing {
-            input_per_1m: 1.0,
-            output_per_1m: 3.0,
-            context_window: 128_000,
-            max_output_tokens: 4_096,
-        };
+        let pricing = ModelPricing::new(1.0, 3.0)
+            .with_context_window(128_000)
+            .with_max_output_tokens(4_096);
 
-        rt.block_on(async {
-            router
-                .cost_tracker
-                .record("test-model", 1000, 500, &pricing)
-                .await
-                .unwrap();
-            let report = router.cost_report().await;
-            assert_eq!(report.per_model.len(), 1);
-            assert!(!report.is_over_budget);
-            assert!(report.total_cost_usd > 0.0);
-        });
+        router
+            .cost_tracker
+            .record("test-model", 1000, 500, &pricing)
+            .unwrap();
+        let report = router.cost_report().await;
+        assert_eq!(report.per_model.len(), 1);
+        assert!(!report.is_over_budget);
+        assert!(report.total_cost_usd > 0.0);
     }
 
     #[tokio::test]
@@ -1686,8 +1178,11 @@ mod tests {
     #[tokio::test]
     async fn test_cloud_agent_submit() {
         let agent = CloudAgent::new(4);
-        let messages = vec![ChatMessage::text(ChatRole::User, "test")];
-        let handle = agent.submit(TaskType::Chat, messages).await.unwrap();
+        let messages = vec![ChatMessage {
+            role: ChatRole::User,
+            content: "test".to_string(),
+        }];
+        let handle = agent.submit(TaskClass::Balanced, messages).await.unwrap();
         assert!(!handle.id.is_empty());
     }
 
@@ -1696,8 +1191,11 @@ mod tests {
         let agent = CloudAgent::new(1);
         agent.active_tasks.store(1, Ordering::Relaxed);
 
-        let messages = vec![ChatMessage::text(ChatRole::User, "test")];
-        let result = agent.submit(TaskType::Chat, messages).await;
+        let messages = vec![ChatMessage {
+            role: ChatRole::User,
+            content: "test".to_string(),
+        }];
+        let result = agent.submit(TaskClass::Balanced, messages).await;
         assert!(result.is_err());
     }
 
@@ -1713,7 +1211,7 @@ mod tests {
         let mut workflow = DynamicWorkflow::new();
         workflow.add_step(WorkflowStep {
             id: "step1".to_string(),
-            task_type: TaskType::Think,
+            task_type: TaskClass::Fast,
             prompt: "Analyze".to_string(),
             depends_on: vec![],
         });
@@ -1725,13 +1223,13 @@ mod tests {
         let mut workflow = DynamicWorkflow::new();
         workflow.add_step(WorkflowStep {
             id: "step1".to_string(),
-            task_type: TaskType::Think,
+            task_type: TaskClass::Fast,
             prompt: "Analyze".to_string(),
             depends_on: vec![],
         });
         workflow.add_step(WorkflowStep {
             id: "step2".to_string(),
-            task_type: TaskType::Build,
+            task_type: TaskClass::Power,
             prompt: "Build".to_string(),
             depends_on: vec!["step1".to_string()],
         });

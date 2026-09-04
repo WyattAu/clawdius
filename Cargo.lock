@@ -2118,6 +2118,7 @@ dependencies = [
  "lancedb",
  "loom",
  "lru 0.16.4",
+ "model-router",
  "mysql_async",
  "notify",
  "parking_lot",
@@ -8757,6 +8758,16 @@ name = "mock_instant"
 version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9bb517913cfcfb9eeda59f36020269075a152701a01606c612f547e4890be399"
+
+[[package]]
+name = "model-router"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "601a9d71bf20bf8911c72ed029adea78d0f779d3619bd537ab1aecd3164d82f9"
+dependencies = [
+ "serde",
+ "thiserror 2.0.18",
+]
 
 [[package]]
 name = "moka"
