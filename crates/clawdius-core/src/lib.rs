@@ -82,7 +82,14 @@ pub mod rpc;
 #[doc(hidden)]
 pub mod sandbox;
 pub mod session;
-pub mod simd;
+/// SIMD-accelerated checksum/hash primitives.
+///
+/// Implementation lives in `clawdius-unsafe` — the workspace's designated
+/// crate for all `unsafe` code (this crate denies `unsafe`). Re-exported
+/// here to preserve the historical `clawdius_core::simd` public path.
+pub mod simd {
+    pub use clawdius_unsafe::{fast_checksum, fast_hash};
+}
 pub mod skills;
 pub mod storage;
 #[doc(hidden)]

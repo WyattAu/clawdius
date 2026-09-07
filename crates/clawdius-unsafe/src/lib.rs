@@ -88,7 +88,7 @@ fn scalar_hash(data: &[u8]) -> u64 {
 
 #[inline]
 const fn rotate64(x: u64, n: u32) -> u64 {
-    (x << n) | (x >> (64 - n))
+    x.rotate_left(n)
 }
 
 // --- SSE2 implementations ---
@@ -512,6 +512,41 @@ mod tests {
         let data: Vec<u8> = (0..1024).map(|i| (i % 256) as u8).collect();
         assert_eq!(fast_checksum(&data), scalar_checksum(&data));
         assert_eq!(fast_hash(&data), scalar_hash(&data));
+    }
+
+    #[test]
+    fn test_exact_16_bytes() {
+        let data = b"1234567890123456";
+        assert_eq!(fast_checksum(data), scalar_checksum(data));
+        assert_eq!(fast_hash(data), scalar_hash(data));
+    }
+
+    #[test]
+    fn test_64_bytes() {
+        let data: Vec<u8> = (0..64).map(|i| i as u8).collect();
+        assert_eq!(fast_checksum(&data), scalar_checksum(&data));
+        assert_eq!(fast_hash(&data), scalar_hash(&data));
+    }
+
+    #[test]
+    fn test_64kb() {
+        let data: Vec<u8> = (0..65536).map(|i| (i % 256) as u8).collect();
+        assert_eq!(fast_checksum(&data), scalar_checksum(&data));
+        assert_eq!(fast_hash(&data), scalar_hash(&data));
+    }
+
+    #[test]
+    fn test_17_bytes_partial_chunk() {
+        let data = b"12345678901234567";
+        assert_eq!(fast_checksum(data), scalar_checksum(data));
+        assert_eq!(fast_hash(data), scalar_hash(data));
+    }
+
+    #[test]
+    fn test_33_bytes_partial_chunk() {
+        let data = b"123456789012345678901234567890123";
+        assert_eq!(fast_checksum(data), scalar_checksum(data));
+        assert_eq!(fast_hash(data), scalar_hash(data));
     }
 
     #[test]
