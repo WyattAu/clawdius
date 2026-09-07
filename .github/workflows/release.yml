@@ -34,7 +34,7 @@ jobs:
     outputs:
       version: ${{ steps.version.outputs.version }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       
       - name: Determine version
         id: version
@@ -78,7 +78,7 @@ jobs:
     timeout-minutes: 60
     needs: validate
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@1.96.0
@@ -154,7 +154,7 @@ jobs:
             target: x86_64-pc-windows-msvc
             archive: zip
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@1.96.0
@@ -259,7 +259,7 @@ jobs:
       
       - name: Import GPG key
         continue-on-error: true
-        uses: crazy-max/ghaction-import-gpg@v6.2.0
+        uses: crazy-max/ghaction-import-gpg@v7.0.0
         with:
           gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
           passphrase: ${{ secrets.GPG_PASSPHRASE }}
@@ -298,7 +298,7 @@ jobs:
     timeout-minutes: 10
     needs: [validate, quality-gates]
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@1.96.0
@@ -337,7 +337,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       
       - name: Download all artifacts
         uses: actions/download-artifact@v8
@@ -361,7 +361,7 @@ jobs:
           echo "EOF" >> $GITHUB_OUTPUT
       
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2.2.2
+        uses: softprops/action-gh-release@v3.0.3
         with:
           name: Clawdius ${{ needs.validate.outputs.version }}
           body_path: release-notes.md
@@ -431,7 +431,7 @@ jobs:
     needs: [validate, github-release]
     if: ${{ !contains(needs.validate.outputs.version, '-') }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@1.96.0
@@ -485,7 +485,7 @@ jobs:
     needs: [validate, github-release]
     if: success() && !contains(needs.validate.outputs.version, '-')
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       
