@@ -2299,7 +2299,8 @@ async fn run_agentic_loop(
                 });
             }
         } else {
-            // Process native tool calls
+            // Process native tool calls (execute once; reuse results below)
+            let mut executed: Vec<(String, String)> = Vec::new();
             for tc in &tool_calls {
                 let name = tc.fn_name.clone();
                 let arguments = tc.fn_arguments.to_string();
@@ -2312,6 +2313,7 @@ async fn run_agentic_loop(
                     .await;
 
                 let (output, is_error) = tool_executor.execute_tool(&name, &arguments);
+                executed.push((name.clone(), output.clone()));
 
                 let _ = tx
                     .send(TuiEvent::ToolResult {
@@ -2343,14 +2345,12 @@ async fn run_agentic_loop(
                 },
             });
 
-            // Build tool results for conversation history
+            // Build tool results for conversation history from the
+            // single execution above (never re-run side-effecting tools).
             let mut results_text: Vec<String> = Vec::new();
-            for tc in &tool_calls {
-                let args_str = tc.fn_arguments.to_string();
-                let (output, _) = tool_executor.execute_tool(&tc.fn_name, &args_str);
+            for (fn_name, output) in &executed {
                 results_text.push(format!(
-                    "[TOOL_RESULT] {} {} [/TOOL_RESULT]",
-                    tc.fn_name, output
+                    "[TOOL_RESULT] {fn_name} {output} [/TOOL_RESULT]"
                 ));
             }
 
