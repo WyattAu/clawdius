@@ -1005,7 +1005,7 @@ dependencies = [
  "bytes",
  "form_urlencoded",
  "futures-util",
- "http 1.4.2",
+ "http",
  "http-body",
  "http-body-util",
  "hyper",
@@ -1039,7 +1039,7 @@ checksum = "08c78f31d7b1291f7ee735c1c6780ccde7785daae9a9206026862dab7d8792d1"
 dependencies = [
  "bytes",
  "futures-core",
- "http 1.4.2",
+ "http",
  "http-body",
  "http-body-util",
  "mime",
@@ -5648,7 +5648,7 @@ dependencies = [
  "futures-core",
  "futures-sink",
  "gloo-utils",
- "http 1.4.2",
+ "http",
  "js-sys",
  "pin-project",
  "serde",
@@ -5788,7 +5788,7 @@ dependencies = [
  "fnv",
  "futures-core",
  "futures-sink",
- "http 1.4.2",
+ "http",
  "indexmap 2.14.0",
  "slab",
  "tokio",
@@ -5899,7 +5899,7 @@ checksum = "aef3982638978efa195ff11b305f51f1f22f4f0a6cabee7af79b383ebee6a213"
 dependencies = [
  "dirs",
  "futures",
- "http 1.4.2",
+ "http",
  "indicatif 0.18.4",
  "libc",
  "log",
@@ -5989,17 +5989,6 @@ checksum = "e9025058dae765dee5070ec375f591e2ba14638c63feff74f13805a72e523163"
 
 [[package]]
 name = "http"
-version = "0.2.12"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "601cbb57e577e2f5ef5be8e7b83f0f63994f25aa94d673e54a92d5c516d101f1"
-dependencies = [
- "bytes",
- "fnv",
- "itoa",
-]
-
-[[package]]
-name = "http"
 version = "1.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6970f50e31d6fc17d3fa27329444bfa74e196cf62e95052a3f6fee181dba6425"
@@ -6015,7 +6004,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1efedce1fb8e6913f23e0c92de8e62cd5b772a67e7b3946df930a62566c93184"
 dependencies = [
  "bytes",
- "http 1.4.2",
+ "http",
 ]
 
 [[package]]
@@ -6026,7 +6015,7 @@ checksum = "b021d93e26becf5dc7e1b75b1bed1fd93124b374ceb73f43d4d4eafec896a64a"
 dependencies = [
  "bytes",
  "futures-core",
- "http 1.4.2",
+ "http",
  "http-body",
  "pin-project-lite",
 ]
@@ -6091,7 +6080,7 @@ dependencies = [
  "futures-channel",
  "futures-core",
  "h2",
- "http 1.4.2",
+ "http",
  "http-body",
  "httparse",
  "httpdate",
@@ -6108,7 +6097,7 @@ version = "0.27.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "33ca68d021ef39cf6463ab54c1d0f5daf03377b70561305bb89a8f83aab66e0f"
 dependencies = [
- "http 1.4.2",
+ "http",
  "hyper",
  "hyper-util",
  "log",
@@ -6146,7 +6135,7 @@ dependencies = [
  "bytes",
  "futures-channel",
  "futures-util",
- "http 1.4.2",
+ "http",
  "http-body",
  "hyper",
  "ipnet",
@@ -6912,7 +6901,7 @@ dependencies = [
  "futures-channel",
  "futures-util",
  "gloo-net",
- "http 1.4.2",
+ "http",
  "jsonrpsee-core",
  "pin-project",
  "rustls 0.23.40",
@@ -6937,7 +6926,7 @@ dependencies = [
  "bytes",
  "futures-timer",
  "futures-util",
- "http 1.4.2",
+ "http",
  "http-body",
  "http-body-util",
  "jsonrpsee-types",
@@ -6986,7 +6975,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c625c78b8d545478370b6e7a2a191b0d921f831a9eef38dc1e7efb57e7a5472f"
 dependencies = [
  "futures-util",
- "http 1.4.2",
+ "http",
  "http-body",
  "http-body-util",
  "hyper",
@@ -7012,7 +7001,7 @@ version = "0.24.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "41d86fc943f81dab0ecdd6c0240b6e0f55ad57a2ea9ad8ad7efe8456fb9cc7a4"
 dependencies = [
- "http 1.4.2",
+ "http",
  "serde",
  "serde_json",
  "thiserror 1.0.69",
@@ -7035,7 +7024,7 @@ version = "0.24.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9df5bd5c38c0906a6e8b3a38c8c22cc8525fda25fd1a03a3fe010686aea66b70"
 dependencies = [
- "http 1.4.2",
+ "http",
  "jsonrpsee-client-transport",
  "jsonrpsee-core",
  "jsonrpsee-types",
@@ -7544,7 +7533,7 @@ dependencies = [
  "chrono",
  "deepsize",
  "futures",
- "http 1.4.2",
+ "http",
  "lance-arrow",
  "lance-core",
  "lance-namespace",
@@ -8464,7 +8453,7 @@ dependencies = [
  "futures-util",
  "gloo-timers 0.3.0",
  "growable-bloom-filter",
- "http 1.4.2",
+ "http",
  "imbl",
  "indexmap 2.14.0",
  "js_int",
@@ -8851,7 +8840,7 @@ dependencies = [
  "bytes",
  "encoding_rs",
  "futures-util",
- "http 1.4.2",
+ "http",
  "httparse",
  "memchr",
  "mime",
@@ -9515,7 +9504,7 @@ dependencies = [
  "bytes",
  "chrono",
  "futures",
- "http 1.4.2",
+ "http",
  "humantime",
  "itertools 0.14.0",
  "parking_lot",
@@ -11289,7 +11278,7 @@ dependencies = [
  "futures-core",
  "futures-util",
  "h2",
- "http 1.4.2",
+ "http",
  "http-body",
  "http-body-util",
  "hyper",
@@ -11338,7 +11327,7 @@ dependencies = [
  "futures-core",
  "futures-util",
  "h2",
- "http 1.4.2",
+ "http",
  "http-body",
  "http-body-util",
  "hyper",
@@ -11588,7 +11577,7 @@ dependencies = [
  "assign",
  "bytes",
  "date_header",
- "http 1.4.2",
+ "http",
  "js_int",
  "js_option",
  "maplit",
@@ -11613,7 +11602,7 @@ dependencies = [
  "bytes",
  "form_urlencoded",
  "getrandom 0.2.17",
- "http 1.4.2",
+ "http",
  "indexmap 2.14.0",
  "js_int",
  "konst 0.3.17",
@@ -11664,7 +11653,7 @@ version = "0.11.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bb2a705c3911870782e036a3a8b676d0166c6c93800b84f6b8b23c981f78ef08"
 dependencies = [
- "http 1.4.2",
+ "http",
  "js_int",
  "mime",
  "ruma-common",
@@ -12553,7 +12542,7 @@ dependencies = [
  "const_format",
  "futures",
  "gloo-net",
- "http 1.4.2",
+ "http",
  "http-body-util",
  "hyper",
  "inventory",
@@ -12849,13 +12838,13 @@ checksum = "0c790de23124f9ab44544d7ac05d60440adc586479ce501c1d6d7da3cd8c9cf5"
 
 [[package]]
 name = "slack-morphism"
-version = "1.17.0"
+version = "2.22.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "85d5cd8a4fa04d3d46f7a79a0dcb7cd52b30ed144d402c6dc8e98ed4ec5a5993"
+checksum = "9f38066ac7c15d2546c47b787c8f1f6070c5182f738202fb5a7c843f138f3a82"
 dependencies = [
  "async-recursion",
  "async-trait",
- "base64 0.21.7",
+ "base64 0.22.1",
  "bytes",
  "chrono",
  "ctrlc",
@@ -12863,17 +12852,15 @@ dependencies = [
  "futures-locks",
  "futures-util",
  "hex",
- "http 0.2.12",
+ "http",
  "lazy_static",
  "mime",
  "mime_guess",
- "rand 0.8.6",
- "ring",
+ "rand 0.10.1",
  "rsb_derive",
  "rvstruct",
  "serde",
  "serde_json",
- "serde_urlencoded",
  "serde_with",
  "tracing",
  "url",
@@ -13017,7 +13004,7 @@ dependencies = [
  "base64 0.22.1",
  "bytes",
  "futures",
- "http 1.4.2",
+ "http",
  "httparse",
  "log",
  "rand 0.8.6",
@@ -13702,7 +13689,7 @@ dependencies = [
  "glob",
  "gtk",
  "heck 0.5.0",
- "http 1.4.2",
+ "http",
  "jni 0.21.1",
  "libc",
  "log",
@@ -13902,7 +13889,7 @@ dependencies = [
  "cookie",
  "dpi",
  "gtk",
- "http 1.4.2",
+ "http",
  "jni 0.21.1",
  "objc2",
  "objc2-ui-kit",
@@ -13925,7 +13912,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b83849ee63ecb27a8e8d0fe51915ca215076914aca43f96db1179f0f415f6cd9"
 dependencies = [
  "gtk",
- "http 1.4.2",
+ "http",
  "jni 0.21.1",
  "log",
  "objc2",
@@ -13957,7 +13944,7 @@ dependencies = [
  "dom_query",
  "dunce",
  "glob",
- "http 1.4.2",
+ "http",
  "infer",
  "json-patch",
  "log",
@@ -14715,7 +14702,7 @@ dependencies = [
  "bytes",
  "futures-core",
  "futures-util",
- "http 1.4.2",
+ "http",
  "http-body",
  "http-body-util",
  "http-range-header",
@@ -15024,7 +15011,7 @@ dependencies = [
  "byteorder",
  "bytes",
  "data-encoding",
- "http 1.4.2",
+ "http",
  "httparse",
  "log",
  "rand 0.8.6",
@@ -15045,7 +15032,7 @@ dependencies = [
  "byteorder",
  "bytes",
  "data-encoding",
- "http 1.4.2",
+ "http",
  "httparse",
  "log",
  "rand 0.8.6",
@@ -15062,7 +15049,7 @@ checksum = "6c01152af293afb9c7c2a57e4b559c5620b421f6d133261c60dd2d0cdb38e6b8"
 dependencies = [
  "bytes",
  "data-encoding",
- "http 1.4.2",
+ "http",
  "httparse",
  "log",
  "rand 0.9.4",
@@ -15223,7 +15210,7 @@ dependencies = [
  "base64 0.22.1",
  "bytes",
  "genawaiter",
- "http 1.4.2",
+ "http",
  "libc",
  "prost 0.14.4",
  "roaring",
@@ -15564,7 +15551,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e994ba84b0bd1b1b0cf92878b7ef898a5c1760108fe7b6010327e274917a808c"
 dependencies = [
  "base64 0.22.1",
- "http 1.4.2",
+ "http",
  "httparse",
  "log",
 ]
@@ -17537,7 +17524,7 @@ dependencies = [
  "dunce",
  "gdkx11",
  "gtk",
- "http 1.4.2",
+ "http",
  "javascriptcore-rs",
  "jni 0.21.1",
  "libc",

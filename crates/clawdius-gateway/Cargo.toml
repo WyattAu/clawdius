@@ -34,7 +34,7 @@ axum = { workspace = true }
 # Platform SDKs (optional, feature-gated)
 teloxide = { version = "0.14", optional = true }
 serenity = { version = "0.12", optional = true, default-features = false, features = ["client", "gateway", "model", "rustls_backend"] }
-slack-morphism = { version = "1", optional = true }
+slack-morphism = { version = "2", optional = true }
 matrix-sdk = { version = "0.10", optional = true, default-features = false, features = ["rustls-tls"] }
 
 [dev-dependencies]
