@@ -122,7 +122,7 @@ mod tests {
             kind,
             line: 0,
             character: 0,
-            end_character: name.len() as u32,
+            end_character: u32::try_from(name.len()).unwrap_or(0),
             uri: "file:///test.rs".to_string(),
             definition_line: format!("{name}() {{}}"),
             doc_comment: None,

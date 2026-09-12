@@ -25,7 +25,7 @@ use axum::{Json, Router};
 use clap::Parser;
 
 use clawdius_gateway::adapter::{Platform, PlatformConfig};
-use clawdius_gateway::admin::{admin_router, AdminState};
+use clawdius_gateway::admin::{admin_router, AdminState, RoleStore};
 use clawdius_gateway::handler::ClawdiusHandler;
 use clawdius_gateway::MessageGateway;
 
@@ -402,6 +402,7 @@ async fn register_platform(gateway: &mut MessageGateway, platform: &Platform, cl
 }
 
 #[tokio::main]
+#[allow(clippy::too_many_lines)]
 async fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
@@ -528,7 +529,7 @@ async fn main() -> anyhow::Result<()> {
         api_key: cli
             .admin_api_key
             .unwrap_or_else(|| "clawdius-admin".to_string()),
-        roles: Default::default(),
+        roles: RoleStore::default(),
         #[cfg(feature = "auth")]
         auth: None,
         #[cfg(feature = "auth")]

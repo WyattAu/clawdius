@@ -9,6 +9,8 @@ use clawdius_ui::theme::colors;
 use clawdius_ui::theme::spacing;
 
 #[component]
+#[allow(clippy::must_use_candidate)]
+#[allow(clippy::too_many_lines)]
 pub fn SessionsPage(chat_state: RwSignal<ChatState>) -> impl IntoView {
     let (selected_session, set_selected_session) = signal(None::<String>);
     let (_search_query, _set_search_query) = signal(String::new());
@@ -19,8 +21,8 @@ pub fn SessionsPage(chat_state: RwSignal<ChatState>) -> impl IntoView {
             UiSessionSummary {
                 id: "session-1".into(),
                 title: "Rust ownership discussion".into(),
-                created_at: 1700000000000i64,
-                updated_at: 1700000100000i64,
+                created_at: 1_700_000_000_000i64,
+                updated_at: 1_700_000_100_000i64,
                 message_count: 12,
                 provider: "anthropic".into(),
                 model: "claude-sonnet-4-20250514".into(),
@@ -29,8 +31,8 @@ pub fn SessionsPage(chat_state: RwSignal<ChatState>) -> impl IntoView {
             UiSessionSummary {
                 id: "session-2".into(),
                 title: "API design patterns".into(),
-                created_at: 1699900000000i64,
-                updated_at: 1699900100000i64,
+                created_at: 1_699_900_000_000i64,
+                updated_at: 1_699_900_100_000i64,
                 message_count: 8,
                 provider: "openai".into(),
                 model: "gpt-4o".into(),
@@ -55,7 +57,7 @@ pub fn SessionsPage(chat_state: RwSignal<ChatState>) -> impl IntoView {
                     id: "m1".into(),
                     role: MessageRole::User,
                     content: "How does borrowing work in Rust?".into(),
-                    timestamp: 1700000000000i64,
+                    timestamp: 1_700_000_000_000i64,
                     model: None,
                     tokens_used: None,
                     is_streaming: false,
@@ -64,7 +66,7 @@ pub fn SessionsPage(chat_state: RwSignal<ChatState>) -> impl IntoView {
                     id: "m2".into(),
                     role: MessageRole::Assistant,
                     content: "Borrowing in Rust allows you to reference data without taking ownership. There are two types: immutable references (&T) and mutable references (&mut T). The key rules are...".into(),
-                    timestamp: 1700000001000i64,
+                    timestamp: 1_700_000_001_000i64,
                     model: Some("claude-sonnet-4-20250514".into()),
                     tokens_used: Some(150),
                     is_streaming: false,

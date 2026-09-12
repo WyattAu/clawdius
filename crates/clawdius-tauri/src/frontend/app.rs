@@ -8,7 +8,7 @@ use clawdius_ui::hooks::use_chat::use_chat;
 use clawdius_ui::hooks::use_config::use_config;
 use clawdius_ui::theme::colors;
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Page {
     Chat,
     Sessions,
@@ -16,6 +16,7 @@ pub enum Page {
 }
 
 #[component]
+#[allow(clippy::must_use_candidate)]
 pub fn App() -> impl IntoView {
     let (current_page, set_current_page) = signal(Page::Chat);
     let (chat_state, chat_actions) = use_chat();

@@ -49,12 +49,9 @@ async fn callback_handler(
     Query(query): Query<CallbackQuery>,
 ) -> impl IntoResponse {
     // Resolve the provider from the state parameter instead of hardcoding
-    let provider = match service.provider_for_state(&query.state) {
-        Some(name) => name,
-        None => {
-            tracing::error!("No provider found for state parameter");
-            return (StatusCode::UNAUTHORIZED, "Invalid or expired state").into_response();
-        },
+    let Some(provider) = service.provider_for_state(&query.state) else {
+        tracing::error!("No provider found for state parameter");
+        return (StatusCode::UNAUTHORIZED, "Invalid or expired state").into_response();
     };
 
     match service

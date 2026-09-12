@@ -227,6 +227,7 @@ impl ClawdiusLspBackend {
     /// # Errors
     /// This method does not currently return errors.
     #[allow(clippy::unused_async)]
+    #[allow(clippy::unused_async_trait_impl)]
     pub async fn verify(&self, _params: Value) -> LspResult<Value> {
         Ok(serde_json::json!({
             "status": "ok",

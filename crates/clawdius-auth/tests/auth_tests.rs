@@ -4,6 +4,10 @@
 //! PKCE verifier generation, authorization URL construction, auth error
 //! response codes, SAML 2.0, RBAC, and session revocation.
 
+// Tests exercise failure paths directly; panicking helpers are idiomatic here.
+#![allow(clippy::expect_used, clippy::unwrap_used, clippy::panic)]
+
+
 use clawdius_auth::rbac::{permissions, RbacPolicy, RbacService, Role};
 use clawdius_auth::saml::{parse_saml_response_xml, SamlAssertion, SamlError, SamlSpConfig};
 use clawdius_auth::{
@@ -113,7 +117,7 @@ fn make_service() -> AuthService {
 fn test_jwt_service() -> JwtService {
     JwtService::new(JwtConfig {
         algorithm: JwtAlgorithm::HS256,
-        secret: zeroize::Zeroizing::new(TEST_SECRET.to_string()),
+        secret: TEST_SECRET.to_string(),
         issuer: Some("clawdius".to_string()),
         ..Default::default()
     })
@@ -182,9 +186,9 @@ fn test_session_token_issue_and_validate() {
         email: user.email.clone(),
         name: user.name.clone(),
         provider: user.provider.clone(),
-        roles: user.groups.clone(),
-        iat: chrono::Utc::now().timestamp() as u64,
-        exp: (chrono::Utc::now().timestamp() as u64) + 3600,
+        roles: user.groups,
+        iat: chrono::Utc::now().timestamp().cast_unsigned(),
+        exp: (chrono::Utc::now().timestamp().cast_unsigned()).saturating_add(3600),
         jti: uuid::Uuid::new_v4().to_string(),
         iss: Some("clawdius".to_string()),
     };
@@ -217,14 +221,14 @@ fn test_validate_session_wrong_secret() {
         provider: "test".to_string(),
         roles: vec![],
         iat: 0,
-        exp: chrono::Utc::now().timestamp() as u64 + 3600,
+        exp: chrono::Utc::now().timestamp().cast_unsigned() + 3600,
         jti: "test".to_string(),
         iss: Some("clawdius".to_string()),
     };
 
     let wrong_svc = JwtService::new(JwtConfig {
         algorithm: JwtAlgorithm::HS256,
-        secret: zeroize::Zeroizing::new("wrong-secret".to_string()),
+        secret: "wrong-secret".to_string(),
         ..Default::default()
     });
     let token = wrong_svc.encode(&claims).expect("encode");
@@ -269,8 +273,8 @@ fn test_refresh_session() {
         name: None,
         provider: "Okta".to_string(),
         roles: vec![],
-        iat: chrono::Utc::now().timestamp() as u64,
-        exp: (chrono::Utc::now().timestamp() as u64) + 3600,
+        iat: chrono::Utc::now().timestamp().cast_unsigned(),
+        exp: (chrono::Utc::now().timestamp().cast_unsigned()).saturating_add(3600),
         jti: uuid::Uuid::new_v4().to_string(),
         iss: Some("clawdius".to_string()),
     };
@@ -379,8 +383,8 @@ fn test_session_revocation() {
         name: None,
         provider: "test".to_string(),
         roles: vec![],
-        iat: chrono::Utc::now().timestamp() as u64,
-        exp: (chrono::Utc::now().timestamp() as u64) + 3600,
+        iat: chrono::Utc::now().timestamp().cast_unsigned(),
+        exp: (chrono::Utc::now().timestamp().cast_unsigned()).saturating_add(3600),
         jti: "revoke-me".to_string(),
         iss: Some("clawdius".to_string()),
     };
@@ -412,8 +416,8 @@ fn test_revocation_cleans_expired_entries() {
         name: None,
         provider: "test".to_string(),
         roles: vec![],
-        iat: chrono::Utc::now().timestamp() as u64,
-        exp: (chrono::Utc::now().timestamp() as u64) + 3600,
+        iat: chrono::Utc::now().timestamp().cast_unsigned(),
+        exp: (chrono::Utc::now().timestamp().cast_unsigned()).saturating_add(3600),
         jti: "other-jti".to_string(),
         iss: Some("clawdius".to_string()),
     };
@@ -539,10 +543,10 @@ fn test_rbac_role_hierarchy() {
 
 #[test]
 fn test_rbac_role_from_str() {
-    assert_eq!(Role::from_str("admin"), Some(Role::Admin));
-    assert_eq!(Role::from_str("Admin"), Some(Role::Admin));
-    assert_eq!(Role::from_str("viewer"), Some(Role::Viewer));
-    assert_eq!(Role::from_str("unknown"), None);
+    assert_eq!(Role::parse("admin"), Some(Role::Admin));
+    assert_eq!(Role::parse("Admin"), Some(Role::Admin));
+    assert_eq!(Role::parse("viewer"), Some(Role::Viewer));
+    assert_eq!(Role::parse("unknown"), None);
 }
 
 #[test]
@@ -579,8 +583,7 @@ fn test_rbac_default_policy_admin() {
     for perm in permissions::all() {
         assert!(
             policy.has_permission(&Role::Admin, &perm),
-            "Admin should have {:?}",
-            perm
+            "Admin should have {perm:?}"
         );
     }
 }
@@ -596,7 +599,7 @@ fn test_rbac_service_check() {
         provider: "test".to_string(),
         roles: vec!["admin".to_string()],
         iat: 0,
-        exp: 9999999999,
+        exp: 9_999_999_999,
         jti: "test".to_string(),
         iss: None,
     };

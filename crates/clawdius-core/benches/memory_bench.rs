@@ -64,7 +64,7 @@ fn current_rss_kb() -> u64 {
 
 /// Get file size in bytes.
 fn file_size(path: &Path) -> u64 {
-    std::fs::metadata(path).map(|m| m.len()).unwrap_or(0)
+    std::fs::metadata(path).map_or(0, |m| m.len())
 }
 
 fn bench_memory_per_session(c: &mut Criterion) {

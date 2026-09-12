@@ -84,11 +84,10 @@ pub fn ChatInput(
 
     let char_count = move || input_value.get().len();
     let count_pct = move || {
-        if token_limit == 0 {
-            0u32
-        } else {
-            token_count * 100 / token_limit
-        }
+        token_count
+            .checked_mul(100)
+            .and_then(|v| v.checked_div(token_limit))
+            .unwrap_or(0)
     };
     let count_color = move || {
         let pct = count_pct();

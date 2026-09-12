@@ -57,11 +57,9 @@ fn latency_color(ms: u32) -> &'static str {
 }
 
 fn token_bar_pct(used: u32, limit: u32) -> u32 {
-    if limit == 0 {
-        0
-    } else {
-        used * 100 / limit
-    }
+    used.checked_mul(100)
+        .and_then(|v| v.checked_div(limit))
+        .unwrap_or(0)
 }
 
 fn token_bar_color(pct: u32) -> &'static str {

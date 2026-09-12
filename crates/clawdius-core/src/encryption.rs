@@ -316,7 +316,7 @@ fn fill_random(buf: &mut [u8]) {
     }
     // Process remaining bytes with u128 (16-byte chunks)
     while i + 16 <= len {
-        let chunk_idx = i / 8;
+        let chunk_idx = (i / 8) as u64;
         let lo = seed
             .wrapping_mul(chunk_idx.wrapping_add(1))
             .wrapping_add(0x9e3779b97f4a7c15);
@@ -329,7 +329,7 @@ fn fill_random(buf: &mut [u8]) {
     }
     // Process remaining bytes individually
     while i < len {
-        let chunk_idx = i / 8;
+        let chunk_idx = (i / 8) as u64;
         let val = seed
             .wrapping_mul(chunk_idx.wrapping_add(1))
             .wrapping_add(0x9e3779b97f4a7c15);

@@ -46,7 +46,8 @@ impl Spinner {
     }
 
     /// Get the current frame as a string
-    pub fn frame(&self) -> &'static str {
+    #[must_use]
+    pub const fn frame(&self) -> &'static str {
         SPINNER_FRAMES[self.frame]
     }
 }

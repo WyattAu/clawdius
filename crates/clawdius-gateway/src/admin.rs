@@ -114,7 +114,7 @@ async fn require_api_key(
             .into_response();
     }
 
-    next.run(req).into_response()
+    next.run(req).await.into_response()
 }
 
 /// Generic API response wrapper.
@@ -288,6 +288,7 @@ pub fn admin_router(state: Arc<AdminState>) -> Router {
 /// Request body for setting a user's role.
 #[derive(Debug, Deserialize)]
 pub struct SetRoleRequest {
+    /// New role name (viewer, user, operator, admin).
     pub role: String,
 }
 
@@ -422,7 +423,7 @@ async fn get_tenant(
 }
 
 async fn delete_tenant(
-    headers: HeaderMap,
+    #[cfg_attr(not(feature = "auth"), allow(unused_variables))] headers: HeaderMap,
     State(state): State<Arc<AdminState>>,
     Path(tenant_id): Path<String>,
 ) -> impl IntoResponse {
@@ -474,7 +475,7 @@ async fn get_usage(
 }
 
 async fn reset_usage(
-    headers: HeaderMap,
+    #[cfg_attr(not(feature = "auth"), allow(unused_variables))] headers: HeaderMap,
     State(state): State<Arc<AdminState>>,
     Path(_tenant_id): Path<String>,
 ) -> impl IntoResponse {
@@ -532,7 +533,7 @@ async fn get_subscription(
 }
 
 async fn change_plan(
-    headers: HeaderMap,
+    #[cfg_attr(not(feature = "auth"), allow(unused_variables))] headers: HeaderMap,
     State(state): State<Arc<AdminState>>,
     Path(tenant_id): Path<String>,
     Json(req): Json<ChangePlanRequest>,
@@ -567,7 +568,7 @@ async fn change_plan(
 }
 
 async fn cancel_subscription(
-    headers: HeaderMap,
+    #[cfg_attr(not(feature = "auth"), allow(unused_variables))] headers: HeaderMap,
     State(state): State<Arc<AdminState>>,
     Path(tenant_id): Path<String>,
 ) -> impl IntoResponse {
@@ -647,6 +648,7 @@ async fn get_audit_stats(State(_state): State<Arc<AdminState>>) -> impl IntoResp
     }))
 }
 
+/// Request body for audit log export.
 #[derive(Debug, Deserialize)]
 pub struct ExportAuditRequest {
     /// Start time (RFC 3339).
@@ -716,13 +718,9 @@ async fn check_rbac_permission(
 }
 
 #[cfg(not(feature = "auth"))]
-async fn check_rbac_permission(
-    _headers: &HeaderMap,
-    _state: &AdminState,
-    _perm: &str,
-) -> Result<(), axum::response::Response> {
-    Ok(())
-}
+// Feature-parity stub for the auth-gated implementation.
+#[allow(dead_code)]
+fn check_rbac_permission(_headers: &HeaderMap, _state: &AdminState, _perm: &str) {}
 
 // ─────────────────────────────────────────────────────────
 // Helpers
@@ -752,7 +750,7 @@ mod tests {
             billing: Arc::new(BillingManager::new()),
             usage: Arc::new(TenantUsageTracker::new()),
             api_key: "test-key".to_string(),
-            roles: Default::default(),
+            roles: RoleStore::default(),
             #[cfg(feature = "auth")]
             auth: None,
             #[cfg(feature = "auth")]

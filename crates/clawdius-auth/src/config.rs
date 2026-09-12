@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-/// Configuration for a single OpenID Connect identity provider.
+/// Configuration for a single `OpenID` Connect identity provider.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OidcProviderConfig {
     /// Human-readable identifier used to select the provider in routes.
@@ -29,7 +29,7 @@ fn default_scopes() -> Vec<String> {
     ]
 }
 
-fn default_true() -> bool {
+const fn default_true() -> bool {
     true
 }
 
@@ -51,11 +51,11 @@ pub struct AuthConfig {
     pub allowed_origins: Vec<String>,
 }
 
-fn default_session_duration() -> u64 {
+const fn default_session_duration() -> u64 {
     3600
 }
 
-fn default_refresh_duration() -> u64 {
+const fn default_refresh_duration() -> u64 {
     604_800
 }
 

@@ -174,7 +174,8 @@ pub struct CloudAgent {
 
 /// A task submitted to the Cloud Agent.
 struct CloudTask {
-    /// Unique task identifier.
+    /// Unique task identifier (reserved for status/trace correlation).
+    #[allow(dead_code)]
     id: String,
     /// Task class for routing.
     task_type: TaskClass,
@@ -597,6 +598,8 @@ impl ModelRouter {
     }
 
     /// Execute an MCP tool call via the client manager.
+    // Wired into the unified agent loop; retained as the single MCP dispatch seam.
+    #[allow(dead_code)]
     async fn execute_mcp_tool(&self, full_name: &str, arguments: &str) -> Result<String> {
         let Some(manager) = &self.mcp_manager else {
             return Err(crate::Error::Llm("No MCP manager configured".to_string()));

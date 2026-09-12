@@ -1066,7 +1066,6 @@ impl AgentTeam {
                             let messages = vec![ChatMessage {
                                 role: ChatRole::User,
                                 content: user_prompt,
-                                images: None,
                             }];
                             client.chat(messages).await.map_err(|e| {
                                 AgentError::TaskFailed(format!("LLM call failed: {e}"))
@@ -1115,8 +1114,12 @@ impl AgentTeam {
                                 .collect::<String>();
                             entry.highlights.push(highlight);
 
-                            let subtask = batch.iter().find(|s| s.id == subtask_id).unwrap();
-                            completed_results.insert(subtask_id, (subtask.clone(), response));
+                            if let Some(subtask) =
+                                batch.iter().find(|s| s.id == subtask_id)
+                            {
+                                completed_results
+                                    .insert(subtask_id, (subtask.clone(), response));
+                            }
                         },
                         Ok(Err(e)) => {
                             tracing::error!("Parallel subtask failed: {e}");

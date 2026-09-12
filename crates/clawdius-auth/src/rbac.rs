@@ -21,11 +21,13 @@ use crate::user::SessionClaims;
 pub struct Permission {
     /// Category (e.g., "code", "session", "admin").
     pub category: String,
-    /// Action (e.g., "read", "write", "manage_users").
+    /// Action (e.g., "read", "write", "`manage_users`").
     pub action: String,
 }
 
 impl Permission {
+    /// Create a permission from a category and action pair.
+    #[must_use]
     pub fn new(category: &str, action: &str) -> Self {
         Self {
             category: category.to_string(),
@@ -39,81 +41,124 @@ pub mod permissions {
     use super::Permission;
 
     // Code operations (4)
+    /// Read code and repositories.
+    #[must_use]
     pub fn code_read() -> Permission {
         Permission::new("code", "read")
     }
+    /// Write and modify code.
+    #[must_use]
     pub fn code_write() -> Permission {
         Permission::new("code", "write")
     }
+    /// Execute code and shell commands.
+    #[must_use]
     pub fn code_execute() -> Permission {
         Permission::new("code", "execute")
     }
+    /// Delete code and files.
+    #[must_use]
     pub fn code_delete() -> Permission {
         Permission::new("code", "delete")
     }
 
     // Session management (5)
+    /// Create new sessions.
+    #[must_use]
     pub fn session_create() -> Permission {
         Permission::new("session", "create")
     }
+    /// Read session contents.
+    #[must_use]
     pub fn session_read() -> Permission {
         Permission::new("session", "read")
     }
+    /// Update existing sessions.
+    #[must_use]
     pub fn session_update() -> Permission {
         Permission::new("session", "update")
     }
+    /// Delete sessions.
+    #[must_use]
     pub fn session_delete() -> Permission {
         Permission::new("session", "delete")
     }
+    /// Share sessions with others.
+    #[must_use]
     pub fn session_share() -> Permission {
         Permission::new("session", "share")
     }
 
     // Admin functions (4)
+    /// Create, update, and remove users.
+    #[must_use]
     pub fn admin_manage_users() -> Permission {
         Permission::new("admin", "manage_users")
     }
+    /// Create, update, and remove teams.
+    #[must_use]
     pub fn admin_manage_teams() -> Permission {
         Permission::new("admin", "manage_teams")
     }
+    /// View the audit log.
+    #[must_use]
     pub fn admin_view_audit() -> Permission {
         Permission::new("admin", "view_audit")
     }
+    /// Change system configuration.
+    #[must_use]
     pub fn admin_manage_config() -> Permission {
         Permission::new("admin", "manage_config")
     }
 
     // Provider management (3)
+    /// Add LLM providers.
+    #[must_use]
     pub fn provider_add() -> Permission {
         Permission::new("provider", "add_provider")
     }
+    /// Remove LLM providers.
+    #[must_use]
     pub fn provider_remove() -> Permission {
         Permission::new("provider", "remove_provider")
     }
+    /// Manage provider API keys.
+    #[must_use]
     pub fn provider_manage_keys() -> Permission {
         Permission::new("provider", "manage_keys")
     }
 
     // Plugin management (3)
+    /// Install plugins.
+    #[must_use]
     pub fn plugin_install() -> Permission {
         Permission::new("plugin", "install")
     }
+    /// Remove plugins.
+    #[must_use]
     pub fn plugin_remove() -> Permission {
         Permission::new("plugin", "remove")
     }
+    /// Configure plugins.
+    #[must_use]
     pub fn plugin_configure() -> Permission {
         Permission::new("plugin", "configure")
     }
 
     // Billing (2)
+    /// View usage and billing data.
+    #[must_use]
     pub fn billing_view_usage() -> Permission {
         Permission::new("billing", "view_usage")
     }
+    /// Manage billing, plans, and subscriptions.
+    #[must_use]
     pub fn billing_manage() -> Permission {
         Permission::new("billing", "manage_billing")
     }
 
     /// All 23 permissions.
+    #[must_use]
     pub fn all() -> Vec<Permission> {
         vec![
             code_read(),
@@ -144,20 +189,25 @@ pub mod permissions {
 /// Role hierarchy levels (higher number = more permissions).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub enum Role {
+    /// Read-only access.
     Viewer = 0,
+    /// Standard user access.
     User = 1,
+    /// Can manage providers and plugins.
     Operator = 2,
+    /// Full administrative access.
     Admin = 3,
 }
 
 impl Role {
     /// Parse a role from a string.
-    pub fn from_str(s: &str) -> Option<Self> {
+    #[must_use]
+    pub fn parse(s: &str) -> Option<Self> {
         match s.to_lowercase().as_str() {
-            "viewer" => Some(Role::Viewer),
-            "user" => Some(Role::User),
-            "operator" => Some(Role::Operator),
-            "admin" => Some(Role::Admin),
+            "viewer" => Some(Self::Viewer),
+            "user" => Some(Self::User),
+            "operator" => Some(Self::Operator),
+            "admin" => Some(Self::Admin),
             _ => None,
         }
     }
@@ -223,19 +273,19 @@ impl Default for RbacPolicy {
 
 impl RbacPolicy {
     /// Check if a role has a specific permission.
+    #[must_use]
     pub fn has_permission(&self, role: &Role, permission: &Permission) -> bool {
         self.role_permissions
             .get(role)
-            .map(|perms| perms.contains(permission))
-            .unwrap_or(false)
+            .is_some_and(|perms| perms.contains(permission))
     }
 
     /// Get all permissions for a role.
+    #[must_use]
     pub fn permissions_for_role(&self, role: &Role) -> &[Permission] {
         self.role_permissions
             .get(role)
-            .map(|v| v.as_slice())
-            .unwrap_or(&[])
+            .map_or(&[], std::vec::Vec::as_slice)
     }
 }
 
@@ -246,6 +296,8 @@ pub struct RbacService {
 }
 
 impl RbacService {
+    /// Create a service backed by the given policy.
+    #[must_use]
     pub fn new(policy: RbacPolicy) -> Self {
         Self {
             policy: Arc::new(policy),
@@ -253,12 +305,17 @@ impl RbacService {
     }
 
     /// Check if the given claims have the required permission.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`RbacError::InsufficientPermissions`] when none of the
+    /// caller's roles grants the permission.
     pub fn check(&self, claims: &SessionClaims, permission: &Permission) -> Result<(), RbacError> {
         // Get the highest role from the user's roles
         let user_role = claims
             .roles
             .iter()
-            .filter_map(|r| Role::from_str(r))
+            .filter_map(|r| Role::parse(r))
             .max()
             .unwrap_or(Role::Viewer);
 
@@ -276,9 +333,12 @@ impl RbacService {
 /// Errors from RBAC checks.
 #[derive(Debug, thiserror::Error)]
 pub enum RbacError {
+    /// The caller lacks the permission required for the operation.
     #[error("Insufficient permissions: requires {required:?}, user has role {actual_role:?}")]
     InsufficientPermissions {
+        /// The permission that was required.
         required: Permission,
+        /// The highest role the caller held.
         actual_role: Role,
     },
 }
@@ -290,57 +350,55 @@ impl IntoResponse for RbacError {
 }
 
 /// Axum extractor that enforces a required permission.
+///
+/// The required [`Permission`] must be inserted into the request extensions
+/// (e.g. by a per-route middleware); the guard then validates the caller's
+/// claims against it via the [`RbacService`] also present in the extensions.
 pub struct RequirePermission {
+    /// Verified session claims of the caller.
     pub claims: SessionClaims,
-}
-
-impl RequirePermission {
-    /// Create an extractor that requires the given permission.
-    pub fn new(permission: Permission) -> RequirePermissionGuard {
-        RequirePermissionGuard { permission }
-    }
 }
 
 /// Guard that checks a specific permission.
 pub struct RequirePermissionGuard {
-    permission: Permission,
+    /// The permission that was required and validated.
+    pub permission: Permission,
 }
 
 impl<S: Send + Sync> FromRequestParts<S> for RequirePermissionGuard {
     type Rejection = RbacError;
 
+    #[allow(clippy::unused_async_trait_impl)]
     async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
+        let missing_permission = || RbacError::InsufficientPermissions {
+            required: Permission::new("", ""),
+            actual_role: Role::Viewer,
+        };
+        let permission = parts
+            .extensions
+            .get::<Permission>()
+            .cloned()
+            .ok_or_else(missing_permission)?;
+
         let auth_user = parts
             .extensions
             .get::<Arc<crate::middleware::AuthUser>>()
-            .ok_or(RbacError::InsufficientPermissions {
-                required: Permission::new("", ""),
+            .ok_or_else(|| RbacError::InsufficientPermissions {
+                required: permission.clone(),
                 actual_role: Role::Viewer,
             })?;
 
-        let rbac = parts.extensions.get::<Arc<RbacService>>().ok_or(
+        let rbac = parts.extensions.get::<Arc<RbacService>>().ok_or_else(|| {
             RbacError::InsufficientPermissions {
-                required: Permission::new("", ""),
+                required: permission.clone(),
                 actual_role: Role::Viewer,
-            },
-        )?;
+            }
+        })?;
 
         rbac.check(&auth_user.claims, &permission)?;
 
         Ok(Self { permission })
     }
-}
-
-/// Middleware layer that injects RBAC service into request extensions.
-pub fn rbac_layer(
-    rbac: Arc<RbacService>,
-) -> tower::layer::util::MapRequestLayer<
-    impl FnMut(axum::http::Request<axum::body::Body>) -> axum::http::Request<axum::body::Body> + Clone,
-> {
-    tower::layer::layer_fn(move |mut req: axum::http::Request<axum::body::Body>| {
-        req.extensions_mut().insert(Arc::clone(&rbac));
-        req
-    })
 }
 
 #[cfg(test)]
@@ -388,8 +446,7 @@ mod tests {
         for perm in permissions::all() {
             assert!(
                 policy.has_permission(&Role::Admin, &perm),
-                "Admin should have {:?}",
-                perm
+                "Admin should have {perm:?}"
             );
         }
     }
@@ -405,7 +462,7 @@ mod tests {
             provider: "test".to_string(),
             roles: vec!["admin".to_string()],
             iat: 0,
-            exp: 9999999999,
+            exp: 9_999_999_999,
             jti: "test".to_string(),
             iss: None,
         };

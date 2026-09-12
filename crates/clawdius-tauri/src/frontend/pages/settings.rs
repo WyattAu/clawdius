@@ -7,11 +7,13 @@ use clawdius_ui::theme::spacing;
 
 /// Settings page for provider, model, and theme configuration.
 #[component]
+#[allow(clippy::must_use_candidate)]
+#[allow(clippy::needless_pass_by_value, clippy::too_many_lines)]
 pub fn SettingsPage(
     config_state: RwSignal<ConfigState>,
     config_actions: ConfigActions,
 ) -> impl IntoView {
-    let providers = Memo::new(move |_| config_state.get().available_providers.clone());
+    let providers = Memo::new(move |_| config_state.get().available_providers);
 
     let models = Memo::new(move |_| {
         let cs = config_state.get();
@@ -68,10 +70,10 @@ pub fn SettingsPage(
                             .get()
                             .into_iter()
                             .map(|p| {
-                                let name = p.name.clone();
-                                let label = name.clone();
                                 let selected =
-                                    config_state.get().current_provider == name;
+                                    config_state.get().current_provider == p.name;
+                                let name = p.name;
+                                let label = name.clone();
                                 view! {
                                     <option value={name} selected={selected}>
                                         {label}
@@ -164,7 +166,7 @@ pub fn SettingsPage(
                 </label>
                 <input
                     type="text"
-                    value={move || config_state.get().api_endpoint.clone()}
+                    value={move || config_state.get().api_endpoint}
                     style:width="100%"
                     style:max-width="400px"
                     style:padding="8px 12px"

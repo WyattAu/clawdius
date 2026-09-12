@@ -42,8 +42,7 @@ fn scalar_hash(data: &[u8]) -> u64 {
     let mut h3: u64 = k1;
     let mut h4: u64 = k1;
 
-    let chunks = data.chunks_exact(32);
-    let remainder = chunks.remainder();
+    let (chunks, remainder) = data.as_chunks::<32>();
 
     for chunk in chunks {
         let w0 = u64::from_le_bytes(chunk[0..8].try_into().unwrap());
@@ -136,8 +135,7 @@ unsafe fn hash_sse2(data: &[u8]) -> u64 {
     let mut h3: u64 = k1;
     let mut h4: u64 = k1;
 
-    let chunks = data.chunks_exact(32);
-    let remainder = chunks.remainder();
+    let (chunks, remainder) = data.as_chunks::<32>();
 
     for chunk in chunks {
         let v1 = _mm_loadu_si128(chunk.as_ptr() as *const __m128i);
@@ -228,8 +226,7 @@ unsafe fn hash_neon(data: &[u8]) -> u64 {
     let mut h3: u64 = k1;
     let mut h4: u64 = k1;
 
-    let chunks = data.chunks_exact(32);
-    let remainder = chunks.remainder();
+    let (chunks, remainder) = data.as_chunks::<32>();
 
     for chunk in chunks {
         let v1 = vld1q_u8(chunk.as_ptr());

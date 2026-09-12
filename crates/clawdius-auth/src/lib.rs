@@ -1,6 +1,6 @@
 //! Authentication and authorization for the Clawdius platform.
 //!
-//! Provides OpenID Connect integration, SAML 2.0 Service Provider,
+//! Provides `OpenID` Connect integration, SAML 2.0 Service Provider,
 //! Role-Based Access Control (RBAC), JWT session management, Axum
 //! middleware, and HTTP handlers for login, callback, logout, refresh,
 //! and current-user endpoints.

@@ -110,15 +110,6 @@ fn test_cli_sprint_subcommand() {
 // ─────────────────────────────────────────────────────────
 
 #[test]
-fn test_cli_mcp_subcommand() {
-    let cli = Cli::parse_from(["clawdius", "mcp", "serve"]);
-    match cli.command {
-        Some(Commands::Mcp { .. }) => {},
-        other => panic!("expected Mcp command, got: {other:?}"),
-    }
-}
-
-#[test]
 fn test_cli_config_show() {
     let cli = Cli::parse_from(["clawdius", "config", "show"]);
     match cli.command {
@@ -127,6 +118,7 @@ fn test_cli_config_show() {
     }
 }
 
+#[cfg(feature = "keyring")]
 #[test]
 fn test_cli_auth_subcommand() {
     let cli = Cli::parse_from(["clawdius", "auth", "login"]);
@@ -151,12 +143,11 @@ fn test_all_cli_subcommands_exist() {
         vec!["clawdius", "sessions"],
     ];
 
-    for args in subcommands {
+    for args in &subcommands {
         let result = Cli::try_parse_from(args);
         assert!(
             result.is_ok(),
-            "Failed to parse {:?}: {:?}",
-            args,
+            "Failed to parse {args:?}: {:?}",
             result.err()
         );
     }

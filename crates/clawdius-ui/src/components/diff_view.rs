@@ -56,7 +56,7 @@ fn parse_unified_diff(raw: &str) -> (String, Vec<DiffHunk>) {
             }
             current_header = line.to_string();
             if let Some(nums) = line.split("@@").nth(1) {
-                let parts: Vec<&str> = nums.trim().split_whitespace().collect();
+                let parts: Vec<&str> = nums.split_whitespace().collect();
                 if parts.len() >= 2 {
                     old_line = parts[0]
                         .trim_start_matches('-')

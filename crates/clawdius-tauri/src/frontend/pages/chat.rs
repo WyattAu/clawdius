@@ -11,6 +11,8 @@ use clawdius_ui::hooks::use_config::ConfigState;
 use clawdius_ui::layouts::main::MainLayout;
 
 #[component]
+#[allow(clippy::must_use_candidate)]
+#[allow(clippy::needless_pass_by_value)]
 pub fn ChatPage(
     chat_state: RwSignal<ChatState>,
     chat_actions: ChatActions,
@@ -22,9 +24,9 @@ pub fn ChatPage(
             title: "Welcome".into(),
             created_at: 0,
             updated_at: 0,
-            message_count: chat_state.get().messages.len() as u32,
-            provider: chat_state.get().current_provider.clone(),
-            model: chat_state.get().current_model.clone(),
+            message_count: u32::try_from(chat_state.get().messages.len()).unwrap_or(0),
+            provider: chat_state.get().current_provider,
+            model: chat_state.get().current_model,
             preview: None,
         }]
     });
@@ -45,7 +47,7 @@ pub fn ChatPage(
     };
 
     let messages_view = move || {
-        let msgs = chat_state.get().messages.clone();
+        let msgs = chat_state.get().messages;
         msgs.into_iter()
             .map(|msg| {
                 view! {
@@ -59,18 +61,14 @@ pub fn ChatPage(
         let cs = chat_state.get();
         let cfg = config_state.get();
         StatusBarState {
-            provider: cfg.current_provider.clone(),
-            model: cfg.current_model.clone(),
+            provider: cfg.current_provider,
+            model: cfg.current_model,
             mode: "chat".into(),
             tokens_used: cs.token_usage.total_tokens,
-            tokens_limit: 200000,
+            tokens_limit: 200_000,
             latency_ms: 0,
             is_connected: true,
-            connection_status: if cs.is_streaming {
-                ConnectionStatus::Connected
-            } else {
-                ConnectionStatus::Connected
-            },
+            connection_status: ConnectionStatus::Connected,
             workspace: None,
         }
     });
@@ -98,7 +96,7 @@ pub fn ChatPage(
                         }
                         disabled=false
                         token_count=chat_state.get().token_usage.total_tokens
-                        token_limit=200000
+                        token_limit=200_000
                     />
                 </div>
             </div>

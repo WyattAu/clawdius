@@ -71,11 +71,9 @@ impl SprintEngine {
                 )
                 .await
             {
-                return Ok(crate::tools::ToolResult {
-                    success: false,
-                    output: "Tool call blocked by hook".to_string(),
-                    duration_ms: 0,
-                });
+                return Ok(crate::tools::ToolResult::error(
+                    "Tool call blocked by hook",
+                ));
             }
         }
 
@@ -83,16 +81,12 @@ impl SprintEngine {
         let result = if let Some(executor) = &self.tool_executor {
             executor.execute(request.clone()).await?
         } else {
-            crate::tools::ToolResult {
-                success: false,
-                output: "No tool executor configured".to_string(),
-                duration_ms: 0,
-            }
+            crate::tools::ToolResult::error("No tool executor configured")
         };
 
         // Run after hooks
         for hook in &self.hooks {
-            hook.after_tool_call(&request.name, &result.output).await;
+            hook.after_tool_call(&request.name, &result.content).await;
         }
 
         Ok(result)
@@ -101,7 +95,7 @@ impl SprintEngine {
     /// Get browser accessibility snapshot if browser daemon is available.
     pub async fn get_browser_snapshot(&self) -> Option<String> {
         let daemon = self.browser_daemon.as_ref()?;
-        match daemon.snapshot().await {
+        match daemon.build_snapshot("sprint").await {
             Ok(snapshot) => Some(snapshot.to_ref_list()),
             Err(e) => {
                 tracing::warn!("Failed to get browser snapshot: {e}");
@@ -113,7 +107,7 @@ impl SprintEngine {
     /// Navigate browser to a URL if browser daemon is available.
     pub async fn navigate_browser(&self, url: &str) -> Result<bool> {
         if let Some(daemon) = &self.browser_daemon {
-            match daemon.navigate(url).await {
+            match daemon.navigate(url, None).await {
                 Ok(_) => Ok(true),
                 Err(e) => {
                     tracing::warn!("Browser navigation failed: {e}");

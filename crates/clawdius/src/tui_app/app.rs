@@ -1147,7 +1147,7 @@ impl App {
     }
 
     async fn send_message(&mut self) -> anyhow::Result<()> {
-        let message: String = self.input.drain(..).collect();
+        let message: String = std::mem::take(&mut self.input);
 
         // Resolve @mentions (files, URLs, etc.)
         let resolver = clawdius_core::MentionResolver::new(std::env::current_dir()?);

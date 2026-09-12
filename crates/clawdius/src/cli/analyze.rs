@@ -404,7 +404,7 @@ fn run_auto_analysis(files: &[PathBuf], verbose: bool) {
     let debt_count = debt.len();
 
     if drift_count > 0 || debt_count > 0 {
-        println!("  📊 Analysis: {drift_count} drift(s), {debt_count} debt item(s)",);
+        println!("  📊 Analysis: {drift_count} drift(s), {debt_count} debt item(s)");
     } else if verbose {
         println!("  ✅ No new drift or debt detected");
     }

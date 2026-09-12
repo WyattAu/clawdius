@@ -309,7 +309,7 @@ fn test_shell_tool_basic_command() {
         .unwrap();
 
     assert_eq!(result.exit_code, 0);
-    assert!(result.stdout.trim() == "hello");
+    assert_eq!(result.stdout.trim(), "hello");
     assert!(!result.timed_out);
 }
 

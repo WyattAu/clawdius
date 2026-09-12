@@ -17,6 +17,7 @@ pub struct AuthUser {
 impl<S: Send + Sync> FromRequestParts<S> for AuthUser {
     type Rejection = AuthError;
 
+    #[allow(clippy::unused_async_trait_impl)]
     async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
         let auth_service = parts
             .extensions
@@ -37,7 +38,7 @@ impl<S: Send + Sync> FromRequestParts<S> for AuthUser {
             .validate_session(token)
             .map_err(|_| AuthError::InvalidToken)?;
 
-        Ok(AuthUser { claims })
+        Ok(Self { claims })
     }
 }
 
@@ -59,17 +60,17 @@ pub enum AuthError {
 impl IntoResponse for AuthError {
     fn into_response(self) -> Response {
         let (status, message) = match self {
-            AuthError::MissingAuthService => (
+            Self::MissingAuthService => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Auth service not configured",
             ),
-            AuthError::MissingToken => (StatusCode::UNAUTHORIZED, "Missing authorization token"),
-            AuthError::InvalidTokenFormat => (
+            Self::MissingToken => (StatusCode::UNAUTHORIZED, "Missing authorization token"),
+            Self::InvalidTokenFormat => (
                 StatusCode::UNAUTHORIZED,
                 "Invalid token format (expected Bearer)",
             ),
-            AuthError::InvalidToken => (StatusCode::UNAUTHORIZED, "Invalid or expired token"),
-            AuthError::ExpiredToken => (StatusCode::UNAUTHORIZED, "Token expired"),
+            Self::InvalidToken => (StatusCode::UNAUTHORIZED, "Invalid or expired token"),
+            Self::ExpiredToken => (StatusCode::UNAUTHORIZED, "Token expired"),
         };
 
         (status, message).into_response()

@@ -223,13 +223,13 @@ impl TenantStore {
             let usage = usage_stmt
                 .query_map([&id], |row| {
                     Ok(TenantUsage {
-                        tasks_total: row.get(0)?,
-                        tasks_hour: row.get(1)?,
-                        tasks_day: row.get(2)?,
-                        tokens_total: row.get(3)?,
-                        sessions_total: row.get(4)?,
-                        sessions_active: row.get(5)?,
-                        files_modified: row.get(6)?,
+                        tasks_total: row.get::<_, i64>(0)? as u64,
+                        tasks_hour: row.get::<_, i64>(1)? as u64,
+                        tasks_day: row.get::<_, i64>(2)? as u64,
+                        tokens_total: row.get::<_, i64>(3)? as u64,
+                        sessions_total: row.get::<_, i64>(4)? as u64,
+                        sessions_active: row.get::<_, i64>(5)? as u64,
+                        files_modified: row.get::<_, i64>(6)? as u64,
                     })
                 })?
                 .next()

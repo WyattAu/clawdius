@@ -16,7 +16,7 @@ use axum::{
 };
 use clawdius_core::billing::BillingManager;
 use clawdius_core::usage::TenantUsageTracker;
-use clawdius_gateway::admin::{admin_router, AdminState};
+use clawdius_gateway::admin::{admin_router, AdminState, RoleStore};
 use std::sync::Arc;
 use tower::ServiceExt;
 
@@ -26,6 +26,7 @@ fn test_admin_state() -> Arc<AdminState> {
         billing: Arc::new(BillingManager::new()),
         usage: Arc::new(TenantUsageTracker::new()),
         api_key: "test-admin-key".to_string(),
+        roles: RoleStore::default(),
     })
 }
 

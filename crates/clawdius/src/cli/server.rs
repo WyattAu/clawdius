@@ -39,6 +39,7 @@ pub(super) async fn handle_server(host: &str, port: u16) -> anyhow::Result<()> {
         usage: std::sync::Arc::new(clawdius_core::usage::TenantUsageTracker::new()),
         api_key: std::env::var("CLAWDIUS_ADMIN_API_KEY")
             .unwrap_or_else(|_| "clawdius-admin".to_string()),
+        roles: clawdius_gateway::admin::RoleStore::default(),
     });
     let admin_router = clawdius_gateway::admin::admin_router(admin_state);
     let admin_listener = tokio::net::TcpListener::bind(admin_addr).await?;

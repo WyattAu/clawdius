@@ -5,16 +5,48 @@ use jsonwebtoken::{decode, decode_header, Algorithm, DecodingKey, Validation};
 use parking_lot::RwLock;
 use serde::Deserialize;
 use std::collections::HashMap;
-use std::sync::Arc;
 use tokenkit::service::{JwtAlgorithm, JwtConfig, JwtService};
 
 /// Cached OIDC discovery document.
 #[derive(Debug, Clone)]
 struct OidcDiscovery {
+    /// Authorization endpoint from the discovery document (reserved for
+    /// building authorization redirects).
+    #[allow(dead_code)]
     authorization_endpoint: String,
     token_endpoint: String,
     jwks_uri: String,
     issuer: String,
+}
+
+#[derive(Deserialize)]
+struct DiscoveryDoc {
+    authorization_endpoint: String,
+    token_endpoint: String,
+    jwks_uri: String,
+    issuer: String,
+}
+
+#[derive(Deserialize)]
+struct JwksResponse {
+    keys: Vec<jsonwebtoken::jwk::Jwk>,
+}
+
+#[derive(Deserialize)]
+struct IdTokenClaims {
+    sub: String,
+    #[serde(default)]
+    email: Option<String>,
+    #[serde(default)]
+    name: Option<String>,
+    #[serde(default)]
+    given_name: Option<String>,
+    #[serde(default)]
+    family_name: Option<String>,
+    #[serde(default)]
+    picture: Option<String>,
+    #[serde(default)]
+    groups: Option<Vec<String>>,
 }
 
 /// Cached JWKS keys.
@@ -52,14 +84,19 @@ pub struct TokenResult {
 
 impl AuthService {
     /// Create a new service from the provided configuration.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when keyring access fails or the configuration is
+    /// rejected by the underlying JWT service.
     pub fn new(config: AuthConfig) -> Result<Self> {
         let jwt_config = JwtConfig {
             algorithm: JwtAlgorithm::HS256,
-            secret: zeroize::Zeroizing::new(config.jwt_secret.clone()),
+            secret: config.jwt_secret.clone(),
             issuer: Some("clawdius".to_string()),
             audience: None,
-            access_token_ttl: config.session_duration_secs as i64,
-            refresh_token_ttl: config.refresh_duration_secs as i64,
+            access_token_ttl: config.session_duration_secs.cast_signed(),
+            refresh_token_ttl: config.refresh_duration_secs.cast_signed(),
         };
 
         let jwt_service = JwtService::new(jwt_config);
@@ -77,6 +114,12 @@ impl AuthService {
     }
 
     /// Build the provider authorization URL and return it with the state and PKCE verifier.
+    /// Build the OIDC authorization redirect URL for a provider.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the provider is unknown or PKCE/state
+    /// generation fails.
     pub fn authorization_url(&self, provider_name: &str) -> Result<(String, String, String)> {
         let provider = self.get_provider(provider_name)?;
 
@@ -104,6 +147,12 @@ impl AuthService {
     }
 
     /// Exchange an authorization code for access, session, and refresh tokens.
+    /// Exchange an `OAuth2` authorization code for tokens and session claims.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the provider is unknown, the token endpoint
+    /// fails, or the `id_token` cannot be validated.
     pub async fn exchange_code(
         &self,
         provider_name: &str,
@@ -118,7 +167,7 @@ impl AuthService {
             .remove(state)
             .with_context(|| "No PKCE verifier found for state")?;
 
-        let discovery = self.discover(&provider).await?;
+        let discovery = self.discover(provider).await?;
 
         let client = &self.http_client;
         let response = client
@@ -153,7 +202,7 @@ impl AuthService {
         let refresh_token = token_response["refresh_token"].as_str().map(String::from);
 
         let user_info = self
-            .validate_id_token(&id_token, &provider, &discovery)
+            .validate_id_token(&id_token, provider, &discovery)
             .await?;
 
         let session_token = self.create_session_token(&user_info)?;
@@ -168,6 +217,11 @@ impl AuthService {
     }
 
     /// Decode and validate a session token, returning its claims.
+    /// Validate a session token and return its claims.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the token is invalid, expired, or revoked.
     pub fn validate_session(&self, token: &str) -> Result<SessionClaims> {
         let claims: SessionClaims = self
             .jwt_service
@@ -183,9 +237,14 @@ impl AuthService {
     }
 
     /// Issue a new session token with an extended expiration from an existing token.
+    /// Refresh a session token, returning a new token.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the token is invalid, expired, or revoked.
     pub fn refresh_session(&self, token: &str) -> Result<String> {
         let claims = self.validate_session(token)?;
-        let now = chrono::Utc::now().timestamp() as u64;
+        let now = chrono::Utc::now().timestamp().cast_unsigned();
 
         let new_claims = SessionClaims {
             iat: now,
@@ -200,6 +259,11 @@ impl AuthService {
     }
 
     /// Invalidate a session (logout) by adding its JTI to the revocation list.
+    /// Revoke a session by its JWT ID.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the revocation store cannot be updated.
     pub fn invalidate_session(&self, jti: &str) -> Result<()> {
         self.revoked_sessions.write().insert(
             jti.to_string(),
@@ -255,14 +319,6 @@ impl AuthService {
             );
         }
 
-        #[derive(Deserialize)]
-        struct DiscoveryDoc {
-            authorization_endpoint: String,
-            token_endpoint: String,
-            jwks_uri: String,
-            issuer: String,
-        }
-
         let doc: DiscoveryDoc = resp
             .json()
             .await
@@ -305,11 +361,6 @@ impl AuthService {
             anyhow::bail!("JWKS fetch failed: {}", resp.status());
         }
 
-        #[derive(Deserialize)]
-        struct JwksResponse {
-            keys: Vec<jsonwebtoken::jwk::Jwk>,
-        }
-
         let jwks: JwksResponse = resp.json().await.context("Failed to parse JWKS")?;
 
         self.jwks_cache.write().insert(
@@ -323,7 +374,7 @@ impl AuthService {
         Ok(jwks.keys)
     }
 
-    /// Validate an OIDC id_token using JWKS signature verification.
+    /// Validate an OIDC `id_token` using JWKS signature verification.
     async fn validate_id_token(
         &self,
         id_token: &str,
@@ -345,12 +396,7 @@ impl AuthService {
         let jwk = keys
             .iter()
             .find(|k| {
-                if let Some(ref kid_match) = k.common.key_id {
-                    kid_match == kid
-                } else {
-                    // If no kid in header and only one key, use it
-                    keys.len() == 1
-                }
+                k.common.key_id.as_ref().is_some_and(|kid_match| kid_match == kid)
             })
             .context(format!("No matching JWK found for kid='{kid}'"))?;
 
@@ -363,23 +409,6 @@ impl AuthService {
         validation.set_audience(&[&provider.client_id]);
         validation.set_issuer(&[&discovery.issuer]);
         validation.set_required_spec_claims(&["exp", "iss"]);
-
-        #[derive(Deserialize)]
-        struct IdTokenClaims {
-            sub: String,
-            #[serde(default)]
-            email: Option<String>,
-            #[serde(default)]
-            name: Option<String>,
-            #[serde(default)]
-            given_name: Option<String>,
-            #[serde(default)]
-            family_name: Option<String>,
-            #[serde(default)]
-            picture: Option<String>,
-            #[serde(default)]
-            groups: Option<Vec<String>>,
-        }
 
         let token_data = decode::<IdTokenClaims>(id_token, &decoding_key, &validation)
             .context("id_token validation failed")?;
@@ -397,7 +426,7 @@ impl AuthService {
     }
 
     fn create_session_token(&self, user: &UserInfo) -> Result<String> {
-        let now = chrono::Utc::now().timestamp() as u64;
+        let now = chrono::Utc::now().timestamp().cast_unsigned();
         let claims = SessionClaims {
             sub: user.sub.clone(),
             email: user.email.clone(),
@@ -414,7 +443,7 @@ impl AuthService {
     }
 
     fn create_refresh_token(&self, user: &UserInfo) -> String {
-        let now = chrono::Utc::now().timestamp() as u64;
+        let now = chrono::Utc::now().timestamp().cast_unsigned();
         let claims = SessionClaims {
             sub: user.sub.clone(),
             email: user.email.clone(),

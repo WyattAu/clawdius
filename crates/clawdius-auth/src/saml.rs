@@ -7,12 +7,15 @@
 use axum::{
     extract::State,
     http::StatusCode,
-    response::{IntoResponse, Response},
+    response::IntoResponse,
     routing::post,
     Router,
 };
+use base64::Engine as _;
 use quick_xml::events::Event;
 use quick_xml::Reader;
+use sha2::{Digest as _, Sha256};
+use std::fmt::Write as _;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
@@ -21,27 +24,28 @@ use crate::user::UserInfo;
 /// SAML Service Provider configuration.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SamlSpConfig {
-    /// Entity ID for this Service Provider (e.g., "https://clawdius.example.com").
+    /// Entity ID for this Service Provider (e.g., "<https://clawdius.example.com>").
     pub entity_id: String,
-    /// Assertion Consumer Service URL (where IdP POSTs SAML Responses).
+    /// Assertion Consumer Service URL (where `IdP` POSTs SAML Responses).
     pub acs_url: String,
     /// Single Logout Service URL.
     pub slo_url: Option<String>,
     /// X.509 certificate for signing (PEM-encoded, optional for SP-initiated).
     pub certificate: Option<String>,
-    /// IdP X.509 certificate (PEM-encoded) for verifying SAML Response signatures.
+    /// `IdP` X.509 certificate (PEM-encoded) for verifying SAML Response signatures.
     pub idp_certificate: Option<String>,
     /// Whether SAML is enabled.
     #[serde(default = "default_true")]
     pub enabled: bool,
 }
 
-fn default_true() -> bool {
+const fn default_true() -> bool {
     true
 }
 
 impl SamlSpConfig {
     /// Generate SP metadata XML.
+    #[must_use]
     pub fn metadata_xml(&self) -> String {
         let slo_block = self.slo_url.as_ref().map(|url| {
             format!(
@@ -90,32 +94,38 @@ impl SamlSpConfig {
 /// Parsed SAML assertion containing user identity information.
 #[derive(Debug, Clone)]
 pub struct SamlAssertion {
-    /// NameID (usually email).
+    /// `NameID` (usually email).
     pub name_id: String,
     /// Session index for logout.
     pub session_index: Option<String>,
     /// Attributes from the assertion.
     pub attributes: SamlAttributes,
-    /// Issuer (IdP entity ID).
+    /// Issuer (`IdP` entity ID).
     pub issuer: String,
-    /// NotBefore timestamp.
+    /// `NotBefore` timestamp.
     pub not_before: Option<i64>,
-    /// NotOnOrAfter timestamp.
+    /// `NotOnOrAfter` timestamp.
     pub not_on_or_after: Option<i64>,
 }
 
 /// User attributes extracted from SAML assertion.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct SamlAttributes {
+    /// Email address claim.
     pub email: Option<String>,
+    /// Display name claim.
     pub name: Option<String>,
+    /// Given (first) name claim.
     pub given_name: Option<String>,
+    /// Family (last) name claim.
     pub family_name: Option<String>,
+    /// Group membership claims.
     pub groups: Vec<String>,
 }
 
 impl SamlAssertion {
-    /// Convert to UserInfo for session creation.
+    /// Convert to `UserInfo` for session creation.
+    #[must_use]
     pub fn to_user_info(&self, provider_name: &str) -> UserInfo {
         UserInfo {
             sub: self.name_id.clone(),
@@ -133,28 +143,37 @@ impl SamlAssertion {
 /// Errors during SAML processing.
 #[derive(Debug, thiserror::Error)]
 pub enum SamlError {
+    /// The SAML response XML could not be parsed.
     #[error("SAML parsing failed: {0}")]
     ParseError(String),
 
+    /// A required SAML element was missing from the response.
     #[error("Missing required element: {0}")]
     MissingElement(String),
 
+    /// The assertion is outside its validity window.
     #[error("Assertion expired or not yet valid")]
     AssertionExpired,
 
+    /// The XML-DSig signature could not be verified.
     #[error("Invalid signature")]
     InvalidSignature,
-
+    
+    /// The assertion issuer does not match the expected issuer.
     #[error("Unexpected issuer")]
     UnexpectedIssuer,
 }
 
 /// Parse a SAML Response (base64-encoded, HTTP-POST binding).
+///
+/// # Errors
+///
+/// Returns [`SamlError`] when base64 decoding, XML parsing, or assertion
+/// validation fails.
 pub fn parse_saml_response(
     encoded_response: &str,
     expected_issuer: &str,
 ) -> Result<SamlAssertion, SamlError> {
-    use base64::Engine;
 
     let decoded = base64::engine::general_purpose::STANDARD
         .decode(encoded_response)
@@ -167,14 +186,20 @@ pub fn parse_saml_response(
 }
 
 /// Parse SAML Response XML and extract assertion.
+/// Parse a SAML Response XML and extract the assertion.
+///
+/// # Errors
+///
+/// Returns [`SamlError`] when XML parsing, issuer validation, or
+/// validity-window checks fail.
+#[allow(clippy::too_many_lines)]
 pub fn parse_saml_response_xml(
     xml: &str,
     expected_issuer: &str,
 ) -> Result<SamlAssertion, SamlError> {
     let mut reader = Reader::from_str(xml);
-    reader.trim_text(true);
+    reader.config_mut().trim_text(true);
 
-    let mut in_response = false;
     let mut in_assertion = false;
     let mut in_issuer = false;
     let mut in_name_id = false;
@@ -192,15 +217,14 @@ pub fn parse_saml_response_xml(
     loop {
         match reader.read_event_into(&mut buf) {
             Ok(Event::Start(ref e)) => {
-                let tag = String::from_utf8_lossy(e.name().as_ref()).to_string();
+                let tag = e.name().as_ref().to_string();
                 match tag.as_str() {
-                    "samlp:Response" | "Response" => in_response = true,
                     "saml:Assertion" | "Assertion" => {
                         in_assertion = true;
                         // Parse conditions attributes
                         for attr in e.attributes().flatten() {
-                            let key = String::from_utf8_lossy(attr.key.as_ref()).to_string();
-                            let val = String::from_utf8_lossy(&attr.value).to_string();
+                            let key = attr.key.as_ref().to_string();
+                                let val = attr.value.to_string();
                             match key.as_str() {
                                 "NotBefore" => {
                                     not_before = parse_saml_time(&val);
@@ -212,17 +236,16 @@ pub fn parse_saml_response_xml(
                             }
                         }
                     },
-                    "saml:Issuer" | "Issuer" if in_assertion && !in_response => {
+                    "saml:Issuer" | "Issuer" if in_assertion => {
                         in_issuer = true;
                     },
                     "saml:NameID" | "NameID" => in_name_id = true,
                     "saml:Attribute" | "Attribute" => {
                         in_attribute = true;
                         for attr in e.attributes().flatten() {
-                            let key = String::from_utf8_lossy(attr.key.as_ref()).to_string();
+                            let key = attr.key.as_ref().to_string();
                             if key == "Name" {
-                                current_attr_name =
-                                    String::from_utf8_lossy(&attr.value).to_string();
+                                current_attr_name = attr.value.to_string();
                             }
                         }
                     },
@@ -231,8 +254,8 @@ pub fn parse_saml_response_xml(
                     },
                     "saml:AuthnStatement" | "AuthnStatement" => {
                         for attr in e.attributes().flatten() {
-                            let key = String::from_utf8_lossy(attr.key.as_ref()).to_string();
-                            let val = String::from_utf8_lossy(&attr.value).to_string();
+                            let key = attr.key.as_ref().to_string();
+                                let val = attr.value.to_string();
                             if key == "SessionIndex" {
                                 session_index = Some(val);
                             }
@@ -242,7 +265,7 @@ pub fn parse_saml_response_xml(
                 }
             },
             Ok(Event::Text(ref e)) => {
-                let text = e.unescape().unwrap_or_default().to_string();
+                let text = e.xml10_content().to_string();
                 if in_issuer {
                     assertion_issuer = text;
                 } else if in_name_id {
@@ -268,10 +291,40 @@ pub fn parse_saml_response_xml(
                     }
                 }
             },
-            Ok(Event::End(ref e)) => {
-                let tag = String::from_utf8_lossy(e.name().as_ref()).to_string();
+            Ok(Event::Empty(ref e)) => {
+                // Self-closing tags carry no children; extract their attributes.
+                let tag = e.name().as_ref().to_string();
                 match tag.as_str() {
-                    "samlp:Response" | "Response" => in_response = false,
+                    "saml:Assertion" | "Assertion" => {
+                        for attr in e.attributes().flatten() {
+                            let key = attr.key.as_ref();
+                            if key == "NotBefore" {
+                                not_before = parse_saml_time(&attr.value);
+                            } else if key == "NotOnOrAfter" {
+                                not_on_or_after = parse_saml_time(&attr.value);
+                            }
+                        }
+                    },
+                    "saml:AuthnStatement" | "AuthnStatement" => {
+                        for attr in e.attributes().flatten() {
+                            if attr.key.as_ref() == "SessionIndex" {
+                                session_index = Some(attr.value.to_string());
+                            }
+                        }
+                    },
+                    "saml:Attribute" | "Attribute" => {
+                        for attr in e.attributes().flatten() {
+                            if attr.key.as_ref() == "Name" {
+                                current_attr_name = attr.value.to_string();
+                            }
+                        }
+                    },
+                    _ => {},
+                }
+            },
+            Ok(Event::End(ref e)) => {
+                let tag = e.name().as_ref().to_string();
+                match tag.as_str() {
                     "saml:Assertion" | "Assertion" => in_assertion = false,
                     "saml:Issuer" | "Issuer" => in_issuer = false,
                     "saml:NameID" | "NameID" => in_name_id = false,
@@ -306,11 +359,7 @@ pub fn parse_saml_response_xml(
             return Err(SamlError::AssertionExpired);
         }
     }
-    if if let Some(nooa) = not_on_or_after {
-        now >= nooa
-    } else {
-        false
-    } {
+    if not_on_or_after.is_some_and(|nooa| now >= nooa) {
         return Err(SamlError::AssertionExpired);
     }
 
@@ -361,7 +410,6 @@ async fn acs_handler(
     axum::Form(form): axum::Form<SamlAcsForm>,
 ) -> impl IntoResponse {
     // Decode the SAML Response
-    use base64::Engine;
     let decoded = match base64::engine::general_purpose::STANDARD.decode(&form.SAMLResponse) {
         Ok(d) => d,
         Err(e) => {
@@ -422,9 +470,14 @@ async fn acs_handler(
 }
 
 /// Form data from SAML POST binding.
+///
+/// Field names match the SAML POST binding wire format exactly.
 #[derive(Deserialize)]
+#[allow(non_snake_case)]
 pub struct SamlAcsForm {
+    /// Base64-encoded SAML response.
     pub SAMLResponse: String,
+    /// Optional relay state token.
     #[serde(default)]
     pub RelayState: Option<String>,
 }
@@ -435,9 +488,14 @@ pub struct SamlAcsForm {
 ///
 /// Looks for `<ds:SignatureValue>...</ds:SignatureValue>` and returns the
 /// base64-decoded signature bytes.
+///
+/// # Errors
+///
+/// Returns [`SamlError::MissingElement`] when no signature element is found
+/// and [`SamlError::ParseError`] on malformed XML or base64.
 pub fn extract_signature(xml: &str) -> Result<Vec<u8>, SamlError> {
     let mut reader = Reader::from_str(xml);
-    reader.trim_text(true);
+    reader.config_mut().trim_text(true);
     let mut in_signature_value = false;
     let mut sig_value = String::new();
     let mut buf = Vec::new();
@@ -445,16 +503,16 @@ pub fn extract_signature(xml: &str) -> Result<Vec<u8>, SamlError> {
     loop {
         match reader.read_event_into(&mut buf) {
             Ok(Event::Start(ref e)) => {
-                let tag = String::from_utf8_lossy(e.name().as_ref()).to_string();
+                let tag = e.name().as_ref().to_string();
                 if tag == "ds:SignatureValue" || tag == "SignatureValue" {
                     in_signature_value = true;
                 }
             },
             Ok(Event::Text(ref e)) if in_signature_value => {
-                sig_value = e.unescape().unwrap_or_default().to_string();
+                sig_value = e.xml10_content().to_string();
             },
             Ok(Event::End(ref e)) => {
-                let tag = String::from_utf8_lossy(e.name().as_ref()).to_string();
+                let tag = e.name().as_ref().to_string();
                 if tag == "ds:SignatureValue" || tag == "SignatureValue" {
                     in_signature_value = false;
                 }
@@ -470,7 +528,6 @@ pub fn extract_signature(xml: &str) -> Result<Vec<u8>, SamlError> {
         return Err(SamlError::MissingElement("ds:SignatureValue".to_string()));
     }
 
-    use base64::Engine;
     base64::engine::general_purpose::STANDARD
         .decode(&sig_value)
         .map_err(|e| SamlError::ParseError(format!("Signature base64 decode failed: {e}")))
@@ -480,9 +537,14 @@ pub fn extract_signature(xml: &str) -> Result<Vec<u8>, SamlError> {
 ///
 /// Looks for `<ds:DigestValue>...</ds:DigestValue>` within the
 /// `<ds:SignedInfo>` element.
+///
+/// # Errors
+///
+/// Returns [`SamlError::MissingElement`] when no digest element is found
+/// and [`SamlError::ParseError`] on malformed XML.
 pub fn extract_digest_value(xml: &str) -> Result<String, SamlError> {
     let mut reader = Reader::from_str(xml);
-    reader.trim_text(true);
+    reader.config_mut().trim_text(true);
     let mut in_signed_info = false;
     let mut in_digest_value = false;
     let mut digest = String::new();
@@ -491,7 +553,7 @@ pub fn extract_digest_value(xml: &str) -> Result<String, SamlError> {
     loop {
         match reader.read_event_into(&mut buf) {
             Ok(Event::Start(ref e)) => {
-                let tag = String::from_utf8_lossy(e.name().as_ref()).to_string();
+                let tag = e.name().as_ref().to_string();
                 if tag == "ds:SignedInfo" || tag == "SignedInfo" {
                     in_signed_info = true;
                 } else if in_signed_info && (tag == "ds:DigestValue" || tag == "DigestValue") {
@@ -499,10 +561,10 @@ pub fn extract_digest_value(xml: &str) -> Result<String, SamlError> {
                 }
             },
             Ok(Event::Text(ref e)) if in_digest_value => {
-                digest = e.unescape().unwrap_or_default().to_string();
+                digest = e.xml10_content().to_string();
             },
             Ok(Event::End(ref e)) => {
-                let tag = String::from_utf8_lossy(e.name().as_ref()).to_string();
+                let tag = e.name().as_ref().to_string();
                 if tag == "ds:SignedInfo" || tag == "SignedInfo" {
                     in_signed_info = false;
                 } else if tag == "ds:DigestValue" || tag == "DigestValue" {
@@ -531,40 +593,39 @@ pub fn extract_digest_value(xml: &str) -> Result<String, SamlError> {
 /// - Preserves text content
 ///
 /// For full C14N compliance, a dedicated library would be needed.
+#[must_use]
 pub fn canonicalize_xml(xml: &str) -> String {
     let mut result = String::with_capacity(xml.len());
     let mut reader = Reader::from_str(xml);
-    reader.trim_text(false);
+    reader.config_mut().trim_text(false);
     let mut buf = Vec::new();
 
     loop {
         match reader.read_event_into(&mut buf) {
             Ok(Event::Start(ref e)) => {
-                let tag = String::from_utf8_lossy(e.name().as_ref());
+                let tag = e.name();
                 result.push('<');
-                result.push_str(&tag);
+                result.push_str(tag.as_ref());
                 // Add attributes in canonical form
                 for attr in e.attributes().flatten() {
-                    let key = String::from_utf8_lossy(attr.key.as_ref());
-                    let val = String::from_utf8_lossy(&attr.value);
-                    result.push_str(&format!(" {}=\"{}\"", key, val));
+                    let key = attr.key.as_ref();
+                    let val = attr.value.as_ref();
+                    let _ = write!(result, " {key}=\"{val}\"");
                 }
                 result.push('>');
             },
             Ok(Event::Text(ref e)) => {
-                if let Ok(text) = e.unescape() {
-                    result.push_str(&xml_escape(&text));
-                }
+                let text = e.xml10_content();
+                result.push_str(&xml_escape(&text));
             },
             Ok(Event::End(ref e)) => {
-                let tag = String::from_utf8_lossy(e.name().as_ref());
+                let tag = e.name();
                 result.push_str("</");
-                result.push_str(&tag);
+                result.push_str(tag.as_ref());
                 result.push('>');
             },
             Ok(Event::Eof) => break,
-            Ok(Event::Decl(_)) => {},    // Skip XML declarations
-            Ok(Event::DocType(_)) => {}, // Skip DTDs
+            // XML declarations and DTDs are skipped by the wildcard arm
             _ => {},
         }
         buf.clear();
@@ -584,14 +645,20 @@ fn xml_escape(s: &str) -> String {
 
 /// Verify the RSA signature of a SAML Response.
 ///
-/// `idp_cert_pem` — The IdP's X.509 certificate in PEM format.
+/// `idp_cert_pem` — The `IdP`'s X.509 certificate in PEM format.
 /// `response_xml` — The full SAML Response XML.
 ///
 /// This verifies:
 /// 1. The signature exists in the XML
-/// 2. The signature matches the IdP's certificate
-/// 3. The signed content hash matches the DigestValue
+/// 2. The signature matches the `IdP`'s certificate
+/// 3. The signed content hash matches the `DigestValue`
+///
+/// # Errors
+///
+/// Returns [`SamlError::InvalidSignature`] when verification fails and
+/// [`SamlError::ParseError`] when certificate extraction fails.
 pub fn verify_saml_signature(idp_cert_pem: &str, response_xml: &str) -> Result<(), SamlError> {
+
     // Extract the signature bytes
     let signature_bytes = extract_signature(response_xml)?;
 
@@ -617,9 +684,8 @@ pub fn verify_saml_signature(idp_cert_pem: &str, response_xml: &str) -> Result<(
     // Verify digest of the assertion content
     // Extract the signed content (between <Assertion> tags)
     let assertion_content =
-        extract_signed_content(response_xml).map_err(|e| SamlError::ParseError(e))?;
+        extract_signed_content(response_xml).map_err(|e| SamlError::ParseError(e.to_string()))?;
 
-    use sha2::{Digest, Sha256};
     let actual_digest = Sha256::digest(assertion_content.as_bytes());
     let actual_digest_b64 = base64::engine::general_purpose::STANDARD.encode(actual_digest);
 
@@ -648,13 +714,13 @@ fn extract_signed_content(xml: &str) -> Result<String, SamlError> {
 
 /// Convert a PEM-encoded certificate to DER bytes.
 fn pem_to_der(pem: &str) -> Result<Vec<u8>, String> {
+
     let b64: String = pem
         .lines()
         .filter(|l| !l.starts_with("-----"))
         .collect::<Vec<_>>()
         .join("");
 
-    use base64::Engine;
     base64::engine::general_purpose::STANDARD
         .decode(&b64)
         .map_err(|e| format!("Base64 decode failed: {e}"))
@@ -671,6 +737,7 @@ mod tests {
             acs_url: "https://clawdius.example.com/saml/acs".to_string(),
             slo_url: Some("https://clawdius.example.com/saml/slo".to_string()),
             certificate: None,
+            idp_certificate: None,
             enabled: true,
         };
 
