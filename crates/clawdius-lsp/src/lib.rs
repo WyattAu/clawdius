@@ -24,7 +24,7 @@ pub mod capabilities;
 pub mod completion;
 pub mod diagnostics;
 mod handlers;
-mod symbol_index;
+pub mod symbol_index;
 
 pub use backend::ClawdiusLspBackend;
 pub use completion::{

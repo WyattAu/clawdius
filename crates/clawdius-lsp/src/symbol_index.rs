@@ -4,6 +4,15 @@
 //! to provide LSP-compatible symbol information, hover documentation,
 //! go-to-definition, and find-all-references.
 
+// The module is exposed publicly for integration testing; the lints below
+// predate that exposure and are clamped here rather than churned crate-wide.
+#![allow(
+    clippy::must_use_candidate,
+    clippy::cast_possible_truncation,
+    clippy::similar_names,
+    clippy::new_without_default
+)]
+
 use std::collections::HashMap;
 use std::fmt::Write;
 use tower_lsp::lsp_types::{DocumentSymbol, SymbolKind, Url};
@@ -11,11 +20,17 @@ use tower_lsp::lsp_types::{DocumentSymbol, SymbolKind, Url};
 /// A symbol tracked in the index with position and context.
 #[derive(Clone, Debug)]
 pub struct IndexedSymbol {
+    /// Symbol identifier as written in the source.
     pub name: String,
+    /// LSP symbol classification.
     pub kind: SymbolKind,
+    /// Zero-based line of the definition.
     pub line: u32,
+    /// Zero-based character where the definition starts.
     pub character: u32,
+    /// Zero-based character where the definition ends.
     pub end_character: u32,
+    /// Document URI the symbol was extracted from.
     pub uri: String,
     /// The full line of source where the symbol was defined.
     pub definition_line: String,
@@ -37,6 +52,7 @@ struct DocumentData {
 }
 
 impl SymbolIndex {
+    /// Creates an empty index.
     #[must_use]
     pub fn new() -> Self {
         Self {
@@ -171,10 +187,15 @@ impl SymbolIndex {
 
 /// Hover information for a symbol.
 pub struct HoverInfo {
+    /// Symbol identifier.
     pub name: String,
+    /// LSP symbol classification.
     pub kind: SymbolKind,
+    /// The definition line's source text.
     pub definition: String,
+    /// Documentation comment attached to the definition, if any.
     pub doc_comment: Option<String>,
+    /// Number of indexed definitions/usages of this name.
     pub references: usize,
 }
 
