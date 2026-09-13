@@ -74,7 +74,7 @@ async fn test_agentic_system_with_llm_client() {
     let system = AgenticSystem::new(
         GenerationMode::single_pass(),
         TestExecutionStrategy::skip(),
-        ApplyWorkflow::trust_based(),
+        ApplyWorkflow::PreviewOnly,
     )
     .with_llm_client(llm_client.clone());
 
@@ -86,7 +86,7 @@ async fn test_agentic_system_without_llm_client() {
     let system = AgenticSystem::new(
         GenerationMode::single_pass(),
         TestExecutionStrategy::skip(),
-        ApplyWorkflow::trust_based(),
+        ApplyWorkflow::PreviewOnly,
     );
 
     assert!(system.llm_client().is_none());
@@ -115,7 +115,7 @@ async fn test_code_generator_with_llm() {
     let system = AgenticSystem::new(
         GenerationMode::single_pass(),
         TestExecutionStrategy::skip(),
-        ApplyWorkflow::trust_based(),
+        ApplyWorkflow::PreviewOnly,
     )
     .with_llm_client(llm_client.clone());
 
@@ -136,7 +136,7 @@ pub fn calculate_sum(numbers: &[i32]) -> i32 {
     let system = AgenticSystem::new(
         GenerationMode::single_pass(),
         TestExecutionStrategy::skip(),
-        ApplyWorkflow::trust_based(),
+        ApplyWorkflow::PreviewOnly,
     )
     .with_llm_client(llm_client.clone());
 
@@ -156,7 +156,7 @@ async fn test_generate_code_without_llm_returns_none() {
     let system = AgenticSystem::new(
         GenerationMode::single_pass(),
         TestExecutionStrategy::skip(),
-        ApplyWorkflow::trust_based(),
+        ApplyWorkflow::PreviewOnly,
     );
 
     let result = system
@@ -175,7 +175,7 @@ async fn test_agentic_system_with_both_executors() {
     let system = AgenticSystem::new(
         GenerationMode::single_pass(),
         TestExecutionStrategy::skip(),
-        ApplyWorkflow::trust_based(),
+        ApplyWorkflow::PreviewOnly,
     )
     .with_llm_client(llm_client)
     .with_tool_executor(tool_executor);
@@ -197,7 +197,7 @@ pub fn greet(name: &str) -> String {
     let mut system = AgenticSystem::new(
         GenerationMode::single_pass(),
         TestExecutionStrategy::skip(),
-        ApplyWorkflow::trust_based(),
+        ApplyWorkflow::PreviewOnly,
     )
     .with_llm_client(llm_client);
 
@@ -207,7 +207,7 @@ pub fn greet(name: &str) -> String {
         target_files: vec!["src/lib.rs".to_string()],
         mode: GenerationMode::single_pass(),
         test_strategy: TestExecutionStrategy::skip(),
-        apply_workflow: ApplyWorkflow::trust_based(),
+        apply_workflow: ApplyWorkflow::PreviewOnly,
         context: TaskContext::default(),
         trust_level: TrustLevel::Medium,
     };
@@ -229,7 +229,7 @@ async fn test_iterative_generation_with_llm() {
     let mut system = AgenticSystem::new(
         GenerationMode::iterative(),
         TestExecutionStrategy::skip(),
-        ApplyWorkflow::trust_based(),
+        ApplyWorkflow::PreviewOnly,
     )
     .with_llm_client(llm_client);
 
@@ -239,7 +239,7 @@ async fn test_iterative_generation_with_llm() {
         target_files: vec![],
         mode: GenerationMode::iterative(),
         test_strategy: TestExecutionStrategy::skip(),
-        apply_workflow: ApplyWorkflow::trust_based(),
+        apply_workflow: ApplyWorkflow::PreviewOnly,
         context: TaskContext::default(),
         trust_level: TrustLevel::Medium,
     };
@@ -262,7 +262,7 @@ async fn test_agent_based_generation_with_llm() {
     let mut system = AgenticSystem::new(
         GenerationMode::agent_based(),
         TestExecutionStrategy::skip(),
-        ApplyWorkflow::trust_based(),
+        ApplyWorkflow::PreviewOnly,
     )
     .with_llm_client(llm_client);
 
@@ -272,7 +272,7 @@ async fn test_agent_based_generation_with_llm() {
         target_files: vec!["src/lib.rs".to_string()],
         mode: GenerationMode::agent_based(),
         test_strategy: TestExecutionStrategy::skip(),
-        apply_workflow: ApplyWorkflow::trust_based(),
+        apply_workflow: ApplyWorkflow::PreviewOnly,
         context: TaskContext::default(),
         trust_level: TrustLevel::Medium,
     };
@@ -291,7 +291,7 @@ async fn test_llm_client_call_tracking() {
     let system = AgenticSystem::new(
         GenerationMode::single_pass(),
         TestExecutionStrategy::skip(),
-        ApplyWorkflow::trust_based(),
+        ApplyWorkflow::PreviewOnly,
     )
     .with_llm_client(Arc::clone(&llm_client) as Arc<dyn LlmClient>);
 
@@ -307,7 +307,7 @@ async fn test_agentic_system_handles_empty_llm_response() {
     let system = AgenticSystem::new(
         GenerationMode::single_pass(),
         TestExecutionStrategy::skip(),
-        ApplyWorkflow::trust_based(),
+        ApplyWorkflow::PreviewOnly,
     )
     .with_llm_client(llm_client);
 
@@ -323,7 +323,7 @@ async fn test_agentic_system_with_context() {
     let mut system = AgenticSystem::new(
         GenerationMode::single_pass(),
         TestExecutionStrategy::skip(),
-        ApplyWorkflow::trust_based(),
+        ApplyWorkflow::PreviewOnly,
     )
     .with_llm_client(llm_client);
 
@@ -341,7 +341,7 @@ async fn test_agentic_system_with_context() {
         target_files: vec!["src/lib.rs".to_string()],
         mode: GenerationMode::single_pass(),
         test_strategy: TestExecutionStrategy::skip(),
-        apply_workflow: ApplyWorkflow::trust_based(),
+        apply_workflow: ApplyWorkflow::PreviewOnly,
         context,
         trust_level: TrustLevel::Medium,
     };
@@ -389,7 +389,7 @@ async fn test_different_test_strategies() {
     let mut system = AgenticSystem::new(
         GenerationMode::single_pass(),
         TestExecutionStrategy::skip(),
-        ApplyWorkflow::trust_based(),
+        ApplyWorkflow::PreviewOnly,
     )
     .with_llm_client(Arc::clone(&llm_client) as Arc<dyn LlmClient>);
 
@@ -399,7 +399,7 @@ async fn test_different_test_strategies() {
         target_files: vec![],
         mode: GenerationMode::single_pass(),
         test_strategy: TestExecutionStrategy::skip(),
-        apply_workflow: ApplyWorkflow::trust_based(),
+        apply_workflow: ApplyWorkflow::PreviewOnly,
         context: TaskContext::default(),
         trust_level: TrustLevel::Medium,
     };
@@ -417,7 +417,7 @@ async fn test_different_test_strategies() {
         let mut system = AgenticSystem::new(
             GenerationMode::single_pass(),
             test_strategy.clone(),
-            ApplyWorkflow::trust_based(),
+            ApplyWorkflow::PreviewOnly,
         )
         .with_llm_client(Arc::clone(&llm_client) as Arc<dyn LlmClient>);
 
@@ -427,7 +427,7 @@ async fn test_different_test_strategies() {
             target_files: vec![],
             mode: GenerationMode::single_pass(),
             test_strategy: test_strategy.clone(),
-            apply_workflow: ApplyWorkflow::trust_based(),
+            apply_workflow: ApplyWorkflow::PreviewOnly,
             context: TaskContext::default(),
             trust_level: TrustLevel::Medium,
         };
