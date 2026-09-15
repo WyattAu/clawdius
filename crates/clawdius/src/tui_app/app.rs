@@ -2349,9 +2349,7 @@ async fn run_agentic_loop(
             // single execution above (never re-run side-effecting tools).
             let mut results_text: Vec<String> = Vec::new();
             for (fn_name, output) in &executed {
-                results_text.push(format!(
-                    "[TOOL_RESULT] {fn_name} {output} [/TOOL_RESULT]"
-                ));
+                results_text.push(format!("[TOOL_RESULT] {fn_name} {output} [/TOOL_RESULT]"));
             }
 
             messages.push(ChatMessage {

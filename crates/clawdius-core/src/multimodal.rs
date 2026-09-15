@@ -364,8 +364,4 @@ mod tests {
         assert_eq!(text, "Hello describe this");
         assert_eq!(paths, vec!["diagram.png"]);
     }
-
-
-
-
 }

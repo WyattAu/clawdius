@@ -7,7 +7,6 @@
 // Tests exercise failure paths directly; panicking helpers are idiomatic here.
 #![allow(clippy::expect_used, clippy::unwrap_used, clippy::panic)]
 
-
 use clawdius_auth::rbac::{permissions, RbacPolicy, RbacService, Role};
 use clawdius_auth::saml::{parse_saml_response_xml, SamlAssertion, SamlError, SamlSpConfig};
 use clawdius_auth::{

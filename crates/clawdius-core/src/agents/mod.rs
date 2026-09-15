@@ -1114,11 +1114,8 @@ impl AgentTeam {
                                 .collect::<String>();
                             entry.highlights.push(highlight);
 
-                            if let Some(subtask) =
-                                batch.iter().find(|s| s.id == subtask_id)
-                            {
-                                completed_results
-                                    .insert(subtask_id, (subtask.clone(), response));
+                            if let Some(subtask) = batch.iter().find(|s| s.id == subtask_id) {
+                                completed_results.insert(subtask_id, (subtask.clone(), response));
                             }
                         },
                         Ok(Err(e)) => {

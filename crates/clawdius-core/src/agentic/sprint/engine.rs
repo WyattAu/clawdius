@@ -71,9 +71,7 @@ impl SprintEngine {
                 )
                 .await
             {
-                return Ok(crate::tools::ToolResult::error(
-                    "Tool call blocked by hook",
-                ));
+                return Ok(crate::tools::ToolResult::error("Tool call blocked by hook"));
             }
         }
 

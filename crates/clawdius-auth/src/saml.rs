@@ -4,19 +4,13 @@
 //! endpoint, and SAML Response parsing for Okta, Azure AD, OneLogin,
 //! and other SAML 2.0 identity providers.
 
-use axum::{
-    extract::State,
-    http::StatusCode,
-    response::IntoResponse,
-    routing::post,
-    Router,
-};
+use axum::{extract::State, http::StatusCode, response::IntoResponse, routing::post, Router};
 use base64::Engine as _;
 use quick_xml::events::Event;
 use quick_xml::Reader;
+use serde::{Deserialize, Serialize};
 use sha2::{Digest as _, Sha256};
 use std::fmt::Write as _;
-use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
 use crate::user::UserInfo;
@@ -158,7 +152,7 @@ pub enum SamlError {
     /// The XML-DSig signature could not be verified.
     #[error("Invalid signature")]
     InvalidSignature,
-    
+
     /// The assertion issuer does not match the expected issuer.
     #[error("Unexpected issuer")]
     UnexpectedIssuer,
@@ -174,7 +168,6 @@ pub fn parse_saml_response(
     encoded_response: &str,
     expected_issuer: &str,
 ) -> Result<SamlAssertion, SamlError> {
-
     let decoded = base64::engine::general_purpose::STANDARD
         .decode(encoded_response)
         .map_err(|e| SamlError::ParseError(format!("Base64 decode failed: {e}")))?;
@@ -224,7 +217,7 @@ pub fn parse_saml_response_xml(
                         // Parse conditions attributes
                         for attr in e.attributes().flatten() {
                             let key = attr.key.as_ref().to_string();
-                                let val = attr.value.to_string();
+                            let val = attr.value.to_string();
                             match key.as_str() {
                                 "NotBefore" => {
                                     not_before = parse_saml_time(&val);
@@ -255,7 +248,7 @@ pub fn parse_saml_response_xml(
                     "saml:AuthnStatement" | "AuthnStatement" => {
                         for attr in e.attributes().flatten() {
                             let key = attr.key.as_ref().to_string();
-                                let val = attr.value.to_string();
+                            let val = attr.value.to_string();
                             if key == "SessionIndex" {
                                 session_index = Some(val);
                             }
@@ -658,7 +651,6 @@ fn xml_escape(s: &str) -> String {
 /// Returns [`SamlError::InvalidSignature`] when verification fails and
 /// [`SamlError::ParseError`] when certificate extraction fails.
 pub fn verify_saml_signature(idp_cert_pem: &str, response_xml: &str) -> Result<(), SamlError> {
-
     // Extract the signature bytes
     let signature_bytes = extract_signature(response_xml)?;
 
@@ -714,7 +706,6 @@ fn extract_signed_content(xml: &str) -> Result<String, SamlError> {
 
 /// Convert a PEM-encoded certificate to DER bytes.
 fn pem_to_der(pem: &str) -> Result<Vec<u8>, String> {
-
     let b64: String = pem
         .lines()
         .filter(|l| !l.starts_with("-----"))

@@ -396,7 +396,10 @@ impl AuthService {
         let jwk = keys
             .iter()
             .find(|k| {
-                k.common.key_id.as_ref().is_some_and(|kid_match| kid_match == kid)
+                k.common
+                    .key_id
+                    .as_ref()
+                    .is_some_and(|kid_match| kid_match == kid)
             })
             .context(format!("No matching JWK found for kid='{kid}'"))?;
 

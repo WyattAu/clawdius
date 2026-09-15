@@ -464,10 +464,7 @@ impl PlatformAdapter for MockPlatformAdapter {
             } else {
                 "ok".to_string()
             },
-            messages_processed: self
-                .sent_messages
-                .try_lock()
-                .map_or(0, |g| g.len() as u64),
+            messages_processed: self.sent_messages.try_lock().map_or(0, |g| g.len() as u64),
             errors: 0,
             last_message_at: None,
         }
