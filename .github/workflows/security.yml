@@ -34,8 +34,7 @@ jobs:
         run: cargo install cargo-audit --locked
       
       - name: Run security audit
-        run: |
-          cargo audit --deny warnings 2>&1 || echo "Audit has warnings (known transitive issues)"
+        run: cargo audit --deny warnings
       
       - name: Generate audit report
         if: always()

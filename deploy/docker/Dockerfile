@@ -2,7 +2,7 @@
 # Multi-stage build for optimized production image
 
 # Build stage
-FROM rust:1.92 AS builder
+FROM rust:1.96-bookworm AS builder
 
 WORKDIR /build
 

@@ -197,7 +197,9 @@ jobs:
           tool: cargo-llvm-cov
 
       - name: Generate coverage report
-        run: cargo llvm-cov --workspace --lib --summary-only 2>&1 | tail -20
+        run: |
+          set -o pipefail
+          cargo llvm-cov --workspace --lib --summary-only 2>&1 | tail -20
 
       - name: Generate detailed coverage
         run: cargo llvm-cov --workspace --lib --lcov --output-path lcov.info
