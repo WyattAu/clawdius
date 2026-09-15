@@ -1100,21 +1100,17 @@ mod tests {
 
     #[test]
     fn test_model_pricing_efficiency() {
-        let cheap = ModelPricing {
-            input_per_1m: 0.15,
-            output_per_1m: 0.6,
-            context_window: 128_000,
-            max_output_tokens: 16_384,
-            quality_tier: 3,
-        };
+        // model-router 0.1.4 privatized `updated_at_unix`, so construction
+        // goes through the builder (`ModelPricing::new` + `with_*`).
+        let cheap = ModelPricing::new(0.15, 0.6)
+            .with_context_window(128_000)
+            .with_max_output_tokens(16_384)
+            .with_quality_tier(3);
 
-        let expensive = ModelPricing {
-            input_per_1m: 15.0,
-            output_per_1m: 75.0,
-            context_window: 200_000,
-            max_output_tokens: 4_096,
-            quality_tier: 5,
-        };
+        let expensive = ModelPricing::new(15.0, 75.0)
+            .with_context_window(200_000)
+            .with_max_output_tokens(4_096)
+            .with_quality_tier(5);
 
         // Cheap model should have higher efficiency (quality per dollar)
         assert!(cheap.efficiency() > expensive.efficiency());
