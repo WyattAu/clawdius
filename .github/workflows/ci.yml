@@ -196,13 +196,23 @@ jobs:
         with:
           tool: cargo-hakari
 
-      - name: Publish dry run (clawdius-unsafe)
-        # cargo hakari publish temporarily strips the workspace-hack
-        # dependency (local-only, not on crates.io), then restores it.
-        run: cargo hakari publish -p clawdius-unsafe -- --dry-run
-
-      - name: Publish dry run (clawdius-core)
-        run: cargo hakari publish -p clawdius-core -- --dry-run
+      - name: Publish dry run (workspace-hack stripped)
+        # clawdius-unsafe is not on crates.io yet, so clawdius-core can only
+        # resolve it via intra-set resolution — cargo publish with BOTH -p
+        # flags in one invocation (cargo hakari publish is single-package and
+        # cannot express that). hakari edges are stripped for the dry run and
+        # restored after; .cargo-vendor/half's manifest is force-restored
+        # because hakari treats the [patch] vendor as a member and would
+        # re-add an edge that cycles with workspace-hack's own dep on half.
+        run: |
+          cargo hakari remove-deps -y
+          set +e
+          cargo publish --dry-run --allow-dirty --package clawdius-unsafe --package clawdius-core
+          rc=$?
+          set -e
+          cargo hakari manage-deps -y
+          git checkout -- .cargo-vendor/half/Cargo.toml
+          exit $rc
 
   coverage:
     name: Test Coverage

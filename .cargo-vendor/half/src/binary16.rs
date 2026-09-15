@@ -851,14 +851,14 @@ impl PartialOrd for f16 {
                     } else {
                         Some(Ordering::Greater)
                     }
-                }
+                },
                 (true, false) => {
                     if (self.0 | other.0) & 0x7FFFu16 == 0 {
                         Some(Ordering::Equal)
                     } else {
                         Some(Ordering::Less)
                     }
-                }
+                },
                 (true, true) => Some(other.0.cmp(&self.0)),
             }
         }

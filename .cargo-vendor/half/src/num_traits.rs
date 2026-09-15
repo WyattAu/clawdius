@@ -246,7 +246,7 @@ impl num_traits::float::FloatCore for f16 {
                 } else {
                     self
                 }
-            }
+            },
             Some(Ordering::Greater) | Some(Ordering::Equal) => other,
             Some(Ordering::Less) => self,
         }
@@ -260,7 +260,7 @@ impl num_traits::float::FloatCore for f16 {
                 } else {
                     self
                 }
-            }
+            },
             Some(Ordering::Greater) | Some(Ordering::Equal) => self,
             Some(Ordering::Less) => other,
         }
@@ -1017,7 +1017,7 @@ impl num_traits::float::FloatCore for bf16 {
                 } else {
                     self
                 }
-            }
+            },
             Some(Ordering::Greater) | Some(Ordering::Equal) => other,
             Some(Ordering::Less) => self,
         }
@@ -1031,7 +1031,7 @@ impl num_traits::float::FloatCore for bf16 {
                 } else {
                     self
                 }
-            }
+            },
             Some(Ordering::Greater) | Some(Ordering::Equal) => self,
             Some(Ordering::Less) => other,
         }
