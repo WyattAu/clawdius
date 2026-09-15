@@ -174,7 +174,10 @@ jobs:
         uses: Swatinem/rust-cache@v2
 
       - name: Publish dry run
-        run: cargo publish --dry-run --package clawdius-core
+        # clawdius-core depends on clawdius-unsafe (path + version); the
+        # workspace member must be included so cargo can resolve the
+        # dependency chain without the crate existing on crates.io yet.
+        run: cargo publish --dry-run --package clawdius-unsafe --package clawdius-core
 
   coverage:
     name: Test Coverage

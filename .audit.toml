@@ -1,0 +1,55 @@
+# cargo-audit configuration (repository root, auto-loaded by `cargo audit`).
+#
+# The CI job runs `cargo audit --deny warnings`, so every advisory that is
+# not truly fixable today must be explicitly ignored here with a reason.
+# Mirrors the `ignore` list in `deny.toml` (used by the Dependency Lint job).
+#
+# NOTE: `.cargo-audit.toml` is a legacy snapshot kept for compliance-document
+# references (.specs/09_compliance, fedramp_readiness.toml). cargo-audit only
+# auto-loads `audit.toml` / `.audit.toml`, so THIS is the file CI exercises.
+
+[advisories]
+db-path = "~/.cargo/advisory-db"
+db-urls = ["https://github.com/RustSec/advisory-db"]
+vulnerability = "deny"
+unmaintained = "warn"
+unsound = "warn"
+yanked = "deny"
+notice = "warn"
+
+# Every entry needs a reason + tracking pointer. Fixed versions that exist
+# but are unreachable within the current semver requirements are re-checked
+# weekly (Dependabot) and on upstream releases (SECURITY.md review cadence).
+ignore = [
+    # --- Vulnerabilities: accepted risk (optional features only) ---
+    # rustls-webpki 0.102.8 is pinned by serenity 0.12 (optional `discord`
+    # feature) -> tokio-tungstenite 0.21 -> rustls 0.22 line. The fixes live
+    # in rustls-webpki 0.103.13+, which requires a serenity 0.13 migration
+    # (major, unreleased at assessment time). Default build is unaffected.
+    # Tracking: SECURITY.md "Risk Acceptance Statement".
+    "RUSTSEC-2026-0049", # rustls-webpki 0.102.8: CRL authority matching (discord chain)
+    "RUSTSEC-2026-0098", # rustls-webpki 0.102.8: URI name constraints (discord chain)
+    "RUSTSEC-2026-0099", # rustls-webpki 0.102.8: wildcard name constraints (discord chain)
+    "RUSTSEC-2026-0104", # rustls-webpki 0.102.8: CRL parse panic (discord chain)
+
+    # --- Unmaintained (informational; transitive, no in-semver replacement) ---
+    "RUSTSEC-2025-0141", # bincode 1.3 via syntect (2.x is a rewrite; syntect pins 1.x)
+    "RUSTSEC-2026-0247", # bitmaps 3.2 via imbl <- matrix-sdk 0.16 (optional `matrix` feature)
+    "RUSTSEC-2025-0119", # number_prefix via indicatif
+    "RUSTSEC-2024-0436", # paste (widespread transitive proc-macro helper)
+    "RUSTSEC-2024-0370", # proc-macro-error via glib/gtk3-macros (clawdius-tauri linux GUI chain)
+    "RUSTSEC-2026-0173", # proc-macro-error2 (transitive)
+    "RUSTSEC-2025-0134", # rustls-pemfile 2.2 via mysql_async; superseded upstream by rustls-pki-types
+    "RUSTSEC-2025-0081", # unic-char-property 0.9 via urlpattern
+    "RUSTSEC-2025-0075", # unic-char-range 0.9 via urlpattern
+    "RUSTSEC-2025-0080", # unic-common 0.9 via urlpattern
+    "RUSTSEC-2025-0100", # unic-ucd-ident 0.9 via urlpattern
+    "RUSTSEC-2025-0098", # unic-ucd-version 0.9 via urlpattern
+    "RUSTSEC-2024-0320", # yaml-rust 0.4 via syntect
+
+    # --- Unsound (transitive; fixes are semver-incompatible upstream) ---
+    "RUSTSEC-2025-0167", # bitmaps 3.2 unsound via imbl <- matrix-sdk 0.16
+    "RUSTSEC-2024-0429", # glib 0.18 iterator unsoundness via gtk 0.18 chain (clawdius-tauri); fix = gtk-rs 0.19+
+    "RUSTSEC-2026-0002", # lru 0.12 IterMut unsoundness via mysql_async/tantivy (our direct lru is 0.18, unaffected)
+    "RUSTSEC-2026-0253", # lru 0.12 pop() panic safety via mysql_async/tantivy (same chain)
+]

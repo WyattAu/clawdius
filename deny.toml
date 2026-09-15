@@ -9,15 +9,39 @@ feature-depth = 1
 [advisories]
 db-path = "~/.cargo/advisory-db"
 db-urls = ["https://github.com/rustsec/advisory-db"]
-yanked = "warn" # chacha20 0.9.1 yanked via matrix-sdk 0.10; unfixable until matrix-sdk >= 0.11
-# These are informational warnings about unmaintained crates, not vulnerabilities
-# They are documented in VERSION.md
+yanked = "warn" # chacha20 0.9.1 (yanked) persists via chacha20poly1305; informational only
+# Informational warnings and accepted-risk advisories, each with a reason.
+# Mirrors .audit.toml (used by `cargo audit`); tracked in SECURITY.md.
 ignore = [
+    # Accepted-risk vulnerabilities: rustls-webpki 0.102.8 pinned by
+    # serenity 0.12 (optional `discord` feature) -> rustls 0.22 line.
+    # Fixes live in rustls-webpki 0.103.13+, gated on a serenity 0.13 migration.
+    # Default build is unaffected. Tracking: SECURITY.md "Risk Acceptance Statement".
+    "RUSTSEC-2026-0049", # rustls-webpki 0.102.8: CRL authority matching (discord chain)
+    "RUSTSEC-2026-0098", # rustls-webpki 0.102.8: URI name constraints (discord chain)
+    "RUSTSEC-2026-0099", # rustls-webpki 0.102.8: wildcard name constraints (discord chain)
+    "RUSTSEC-2026-0104", # rustls-webpki 0.102.8: CRL parse panic (discord chain)
+
     # Unmaintained crates (not vulnerabilities)
     "RUSTSEC-2025-0141", # bincode via syntect
     "RUSTSEC-2024-0436", # paste (widespread transitive)
     "RUSTSEC-2024-0320", # yaml-rust via syntect
     "RUSTSEC-2026-0173", # proc-macro-error2 unmaintained (transitive, no safe upgrade)
+    "RUSTSEC-2026-0247", # bitmaps via imbl <- matrix-sdk 0.16 (optional `matrix` feature)
+    "RUSTSEC-2025-0119", # number_prefix via indicatif
+    "RUSTSEC-2024-0370", # proc-macro-error via glib/gtk3-macros (clawdius-tauri linux GUI chain)
+    "RUSTSEC-2025-0134", # rustls-pemfile via mysql_async; superseded upstream by rustls-pki-types
+    "RUSTSEC-2025-0081", # unic-char-property via urlpattern
+    "RUSTSEC-2025-0075", # unic-char-range via urlpattern
+    "RUSTSEC-2025-0080", # unic-common via urlpattern
+    "RUSTSEC-2025-0100", # unic-ucd-ident via urlpattern
+    "RUSTSEC-2025-0098", # unic-ucd-version via urlpattern
+
+    # Unsound (transitive; fixes are semver-incompatible upstream)
+    "RUSTSEC-2025-0167", # bitmaps unsound via imbl <- matrix-sdk 0.16
+    "RUSTSEC-2024-0429", # glib 0.18 iterator unsoundness via gtk 0.18 chain (clawdius-tauri); fix = gtk-rs 0.19+
+    "RUSTSEC-2026-0002", # lru 0.12 IterMut unsoundness via mysql_async/tantivy (direct lru dep is 0.18)
+    "RUSTSEC-2026-0253", # lru 0.12 pop() panic safety via mysql_async/tantivy (same chain)
 ]
 
 [licenses]

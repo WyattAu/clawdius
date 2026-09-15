@@ -7,8 +7,8 @@ repository.workspace = true
 description = "Clawdius web application with Leptos SSR and Axum"
 
 [dependencies]
-clawdius-ui = { path = "../clawdius-ui" }
-clawdius-core = { path = "../clawdius-core" }
+clawdius-ui = { path = "../clawdius-ui", version = "1.0" }
+clawdius-core = { path = "../clawdius-core", version = "1.0" }
 clawdius-auth = { path = "../clawdius-auth", version = "1.0.0", optional = true }
 axum = { workspace = true, optional = true }
 leptos = { version = "0.8", features = ["ssr"] }

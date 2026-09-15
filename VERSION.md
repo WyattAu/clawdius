@@ -83,7 +83,7 @@ Directories: `.specs/02_architecture/proofs/` (15 incl. TestFold scratch), `.cla
 
 | Issue | Severity | Details |
 |-------|----------|---------|
-| 6 transitive CVEs | Low | rustls-webpki (4), matrix-sdk-base (2); risk acceptance documented in SECURITY.md |
+| 4 transitive CVEs | Low | rustls-webpki (4, via serenity `discord` chain); risk acceptance documented in SECURITY.md |
 | `--all-features` compile fail | RESOLVED | Fixed after dead code removal |
 | CLI coverage 5.6% | Medium | 25+ subcommands at 0% coverage |
 | memory_bench FK bug | Low | save_message called before create_session (benchmark only) |
@@ -108,5 +108,5 @@ Directories: `.specs/02_architecture/proofs/` (15 incl. TestFold scratch), `.cla
 
 | ID | Crate | Blocked On |
 |----|-------|------------|
-| RUSTSEC-2026-0049/0098/0099/0104 | rustls-webpki | lancedb >= 0.28 |
-| RUSTSEC-2025-0065/0135 | matrix-sdk-base | matrix-sdk >= 0.11 |
+| RUSTSEC-2026-0049/0098/0099/0104 | rustls-webpki | serenity 0.13 (discord chain; SECURITY.md) |
+| RUSTSEC-2025-0065/0135 | matrix-sdk-base | RESOLVED — matrix-sdk 0.16.1 |

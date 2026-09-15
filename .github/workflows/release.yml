@@ -436,6 +436,9 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@1.96
       
+      - name: Publish clawdius-unsafe (SIMD primitives)
+        run: cargo publish --token ${{ secrets.CRATES_IO_TOKEN }} -p clawdius-unsafe --locked
+
       - name: Publish clawdius-core (library)
         run: cargo publish --token ${{ secrets.CRATES_IO_TOKEN }} -p clawdius-core --locked
       

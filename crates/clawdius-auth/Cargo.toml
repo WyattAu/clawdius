@@ -14,7 +14,7 @@ keywords.workspace = true
 categories.workspace = true
 
 [dependencies]
-clawdius-core = { path = "../clawdius-core" }
+clawdius-core = { path = "../clawdius-core", version = "1.0" }
 axum = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }

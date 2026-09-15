@@ -34,7 +34,11 @@ jobs:
         run: cargo install cargo-audit --locked
       
       - name: Run security audit
-        run: cargo audit --deny warnings
+        run: |
+          # cargo-audit 0.22 has no config-file support: ignored advisory IDs
+          # (each with a documented reason) are sourced from .audit.toml.
+          IGNORE_ARGS=$(grep -oE 'RUSTSEC-[0-9]{4}-[0-9]{4}' .audit.toml | sort -u | sed 's/^/--ignore /' | xargs)
+          cargo audit --deny warnings $IGNORE_ARGS
       
       - name: Generate audit report
         if: always()

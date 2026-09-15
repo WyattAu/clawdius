@@ -31,7 +31,9 @@ async-trait.workspace = true
 async-stream.workspace = true
 
 # Internal unsafe SIMD primitives
-clawdius-unsafe = { path = "../clawdius-unsafe" }
+# NOTE: version requirement required for publish; clawdius-unsafe must be
+# published to crates.io before clawdius-core (see release.yml ordering).
+clawdius-unsafe = { path = "../clawdius-unsafe", version = "0.1" }
 
 # Serialization (WASM-compatible)
 serde.workspace = true

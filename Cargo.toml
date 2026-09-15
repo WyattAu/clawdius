@@ -274,21 +274,20 @@ half = { path = ".cargo-vendor/half" }
 # Contingency: if lancedb >= 0.28 is released, replace with:
 # [patch.crates-io]
 # lancedb = { git = "https://github.com/lancedb/lancedb", rev = "..." }
-# Contingency: if matrix-sdk >= 0.11 is released, add:
-# [patch.crates-io]
-# matrix-sdk-base = { git = "https://github.com/matrix-org/matrix-rust-sdk", branch = "main" }
+
+# RESOLVED: matrix-sdk upgraded 0.10 -> 0.16 in clawdius-gateway (fixes
+# RUSTSEC-2025-0065/0135 via matrix-sdk-base 0.16.1); contingency removed.
 
 # Contingency: if wasmtime >= 45 is released, add:
 # [patch.crates-io]
 # wasmtime-wasi = { git = "https://github.com/bytecodealliance/wasmtime", rev = "..." }
 
 # CVE Contingency: Uncomment when upstream publishes fixes
-# RUSTSEC-2026-0049/0098/0099/0104 (rustls-webpki via lancedb)
+# RUSTSEC-2026-0049/0098/0099/0104 (rustls-webpki 0.102.8 pinned by
+# serenity 0.12 via tokio-tungstenite 0.21 -> rustls 0.22; documented
+# accepted risk in SECURITY.md while the `discord` feature stays optional)
 # [patch.crates-io]
 # rustls-webpki = { git = "https://github.com/rustls/rustls-webpki", rev = "..." }
-#
-# RUSTSEC-2025-0065/0135 (matrix-sdk-base)
-# matrix-sdk-base = { git = "https://github.com/matrix-org/matrix-rust-sdk", tag = "v0.11.0" }
 #
 # RUSTSEC-2026-0149 (wasmtime)
 # wasmtime = { git = "https://github.com/bytecodealliance/wasmtime", tag = "v45.0.0" }
