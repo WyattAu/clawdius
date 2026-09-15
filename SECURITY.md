@@ -68,6 +68,13 @@ Users who do not enable these features are not affected.
 
 - **`#![deny(unsafe_code)]`** — ~11 unsafe blocks across 3 files (simd.rs, proof/templates.rs, analysis/drift.rs)
 - **Shell sandboxing** — Blocked command patterns, timeout limits, directory restrictions
+- **Refuse-by-default sandbox floor** — When no real isolation backend (bubblewrap, Docker/Podman,
+  gVisor, sandbox-exec) is available, sandboxed command execution fails with
+  `Error::SandboxUnavailable` and remediation guidance instead of silently degrading to the
+  `filtered` backend (a command blocklist that is trivially bypassed via flag reordering,
+  interpreter eval, or string-embedded payloads). Unisolated execution requires an explicit
+  `allow_unisolated = true` opt-in under `[shell_sandbox]` in `clawdius.toml` — treat that flag
+  as dangerous and never enable it for untrusted, LLM-proposed commands.
 - **No hardcoded secrets** — All API keys loaded from environment variables or OS keychain
 - **No telemetry** — Zero data sent to external servers without explicit user consent
 - **WASM isolation** — Brain execution sandboxed via wasmtime (feature-gated)

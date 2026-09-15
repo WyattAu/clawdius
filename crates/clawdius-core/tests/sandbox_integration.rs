@@ -49,6 +49,19 @@ fn create_test_config(tier: SandboxTier) -> SandboxConfig {
         tier,
         network: false,
         mounts: vec![],
+        allow_unisolated: false,
+    }
+}
+
+/// Config that explicitly opts in to the unisolated `filtered` backend.
+///
+/// Required for tests that exercise the `filtered` backend (Trusted tier):
+/// without the opt-in, executor construction now refuses with
+/// `Error::SandboxUnavailable`.
+fn create_unisolated_test_config(tier: SandboxTier) -> SandboxConfig {
+    SandboxConfig {
+        allow_unisolated: true,
+        ..create_test_config(tier)
     }
 }
 
@@ -57,6 +70,7 @@ fn create_test_config_with_mounts(tier: SandboxTier, mounts: Vec<MountPoint>) ->
         tier,
         network: false,
         mounts,
+        allow_unisolated: false,
     }
 }
 
@@ -65,6 +79,7 @@ fn create_test_config_with_network(tier: SandboxTier, network: bool) -> SandboxC
         tier,
         network,
         mounts: vec![],
+        allow_unisolated: false,
     }
 }
 
@@ -85,8 +100,21 @@ mod sandbox_creation {
     }
 
     #[test]
-    fn test_sandbox_creation_trusted() {
+    fn test_sandbox_creation_trusted_refuses_without_opt_in() {
         let config = create_test_config(SandboxTier::Trusted);
+        let result = SandboxExecutor::new(SandboxTier::Trusted, config);
+        assert!(
+            result.is_err(),
+            "Trusted tier must refuse when allow_unisolated is not set"
+        );
+        let err = result.unwrap_err().to_string();
+        assert!(err.contains("Sandbox unavailable"), "got: {err}");
+        assert!(err.contains("allow_unisolated"), "got: {err}");
+    }
+
+    #[test]
+    fn test_sandbox_creation_trusted_with_opt_in_uses_filtered() {
+        let config = create_unisolated_test_config(SandboxTier::Trusted);
         let executor = SandboxExecutor::new(SandboxTier::Trusted, config);
         assert!(executor.is_ok());
         let executor = executor.unwrap();
@@ -166,7 +194,7 @@ mod command_execution {
 
     #[test]
     fn test_filtered_execution_simple_command() {
-        let config = create_test_config(SandboxTier::Trusted);
+        let config = create_unisolated_test_config(SandboxTier::Trusted);
         let executor = SandboxExecutor::new(SandboxTier::Trusted, config).unwrap();
         let cwd = get_cwd();
 
@@ -207,7 +235,7 @@ mod security_boundaries {
 
     #[test]
     fn test_filtered_backend_blocks_rm_rf_root() {
-        let config = create_test_config(SandboxTier::Trusted);
+        let config = create_unisolated_test_config(SandboxTier::Trusted);
         let executor = SandboxExecutor::new(SandboxTier::Trusted, config).unwrap();
         let cwd = get_cwd();
 
@@ -220,7 +248,7 @@ mod security_boundaries {
 
     #[test]
     fn test_filtered_backend_blocks_mkfs() {
-        let config = create_test_config(SandboxTier::Trusted);
+        let config = create_unisolated_test_config(SandboxTier::Trusted);
         let executor = SandboxExecutor::new(SandboxTier::Trusted, config).unwrap();
         let cwd = get_cwd();
 
@@ -230,7 +258,7 @@ mod security_boundaries {
 
     #[test]
     fn test_filtered_backend_blocks_dd_zero() {
-        let config = create_test_config(SandboxTier::Trusted);
+        let config = create_unisolated_test_config(SandboxTier::Trusted);
         let executor = SandboxExecutor::new(SandboxTier::Trusted, config).unwrap();
         let cwd = get_cwd();
 
@@ -240,7 +268,7 @@ mod security_boundaries {
 
     #[test]
     fn test_filtered_backend_blocks_fork_bomb() {
-        let config = create_test_config(SandboxTier::Trusted);
+        let config = create_unisolated_test_config(SandboxTier::Trusted);
         let executor = SandboxExecutor::new(SandboxTier::Trusted, config).unwrap();
         let cwd = get_cwd();
 
@@ -250,7 +278,7 @@ mod security_boundaries {
 
     #[test]
     fn test_filtered_backend_blocks_chmod_777_root() {
-        let config = create_test_config(SandboxTier::Trusted);
+        let config = create_unisolated_test_config(SandboxTier::Trusted);
         let executor = SandboxExecutor::new(SandboxTier::Trusted, config).unwrap();
         let cwd = get_cwd();
 
@@ -260,7 +288,7 @@ mod security_boundaries {
 
     #[test]
     fn test_filtered_backend_allows_safe_commands() {
-        let config = create_test_config(SandboxTier::Trusted);
+        let config = create_unisolated_test_config(SandboxTier::Trusted);
         let executor = SandboxExecutor::new(SandboxTier::Trusted, config).unwrap();
         let cwd = get_cwd();
 
@@ -435,7 +463,7 @@ mod tier_isolation {
 
     #[test]
     fn test_tier_trusted_uses_filtered_backend() {
-        let config = create_test_config(SandboxTier::Trusted);
+        let config = create_unisolated_test_config(SandboxTier::Trusted);
         let executor = SandboxExecutor::new(SandboxTier::Trusted, config).unwrap();
         assert_eq!(executor.backend_name(), "filtered");
     }
@@ -476,6 +504,106 @@ mod tier_isolation {
             let err = result.unwrap_err().to_string();
             assert!(err.contains("sandbox-exec"));
         }
+    }
+}
+
+/// Refuse-by-default: with no real isolation backend available and no
+/// explicit `allow_unisolated` opt-in, executor construction must fail with
+/// `Error::SandboxUnavailable` and remediation guidance — never degrade to
+/// the `filtered` backend with only a warning.
+mod refuse_by_default {
+    use super::*;
+
+    fn assert_unavailable(err: &clawdius_core::Error) {
+        let msg = err.to_string();
+        assert!(
+            msg.contains("Sandbox unavailable"),
+            "expected SandboxUnavailable, got: {msg}"
+        );
+        assert!(
+            msg.contains("allow_unisolated"),
+            "error must mention the opt-in flag: {msg}"
+        );
+        assert!(
+            msg.contains("bubblewrap") && msg.contains("Docker"),
+            "error must give install remediation: {msg}"
+        );
+    }
+
+    #[test]
+    fn trusted_refuses_without_opt_in() {
+        let result = SandboxExecutor::new(
+            SandboxTier::Trusted,
+            create_test_config(SandboxTier::Trusted),
+        );
+        match result {
+            Ok(executor) => panic!(
+                "Trusted tier must refuse by default, got backend: {}",
+                executor.backend_name()
+            ),
+            Err(err) => assert_unavailable(&err),
+        }
+    }
+
+    #[test]
+    fn untrusted_refuses_without_opt_in_when_no_backend() {
+        let result = SandboxExecutor::new(
+            SandboxTier::Untrusted,
+            create_test_config(SandboxTier::Untrusted),
+        );
+        if let Err(err) = result {
+            assert_unavailable(&err);
+        }
+        // Ok is acceptable only when a real isolation backend exists on the host.
+    }
+
+    #[test]
+    fn hardened_refuses_without_opt_in_when_no_backend() {
+        let result = SandboxExecutor::new(
+            SandboxTier::Hardened,
+            create_test_config(SandboxTier::Hardened),
+        );
+        if let Err(err) = result {
+            assert_unavailable(&err);
+        }
+    }
+
+    #[test]
+    fn opt_in_allows_filtered_everywhere() {
+        for tier in [
+            SandboxTier::Trusted,
+            SandboxTier::Untrusted,
+            SandboxTier::Hardened,
+        ] {
+            let executor = SandboxExecutor::new(tier, create_unisolated_test_config(tier))
+                .unwrap_or_else(|e| panic!("opted-in construction must succeed for {tier:?}: {e}"));
+            let name = executor.backend_name();
+            assert!(
+                name == "filtered"
+                    || name == "bubblewrap"
+                    || name == "sandbox-exec"
+                    || name == "docker"
+                    || name == "podman"
+                    || name == "gvisor"
+                    || name == "firecracker",
+                "unexpected backend for opted-in {tier:?}: {name}"
+            );
+        }
+    }
+
+    #[test]
+    fn serialized_config_defaults_to_refuse() {
+        // Deserializing config without the flag must default to false.
+        let config: SandboxConfig =
+            toml::from_str("tier = \"untrusted\"").expect("parse minimal config");
+        assert!(!config.allow_unisolated);
+    }
+
+    #[test]
+    fn serialized_config_accepts_opt_in() {
+        let config: SandboxConfig = toml::from_str("tier = \"trusted\"\nallow_unisolated = true")
+            .expect("parse opt-in config");
+        assert!(config.allow_unisolated);
     }
 }
 
@@ -526,7 +654,7 @@ mod isolation_tests {
     /// Test that the FilteredBackend (Trusted) blocks dangerous patterns.
     #[test]
     fn test_filtered_backend_blocks_rm_rf_root() {
-        let config = create_test_config(SandboxTier::Trusted);
+        let config = create_unisolated_test_config(SandboxTier::Trusted);
         let executor = SandboxExecutor::new(SandboxTier::Trusted, config).unwrap();
         let cwd = get_cwd();
 
@@ -543,7 +671,7 @@ mod isolation_tests {
     /// Test that the FilteredBackend allows safe commands.
     #[test]
     fn test_filtered_backend_allows_echo() {
-        let config = create_test_config(SandboxTier::Trusted);
+        let config = create_unisolated_test_config(SandboxTier::Trusted);
         let executor = SandboxExecutor::new(SandboxTier::Trusted, config).unwrap();
         let cwd = get_cwd();
 
@@ -554,7 +682,7 @@ mod isolation_tests {
     /// Test that the FilteredBackend blocks fork bombs.
     #[test]
     fn test_filtered_backend_blocks_fork_bomb() {
-        let config = create_test_config(SandboxTier::Trusted);
+        let config = create_unisolated_test_config(SandboxTier::Trusted);
         let executor = SandboxExecutor::new(SandboxTier::Trusted, config).unwrap();
         let cwd = get_cwd();
 
@@ -566,7 +694,7 @@ mod isolation_tests {
     /// Test that the FilteredBackend blocks dd to /dev/zero.
     #[test]
     fn test_filtered_backend_blocks_dd_dev_zero() {
-        let config = create_test_config(SandboxTier::Trusted);
+        let config = create_unisolated_test_config(SandboxTier::Trusted);
         let executor = SandboxExecutor::new(SandboxTier::Trusted, config).unwrap();
         let cwd = get_cwd();
 
@@ -578,7 +706,8 @@ mod isolation_tests {
     #[test]
     fn test_fallback_executor_always_works() {
         let config = create_test_config(SandboxTier::TrustedAudited);
-        let executor = SandboxExecutor::new_with_fallback(SandboxTier::TrustedAudited, config);
+        let executor =
+            SandboxExecutor::new_with_fallback(SandboxTier::TrustedAudited, config).unwrap();
         let cwd = get_cwd();
 
         // Use TrustedAudited tier to guarantee direct execution.
@@ -601,7 +730,7 @@ mod isolation_tests {
         .unwrap();
         let filtered = SandboxExecutor::new(
             SandboxTier::Trusted,
-            create_test_config(SandboxTier::Trusted),
+            create_unisolated_test_config(SandboxTier::Trusted),
         )
         .unwrap();
 

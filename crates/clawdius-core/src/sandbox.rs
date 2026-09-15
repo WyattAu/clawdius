@@ -14,6 +14,8 @@
 //! - **Tier 2 (Trusted)**: Trusted code (Python/Node.js)
 //!   - **Weak protection** — hardcoded command blocklist only.
 //!   - Trivially bypassed via interpreter eval, flag reordering, etc.
+//!   - Only used when explicitly opted in via `allow_unisolated = true`;
+//!     otherwise construction fails with `Error::SandboxUnavailable`.
 //!   - Should only be used alongside another security boundary.
 //!
 //! - **Tier 3 (Untrusted)**: Untrusted code (LLM reasoning)
@@ -74,8 +76,15 @@
 //!     timeout_secs: 120,
 //!     max_output_bytes: 1_048_576,
 //!     restrict_to_cwd: true,
+//!     allow_unisolated: false,
 //! };
 //! ```
+//!
+//! With `allow_unisolated = false` (the default), sandboxed execution is a
+//! hard stop when no isolation backend is available:
+//! [`crate::sandbox::executor::SandboxExecutor`] construction returns
+//! `Error::SandboxUnavailable` with remediation guidance rather than
+//! silently executing with the bypassable blocklist.
 //!
 //! # Security Guarantees
 //!

@@ -348,6 +348,7 @@ impl TestRunner {
             tier: crate::sandbox::SandboxTier::Untrusted,
             network: false,
             mounts: vec![],
+            allow_unisolated: false,
         };
         let bwrap_backend = crate::sandbox::backends::BubblewrapBackend::new(config);
         let cwd = cwd.to_path_buf();
@@ -392,6 +393,7 @@ impl TestRunner {
             tier: crate::sandbox::SandboxTier::Untrusted,
             network: false,
             mounts: vec![],
+            allow_unisolated: false,
         };
         let sandbox_exec_backend = crate::sandbox::backends::SandboxExecBackend::new(config);
         let cwd = cwd.to_path_buf();
@@ -430,6 +432,7 @@ impl TestRunner {
             tier: crate::sandbox::SandboxTier::Trusted,
             network: true,
             mounts: vec![],
+            allow_unisolated: false,
         };
         let filtered_backend = crate::sandbox::backends::FilteredBackend::new(config);
         let cwd = cwd.to_path_buf();

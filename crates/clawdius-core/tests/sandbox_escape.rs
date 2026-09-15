@@ -46,6 +46,15 @@ fn default_config(tier: SandboxTier) -> SandboxConfig {
         tier,
         network: false,
         mounts: vec![],
+        allow_unisolated: false,
+    }
+}
+
+/// Opt-in config for tests that exercise the unisolated `filtered` backend.
+fn unisolated_config(tier: SandboxTier) -> SandboxConfig {
+    SandboxConfig {
+        allow_unisolated: true,
+        ..default_config(tier)
     }
 }
 
@@ -218,25 +227,48 @@ mod executor {
     }
 
     #[test]
-    fn trusted_uses_filtered() {
+    fn trusted_without_opt_in_refuses() {
         let config = default_config(SandboxTier::Trusted);
+        let result = SandboxExecutor::new(SandboxTier::Trusted, config);
+        assert!(
+            result.is_err(),
+            "Trusted tier must refuse without allow_unisolated"
+        );
+        let msg = result.unwrap_err().to_string();
+        assert!(msg.contains("Sandbox unavailable"), "got: {msg}");
+    }
+
+    #[test]
+    fn trusted_uses_filtered() {
+        let config = unisolated_config(SandboxTier::Trusted);
         let executor = SandboxExecutor::new(SandboxTier::Trusted, config).unwrap();
         assert_eq!(executor.backend_name(), "filtered");
     }
 
     #[test]
-    fn fallback_always_succeeds() {
+    fn fallback_uses_isolation_or_refuses() {
         let config = default_config(SandboxTier::Hardened);
-        let executor = SandboxExecutor::new_with_fallback(SandboxTier::Hardened, config);
-        // Should never panic — degrades to filtered at worst
-        let _name = executor.backend_name();
+        match SandboxExecutor::new_with_fallback(SandboxTier::Hardened, config) {
+            Ok(executor) => {
+                // Only a real isolation backend is acceptable without opt-in.
+                let name = executor.backend_name();
+                assert_ne!(
+                    name, "filtered",
+                    "must not degrade to filtered without opt-in"
+                );
+                assert_ne!(name, "direct");
+            },
+            Err(err) => {
+                assert!(err.to_string().contains("Sandbox unavailable"));
+            },
+        }
     }
 
     #[test]
-    fn untrusted_fallback_always_succeeds() {
-        let config = default_config(SandboxTier::Untrusted);
+    fn untrusted_fallback_opt_in_always_succeeds() {
+        let config = unisolated_config(SandboxTier::Untrusted);
         let executor = SandboxExecutor::new_with_fallback(SandboxTier::Untrusted, config);
-        let _name = executor.backend_name();
+        assert!(executor.is_ok(), "opted-in fallback must always succeed");
     }
 
     #[test]
@@ -249,7 +281,7 @@ mod executor {
 
     #[test]
     fn filtered_executor_blocks_rm_rf() {
-        let config = default_config(SandboxTier::Trusted);
+        let config = unisolated_config(SandboxTier::Trusted);
         let executor = SandboxExecutor::new(SandboxTier::Trusted, config).unwrap();
         let result = executor.execute("rm", &["-rf", "/"], &cwd());
         assert!(result.is_err());

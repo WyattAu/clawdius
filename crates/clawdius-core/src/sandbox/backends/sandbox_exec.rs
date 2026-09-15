@@ -118,6 +118,7 @@ mod tests {
             tier: SandboxTier::Untrusted,
             network: false,
             mounts: vec![],
+            allow_unisolated: false,
         };
 
         let backend = SandboxExecBackend::new(config);
@@ -135,6 +136,7 @@ mod tests {
             tier: SandboxTier::Untrusted,
             network: true,
             mounts: vec![],
+            allow_unisolated: false,
         };
 
         let backend = SandboxExecBackend::new(config);

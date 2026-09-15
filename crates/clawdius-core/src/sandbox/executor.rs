@@ -7,6 +7,7 @@ use crate::sandbox::tiers::SandboxConfig;
 use crate::sandbox::SandboxTier;
 use std::path::Path;
 use std::process::Output;
+use std::sync::Arc;
 
 #[cfg(target_os = "linux")]
 use crate::sandbox::backends::BubblewrapBackend;
@@ -14,9 +15,31 @@ use crate::sandbox::backends::BubblewrapBackend;
 #[cfg(target_os = "macos")]
 use crate::sandbox::backends::SandboxExecBackend;
 
+/// Build the typed error returned when no real isolation backend is available
+/// and unisolated execution was not explicitly opted into.
+///
+/// There is intentionally **no** warning-and-execute path behind this: the
+/// command is never run.
+fn sandbox_unavailable_error() -> Error {
+    Error::SandboxUnavailable(
+        "no sandbox isolation backend is available (tried gVisor, Firecracker, \
+         Docker/Podman, bubblewrap/sandbox-exec); refusing to execute with the \
+         unisolated `filtered` backend (command blocklist only — trivially bypassed)."
+            .to_string()
+            + "\n\n\
+               Remediation (choose one):\n  \
+               1. Install a real isolation backend: bubblewrap \
+               (`apt install bubblewrap`), Docker, or Podman.\n  \
+               2. Explicitly accept unisolated execution by setting in clawdius.toml:\n       \
+               [shell_sandbox]\n       \
+               allow_unisolated = true",
+    )
+}
+
 pub struct SandboxExecutor {
-    backend: Box<dyn SandboxBackend>,
+    backend: Arc<dyn SandboxBackend>,
     tier: SandboxTier,
+    allow_unisolated: bool,
 }
 
 impl std::fmt::Debug for SandboxExecutor {
@@ -24,143 +47,123 @@ impl std::fmt::Debug for SandboxExecutor {
         f.debug_struct("SandboxExecutor")
             .field("backend", &self.backend.name())
             .field("tier", &format!("{:?}", self.tier))
+            .field("allow_unisolated", &self.allow_unisolated)
             .finish()
     }
 }
 
 impl SandboxExecutor {
+    /// Create a sandbox executor for the given tier.
+    ///
+    /// Backend selection:
+    ///
+    /// - `TrustedAudited` — `direct` execution (zero isolation). The tier
+    ///   itself is the explicit opt-in; a warning is logged.
+    /// - `Trusted` — the unisolated `filtered` backend (blocklist only).
+    ///   Because the blocklist is trivially bypassed, this backend is only
+    ///   used when [`SandboxConfig::allow_unisolated`] is `true`; otherwise
+    ///   construction fails with [`Error::SandboxUnavailable`].
+    /// - `Untrusted` / `Hardened` — best available isolation backend
+    ///   (container > bubblewrap/sandbox-exec). If none is available: the
+    ///   `filtered` backend when `allow_unisolated` is `true`, otherwise
+    ///   [`Error::SandboxUnavailable`].
+    ///
+    /// # Errors
+    ///
+    /// Returns [`Error::SandboxUnavailable`] when no real isolation backend
+    /// is available and `config.allow_unisolated` is `false`. The proposed
+    /// command must not be executed in that case.
     pub fn new(tier: SandboxTier, config: SandboxConfig) -> Result<Self> {
-        let backend: Box<dyn SandboxBackend> = match tier {
+        let allow_unisolated = config.allow_unisolated;
+        let backend: Arc<dyn SandboxBackend> = match tier {
             SandboxTier::TrustedAudited => {
                 tracing::warn!(
                     "TrustedAudited tier uses direct execution with NO sandboxing. \
                      Only use for fully trusted, audited code."
                 );
-                Box::new(DirectBackend::new(config))
+                Arc::new(DirectBackend::new(config))
             },
             SandboxTier::Trusted => {
+                if !allow_unisolated {
+                    return Err(sandbox_unavailable_error());
+                }
                 tracing::warn!(
                     "Trusted tier uses filtered execution (command blocklist only). \
                      This is NOT a real sandbox — payloads can bypass the blocklist \
-                     via interpreters, flag reordering, etc."
+                     via interpreters, flag reordering, etc. Explicitly allowed via \
+                     `allow_unisolated = true`."
                 );
-                Box::new(FilteredBackend::new(config))
+                Arc::new(FilteredBackend::new(config))
             },
-            SandboxTier::Untrusted | SandboxTier::Hardened => Self::platform_sandbox(config)?,
+            SandboxTier::Untrusted | SandboxTier::Hardened => {
+                Self::platform_sandbox(config, allow_unisolated)?
+            },
         };
-        Ok(Self { backend, tier })
+        Ok(Self {
+            backend,
+            tier,
+            allow_unisolated,
+        })
     }
 
-    /// Create a sandbox executor that uses the best available backend
-    /// for the given tier, with cascading fallback.
+    /// Create a sandbox executor using the best available backend for the
+    /// given tier, with cascading fallback.
     ///
-    /// For `TrustedAudited` and `Trusted` tiers, this always uses `direct` and
-    /// `filtered` respectively — these tiers intentionally opt out of real
-    /// isolation. See [`SandboxTier`] documentation for security implications.
-    pub fn new_with_fallback(tier: SandboxTier, config: SandboxConfig) -> Self {
-        let backend: Box<dyn SandboxBackend> = match tier {
-            SandboxTier::TrustedAudited => {
-                tracing::warn!(
-                    "TrustedAudited tier uses direct execution with NO sandboxing. \
-                     Only use for fully trusted, audited code."
-                );
-                Box::new(DirectBackend::new(config))
-            },
-            SandboxTier::Trusted => {
-                tracing::warn!(
-                    "Trusted tier uses filtered execution (command blocklist only). \
-                     This is NOT a real sandbox — payloads can bypass the blocklist \
-                     via interpreters, flag reordering, etc."
-                );
-                Box::new(FilteredBackend::new(config))
-            },
-            SandboxTier::Untrusted | SandboxTier::Hardened => Self::best_available_sandbox(config),
-        };
-        Self { backend, tier }
+    /// Cascade order for `Untrusted`/`Hardened`: Container (Docker/Podman) >
+    /// Bubblewrap/Sandbox-exec. **The cascade never silently degrades to the
+    /// unisolated `filtered` backend**: if no isolation backend is available,
+    /// construction fails with [`Error::SandboxUnavailable`] unless
+    /// [`SandboxConfig::allow_unisolated`] is explicitly `true`.
+    ///
+    /// # Errors
+    ///
+    /// Same as [`SandboxExecutor::new`].
+    pub fn new_with_fallback(tier: SandboxTier, config: SandboxConfig) -> Result<Self> {
+        Self::new(tier, config)
     }
 
-    /// Select the best available sandbox backend with cascading priority:
+    /// Select the best available isolation backend for `Untrusted`/`Hardened`
+    /// tiers, degrading to `filtered` **only** when explicitly allowed.
     ///
-    /// gVisor (kernel intercept) > Container (process isolation) >
-    /// Bubblewrap/Sandbox-exec (namespace/seatbelt) > Filtered (degraded, no real isolation)
+    /// Priority: Container (Docker/Podman with `--rm --network=none`) >
+    /// Bubblewrap (Linux) / sandbox-exec (macOS).
     ///
-    /// **The `direct` backend is never used as a fallback** — if all isolation
-    /// backends are unavailable, we degrade to `filtered` (blocklist) rather
-    /// than running with zero protection.
-    fn best_available_sandbox(config: SandboxConfig) -> Box<dyn SandboxBackend> {
+    /// The `direct` backend is never used as a fallback, and the `filtered`
+    /// backend is only used when `allow_unisolated` is `true` — otherwise
+    /// this returns [`Error::SandboxUnavailable`] and the caller must refuse
+    /// to execute.
+    fn platform_sandbox(
+        config: SandboxConfig,
+        allow_unisolated: bool,
+    ) -> Result<Arc<dyn SandboxBackend>> {
         // Priority 1: Container (Docker/Podman with --rm --network=none)
         if ContainerBackend::is_available() {
-            return Box::new(ContainerBackend::with_defaults());
+            return Ok(Arc::new(ContainerBackend::with_defaults()));
         }
 
-        // Priority 3: Platform sandbox (Bubblewrap on Linux, sandbox-exec on macOS)
+        // Priority 2: Platform sandbox (Bubblewrap on Linux, sandbox-exec on macOS)
         #[cfg(target_os = "linux")]
         if BubblewrapBackend::is_available() {
-            return Box::new(BubblewrapBackend::new(config));
+            return Ok(Arc::new(BubblewrapBackend::new(config)));
         }
 
         #[cfg(target_os = "macos")]
         if SandboxExecBackend::is_available() {
-            return Box::new(SandboxExecBackend::new(config));
+            return Ok(Arc::new(SandboxExecBackend::new(config)));
         }
 
-        // Priority 4: Filtered (degraded — command blocklist only, NO real isolation).
-        // We intentionally do NOT fall back to `direct` here. A blocklist is weak
-        // but still better than nothing.
-        tracing::error!(
-            "No sandbox isolation backend available. \
-             Falling back to filtered execution (command blocklist only). \
-             Install Docker/Podman or bubblewrap for proper isolation."
-        );
-        Box::new(FilteredBackend::new(config))
-    }
-
-    #[cfg(target_os = "linux")]
-    fn platform_sandbox(config: SandboxConfig) -> Result<Box<dyn SandboxBackend>> {
-        // Try Container backend (Docker/Podman)
-        if ContainerBackend::is_available() {
-            return Ok(Box::new(ContainerBackend::with_defaults()));
+        // No real isolation backend. Degrade to the (weak) filtered backend
+        // only when the user explicitly opted in; otherwise this is a hard stop.
+        if allow_unisolated {
+            tracing::warn!(
+                "No sandbox isolation backend available. \
+                 Degrading to filtered execution (command blocklist only) \
+                 as explicitly allowed by `allow_unisolated = true`."
+            );
+            return Ok(Arc::new(FilteredBackend::new(config)));
         }
 
-        // Fall back to Bubblewrap
-        if BubblewrapBackend::is_available() {
-            return Ok(Box::new(BubblewrapBackend::new(config)));
-        }
-
-        Err(Error::Sandbox(
-            "No sandbox backend available for Untrusted/Hardened tiers. \
-             Install one of: gVisor (runsc), Docker/Podman, or bubblewrap (bwrap)."
-                .to_string(),
-        ))
-    }
-
-    #[cfg(target_os = "macos")]
-    fn platform_sandbox(config: SandboxConfig) -> Result<Box<dyn SandboxBackend>> {
-        // Try Container backend first (Docker/Podman)
-        if ContainerBackend::is_available() {
-            return Ok(Box::new(ContainerBackend::with_defaults()));
-        }
-
-        if SandboxExecBackend::is_available() {
-            return Ok(Box::new(SandboxExecBackend::new(config)));
-        }
-
-        Err(Error::Sandbox(
-            "No sandbox backend available for Untrusted/Hardened tiers on macOS. \
-             Install Docker/Podman or sandbox-exec."
-                .to_string(),
-        ))
-    }
-
-    #[cfg(not(any(target_os = "linux", target_os = "macos")))]
-    fn platform_sandbox(_config: SandboxConfig) -> Result<Box<dyn SandboxBackend>> {
-        if ContainerBackend::is_available() {
-            return Ok(Box::new(ContainerBackend::with_defaults()));
-        }
-
-        Err(Error::Sandbox(
-            "Platform sandboxing requires Docker/Podman on this platform".to_string(),
-        ))
+        Err(sandbox_unavailable_error())
     }
 
     pub fn execute(&self, command: &str, args: &[&str], cwd: &Path) -> Result<Output> {
@@ -170,151 +173,25 @@ impl SandboxExecutor {
     /// Execute a command asynchronously by running the synchronous backend
     /// on a blocking thread pool.
     ///
-    /// This is the preferred entry point for async contexts (e.g., tokio
-    /// runtimes) since the sandbox backends use `std::process::Command`
-    /// internally.
+    /// The configured backend is the single source of truth for execution:
+    /// there is no per-call fallback. If the executor was constructed at all,
+    /// a real isolation backend (or an explicitly allowed `filtered` backend)
+    /// is in use.
+    ///
+    /// # Errors
+    ///
+    /// Propagates backend execution errors and task join errors.
     pub async fn execute_async(&self, command: &str, args: &[&str], cwd: &Path) -> Result<Output> {
+        let backend = Arc::clone(&self.backend);
         let command = command.to_string();
         let args: Vec<String> = args.iter().map(|s| s.to_string()).collect();
         let cwd = cwd.to_path_buf();
-        let backend_name = self.backend.name();
 
-        // Clone the tier so we can move it into the closure.
-        let tier = self.tier;
+        let _ = self.tier; // tier is exercised during construction; backend owns execution
 
         tokio::task::spawn_blocking(move || {
-            // Reconstruct a lightweight executor on the blocking thread.
-            // We use the Direct/Filtered/Platform backend directly rather
-            // than cloning the full SandboxExecutor (which is not Send-safe
-            // due to the Box<dyn SandboxBackend> — but the spawned task owns
-            // the move'd values so this is fine).
-            //
-            // For TrustedAudited / Trusted tiers we use simple Command.
-            // For Untrusted / Hardened we go through the platform sandbox.
-            let output = match tier {
-                SandboxTier::TrustedAudited => {
-                    let mut cmd = std::process::Command::new(&command);
-                    cmd.args(&args).current_dir(&cwd);
-                    cmd.output().map_err(|e| {
-                        if e.kind() == std::io::ErrorKind::NotFound {
-                            Error::Tool(format!("Command not found: {command}"))
-                        } else {
-                            Error::Io(e)
-                        }
-                    })?
-                },
-                SandboxTier::Trusted => {
-                    let mut cmd = std::process::Command::new(&command);
-                    cmd.args(&args).current_dir(&cwd);
-                    cmd.output().map_err(|e| {
-                        if e.kind() == std::io::ErrorKind::NotFound {
-                            Error::Tool(format!("Command not found: {command}"))
-                        } else {
-                            Error::Io(e)
-                        }
-                    })?
-                },
-                SandboxTier::Untrusted | SandboxTier::Hardened => {
-                    // For the async path on Untrusted/Hardened, we shell out
-                    // to the sandbox wrapper. This is a simplified path that
-                    // constructs the bwrap/container command inline.
-                    #[cfg(target_os = "linux")]
-                    {
-                        let bwrap_path = std::process::Command::new("which")
-                            .arg("bwrap")
-                            .output()
-                            .ok()
-                            .and_then(|o| {
-                                if o.status.success() {
-                                    Some(String::from_utf8_lossy(&o.stdout).trim().to_string())
-                                } else {
-                                    None
-                                }
-                            });
-
-                        if let Some(bwrap) = bwrap_path {
-                            let cwd_str = cwd.to_string_lossy().to_string();
-                            let mut cmd = std::process::Command::new(bwrap);
-                            cmd.arg("--ro-bind").arg("/usr").arg("/usr");
-                            cmd.arg("--ro-bind").arg("/lib").arg("/lib");
-                            cmd.arg("--ro-bind").arg("/lib64").arg("/lib64");
-                            cmd.arg("--ro-bind").arg("/bin").arg("/bin");
-                            cmd.arg("--ro-bind").arg("/sbin").arg("/sbin");
-                            cmd.arg("--bind").arg(&cwd_str).arg(&cwd_str);
-                            cmd.arg("--dev").arg("/dev");
-                            cmd.arg("--proc").arg("/proc");
-                            cmd.arg("--unshare-all");
-                            cmd.arg("--die-with-parent");
-                            if matches!(tier, SandboxTier::Hardened) {
-                                cmd.arg("--unshare-net");
-                            }
-                            // Essential read-only mounts for build tools
-                            for ro in &[
-                                "/etc/resolv.conf",
-                                "/etc/hosts",
-                                "/etc/nsswitch.conf",
-                                "/etc/passwd",
-                                "/etc/group",
-                                "/etc/ssl",
-                                "/etc/ca-certificates",
-                            ] {
-                                if std::path::Path::new(ro).exists() {
-                                    cmd.arg("--ro-bind").arg(ro).arg(ro);
-                                }
-                            }
-                            cmd.arg("--");
-                            cmd.arg(&command);
-                            cmd.args(&args);
-                            cmd.current_dir(&cwd);
-
-                            cmd.output().map_err(|e| {
-                                if e.kind() == std::io::ErrorKind::NotFound {
-                                    Error::Sandbox(
-                                        "bubblewrap (bwrap) not found. Please install bubblewrap."
-                                            .to_string(),
-                                    )
-                                } else {
-                                    Error::Io(e)
-                                }
-                            })?
-                        } else {
-                            // No bwrap available on async path — fall back to
-                            // filtered execution with a loud warning.
-                            tracing::error!(
-                                "Async sandbox: no bubblewrap available, falling back to \
-                                 filtered execution. Install bwrap for proper isolation."
-                            );
-                            let mut cmd = std::process::Command::new(&command);
-                            cmd.args(&args).current_dir(&cwd);
-                            cmd.output().map_err(|e| {
-                                if e.kind() == std::io::ErrorKind::NotFound {
-                                    Error::Tool(format!("Command not found: {command}"))
-                                } else {
-                                    Error::Io(e)
-                                }
-                            })?
-                        }
-                    }
-
-                    #[cfg(not(target_os = "linux"))]
-                    {
-                        tracing::error!(
-                            "Async sandbox: no platform sandbox available on this OS, \
-                             falling back to filtered execution."
-                        );
-                        let mut cmd = std::process::Command::new(&command);
-                        cmd.args(&args).current_dir(&cwd);
-                        cmd.output().map_err(|e| {
-                            if e.kind() == std::io::ErrorKind::NotFound {
-                                Error::Tool(format!("Command not found: {command}"))
-                            } else {
-                                Error::Io(e)
-                            }
-                        })?
-                    }
-                },
-            };
-            Ok(output)
+            let arg_refs: Vec<&str> = args.iter().map(String::as_str).collect();
+            backend.execute(&command, &arg_refs, &cwd)
         })
         .await
         .map_err(|e| Error::Sandbox(format!("Sandbox task join error: {e}")))?
@@ -324,82 +201,117 @@ impl SandboxExecutor {
     pub fn backend_name(&self) -> &'static str {
         self.backend.name()
     }
+
+    /// Whether this executor may fall back to unisolated (`filtered`)
+    /// execution when no real isolation backend is available.
+    #[must_use]
+    pub fn allows_unisolated(&self) -> bool {
+        self.allow_unisolated
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
+    fn make_config(tier: SandboxTier, allow_unisolated: bool) -> SandboxConfig {
+        SandboxConfig {
+            tier,
+            network: false,
+            mounts: vec![],
+            allow_unisolated,
+        }
+    }
+
     #[test]
     fn test_executor_trusted_audited() {
-        let config = SandboxConfig {
-            tier: SandboxTier::TrustedAudited,
-            network: true,
-            mounts: vec![],
-        };
+        let config = make_config(SandboxTier::TrustedAudited, false);
 
         let executor = SandboxExecutor::new(SandboxTier::TrustedAudited, config).unwrap();
         assert_eq!(executor.backend_name(), "direct");
     }
 
     #[test]
-    fn test_executor_trusted() {
-        let config = SandboxConfig {
-            tier: SandboxTier::Trusted,
-            network: true,
-            mounts: vec![],
-        };
+    fn test_executor_trusted_without_opt_in_refuses() {
+        let config = make_config(SandboxTier::Trusted, false);
 
-        let executor = SandboxExecutor::new(SandboxTier::Trusted, config).unwrap();
-        assert_eq!(executor.backend_name(), "filtered");
+        let result = SandboxExecutor::new(SandboxTier::Trusted, config);
+        let err = result.expect_err("Trusted tier must refuse without allow_unisolated");
+        assert!(matches!(err, Error::SandboxUnavailable(_)));
+        let msg = err.to_string();
+        assert!(msg.contains("Sandbox unavailable"));
+        assert!(msg.contains("allow_unisolated"));
+        assert!(msg.contains("bubblewrap"));
     }
 
     #[test]
-    fn test_executor_untrusted_fallback() {
-        let config = SandboxConfig {
-            tier: SandboxTier::Untrusted,
-            network: false,
-            mounts: vec![],
-        };
+    fn test_executor_trusted_opt_in_uses_filtered() {
+        let config = make_config(SandboxTier::Trusted, true);
 
-        // new_with_fallback always succeeds by cascading through backends.
-        let executor = SandboxExecutor::new_with_fallback(SandboxTier::Untrusted, config);
-        // The backend name depends on what's installed; just verify it doesn't panic.
+        let executor = SandboxExecutor::new(SandboxTier::Trusted, config).unwrap();
+        assert_eq!(executor.backend_name(), "filtered");
+        assert!(executor.allows_unisolated());
+    }
+
+    #[test]
+    fn test_executor_untrusted_no_opt_in_refuses_or_uses_real_backend() {
+        let config = make_config(SandboxTier::Untrusted, false);
+
+        match SandboxExecutor::new_with_fallback(SandboxTier::Untrusted, config) {
+            Ok(executor) => {
+                // A real isolation backend exists on this host.
+                let name = executor.backend_name();
+                assert_ne!(name, "filtered");
+                assert_ne!(name, "direct");
+            },
+            Err(err) => {
+                assert!(matches!(err, Error::SandboxUnavailable(_)));
+                let msg = err.to_string();
+                assert!(
+                    msg.contains("Docker") || msg.contains("bubblewrap"),
+                    "error should mention remediation backends: {msg}"
+                );
+            },
+        }
+    }
+
+    #[test]
+    fn test_executor_untrusted_opt_in_never_fails() {
+        let config = make_config(SandboxTier::Untrusted, true);
+
+        let executor = SandboxExecutor::new_with_fallback(SandboxTier::Untrusted, config)
+            .expect("opted-in fallback must always succeed");
         let _name = executor.backend_name();
     }
 
     #[test]
     fn test_executor_new_with_fallback_trusted_audited() {
-        let config = SandboxConfig {
-            tier: SandboxTier::TrustedAudited,
-            network: true,
-            mounts: vec![],
-        };
+        let config = make_config(SandboxTier::TrustedAudited, false);
 
-        let executor = SandboxExecutor::new_with_fallback(SandboxTier::TrustedAudited, config);
+        let executor = SandboxExecutor::new_with_fallback(SandboxTier::TrustedAudited, config)
+            .expect("TrustedAudited never refuses");
         assert_eq!(executor.backend_name(), "direct");
     }
 
     #[test]
-    fn test_executor_hardened_same_as_untrusted() {
-        let config = SandboxConfig {
-            tier: SandboxTier::Hardened,
-            network: false,
-            mounts: vec![],
-        };
+    fn test_executor_hardened_without_opt_in_matches_untrusted() {
+        let config = make_config(SandboxTier::Hardened, false);
 
-        // Hardened and Untrusted use the same backend selection.
-        let executor = SandboxExecutor::new_with_fallback(SandboxTier::Hardened, config);
-        let _name = executor.backend_name();
+        match SandboxExecutor::new_with_fallback(SandboxTier::Hardened, config) {
+            Ok(executor) => {
+                let name = executor.backend_name();
+                assert_ne!(name, "filtered");
+                assert_ne!(name, "direct");
+            },
+            Err(err) => {
+                assert!(matches!(err, Error::SandboxUnavailable(_)));
+            },
+        }
     }
 
     #[test]
     fn test_direct_execution() {
-        let config = SandboxConfig {
-            tier: SandboxTier::TrustedAudited,
-            network: false,
-            mounts: vec![],
-        };
+        let config = make_config(SandboxTier::TrustedAudited, false);
 
         let executor = SandboxExecutor::new(SandboxTier::TrustedAudited, config).unwrap();
         let cwd = std::env::current_dir().unwrap();
@@ -407,5 +319,54 @@ mod tests {
         let output = executor.execute("echo", &["test"], &cwd).unwrap();
         let stdout = String::from_utf8_lossy(&output.stdout);
         assert!(stdout.contains("test"));
+    }
+
+    #[tokio::test]
+    async fn test_execute_async_uses_configured_backend() {
+        let config = make_config(SandboxTier::Trusted, true);
+
+        let executor = SandboxExecutor::new(SandboxTier::Trusted, config).unwrap();
+        let cwd = std::env::current_dir().unwrap();
+
+        let output = executor
+            .execute_async("echo", &["async-ok"], &cwd)
+            .await
+            .unwrap();
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        assert!(stdout.contains("async-ok"));
+    }
+
+    #[tokio::test]
+    async fn test_execute_async_trusted_applies_blocklist() {
+        let config = make_config(SandboxTier::Trusted, true);
+
+        let executor = SandboxExecutor::new(SandboxTier::Trusted, config).unwrap();
+        let cwd = std::env::current_dir().unwrap();
+
+        let result = executor.execute_async("rm", &["-rf", "/"], &cwd).await;
+        assert!(result.is_err(), "blocklist must apply on the async path");
+    }
+
+    #[tokio::test]
+    async fn test_execute_async_trusted_without_opt_in_refuses() {
+        let config = make_config(SandboxTier::Trusted, false);
+
+        let result = SandboxExecutor::new(SandboxTier::Trusted, config);
+        assert!(
+            result.is_err(),
+            "construction must refuse before any async execution"
+        );
+    }
+
+    #[test]
+    fn test_sandbox_unavailable_error_message_is_actionable() {
+        let err = sandbox_unavailable_error();
+        let msg = err.to_string();
+        assert!(msg.contains("Sandbox unavailable"));
+        assert!(msg.contains("filtered"));
+        assert!(msg.contains("allow_unisolated"));
+        assert!(msg.contains("bubblewrap"));
+        assert!(msg.contains("Docker"));
+        assert!(msg.contains("gVisor"));
     }
 }

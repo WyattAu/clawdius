@@ -35,7 +35,7 @@ Clawdius is a next-generation AI coding engine built in Rust. It provides a term
 - **Session Hooks** — AgentHook trait for tool call interception and audit logging
 - **Messaging Gateway** — 9 platform adapters (Telegram, Discord, Slack, Matrix, Signal, Teams, WhatsApp, Rocket.Chat, Webhook)
 - **Formal Verification** — 318 Lean4 proofs for sandboxing, concurrency, security, and data structures
-- **8 Sandbox Backends** — Direct, Filtered, Bubblewrap, sandbox-exec, Container, gVisor, Firecracker, WASM
+- **8 Sandbox Backends** — Direct, Filtered (explicit opt-in only), Bubblewrap, sandbox-exec, Container, gVisor, Firecracker, WASM. If no isolating backend is available, command execution **refuses by default** with remediation guidance instead of degrading to the bypassable blocklist.
 - **Enterprise Auth** — OIDC + SAML 2.0 SSO, RBAC (21 permissions, 4 roles), API key middleware
 - **Audit Logging** — 6 backends: Memory, File, SQLite, Syslog, Elasticsearch, Webhook
 - **Budget Enforcement** — Per-session cost limits with real-time tracking
@@ -220,6 +220,10 @@ retry_on = ["rate_limit", "timeout", "server_error"]
 timeout_secs = 120
 restrict_to_cwd = true
 blocked_commands = ["rm -rf /", "mkfs", ":(){ :|:& };:"]
+# Refuse to execute when no real isolation backend (bubblewrap, Docker/Podman,
+# gVisor, sandbox-exec) is installed. Setting true permits degraded, unisolated
+# execution (blocklist only — trivially bypassed). DANGEROUS.
+allow_unisolated = false
 ```
 
 ## Messaging Gateway

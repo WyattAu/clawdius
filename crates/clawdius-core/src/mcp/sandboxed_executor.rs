@@ -24,7 +24,7 @@ pub struct SandboxedToolExecutor {
 }
 
 impl SandboxedToolExecutor {
-    #[must_use] 
+    #[must_use]
     pub fn new(working_dir: PathBuf) -> Self {
         let vfs = Arc::new(LocalFsBackend::new(&working_dir));
         Self {
@@ -48,12 +48,12 @@ impl SandboxedToolExecutor {
     }
 
     /// Get a clone of the VFS backend.
-    #[must_use] 
+    #[must_use]
     pub fn vfs(&self) -> Arc<dyn Vfs> {
         Arc::clone(&self.vfs)
     }
 
-    #[must_use] 
+    #[must_use]
     pub const fn with_default_tier(mut self, tier: ToolSandboxTier) -> Self {
         self.default_tier = tier;
         self
@@ -64,7 +64,7 @@ impl SandboxedToolExecutor {
         self
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn with_path_allowlist(mut self, paths: Vec<PathBuf>) -> Self {
         self.path_allowlist = paths;
         self
@@ -106,7 +106,9 @@ impl SandboxedToolExecutor {
 
         // Try VFS canonicalize for paths that exist
         let resolved_canonical = if self.vfs.exists(&resolved) {
-            if let Ok(p) = self.vfs.canonicalize(&resolved) { p } else {
+            if let Ok(p) = self.vfs.canonicalize(&resolved) {
+                p
+            } else {
                 // VFS rejected it (outside root). Check allowlist using std::fs
                 // since allowlisted paths are intentionally outside the VFS root.
                 if !self.check_allowlist(&resolved) {
@@ -122,12 +124,13 @@ impl SandboxedToolExecutor {
         };
 
         if !resolved_canonical.starts_with(&canonical_root)
-            && !self.check_allowlist(&resolved_canonical) {
-                return Err(format!(
-                    "path '{path}' escapes the working directory {}",
-                    canonical_root.display()
-                ));
-            }
+            && !self.check_allowlist(&resolved_canonical)
+        {
+            return Err(format!(
+                "path '{path}' escapes the working directory {}",
+                canonical_root.display()
+            ));
+        }
 
         Ok(resolved_canonical)
     }
@@ -145,7 +148,7 @@ impl SandboxedToolExecutor {
         })
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn execute_tool(&self, tool_name: &str, args: &serde_json::Value) -> McpToolResult {
         let tier = self.tier_for_tool(tool_name);
 
@@ -380,9 +383,11 @@ impl SandboxedToolExecutor {
                     tier: sandbox_tier,
                     network: false,
                     mounts: vec![],
+                    allow_unisolated: false,
                 };
 
-                let executor = SandboxExecutor::new_with_fallback(sandbox_tier, config);
+                let executor = SandboxExecutor::new_with_fallback(sandbox_tier, config)
+                    .map_err(|e| format!("sandbox unavailable, command not executed: {e}"))?;
                 let command = self.build_command(tool_name, args);
                 let parts: Vec<&str> = command.split_whitespace().collect();
                 if parts.is_empty() {

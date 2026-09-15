@@ -336,6 +336,7 @@ mod tests {
             tier: SandboxTier::Hardened,
             network: false,
             mounts: vec![],
+            allow_unisolated: false,
         };
         let backend = FirecrackerBackend::new(config);
         let json = backend.generate_config("echo", &["hi"], Path::new("/workspace"));
@@ -372,6 +373,7 @@ mod tests {
             tier: SandboxTier::Hardened,
             network: false,
             mounts: vec![],
+            allow_unisolated: false,
         };
         let backend = FirecrackerBackend::new(config)
             .with_memory(1024)

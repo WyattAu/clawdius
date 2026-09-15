@@ -30,6 +30,7 @@ const fn make_config(tier: SandboxTier) -> SandboxConfig {
         tier,
         network: false,
         mounts: vec![],
+        allow_unisolated: false,
     }
 }
 
@@ -100,8 +101,13 @@ fn bench_executor_overhead(c: &mut Criterion) {
         group.finish();
     }
 
-    // Trusted uses FilteredBackend (blocklist check overhead)
+    // Trusted uses FilteredBackend (blocklist check overhead); requires the
+    // explicit unisolated opt-in.
     let config = make_config(SandboxTier::Trusted);
+    let config = SandboxConfig {
+        allow_unisolated: true,
+        ..config
+    };
     if let Ok(executor) = SandboxExecutor::new(SandboxTier::Trusted, config) {
         let mut group = c.benchmark_group("sandbox/executor");
         group.sample_size(20);
@@ -115,26 +121,29 @@ fn bench_executor_overhead(c: &mut Criterion) {
         group.finish();
     }
 
-    // Untrusted uses best available (may be bubblewrap, container, or filtered)
+    // Untrusted uses best available (may be bubblewrap, container, or
+    // filtered when explicitly opted in; errors when no backend is available).
     let config = make_config(SandboxTier::Untrusted);
-    let executor = SandboxExecutor::new_with_fallback(SandboxTier::Untrusted, config);
-    let mut group = c.benchmark_group("sandbox/executor");
-    group.sample_size(20);
-    group.measurement_time(Duration::from_secs(3));
-    group.bench_function(
-        BenchmarkId::new(
-            "execute",
-            format!("untrusted ({})", executor.backend_name()),
-        ),
-        |b| {
-            b.iter(|| {
-                let result = executor.execute(black_box(BENCH_COMMAND), black_box(BENCH_ARGS), cwd);
-                // May succeed or fail depending on sandbox availability
-                let _ = black_box(result);
-            });
-        },
-    );
-    group.finish();
+    if let Ok(executor) = SandboxExecutor::new_with_fallback(SandboxTier::Untrusted, config) {
+        let mut group = c.benchmark_group("sandbox/executor");
+        group.sample_size(20);
+        group.measurement_time(Duration::from_secs(3));
+        group.bench_function(
+            BenchmarkId::new(
+                "execute",
+                format!("untrusted ({})", executor.backend_name()),
+            ),
+            |b| {
+                b.iter(|| {
+                    let result =
+                        executor.execute(black_box(BENCH_COMMAND), black_box(BENCH_ARGS), cwd);
+                    // May succeed or fail depending on sandbox availability
+                    let _ = black_box(result);
+                });
+            },
+        );
+        group.finish();
+    }
 }
 
 /// Benchmark backend detection cost

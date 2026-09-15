@@ -285,6 +285,7 @@ mod tests {
             tier: SandboxTier::Hardened,
             network: false,
             mounts: vec![],
+            allow_unisolated: false,
         };
         let backend = GvisorBackend::new(config);
         let cwd = Path::new("/tmp");
@@ -304,6 +305,7 @@ mod tests {
             tier: SandboxTier::Hardened,
             network: true,
             mounts: vec![],
+            allow_unisolated: false,
         };
         let backend = GvisorBackend::new(config);
         let cmd = backend.build_run_command("ls", &[], Path::new("/tmp"));

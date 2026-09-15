@@ -173,6 +173,7 @@
 //!     timeout_secs: 120,           // 2-minute timeout
 //!     max_output_bytes: 1_048_576, // 1 MB max output
 //!     restrict_to_cwd: true,       // Restrict to working directory
+//!     allow_unisolated: false,     // Refuse to run when no real sandbox exists
 //! };
 //! ```
 //!
@@ -571,6 +572,16 @@ pub struct ShellSandboxConfig {
     /// Restrict commands to working directory
     #[serde(default = "default_true")]
     pub restrict_to_cwd: bool,
+    /// Explicitly allow unisolated execution (the `filtered` backend — a
+    /// command blocklist that is trivially bypassed) when no real isolation
+    /// backend (gVisor, Firecracker, Docker/Podman, bubblewrap, sandbox-exec)
+    /// is available.
+    ///
+    /// **DANGEROUS.** Defaults to `false`: without a real sandbox backend,
+    /// sandboxed command execution fails with `Error::SandboxUnavailable`
+    /// instead of silently degrading to the blocklist.
+    #[serde(default)]
+    pub allow_unisolated: bool,
 }
 
 fn default_blocked_commands() -> Vec<String> {
@@ -604,6 +615,7 @@ impl Default for ShellSandboxConfig {
             timeout_secs: default_timeout_secs(),
             max_output_bytes: default_max_output_bytes(),
             restrict_to_cwd: true,
+            allow_unisolated: false,
         }
     }
 }

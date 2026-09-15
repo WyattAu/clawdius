@@ -158,6 +158,15 @@ pub enum Error {
     #[error("Sandbox error: {0}")]
     Sandbox(String),
 
+    /// No sandbox isolation backend is available and unisolated execution was
+    /// not explicitly allowed via `allow_unisolated`.
+    ///
+    /// This is a hard stop: agent-proposed commands are **not** executed.
+    /// The message contains remediation steps (install a real backend, or
+    /// explicitly opt in via configuration).
+    #[error("Sandbox unavailable: {0}")]
+    SandboxUnavailable(String),
+
     /// Brain runtime error
     #[error("Brain runtime error: {0}")]
     Brain(String),
@@ -329,6 +338,9 @@ impl Error {
                     "Sandbox violation: {msg}\n\nThis command was blocked for security.\n\
                      Check .clawdius/config.toml for allowed commands."
                 )
+            },
+            Error::SandboxUnavailable(msg) => {
+                format!("Command not executed: {msg}")
             },
             _ => self.to_string(),
         }

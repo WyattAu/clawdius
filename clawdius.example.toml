@@ -60,6 +60,12 @@ blocked_commands = [
 timeout_secs = 120
 max_output_bytes = 1048576
 restrict_to_cwd = true
+# DANGEROUS. When false (default), sandboxed command execution refuses to run
+# if no real isolation backend (bubblewrap, Docker/Podman, gVisor, sandbox-exec)
+# is installed. Setting this to true permits degraded, unisolated execution
+# using only the blocklist above — which is trivially bypassed. Only enable
+# this if you understand the risk and have no other option.
+allow_unisolated = false
 
 [telemetry]
 crash_reporting = false

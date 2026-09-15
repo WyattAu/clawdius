@@ -337,6 +337,18 @@ impl From<crate::Error> for EnhancedError {
             },
             crate::Error::SessionNotFound { id } => ErrorHelpers::session_not_found(id),
             crate::Error::Sandbox(msg) => ErrorHelpers::sandbox_violation(msg),
+            crate::Error::SandboxUnavailable(msg) => EnhancedError::new(msg.clone())
+                .with_context("Sandboxed command execution")
+                .with_suggestion(
+                    "Install a real isolation backend: bubblewrap (apt install bubblewrap) \
+                         or Docker/Podman",
+                )
+                .with_suggestion(
+                    "Or explicitly accept unisolated execution: set \
+                         [shell_sandbox] allow_unisolated = true in clawdius.toml (DANGEROUS)",
+                )
+                .with_doc_link("https://clawdius.dev/docs/security/sandbox")
+                .with_error_code("SANDBOX_UNAVAILABLE"),
             crate::Error::Timeout(duration) => {
                 ErrorHelpers::timeout_error("Operation", duration.as_secs())
             },

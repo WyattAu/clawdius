@@ -138,6 +138,7 @@ mod tests {
             tier: SandboxTier::Untrusted,
             network: false,
             mounts: vec![],
+            allow_unisolated: false,
         };
 
         let backend = BubblewrapBackend::new(config);

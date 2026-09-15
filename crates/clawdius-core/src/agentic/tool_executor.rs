@@ -193,7 +193,8 @@ fn is_command_blocked(command: &str) -> bool {
 ///
 /// When a sandbox tier is configured (via [`with_sandbox_tier`] or
 /// [`with_sandbox_executor`]), all shell commands are routed through the
-/// sandbox backend (bubblewrap on Linux, container, or filtered fallback).
+/// sandbox backend (container, bubblewrap/sandbox-exec, or `filtered` only
+/// when unisolated execution was explicitly allowed).
 pub struct ShellToolExecutor {
     /// Working directory for command execution.
     working_dir: PathBuf,
@@ -208,8 +209,8 @@ pub struct ShellToolExecutor {
 impl ShellToolExecutor {
     /// Creates a new executor with the given working directory.
     ///
-    /// Uses `SandboxTier::Trusted` by default (blocklist only, no real
-    /// isolation). Call [`with_sandbox_tier`] to upgrade to real sandboxing.
+    /// No sandbox is configured by default; commands run directly with the
+    /// shell blocklist. Call [`with_sandbox_tier`] to enable real sandboxing.
     #[must_use]
     pub fn new(working_dir: impl Into<PathBuf>) -> Self {
         Self {
@@ -237,22 +238,27 @@ impl ShellToolExecutor {
     /// Configure sandbox isolation at the given tier.
     ///
     /// Uses [`SandboxExecutor::new_with_fallback`] which cascades through
-    /// available backends (container > bubblewrap > filtered) and never
-    /// falls back to zero-isolation `direct` execution.
+    /// available isolation backends (container > bubblewrap/sandbox-exec).
+    ///
+    /// `allow_unisolated` explicitly permits the weak `filtered` backend
+    /// (command blocklist only, trivially bypassed) when no real isolation
+    /// backend is available. Keep this `false` for LLM-proposed commands:
+    /// without it, construction fails instead of silently degrading.
     ///
     /// # Errors
     ///
-    /// This method cannot fail — it always uses `new_with_fallback` which
-    /// degrades gracefully to filtered execution if no backend is available.
-    #[must_use]
-    pub fn with_sandbox_tier(mut self, tier: SandboxTier) -> Self {
+    /// Returns [`crate::Error::SandboxUnavailable`] when no real isolation
+    /// backend is available and `allow_unisolated` is `false`. In that case
+    /// no sandbox is installed and commands must not be executed.
+    pub fn with_sandbox_tier(mut self, tier: SandboxTier, allow_unisolated: bool) -> Result<Self> {
         let config = SandboxConfig {
             tier,
             network: !matches!(tier, SandboxTier::Hardened),
             mounts: vec![],
+            allow_unisolated,
         };
-        self.sandbox = Some(Arc::new(SandboxExecutor::new_with_fallback(tier, config)));
-        self
+        self.sandbox = Some(Arc::new(SandboxExecutor::new_with_fallback(tier, config)?));
+        Ok(self)
     }
 
     /// Inject a pre-built sandbox executor.
