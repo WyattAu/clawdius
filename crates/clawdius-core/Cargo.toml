@@ -102,6 +102,7 @@ redis = { version = "1.2", features = ["tokio-comp", "connection-manager"], opti
 
 # Stripe (optional, for billing)
 stripe = { version = "1.0.0-rc.5", package = "async-stripe", optional = true, default-features = false, features = ["default-tls"] }
+workspace-hack = { version = "0.1", path = "../../workspace-hack" }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 # Async runtime (full features with net/fs/process/signal - not available in WASM)

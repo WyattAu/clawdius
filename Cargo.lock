@@ -284,6 +284,9 @@ name = "arbitrary"
 version = "1.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c3d036a3c4ab069c7b410a2ce876bd74808d2d0888a82667669f8e783a898bf1"
+dependencies = [
+ "derive_arbitrary",
+]
 
 [[package]]
 name = "arboard"
@@ -1346,6 +1349,29 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "64fa3c856b712db6612c019f14756e64e4bcea13337a6b33b696333a9eaa2d06"
 
 [[package]]
+name = "bytecheck"
+version = "0.8.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "26333eeac754f0ad8a6bcd0eb0ac012156302e4e16b852b72ee399aea4f12c29"
+dependencies = [
+ "bytecheck_derive",
+ "ptr_meta",
+ "rancor",
+ "simdutf8",
+]
+
+[[package]]
+name = "bytecheck_derive"
+version = "0.8.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "46d07918caa9eeaaf06b7873925c53a61daac173539b4f7715090745e44e4e69"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 3.0.5",
+]
+
+[[package]]
 name = "bytemuck"
 version = "1.25.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1926,6 +1952,7 @@ dependencies = [
  "tracing-subscriber",
  "uuid",
  "walkdir",
+ "workspace-hack",
 ]
 
 [[package]]
@@ -1954,6 +1981,7 @@ dependencies = [
  "url",
  "urlencoding",
  "uuid",
+ "workspace-hack",
  "zeroize",
 ]
 
@@ -1972,6 +2000,7 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "uuid",
+ "workspace-hack",
 ]
 
 [[package]]
@@ -2058,6 +2087,7 @@ dependencies = [
  "wasmtime-wasi",
  "wat",
  "which 7.0.3",
+ "workspace-hack",
 ]
 
 [[package]]
@@ -2088,6 +2118,7 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "uuid",
+ "workspace-hack",
 ]
 
 [[package]]
@@ -2102,6 +2133,7 @@ dependencies = [
  "tower-lsp",
  "tracing",
  "tracing-subscriber",
+ "workspace-hack",
 ]
 
 [[package]]
@@ -2112,6 +2144,7 @@ dependencies = [
  "serde",
  "serde_json",
  "tokio",
+ "workspace-hack",
 ]
 
 [[package]]
@@ -2122,6 +2155,7 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror 2.0.20",
+ "workspace-hack",
 ]
 
 [[package]]
@@ -2139,6 +2173,7 @@ dependencies = [
  "tauri-plugin-shell",
  "tokio",
  "uuid",
+ "workspace-hack",
 ]
 
 [[package]]
@@ -2150,11 +2185,15 @@ dependencies = [
  "leptos_meta",
  "wasm-bindgen",
  "web-sys",
+ "workspace-hack",
 ]
 
 [[package]]
 name = "clawdius-unsafe"
 version = "0.1.0"
+dependencies = [
+ "workspace-hack",
+]
 
 [[package]]
 name = "clawdius-web"
@@ -2174,6 +2213,7 @@ dependencies = [
  "tokio",
  "tower 0.5.3",
  "tower-http",
+ "workspace-hack",
 ]
 
 [[package]]
@@ -3921,6 +3961,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "derive_arbitrary"
+version = "1.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1e567bd82dcff979e4b03460c307b3cdc9e96fde3d73bed1496d2bc75d9dd62a"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.117",
+]
+
+[[package]]
 name = "derive_builder"
 version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4384,10 +4435,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "env_filter"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "900d271a03799a1ee8d1ca9b19893b48ca674a9284fefcfb85f05e74ed314217"
+dependencies = [
+ "log",
+ "regex",
+]
+
+[[package]]
 name = "env_home"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c7f84e12ccf0a7ddc17a6c41c93326024c42920d7ee630d04950e6926645c0fe"
+
+[[package]]
+name = "env_logger"
+version = "0.11.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "de671bd27a75a797dc9ae289ba1e77276e75e2026408aab65185384e2d5cd3f6"
+dependencies = [
+ "env_filter",
+ "log",
+]
 
 [[package]]
 name = "equivalent"
@@ -5588,12 +5659,18 @@ dependencies = [
 name = "half"
 version = "2.7.1"
 dependencies = [
+ "arbitrary",
  "bytemuck",
  "cfg-if",
+ "criterion",
  "crunchy",
  "num-traits",
+ "quickcheck",
+ "quickcheck_macros",
  "rand 0.9.4",
  "rand_distr 0.5.1",
+ "rkyv",
+ "serde",
  "zerocopy",
 ]
 
@@ -8614,6 +8691,26 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1d87ecb2933e8aeadb3e3a02b828fed80a7528047e68b4f424523a0981a3a084"
 
 [[package]]
+name = "munge"
+version = "0.4.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5e17401f259eba956ca16491461b6e8f72913a0a114e39736ce404410f915a0c"
+dependencies = [
+ "munge_macro",
+]
+
+[[package]]
+name = "munge_macro"
+version = "0.4.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4568f25ccbd45ab5d5603dc34318c1ec56b117531781260002151b8530a9f931"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.117",
+]
+
+[[package]]
 name = "murmurhash32"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -10304,6 +10401,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "ptr_meta"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "743da816b98c921cdbe8628ef7381b76f25ecf4da599fc80aca90eae7ef70cc0"
+dependencies = [
+ "ptr_meta_derive",
+]
+
+[[package]]
+name = "ptr_meta_derive"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1c8d9ca532f185d5d4db7a7c9d51420b452168ea1c2b913953281bd6fe1fcbd0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 3.0.5",
+]
+
+[[package]]
 name = "pulley-interpreter"
 version = "46.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -10384,6 +10501,28 @@ checksum = "41b1177fdf999d2321d3fb46ff47159d9c1fb9ad66a4879f8c50a0b504615e9b"
 dependencies = [
  "memchr",
  "serde",
+]
+
+[[package]]
+name = "quickcheck"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "95c589f335db0f6aaa168a7cd27b1fc6920f5e1470c804f814d9cd6e62a0f70b"
+dependencies = [
+ "env_logger",
+ "log",
+ "rand 0.10.1",
+]
+
+[[package]]
+name = "quickcheck_macros"
+version = "1.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a9a28b8493dd664c8b171dd944da82d933f7d456b829bfb236738e1fe06c5ba4"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.117",
 ]
 
 [[package]]
@@ -10491,6 +10630,15 @@ name = "radium"
 version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dc33ff2d4973d518d823d61aa239014831e521c75da58e3df4840d3f47749d09"
+
+[[package]]
+name = "rancor"
+version = "0.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9b534442d0fcdb55d66f373d9cac6d33b6293a2335bc2136dbd06ce0e87d2572"
+dependencies = [
+ "ptr_meta",
+]
 
 [[package]]
 name = "rand"
@@ -11012,6 +11160,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ba39f3699c378cd8970968dcbff9c43159ea4cfbd88d43c00b22f2ef10a435d2"
 
 [[package]]
+name = "rend"
+version = "0.5.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "663ba70707f96e871406fe10d68128412e619b06d1d47cb91c3a4c6501176240"
+dependencies = [
+ "bytecheck",
+]
+
+[[package]]
 name = "reqwest"
 version = "0.12.28"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -11149,6 +11306,36 @@ dependencies = [
  "libc",
  "untrusted",
  "windows-sys 0.52.0",
+]
+
+[[package]]
+name = "rkyv"
+version = "0.8.18"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d9776093b7ca170454ab1406954f7b7d97a57c51dc6c0642957fb2ef25c2d399"
+dependencies = [
+ "bytecheck",
+ "bytes",
+ "hashbrown 0.17.1",
+ "indexmap 2.14.0",
+ "munge",
+ "ptr_meta",
+ "rancor",
+ "rend",
+ "rkyv_derive",
+ "tinyvec",
+ "uuid",
+]
+
+[[package]]
+name = "rkyv_derive"
+version = "0.8.18"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1c25ef604ac7dd839d44d64648952ea23c97866f124ff671b0ed2cf3ad9bb06e"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 3.0.5",
 ]
 
 [[package]]
@@ -17069,6 +17256,144 @@ dependencies = [
  "wayland-client",
  "wayland-protocols",
  "wayland-protocols-wlr",
+]
+
+[[package]]
+name = "workspace-hack"
+version = "0.1.0"
+dependencies = [
+ "aead 0.5.2",
+ "aho-corasick",
+ "any_spawner",
+ "arrayvec",
+ "axum",
+ "base64ct",
+ "bit-set 0.8.0",
+ "bit-vec 0.8.0",
+ "bitflags 2.13.0",
+ "brotli",
+ "bytemuck",
+ "bytes",
+ "camino",
+ "cc",
+ "cipher 0.4.4",
+ "clap",
+ "clap_builder",
+ "crossbeam-epoch",
+ "crossbeam-utils",
+ "crypto-common 0.1.7",
+ "deranged",
+ "derive_more 2.1.1",
+ "derive_more-impl 2.1.1",
+ "digest 0.10.7",
+ "either",
+ "event-listener",
+ "fastrand",
+ "foldhash 0.2.0",
+ "form_urlencoded",
+ "futures",
+ "futures-channel",
+ "futures-core",
+ "futures-executor",
+ "futures-io",
+ "futures-sink",
+ "futures-task",
+ "futures-timer",
+ "futures-util",
+ "getrandom 0.2.17",
+ "getrandom 0.3.4",
+ "getrandom 0.4.2",
+ "half",
+ "hashbrown 0.14.5",
+ "hashbrown 0.15.5",
+ "hashbrown 0.16.1",
+ "hashbrown 0.17.1",
+ "hydration_context",
+ "hyper",
+ "hyper-util",
+ "indexmap 2.14.0",
+ "inout 0.1.4",
+ "itertools 0.14.0",
+ "js_int",
+ "leptos",
+ "leptos_dom",
+ "leptos_macro",
+ "leptos_meta",
+ "leptos_server",
+ "log",
+ "memchr",
+ "mime_guess",
+ "miniz_oxide",
+ "num-bigint 0.4.6",
+ "num-integer",
+ "num-traits",
+ "once_cell",
+ "percent-encoding",
+ "petgraph 0.8.3",
+ "phf_shared 0.13.1",
+ "proc-macro-error2",
+ "proc-macro2",
+ "prost 0.14.4",
+ "prost-types",
+ "quick-xml 0.42.0",
+ "rand 0.9.4",
+ "rand_chacha 0.9.0",
+ "rand_core 0.6.4",
+ "rand_core 0.9.5",
+ "rand_distr 0.5.1",
+ "reactive_graph",
+ "regex",
+ "regex-automata",
+ "regex-syntax",
+ "reqwest 0.12.28",
+ "ruma-identifiers-validation",
+ "schemars 0.8.22",
+ "semver",
+ "serde",
+ "serde_core",
+ "serde_json",
+ "serde_spanned 1.1.1",
+ "serde_with",
+ "server_fn",
+ "server_fn_macro",
+ "sha1",
+ "simd-adler32",
+ "simd-tokenizer",
+ "slab",
+ "smallvec",
+ "stable_deref_trait",
+ "subtle",
+ "syn 1.0.109",
+ "syn 2.0.117",
+ "syn 3.0.5",
+ "sync_wrapper",
+ "tachys",
+ "tauri-utils",
+ "tempfile",
+ "time",
+ "time-macros",
+ "tokio",
+ "tokio-stream",
+ "tokio-util",
+ "toml 0.9.12+spec-1.1.0",
+ "toml 1.1.2+spec-1.1.0",
+ "toml_datetime 0.7.5+spec-1.1.0",
+ "toml_datetime 1.1.1+spec-1.1.0",
+ "toml_parser",
+ "tower 0.4.13",
+ "tracing",
+ "tracing-core",
+ "tracing-subscriber",
+ "typenum",
+ "url",
+ "uuid",
+ "web-sys",
+ "winnow 1.0.3",
+ "xxhash-rust",
+ "yoke",
+ "zerocopy",
+ "zerofrom",
+ "zeroize",
 ]
 
 [[package]]

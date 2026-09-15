@@ -12,6 +12,7 @@ serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
 clawdius-core = { path = "../clawdius-core", version = "1.0.0" }
+workspace-hack = { version = "0.1", path = "../../workspace-hack" }
 
 [lints]
 workspace = true

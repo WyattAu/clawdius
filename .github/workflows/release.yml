@@ -430,35 +430,49 @@ jobs:
     timeout-minutes: 30
     needs: [validate, github-release]
     if: ${{ !contains(needs.validate.outputs.version, '-') }}
+    env:
+      SCCACHE_GHA_ENABLED: "true"
+      RUSTC_WRAPPER: sccache
     steps:
       - uses: actions/checkout@v6
+      - uses: mozilla-actions/sccache-action@v0.0.11
+      - name: sccache stats
+        run: sccache --start-server || true
       
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@1.96
       
+      - name: Install cargo-hakari
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-hakari
+
       - name: Publish clawdius-unsafe (SIMD primitives)
-        run: cargo publish --token ${{ secrets.CRATES_IO_TOKEN }} -p clawdius-unsafe --locked
+        # cargo hakari publish temporarily strips the workspace-hack
+        # dependency (local-only, not on crates.io) and restores it after.
+        # --locked is dropped: the temporary strip rewrites Cargo.lock.
+        run: cargo hakari publish -p clawdius-unsafe -- --token ${{ secrets.CRATES_IO_TOKEN }}
 
       - name: Publish clawdius-core (library)
-        run: cargo publish --token ${{ secrets.CRATES_IO_TOKEN }} -p clawdius-core --locked
+        run: cargo hakari publish -p clawdius-core -- --token ${{ secrets.CRATES_IO_TOKEN }}
       
       - name: Publish clawdius-plugin-sdk (plugin SDK)
-        run: cargo publish --token ${{ secrets.CRATES_IO_TOKEN }} -p clawdius-plugin-sdk --locked
+        run: cargo hakari publish -p clawdius-plugin-sdk -- --token ${{ secrets.CRATES_IO_TOKEN }}
       
       - name: Publish clawdius-lsp (LSP server)
-        run: cargo publish --token ${{ secrets.CRATES_IO_TOKEN }} -p clawdius-lsp --locked
+        run: cargo hakari publish -p clawdius-lsp -- --token ${{ secrets.CRATES_IO_TOKEN }}
       
       - name: Publish clawdius-gateway (messaging)
-        run: cargo publish --token ${{ secrets.CRATES_IO_TOKEN }} -p clawdius-gateway --locked
+        run: cargo hakari publish -p clawdius-gateway -- --token ${{ secrets.CRATES_IO_TOKEN }}
       
       - name: Publish clawdius-mcp (MCP server)
-        run: cargo publish --token ${{ secrets.CRATES_IO_TOKEN }} -p clawdius-mcp --locked
+        run: cargo hakari publish -p clawdius-mcp -- --token ${{ secrets.CRATES_IO_TOKEN }}
       
       - name: Publish clawdius-code (VSCode helper)
-        run: cargo publish --token ${{ secrets.CRATES_IO_TOKEN }} -p clawdius-code --locked
+        run: cargo hakari publish -p clawdius-code -- --token ${{ secrets.CRATES_IO_TOKEN }}
       
       - name: Publish clawdius (CLI)
-        run: cargo publish --token ${{ secrets.CRATES_IO_TOKEN }} -p clawdius --locked
+        run: cargo hakari publish -p clawdius -- --token ${{ secrets.CRATES_IO_TOKEN }}
 
   notify:
     name: Notify

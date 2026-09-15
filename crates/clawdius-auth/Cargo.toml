@@ -38,6 +38,7 @@ sha2 = "0.10"
 # SAML 2.0 support
 quick-xml = { version = "0.42", features = ["serialize"] }
 ring = "0.17"
+workspace-hack = { version = "0.1", path = "../../workspace-hack" }
 
 [lints]
 workspace = true
