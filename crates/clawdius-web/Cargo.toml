@@ -36,3 +36,6 @@ ssr = [
 ]
 hydrate = ["leptos/hydrate"]
 auth = ["dep:clawdius-auth"]
+
+[lints]
+workspace = true

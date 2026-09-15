@@ -17,3 +17,6 @@ js-sys = "0.3"
 default = []
 ssr = ["leptos/ssr"]
 hydrate = ["leptos/hydrate"]
+
+[lints]
+workspace = true
