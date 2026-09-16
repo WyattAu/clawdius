@@ -4,6 +4,13 @@
 //! Users can choose between sandboxed execution (Option B) or
 //! direct execution with rollback (Option C).
 
+// Unwrap purge batch 1: execution-surface module — production code must not
+// unwrap/expect; propagate, use invariant-expect with a written INVARIANT
+// argument, or restructure.
+#![deny(clippy::unwrap_used, clippy::expect_used)]
+// Test builds keep unwrap/expect for brevity (fleet convention, see lib.rs).
+#![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used))]
+
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 use std::time::Duration;

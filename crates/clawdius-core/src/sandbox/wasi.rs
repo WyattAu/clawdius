@@ -4,6 +4,13 @@
 //! Uses wasmtime 42 with WASI preview1 (via `wasmtime-wasi` p1 module) to
 //! provide per-user isolation with bounded memory, fuel, and timeouts.
 
+// Unwrap purge batch 1: execution-surface module — production code must not
+// unwrap/expect; propagate, use invariant-expect with a written INVARIANT
+// argument, or restructure.
+#![deny(clippy::unwrap_used, clippy::expect_used)]
+// Test builds keep unwrap/expect for brevity (fleet convention, see lib.rs).
+#![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used))]
+
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 

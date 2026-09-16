@@ -1,3 +1,10 @@
+// Unwrap purge batch 1: execution-surface module — production code must not
+// unwrap/expect; propagate, use invariant-expect with a written INVARIANT
+// argument, or restructure.
+#![deny(clippy::unwrap_used, clippy::expect_used)]
+// Test builds keep unwrap/expect for brevity (fleet convention, see lib.rs).
+#![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used))]
+
 use super::engine::SprintEngine;
 use super::{PhaseResult, PhaseStatus, SprintPhase, SprintState};
 use crate::llm::{ChatMessage, ChatRole};

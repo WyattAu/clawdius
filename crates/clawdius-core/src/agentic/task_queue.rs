@@ -33,6 +33,13 @@
 //! queue.complete(&task_id, serde_json::json!({"result": "fixed"})).await?;
 //! ```
 
+// Unwrap purge batch 1: execution-surface module — production code must not
+// unwrap/expect; propagate, use invariant-expect with a written INVARIANT
+// argument, or restructure.
+#![deny(clippy::unwrap_used, clippy::expect_used)]
+// Test builds keep unwrap/expect for brevity (fleet convention, see lib.rs).
+#![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used))]
+
 use std::path::Path;
 use std::sync::Arc;
 

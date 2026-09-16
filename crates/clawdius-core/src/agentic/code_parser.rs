@@ -1,3 +1,10 @@
+// Unwrap purge batch 1: execution-surface module — production code must not
+// unwrap/expect; propagate, use invariant-expect with a written INVARIANT
+// argument, or restructure.
+#![deny(clippy::unwrap_used, clippy::expect_used)]
+// Test builds keep unwrap/expect for brevity (fleet convention, see lib.rs).
+#![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used))]
+
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::sync::LazyLock;
@@ -15,12 +22,24 @@ struct CodeBlock {
     preceding_text: String,
 }
 
-static FILE_RE: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"(?im)^File:\s*(.+)").expect("regex must compile"));
-static BOLD_RE: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"\*\*(.+?)\*\*\s*:?\s*$").expect("regex must compile"));
-static HEADING_RE: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"(?m)^#{1,6}\s+(.+?)\s*$").expect("regex must compile"));
+// INVARIANT: these patterns are compile-time string literals. A literal regex
+// either always compiles or never does; the parse test suite exercises all
+// three, so any regression fails tests rather than surfacing at runtime.
+static FILE_RE: LazyLock<Regex> = LazyLock::new(|| {
+    // Justified invariant-expect (unwrap purge batch 1), see INVARIANT above.
+    #[allow(clippy::expect_used)]
+    Regex::new(r"(?im)^File:\s*(.+)").expect("INVARIANT: literal regex compiles")
+});
+static BOLD_RE: LazyLock<Regex> = LazyLock::new(|| {
+    // Justified invariant-expect (unwrap purge batch 1), see INVARIANT above.
+    #[allow(clippy::expect_used)]
+    Regex::new(r"\*\*(.+?)\*\*\s*:?\s*$").expect("INVARIANT: literal regex compiles")
+});
+static HEADING_RE: LazyLock<Regex> = LazyLock::new(|| {
+    // Justified invariant-expect (unwrap purge batch 1), see INVARIANT above.
+    #[allow(clippy::expect_used)]
+    Regex::new(r"(?m)^#{1,6}\s+(.+?)\s*$").expect("INVARIANT: literal regex compiles")
+});
 
 pub fn parse_llm_output(response: &str) -> Vec<ParsedFileChange> {
     let blocks = extract_code_blocks(response);

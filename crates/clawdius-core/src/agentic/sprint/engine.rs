@@ -1,3 +1,10 @@
+// Unwrap purge batch 1: execution-surface module — production code must not
+// unwrap/expect; propagate, use invariant-expect with a written INVARIANT
+// argument, or restructure.
+#![deny(clippy::unwrap_used, clippy::expect_used)]
+// Test builds keep unwrap/expect for brevity (fleet convention, see lib.rs).
+#![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used))]
+
 use super::{
     create_checkpoint, get_changed_files, load_latest_state, run_multi_model_review, save_state,
     PhaseResult, PhaseStatus, SprintConfig, SprintError, SprintMetrics, SprintPhase, SprintResult,
@@ -216,17 +223,17 @@ impl SprintEngine {
         phase: &SprintPhase,
         result: PhaseResult,
     ) -> PhaseResult {
-        if *phase != SprintPhase::Build
-            || self.tool_executor.is_none()
-            || result.status != PhaseStatus::Success
-        {
+        if *phase != SprintPhase::Build || result.status != PhaseStatus::Success {
             return result;
         }
 
-        let executor = self
-            .tool_executor
-            .as_ref()
-            .expect("guarded by is_some() check above");
+        // Fallible-site fix (unwrap purge batch 1): this used to be
+        // `.expect("guarded by is_some() check above")`. The guard is now
+        // expressed structurally — a Build/Success phase with no tool
+        // executor passes the result through unchanged.
+        let Some(executor) = self.tool_executor.as_ref() else {
+            return result;
+        };
         let llm = &self.llm;
         let system_prompt = crate::agentic::sprint::phases::phase_prompt(phase);
         let mut user_message = format!(
@@ -673,4 +680,108 @@ enum TestRetryAction {
     Continue,
     RestartAt(usize),
     Break,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::agentic::tool_executor::NoOpToolExecutor;
+    use crate::llm::providers::LlmClient;
+    use crate::llm::ChatMessage;
+    use async_trait::async_trait;
+    use tokio::sync::mpsc;
+
+    /// LLM stub for guard-path tests: if a code change ever routes these
+    /// passthrough scenarios into the tool-use loop, the error makes it loud.
+    struct UnusedLlm;
+
+    #[async_trait]
+    impl LlmClient for UnusedLlm {
+        async fn chat(&self, _messages: Vec<ChatMessage>) -> crate::Result<String> {
+            Err(crate::Error::Llm(
+                "guard tests must not reach the LLM".to_string(),
+            ))
+        }
+
+        async fn chat_stream(
+            &self,
+            _messages: Vec<ChatMessage>,
+        ) -> crate::Result<mpsc::Receiver<String>> {
+            let (tx, rx) = mpsc::channel(1);
+            drop(tx);
+            Ok(rx)
+        }
+
+        fn count_tokens(&self, text: &str) -> usize {
+            text.split_whitespace().count()
+        }
+    }
+
+    fn passthrough_result(phase: SprintPhase, status: PhaseStatus) -> PhaseResult {
+        PhaseResult {
+            phase,
+            status,
+            output: "untouched output".to_string(),
+            duration_ms: 1,
+            files_modified: vec!["src/lib.rs".to_string()],
+            errors: Vec::new(),
+            tokens_used: 7,
+        }
+    }
+
+    /// Unwrap-purge batch 1 regression: a Build/Success phase with NO tool
+    /// executor passes the result through unchanged. This is the path that
+    /// used to rely on `.expect("guarded by is_some() check above")`.
+    #[tokio::test]
+    async fn build_success_without_tool_executor_is_passthrough() {
+        let engine = SprintEngine::new(Arc::new(UnusedLlm));
+        let state = SprintState::new(SprintConfig::new("task"));
+        let input = passthrough_result(SprintPhase::Build, PhaseStatus::Success);
+
+        let out = engine
+            .maybe_apply_tool_use(&state, &SprintPhase::Build, input.clone())
+            .await;
+
+        assert_eq!(out.phase, input.phase);
+        assert_eq!(out.status, PhaseStatus::Success);
+        assert_eq!(out.output, "untouched output");
+        assert_eq!(out.files_modified, input.files_modified);
+        assert_eq!(out.tokens_used, 7);
+        assert!(out.errors.is_empty());
+    }
+
+    /// The tool-use loop only applies to the Build phase: other phases return
+    /// the result untouched even when a tool executor is configured.
+    #[tokio::test]
+    async fn non_build_phase_with_tool_executor_is_passthrough() {
+        let engine =
+            SprintEngine::new(Arc::new(UnusedLlm)).with_tool_executor(Arc::new(NoOpToolExecutor));
+        let state = SprintState::new(SprintConfig::new("task"));
+        let input = passthrough_result(SprintPhase::Plan, PhaseStatus::Success);
+
+        let out = engine
+            .maybe_apply_tool_use(&state, &SprintPhase::Plan, input)
+            .await;
+
+        assert_eq!(out.status, PhaseStatus::Success);
+        assert_eq!(out.output, "untouched output");
+        assert!(out.errors.is_empty());
+    }
+
+    /// Failed Build phases never enter the tool-use loop, executor or not.
+    #[tokio::test]
+    async fn build_failure_with_tool_executor_is_passthrough() {
+        let engine =
+            SprintEngine::new(Arc::new(UnusedLlm)).with_tool_executor(Arc::new(NoOpToolExecutor));
+        let state = SprintState::new(SprintConfig::new("task"));
+        let input = passthrough_result(SprintPhase::Build, PhaseStatus::Failed);
+
+        let out = engine
+            .maybe_apply_tool_use(&state, &SprintPhase::Build, input)
+            .await;
+
+        assert_eq!(out.status, PhaseStatus::Failed);
+        assert_eq!(out.output, "untouched output");
+        assert!(out.errors.is_empty());
+    }
 }

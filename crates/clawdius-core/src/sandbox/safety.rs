@@ -34,6 +34,13 @@
 //! assert!(result.has_critical());
 //! ```
 
+// Unwrap purge batch 1: execution-surface module — production code must not
+// unwrap/expect; propagate, use invariant-expect with a written INVARIANT
+// argument, or restructure.
+#![deny(clippy::unwrap_used, clippy::expect_used)]
+// Test builds keep unwrap/expect for brevity (fleet convention, see lib.rs).
+#![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used))]
+
 use std::ops::Range;
 
 use aho_corasick::AhoCorasick;
@@ -126,10 +133,15 @@ impl Sanitizer {
     pub fn new() -> Self {
         let patterns = Self::default_patterns();
         let pattern_strings: Vec<&str> = patterns.iter().map(|p| p.pattern.as_str()).collect();
+        // INVARIANT: every default injection pattern is a non-empty literal
+        // string (see `default_patterns`); Aho-Corasick accepts all non-empty
+        // patterns, so construction cannot fail.
+        // Justified invariant-expect (unwrap purge batch 1), see INVARIANT above.
+        #[allow(clippy::expect_used)]
         let pattern_matcher = AhoCorasick::builder()
             .ascii_case_insensitive(true)
             .build(&pattern_strings)
-            .expect("all patterns are valid for Aho-Corasick");
+            .expect("INVARIANT: non-empty literal patterns build cleanly");
 
         Self {
             pattern_matcher,
@@ -461,10 +473,15 @@ impl LeakDetector {
     pub fn new() -> Self {
         let patterns = Self::default_patterns();
         let prefixes: Vec<&str> = patterns.iter().map(|p| p.prefix.as_str()).collect();
+        // INVARIANT: every default leak prefix is a non-empty literal string
+        // (see `default_patterns`); Aho-Corasick accepts all non-empty
+        // patterns, so construction cannot fail.
+        // Justified invariant-expect (unwrap purge batch 1), see INVARIANT above.
+        #[allow(clippy::expect_used)]
         let prefix_matcher = AhoCorasick::builder()
             .ascii_case_insensitive(false)
             .build(&prefixes)
-            .expect("all prefixes are valid for Aho-Corasick");
+            .expect("INVARIANT: non-empty literal prefixes build cleanly");
 
         Self {
             prefix_matcher,

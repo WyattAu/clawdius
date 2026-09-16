@@ -1,3 +1,10 @@
+// Unwrap purge batch 1: execution-surface module — production code must not
+// unwrap/expect; propagate, use invariant-expect with a written INVARIANT
+// argument, or restructure.
+#![deny(clippy::unwrap_used, clippy::expect_used)]
+// Test builds keep unwrap/expect for brevity (fleet convention, see lib.rs).
+#![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used))]
+
 use super::protocol::*;
 use crate::graph_rag::ast::FileInfo;
 use crate::graph_rag::languages::{detect_language, supported_extensions};
@@ -9,11 +16,18 @@ use crate::tools::web_search::{SearchProvider, WebSearchTool};
 use std::sync::LazyLock;
 use walkdir::WalkDir;
 
+// INVARIANT: the MCP handler cannot serve any request without a runtime. The
+// multi-thread runtime build only fails on process-level resource exhaustion
+// (thread/reactor setup), this static initializer has no error channel, and
+// changing `handle_mcp_request`'s signature would ripple through every
+// transport — failing fast at first use is the intended behavior here.
 static TOKIO_RT: std::sync::LazyLock<tokio::runtime::Runtime> = std::sync::LazyLock::new(|| {
+    // Justified invariant-expect (unwrap purge batch 1), see INVARIANT above.
+    #[allow(clippy::expect_used)]
     tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
-        .expect("Failed to create tokio runtime")
+        .expect("INVARIANT: process-fatal; runtime is required to serve MCP requests")
 });
 
 static CODE_STORE: LazyLock<std::sync::Mutex<Option<GraphStore>>> =
