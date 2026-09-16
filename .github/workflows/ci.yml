@@ -110,14 +110,11 @@ jobs:
       fail-fast: false
       matrix:
         os: [windows-latest, macos-latest]
-    env:
-      SCCACHE_GHA_ENABLED: "true"
-      RUSTC_WRAPPER: sccache
+    # No sccache here: the GHA-service wrapper fails to spawn rustc on the
+    # Windows runner (2026-09-16); cross builds are infrequent enough that
+    # the cache win does not justify the debugging surface.
     steps:
       - uses: actions/checkout@v6
-      - uses: mozilla-actions/sccache-action@v0.0.11
-      - name: sccache stats
-        run: sccache --start-server || true
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@1.96

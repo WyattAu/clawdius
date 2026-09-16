@@ -13,9 +13,13 @@
 // === FNV-1a + multiplicative hash (from simd.rs) ===
 
 #[cfg(target_arch = "x86_64")]
+// SIMD intrinsic sets are enumerated by the platform; a wildcard is the
+// idiomatic form for `std::arch` (clippy::wildcard_imports excepted here).
+#[allow(clippy::wildcard_imports)]
 use std::arch::x86_64::*;
 
 #[cfg(target_arch = "aarch64")]
+#[allow(clippy::wildcard_imports)]
 use std::arch::aarch64::*;
 
 const FNV_OFFSET_BASIS: u64 = 0xcbf2_9ce4_8422_2325;
