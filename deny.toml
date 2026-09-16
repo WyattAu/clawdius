@@ -68,6 +68,16 @@ exceptions = []
 [bans]
 multiple-versions = "warn"
 wildcards = "deny"
+# workspace-hack (cargo-hakari output) re-exports `half` — a locally-patched
+# copy vendored at .cargo-vendor/half and pinned via [patch.crates-io]
+# (Cargo.toml) — as a versionless path dependency (hakari never emits version
+# reqs for path deps), which the wildcard lint flags. The crate is
+# `publish = false`, so the path pin fully determines the version (2.7.1) and
+# nothing wildcard-shaped can reach crates.io; allow-wildcard-paths is the
+# upstream-sanctioned exemption for exactly this private-crate case.
+# Tracking: SECURITY.md; re-evaluate when the vendored copy is dropped
+# (lancedb >= 0.28 contingency in Cargo.toml).
+allow-wildcard-paths = true
 highlight = "all"
 workspace-default-features = "allow"
 external-default-features = "allow"
