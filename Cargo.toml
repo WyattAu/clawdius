@@ -20,6 +20,7 @@ members = [
     "crates/clawdius-web",
     "crates/clawdius-auth",
     "crates/clawdius-unsafe",
+    "crates/clawdius-metrics",
     "workspace-hack",
 ]
 
@@ -179,6 +180,9 @@ mockall = "0.14"
 # === System Information ===
 sysinfo = "0.39"
 parking_lot = "0.12"
+
+# === Estate-internal crates (dogfooding) ===
+metrics-kit = "0.1"
 
 # === High-Performance Allocator ===
 mimalloc = "0.1"

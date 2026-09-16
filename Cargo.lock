@@ -2024,6 +2024,7 @@ dependencies = [
  "candle-transformers",
  "chromiumoxide",
  "chrono",
+ "clawdius-metrics",
  "clawdius-unsafe",
  "criterion",
  "cryptkit",
@@ -2144,6 +2145,14 @@ dependencies = [
  "serde",
  "serde_json",
  "tokio",
+ "workspace-hack",
+]
+
+[[package]]
+name = "clawdius-metrics"
+version = "0.1.0"
+dependencies = [
+ "metrics-kit",
  "workspace-hack",
 ]
 
@@ -8496,6 +8505,12 @@ checksum = "488016bfae457b036d996092f6cb448677611ce4449e970ceaf42695203f218a"
 dependencies = [
  "autocfg",
 ]
+
+[[package]]
+name = "metrics-kit"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4552de8f2c00e47aecd957736f29667efaf8338322ea8381db8fa24888058ab3"
 
 [[package]]
 name = "mimalloc"

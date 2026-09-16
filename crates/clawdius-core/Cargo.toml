@@ -35,6 +35,9 @@ async-stream.workspace = true
 # published to crates.io before clawdius-core (see release.yml ordering).
 clawdius-unsafe = { path = "../clawdius-unsafe", version = "0.1" }
 
+# Estate metrics seam (re-expressed over metrics-kit; see crates/clawdius-metrics)
+clawdius-metrics = { path = "../clawdius-metrics", version = "0.1" }
+
 # Serialization (WASM-compatible)
 serde.workspace = true
 serde_json.workspace = true
