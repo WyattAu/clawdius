@@ -47,11 +47,11 @@ use std::time::Duration;
 
 use metrics_kit::{Counter, Gauge, Histogram, Registry};
 
-/// Cardinality budget for every Clawdius registry: the maximum number of
-/// series (metric name + unique label-set pairs) admitted before new
-/// series are dropped. Sized generously for the gateway's dynamic label
-/// values (per provider, model, tool, and backend) while still protecting
-/// the scrape target from unbounded cardinality growth.
+/// Cardinality budget for every Clawdius registry.
+///
+/// Maximum series admitted before new series are dropped. Sized for the
+/// gateway's dynamic label values while protecting the scrape target from
+/// cardinality growth.
 pub const MAX_SERIES: usize = 8192;
 
 /// Default histogram bucket upper bounds, matching the Prometheus
@@ -110,20 +110,20 @@ impl MetricsRegistry {
     ///
     /// If registration fails (cardinality budget exhausted, or an invalid
     /// metric or label name), the sample is dropped.
-    pub fn add_counter(&self, name: &str, labels: BTreeMap<String, String>, value: u64) {
-        if let Some(counter) = self.counter_handle(name, &labels) {
+    pub fn add_counter(&self, name: &str, labels: &BTreeMap<String, String>, value: u64) {
+        if let Some(counter) = self.counter_handle(name, labels) {
             counter.add(value);
         }
     }
 
     /// Increment a counter by one.
-    pub fn increment_counter(&self, name: &str, labels: BTreeMap<String, String>) {
+    pub fn increment_counter(&self, name: &str, labels: &BTreeMap<String, String>) {
         self.add_counter(name, labels, 1);
     }
 
     /// Record a single observation `value` into a histogram using
     /// [`DEFAULT_BUCKETS`].
-    pub fn observe_histogram(&self, name: &str, labels: BTreeMap<String, String>, value: f64) {
+    pub fn observe_histogram(&self, name: &str, labels: &BTreeMap<String, String>, value: f64) {
         self.observe_histogram_with_buckets(name, labels, value, DEFAULT_BUCKETS);
     }
 
@@ -135,18 +135,18 @@ impl MetricsRegistry {
     pub fn observe_histogram_with_buckets(
         &self,
         name: &str,
-        labels: BTreeMap<String, String>,
+        labels: &BTreeMap<String, String>,
         value: f64,
         buckets: &[f64],
     ) {
-        if let Some(histogram) = self.histogram_handle(name, &labels, buckets) {
+        if let Some(histogram) = self.histogram_handle(name, labels, buckets) {
             histogram.observe(value);
         }
     }
 
     /// Set a gauge to `value`.
-    pub fn set_gauge(&self, name: &str, labels: BTreeMap<String, String>, value: f64) {
-        if let Some(gauge) = self.gauge_handle(name, &labels) {
+    pub fn set_gauge(&self, name: &str, labels: &BTreeMap<String, String>, value: f64) {
+        if let Some(gauge) = self.gauge_handle(name, labels) {
             gauge.set(value);
         }
     }
@@ -172,19 +172,29 @@ impl MetricsRegistry {
         {
             return Some(handle.clone());
         }
-        let mut handles = self.counters.write().unwrap_or_else(PoisonError::into_inner);
+        let mut handles = self
+            .counters
+            .write()
+            .unwrap_or_else(PoisonError::into_inner);
         if let Some(handle) = handles.get(&key) {
-            return Some(handle.clone());
+            let handle = handle.clone();
+            drop(handles);
+            return Some(handle);
         }
-        let pairs: Vec<(&str, &str)> = labels.iter().map(|(k, v)| (k.as_str(), v.as_str())).collect();
-        match self.inner.counter(name, help_for(name), &pairs) {
-            Ok(handle) => {
+        let pairs: Vec<(&str, &str)> = labels
+            .iter()
+            .map(|(k, v)| (k.as_str(), v.as_str()))
+            .collect();
+        // Budget exhausted or invalid identifiers: drop the sample.
+        let registered = self
+            .inner
+            .counter(name, help_for(name), &pairs)
+            .ok()
+            .inspect(|handle| {
                 handles.insert(key, handle.clone());
-                Some(handle)
-            }
-            // Budget exhausted or invalid identifiers: drop the sample.
-            Err(_) => None,
-        }
+            });
+        drop(handles);
+        registered
     }
 
     /// Look up or lazily register the histogram for `(name, labels)`,
@@ -209,21 +219,24 @@ impl MetricsRegistry {
             .write()
             .unwrap_or_else(PoisonError::into_inner);
         if let Some(handle) = handles.get(&key) {
-            return Some(handle.clone());
+            let handle = handle.clone();
+            drop(handles);
+            return Some(handle);
         }
-        let pairs: Vec<(&str, &str)> = labels.iter().map(|(k, v)| (k.as_str(), v.as_str())).collect();
-        match self
+        let pairs: Vec<(&str, &str)> = labels
+            .iter()
+            .map(|(k, v)| (k.as_str(), v.as_str()))
+            .collect();
+        // Budget exhausted or invalid identifiers/buckets: drop the sample.
+        let registered = self
             .inner
             .histogram_with_buckets(name, help_for(name), &pairs, buckets.to_vec())
-        {
-            Ok(handle) => {
+            .ok()
+            .inspect(|handle| {
                 handles.insert(key, handle.clone());
-                Some(handle)
-            }
-            // Budget exhausted or invalid identifiers/buckets: drop the
-            // sample.
-            Err(_) => None,
-        }
+            });
+        drop(handles);
+        registered
     }
 
     /// Look up or lazily register the gauge for `(name, labels)`.
@@ -239,17 +252,24 @@ impl MetricsRegistry {
         }
         let mut handles = self.gauges.write().unwrap_or_else(PoisonError::into_inner);
         if let Some(handle) = handles.get(&key) {
-            return Some(handle.clone());
+            let handle = handle.clone();
+            drop(handles);
+            return Some(handle);
         }
-        let pairs: Vec<(&str, &str)> = labels.iter().map(|(k, v)| (k.as_str(), v.as_str())).collect();
-        match self.inner.gauge(name, help_for(name), &pairs) {
-            Ok(handle) => {
+        let pairs: Vec<(&str, &str)> = labels
+            .iter()
+            .map(|(k, v)| (k.as_str(), v.as_str()))
+            .collect();
+        // Budget exhausted or invalid identifiers: drop the sample.
+        let registered = self
+            .inner
+            .gauge(name, help_for(name), &pairs)
+            .ok()
+            .inspect(|handle| {
                 handles.insert(key, handle.clone());
-                Some(handle)
-            }
-            // Budget exhausted or invalid identifiers: drop the sample.
-            Err(_) => None,
-        }
+            });
+        drop(handles);
+        registered
     }
 }
 
@@ -260,6 +280,7 @@ impl Default for MetricsRegistry {
 }
 
 /// Build a label map from `(&str, &str)` pairs.
+#[must_use]
 pub fn labels(pairs: &[(&str, &str)]) -> BTreeMap<String, String> {
     pairs
         .iter()
@@ -316,23 +337,23 @@ pub fn record_llm_request(
 
     r.increment_counter(
         "clawdius_llm_requests_total",
-        labels(&[("provider", provider), ("model", model), ("status", status)]),
+        &labels(&[("provider", provider), ("model", model), ("status", status)]),
     );
 
     r.observe_histogram(
         "clawdius_llm_request_duration_seconds",
-        labels(&[("provider", provider), ("model", model)]),
+        &labels(&[("provider", provider), ("model", model)]),
         duration.as_secs_f64(),
     );
 
     r.add_counter(
         "clawdius_llm_tokens_total",
-        labels(&[("type", "prompt")]),
+        &labels(&[("type", "prompt")]),
         u64::from(prompt_tokens),
     );
     r.add_counter(
         "clawdius_llm_tokens_total",
-        labels(&[("type", "completion")]),
+        &labels(&[("type", "completion")]),
         u64::from(completion_tokens),
     );
 }
@@ -343,18 +364,20 @@ pub fn record_tool_execution(tool: &str, duration: Duration, success: bool) {
     let status = if success { "success" } else { "error" };
     r.increment_counter(
         "clawdius_tool_executions_total",
-        labels(&[("tool", tool), ("status", status)]),
+        &labels(&[("tool", tool), ("status", status)]),
     );
     r.observe_histogram(
         "clawdius_tool_duration_seconds",
-        labels(&[("tool", tool)]),
+        &labels(&[("tool", tool)]),
         duration.as_secs_f64(),
     );
 }
 
 /// Record the active session count gauge.
 pub fn record_session_count(count: usize) {
-    registry().set_gauge("clawdius_active_sessions", BTreeMap::new(), count as f64);
+    #[allow(clippy::cast_precision_loss)]
+    // session count: precision beyond 2^52 is irrelevant for a gauge
+    registry().set_gauge("clawdius_active_sessions", &BTreeMap::new(), count as f64);
 }
 
 /// Record metrics for a sandbox execution.
@@ -363,22 +386,30 @@ pub fn record_sandbox_execution(backend: &str, duration: Duration, success: bool
     let status = if success { "success" } else { "error" };
     r.increment_counter(
         "clawdius_sandbox_executions_total",
-        labels(&[("backend", backend), ("status", status)]),
+        &labels(&[("backend", backend), ("status", status)]),
     );
     r.observe_histogram(
         "clawdius_sandbox_duration_seconds",
-        labels(&[("backend", backend)]),
+        &labels(&[("backend", backend)]),
         duration.as_secs_f64(),
     );
 }
 
 /// Render the Prometheus metrics text for the `/metrics` endpoint.
+#[must_use]
 pub fn render_metrics() -> String {
     registry().render()
 }
 
 #[cfg(test)]
 mod tests {
+    #![allow(
+        clippy::unwrap_used,
+        clippy::expect_used,
+        clippy::cast_precision_loss,
+        clippy::cast_possible_truncation,
+        clippy::items_after_statements
+    )]
     use super::*;
 
     #[test]
@@ -387,7 +418,7 @@ mod tests {
         let reg = MetricsRegistry::default();
         reg.increment_counter(
             "clawdius_llm_requests_total",
-            labels(&[
+            &labels(&[
                 ("provider", "openai"),
                 ("model", "gpt-4"),
                 ("status", "success"),
@@ -395,15 +426,15 @@ mod tests {
         );
         reg.add_counter(
             "clawdius_llm_tokens_total",
-            labels(&[("type", "prompt")]),
+            &labels(&[("type", "prompt")]),
             128,
         );
         reg.observe_histogram(
             "clawdius_llm_request_duration_seconds",
-            labels(&[("provider", "openai"), ("model", "gpt-4")]),
+            &labels(&[("provider", "openai"), ("model", "gpt-4")]),
             0.3,
         );
-        reg.set_gauge("clawdius_active_sessions", BTreeMap::new(), 4.0);
+        reg.set_gauge("clawdius_active_sessions", &BTreeMap::new(), 4.0);
 
         let out = reg.render();
         assert!(out.contains("# TYPE clawdius_llm_requests_total counter"));
@@ -447,9 +478,10 @@ mod tests {
     fn concurrent_registration_and_render_is_lossless() {
         use std::sync::Arc;
 
-        let reg = Arc::new(MetricsRegistry::default());
         const THREADS: u64 = 8;
         const ITERATIONS: u64 = 2_000;
+
+        let reg = Arc::new(MetricsRegistry::default());
 
         let renderer = {
             let reg = Arc::clone(&reg);
@@ -471,14 +503,14 @@ mod tests {
                     for _ in 0..ITERATIONS {
                         reg.increment_counter(
                             "concurrent_total",
-                            labels(&[("thread", tag.as_str())]),
+                            &labels(&[("thread", tag.as_str())]),
                         );
                         reg.observe_histogram(
                             "concurrent_duration_seconds",
-                            labels(&[("thread", tag.as_str())]),
+                            &labels(&[("thread", tag.as_str())]),
                             0.5,
                         );
-                        reg.set_gauge("concurrent_active", BTreeMap::new(), t as f64);
+                        reg.set_gauge("concurrent_active", &BTreeMap::new(), t as f64);
                     }
                 })
             })
@@ -507,9 +539,24 @@ mod tests {
     fn custom_buckets_map_to_histogram_with_buckets() {
         let reg = MetricsRegistry::default();
         let buckets = [1.0, 2.0];
-        reg.observe_histogram_with_buckets("custom_duration_seconds", BTreeMap::new(), 0.5, &buckets);
-        reg.observe_histogram_with_buckets("custom_duration_seconds", BTreeMap::new(), 1.5, &buckets);
-        reg.observe_histogram_with_buckets("custom_duration_seconds", BTreeMap::new(), 5.0, &buckets);
+        reg.observe_histogram_with_buckets(
+            "custom_duration_seconds",
+            &BTreeMap::new(),
+            0.5,
+            &buckets,
+        );
+        reg.observe_histogram_with_buckets(
+            "custom_duration_seconds",
+            &BTreeMap::new(),
+            1.5,
+            &buckets,
+        );
+        reg.observe_histogram_with_buckets(
+            "custom_duration_seconds",
+            &BTreeMap::new(),
+            5.0,
+            &buckets,
+        );
 
         let out = reg.render();
         // metrics-kit renders integral floats without a trailing `.0`
@@ -524,7 +571,7 @@ mod tests {
     #[test]
     fn label_values_are_escaped_per_spec() {
         let reg = MetricsRegistry::default();
-        reg.set_gauge("escaped_demo", labels(&[("path", "a\"b\\c\nd")]), 1.0);
+        reg.set_gauge("escaped_demo", &labels(&[("path", "a\"b\\c\nd")]), 1.0);
 
         let out = reg.render();
         // The hand-rolled formatter emitted raw bytes; metrics-kit escapes
@@ -535,12 +582,12 @@ mod tests {
     #[test]
     fn cardinality_budget_drops_new_series_only() {
         let reg = MetricsRegistry::with_engine(Registry::with_max_series(2));
-        reg.increment_counter("budget_total", labels(&[("n", "1")]));
-        reg.increment_counter("budget_total", labels(&[("n", "2")]));
+        reg.increment_counter("budget_total", &labels(&[("n", "1")]));
+        reg.increment_counter("budget_total", &labels(&[("n", "2")]));
         // Third unique series exceeds the budget and is dropped.
-        reg.increment_counter("budget_total", labels(&[("n", "3")]));
+        reg.increment_counter("budget_total", &labels(&[("n", "3")]));
         // Updates to admitted series are never dropped.
-        reg.increment_counter("budget_total", labels(&[("n", "1")]));
+        reg.increment_counter("budget_total", &labels(&[("n", "1")]));
 
         let out = reg.render();
         assert!(out.contains(r#"budget_total{n="1"} 2"#));
