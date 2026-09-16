@@ -210,8 +210,11 @@ jobs:
           cargo publish --dry-run --allow-dirty --package clawdius-unsafe --package clawdius-core
           rc=$?
           set -e
-          cargo hakari manage-deps -y
-          git checkout -- .cargo-vendor/half/Cargo.toml
+          # Restore the committed manifests + lock directly: re-running
+          # `cargo hakari manage-deps` here would re-add a workspace-hack
+          # edge to the vendored half (a workspace member via
+          # [patch.crates-io]) and fail on the resulting package cycle.
+          git checkout -- Cargo.lock crates/ .cargo-vendor/half
           exit $rc
 
   coverage:
