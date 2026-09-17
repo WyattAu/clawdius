@@ -29,9 +29,21 @@ COPY workspace-hack/Cargo.toml workspace-hack/Cargo.toml
 RUN mkdir -p crates/clawdius/src && echo "fn main() {}" > crates/clawdius/src/main.rs
 RUN for c in clawdius-core clawdius-gateway clawdius-mcp clawdius-code \
       clawdius-plugin-sdk clawdius-lsp clawdius-ui clawdius-tauri \
-      clawdius-web clawdius-auth clawdius-unsafe clawdius-metrics \
-      workspace-hack; do \
-      mkdir -p "crates/$c/src" && echo "" > "crates/$c/src/lib.rs"; \
+      clawdius-web clawdius-auth clawdius-unsafe clawdius-metrics; do \
+      mkdir -p "crates/$c/src"; \
+      echo "" > "crates/$c/src/lib.rs"; \
+      echo "fn main() {}" > "crates/$c/src/main.rs"; \
+    done && \
+    mkdir -p workspace-hack/src && echo "" > workspace-hack/src/lib.rs && \
+    # Every declared [[bench]] must exist for manifest parsing — generate
+    # stubs generically so new benches never break the dummy stage.
+    for m in crates/*/Cargo.toml; do \
+      d=$(dirname "$m"); \
+      grep -A1 '^\[\[bench\]\]' "$m" 2>/dev/null \
+        | grep -oP 'name = "\K[^"]+' \
+        | while read -r b; do \
+            mkdir -p "$d/benches"; echo "" > "$d/benches/$b.rs"; \
+          done; \
     done
 
 # Pre-build dependencies (cached unless manifests change) — deliberately NOT
