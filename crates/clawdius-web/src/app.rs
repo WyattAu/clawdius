@@ -137,7 +137,7 @@ fn ChatPage(messages: RwSignal<Vec<ChatMessage>>, is_streaming: RwSignal<bool>) 
                         on_submit=on_submit
                         disabled=is_streaming.get()
                         token_count=0
-                        token_limit=200000
+                        token_limit=200_000
                     />
                 </div>
             </div>
@@ -149,7 +149,7 @@ fn ChatPage(messages: RwSignal<Vec<ChatMessage>>, is_streaming: RwSignal<bool>) 
         model: "claude-sonnet-4".to_string(),
         mode: "chat".to_string(),
         tokens_used: 0,
-        tokens_limit: 200000,
+        tokens_limit: 200_000,
         latency_ms: 0,
         is_connected: true,
         connection_status: ConnectionStatus::Connected,
@@ -177,6 +177,10 @@ enum WebPage {
     Chat,
 }
 
+// leptos' #[component] macro re-emits the implementation as a `#[doc(hidden)]`
+// pub fn __component_* and drops `#[must_use]` from it, so this targeted allow
+// is the only way to satisfy clippy::must_use_candidate for that generated fn.
+#[allow(clippy::must_use_candidate)]
 #[component]
 pub fn App() -> impl IntoView {
     provide_meta_context();

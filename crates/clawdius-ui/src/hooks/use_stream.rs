@@ -6,7 +6,7 @@
 use leptos::prelude::*;
 use wasm_bindgen::JsCast;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ConnectionState {
     Disconnected,
     Connecting,
@@ -45,6 +45,7 @@ pub struct StreamActions {
     pub disconnect: Callback<()>,
 }
 
+#[must_use]
 pub fn use_stream() -> (RwSignal<StreamState>, StreamActions) {
     let state = RwSignal::new(StreamState::default());
 
@@ -106,7 +107,7 @@ pub fn use_stream() -> (RwSignal<StreamState>, StreamActions) {
         let _ = endpoint;
     });
 
-    let disconnect = Callback::new(move |_: ()| {
+    let disconnect = Callback::new(move |()| {
         state.update(|s| {
             s.connection = ConnectionState::Disconnected;
         });

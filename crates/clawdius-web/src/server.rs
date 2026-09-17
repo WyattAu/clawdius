@@ -6,6 +6,7 @@ pub struct HealthStatus {
     pub version: String,
 }
 
+#[must_use]
 pub fn get_health_status() -> HealthStatus {
     HealthStatus {
         status: "ok".to_string(),
@@ -20,6 +21,7 @@ pub struct ModelInfo {
     pub provider: String,
 }
 
+#[must_use]
 pub fn list_models() -> Vec<ModelInfo> {
     vec![
         ModelInfo {
@@ -66,6 +68,7 @@ pub struct SessionInfo {
     pub created_at: String,
 }
 
-pub fn list_sessions() -> Vec<SessionInfo> {
-    vec![]
+#[must_use]
+pub const fn list_sessions() -> Vec<SessionInfo> {
+    Vec::new()
 }

@@ -50,6 +50,7 @@ pub struct ChatActions {
     pub load_session: Callback<String>,
 }
 
+#[must_use]
 pub fn use_chat() -> (RwSignal<ChatState>, ChatActions) {
     let state = RwSignal::new(ChatState::default());
 
@@ -70,7 +71,7 @@ pub fn use_chat() -> (RwSignal<ChatState>, ChatActions) {
             role: MessageRole::Assistant,
             content: String::new(),
             timestamp: now_millis(),
-            model: Some(state.get().current_model.clone()),
+            model: Some(state.get().current_model),
             tokens_used: None,
             is_streaming: true,
         };
@@ -85,7 +86,7 @@ pub fn use_chat() -> (RwSignal<ChatState>, ChatActions) {
         simulate_stream_response(state);
     });
 
-    let cancel_streaming = Callback::new(move |_: ()| {
+    let cancel_streaming = Callback::new(move |()| {
         state.update(|s| {
             s.is_streaming = false;
             s.streaming_message_id = None;
@@ -95,7 +96,7 @@ pub fn use_chat() -> (RwSignal<ChatState>, ChatActions) {
         });
     });
 
-    let clear_history = Callback::new(move |_: ()| {
+    let clear_history = Callback::new(move |()| {
         state.update(|s| {
             s.messages.clear();
             s.token_usage = TokenUsage::default();
@@ -124,7 +125,12 @@ pub fn use_chat() -> (RwSignal<ChatState>, ChatActions) {
 }
 
 fn now_millis() -> i64 {
-    js_sys::Date::now() as i64
+    // `Date::now()` is milliseconds since the Unix epoch as `f64`; the value
+    // is far below 2^53, so it is exactly representable and truncating the
+    // sub-millisecond fraction is the intended behavior.
+    #[allow(clippy::cast_possible_truncation)]
+    let now = js_sys::Date::now() as i64;
+    now
 }
 
 fn uuid_part() -> String {

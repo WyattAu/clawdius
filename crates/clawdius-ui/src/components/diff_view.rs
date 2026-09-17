@@ -18,7 +18,7 @@ pub struct DiffLine {
     pub kind: DiffLineKind,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum DiffLineKind {
     Context,
     Added,
@@ -113,7 +113,7 @@ fn parse_unified_diff(raw: &str) -> (String, Vec<DiffHunk>) {
     (file_name, hunks)
 }
 
-fn line_bg(kind: &DiffLineKind) -> &'static str {
+const fn line_bg(kind: &DiffLineKind) -> &'static str {
     match kind {
         DiffLineKind::Added => colors::DIFF_ADDED,
         DiffLineKind::Removed => colors::DIFF_REMOVED,
@@ -122,7 +122,7 @@ fn line_bg(kind: &DiffLineKind) -> &'static str {
     }
 }
 
-fn line_color(kind: &DiffLineKind) -> &'static str {
+const fn line_color(kind: &DiffLineKind) -> &'static str {
     match kind {
         DiffLineKind::Added => colors::DIFF_ADDED_TEXT,
         DiffLineKind::Removed => colors::DIFF_REMOVED_TEXT,
@@ -131,7 +131,7 @@ fn line_color(kind: &DiffLineKind) -> &'static str {
     }
 }
 
-fn line_prefix(kind: &DiffLineKind) -> &'static str {
+const fn line_prefix(kind: &DiffLineKind) -> &'static str {
     match kind {
         DiffLineKind::Added => "+",
         DiffLineKind::Removed => "-",
@@ -140,6 +140,164 @@ fn line_prefix(kind: &DiffLineKind) -> &'static str {
     }
 }
 
+fn count_lines(hunks: &[DiffHunk], kind: &DiffLineKind) -> usize {
+    hunks
+        .iter()
+        .flat_map(|h| h.lines.iter())
+        .filter(|l| &l.kind == kind)
+        .count()
+}
+
+fn diff_file_header(
+    display_path: String,
+    collapsed: ReadSignal<bool>,
+    set_collapsed: WriteSignal<bool>,
+    added_count: usize,
+    removed_count: usize,
+) -> impl IntoView {
+    view! {
+        <div
+            class="diff-file-header"
+            style:display="flex"
+            style:align-items="center"
+            style:justify-content="space-between"
+            style:padding=format!("{} {}", spacing::SPACE_8, spacing::SPACE_12)
+            style:background-color=colors::BG_SURFACE
+            style:border-bottom=format!("1px solid {}", colors::BORDER)
+            style:cursor="pointer"
+            on:click=move |_| set_collapsed.update(|c| *c = !*c)
+        >
+            <div style:display="flex" style:align-items="center" style:gap=spacing::SPACE_8>
+                <span
+                    class="diff-collapse-icon"
+                    style:color=colors::TEXT_MUTED
+                    style:font-size=typography::SIZE_XS
+                    aria-label=move || if collapsed.get() { "Expand" } else { "Collapse" }
+                >
+                    {move || if collapsed.get() { ">" } else { "v" }}
+                </span>
+                <span
+                    class="diff-filename"
+                    style:color=colors::TEXT_PRIMARY
+                    style:font-weight=typography::WEIGHT_MEDIUM
+                >
+                    {display_path}
+                </span>
+            </div>
+            <div style:display="flex" style:gap=spacing::SPACE_12>
+                <span
+                    style:color=colors::DIFF_ADDED_TEXT
+                    style:font-size=typography::SIZE_XS
+                >
+                    {format!("+{added_count}")}
+                </span>
+                <span
+                    style:color=colors::DIFF_REMOVED_TEXT
+                    style:font-size=typography::SIZE_XS
+                >
+                    {format!("-{removed_count}")}
+                </span>
+            </div>
+        </div>
+    }
+}
+
+fn hunk_items(hunk: &DiffHunk) -> Vec<AnyView> {
+    let mut items: Vec<AnyView> = Vec::new();
+    if !hunk.header.is_empty() {
+        items.push(
+            view! {
+                <div
+                    class="diff-hunk-header"
+                    style:padding=format!("{} {}", spacing::SPACE_4, spacing::SPACE_12)
+                    style:background-color=colors::BG_ELEVATED
+                    style:color=colors::TEXT_SECONDARY
+                    style:font-size=typography::SIZE_XS
+                >
+                    {hunk.header.clone()}
+                </div>
+            }
+            .into_any(),
+        );
+    }
+    for line in &hunk.lines {
+        items.push(diff_line_view(line));
+    }
+    items
+}
+
+fn diff_line_view(line: &DiffLine) -> AnyView {
+    let bg = line_bg(&line.kind);
+    let fg = line_color(&line.kind);
+    let prefix = line_prefix(&line.kind);
+    let old_num = line.old_line.map(|n| n.to_string()).unwrap_or_default();
+    let new_num = line.new_line.map(|n| n.to_string()).unwrap_or_default();
+    view! {
+        <div
+            class=format!("diff-line diff-{:?}", line.kind).to_lowercase()
+            style:display="flex"
+            style:background-color=bg
+            style:padding=format!("0 {}", spacing::SPACE_12)
+            style:min-height="1.4em"
+        >
+            <span
+                class="diff-old-num"
+                style:color=colors::TEXT_MUTED
+                style:min-width="4ch"
+                style:text-align="right"
+                style:padding-right=spacing::SPACE_12
+                style:user-select="none"
+                aria-hidden="true"
+            >
+                {old_num}
+            </span>
+            <span
+                class="diff-new-num"
+                style:color=colors::TEXT_MUTED
+                style:min-width="4ch"
+                style:text-align="right"
+                style:padding-right=spacing::SPACE_12
+                style:user-select="none"
+                aria-hidden="true"
+            >
+                {new_num}
+            </span>
+            <span class="diff-prefix" style:color=fg style:width="1ch" style:flex-shrink="0">
+                {prefix}
+            </span>
+            <span class="diff-text" style:color=fg style:white-space="pre-wrap" style:word-break="break-all">
+                {line.content.clone()}
+            </span>
+        </div>
+    }
+    .into_any()
+}
+
+fn diff_content(hunks: &[DiffHunk], total_lines: usize) -> impl IntoView {
+    view! {
+        <div
+            class="diff-content"
+            style:max-height="600px"
+            style:overflow-y="auto"
+        >
+            {hunks.iter().flat_map(hunk_items).collect::<Vec<_>>()}
+            <div
+                class="diff-summary"
+                style:padding=format!("{} {}", spacing::SPACE_8, spacing::SPACE_12)
+                style:color=colors::TEXT_MUTED
+                style:font-size=typography::SIZE_XS
+                style:border-top=format!("1px solid {}", colors::BORDER)
+            >
+                {format!("{total_lines} lines changed")}
+            </div>
+        </div>
+    }
+}
+
+// leptos' #[component] macro re-emits the implementation as a `#[doc(hidden)]`
+// pub fn __component_* and drops `#[must_use]` from it, so this targeted allow
+// is the only way to satisfy clippy::must_use_candidate for that generated fn.
+#[allow(clippy::must_use_candidate)]
 #[component]
 pub fn DiffView(
     #[prop(into)] file_path: String,
@@ -148,27 +306,19 @@ pub fn DiffView(
 ) -> impl IntoView {
     let (collapsed, set_collapsed) = signal(false);
 
-    let (display_path, hunks) = if let Some(ref raw) = raw_diff {
-        let (p, h) = parse_unified_diff(raw);
-        (p, h)
-    } else {
-        let hunk = DiffHunk {
-            header: String::new(),
-            lines,
-        };
-        (file_path, vec![hunk])
-    };
+    let (display_path, hunks) = raw_diff.map_or_else(
+        move || {
+            let hunk = DiffHunk {
+                header: String::new(),
+                lines,
+            };
+            (file_path, vec![hunk])
+        },
+        |raw| parse_unified_diff(&raw),
+    );
 
-    let added_count: usize = hunks
-        .iter()
-        .flat_map(|h| h.lines.iter())
-        .filter(|l| l.kind == DiffLineKind::Added)
-        .count();
-    let removed_count: usize = hunks
-        .iter()
-        .flat_map(|h| h.lines.iter())
-        .filter(|l| l.kind == DiffLineKind::Removed)
-        .count();
+    let added_count = count_lines(&hunks, &DiffLineKind::Added);
+    let removed_count = count_lines(&hunks, &DiffLineKind::Removed);
     let total_lines: usize = hunks.iter().map(|h| h.lines.len()).sum();
 
     view! {
@@ -181,132 +331,12 @@ pub fn DiffView(
             style:font-family=typography::FONT_MONO
             style:font-size=typography::SIZE_SM
         >
-            <div
-                class="diff-file-header"
-                style:display="flex"
-                style:align-items="center"
-                style:justify-content="space-between"
-                style:padding=format!("{} {}", spacing::SPACE_8, spacing::SPACE_12)
-                style:background-color=colors::BG_SURFACE
-                style:border-bottom=format!("1px solid {}", colors::BORDER)
-                style:cursor="pointer"
-                on:click=move |_| set_collapsed.update(|c| *c = !*c)
-            >
-                <div style:display="flex" style:align-items="center" style:gap=spacing::SPACE_8>
-                    <span
-                        class="diff-collapse-icon"
-                        style:color=colors::TEXT_MUTED
-                        style:font-size=typography::SIZE_XS
-                        aria-label=move || if collapsed.get() { "Expand" } else { "Collapse" }
-                    >
-                        {move || if collapsed.get() { ">" } else { "v" }}
-                    </span>
-                    <span
-                        class="diff-filename"
-                        style:color=colors::TEXT_PRIMARY
-                        style:font-weight=typography::WEIGHT_MEDIUM
-                    >
-                        {display_path}
-                    </span>
-                </div>
-                <div style:display="flex" style:gap=spacing::SPACE_12>
-                    <span
-                        style:color=colors::DIFF_ADDED_TEXT
-                        style:font-size=typography::SIZE_XS
-                    >
-                        {format!("+{added_count}")}
-                    </span>
-                    <span
-                        style:color=colors::DIFF_REMOVED_TEXT
-                        style:font-size=typography::SIZE_XS
-                    >
-                        {format!("-{removed_count}")}
-                    </span>
-                </div>
-            </div>
+            {diff_file_header(display_path, collapsed, set_collapsed, added_count, removed_count)}
             {move || {
                 if collapsed.get() {
                     return ().into_any();
                 }
-                view! {
-                    <div
-                        class="diff-content"
-                        style:max-height="600px"
-                        style:overflow-y="auto"
-                    >
-                        {hunks.iter().flat_map(|hunk| {
-                            let mut items: Vec<_> = Vec::new();
-                            if !hunk.header.is_empty() {
-                                items.push(view! {
-                                    <div
-                                        class="diff-hunk-header"
-                                        style:padding=format!("{} {}", spacing::SPACE_4, spacing::SPACE_12)
-                                        style:background-color=colors::BG_ELEVATED
-                                        style:color=colors::TEXT_SECONDARY
-                                        style:font-size=typography::SIZE_XS
-                                    >
-                                        {hunk.header.clone()}
-                                    </div>
-                                }.into_any());
-                            }
-                            for line in &hunk.lines {
-                                let bg = line_bg(&line.kind);
-                                let fg = line_color(&line.kind);
-                                let prefix = line_prefix(&line.kind);
-                                let old_num = line.old_line.map(|n| n.to_string()).unwrap_or_default();
-                                let new_num = line.new_line.map(|n| n.to_string()).unwrap_or_default();
-                                items.push(view! {
-                                    <div
-                                        class=format!("diff-line diff-{:?}", line.kind).to_lowercase()
-                                        style:display="flex"
-                                        style:background-color=bg
-                                        style:padding=format!("0 {}", spacing::SPACE_12)
-                                        style:min-height="1.4em"
-                                    >
-                                        <span
-                                            class="diff-old-num"
-                                            style:color=colors::TEXT_MUTED
-                                            style:min-width="4ch"
-                                            style:text-align="right"
-                                            style:padding-right=spacing::SPACE_12
-                                            style:user-select="none"
-                                            aria-hidden="true"
-                                        >
-                                            {old_num}
-                                        </span>
-                                        <span
-                                            class="diff-new-num"
-                                            style:color=colors::TEXT_MUTED
-                                            style:min-width="4ch"
-                                            style:text-align="right"
-                                            style:padding-right=spacing::SPACE_12
-                                            style:user-select="none"
-                                            aria-hidden="true"
-                                        >
-                                            {new_num}
-                                        </span>
-                                        <span class="diff-prefix" style:color=fg style:width="1ch" style:flex-shrink="0">
-                                            {prefix}
-                                        </span>
-                                        <span class="diff-text" style:color=fg style:white-space="pre-wrap" style:word-break="break-all">
-                                            {line.content.clone()}
-                                        </span>
-                                    </div>
-                                }.into_any());
-                            }
-                            items
-                        }).collect::<Vec<_>>()}
-                        <div
-                            class="diff-summary"
-                            style:padding=format!("{} {}", spacing::SPACE_8, spacing::SPACE_12)
-                            style:color=colors::TEXT_MUTED
-                            style:font-size=typography::SIZE_XS
-                            style:border-top=format!("1px solid {}", colors::BORDER)
-                        >
-                            {format!("{total_lines} lines changed")}
-                        </div>
-                    </div>
-                }.into_any()
+                diff_content(&hunks, total_lines).into_any()
             }}
         </div>
     }

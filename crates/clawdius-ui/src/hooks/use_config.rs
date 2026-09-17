@@ -4,13 +4,13 @@
 
 use leptos::prelude::*;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ThemeMode {
     Dark,
     Light,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ProviderConfig {
     pub name: String,
     pub models: Vec<String>,
@@ -69,13 +69,18 @@ pub struct ConfigActions {
     pub set_endpoint: Callback<String>,
 }
 
+#[must_use]
 pub fn use_config() -> (RwSignal<ConfigState>, ConfigActions) {
     let state = RwSignal::new(ConfigState::default());
 
     let set_provider = Callback::new(move |provider: String| {
         state.update(|s| {
-            s.current_provider = provider.clone();
-            if let Some(p) = s.available_providers.iter().find(|p| p.name == provider) {
+            s.current_provider = provider;
+            if let Some(p) = s
+                .available_providers
+                .iter()
+                .find(|p| p.name == s.current_provider)
+            {
                 if !p.models.contains(&s.current_model) {
                     if let Some(first) = p.models.first() {
                         s.current_model = first.clone();
@@ -91,7 +96,7 @@ pub fn use_config() -> (RwSignal<ConfigState>, ConfigActions) {
         });
     });
 
-    let toggle_theme = Callback::new(move |_: ()| {
+    let toggle_theme = Callback::new(move |()| {
         state.update(|s| {
             s.theme = match s.theme {
                 ThemeMode::Dark => ThemeMode::Light,

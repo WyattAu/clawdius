@@ -240,9 +240,9 @@ unsafe fn hash_neon(data: &[u8]) -> u64 {
         return scalar_hash(data);
     }
 
-    let k1: u64 = 0x9e3779b97f4a7c15;
-    let k2: u64 = 0xff51afd7ed558ccd;
-    let k3: u64 = 0x87c37b91114253d5;
+    let k1: u64 = 0x9e37_79b9_7f4a_7c15;
+    let k2: u64 = 0xff51_afd7_ed55_8ccd;
+    let k3: u64 = 0x87c3_7b91_1142_53d5;
 
     let mut h1: u64 = k1;
     let mut h2: u64 = k1;

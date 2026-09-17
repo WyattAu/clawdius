@@ -15,9 +15,20 @@ pub struct FileEntry {
     pub path: String,
     pub name: String,
     pub is_dir: bool,
-    pub children: Vec<FileEntry>,
+    pub children: Vec<Self>,
     pub is_expanded: bool,
     pub size: Option<u64>,
+}
+
+type FlatEntry = (String, bool, String, Option<u64>, usize);
+
+fn flatten(entries: &[FileEntry], depth: usize, expanded: &[String], flat: &mut Vec<FlatEntry>) {
+    for e in entries {
+        flat.push((e.path.clone(), e.is_dir, e.name.clone(), e.size, depth));
+        if e.is_dir && expanded.contains(&e.path) {
+            flatten(&e.children, depth + 1, expanded, flat);
+        }
+    }
 }
 
 fn file_icon(name: &str, is_dir: bool) -> &'static str {
@@ -41,15 +52,24 @@ fn file_icon(name: &str, is_dir: bool) -> &'static str {
 }
 
 fn format_size(size: u64) -> String {
-    if size < 1024 {
+    const KIB: u64 = 1024;
+    const MIB: u64 = 1024 * 1024;
+    if size < KIB {
         format!("{size}B")
-    } else if size < 1024 * 1024 {
-        format!("{:.1}K", size as f64 / 1024.0)
+    } else if size < MIB {
+        // Whole tenths of KiB, rounded half-up: exact, no float conversion.
+        let tenths = (size * 10 + KIB / 2) / KIB;
+        format!("{}.{}K", tenths / 10, tenths % 10)
     } else {
-        format!("{:.1}M", size as f64 / (1024.0 * 1024.0))
+        let tenths = (size * 10 + MIB / 2) / MIB;
+        format!("{}.{}M", tenths / 10, tenths % 10)
     }
 }
 
+// leptos' #[component] macro re-emits the implementation as a `#[doc(hidden)]`
+// pub fn __component_* and drops `#[must_use]` from it, so this targeted allow
+// is the only way to satisfy clippy::must_use_candidate for that generated fn.
+#[allow(clippy::must_use_candidate)]
 #[component]
 pub fn FileTree(
     #[prop(into)] entries: Vec<FileEntry>,
@@ -65,28 +85,14 @@ pub fn FileTree(
     );
     let focused_idx = RwSignal::new(0usize);
 
-    let flat_entries: Vec<(String, bool, String, Option<u64>, usize)> = {
+    let flat_entries: Vec<FlatEntry> = {
         let mut flat = Vec::new();
-        fn flatten(
-            entries: &[FileEntry],
-            depth: usize,
-            expanded: &[String],
-            flat: &mut Vec<(String, bool, String, Option<u64>, usize)>,
-        ) {
-            for e in entries {
-                flat.push((e.path.clone(), e.is_dir, e.name.clone(), e.size, depth));
-                if e.is_dir && expanded.contains(&e.path) {
-                    flatten(&e.children, depth + 1, expanded, flat);
-                }
-            }
-        }
         flatten(&entries, 0, &[], &mut flat);
         flat
     };
 
     let total = flat_entries.len();
-    let _flat_for_render = flat_entries.clone();
-    let flat_for_keys = flat_entries.clone();
+    let flat_for_keys = flat_entries;
 
     view! {
         <div
@@ -151,7 +157,7 @@ pub fn FileTree(
                 "EXPLORER"
             </div>
             <div class="file-tree-items" style:padding=format!("{} 0", spacing::SPACE_4)>
-                {entries.into_iter().map(|entry| {
+                {entries.into_iter().map(move |entry| {
                     view! { <FileEntryView entry selected_path=selected_path.clone() /> }
                 }).collect::<Vec<_>>()}
             </div>
@@ -171,11 +177,12 @@ fn FileEntryView(entry: FileEntry, selected_path: Option<String>) -> AnyView {
     };
     let entry_expanded = RwSignal::new(entry.is_expanded);
     let children = entry.children.clone();
-    let _entry_path = entry.path.clone();
     let entry_is_dir = entry.is_dir;
     let entry_name = entry.name.clone();
     let entry_size = entry.size;
-    let sp = selected_path.clone();
+    let sp = selected_path;
+    // Indent in 0.75rem steps; `mul_add` keeps the two-term computation exact.
+    let indent_rem = f64::from(u32::try_from(indent).unwrap_or(u32::MAX)).mul_add(0.75, 0.75);
 
     view! {
         <div>
@@ -188,7 +195,7 @@ fn FileEntryView(entry: FileEntry, selected_path: Option<String>) -> AnyView {
                 style:align-items="center"
                 style:gap=spacing::SPACE_8
                 style:padding=format!("{} {}", spacing::SPACE_4, spacing::SPACE_12)
-                style:padding-left=format!("{}rem", indent as f64 * 0.75 + 0.75)
+                style:padding-left=format!("{indent_rem}rem")
                 style:cursor="pointer"
                 style:background-color=move || if is_selected { colors::BG_ELEVATED } else { "transparent" }
                 style:border-radius=radius::SM

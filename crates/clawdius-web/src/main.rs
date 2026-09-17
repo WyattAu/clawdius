@@ -120,23 +120,22 @@ fn app_router() -> Router {
 }
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
     println!("Clawdius web server starting on {addr}");
 
-    let listener = tokio::net::TcpListener::bind(addr)
-        .await
-        .expect("failed to bind to address");
+    let listener = tokio::net::TcpListener::bind(addr).await?;
 
     axum::serve(listener, app_router().into_make_service())
         .with_graceful_shutdown(shutdown_signal())
-        .await
-        .expect("server error");
+        .await?;
+    Ok(())
 }
 
 async fn shutdown_signal() {
-    tokio::signal::ctrl_c()
-        .await
-        .expect("failed to listen for shutdown signal");
+    if tokio::signal::ctrl_c().await.is_err() {
+        eprintln!("failed to listen for shutdown signal");
+        std::process::exit(1);
+    }
     println!("Shutting down gracefully...");
 }
