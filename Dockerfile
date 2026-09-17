@@ -6,21 +6,37 @@ WORKDIR /app
 # Copy manifests first for dependency caching
 COPY Cargo.toml Cargo.lock ./
 COPY .cargo-vendor/ .cargo-vendor/
+# Every workspace member's manifest + the hakari workspace-hack (root-level)
+# must be present or `cargo build` hard-fails resolving the workspace. This
+# list previously covered 5 of 14 members and the error was swallowed by
+# `|| true` — the prebuild had been silently skipping for months.
 COPY crates/clawdius/Cargo.toml crates/clawdius/Cargo.toml
 COPY crates/clawdius-core/Cargo.toml crates/clawdius-core/Cargo.toml
 COPY crates/clawdius-gateway/Cargo.toml crates/clawdius-gateway/Cargo.toml
 COPY crates/clawdius-mcp/Cargo.toml crates/clawdius-mcp/Cargo.toml
 COPY crates/clawdius-code/Cargo.toml crates/clawdius-code/Cargo.toml
+COPY crates/clawdius-plugin-sdk/Cargo.toml crates/clawdius-plugin-sdk/Cargo.toml
+COPY crates/clawdius-lsp/Cargo.toml crates/clawdius-lsp/Cargo.toml
+COPY crates/clawdius-ui/Cargo.toml crates/clawdius-ui/Cargo.toml
+COPY crates/clawdius-tauri/Cargo.toml crates/clawdius-tauri/Cargo.toml
+COPY crates/clawdius-web/Cargo.toml crates/clawdius-web/Cargo.toml
+COPY crates/clawdius-auth/Cargo.toml crates/clawdius-auth/Cargo.toml
+COPY crates/clawdius-unsafe/Cargo.toml crates/clawdius-unsafe/Cargo.toml
+COPY crates/clawdius-metrics/Cargo.toml crates/clawdius-metrics/Cargo.toml
+COPY workspace-hack/Cargo.toml workspace-hack/Cargo.toml
 
 # Create dummy source files for dependency pre-building
 RUN mkdir -p crates/clawdius/src && echo "fn main() {}" > crates/clawdius/src/main.rs
-RUN mkdir -p crates/clawdius-core/src && echo "" > crates/clawdius-core/src/lib.rs
-RUN mkdir -p crates/clawdius-gateway/src && echo "" > crates/clawdius-gateway/src/lib.rs
-RUN mkdir -p crates/clawdius-mcp/src && echo "" > crates/clawdius-mcp/src/lib.rs
-RUN mkdir -p crates/clawdius-code/src && echo "fn main() {}" > crates/clawdius-code/src/main.rs
+RUN for c in clawdius-core clawdius-gateway clawdius-mcp clawdius-code \
+      clawdius-plugin-sdk clawdius-lsp clawdius-ui clawdius-tauri \
+      clawdius-web clawdius-auth clawdius-unsafe clawdius-metrics \
+      workspace-hack; do \
+      mkdir -p "crates/$c/src" && echo "" > "crates/$c/src/lib.rs"; \
+    done
 
-# Pre-build dependencies (cached unless manifests change)
-RUN cargo build --release --bin clawdius 2>/dev/null || true
+# Pre-build dependencies (cached unless manifests change) — deliberately NOT
+# soft-failed: a broken prebuild must fail here, not at the real build.
+RUN cargo build --release --bin clawdius
 
 # Copy actual source code
 COPY crates/ crates/
