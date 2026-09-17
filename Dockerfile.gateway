@@ -22,11 +22,23 @@ WORKDIR /build
 # Copy workspace manifests first (layer cache)
 COPY Cargo.toml Cargo.lock ./
 COPY .cargo-vendor/ .cargo-vendor/
+# Every workspace member's manifest + the hakari workspace-hack (root-level):
+# `cargo build -p clawdius-gateway` resolves the WHOLE workspace, so a single
+# missing member manifest is fatal (see main Dockerfile — same failure class).
 COPY crates/clawdius/Cargo.toml crates/clawdius/Cargo.toml
 COPY crates/clawdius-core/Cargo.toml crates/clawdius-core/Cargo.toml
 COPY crates/clawdius-gateway/Cargo.toml crates/clawdius-gateway/Cargo.toml
 COPY crates/clawdius-mcp/Cargo.toml crates/clawdius-mcp/Cargo.toml
 COPY crates/clawdius-code/Cargo.toml crates/clawdius-code/Cargo.toml
+COPY crates/clawdius-plugin-sdk/Cargo.toml crates/clawdius-plugin-sdk/Cargo.toml
+COPY crates/clawdius-lsp/Cargo.toml crates/clawdius-lsp/Cargo.toml
+COPY crates/clawdius-ui/Cargo.toml crates/clawdius-ui/Cargo.toml
+COPY crates/clawdius-tauri/Cargo.toml crates/clawdius-tauri/Cargo.toml
+COPY crates/clawdius-web/Cargo.toml crates/clawdius-web/Cargo.toml
+COPY crates/clawdius-auth/Cargo.toml crates/clawdius-auth/Cargo.toml
+COPY crates/clawdius-unsafe/Cargo.toml crates/clawdius-unsafe/Cargo.toml
+COPY crates/clawdius-metrics/Cargo.toml crates/clawdius-metrics/Cargo.toml
+COPY workspace-hack/Cargo.toml workspace-hack/Cargo.toml
 
 # Create dummy source files for dependency caching
 RUN mkdir -p crates/clawdius/src && echo "fn main() {}" > crates/clawdius/src/main.rs
@@ -38,7 +50,26 @@ RUN mkdir -p crates/clawdius-mcp/src && echo "" > crates/clawdius-mcp/src/lib.rs
 RUN mkdir -p crates/clawdius-code/src && echo "fn main() {}" > crates/clawdius-code/src/main.rs
 
 # Pre-build dependencies (cached unless manifests change)
-RUN cargo build --profile $PROFILE -p clawdius-gateway --features "$FEATURES" 2>/dev/null || true
+# Dummy sources so the dep-only build resolves all targets (declared [[bin]]s
+# and [[bench]]es included — manifest parsing requires their files to exist).
+RUN for c in clawdius clawdius-core clawdius-gateway clawdius-mcp clawdius-code \
+      clawdius-plugin-sdk clawdius-lsp clawdius-ui clawdius-tauri \
+      clawdius-web clawdius-auth clawdius-unsafe clawdius-metrics; do \
+      mkdir -p "crates/$c/src"; \
+      echo "" > "crates/$c/src/lib.rs"; \
+      echo "fn main() {}" > "crates/$c/src/main.rs"; \
+    done && \
+    mkdir -p workspace-hack/src && echo "" > workspace-hack/src/lib.rs && \
+    for m in crates/*/Cargo.toml; do \
+      d=$(dirname "$m"); \
+      grep -A1 '^\[\[bench\]\]' "$m" 2>/dev/null \
+        | grep -oP 'name = "\K[^"]+' \
+        | while read -r b; do \
+            mkdir -p "$d/benches"; echo "" > "$d/benches/$b.rs"; \
+          done; \
+    done
+
+RUN cargo build --profile $PROFILE -p clawdius-gateway --features "$FEATURES"
 
 # Copy actual source code
 COPY crates/clawdius/ crates/clawdius/
