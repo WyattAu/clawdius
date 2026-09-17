@@ -9,6 +9,20 @@
 //! crate's safe public API instead of inlining SIMD intrinsics.
 
 #![allow(unsafe_code)]
+// SIMD-idiomatic lint posture for this leaf crate: lane arithmetic
+// intentionally narrows/widens between intrinsic lane types; unaligned
+// loads (`_mm_loadu_si128`) require a stricter-aligned pointer cast by
+// API contract; tiny intrinsic wrappers are deliberately `inline(always)`
+// because they run inside per-byte loops where call overhead dominates.
+#![allow(
+    clippy::cast_sign_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap,
+    clippy::cast_precision_loss,
+    clippy::cast_ptr_alignment,
+    clippy::ptr_as_ptr,
+    clippy::inline_always
+)]
 
 // === FNV-1a + multiplicative hash (from simd.rs) ===
 
@@ -29,7 +43,7 @@ const FNV_PRIME: u64 = 0x0100_0000_01b3;
 fn scalar_checksum(data: &[u8]) -> u64 {
     let mut hash: u64 = FNV_OFFSET_BASIS;
     for &byte in data {
-        hash ^= byte as u64;
+        hash ^= u64::from(byte);
         hash = hash.wrapping_mul(FNV_PRIME);
     }
     hash
@@ -49,10 +63,15 @@ fn scalar_hash(data: &[u8]) -> u64 {
     let (chunks, remainder) = data.as_chunks::<32>();
 
     for chunk in chunks {
-        let w0 = u64::from_le_bytes(chunk[0..8].try_into().unwrap());
-        let w1 = u64::from_le_bytes(chunk[8..16].try_into().unwrap());
-        let w2 = u64::from_le_bytes(chunk[16..24].try_into().unwrap());
-        let w3 = u64::from_le_bytes(chunk[24..32].try_into().unwrap());
+        // INVARIANT: `as_chunks::<32>` yields exactly 32-byte chunks, so
+        // each 8-byte subslice converts to `[u8; 8]` infallibly.
+        #[allow(clippy::unwrap_used)]
+        let (w0, w1, w2, w3) = (
+            u64::from_le_bytes(chunk[0..8].try_into().unwrap()),
+            u64::from_le_bytes(chunk[8..16].try_into().unwrap()),
+            u64::from_le_bytes(chunk[16..24].try_into().unwrap()),
+            u64::from_le_bytes(chunk[24..32].try_into().unwrap()),
+        );
 
         h1 = h1.wrapping_add(w0);
         h2 = h2.wrapping_add(w1);
@@ -83,7 +102,7 @@ fn scalar_hash(data: &[u8]) -> u64 {
     let mut combined = h1 ^ h2 ^ h3 ^ h4;
 
     for &b in remainder {
-        combined = combined.wrapping_mul(31).wrapping_add(b as u64);
+        combined = combined.wrapping_mul(31).wrapping_add(u64::from(b));
     }
 
     combined
@@ -107,14 +126,14 @@ unsafe fn fnv1a_sse2(data: &[u8]) -> u64 {
         let val = (data.as_ptr().add(i) as *const u64).read_unaligned();
         for shift in 0..8 {
             let byte = ((val >> (shift * 8)) & 0xFF) as u8;
-            hash ^= byte as u64;
+            hash ^= u64::from(byte);
             hash = hash.wrapping_mul(FNV_PRIME);
         }
         i += 8;
     }
 
     while i < len {
-        hash ^= data[i] as u64;
+        hash ^= u64::from(data[i]);
         hash = hash.wrapping_mul(FNV_PRIME);
         i += 1;
     }
@@ -179,7 +198,7 @@ unsafe fn hash_sse2(data: &[u8]) -> u64 {
     let mut combined = h1 ^ h2 ^ h3 ^ h4;
 
     for &b in remainder {
-        combined = combined.wrapping_mul(31).wrapping_add(b as u64);
+        combined = combined.wrapping_mul(31).wrapping_add(u64::from(b));
     }
 
     combined
@@ -198,14 +217,14 @@ unsafe fn fnv1a_neon(data: &[u8]) -> u64 {
         let val = (data.as_ptr().add(i) as *const u64).read_unaligned();
         for shift in 0..8 {
             let byte = ((val >> (shift * 8)) & 0xFF) as u8;
-            hash ^= byte as u64;
+            hash ^= u64::from(byte);
             hash = hash.wrapping_mul(FNV_PRIME);
         }
         i += 8;
     }
 
     while i < len {
-        hash ^= data[i] as u64;
+        hash ^= u64::from(data[i]);
         hash = hash.wrapping_mul(FNV_PRIME);
         i += 1;
     }
@@ -270,7 +289,7 @@ unsafe fn hash_neon(data: &[u8]) -> u64 {
     let mut combined = h1 ^ h2 ^ h3 ^ h4;
 
     for &b in remainder {
-        combined = combined.wrapping_mul(31).wrapping_add(b as u64);
+        combined = combined.wrapping_mul(31).wrapping_add(u64::from(b));
     }
 
     combined
@@ -282,6 +301,7 @@ unsafe fn hash_neon(data: &[u8]) -> u64 {
 ///
 /// Returns identical results on all platforms for the same input.
 #[cfg(target_arch = "x86_64")]
+#[must_use]
 pub fn fast_checksum(data: &[u8]) -> u64 {
     if is_x86_feature_detected!("sse2") {
         unsafe { fnv1a_sse2(data) }
@@ -292,6 +312,7 @@ pub fn fast_checksum(data: &[u8]) -> u64 {
 
 /// FNV-1a 64-bit checksum with SIMD acceleration.
 #[cfg(target_arch = "aarch64")]
+#[must_use]
 pub fn fast_checksum(data: &[u8]) -> u64 {
     if std::arch::is_aarch64_feature_detected!("neon") {
         unsafe { fnv1a_neon(data) }
@@ -302,12 +323,14 @@ pub fn fast_checksum(data: &[u8]) -> u64 {
 
 /// FNV-1a 64-bit checksum (scalar fallback).
 #[cfg(not(any(target_arch = "x86_64", target_arch = "aarch64")))]
+#[must_use]
 pub fn fast_checksum(data: &[u8]) -> u64 {
     scalar_checksum(data)
 }
 
 /// Parallel 4-lane multiplicative hash with SIMD acceleration.
 #[cfg(target_arch = "x86_64")]
+#[must_use]
 pub fn fast_hash(data: &[u8]) -> u64 {
     if is_x86_feature_detected!("sse2") {
         unsafe { hash_sse2(data) }
@@ -318,6 +341,7 @@ pub fn fast_hash(data: &[u8]) -> u64 {
 
 /// Parallel 4-lane multiplicative hash with SIMD acceleration.
 #[cfg(target_arch = "aarch64")]
+#[must_use]
 pub fn fast_hash(data: &[u8]) -> u64 {
     if std::arch::is_aarch64_feature_detected!("neon") {
         unsafe { hash_neon(data) }
@@ -328,6 +352,7 @@ pub fn fast_hash(data: &[u8]) -> u64 {
 
 /// Parallel 4-lane multiplicative hash (scalar fallback).
 #[cfg(not(any(target_arch = "x86_64", target_arch = "aarch64")))]
+#[must_use]
 pub fn fast_hash(data: &[u8]) -> u64 {
     scalar_hash(data)
 }
@@ -338,6 +363,7 @@ pub fn fast_hash(data: &[u8]) -> u64 {
 ///
 /// Counts the number of whitespace-delimited segments in `data`.
 /// Whitespace is any byte <= 0x20.
+#[must_use]
 pub fn count_splits_scalar(data: &[u8]) -> usize {
     let mut in_word = false;
     let mut count = 0;
@@ -360,7 +386,8 @@ pub fn count_splits_scalar(data: &[u8]) -> usize {
 
 /// Count whitespace-delimited segments using the fastest available path.
 ///
-/// Uses SSE2 on x86_64, NEON on aarch64, scalar fallback otherwise.
+/// Uses SSE2 on `x86_64`, NEON on `aarch64`, scalar fallback otherwise.
+#[must_use]
 pub fn count_splits(data: &[u8]) -> usize {
     if data.is_empty() {
         return 0;
@@ -602,8 +629,7 @@ mod tests {
             assert_eq!(
                 count_splits(case),
                 count_splits_scalar(case),
-                "mismatch for {:?}",
-                case
+                "mismatch for {case:?}"
             );
         }
     }
