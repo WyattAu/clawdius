@@ -75,6 +75,10 @@ RUN cargo build --profile $PROFILE -p clawdius-gateway --features "$FEATURES"
 COPY crates/clawdius/ crates/clawdius/
 COPY crates/clawdius-core/ crates/clawdius-core/
 COPY crates/clawdius-gateway/ crates/clawdius-gateway/
+# Real sources for estate-internal deps of clawdius-core (their dummy libs
+# from the prebuild stage must not shadow the real APIs):
+COPY crates/clawdius-unsafe/ crates/clawdius-unsafe/
+COPY crates/clawdius-metrics/ crates/clawdius-metrics/
 
 # Touch to invalidate dummy build
 RUN touch crates/clawdius/src/main.rs crates/clawdius-core/src/lib.rs \
