@@ -52,9 +52,10 @@ RUN cargo build --release --bin clawdius
 
 # Copy actual source code
 COPY crates/ crates/
+# Docker COPY preserves source mtimes — touch so cargo recompiles real
+# sources instead of reusing the dummy-prebuild artifacts (see gateway note).
+RUN find crates workspace-hack -name "*.rs" -exec touch {} +
 
-# Touch source files to invalidate dummy build
-RUN find crates -name "*.rs" -exec touch {} +
 
 # Build the real binary
 RUN cargo build --release --bin clawdius
