@@ -30,7 +30,10 @@ jobs:
   build-and-push:
     name: Build & Push (${{ matrix.target }})
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    # Dual-arch (amd64 + QEMU arm64) builds of this workspace routinely exceed
+    # 45 min now that the prebuild genuinely compiles (it was soft-failed and
+    # silently skipped for months).
+    timeout-minutes: 120
     strategy:
       fail-fast: false
       matrix:
