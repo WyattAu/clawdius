@@ -115,6 +115,8 @@ jobs:
         run: |
           # The SBOM is attached to the image digest; one attachment covers
           # every tag pointing at that digest.
-          cosign attach sbom --sbom-type spdxjson \
+          # cosign >= 2.4 removed --sbom-type; the media type is detected
+          # from the attached file.
+          cosign attach sbom \
             --sbom sbom.spdx.json \
             "$(head -n1 <<< "$IMAGES")@${DIGEST}"
