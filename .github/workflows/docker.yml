@@ -90,19 +90,31 @@ jobs:
         uses: sigstore/cosign-installer@v3.8.2
 
       - name: Sign image with GitHub OIDC
+        env:
+          IMAGES: ${{ steps.meta.outputs.tags }}
+          DIGEST: ${{ steps.build.outputs.digest }}
         run: |
-          cosign sign --yes \
-            "${{ steps.meta.outputs.tags }}"@"${{ steps.build.outputs.digest }}"
+          # meta.outputs.tags is newline-separated; cosign takes exactly one
+          # reference per invocation — sign every tag by digest.
+          while IFS= read -r tag; do
+            [ -n "$tag" ] || continue
+            cosign sign --yes "${tag}@${DIGEST}"
+          done <<< "$IMAGES"
 
       - name: Generate SBOM with syft
         uses: anchore/sbom-action@v0
         with:
-          image: "${{ steps.meta.outputs.tags }}@${{ steps.build.outputs.digest }}"
+          image: "${{ fromJSON(steps.meta.outputs.json).tags[0] }}@${{ steps.build.outputs.digest }}"
           format: spdx-json
           output-file: sbom.spdx.json
 
       - name: Attach SBOM to image
+        env:
+          IMAGES: ${{ steps.meta.outputs.tags }}
+          DIGEST: ${{ steps.build.outputs.digest }}
         run: |
+          # The SBOM is attached to the image digest; one attachment covers
+          # every tag pointing at that digest.
           cosign attach sbom --sbom-type spdxjson \
             --sbom sbom.spdx.json \
-            "${{ steps.meta.outputs.tags }}"@"${{ steps.build.outputs.digest }}"
+            "$(head -n1 <<< "$IMAGES")@${DIGEST}"
