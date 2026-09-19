@@ -24,6 +24,13 @@
 //! 4. **Error agnostic** — traits return `crate::error::Result`, not backend-specific errors
 //! 5. **Zero-copy where possible** — references over owned values in method signatures
 
+// Unwrap purge batch 2: storage module — production code must not
+// unwrap/expect; propagate, use poison-recovery for lock poisoning, or
+// restructure. Lints inherit into all child modules (backend impls, tests).
+#![deny(clippy::unwrap_used, clippy::expect_used)]
+// Test builds keep unwrap/expect for brevity (fleet convention, see lib.rs).
+#![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used))]
+
 mod backend;
 mod error;
 mod in_memory;

@@ -13,7 +13,7 @@
 
 use axum::{extract::State, http::StatusCode, Json};
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
+use std::sync::{Arc, PoisonError};
 
 use crate::api::rest::{ApiError, ApiState};
 use crate::api::tenant::{ApiKeyEntry, AuthenticatedApiKey, Tenant, TenantTier, TenantUsage};
@@ -149,7 +149,7 @@ pub async fn signup(
         let mut store = state
             .tenant_store
             .write()
-            .expect("tenant_store write lock poisoned");
+            .unwrap_or_else(PoisonError::into_inner);
         store.add_tenant(tenant);
     }
 
@@ -177,7 +177,7 @@ pub async fn login(
         let store = state
             .tenant_store
             .read()
-            .expect("tenant_store read lock poisoned");
+            .unwrap_or_else(PoisonError::into_inner);
         let tenant = store
             .get_tenant_by_api_key(&request.api_key)
             .ok_or_else(|| {
@@ -197,7 +197,7 @@ pub async fn login(
         let mut store = state
             .tenant_store
             .write()
-            .expect("tenant_store write lock poisoned");
+            .unwrap_or_else(PoisonError::into_inner);
         if let Some(tenant) = store.get_tenant_mut(&tenant_id) {
             if let Some(entry) = tenant
                 .api_keys
@@ -213,7 +213,7 @@ pub async fn login(
     let store = state
         .tenant_store
         .read()
-        .expect("tenant_store read lock poisoned");
+        .unwrap_or_else(PoisonError::into_inner);
     let tenant = store.get_tenant(&tenant_id).ok_or_else(|| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -245,7 +245,7 @@ pub async fn list_tenants(State(state): State<ApiState>) -> Json<Vec<TenantRespo
     let store = state
         .tenant_store
         .read()
-        .expect("tenant_store read lock poisoned");
+        .unwrap_or_else(PoisonError::into_inner);
     let tenants = store
         .list_tenants()
         .into_iter()
@@ -262,7 +262,7 @@ pub async fn get_tenant(
     let store = state
         .tenant_store
         .read()
-        .expect("tenant_store read lock poisoned");
+        .unwrap_or_else(PoisonError::into_inner);
     let tenant = store.get_tenant(&id).ok_or_else(|| {
         (
             StatusCode::NOT_FOUND,
@@ -288,7 +288,7 @@ pub async fn update_tenant(
         let mut store = state
             .tenant_store
             .write()
-            .expect("tenant_store write lock poisoned");
+            .unwrap_or_else(PoisonError::into_inner);
         store
             .update_tenant(
                 &id,
@@ -311,7 +311,7 @@ pub async fn update_tenant(
     let store = state
         .tenant_store
         .read()
-        .expect("tenant_store read lock poisoned");
+        .unwrap_or_else(PoisonError::into_inner);
     let tenant = store.get_tenant(&id).ok_or_else(|| {
         (
             StatusCode::NOT_FOUND,
@@ -333,7 +333,7 @@ pub async fn delete_tenant(
         let mut store = state
             .tenant_store
             .write()
-            .expect("tenant_store write lock poisoned");
+            .unwrap_or_else(PoisonError::into_inner);
         store.delete_tenant(&id).then_some(()).ok_or_else(|| {
             (
                 StatusCode::NOT_FOUND,
@@ -371,7 +371,7 @@ pub async fn create_api_key(
         let mut store = state
             .tenant_store
             .write()
-            .expect("tenant_store write lock poisoned");
+            .unwrap_or_else(PoisonError::into_inner);
         store.add_api_key(&id, label).ok_or_else(|| {
             (
                 StatusCode::NOT_FOUND,
@@ -402,7 +402,7 @@ pub async fn list_api_keys(
     let store = state
         .tenant_store
         .read()
-        .expect("tenant_store read lock poisoned");
+        .unwrap_or_else(PoisonError::into_inner);
     let tenant = store.get_tenant(&id).ok_or_else(|| {
         (
             StatusCode::NOT_FOUND,
@@ -440,7 +440,7 @@ pub async fn revoke_api_key(
         let mut store = state
             .tenant_store
             .write()
-            .expect("tenant_store write lock poisoned");
+            .unwrap_or_else(PoisonError::into_inner);
         store.revoke_api_key(&tenant_id, &key)
     };
 
@@ -494,6 +494,6 @@ pub fn record_tenant_task(state: &ApiState, tenant_id: &str, tokens: usize) -> b
     let mut store = state
         .tenant_store
         .write()
-        .expect("tenant_store write lock poisoned");
+        .unwrap_or_else(PoisonError::into_inner);
     store.record_task(tenant_id, tokens)
 }

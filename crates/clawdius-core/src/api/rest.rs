@@ -13,7 +13,7 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, PoisonError, RwLock};
 use uuid::Uuid;
 
 use crate::agentic::ParallelSprintManager;
@@ -95,32 +95,32 @@ impl ApiState {
 
     /// List all sessions.
     pub async fn list_sessions(&self) -> Vec<Session> {
-        let store = self.store.lock().expect("session store lock poisoned");
+        let store = self.store.lock().unwrap_or_else(PoisonError::into_inner);
         store.list_sessions().unwrap_or_default()
     }
 
     /// Create a new session (persists and returns it).
     pub async fn create_session(&self, session: Session) -> Session {
-        let store = self.store.lock().expect("session store lock poisoned");
+        let store = self.store.lock().unwrap_or_else(PoisonError::into_inner);
         let _ = store.create_session(&session);
         session
     }
 
     /// Get a session by ID (with messages).
     pub async fn get_session(&self, id: SessionId) -> Option<Session> {
-        let store = self.store.lock().expect("session store lock poisoned");
+        let store = self.store.lock().unwrap_or_else(PoisonError::into_inner);
         store.load_session_full(&id).unwrap_or_default()
     }
 
     /// Delete a session by ID.
     pub async fn delete_session(&self, id: SessionId) -> bool {
-        let store = self.store.lock().expect("session store lock poisoned");
+        let store = self.store.lock().unwrap_or_else(PoisonError::into_inner);
         store.delete_session(&id).is_ok()
     }
 
     /// Add a message to a session.
     pub async fn add_message(&self, session_id: SessionId, message: SessionMessage) -> bool {
-        let store = self.store.lock().expect("session store lock poisoned");
+        let store = self.store.lock().unwrap_or_else(PoisonError::into_inner);
         store.save_message(&session_id, &message).is_ok()
     }
 }
@@ -392,7 +392,7 @@ pub async fn chat(
         let store = state
             .tenant_store
             .read()
-            .expect("tenant_store read lock poisoned");
+            .unwrap_or_else(PoisonError::into_inner);
         if let Some(tenant_id) = store.get_tenant_id_by_api_key(&key.0) {
             drop(store);
             let _ = record_tenant_task(&state, &tenant_id, 0);
@@ -587,7 +587,7 @@ async fn finalize_agent_session(
         let store = state
             .tenant_store
             .read()
-            .expect("tenant_store read lock poisoned");
+            .unwrap_or_else(PoisonError::into_inner);
         if let Some(tenant_id) = store.get_tenant_id_by_api_key(&key.0) {
             drop(store);
             let _ = record_tenant_task(state, &tenant_id, 0);
@@ -819,7 +819,7 @@ pub async fn usage_endpoint(
     let store = state
         .tenant_store
         .read()
-        .expect("tenant_store read lock poisoned");
+        .unwrap_or_else(PoisonError::into_inner);
 
     let tenant = match api_key {
         Some(Extension(key)) => store.get_tenant_by_api_key(&key.0),
@@ -946,6 +946,59 @@ mod tests {
 
     fn test_state(store: SessionStore) -> ApiState {
         ApiState::new(store)
+    }
+
+    // -- Poison-recovery coverage (unwrap purge batch 2) --
+    //
+    // Batch 2 replaced lock `.expect("* lock poisoned")` calls with
+    // `.unwrap_or_else(PoisonError::into_inner)`. These tests pin the new
+    // behavior: handlers recover from a poisoned lock instead of panicking.
+
+    /// Poison `rw` (write side) by panicking while the guard is held, with
+    /// the default panic hook silenced for the duration.
+    fn poison_rwlock_write<T>(rw: &RwLock<T>) {
+        let prev_hook = std::panic::take_hook();
+        std::panic::set_hook(Box::new(|_| {}));
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            let _guard = rw.write().expect("fresh lock cannot be poisoned");
+            panic!("intentional poison for recovery testing");
+        }));
+        std::panic::set_hook(prev_hook);
+        assert!(result.is_err(), "poisoning panic must be caught");
+    }
+
+    #[tokio::test]
+    async fn list_sessions_survives_poisoned_store_mutex() {
+        let store = SessionStore::in_memory().unwrap();
+        let state = test_state(store);
+        {
+            let mutex = Arc::clone(&state.store);
+            let prev_hook = std::panic::take_hook();
+            std::panic::set_hook(Box::new(|_| {}));
+            let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                let _guard = mutex.lock().expect("fresh lock cannot be poisoned");
+                panic!("intentional poison for recovery testing");
+            }));
+            std::panic::set_hook(prev_hook);
+            assert!(result.is_err());
+        }
+        let sessions = state.list_sessions().await;
+        assert!(sessions.is_empty());
+    }
+
+    #[test]
+    fn tenant_store_survives_poisoned_rwlock() {
+        let state = ApiState::new(SessionStore::in_memory().unwrap());
+        poison_rwlock_write(&state.tenant_store);
+
+        let tenants = state
+            .tenant_store
+            .read()
+            .unwrap_or_else(PoisonError::into_inner);
+        assert!(
+            !tenants.list_tenants().is_empty(),
+            "default tenants must survive lock poisoning"
+        );
     }
 
     #[tokio::test]

@@ -7,6 +7,17 @@ use thiserror::Error;
 
 use crate::error::Result;
 use crate::tools::html_compressor::HtmlCompressor;
+use std::sync::LazyLock;
+
+// INVARIANT: both patterns are compile-time literals verified to be valid
+// regex syntax; `Regex::new` cannot fail on literals that parse.
+// Justified invariant-expect (unwrap purge batch 2), see INVARIANT above.
+#[allow(clippy::expect_used)]
+static RE_NUMERIC_ENTITY: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"&#(\d+);").expect("INVARIANT: literal regex compiles"));
+#[allow(clippy::expect_used)]
+static RE_HEX_ENTITY: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"&#x([0-9a-fA-F]+);").expect("INVARIANT: literal regex compiles"));
 
 #[derive(Debug, Error)]
 pub enum WebSearchError {
@@ -405,7 +416,7 @@ impl WebSearchTool {
             result = result.replace(entity, replacement);
         }
 
-        let numeric_entity = Regex::new(r"&#(\d+);").expect(r"&#(\d+); is a valid regex");
+        let numeric_entity = &*RE_NUMERIC_ENTITY;
         result = numeric_entity
             .replace_all(&result, |caps: &regex::Captures<'_>| {
                 caps.get(1)
@@ -416,8 +427,7 @@ impl WebSearchTool {
             })
             .to_string();
 
-        let hex_entity =
-            Regex::new(r"&#x([0-9a-fA-F]+);").expect(r"&#x([0-9a-fA-F]+); is a valid regex");
+        let hex_entity = &*RE_HEX_ENTITY;
         result = hex_entity
             .replace_all(&result, |caps: &regex::Captures<'_>| {
                 caps.get(1)
@@ -494,5 +504,52 @@ mod urlencoding {
             .map(|(k, _)| k.into_owned())
             .next()
             .unwrap_or_else(|| s.to_string())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // -- Coverage for the batch-2 hoisted entity-decoding regexes --
+    //
+    // `decode_html_entities` now uses the precompiled `RE_NUMERIC_ENTITY` /
+    // `RE_HEX_ENTITY` statics instead of recompiling per call. Exercise both
+    // hoisted patterns plus the named-entity replacement path.
+    #[test]
+    fn decode_html_entities_numeric_hex_and_named() {
+        let tool = WebSearchTool::default();
+
+        assert_eq!(
+            tool.decode_html_entities("&#65;&#66;&#67;"),
+            "ABC",
+            "decimal numeric entities must decode"
+        );
+        assert_eq!(
+            tool.decode_html_entities("&#x41;&#x42;&#x43;"),
+            "ABC",
+            "hex numeric entities must decode"
+        );
+        assert_eq!(
+            tool.decode_html_entities("a&amp;b&lt;c&gt;d"),
+            "a&b<c>d",
+            "named entities must still decode"
+        );
+    }
+
+    #[test]
+    fn decode_html_entities_ignores_invalid_numerics() {
+        let tool = WebSearchTool::default();
+
+        assert_eq!(
+            tool.decode_html_entities("&#999999999999;"),
+            "",
+            "out-of-range code points decode to nothing"
+        );
+        assert_eq!(
+            tool.decode_html_entities("&#xZZ;"),
+            "&#xZZ;",
+            "malformed hex entities pass through unchanged"
+        );
     }
 }

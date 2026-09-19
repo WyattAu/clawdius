@@ -14,7 +14,7 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use std::collections::HashMap;
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, PoisonError, RwLock};
 
 use crate::api::tenant::{AuthenticatedApiKey, TenantStore};
 
@@ -173,7 +173,7 @@ pub async fn tenant_aware_auth_middleware(
         let store = auth_state
             .tenant_store
             .read()
-            .expect("tenant_store lock poisoned");
+            .unwrap_or_else(PoisonError::into_inner);
         store.get_tenant_by_api_key(&token).is_some()
     }; // RwLockReadGuard dropped here
 

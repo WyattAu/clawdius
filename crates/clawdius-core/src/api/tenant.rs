@@ -308,11 +308,7 @@ impl TenantStore {
         if let Some(workspace_root) = workspace_root {
             tenant.workspace_root = Some(workspace_root.to_string());
         }
-        Some(
-            self.tenants
-                .get(id)
-                .expect("tenant exists — verified by get_mut above"),
-        )
+        Some(tenant)
     }
 
     pub fn add_api_key(&mut self, tenant_id: &str, label: &str) -> Option<ApiKeyEntry> {
@@ -445,6 +441,39 @@ pub struct AuthenticatedApiKey(pub String);
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // -- Coverage for the batch-2 restructured update path --
+    //
+    // `update_tenant` now reuses the `get_mut` borrow instead of performing
+    // a second lookup behind an expect. Pin the reachable outcomes: a no-op
+    // update still returns the tenant, and an unknown id returns `None`.
+    #[test]
+    fn update_tenant_noop_and_missing_id_paths() {
+        let mut store = TenantStore::new();
+        store.add_tenant(Tenant {
+            id: "t1".to_string(),
+            name: "Test Tenant".to_string(),
+            tier: TenantTier::Pro,
+            api_keys: vec![],
+            email: None,
+            workspace_root: None,
+            usage: TenantUsage::default(),
+            created_at: Utc::now(),
+            last_active_at: Utc::now(),
+        });
+
+        let updated = store
+            .update_tenant("t1", None, None, None, None)
+            .expect("no-op update must return the existing tenant");
+        assert_eq!(updated.id, "t1");
+
+        assert!(
+            store
+                .update_tenant("missing", None, None, None, None)
+                .is_none(),
+            "update on unknown id must return None"
+        );
+    }
 
     #[test]
     fn test_create_and_retrieve_tenant() {

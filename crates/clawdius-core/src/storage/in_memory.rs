@@ -15,7 +15,7 @@ use crate::workspace::{Project, ProjectId, Workspace, WorkspaceId};
 use chrono::{DateTime, Utc};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::sync::Mutex;
+use std::sync::{Mutex, PoisonError};
 use uuid::Uuid;
 
 /// In-memory implementation of all storage traits.
@@ -93,11 +93,11 @@ impl SessionRepository for InMemoryBackend {
             let key = session.id.to_string();
             self.sessions
                 .lock()
-                .expect("lock poisoned")
+                .unwrap_or_else(PoisonError::into_inner)
                 .insert(key.clone(), session.clone());
             self.messages
                 .lock()
-                .expect("lock poisoned")
+                .unwrap_or_else(PoisonError::into_inner)
                 .insert(key, Vec::new());
             Ok(())
         }
@@ -108,7 +108,7 @@ impl SessionRepository for InMemoryBackend {
         id: &SessionId,
     ) -> impl std::future::Future<Output = Result<Option<Session>>> + Send {
         async move {
-            let sessions = self.sessions.lock().expect("lock poisoned");
+            let sessions = self.sessions.lock().unwrap_or_else(PoisonError::into_inner);
             Ok(sessions.get(&id.to_string()).cloned())
         }
     }
@@ -118,8 +118,8 @@ impl SessionRepository for InMemoryBackend {
         id: &SessionId,
     ) -> impl std::future::Future<Output = Result<Option<Session>>> + Send {
         async move {
-            let sessions = self.sessions.lock().expect("lock poisoned");
-            let messages = self.messages.lock().expect("lock poisoned");
+            let sessions = self.sessions.lock().unwrap_or_else(PoisonError::into_inner);
+            let messages = self.messages.lock().unwrap_or_else(PoisonError::into_inner);
             let key = id.to_string();
             let mut session = sessions.get(&key).cloned();
             if let Some(ref mut s) = session {
@@ -133,7 +133,7 @@ impl SessionRepository for InMemoryBackend {
 
     fn list_sessions(&self) -> impl std::future::Future<Output = Result<Vec<Session>>> + Send {
         async move {
-            let sessions = self.sessions.lock().expect("lock poisoned");
+            let sessions = self.sessions.lock().unwrap_or_else(PoisonError::into_inner);
             let mut list: Vec<Session> = sessions.values().cloned().collect();
             list.sort_by(|a, b| b.updated_at.cmp(&a.updated_at));
             Ok(list)
@@ -146,8 +146,14 @@ impl SessionRepository for InMemoryBackend {
     ) -> impl std::future::Future<Output = Result<()>> + Send {
         async move {
             let key = id.to_string();
-            self.sessions.lock().expect("lock poisoned").remove(&key);
-            self.messages.lock().expect("lock poisoned").remove(&key);
+            self.sessions
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner)
+                .remove(&key);
+            self.messages
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner)
+                .remove(&key);
             Ok(())
         }
     }
@@ -159,7 +165,7 @@ impl SessionRepository for InMemoryBackend {
     ) -> impl std::future::Future<Output = Result<()>> + Send {
         async move {
             let key = session_id.to_string();
-            let sessions = self.sessions.lock().expect("lock poisoned");
+            let sessions = self.sessions.lock().unwrap_or_else(PoisonError::into_inner);
             if !sessions.contains_key(&key) {
                 return Err(crate::error::Error::SessionNotFound {
                     id: session_id.to_string(),
@@ -168,7 +174,7 @@ impl SessionRepository for InMemoryBackend {
             drop(sessions);
             self.messages
                 .lock()
-                .expect("lock poisoned")
+                .unwrap_or_else(PoisonError::into_inner)
                 .entry(key)
                 .or_default()
                 .push(message.clone());
@@ -181,7 +187,7 @@ impl SessionRepository for InMemoryBackend {
         query: &str,
     ) -> impl std::future::Future<Output = Result<Vec<(SessionId, Message)>>> + Send {
         async move {
-            let messages = self.messages.lock().expect("lock poisoned");
+            let messages = self.messages.lock().unwrap_or_else(PoisonError::into_inner);
             let mut results = Vec::new();
             let query_lower = query.to_lowercase();
             for (key, msgs) in messages.iter() {
@@ -206,7 +212,7 @@ impl SessionRepository for InMemoryBackend {
         usage: &TokenUsage,
     ) -> impl std::future::Future<Output = Result<()>> + Send {
         async move {
-            let mut sessions = self.sessions.lock().expect("lock poisoned");
+            let mut sessions = self.sessions.lock().unwrap_or_else(PoisonError::into_inner);
             let session = sessions
                 .get_mut(&id.to_string())
                 .ok_or_else(|| crate::error::Error::SessionNotFound { id: id.to_string() })?;
@@ -223,7 +229,10 @@ impl SessionRepository for InMemoryBackend {
 impl TimelineRepository for InMemoryBackend {
     fn track_file(&self, path: &Path) -> impl std::future::Future<Output = Result<()>> + Send {
         async move {
-            let mut files = self.tracked_files.lock().expect("lock poisoned");
+            let mut files = self
+                .tracked_files
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner);
             if !files.contains(&path.to_path_buf()) {
                 files.push(path.to_path_buf());
             }
@@ -232,7 +241,13 @@ impl TimelineRepository for InMemoryBackend {
     }
 
     fn tracked_file_count(&self) -> impl std::future::Future<Output = Result<usize>> + Send {
-        async move { Ok(self.tracked_files.lock().expect("lock poisoned").len()) }
+        async move {
+            Ok(self
+                .tracked_files
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner)
+                .len())
+        }
     }
 
     fn create_checkpoint(
@@ -257,7 +272,7 @@ impl TimelineRepository for InMemoryBackend {
             };
             self.checkpoints
                 .lock()
-                .expect("lock poisoned")
+                .unwrap_or_else(PoisonError::into_inner)
                 .insert(id.0.clone(), checkpoint);
             Ok(id)
         }
@@ -267,7 +282,10 @@ impl TimelineRepository for InMemoryBackend {
         &self,
     ) -> impl std::future::Future<Output = Result<Vec<CheckpointInfo>>> + Send {
         async move {
-            let checkpoints = self.checkpoints.lock().expect("lock poisoned");
+            let checkpoints = self
+                .checkpoints
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner);
             let mut list: Vec<CheckpointInfo> =
                 checkpoints.values().map(|cp| cp.info.clone()).collect();
             list.sort_by(|a, b| b.timestamp.cmp(&a.timestamp));
@@ -280,7 +298,10 @@ impl TimelineRepository for InMemoryBackend {
         id: &CheckpointId,
     ) -> impl std::future::Future<Output = Result<Option<CheckpointInfo>>> + Send {
         async move {
-            let checkpoints = self.checkpoints.lock().expect("lock poisoned");
+            let checkpoints = self
+                .checkpoints
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner);
             Ok(checkpoints.get(&id.0).map(|cp| cp.info.clone()))
         }
     }
@@ -292,14 +313,20 @@ impl TimelineRepository for InMemoryBackend {
         async move {
             self.checkpoints
                 .lock()
-                .expect("lock poisoned")
+                .unwrap_or_else(PoisonError::into_inner)
                 .remove(&id.0);
             Ok(())
         }
     }
 
     fn checkpoint_count(&self) -> impl std::future::Future<Output = Result<usize>> + Send {
-        async move { Ok(self.checkpoints.lock().expect("lock poisoned").len()) }
+        async move {
+            Ok(self
+                .checkpoints
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner)
+                .len())
+        }
     }
 
     fn get_file_history(
@@ -307,7 +334,10 @@ impl TimelineRepository for InMemoryBackend {
         path: &Path,
     ) -> impl std::future::Future<Output = Result<Vec<FileVersion>>> + Send {
         async move {
-            let versions = self.file_versions.lock().expect("lock poisoned");
+            let versions = self
+                .file_versions
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner);
             Ok(versions
                 .iter()
                 .filter(|v| v.path == path)
@@ -322,7 +352,10 @@ impl TimelineRepository for InMemoryBackend {
         checkpoint_id: &CheckpointId,
     ) -> impl std::future::Future<Output = Result<Option<FileVersion>>> + Send {
         async move {
-            let versions = self.file_versions.lock().expect("lock poisoned");
+            let versions = self
+                .file_versions
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner);
             Ok(versions
                 .iter()
                 .find(|v| v.path == path && v.checkpoint_id == *checkpoint_id)
@@ -336,7 +369,10 @@ impl TimelineRepository for InMemoryBackend {
         to: &CheckpointId,
     ) -> impl std::future::Future<Output = Result<Vec<(PathBuf, FileChangeType)>>> + Send {
         async move {
-            let versions = self.file_versions.lock().expect("lock poisoned");
+            let versions = self
+                .file_versions
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner);
             let from_files: std::collections::HashSet<_> = versions
                 .iter()
                 .filter(|v| v.checkpoint_id == *from)
@@ -414,7 +450,10 @@ impl TimelineRepository for InMemoryBackend {
         checkpoint_id: &CheckpointId,
     ) -> impl std::future::Future<Output = Result<RollbackPreview>> + Send {
         async move {
-            let checkpoints = self.checkpoints.lock().expect("lock poisoned");
+            let checkpoints = self
+                .checkpoints
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner);
             let checkpoint = checkpoints.get(&checkpoint_id.0);
             let files_to_restore: Vec<PathBuf> = checkpoint
                 .map(|cp| cp.files.iter().map(|f| f.path.clone()).collect())
@@ -435,7 +474,10 @@ impl TimelineRepository for InMemoryBackend {
         end: DateTime<Utc>,
     ) -> impl std::future::Future<Output = Result<Vec<CheckpointInfo>>> + Send {
         async move {
-            let checkpoints = self.checkpoints.lock().expect("lock poisoned");
+            let checkpoints = self
+                .checkpoints
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner);
             Ok(checkpoints
                 .values()
                 .filter(|cp| cp.info.timestamp >= start && cp.info.timestamp <= end)
@@ -449,7 +491,10 @@ impl TimelineRepository for InMemoryBackend {
         pattern: &str,
     ) -> impl std::future::Future<Output = Result<Vec<CheckpointInfo>>> + Send {
         async move {
-            let checkpoints = self.checkpoints.lock().expect("lock poisoned");
+            let checkpoints = self
+                .checkpoints
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner);
             Ok(checkpoints
                 .values()
                 .filter(|cp| cp.info.name.contains(pattern))
@@ -463,7 +508,10 @@ impl TimelineRepository for InMemoryBackend {
         checkpoint_id: &CheckpointId,
     ) -> impl std::future::Future<Output = Result<ExportedCheckpoint>> + Send {
         async move {
-            let checkpoints = self.checkpoints.lock().expect("lock poisoned");
+            let checkpoints = self
+                .checkpoints
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner);
             let checkpoint = checkpoints.get(&checkpoint_id.0).ok_or_else(|| {
                 crate::error::Error::Checkpoint(format!(
                     "checkpoint not found: {}",
@@ -516,7 +564,7 @@ impl TimelineRepository for InMemoryBackend {
             let checkpoint = crate::timeline::TimelineCheckpoint { info, files };
             self.checkpoints
                 .lock()
-                .expect("lock poisoned")
+                .unwrap_or_else(PoisonError::into_inner)
                 .insert(id.0.clone(), checkpoint);
             Ok(id)
         }
@@ -527,7 +575,10 @@ impl TimelineRepository for InMemoryBackend {
         keep_count: usize,
     ) -> impl std::future::Future<Output = Result<usize>> + Send {
         async move {
-            let mut checkpoints = self.checkpoints.lock().expect("lock poisoned");
+            let mut checkpoints = self
+                .checkpoints
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner);
             if checkpoints.len() <= keep_count {
                 return Ok(0);
             }
@@ -553,10 +604,22 @@ impl TimelineRepository for InMemoryBackend {
     fn storage_stats(&self) -> impl std::future::Future<Output = Result<StorageStats>> + Send {
         async move {
             Ok(StorageStats {
-                checkpoint_count: self.checkpoints.lock().expect("lock poisoned").len(),
-                tracked_file_count: self.tracked_files.lock().expect("lock poisoned").len(),
+                checkpoint_count: self
+                    .checkpoints
+                    .lock()
+                    .unwrap_or_else(PoisonError::into_inner)
+                    .len(),
+                tracked_file_count: self
+                    .tracked_files
+                    .lock()
+                    .unwrap_or_else(PoisonError::into_inner)
+                    .len(),
                 total_size_bytes: 0,
-                version_count: self.file_versions.lock().expect("lock poisoned").len(),
+                version_count: self
+                    .file_versions
+                    .lock()
+                    .unwrap_or_else(PoisonError::into_inner)
+                    .len(),
             })
         }
     }
@@ -572,17 +635,20 @@ impl GraphRepository for InMemoryBackend {
         file: &FileInfo,
     ) -> impl std::future::Future<Output = Result<i64>> + Send {
         async move {
-            let mut next_id = self.next_file_id.lock().expect("lock poisoned");
+            let mut next_id = self
+                .next_file_id
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner);
             let id = *next_id;
             *next_id += 1;
             drop(next_id);
             self.files
                 .lock()
-                .expect("lock poisoned")
+                .unwrap_or_else(PoisonError::into_inner)
                 .insert(file.path.clone(), file.clone());
             self.file_id_to_path
                 .lock()
-                .expect("lock poisoned")
+                .unwrap_or_else(PoisonError::into_inner)
                 .insert(id, file.path.clone());
             Ok(id)
         }
@@ -592,7 +658,14 @@ impl GraphRepository for InMemoryBackend {
         &self,
         path: &str,
     ) -> impl std::future::Future<Output = Result<Option<FileInfo>>> + Send {
-        async move { Ok(self.files.lock().expect("lock poisoned").get(path).cloned()) }
+        async move {
+            Ok(self
+                .files
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner)
+                .get(path)
+                .cloned())
+        }
     }
 
     fn get_file_by_id(
@@ -600,11 +673,19 @@ impl GraphRepository for InMemoryBackend {
         id: i64,
     ) -> impl std::future::Future<Output = Result<Option<FileInfo>>> + Send {
         async move {
-            let id_to_path = self.file_id_to_path.lock().expect("lock poisoned");
+            let id_to_path = self
+                .file_id_to_path
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner);
             let path = id_to_path.get(&id).cloned();
             drop(id_to_path);
             match path {
-                Some(p) => Ok(self.files.lock().expect("lock poisoned").get(&p).cloned()),
+                Some(p) => Ok(self
+                    .files
+                    .lock()
+                    .unwrap_or_else(PoisonError::into_inner)
+                    .get(&p)
+                    .cloned()),
                 None => Ok(None),
             }
         }
@@ -615,7 +696,10 @@ impl GraphRepository for InMemoryBackend {
         path: &str,
     ) -> impl std::future::Future<Output = Result<Option<i64>>> + Send {
         async move {
-            let id_to_path = self.file_id_to_path.lock().expect("lock poisoned");
+            let id_to_path = self
+                .file_id_to_path
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner);
             let found = id_to_path
                 .iter()
                 .find(|(_, p)| *p == path)
@@ -629,14 +713,20 @@ impl GraphRepository for InMemoryBackend {
             Ok(self
                 .files
                 .lock()
-                .expect("lock poisoned")
+                .unwrap_or_else(PoisonError::into_inner)
                 .remove(path)
                 .is_some())
         }
     }
 
     fn count_files(&self) -> impl std::future::Future<Output = Result<i64>> + Send {
-        async move { Ok(self.files.lock().expect("lock poisoned").len() as i64) }
+        async move {
+            Ok(self
+                .files
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner)
+                .len() as i64)
+        }
     }
 
     fn insert_symbol(
@@ -644,13 +734,16 @@ impl GraphRepository for InMemoryBackend {
         symbol: &Symbol,
     ) -> impl std::future::Future<Output = Result<i64>> + Send {
         async move {
-            let mut next_id = self.next_symbol_id.lock().expect("lock poisoned");
+            let mut next_id = self
+                .next_symbol_id
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner);
             let id = *next_id;
             *next_id += 1;
             drop(next_id);
             self.symbols
                 .lock()
-                .expect("lock poisoned")
+                .unwrap_or_else(PoisonError::into_inner)
                 .insert(id, symbol.clone());
             Ok(id)
         }
@@ -661,7 +754,7 @@ impl GraphRepository for InMemoryBackend {
         name: &str,
     ) -> impl std::future::Future<Output = Result<Vec<Symbol>>> + Send {
         async move {
-            let symbols = self.symbols.lock().expect("lock poisoned");
+            let symbols = self.symbols.lock().unwrap_or_else(PoisonError::into_inner);
             Ok(symbols
                 .values()
                 .filter(|s| s.name == name)
@@ -678,7 +771,7 @@ impl GraphRepository for InMemoryBackend {
             Ok(self
                 .symbols
                 .lock()
-                .expect("lock poisoned")
+                .unwrap_or_else(PoisonError::into_inner)
                 .get(&id)
                 .cloned())
         }
@@ -689,7 +782,7 @@ impl GraphRepository for InMemoryBackend {
         kind: &SymbolKind,
     ) -> impl std::future::Future<Output = Result<Vec<Symbol>>> + Send {
         async move {
-            let symbols = self.symbols.lock().expect("lock poisoned");
+            let symbols = self.symbols.lock().unwrap_or_else(PoisonError::into_inner);
             Ok(symbols
                 .values()
                 .filter(|s| &s.kind == kind)
@@ -703,7 +796,7 @@ impl GraphRepository for InMemoryBackend {
         file_id: i64,
     ) -> impl std::future::Future<Output = Result<Vec<Symbol>>> + Send {
         async move {
-            let symbols = self.symbols.lock().expect("lock poisoned");
+            let symbols = self.symbols.lock().unwrap_or_else(PoisonError::into_inner);
             Ok(symbols
                 .values()
                 .filter(|s| s.file_id == file_id)
@@ -717,7 +810,7 @@ impl GraphRepository for InMemoryBackend {
         query: &str,
     ) -> impl std::future::Future<Output = Result<Vec<Symbol>>> + Send {
         async move {
-            let symbols = self.symbols.lock().expect("lock poisoned");
+            let symbols = self.symbols.lock().unwrap_or_else(PoisonError::into_inner);
             let query_lower = query.to_lowercase();
             Ok(symbols
                 .values()
@@ -728,7 +821,13 @@ impl GraphRepository for InMemoryBackend {
     }
 
     fn count_symbols(&self) -> impl std::future::Future<Output = Result<i64>> + Send {
-        async move { Ok(self.symbols.lock().expect("lock poisoned").len() as i64) }
+        async move {
+            Ok(self
+                .symbols
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner)
+                .len() as i64)
+        }
     }
 
     fn delete_symbols_for_file(
@@ -736,7 +835,7 @@ impl GraphRepository for InMemoryBackend {
         file_id: i64,
     ) -> impl std::future::Future<Output = Result<()>> + Send {
         async move {
-            let mut symbols = self.symbols.lock().expect("lock poisoned");
+            let mut symbols = self.symbols.lock().unwrap_or_else(PoisonError::into_inner);
             symbols.retain(|_, s| s.file_id != file_id);
             Ok(())
         }
@@ -749,7 +848,7 @@ impl GraphRepository for InMemoryBackend {
         async move {
             self.symbol_refs
                 .lock()
-                .expect("lock poisoned")
+                .unwrap_or_else(PoisonError::into_inner)
                 .push(reference.clone());
             Ok(())
         }
@@ -760,7 +859,10 @@ impl GraphRepository for InMemoryBackend {
         symbol_id: i64,
     ) -> impl std::future::Future<Output = Result<Vec<Reference>>> + Send {
         async move {
-            let refs = self.symbol_refs.lock().expect("lock poisoned");
+            let refs = self
+                .symbol_refs
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner);
             Ok(refs
                 .iter()
                 .filter(|r| r.symbol_id == symbol_id)
@@ -770,7 +872,13 @@ impl GraphRepository for InMemoryBackend {
     }
 
     fn count_symbol_refs(&self) -> impl std::future::Future<Output = Result<i64>> + Send {
-        async move { Ok(self.symbol_refs.lock().expect("lock poisoned").len() as i64) }
+        async move {
+            Ok(self
+                .symbol_refs
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner)
+                .len() as i64)
+        }
     }
 
     fn delete_symbol_refs_for_file(
@@ -778,7 +886,10 @@ impl GraphRepository for InMemoryBackend {
         file_id: i64,
     ) -> impl std::future::Future<Output = Result<()>> + Send {
         async move {
-            let mut refs = self.symbol_refs.lock().expect("lock poisoned");
+            let mut refs = self
+                .symbol_refs
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner);
             refs.retain(|r| r.file_id != file_id);
             Ok(())
         }
@@ -791,7 +902,7 @@ impl GraphRepository for InMemoryBackend {
         async move {
             self.relationships
                 .lock()
-                .expect("lock poisoned")
+                .unwrap_or_else(PoisonError::into_inner)
                 .push(relationship.clone());
             Ok(())
         }
@@ -802,7 +913,10 @@ impl GraphRepository for InMemoryBackend {
         symbol_id: i64,
     ) -> impl std::future::Future<Output = Result<Vec<Relationship>>> + Send {
         async move {
-            let rels = self.relationships.lock().expect("lock poisoned");
+            let rels = self
+                .relationships
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner);
             Ok(rels
                 .iter()
                 .filter(|r| r.from_symbol == symbol_id || r.to_symbol == symbol_id)
@@ -816,7 +930,10 @@ impl GraphRepository for InMemoryBackend {
         symbol_id: i64,
     ) -> impl std::future::Future<Output = Result<Vec<Relationship>>> + Send {
         async move {
-            let rels = self.relationships.lock().expect("lock poisoned");
+            let rels = self
+                .relationships
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner);
             Ok(rels
                 .iter()
                 .filter(|r| r.from_symbol == symbol_id)
@@ -830,7 +947,10 @@ impl GraphRepository for InMemoryBackend {
         symbol_id: i64,
     ) -> impl std::future::Future<Output = Result<Vec<Relationship>>> + Send {
         async move {
-            let rels = self.relationships.lock().expect("lock poisoned");
+            let rels = self
+                .relationships
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner);
             Ok(rels
                 .iter()
                 .filter(|r| r.to_symbol == symbol_id)
@@ -840,17 +960,41 @@ impl GraphRepository for InMemoryBackend {
     }
 
     fn count_relationships(&self) -> impl std::future::Future<Output = Result<i64>> + Send {
-        async move { Ok(self.relationships.lock().expect("lock poisoned").len() as i64) }
+        async move {
+            Ok(self
+                .relationships
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner)
+                .len() as i64)
+        }
     }
 
     fn clear(&self) -> impl std::future::Future<Output = Result<()>> + Send {
         async move {
-            self.files.lock().expect("lock poisoned").clear();
-            self.symbols.lock().expect("lock poisoned").clear();
-            self.symbol_refs.lock().expect("lock poisoned").clear();
-            self.relationships.lock().expect("lock poisoned").clear();
-            *self.next_file_id.lock().expect("lock poisoned") = 1;
-            *self.next_symbol_id.lock().expect("lock poisoned") = 1;
+            self.files
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner)
+                .clear();
+            self.symbols
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner)
+                .clear();
+            self.symbol_refs
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner)
+                .clear();
+            self.relationships
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner)
+                .clear();
+            *self
+                .next_file_id
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner) = 1;
+            *self
+                .next_symbol_id
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner) = 1;
             Ok(())
         }
     }
@@ -868,7 +1012,7 @@ impl WorkspaceRepository for InMemoryBackend {
         async move {
             self.workspaces
                 .lock()
-                .expect("lock poisoned")
+                .unwrap_or_else(PoisonError::into_inner)
                 .insert(workspace.id.0.clone(), workspace.clone());
             Ok(())
         }
@@ -882,7 +1026,7 @@ impl WorkspaceRepository for InMemoryBackend {
             Ok(self
                 .workspaces
                 .lock()
-                .expect("lock poisoned")
+                .unwrap_or_else(PoisonError::into_inner)
                 .get(&id.0)
                 .cloned())
         }
@@ -893,7 +1037,7 @@ impl WorkspaceRepository for InMemoryBackend {
             Ok(self
                 .workspaces
                 .lock()
-                .expect("lock poisoned")
+                .unwrap_or_else(PoisonError::into_inner)
                 .values()
                 .cloned()
                 .collect())
@@ -905,10 +1049,13 @@ impl WorkspaceRepository for InMemoryBackend {
         id: &WorkspaceId,
     ) -> impl std::future::Future<Output = Result<()>> + Send {
         async move {
-            self.workspaces.lock().expect("lock poisoned").remove(&id.0);
+            self.workspaces
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner)
+                .remove(&id.0);
             self.workspace_projects
                 .lock()
-                .expect("lock poisoned")
+                .unwrap_or_else(PoisonError::into_inner)
                 .remove(&id.0);
             Ok(())
         }
@@ -921,7 +1068,7 @@ impl WorkspaceRepository for InMemoryBackend {
         async move {
             self.projects
                 .lock()
-                .expect("lock poisoned")
+                .unwrap_or_else(PoisonError::into_inner)
                 .insert(project.id.0.clone(), project.clone());
             Ok(())
         }
@@ -935,7 +1082,7 @@ impl WorkspaceRepository for InMemoryBackend {
             Ok(self
                 .projects
                 .lock()
-                .expect("lock poisoned")
+                .unwrap_or_else(PoisonError::into_inner)
                 .get(&id.0)
                 .cloned())
         }
@@ -947,7 +1094,7 @@ impl WorkspaceRepository for InMemoryBackend {
     ) -> impl std::future::Future<Output = Result<Option<Project>>> + Send {
         async move {
             let path_str = path.to_string_lossy().to_string();
-            let projects = self.projects.lock().expect("lock poisoned");
+            let projects = self.projects.lock().unwrap_or_else(PoisonError::into_inner);
             Ok(projects
                 .values()
                 .find(|p| p.root_path.to_string_lossy() == path_str)
@@ -960,7 +1107,7 @@ impl WorkspaceRepository for InMemoryBackend {
             Ok(self
                 .projects
                 .lock()
-                .expect("lock poisoned")
+                .unwrap_or_else(PoisonError::into_inner)
                 .values()
                 .cloned()
                 .collect())
@@ -974,7 +1121,7 @@ impl WorkspaceRepository for InMemoryBackend {
         async move {
             self.projects
                 .lock()
-                .expect("lock poisoned")
+                .unwrap_or_else(PoisonError::into_inner)
                 .insert(project.id.0.clone(), project.clone());
             Ok(())
         }
@@ -985,9 +1132,15 @@ impl WorkspaceRepository for InMemoryBackend {
         id: &ProjectId,
     ) -> impl std::future::Future<Output = Result<()>> + Send {
         async move {
-            self.projects.lock().expect("lock poisoned").remove(&id.0);
+            self.projects
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner)
+                .remove(&id.0);
             // Remove from all workspace associations
-            let mut wp = self.workspace_projects.lock().expect("lock poisoned");
+            let mut wp = self
+                .workspace_projects
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner);
             for project_ids in wp.values_mut() {
                 project_ids.retain(|pid| pid != &id.0);
             }
@@ -1001,7 +1154,10 @@ impl WorkspaceRepository for InMemoryBackend {
         project_id: &ProjectId,
     ) -> impl std::future::Future<Output = Result<()>> + Send {
         async move {
-            let mut wp = self.workspace_projects.lock().expect("lock poisoned");
+            let mut wp = self
+                .workspace_projects
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner);
             let entry = wp.entry(workspace_id.0.clone()).or_insert_with(Vec::new);
             if !entry.contains(&project_id.0) {
                 entry.push(project_id.0.clone());
@@ -1019,7 +1175,7 @@ impl WorkspaceRepository for InMemoryBackend {
             if let Some(project_ids) = self
                 .workspace_projects
                 .lock()
-                .expect("lock poisoned")
+                .unwrap_or_else(PoisonError::into_inner)
                 .get_mut(&workspace_id.0)
             {
                 project_ids.retain(|pid| pid != &project_id.0);
@@ -1036,11 +1192,11 @@ impl WorkspaceRepository for InMemoryBackend {
             let project_ids = self
                 .workspace_projects
                 .lock()
-                .expect("lock poisoned")
+                .unwrap_or_else(PoisonError::into_inner)
                 .get(&workspace_id.0)
                 .cloned()
                 .unwrap_or_default();
-            let projects = self.projects.lock().expect("lock poisoned");
+            let projects = self.projects.lock().unwrap_or_else(PoisonError::into_inner);
             Ok(project_ids
                 .iter()
                 .filter_map(|pid| projects.get(pid).cloned())
@@ -1057,7 +1213,7 @@ impl WorkspaceRepository for InMemoryBackend {
             if let Some(ws) = self
                 .workspaces
                 .lock()
-                .expect("lock poisoned")
+                .unwrap_or_else(PoisonError::into_inner)
                 .get_mut(&workspace_id.0)
             {
                 ws.default_project_id = Some(project_id.clone());
@@ -1074,7 +1230,7 @@ impl WorkspaceRepository for InMemoryBackend {
             let default_id = self
                 .workspaces
                 .lock()
-                .expect("lock poisoned")
+                .unwrap_or_else(PoisonError::into_inner)
                 .get(&workspace_id.0)
                 .and_then(|ws| ws.default_project_id.clone());
             let Some(default_id) = default_id else {
@@ -1083,7 +1239,7 @@ impl WorkspaceRepository for InMemoryBackend {
             Ok(self
                 .projects
                 .lock()
-                .expect("lock poisoned")
+                .unwrap_or_else(PoisonError::into_inner)
                 .get(&default_id.0)
                 .cloned())
         }
@@ -1232,5 +1388,78 @@ mod tests {
         let backend = InMemoryBackend::new();
         backend.track_file(&PathBuf::from("test.rs")).await.unwrap();
         assert_eq!(backend.tracked_file_count().await.unwrap(), 1);
+    }
+
+    // -- Poison-recovery coverage (unwrap purge batch 2) --
+    //
+    // Batch 2 replaced `.lock().expect("lock poisoned")` with
+    // `.unwrap_or_else(PoisonError::into_inner)`. These tests pin the new
+    // behavior: once a thread has panicked while holding a lock, storage
+    // operations recover the guard and proceed instead of panicking. Every
+    // one of these paths previously aborted the calling task.
+
+    /// Poison `mutex` by panicking while its guard is held, synchronously
+    /// (no spawned thread). The default panic hook is swapped out for the
+    /// duration so the intentional panic does not pollute test output.
+    fn poison_mutex<T>(mutex: &Mutex<T>) {
+        let prev_hook = std::panic::take_hook();
+        std::panic::set_hook(Box::new(|_| {}));
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            let _guard = mutex.lock().expect("fresh lock cannot be poisoned");
+            panic!("intentional poison for recovery testing");
+        }));
+        std::panic::set_hook(prev_hook);
+        assert!(result.is_err(), "poisoning panic must be caught");
+    }
+
+    #[tokio::test]
+    async fn poisoned_sessions_mutex_recovers() {
+        let backend = InMemoryBackend::new();
+        poison_mutex(&backend.sessions);
+
+        let session = Session::new();
+        backend.create_session(&session).await.unwrap();
+        let loaded = backend.load_session(&session.id).await.unwrap();
+        assert!(
+            loaded.is_some(),
+            "session must survive a poisoned sessions lock"
+        );
+    }
+
+    #[tokio::test]
+    async fn poisoned_checkpoints_mutex_recovers() {
+        let backend = InMemoryBackend::new();
+        poison_mutex(&backend.checkpoints);
+
+        assert_eq!(backend.checkpoint_count().await.unwrap(), 0);
+        let listed = backend.list_checkpoints().await.unwrap();
+        assert!(
+            listed.is_empty(),
+            "checkpoint listing must survive a poisoned lock"
+        );
+    }
+
+    #[tokio::test]
+    async fn poisoned_graph_mutexes_recovers() {
+        let backend = InMemoryBackend::new();
+        poison_mutex(&backend.files);
+        poison_mutex(&backend.next_file_id);
+
+        let count = backend.count_files().await.unwrap();
+        assert_eq!(count, 0, "graph file count must survive a poisoned lock");
+    }
+
+    #[tokio::test]
+    async fn poisoned_workspace_mutex_recovers() {
+        let backend = InMemoryBackend::new();
+        poison_mutex(&backend.workspaces);
+
+        backend
+            .create_workspace(&Workspace::new("poison-recovery"))
+            .await
+            .unwrap();
+        let listed = backend.list_workspaces().await.unwrap();
+        assert_eq!(listed.len(), 1);
+        assert_eq!(listed[0].name, "poison-recovery");
     }
 }

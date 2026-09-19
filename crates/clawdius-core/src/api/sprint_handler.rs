@@ -10,7 +10,7 @@
 
 use axum::{extract::Extension, extract::State, http::StatusCode, Json};
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
+use std::sync::{Arc, PoisonError};
 use tokio::sync::mpsc;
 
 use crate::agentic::tool_executor::{ShellToolExecutor, ToolExecutor};
@@ -204,7 +204,7 @@ pub async fn run_sprint(
                 let store = state
                     .tenant_store
                     .read()
-                    .expect("tenant_store lock poisoned");
+                    .unwrap_or_else(PoisonError::into_inner);
                 if let Some(tenant_id) = store.get_tenant_id_by_api_key(&key.0) {
                     drop(store);
                     let total_tokens = result.metrics.total_tokens as usize;
@@ -550,7 +550,7 @@ pub async fn stream_sprint(
             let store = state_clone
                 .tenant_store
                 .read()
-                .expect("tenant_store lock poisoned");
+                .unwrap_or_else(PoisonError::into_inner);
             if let Some(tenant_id) = store.get_tenant_id_by_api_key(&key.0) {
                 drop(store);
                 let _ = crate::api::auth_handler::record_tenant_task(

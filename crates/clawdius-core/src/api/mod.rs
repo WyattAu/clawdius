@@ -1,3 +1,10 @@
+// Unwrap purge batch 2: api module — production code must not
+// unwrap/expect; propagate, use poison-recovery for lock poisoning, or
+// restructure. Lints inherit into all child modules (handlers, RAG, tests).
+#![deny(clippy::unwrap_used, clippy::expect_used)]
+// Test builds keep unwrap/expect for brevity (fleet convention, see lib.rs).
+#![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used))]
+
 pub mod auth;
 pub mod auth_handler;
 pub mod gateway;

@@ -50,7 +50,7 @@ pub struct CodebaseIndexer {
 impl Default for CodebaseIndexer {
     fn default() -> Self {
         Self {
-            tokenizer: tiktoken_rs::cl100k_base().expect("failed to load cl100k tokenizer"),
+            tokenizer: load_default_tokenizer(),
             max_chunk_tokens: 512,
             overlap_tokens: 50,
             ignore_patterns: vec![
@@ -61,6 +61,18 @@ impl Default for CodebaseIndexer {
             ],
         }
     }
+}
+
+// INVARIANT: `cl100k_base()` deserializes the tiktoken vocabulary that is
+// embedded in the crate at build time; there is no runtime I/O, no user
+// input, and no fallible environment state in play. Failure can only mean a
+// corrupted build artifact, for which process abort is the correct response
+// and no recoverable error path exists.
+// Justified invariant-expect (unwrap purge batch 2), see INVARIANT above.
+#[allow(clippy::expect_used)]
+fn load_default_tokenizer() -> CoreBPE {
+    tiktoken_rs::cl100k_base()
+        .expect("INVARIANT: embedded vocabulary decodes; failure is a build defect")
 }
 
 impl CodebaseIndexer {

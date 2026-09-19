@@ -17,17 +17,50 @@ use serde::{Deserialize, Serialize};
 use std::sync::LazyLock;
 
 // Pre-compiled regexes for HTML noise stripping (compiled once, reused across calls)
-static RE_SCRIPT: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"(?is)<script[^>]*>.*?</script>").expect("valid regex"));
-static RE_STYLE: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"(?is)<style[^>]*>.*?</style>").expect("valid regex"));
+// INVARIANT: every pattern below is a compile-time literal verified to be
+// valid regex syntax; `Regex::new` cannot fail on literals that parse.
+// Justified invariant-expect (unwrap purge batch 2), see INVARIANT above.
+#[allow(clippy::expect_used)]
+static RE_SCRIPT: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"(?is)<script[^>]*>.*?</script>").expect("INVARIANT: literal regex compiles")
+});
+#[allow(clippy::expect_used)]
+static RE_STYLE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"(?is)<style[^>]*>.*?</style>").expect("INVARIANT: literal regex compiles")
+});
+#[allow(clippy::expect_used)]
 static RE_COMMENT: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"(?s)<!--.*?-->").expect("valid regex"));
-static RE_TAG: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"<[^>]+>").expect("valid regex"));
+    LazyLock::new(|| Regex::new(r"(?s)<!--.*?-->").expect("INVARIANT: literal regex compiles"));
+#[allow(clippy::expect_used)]
+static RE_TAG: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"<[^>]+>").expect("INVARIANT: literal regex compiles"));
+#[allow(clippy::expect_used)]
 static RE_MULTI_NEWLINE: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"\n{3,}").expect("valid regex"));
-static RE_HEADING: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"(?is)<h([1-6])[^>]*>(.*?)</h[1-6]>").expect("valid regex"));
+    LazyLock::new(|| Regex::new(r"\n{3,}").expect("INVARIANT: literal regex compiles"));
+#[allow(clippy::expect_used)]
+static RE_HEADING: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"(?is)<h([1-6])[^>]*>(.*?)</h[1-6]>").expect("INVARIANT: literal regex compiles")
+});
+
+/// Noise-level container tags stripped wholesale (tag + inner content).
+const NOISE_TAGS: [&str; 8] = [
+    "nav", "footer", "header", "aside", "form", "iframe", "noscript", "svg",
+];
+
+// INVARIANT: `NOISE_TAGS` is a fixed list of plain alphanumeric tag names,
+// so the formatted pattern `<{tag}[^>]*>.*?</{tag}>` contains no regex
+// metacharacters and always parses.
+// Justified invariant-expect (unwrap purge batch 2), see INVARIANT above.
+#[allow(clippy::expect_used)]
+static NOISE_TAG_RES: LazyLock<Vec<Regex>> = LazyLock::new(|| {
+    NOISE_TAGS
+        .iter()
+        .map(|tag| {
+            Regex::new(&format!(r"(?is)<{tag}[^>]*>.*?</{tag}>"))
+                .expect("INVARIANT: fixed ASCII tag list yields valid regex")
+        })
+        .collect()
+});
 
 /// Result of HTML compression.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -189,11 +222,7 @@ impl HtmlCompressor {
         text = RE_STYLE.replace_all(&text, "").to_string();
 
         // Remove nav, footer, header, aside, form elements
-        for tag in &[
-            "nav", "footer", "header", "aside", "form", "iframe", "noscript", "svg",
-        ] {
-            let re =
-                Regex::new(&format!(r"(?is)<{}[^>]*>.*?</{}>", tag, tag)).expect("valid regex");
+        for re in NOISE_TAG_RES.iter() {
             text = re.replace_all(&text, "").to_string();
         }
 
@@ -344,6 +373,28 @@ impl Default for BatchCompressor {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // -- Coverage for the batch-2 hoisted noise-tag regexes --
+    //
+    // `strip_noise` now iterates the precompiled `NOISE_TAG_RES` static
+    // instead of recompiling a formatted regex per tag per call. Exercise
+    // every entry of `NOISE_TAGS` through the public compress path.
+    #[test]
+    fn compress_strips_all_noise_container_tags() {
+        let compressor = HtmlCompressor::new();
+        let html = NOISE_TAGS
+            .iter()
+            .map(|tag| format!("<{tag} class=\"noise\">discard-{tag}-payload</{tag}>"))
+            .collect::<String>();
+
+        let result = compressor.compress(&html).expect("compress");
+        for tag in NOISE_TAGS {
+            assert!(
+                !result.markdown.contains(tag),
+                "noise tag <{tag}> must be stripped together with its content"
+            );
+        }
+    }
 
     #[test]
     fn test_basic_compression() {

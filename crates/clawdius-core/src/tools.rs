@@ -76,6 +76,13 @@
 //! };
 //! ```
 
+// Unwrap purge batch 2: tools module — production code must not
+// unwrap/expect; propagate, use invariant-expect with a written INVARIANT
+// argument, or restructure. Lints inherit into all child modules (tests too).
+#![deny(clippy::unwrap_used, clippy::expect_used)]
+// Test builds keep unwrap/expect for brevity (fleet convention, see lib.rs).
+#![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used))]
+
 #[cfg(feature = "browser")]
 pub mod browser;
 pub mod edit_cascade;
