@@ -23,6 +23,7 @@ use axum::response::IntoResponse;
 use axum::routing::get;
 use axum::{Json, Router};
 use clap::Parser;
+use telemetry_init::{LogFormat, Telemetry, TelemetryConfig};
 
 use clawdius_gateway::adapter::{Platform, PlatformConfig};
 use clawdius_gateway::admin::{admin_router, AdminState, RoleStore};
@@ -406,15 +407,17 @@ async fn register_platform(gateway: &mut MessageGateway, platform: &Platform, cl
 async fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
-    tracing_subscriber::fmt()
-        .with_env_filter(
-            tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| {
-                cli.log_level
-                    .parse()
-                    .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("info"))
-            }),
-        )
-        .init();
+    // Estate observability bootstrap (telemetry-init): `RUST_LOG` wins over
+    // --log-level, and an unparsable directive is a startup error instead of
+    // a silent "info" fallback. Logging only — /metrics keeps flowing through
+    // the clawdius-metrics registry, so telemetry-init's `metrics` feature is
+    // compiled out (its registry would be an unused duplicate). `Pretty`
+    // preserves the historical human-readable stdout format.
+    let _telemetry = Telemetry::init(
+        TelemetryConfig::new(env!("CARGO_PKG_NAME"))
+            .log_format(LogFormat::Pretty)
+            .log_level(&cli.log_level),
+    )?;
 
     tracing::info!(
         "Clawdius Gateway v{} starting up",

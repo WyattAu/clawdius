@@ -183,6 +183,11 @@ parking_lot = "0.12"
 
 # === Estate-internal crates (dogfooding) ===
 metrics-kit = "0.1"
+# Logging bootstrap only: the default `metrics` feature would build a
+# telemetry-init-owned registry, but Clawdius services serve /metrics from
+# the clawdius-metrics registry. Consumers adopting telemetry-init's
+# registry should add `features = ["metrics"]` at their dep site.
+telemetry-init = { version = "0.1", default-features = false, features = ["json"] }
 
 # === High-Performance Allocator ===
 mimalloc = "0.1"
