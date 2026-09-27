@@ -173,6 +173,8 @@ wat = "1"
 [[bench]]
 name = "core_bench"
 harness = false
+# The bench exercises the JSON-RPC types behind the `rpc` feature.
+required-features = ["rpc"]
 
 [[bench]]
 name = "llm_benchmark"
