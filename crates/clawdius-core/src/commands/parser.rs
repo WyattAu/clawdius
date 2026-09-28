@@ -3,6 +3,16 @@
 use crate::commands::{CommandArgument, CommandTemplate, CustomCommand, TemplateStep};
 use crate::error::Result;
 use regex::Regex;
+use std::sync::LazyLock;
+
+// INVARIANT: a literal regex pattern is checked once at first use; a literal
+// that fails to compile is a source defect, and the previous per-call
+// never-match fallback (`$^`) was likewise a literal. No recoverable path
+// exists.
+// Justified invariant-expect (unwrap purge batch 3).
+#[allow(clippy::expect_used)]
+static TEMPLATE_VAR_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"\{\{(\w+)\}\}").expect("INVARIANT: literal regex compiles"));
 
 /// Parse a custom command from markdown
 pub struct CommandParser;
@@ -165,10 +175,36 @@ impl CommandParser {
     /// Variables are in the format {{`variable_name`}}
     #[must_use]
     pub fn extract_variables(template: &str) -> Vec<String> {
-        let re = Regex::new(r"\{\{(\w+)\}\}")
-            .unwrap_or_else(|_| Regex::new(r"$^").expect("empty regex fallback"));
-        re.captures_iter(template)
+        TEMPLATE_VAR_RE
+            .captures_iter(template)
             .map(|cap| cap[1].to_string())
             .collect()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_extract_variables() {
+        // Newly reachable path: the hoisted precompiled TEMPLATE_VAR_RE
+        // static replaces the per-call Regex::new with expect fallback.
+        let template = "Deploy {{service}} to {{region}} for {{tenant}}";
+        let vars = CommandParser::extract_variables(template);
+        assert_eq!(
+            vars,
+            vec![
+                "service".to_string(),
+                "region".to_string(),
+                "tenant".to_string()
+            ]
+        );
+    }
+
+    #[test]
+    fn test_extract_variables_without_matches() {
+        assert!(CommandParser::extract_variables("no variables here").is_empty());
+        assert!(CommandParser::extract_variables("").is_empty());
     }
 }

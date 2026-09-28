@@ -77,12 +77,24 @@ pub struct Compactor {
     llm: Option<Arc<dyn LlmClient>>,
 }
 
+// INVARIANT: `cl100k_base()` deserializes the tiktoken vocabulary that is
+// embedded in the crate at build time; there is no runtime I/O, no user
+// input, and no fallible environment state in play. Failure can only mean a
+// corrupted build artifact, for which panic is the correct response and no
+// recoverable error path exists.
+// Justified invariant-expect (unwrap purge batch 3), see INVARIANT above.
+#[allow(clippy::expect_used)]
+fn load_default_tokenizer() -> CoreBPE {
+    tiktoken_rs::cl100k_base()
+        .expect("INVARIANT: embedded vocabulary decodes; failure is a build defect")
+}
+
 impl Compactor {
     /// Create a new compactor without LLM (extractive fallback only).
     pub fn new(config: impl Into<CompactConfig>) -> Self {
         Self {
             config: config.into(),
-            tokenizer: tiktoken_rs::cl100k_base().expect("failed to load tokenizer"),
+            tokenizer: load_default_tokenizer(),
             llm: None,
         }
     }
@@ -91,7 +103,7 @@ impl Compactor {
     pub fn with_llm(config: impl Into<CompactConfig>, llm: Arc<dyn LlmClient>) -> Self {
         Self {
             config: config.into(),
-            tokenizer: tiktoken_rs::cl100k_base().expect("failed to load tokenizer"),
+            tokenizer: load_default_tokenizer(),
             llm: Some(llm),
         }
     }

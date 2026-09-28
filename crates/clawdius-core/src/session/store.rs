@@ -33,23 +33,37 @@ where
                 // to a new OS thread that owns its own runtime.
                 std::thread::scope(|s| {
                     s.spawn(|| {
+                        // INVARIANT: current-thread runtime construction only
+                        // fails on OS resource exhaustion (thread/fd limits)
+                        // — the same condition under which tokio's own entry
+                        // points (`#[tokio::main]`) panic. There is no
+                        // recoverable error path in this sync bridge; the
+                        // panic propagates to the caller via the join below.
+                        // Justified invariant-expect (unwrap purge batch 3).
+                        #[allow(clippy::expect_used)]
                         let rt = tokio::runtime::Builder::new_current_thread()
                             .enable_all()
                             .build()
-                            .expect("failed to create tokio runtime");
+                            .expect(
+                                "INVARIANT: tokio runtime build failure is OS resource exhaustion",
+                            );
                         rt.block_on(f)
                     })
                     .join()
-                    .expect("run_async worker thread panicked")
+                    .unwrap_or_else(|payload| std::panic::resume_unwind(payload))
                 })
             }
         },
         Err(_) => {
             // No runtime present — create a temporary one (e.g., plain #[test])
+            // INVARIANT: see the offload branch above — build failure is OS
+            // resource exhaustion and has no recoverable path here.
+            // Justified invariant-expect (unwrap purge batch 3).
+            #[allow(clippy::expect_used)]
             let rt = tokio::runtime::Builder::new_current_thread()
                 .enable_all()
                 .build()
-                .expect("failed to create tokio runtime");
+                .expect("INVARIANT: tokio runtime build failure is OS resource exhaustion");
             rt.block_on(f)
         },
     }

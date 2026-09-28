@@ -247,6 +247,10 @@ lean_lib Proof where
     }
 }
 
+// TODO(unwrap-purge-batch-4): classify — `Default` wraps a fallible PATH
+// lookup (`lean`/`lake` binaries), which is a genuine runtime condition, not
+// an invariant. Needs an API decision (drop `Default`, or make the paths an
+// `Option` with lazy resolution) before the expect can be removed honestly.
 impl Default for LeanVerifier {
     fn default() -> Self {
         Self::new().expect("Failed to create LeanVerifier")

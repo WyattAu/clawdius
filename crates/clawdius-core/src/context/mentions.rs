@@ -26,9 +26,19 @@
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
+use std::sync::LazyLock;
 
 use super::{CommitInfo, ContextItem, SearchResult};
 use crate::error::{Error, Result};
+
+// INVARIANT: a literal regex pattern is checked once at first use; a literal
+// that fails to compile is a source defect, and the previous per-call
+// never-match fallback (`$^`) was likewise a literal. No recoverable path
+// exists.
+// Justified invariant-expect (unwrap purge batch 3).
+#[allow(clippy::expect_used)]
+static HTML_TAG_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"<[^>]+>").expect("INVARIANT: literal regex compiles"));
 
 /// A parsed mention from text
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -347,9 +357,7 @@ impl MentionResolver {
             .replace("</h3>", "\n\n");
 
         // Strip HTML tags (very basic)
-        let re = regex::Regex::new(r"<[^>]+>")
-            .unwrap_or_else(|_| regex::Regex::new(r"$^").expect("empty regex fallback"));
-        let content = re.replace_all(&content, "").to_string();
+        let content = HTML_TAG_RE.replace_all(&content, "").to_string();
 
         Ok(ContextItem::Url {
             url: url.to_string(),

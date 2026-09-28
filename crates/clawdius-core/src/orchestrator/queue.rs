@@ -144,8 +144,17 @@ impl TaskQueue for InMemoryTaskQueue {
             return Ok(None);
         };
 
-        let task_id = pending.remove(idx).expect("idx is valid");
-        let task = tasks.get_mut(&task_id).expect("task exists");
+        // Justified invariant-expects (unwrap purge batch 3), see INVARIANTs.
+        #[allow(clippy::expect_used)]
+        let task_id = pending.remove(idx).expect(
+            "INVARIANT: idx came from position() over the same deque; \
+                 no intervening mutation",
+        );
+        #[allow(clippy::expect_used)]
+        let task = tasks.get_mut(&task_id).expect(
+            "INVARIANT: claim filter verified tasks.get(id) is Some for \
+             every pending id; no intervening mutation",
+        );
 
         task.status = TaskStatus::Running;
         task.claimed_by = Some(worker_id.to_string());
@@ -229,7 +238,7 @@ impl TaskQueue for InMemoryTaskQueue {
             "result": result,
             "completed_at": current_timestamp(),
         });
-        results.push_back(serde_json::to_string(&payload).expect("serialize result"));
+        results.push_back(serde_json::to_string(&payload).map_err(Error::Serialization)?);
         Ok(())
     }
 
@@ -493,7 +502,7 @@ impl TaskQueue for RedisTaskQueue {
 
         redis::cmd("LPUSH")
             .arg(&results_key)
-            .arg(serde_json::to_string(&payload).expect("serialize result"))
+            .arg(serde_json::to_string(&payload).map_err(Error::Serialization)?)
             .query_async::<()>(&mut conn)
             .await
             .map_err(|e| Error::Internal(format!("Redis LPUSH failed: {}", e)))?;
@@ -659,6 +668,40 @@ mod tests {
 
         let empty = queue.pop_result().await.expect("pop");
         assert!(empty.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_in_memory_dequeue_empty_returns_none() {
+        let queue = InMemoryTaskQueue::new();
+
+        // Pins the early-return branch that guards the claim-path
+        // invariant-expects (unwrap purge batch 3).
+        let none = queue.dequeue("worker-0", None).await.expect("dequeue");
+        assert!(none.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_in_memory_results_fifo_ordering() {
+        let queue = InMemoryTaskQueue::new();
+
+        queue.push_result("t1", "first").await.expect("push t1");
+        queue.push_result("t2", "second").await.expect("push t2");
+
+        // Both pushes traverse the serialization map_err path; FIFO order
+        // must be preserved by the results deque.
+        let r1 = queue
+            .pop_result()
+            .await
+            .expect("pop")
+            .expect("should have r1");
+        let r2 = queue
+            .pop_result()
+            .await
+            .expect("pop")
+            .expect("should have r2");
+
+        assert!(r1.contains("t1") && r1.contains("first"), "r1={r1}");
+        assert!(r2.contains("t2") && r2.contains("second"), "r2={r2}");
     }
 
     #[tokio::test]

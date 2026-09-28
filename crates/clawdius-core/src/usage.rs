@@ -3,6 +3,13 @@
 //! Tracks token usage per tenant/session for SaaS billing.
 //! Provides per-cycle aggregation and quota enforcement.
 
+// Unwrap purge batch 3: usage module — production code must not
+// unwrap/expect; propagate, document a true invariant with an INVARIANT
+// comment, or restructure. Lints inherit into all child modules and tests.
+#![deny(clippy::unwrap_used, clippy::expect_used)]
+// Test builds keep unwrap/expect for brevity (fleet convention, see lib.rs).
+#![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used))]
+
 use chrono::{DateTime, Utc};
 use rusqlite::params;
 use serde::{Deserialize, Serialize};
@@ -277,7 +284,15 @@ impl TenantUsageTracker {
         }
 
         let meters = self.meters.read();
-        let meter = meters.get(tenant_id).expect("meter just inserted above");
+        // INVARIANT: the block above guarantees the tenant meter exists
+        // (inserting it when absent), and nothing ever removes entries from
+        // `meters` (insert/iterate only). Read-lock acquisition cannot
+        // un-do the earlier insert.
+        // Justified invariant-expect (unwrap purge batch 3).
+        #[allow(clippy::expect_used)]
+        let meter = meters
+            .get(tenant_id)
+            .expect("INVARIANT: tenant ensured-present above; meters are never removed");
 
         // Check token quota
         let quotas = self.quotas.read();

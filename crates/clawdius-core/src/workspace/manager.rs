@@ -91,14 +91,9 @@ impl<R: WorkspaceRepository> WorkspaceManager<R> {
     /// If exactly one workspace exists, returns it.
     /// If multiple workspaces exist, returns the first one.
     pub async fn get_or_create_default_workspace(&self) -> Result<Workspace> {
-        let workspaces = self.repo.list_workspaces().await?;
-        if workspaces.is_empty() {
-            self.create_workspace("default").await
-        } else {
-            Ok(workspaces
-                .into_iter()
-                .next()
-                .expect("workspaces is non-empty"))
+        match self.repo.list_workspaces().await?.into_iter().next() {
+            Some(existing) => Ok(existing),
+            None => self.create_workspace("default").await,
         }
     }
 
@@ -473,6 +468,18 @@ mod tests {
         // Existing workspace → returns it
         let ws2 = mgr.get_or_create_default_workspace().await.unwrap();
         assert_eq!(ws.id, ws2.id);
+    }
+
+    #[tokio::test]
+    async fn test_get_or_create_default_returns_named_existing() {
+        let mgr = setup();
+
+        // Single named workspace → returned as-is (the match arm that
+        // replaced the is_empty+expect structure, unwrap purge batch 3).
+        let named = mgr.create_workspace("alpha").await.unwrap();
+        let resolved = mgr.get_or_create_default_workspace().await.unwrap();
+        assert_eq!(resolved.id, named.id);
+        assert_eq!(resolved.name, "alpha");
     }
 
     #[tokio::test]

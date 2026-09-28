@@ -7,6 +7,13 @@
 //! Key derivation uses HKDF-SHA256 with a random salt per encryption.
 //! Master key is loaded from environment or a keyfile.
 
+// Unwrap purge batch 3: encryption module — production code must not
+// unwrap/expect; propagate, document a true invariant with an INVARIANT
+// comment, or restructure. Lints inherit into all child modules and tests.
+#![deny(clippy::unwrap_used, clippy::expect_used)]
+// Test builds keep unwrap/expect for brevity (fleet convention, see lib.rs).
+#![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used))]
+
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
@@ -53,6 +60,8 @@ pub enum EncryptionError {
     Base64Error(String),
     #[error("decryption failed: ciphertext integrity check failed")]
     DecryptionFailed,
+    #[error("encryption failed: {0}")]
+    EncryptionFailed(String),
     #[error("key loading error: {0}")]
     KeyLoadError(String),
     #[error("IO error: {0}")]
@@ -100,7 +109,7 @@ pub fn encrypt(plaintext: &[u8], master_key: &[u8], aad: Option<&[u8]>) -> Resul
     let derived_key = hkdf_sha256(master_key, &salt, b"clawdius-encryption-v1");
 
     // AES-256-GCM encrypt
-    let ciphertext = aes256gcm_encrypt(&derived_key, &nonce, plaintext, aad.unwrap_or(b""));
+    let ciphertext = aes256gcm_encrypt(&derived_key, &nonce, plaintext, aad.unwrap_or(b""))?;
 
     Ok(EncryptedData {
         algorithm: EncryptionAlgorithm::Aes256Gcm,
@@ -461,7 +470,7 @@ fn aes256gcm_encrypt(
     nonce: &[u8; NONCE_LEN],
     plaintext: &[u8],
     aad: &[u8],
-) -> Vec<u8> {
+) -> Result<Vec<u8>> {
     // Use aes-gcm crate
     use aes_gcm::{
         aead::{Aead, KeyInit},
@@ -477,7 +486,7 @@ fn aes256gcm_encrypt(
                 aad,
             },
         )
-        .expect("encryption failure")
+        .map_err(|e| EncryptionError::EncryptionFailed(e.to_string()))
 }
 
 /// AES-256-GCM decrypt. Returns None on auth failure.

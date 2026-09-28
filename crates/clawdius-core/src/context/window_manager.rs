@@ -258,9 +258,16 @@ impl ContextWindowManager {
     }
 }
 
+// INVARIANT: `with_defaults()` fails only when the tiktoken vocabulary
+// embedded at build time fails to deserialize — a build defect, not a
+// runtime condition. `Default` is infallible by contract, so no error path
+// exists here.
+// Justified invariant-expect (unwrap purge batch 3).
 impl Default for ContextWindowManager {
+    #[allow(clippy::expect_used)]
     fn default() -> Self {
-        Self::with_defaults().expect("default tokenizer should always initialize")
+        Self::with_defaults()
+            .expect("INVARIANT: embedded tokenizer decodes; failure is a build defect")
     }
 }
 

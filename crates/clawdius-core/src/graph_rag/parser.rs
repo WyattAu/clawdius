@@ -539,9 +539,16 @@ impl CodeParser {
     }
 }
 
+// INVARIANT: `CodeParser::new()` fails only when a tree-sitter grammar
+// fails ABI/version validation at parser construction. Grammars are
+// statically linked at build time, so failure is a build defect, not a
+// runtime condition. `Default` is infallible by contract, so no error path
+// exists here.
+// Justified invariant-expect (unwrap purge batch 3).
 impl Default for CodeParser {
+    #[allow(clippy::expect_used)]
     fn default() -> Self {
-        Self::new().expect("Failed to initialize CodeParser")
+        Self::new().expect("INVARIANT: statically-linked grammars load; failure is a build defect")
     }
 }
 
@@ -563,6 +570,17 @@ fn main() {
 }
 "#;
         let result = parser.parse(source, LanguageKind::Rust);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_default_parser_matches_new() {
+        // Pins the documented invariant behind `Default for CodeParser`
+        // (unwrap purge batch 3): statically-linked grammars must always
+        // initialize, so `default()` behaves like `new()?`.
+        let parser = CodeParser::default();
+        let source = "def run():\n    return 42\n";
+        let result = parser.parse(source, LanguageKind::Python);
         assert!(result.is_ok());
     }
 

@@ -144,6 +144,13 @@
 //! [`SessionStore`]: store::SessionStore
 //! [`Compactor`]: compactor::Compactor
 
+// Unwrap purge batch 3: session module — production code must not
+// unwrap/expect; propagate, document a true invariant with an INVARIANT
+// comment, or restructure. Lints inherit into all child modules and tests.
+#![deny(clippy::unwrap_used, clippy::expect_used)]
+// Test builds keep unwrap/expect for brevity (fleet convention, see lib.rs).
+#![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used))]
+
 pub mod compactor;
 pub mod manager;
 pub mod store;

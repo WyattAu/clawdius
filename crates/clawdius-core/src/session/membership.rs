@@ -107,10 +107,8 @@ impl SessionMembership {
             .write()
             .map_err(|e| Error::Session(format!("membership lock poisoned: {e}")))?;
 
-        if !members.contains_key(user_id) {
-            return Err(Error::Session(format!("user '{user_id}' is not a member")));
-        }
-
+        // Owner validation must read through the map before the exclusive
+        // borrow below; a missing user is reported by the get_mut match.
         if new_role == SessionRole::Owner
             && members
                 .get(user_id)
@@ -122,7 +120,10 @@ impl SessionMembership {
             ));
         }
 
-        members.get_mut(user_id).expect("key checked above").role = new_role;
+        let member = members
+            .get_mut(user_id)
+            .ok_or_else(|| Error::Session(format!("user '{user_id}' is not a member")))?;
+        member.role = new_role;
         Ok(())
     }
 
@@ -392,5 +393,36 @@ mod tests {
         assert!(ids.contains(&"alice"));
         assert!(ids.contains(&"bob"));
         assert!(ids.contains(&"carol"));
+    }
+
+    #[test]
+    fn test_change_role_missing_user_errors() {
+        let membership = setup_membership();
+        membership.add_member("alice", SessionRole::Owner).unwrap();
+
+        // Newly reachable propagation path: the missing-user branch is now
+        // taken from the same get_mut().ok_or_else that replaced the expect.
+        let result = membership.change_role("ghost", SessionRole::Editor);
+        assert!(result.is_err());
+        let err = result.unwrap_err().to_string();
+        assert!(err.contains("ghost"), "error should name the user: {err}");
+
+        // No partial mutation occurred.
+        assert!(membership.get_member("ghost").is_none());
+    }
+
+    #[test]
+    fn test_change_role_demote_and_reassign_owner() {
+        let membership = setup_membership();
+        membership.add_member("alice", SessionRole::Owner).unwrap();
+        membership.add_member("bob", SessionRole::Editor).unwrap();
+
+        // Demotion mutates through the restructured get_mut borrow.
+        membership.change_role("alice", SessionRole::Editor).unwrap();
+        assert_eq!(membership.owner_id(), None);
+
+        // A new owner can be promoted afterwards (single-owner invariant).
+        membership.change_role("bob", SessionRole::Owner).unwrap();
+        assert_eq!(membership.owner_id(), Some("bob".to_string()));
     }
 }

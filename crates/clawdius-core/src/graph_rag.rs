@@ -123,6 +123,13 @@
 //! };
 //! ```
 
+// Unwrap purge batch 3: graph_rag module — production code must not
+// unwrap/expect; propagate, document a true invariant with an INVARIANT
+// comment, or restructure. Lints inherit into all child modules and tests.
+#![deny(clippy::unwrap_used, clippy::expect_used)]
+// Test builds keep unwrap/expect for brevity (fleet convention, see lib.rs).
+#![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used))]
+
 pub mod ast;
 pub mod embedding;
 pub mod languages;
