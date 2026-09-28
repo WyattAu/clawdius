@@ -25,7 +25,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@1.96
@@ -57,7 +57,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@1.96
@@ -82,7 +82,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@1.96
@@ -103,7 +103,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       
@@ -127,7 +127,7 @@ jobs:
       security-events: write
       actions: read
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       
       - name: Run CodeQL Analysis
         uses: github/codeql-action/init@v4.37.9
@@ -152,7 +152,7 @@ jobs:
           - fuzz_mention
           - fuzz_diff_engine
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@1.96
@@ -188,7 +188,7 @@ jobs:
     timeout-minutes: 15
     needs: [audit, deny]
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@1.96
@@ -222,7 +222,7 @@ jobs:
     timeout-minutes: 10
     needs: [audit, deny]
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@1.96
