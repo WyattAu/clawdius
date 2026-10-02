@@ -86,6 +86,47 @@ pub struct AdminState {
     pub rbac: Option<Arc<RbacService>>,
 }
 
+impl Default for AdminState {
+    fn default() -> Self {
+        Self {
+            billing: Arc::new(BillingManager::new()),
+            usage: Arc::new(TenantUsageTracker::new()),
+            api_key: "clawdius-admin".to_string(),
+            roles: RoleStore::default(),
+            #[cfg(feature = "auth")]
+            auth: None,
+            #[cfg(feature = "auth")]
+            rbac: None,
+        }
+    }
+}
+
+impl AdminState {
+    /// Build an [`AdminState`] with no auth/RBAC services attached.
+    ///
+    /// Exists so downstream crates can construct the state without knowing
+    /// whether this crate's `auth` feature is enabled (the `auth`/`rbac`
+    /// fields only exist under that feature). Use `Default` + field updates
+    /// to attach services inside this crate.
+    pub fn new(
+        billing: Arc<BillingManager>,
+        usage: Arc<TenantUsageTracker>,
+        api_key: String,
+        roles: RoleStore,
+    ) -> Self {
+        Self {
+            billing,
+            usage,
+            api_key,
+            roles,
+            #[cfg(feature = "auth")]
+            auth: None,
+            #[cfg(feature = "auth")]
+            rbac: None,
+        }
+    }
+}
+
 // ─────────────────────────────────────────────────────────
 // Auth Middleware
 // ─────────────────────────────────────────────────────────
@@ -688,7 +729,7 @@ async fn check_rbac_permission(
     headers: &HeaderMap,
     state: &AdminState,
     permission: clawdius_auth::rbac::Permission,
-) -> Result<(), impl IntoResponse> {
+) -> Result<(), axum::response::Response> {
     let (Some(auth), Some(rbac)) = (&state.auth, &state.rbac) else {
         return Ok(());
     };

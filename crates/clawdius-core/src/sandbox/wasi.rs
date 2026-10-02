@@ -1,7 +1,7 @@
 //! WASI sandbox for executing WebAssembly modules with sandboxed filesystem,
 //! network, and environment access.
 //!
-//! Uses wasmtime 42 with WASI preview1 (via `wasmtime-wasi` p1 module) to
+//! Uses wasmtime 49 with WASI preview1 (via `wasmtime-wasi` p1 module) to
 //! provide per-user isolation with bounded memory, fuel, and timeouts.
 
 // Unwrap purge batch 1: execution-surface module — production code must not
@@ -17,7 +17,7 @@ use std::time::{Duration, Instant};
 use wasmtime::{Config, Engine, Linker, Module, Store};
 use wasmtime_wasi::p1::WasiP1Ctx;
 use wasmtime_wasi::p2::pipe::{ClosedInputStream, ClosedOutputStream, MemoryOutputPipe};
-use wasmtime_wasi::{DirPerms, FilePerms, WasiCtxBuilder};
+use wasmtime_wasi::{FsPerms, WasiCtxBuilder};
 
 pub const DEFAULT_MEMORY_LIMIT: usize = 512 * 1024 * 1024;
 pub const DEFAULT_FUEL: u64 = 1_000_000;
@@ -247,12 +247,7 @@ impl WasiSandbox {
         let mut builder = WasiCtxBuilder::new();
 
         builder
-            .preopened_dir(
-                &self.config.workspace_root,
-                "/",
-                DirPerms::READ | DirPerms::MUTATE,
-                FilePerms::READ | FilePerms::WRITE,
-            )
+            .preopened_dir(&self.config.workspace_root, "/", FsPerms::ReadWrite)
             .map_err(|e| {
                 crate::error::Error::Sandbox(format!("Failed to preopen workspace directory: {e}"))
             })?;

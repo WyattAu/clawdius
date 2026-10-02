@@ -28,6 +28,8 @@ Clawdius has **zero vulnerabilities in its direct dependencies**. All known CVEs
 | Advisory | Crate | Status | Mitigation |
 |----------|-------|--------|------------|
 | RUSTSEC-2026-0114 | wasmtime | [OK] Fixed | Upgraded to wasmtime 44.x |
+| RUSTSEC-2026-0316 | wasmtime | [OK] Fixed | Upgraded to wasmtime 49.0.2 (dynamic record lifting fuel) |
+| RUSTSEC-2026-0314 | wasmtime-wasi | [OK] Fixed | Same (guest filesystem datetime overflow panic) |
 | RUSTSEC-2025-0065 | matrix-sdk-base | [OK] Fixed | Upgraded matrix-sdk 0.10 → 0.16 (matrix-sdk-base 0.16.1); `matrix` feature |
 | RUSTSEC-2025-0135 | matrix-sdk-base | [OK] Fixed | Same |
 
@@ -53,6 +55,7 @@ Clawdius has **zero vulnerabilities in its direct dependencies**. All known CVEs
 | rustls-pemfile | Unmaintained | Transitive via mysql_async |
 | number_prefix | Unmaintained | Transitive via indicatif |
 | bitmaps | Unmaintained | Transitive via imbl (matrix-sdk 0.16) |
+| anymap2 | Unmaintained | Transitive via matrix-sdk 0.16 (optional `matrix` feature) |
 | proc-macro-error / proc-macro-error2 | Unmaintained | Transitive via gtk/glib-macros (clawdius-tauri linux GUI) |
 | unic-* family | Unmaintained | Transitive via urlpattern |
 

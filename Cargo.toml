@@ -80,7 +80,9 @@ ratatui = "0.30"
 crossterm = { version = "0.29", features = ["event-stream"] }
 
 # === WASM Runtime (Brain Isolation) ===
-wasmtime = "46"
+# 49 (>= 49.0.1): fixes RUSTSEC-2026-0316 (dynamic record lifting fuel) and
+# RUSTSEC-2026-0314 (guest filesystem datetime overflow panic) on the 46 line.
+wasmtime = "49"
 
 # === JSON-RPC ===
 jsonrpsee = { version = "0.24", features = ["server", "client", "ws-client"] }
@@ -90,7 +92,7 @@ salting = { version = "1" }
 tokenkit = { version = "0.1" }
 
 # === Security ===
-keyring = "4"
+keyring = { version = "4", features = ["cli"] }
 keyring-core = "1"
 rpassword = "7.5"
 
@@ -148,7 +150,7 @@ url = "2.5"
 urlencoding = "2.1"
 
 # === WASM Runtime (additional crates) ===
-wasmtime-wasi = "46"
+wasmtime-wasi = "49"
 
 # === Token Counting ===
 tiktoken-rs = "0.5"
@@ -288,9 +290,8 @@ half = { path = ".cargo-vendor/half" }
 # RESOLVED: matrix-sdk upgraded 0.10 -> 0.16 in clawdius-gateway (fixes
 # RUSTSEC-2025-0065/0135 via matrix-sdk-base 0.16.1); contingency removed.
 
-# Contingency: if wasmtime >= 45 is released, add:
-# [patch.crates-io]
-# wasmtime-wasi = { git = "https://github.com/bytecodealliance/wasmtime", rev = "..." }
+# RESOLVED: wasmtime upgraded 46 -> 49 from crates.io (fixes
+# RUSTSEC-2026-0316/0314); git-revision contingency removed.
 
 # CVE Contingency: Uncomment when upstream publishes fixes
 # RUSTSEC-2026-0049/0098/0099/0104 (rustls-webpki 0.102.8 pinned by
@@ -298,7 +299,4 @@ half = { path = ".cargo-vendor/half" }
 # accepted risk in SECURITY.md while the `discord` feature stays optional)
 # [patch.crates-io]
 # rustls-webpki = { git = "https://github.com/rustls/rustls-webpki", rev = "..." }
-#
-# RUSTSEC-2026-0149 (wasmtime)
-# wasmtime = { git = "https://github.com/bytecodealliance/wasmtime", tag = "v45.0.0" }
 

@@ -1187,7 +1187,9 @@ pub mod keyring_storage {
         STORE_INITIALIZED.get_or_init(|| {
             // keyring v4: select native store at runtime.
             // `false` = prefer keyutils over secret-service on Linux.
-            let _ = keyring::use_native_store(false);
+            // (keyring 4.2 moved `use_native_store` into the `cli` module;
+            // the flag semantics are unchanged.)
+            let _ = keyring::cli::use_native_store(false);
         });
     }
 

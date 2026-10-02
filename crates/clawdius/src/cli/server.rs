@@ -34,13 +34,12 @@ pub(super) async fn handle_server(host: &str, port: u16) -> anyhow::Result<()> {
     // Start the admin API (gateway health + billing) on port+1
     let admin_port = port.saturating_add(1);
     let admin_addr = std::net::SocketAddr::from(([0, 0, 0, 0], admin_port));
-    let admin_state = std::sync::Arc::new(clawdius_gateway::admin::AdminState {
-        billing: std::sync::Arc::new(clawdius_core::billing::BillingManager::new()),
-        usage: std::sync::Arc::new(clawdius_core::usage::TenantUsageTracker::new()),
-        api_key: std::env::var("CLAWDIUS_ADMIN_API_KEY")
-            .unwrap_or_else(|_| "clawdius-admin".to_string()),
-        roles: clawdius_gateway::admin::RoleStore::default(),
-    });
+    let admin_state = std::sync::Arc::new(clawdius_gateway::admin::AdminState::new(
+        std::sync::Arc::new(clawdius_core::billing::BillingManager::new()),
+        std::sync::Arc::new(clawdius_core::usage::TenantUsageTracker::new()),
+        std::env::var("CLAWDIUS_ADMIN_API_KEY").unwrap_or_else(|_| "clawdius-admin".to_string()),
+        clawdius_gateway::admin::RoleStore::default(),
+    ));
     let admin_router = clawdius_gateway::admin::admin_router(admin_state);
     let admin_listener = tokio::net::TcpListener::bind(admin_addr).await?;
     println!("Clawdius admin API listening on {host}:{admin_port}");

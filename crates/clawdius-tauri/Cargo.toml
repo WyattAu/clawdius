@@ -20,6 +20,12 @@ tauri-plugin-clipboard-manager = { version = "2", optional = true }
 leptos = { version = "0.8", features = ["csr"] }
 workspace-hack = { version = "0.1", path = "../../workspace-hack" }
 
+[build-dependencies]
+# Required by `tauri::generate_context!` (sets the OUT_DIR-based context the
+# macro reads at expansion time); without it, `cargo check --all-features`
+# fails with "OUT_DIR env var is not set".
+tauri-build = { version = "2", features = [] }
+
 [features]
 default = []
 desktop = ["dep:tauri", "dep:tauri-plugin-shell", "dep:tauri-plugin-dialog", "dep:tauri-plugin-clipboard-manager"]

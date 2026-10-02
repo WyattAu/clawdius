@@ -548,7 +548,7 @@ async fn main() -> anyhow::Result<()> {
         .route("/metrics", get(metrics_handler))
         .with_state(health_state);
 
-    let admin_app = admin_router(admin_state).merge(health_router);
+    let admin_app = admin_router(Arc::clone(&admin_state)).merge(health_router);
 
     // Mount OIDC + SAML auth routes (if auth feature is enabled)
     #[cfg(feature = "auth")]
