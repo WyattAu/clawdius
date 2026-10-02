@@ -122,7 +122,9 @@ jobs:
   sast:
     name: Static Analysis (SAST)
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # CodeQL on this workspace runs ~29-30m; 30 was causing runner-variance
+    # cancellations right at the cap (two on 2026-10-02).
+    timeout-minutes: 45
     permissions:
       security-events: write
       actions: read
