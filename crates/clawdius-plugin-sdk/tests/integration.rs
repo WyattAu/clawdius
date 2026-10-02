@@ -24,7 +24,9 @@ fn echo_tool_name() {
 #[test]
 fn echo_tool_description_is_nonempty() {
     let tool = EchoTool::new();
-    assert!(!tool.description().is_empty());
+    // assert_ne! (not assert!(!..is_empty())): newer clippy's
+    // `assert_is_empty` lint prefers this form — shows the value on failure.
+    assert_ne!(tool.description(), "");
 }
 
 #[test]
