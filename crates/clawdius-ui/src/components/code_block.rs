@@ -10,23 +10,40 @@ use leptos::prelude::*;
 use leptos::{component, view, IntoView};
 use wasm_bindgen::JsCast;
 
+/// Language of a code block, used for its label and formatting.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Language {
+    /// Rust source.
     Rust,
+    /// Python source.
     Python,
+    /// TypeScript source.
     TypeScript,
+    /// JavaScript source.
     JavaScript,
+    /// Go source.
     Go,
+    /// Java source.
     Java,
+    /// C/C++ source.
     Cpp,
+    /// Ruby source.
     Ruby,
+    /// PHP source.
     Php,
+    /// TOML configuration.
     Toml,
+    /// JSON data.
     Json,
+    /// Markdown text.
     Markdown,
+    /// HTML markup.
     Html,
+    /// CSS (and SCSS/Sass) styles.
     Css,
+    /// Shell scripts (sh/bash/zsh).
     Shell,
+    /// Any language not listed above, carrying its raw identifier.
     Unknown(String),
 }
 
@@ -62,13 +79,22 @@ impl From<String> for Language {
 // leptos' #[component] macro re-emits the implementation as a `#[doc(hidden)]`
 // pub fn __component_* and drops `#[must_use]` from it, so this targeted allow
 // is the only way to satisfy clippy::must_use_candidate for that generated fn.
+/// Code block with line numbers, copy button, wrap toggle, and language label.
 #[allow(clippy::must_use_candidate)]
 #[component]
 pub fn CodeBlock(
-    #[prop(into)] code: String,
-    #[prop(into)] language: Language,
-    #[prop(optional)] file_path: Option<String>,
-    #[prop(optional)] highlight_lines: Option<Vec<u32>>,
+    /// Source text to render.
+    #[prop(into)]
+    code: String,
+    /// Language used for the label.
+    #[prop(into)]
+    language: Language,
+    /// Optional file path shown in the header.
+    #[prop(optional)]
+    file_path: Option<String>,
+    /// Line numbers to highlight.
+    #[prop(optional)]
+    highlight_lines: Option<Vec<u32>>,
 ) -> impl IntoView {
     let lang_label = match language {
         Language::Unknown(s) => s,

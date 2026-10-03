@@ -1,3 +1,5 @@
+//! Axum server that serves the Leptos web frontend and its JSON API.
+
 use axum::routing::{get, post};
 use axum::Router;
 use clawdius_web::app::App;

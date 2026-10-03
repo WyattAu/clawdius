@@ -182,6 +182,7 @@ enum WebPage {
 // is the only way to satisfy clippy::must_use_candidate for that generated fn.
 #[allow(clippy::must_use_candidate)]
 #[component]
+/// Root application shell with navigation between Home and Chat pages.
 pub fn App() -> impl IntoView {
     provide_meta_context();
 

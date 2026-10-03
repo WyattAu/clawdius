@@ -11,15 +11,24 @@ use leptos::prelude::*;
 use leptos::{component, view, IntoView};
 use wasm_bindgen::JsCast;
 
+/// Metadata describing one session in the list.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SessionSummary {
+    /// Unique session identifier.
     pub id: String,
+    /// Display title of the session.
     pub title: String,
+    /// Creation time as a Unix timestamp in milliseconds.
     pub created_at: i64,
+    /// Last-activity time as a Unix timestamp in milliseconds.
     pub updated_at: i64,
+    /// Number of messages in the session.
     pub message_count: u32,
+    /// Provider the session runs against.
     pub provider: String,
+    /// Model the session runs against.
     pub model: String,
+    /// Short preview of the latest message, if any.
     pub preview: Option<String>,
 }
 
@@ -219,12 +228,18 @@ fn delete_button(cb: Callback<String>, del_id: String) -> impl IntoView {
 // leptos' #[component] macro re-emits the implementation as a `#[doc(hidden)]`
 // pub fn __component_* and drops `#[must_use]` from it, so this targeted allow
 // is the only way to satisfy clippy::must_use_candidate for that generated fn.
+/// Searchable, date-grouped list of chat sessions.
 #[allow(clippy::must_use_candidate)]
 #[component]
 pub fn SessionList(
-    #[prop(into)] sessions: Vec<SessionSummary>,
+    /// Sessions to render, sorted newest first.
+    #[prop(into)]
+    sessions: Vec<SessionSummary>,
+    /// ID of the session highlighted as active, if any.
     active_id: Option<String>,
+    /// Called with the ID of a clicked session.
     on_select: Option<Callback<String>>,
+    /// Called with the ID of a session the user deletes.
     on_delete: Option<Callback<String>>,
 ) -> impl IntoView {
     let (search, set_search) = signal(String::new());

@@ -10,25 +10,38 @@ use crate::theme::typography;
 use leptos::prelude::*;
 use leptos::{component, view, IntoView};
 
+/// One line of a unified diff.
 #[derive(Clone, Debug)]
 pub struct DiffLine {
+    /// Line number in the old file, if this line existed there.
     pub old_line: Option<u32>,
+    /// Line number in the new file, if this line exists there.
     pub new_line: Option<u32>,
+    /// Line content verbatim, without the diff prefix character.
     pub content: String,
+    /// Classification driving this line's color coding.
     pub kind: DiffLineKind,
 }
 
+/// Classification of a diff line.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum DiffLineKind {
+    /// Unchanged context line.
     Context,
+    /// Line added in the new file.
     Added,
+    /// Line removed from the old file.
     Removed,
+    /// Hunk header (`@@ ... @@`) line.
     Header,
 }
 
+/// A contiguous group of diff lines under one hunk header.
 #[derive(Clone, Debug)]
 pub struct DiffHunk {
+    /// The `@@ ... @@` header text for this hunk.
     pub header: String,
+    /// Lines of this hunk, in file order.
     pub lines: Vec<DiffLine>,
 }
 
@@ -297,12 +310,19 @@ fn diff_content(hunks: &[DiffHunk], total_lines: usize) -> impl IntoView {
 // leptos' #[component] macro re-emits the implementation as a `#[doc(hidden)]`
 // pub fn __component_* and drops `#[must_use]` from it, so this targeted allow
 // is the only way to satisfy clippy::must_use_candidate for that generated fn.
+/// File diff rendered as collapsible, color-coded unified hunks.
 #[allow(clippy::must_use_candidate)]
 #[component]
 pub fn DiffView(
-    #[prop(into)] file_path: String,
-    #[prop(into)] lines: Vec<DiffLine>,
-    #[prop(optional)] raw_diff: Option<String>,
+    /// Path of the file being diffed, shown in the header.
+    #[prop(into)]
+    file_path: String,
+    /// Pre-parsed diff lines when no raw diff is available.
+    #[prop(into)]
+    lines: Vec<DiffLine>,
+    /// Raw unified diff to parse and render instead of `lines`.
+    #[prop(optional)]
+    raw_diff: Option<String>,
 ) -> impl IntoView {
     let (collapsed, set_collapsed) = signal(false);
 

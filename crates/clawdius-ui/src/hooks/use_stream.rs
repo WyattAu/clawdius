@@ -6,26 +6,43 @@
 use leptos::prelude::*;
 use wasm_bindgen::JsCast;
 
+/// Lifecycle state of the SSE connection.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ConnectionState {
+    /// No connection established.
     Disconnected,
+    /// Connection attempt in progress.
     Connecting,
+    /// Connection open and receiving events.
     Connected,
-    Reconnecting { attempt: u32 },
+    /// Retrying after an error; `attempt` starts at 1.
+    Reconnecting {
+        /// Number of reconnect attempts made so far.
+        attempt: u32,
+    },
 }
 
+/// One parsed server-sent event.
 #[derive(Clone, Debug)]
 pub struct StreamEvent {
+    /// Event name from the SSE `event:` field.
     pub event_type: String,
+    /// Payload from the SSE `data:` field.
     pub data: String,
+    /// Value of the SSE `id:` field, if sent.
     pub id: Option<String>,
 }
 
+/// Reactive snapshot of the streaming connection.
 #[derive(Clone, Debug)]
 pub struct StreamState {
+    /// Current connection lifecycle state.
     pub connection: ConnectionState,
+    /// Last seen event ID, used to resume streams.
     pub last_event_id: Option<String>,
+    /// Total number of events received.
     pub events_received: u64,
+    /// How many reconnects have been attempted for the current endpoint.
     pub reconnect_attempts: u32,
 }
 
@@ -40,11 +57,15 @@ impl Default for StreamState {
     }
 }
 
+/// Callbacks for controlling the SSE connection.
 pub struct StreamActions {
+    /// Opens a connection to the given endpoint URL.
     pub connect: Callback<String>,
+    /// Closes the current connection.
     pub disconnect: Callback<()>,
 }
 
+/// Creates the reactive SSE connection state and its connect/disconnect actions.
 #[must_use]
 pub fn use_stream() -> (RwSignal<StreamState>, StreamActions) {
     let state = RwSignal::new(StreamState::default());

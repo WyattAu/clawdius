@@ -5,27 +5,42 @@
 use crate::components::message::{ChatMessage, MessageRole};
 use leptos::prelude::*;
 
+/// Token accounting for the current conversation.
 #[derive(Clone, Debug, Default)]
 pub struct TokenUsage {
+    /// Tokens consumed by the prompt/context.
     pub prompt_tokens: u32,
+    /// Tokens produced by the completion.
     pub completion_tokens: u32,
+    /// Prompt plus completion tokens.
     pub total_tokens: u32,
 }
 
+/// A tool invocation issued during a chat turn.
 #[derive(Clone, Debug)]
 pub struct ToolCall {
+    /// Tool name.
     pub name: String,
+    /// Serialized arguments passed to the tool.
     pub arguments: String,
+    /// Captured tool output, if the call has completed.
     pub result: Option<String>,
 }
 
+/// Reactive snapshot of the chat conversation.
 #[derive(Clone, Debug)]
 pub struct ChatState {
+    /// Messages in chronological order.
     pub messages: Vec<ChatMessage>,
+    /// Whether an assistant reply is currently streaming.
     pub is_streaming: bool,
+    /// Model used for new messages.
     pub current_model: String,
+    /// Provider used for new messages.
     pub current_provider: String,
+    /// Running token accounting for the conversation.
     pub token_usage: TokenUsage,
+    /// ID of the message being streamed, if any.
     pub streaming_message_id: Option<String>,
 }
 
@@ -42,14 +57,20 @@ impl Default for ChatState {
     }
 }
 
+/// Callbacks for mutating the chat state.
 #[derive(Clone)]
 pub struct ChatActions {
+    /// Sends a user message and starts the assistant reply.
     pub send_message: Callback<String>,
+    /// Stops the in-flight assistant stream.
     pub cancel_streaming: Callback<()>,
+    /// Clears all messages and token usage.
     pub clear_history: Callback<()>,
+    /// Loads a saved session by ID.
     pub load_session: Callback<String>,
 }
 
+/// Creates the reactive chat state and its action callbacks.
 #[must_use]
 pub fn use_chat() -> (RwSignal<ChatState>, ChatActions) {
     let state = RwSignal::new(ChatState::default());

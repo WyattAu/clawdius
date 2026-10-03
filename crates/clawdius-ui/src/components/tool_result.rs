@@ -10,27 +10,45 @@ use crate::theme::typography;
 use leptos::prelude::*;
 use leptos::{component, view, IntoView};
 
+/// Kind of tool that produced a result; drives its icon and label.
 #[derive(Clone, Debug)]
 pub enum ToolKind {
+    /// File read.
     FileRead,
+    /// File write.
     FileWrite,
+    /// File edit.
     FileEdit,
+    /// Shell command execution.
     Shell,
+    /// `git status` invocation.
     GitStatus,
+    /// `git log` invocation.
     GitLog,
+    /// `git diff` invocation.
     GitDiff,
+    /// Workspace text search.
     Search,
+    /// LSP server request.
     Lsp,
+    /// MCP server tool call.
     Mcp,
+    /// Any other tool, carrying its raw name.
     Custom(String),
 }
 
+/// Outcome of a single tool invocation.
 #[derive(Clone, Debug)]
 pub struct ToolResultData {
+    /// Tool that produced this result.
     pub tool: ToolKind,
+    /// Whether the tool completed successfully.
     pub success: bool,
+    /// Captured tool output.
     pub output: String,
+    /// Execution time in milliseconds.
     pub duration_ms: u32,
+    /// Serialized arguments the tool was called with, if recorded.
     pub arguments: Option<String>,
 }
 
@@ -254,9 +272,14 @@ fn tool_output_section(
 // leptos' #[component] macro re-emits the implementation as a `#[doc(hidden)]`
 // pub fn __component_* and drops `#[must_use]` from it, so this targeted allow
 // is the only way to satisfy clippy::must_use_candidate for that generated fn.
+/// Tool result with expandable output and arguments.
 #[allow(clippy::must_use_candidate)]
 #[component]
-pub fn ToolResult(#[prop(into)] result: ToolResultData) -> impl IntoView {
+pub fn ToolResult(
+    /// Result data to render.
+    #[prop(into)]
+    result: ToolResultData,
+) -> impl IntoView {
     let expanded = RwSignal::new(false);
     let args_expanded = RwSignal::new(false);
     let ToolResultData {

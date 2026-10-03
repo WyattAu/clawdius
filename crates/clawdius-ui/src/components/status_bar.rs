@@ -10,23 +10,37 @@ use crate::theme::typography;
 use leptos::prelude::*;
 use leptos::{component, view, IntoView};
 
+/// Backend link state shown in the status bar.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ConnectionStatus {
+    /// Connected to the backend.
     Connected,
+    /// No backend connection.
     Disconnected,
+    /// Attempting to re-establish the connection.
     Reconnecting,
 }
 
+/// Snapshot of session/backend status rendered by the status bar.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct StatusBarState {
+    /// Active provider name.
     pub provider: String,
+    /// Active model name.
     pub model: String,
+    /// Current mode label (e.g. plan/build).
     pub mode: String,
+    /// Tokens used in the current window.
     pub tokens_used: u32,
+    /// Token budget for the current window.
     pub tokens_limit: u32,
+    /// Last request round-trip time in milliseconds.
     pub latency_ms: u32,
+    /// Whether the backend link is up.
     pub is_connected: bool,
+    /// Detailed connection state for the indicator glyph.
     pub connection_status: ConnectionStatus,
+    /// Workspace directory name, when known.
     pub workspace: Option<String>,
 }
 
@@ -157,9 +171,14 @@ fn token_bar(
 // leptos' #[component] macro re-emits the implementation as a `#[doc(hidden)]`
 // pub fn __component_* and drops `#[must_use]` from it, so this targeted allow
 // is the only way to satisfy clippy::must_use_candidate for that generated fn.
+/// Bottom status bar: provider, model, mode, tokens, latency, and connection.
 #[allow(clippy::must_use_candidate)]
 #[component]
-pub fn StatusBar(#[prop(into)] state: StatusBarState) -> impl IntoView {
+pub fn StatusBar(
+    /// Status snapshot to render.
+    #[prop(into)]
+    state: StatusBarState,
+) -> impl IntoView {
     let StatusBarState {
         provider,
         model,

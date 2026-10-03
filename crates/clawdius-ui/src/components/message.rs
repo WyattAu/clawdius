@@ -11,22 +11,35 @@ use leptos::prelude::*;
 use leptos::{component, view, IntoView};
 use wasm_bindgen::JsCast;
 
+/// Author of a chat message; drives the message's styling.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum MessageRole {
+    /// Message sent by the user.
     User,
+    /// Reply produced by the assistant.
     Assistant,
+    /// System-prompt or infrastructure message.
     System,
+    /// Output of a tool invocation.
     Tool,
 }
 
+/// A single chat message shown in the conversation.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ChatMessage {
+    /// Unique message identifier.
     pub id: String,
+    /// Author role, used for styling.
     pub role: MessageRole,
+    /// Message body (simplified markdown supported).
     pub content: String,
+    /// Unix timestamp in milliseconds.
     pub timestamp: i64,
+    /// Model that produced the message, when known.
     pub model: Option<String>,
+    /// Tokens consumed by this message, when reported.
     pub tokens_used: Option<u32>,
+    /// Whether the message is still being streamed in.
     pub is_streaming: bool,
 }
 
@@ -186,9 +199,14 @@ fn message_meta(
     }
 }
 
+/// One chat message with role-based styling and simplified markdown.
 #[must_use]
 #[component]
-pub fn Message(#[prop(into)] message: ChatMessage) -> impl IntoView {
+pub fn Message(
+    /// The message content and metadata to render.
+    #[prop(into)]
+    message: ChatMessage,
+) -> impl IntoView {
     let copied = RwSignal::new(false);
     let ChatMessage {
         id: _,

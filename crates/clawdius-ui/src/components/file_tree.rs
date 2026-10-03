@@ -10,13 +10,20 @@ use crate::theme::typography;
 use leptos::prelude::*;
 use leptos::{component, view, IntoView};
 
+/// One node in the workspace file tree.
 #[derive(Clone, Debug)]
 pub struct FileEntry {
+    /// Full path from the workspace root; doubles as the stable identity.
     pub path: String,
+    /// Display name (final path segment).
     pub name: String,
+    /// Whether this entry is a directory rather than a file.
     pub is_dir: bool,
+    /// Child entries; non-empty only for directories.
     pub children: Vec<Self>,
+    /// Whether a directory is rendered expanded.
     pub is_expanded: bool,
+    /// File size in bytes; absent for directories.
     pub size: Option<u64>,
 }
 
@@ -69,12 +76,19 @@ fn format_size(size: u64) -> String {
 // leptos' #[component] macro re-emits the implementation as a `#[doc(hidden)]`
 // pub fn __component_* and drops `#[must_use]` from it, so this targeted allow
 // is the only way to satisfy clippy::must_use_candidate for that generated fn.
+/// Workspace file tree with expand/collapse and selection support.
 #[allow(clippy::must_use_candidate)]
 #[component]
 pub fn FileTree(
-    #[prop(into)] entries: Vec<FileEntry>,
-    #[prop(optional)] selected_path: Option<String>,
-    #[prop(optional)] on_select: Option<impl Fn(String) + 'static>,
+    /// Tree nodes to render, with children nested.
+    #[prop(into)]
+    entries: Vec<FileEntry>,
+    /// Path currently highlighted as selected.
+    #[prop(optional)]
+    selected_path: Option<String>,
+    /// Called with the path of a clicked entry.
+    #[prop(optional)]
+    on_select: Option<impl Fn(String) + 'static>,
 ) -> impl IntoView {
     let expanded = RwSignal::new(
         entries

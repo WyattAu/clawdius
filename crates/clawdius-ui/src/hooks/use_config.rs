@@ -4,24 +4,36 @@
 
 use leptos::prelude::*;
 
+/// UI color scheme selection.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ThemeMode {
+    /// Dark theme.
     Dark,
+    /// Light theme.
     Light,
 }
 
+/// One LLM provider and the models it offers.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ProviderConfig {
+    /// Provider display name.
     pub name: String,
+    /// Model identifiers available from this provider.
     pub models: Vec<String>,
 }
 
+/// Reactive application configuration.
 #[derive(Clone, Debug)]
 pub struct ConfigState {
+    /// Currently selected provider name.
     pub current_provider: String,
+    /// Currently selected model name.
     pub current_model: String,
+    /// Providers and models offered in the picker.
     pub available_providers: Vec<ProviderConfig>,
+    /// Active UI color scheme.
     pub theme: ThemeMode,
+    /// Base URL of the clawdius backend.
     pub api_endpoint: String,
 }
 
@@ -61,14 +73,20 @@ impl Default for ConfigState {
     }
 }
 
+/// Callbacks for mutating the configuration state.
 #[derive(Clone)]
 pub struct ConfigActions {
+    /// Selects a provider, resetting the model if it is unsupported there.
     pub set_provider: Callback<String>,
+    /// Selects a model within the current provider.
     pub set_model: Callback<String>,
+    /// Toggles between dark and light themes.
     pub toggle_theme: Callback<()>,
+    /// Overrides the backend base URL.
     pub set_endpoint: Callback<String>,
 }
 
+/// Creates the reactive configuration state and its action callbacks.
 #[must_use]
 pub fn use_config() -> (RwSignal<ConfigState>, ConfigActions) {
     let state = RwSignal::new(ConfigState::default());

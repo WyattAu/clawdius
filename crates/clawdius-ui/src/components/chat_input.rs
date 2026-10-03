@@ -12,10 +12,14 @@ use leptos::prelude::*;
 use leptos::wasm_bindgen::JsCast;
 use leptos::{component, view, IntoView};
 
+/// A single autocomplete entry offered below the input.
 #[derive(Clone, Debug)]
 pub struct Suggestion {
+    /// Stable identifier for the suggestion (e.g. the command name).
     pub id: String,
+    /// Text displayed to the user (e.g. `/help` or `@path`).
     pub label: String,
+    /// Optional explanatory line shown under the label.
     pub description: Option<String>,
 }
 
@@ -377,13 +381,23 @@ fn input_row<F: Fn(String) + 'static>(
     }
 }
 
+/// Chat input area: command/mention autocomplete, multi-line textarea, and token counter.
 #[must_use]
 #[component]
 pub fn ChatInput(
-    #[prop(default = "Type a message...")] placeholder: &'static str,
-    #[prop(default = false)] disabled: bool,
-    #[prop(default = 0)] token_count: u32,
-    #[prop(default = 200000)] token_limit: u32,
+    /// Placeholder text shown in the empty textarea.
+    #[prop(default = "Type a message...")]
+    placeholder: &'static str,
+    /// Grays out the input when set.
+    #[prop(default = false)]
+    disabled: bool,
+    /// Tokens already used in the session, for the counter.
+    #[prop(default = 0)]
+    token_count: u32,
+    /// Token budget for the session, for the counter.
+    #[prop(default = 200000)]
+    token_limit: u32,
+    /// Called with the input text when the user submits.
     on_submit: impl Fn(String) + 'static,
 ) -> impl IntoView {
     let (input_value, set_input_value) = signal(String::new());
