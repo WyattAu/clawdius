@@ -1,3 +1,6 @@
+// Vendored third-party bench: deprecated f32/f64 constants (upstream half 2.7.1).
+#![allow(deprecated)]
+
 use criterion::{black_box, criterion_group, criterion_main, Bencher, BenchmarkId, Criterion};
 use half::prelude::*;
 use std::{f32, f64, iter};

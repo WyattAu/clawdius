@@ -1,3 +1,10 @@
+// Vendored third-party code (half 2.7.1): deprecated std f32/f64 constants.
+// cargo's --cap-lints doesn't apply to path deps, so we allow at crate level.
+#![allow(deprecated)]
+
+// apply to path deps, so we replicate it here — this crate was written against
+// older Rust and produces findings under current `-D warnings`.
+
 //! A crate that provides support for half-precision 16-bit floating point types.
 //!
 //! This crate provides the [`struct@f16`] type, which is an implementation of the IEEE 754-2008 standard
@@ -116,6 +123,9 @@
 //! [`rand_distr`]: https://crates.io/crates/rand_distr
 //! [`rkyv`]: (https://crates.io/crates/rkyv)
 //! [`arbitrary`]: (https://crates.io/crates/arbitrary)
+// path deps, so we replicate it here — half 2.7.1 was written against
+// older Rust/Clippy and produces findings under current `-D warnings`.
+
 #![cfg_attr(
     feature = "alloc",
     doc = "
