@@ -3,6 +3,13 @@
 //! This module provides intelligent code actions that can analyze code and suggest
 //! or apply transformations such as refactoring, test generation, and documentation.
 
+// Unwrap purge batch 4: actions module — clean-root deny guard (zero production unwrap/expect in the batch-4 survey).
+// Production code must not unwrap/expect; propagate, document a true invariant with an INVARIANT comment, or restructure.
+// Lints inherit into all child modules and tests.
+#![deny(clippy::unwrap_used, clippy::expect_used)]
+// Test builds keep unwrap/expect for brevity (fleet convention, see lib.rs).
+#![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used))]
+
 pub mod docs;
 pub mod refactor;
 pub mod tests;

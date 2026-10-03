@@ -37,7 +37,7 @@ pub struct SessionMembership {
 }
 
 impl SessionMembership {
-    #[must_use] 
+    #[must_use]
     pub fn new(session_id: SessionId) -> Self {
         Self {
             session_id,
@@ -61,12 +61,11 @@ impl SessionMembership {
             )));
         }
 
-        if role == SessionRole::Owner
-            && members.values().any(|m| m.role == SessionRole::Owner) {
-                return Err(Error::Session(
-                    "cannot add a second owner; only one owner is allowed".to_string(),
-                ));
-            }
+        if role == SessionRole::Owner && members.values().any(|m| m.role == SessionRole::Owner) {
+            return Err(Error::Session(
+                "cannot add a second owner; only one owner is allowed".to_string(),
+            ));
+        }
 
         let now = Utc::now();
         members.insert(
@@ -418,7 +417,9 @@ mod tests {
         membership.add_member("bob", SessionRole::Editor).unwrap();
 
         // Demotion mutates through the restructured get_mut borrow.
-        membership.change_role("alice", SessionRole::Editor).unwrap();
+        membership
+            .change_role("alice", SessionRole::Editor)
+            .unwrap();
         assert_eq!(membership.owner_id(), None);
 
         // A new owner can be promoted afterwards (single-owner invariant).

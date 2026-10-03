@@ -18,6 +18,11 @@ pub struct LeanVerifier {
     timeout: Duration,
 }
 
+// Unwrap purge batch 4: `Default` was removed — it wrapped a fallible PATH
+// lookup (`lean`/`lake` via `which`), a genuine runtime condition, not an
+// invariant, so a panicking `Default::default()` was dishonest propagation.
+// `new()` (or `with_paths`) is the sole constructor and returns `Result`.
+#[allow(clippy::new_without_default)]
 impl LeanVerifier {
     /// Create a new Lean verifier by discovering binaries
     pub fn new() -> Result<Self> {
@@ -247,15 +252,8 @@ lean_lib Proof where
     }
 }
 
-// TODO(unwrap-purge-batch-4): classify — `Default` wraps a fallible PATH
-// lookup (`lean`/`lake` binaries), which is a genuine runtime condition, not
-// an invariant. Needs an API decision (drop `Default`, or make the paths an
-// `Option` with lazy resolution) before the expect can be removed honestly.
-impl Default for LeanVerifier {
-    fn default() -> Self {
-        Self::new().expect("Failed to create LeanVerifier")
-    }
-}
+// `Default` for `LeanVerifier` was removed by unwrap purge batch 4 — see the
+// note above the impl block.
 
 #[cfg(test)]
 mod tests {
