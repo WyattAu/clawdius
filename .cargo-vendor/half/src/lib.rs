@@ -1,9 +1,7 @@
 // Vendored third-party code (half 2.7.1): deprecated std f32/f64 constants.
 // cargo's --cap-lints doesn't apply to path deps, so we allow at crate level.
 #![allow(deprecated)]
-
-// apply to path deps, so we replicate it here — this crate was written against
-// older Rust and produces findings under current `-D warnings`.
+#![allow(clippy::all, clippy::pedantic, clippy::nursery, unknown_lints)]
 
 //! A crate that provides support for half-precision 16-bit floating point types.
 //!
