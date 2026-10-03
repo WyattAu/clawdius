@@ -22,7 +22,9 @@ use tokenkit::service::{JwtAlgorithm, JwtConfig, JwtService};
 fn test_auth_config_default() {
     let config = AuthConfig::default();
     assert!(config.providers.is_empty());
-    assert!(!config.jwt_secret.is_empty());
+    // assert_ne! (not assert!(!..is_empty())): newer clippy's
+    // `assert_is_empty` lint prefers this form — shows the value on failure.
+    assert_ne!(config.jwt_secret, "");
     assert_eq!(config.session_duration_secs, 3600);
     assert_eq!(config.refresh_duration_secs, 604_800);
 }
@@ -138,8 +140,8 @@ fn test_authorization_url() {
     assert!(url.contains("client_id=client-id"));
     assert!(url.contains("response_type=code"));
     assert!(url.contains("state="));
-    assert!(!state.is_empty());
-    assert!(!verifier.is_empty());
+    assert_ne!(state, "");
+    assert_ne!(verifier, "");
 }
 
 #[test]
@@ -346,7 +348,7 @@ fn test_session_claims_serde_roundtrip() {
 fn test_session_claims_default_roles() {
     let json = r#"{"sub":"s","email":null,"name":null,"provider":"p","iat":0,"exp":0,"jti":"j"}"#;
     let decoded: SessionClaims = serde_json::from_str(json).expect("deserialize");
-    assert!(decoded.roles.is_empty());
+    assert_eq!(decoded.roles, [] as [String; 0]);
 }
 
 // ---------------------------------------------------------------------------
