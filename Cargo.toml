@@ -204,6 +204,9 @@ rust_2018_idioms = { level = "warn", priority = -1 }
 # This configures the baseline; CI is stricter for production checks.
 [workspace.lints.clippy]
 pedantic = { level = "warn", priority = -1 }
+# assert_is_empty: test-code pattern, the lint's suggested assert_eq! form
+# is less readable for compound expressions; allowed workspace-wide.
+assert_is_empty = "allow"
 # TODO: escalate to "warn" once production unwraps are eliminated (see VERSION.md)
 # Current count: ~1,664 production unwraps across ~100 files.
 # Track progress with: rg '\.unwrap\(\)' crates -g '*.rs' --files | grep -v tests
