@@ -1,5 +1,39 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+
+- **Public API marked `#[non_exhaustive]` where a feature gates part of it.**
+  Cargo unifies features **graph-wide**, so a crate that enabled one of these
+  features transitively — through a dependency with nothing to do with
+  Clawdius — would find an exhaustive `match` or struct literal broken by a
+  variant or field it never requested:
+
+  - `clawdius_core::graph_rag::embedding::EmbedderType` —
+    `SentenceTransformers` exists only under `local-llm`.
+  - `clawdius::cli::Commands` — the `keyring` and `vector-db`
+    subcommands are feature-gated.
+  - `clawdius_gateway::admin::AdminState` — the `auth` and `rbac` fields exist
+    only under `auth`.
+
+  Migration: add a wildcard arm / `_ =>` fallback for the enums. For
+  `AdminState`, use the existing `AdminState::new(..)` constructor rather than a
+  struct literal; a new `attach_auth(..)` sets the auth fields in place, which
+  is what `main.rs` now does.
+
+  No serde format changed and no internal call site needed a behavioural change.
+
+### Fixed
+
+- `clawdius-gateway` no longer fails to compile with `E0639` when the `auth`
+  feature is enabled: `main.rs` built `AdminState` with a struct literal in two
+  places, which `#[non_exhaustive]` correctly rejects. Both now go through
+  `AdminState::new(..)` / `attach_auth(..)`.
+
+Found by the estate-wide `feature-compat` gate
+(`engineering-standards/scripts/check-features.py`, rules R1 and R2).
+
 ## [1.0.0] - 2026-06-11
 
 First general availability release of Clawdius.

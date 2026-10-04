@@ -96,7 +96,15 @@ pub struct Cli {
 }
 
 /// Available commands
+///
+/// `#[non_exhaustive]` because several subcommands exist only under a feature
+/// (`keyring`, `vector-db`). Cargo unifies features graph-wide, so a host that
+/// enabled either anywhere in its graph would otherwise find an exhaustive
+/// `match` broken by a variant it never requested. This enum is clap's parse
+/// target, so the practical migration is `Commands::command()` for help text
+/// and a wildcard arm in any hand-written dispatch.
 #[derive(Debug, Subcommand)]
+#[non_exhaustive]
 pub enum Commands {
     #[command(about = "Send a chat message to the LLM")]
     Chat {

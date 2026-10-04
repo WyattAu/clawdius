@@ -38,8 +38,14 @@ pub trait EmbeddingGenerator: Send + Sync {
     fn dimension(&self) -> usize;
 }
 
+// `#[non_exhaustive]` because `SentenceTransformers` exists only under the
+// `local-llm` feature, and Cargo unifies features graph-wide: a host that
+// enabled `local-llm` anywhere in its graph would otherwise find an exhaustive
+// `match` broken by a variant it never requested. Serde round-trips are
+// unaffected.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
+#[non_exhaustive]
 pub enum EmbedderType {
     Simple,
     OpenAiApi,

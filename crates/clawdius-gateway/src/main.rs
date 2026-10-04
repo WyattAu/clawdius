@@ -525,19 +525,16 @@ async fn main() -> anyhow::Result<()> {
         }
     }
 
-    // Build admin API state and router
-    let admin_state = Arc::new(AdminState {
-        billing: Arc::new(BillingManager::new()),
-        usage: Arc::new(TenantUsageTracker::new()),
-        api_key: cli
-            .admin_api_key
+    // Build admin API state and router. `AdminState` is #[non_exhaustive]
+    // (its `auth`/`rbac` fields are feature-gated), so construct via the
+    // constructor rather than a struct literal.
+    let admin_state = Arc::new(AdminState::new(
+        Arc::new(BillingManager::new()),
+        Arc::new(TenantUsageTracker::new()),
+        cli.admin_api_key
             .unwrap_or_else(|| "clawdius-admin".to_string()),
-        roles: RoleStore::default(),
-        #[cfg(feature = "auth")]
-        auth: None,
-        #[cfg(feature = "auth")]
-        rbac: None,
-    });
+        RoleStore::default(),
+    ));
 
     let health_state = Arc::new(GatewayHealthState {
         gateway: Arc::clone(&gateway),
@@ -561,15 +558,17 @@ async fn main() -> anyhow::Result<()> {
                     clawdius_auth::rbac::RbacPolicy::default(),
                 ));
 
-                // Rebuild admin state with auth services injected
-                let admin_state = Arc::new(AdminState {
-                    billing: Arc::clone(&admin_state.billing),
-                    usage: Arc::clone(&admin_state.usage),
-                    api_key: admin_state.api_key.clone(),
-                    roles: admin_state.roles.clone(),
-                    auth: Some(Arc::clone(&auth_arc)),
-                    rbac: Some(Arc::clone(&rbac_arc)),
-                });
+                // Rebuild admin state with auth services injected.
+                // `AdminState` is #[non_exhaustive], so this goes through
+                // the accessors rather than a struct literal.
+                let mut with_auth = AdminState::new(
+                    Arc::clone(&admin_state.billing),
+                    Arc::clone(&admin_state.usage),
+                    admin_state.api_key.clone(),
+                    admin_state.roles.clone(),
+                );
+                with_auth.attach_auth(Arc::clone(&auth_arc), Arc::clone(&rbac_arc));
+                let admin_state = Arc::new(with_auth);
 
                 let sp_config = Arc::new(clawdius_auth::SamlSpConfig {
                     entity_id: std::env::var("SAML_ENTITY_ID")

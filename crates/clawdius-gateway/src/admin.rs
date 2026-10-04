@@ -70,7 +70,14 @@ impl RoleStore {
 }
 
 /// Admin API application state.
+///
+/// `#[non_exhaustive]` because `auth` and `rbac` exist only under the `auth`
+/// feature. Cargo unifies features graph-wide, so a host that enabled `auth`
+/// anywhere in its graph would otherwise fail to build a struct literal here.
+/// Start from [`AdminState::default`] and assign the fields you need, or read
+/// them through the accessors, rather than constructing a literal.
 #[allow(missing_docs)]
+#[non_exhaustive]
 pub struct AdminState {
     pub billing: Arc<BillingManager>,
     pub usage: Arc<TenantUsageTracker>,
@@ -106,8 +113,9 @@ impl AdminState {
     ///
     /// Exists so downstream crates can construct the state without knowing
     /// whether this crate's `auth` feature is enabled (the `auth`/`rbac`
-    /// fields only exist under that feature). Use `Default` + field updates
-    /// to attach services inside this crate.
+    /// fields only exist under that feature). This struct is
+    /// `#[non_exhaustive]`, so a literal is not an option for callers outside
+    /// this crate — build from this constructor instead.
     pub fn new(
         billing: Arc<BillingManager>,
         usage: Arc<TenantUsageTracker>,
@@ -124,6 +132,17 @@ impl AdminState {
             #[cfg(feature = "auth")]
             rbac: None,
         }
+    }
+
+    /// Attach auth and RBAC services to an existing state.
+    ///
+    /// The counterpart to [`AdminState::new`] for hosts compiled with the
+    /// `auth` feature. In-place so the caller's existing `Arc`s keep their
+    /// identity rather than being re-wrapped.
+    #[cfg(feature = "auth")]
+    pub fn attach_auth(&mut self, auth: Arc<AuthService>, rbac: Arc<RbacService>) {
+        self.auth = Some(auth);
+        self.rbac = Some(rbac);
     }
 }
 
