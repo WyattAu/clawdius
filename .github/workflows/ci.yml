@@ -280,7 +280,6 @@ jobs:
 
       - name: Run benchmarks
         run: cargo bench --workspace --benches --locked
-        continue-on-error: true  # memory_bench FOREIGN KEY panic on CI runners
 
       - name: Upload benchmark results
         uses: actions/upload-artifact@v7

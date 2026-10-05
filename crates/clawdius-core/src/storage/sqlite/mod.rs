@@ -129,6 +129,37 @@ mod tests {
         assert_eq!(full.messages[0].as_text(), Some("hello world"));
     }
 
+    /// Ordering contract: `messages.session_id` is an FK to `sessions(id)`, so
+    /// the parent row must be persisted before any child message insert. SQLite
+    /// enforces this (`SQLITE_DEFAULT_FOREIGN_KEYS=1` in the bundled build), and
+    /// callers must not be tempted to work around it by dropping the constraint.
+    #[tokio::test]
+    async fn test_sqlite_save_message_requires_persisted_session() {
+        let backend = SqliteBackend::in_memory().unwrap();
+        backend.migrate().await.unwrap();
+
+        let session = Session::new();
+        let id = session.id;
+        // Deliberately no `create_session` here.
+        let err = backend
+            .save_message(&id, &Message::user("orphan"))
+            .await
+            .expect_err("save_message must reject a session that was never persisted");
+        assert!(
+            format!("{err}").contains("FOREIGN KEY constraint failed"),
+            "expected an FK violation, got: {err}"
+        );
+
+        // Once the parent exists the same insert succeeds.
+        backend.create_session(&session).await.unwrap();
+        backend
+            .save_message(&id, &Message::user("hello world"))
+            .await
+            .unwrap();
+        let full = backend.load_session_full(&id).await.unwrap().unwrap();
+        assert_eq!(full.messages.len(), 1);
+    }
+
     #[tokio::test]
     async fn test_sqlite_search_messages() {
         let backend = SqliteBackend::in_memory().unwrap();

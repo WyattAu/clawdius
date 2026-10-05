@@ -70,6 +70,16 @@ fn file_size(path: &Path) -> u64 {
 fn bench_memory_per_session(c: &mut Criterion) {
     let mut group = c.benchmark_group("memory_per_session");
 
+    // These cases each create thousands of rows (one INSERT per message, plus
+    // one per session), so a single iteration already costs 1s..35s. Criterion's
+    // default of 100 samples would push this bench target into tens of minutes
+    // and blow the 30-minute CI job budget. The metrics that matter here are the
+    // `black_box`ed RSS/DB-size deltas, not the timing distribution, so a small
+    // sample size is sufficient and keeps the suite runnable.
+    group.sample_size(10);
+    group.warm_up_time(std::time::Duration::from_secs(1));
+    group.measurement_time(std::time::Duration::from_secs(5));
+
     // Benchmark: 100 sessions with 10 messages each.
     group.bench_function("100_sessions_10_msgs", |b| {
         b.iter(|| {
@@ -86,15 +96,16 @@ fn bench_memory_per_session(c: &mut Criterion) {
                 session.meta.provider = Some("anthropic".to_string());
                 session.meta.model = Some("claude-3-5-sonnet".to_string());
 
+                // Parent row first: `messages.session_id` has an FK to
+                // `sessions(id)` and the bundled libsqlite3-sys build defaults
+                // `SQLITE_DEFAULT_FOREIGN_KEYS=1`, so child inserts are rejected
+                // until the session is actually persisted.
+                store.create_session(&session).unwrap();
+
                 // System prompt.
                 let sys_msg = Message::system("You are a helpful assistant.");
+                store.save_message(&session.id, &sys_msg).unwrap();
                 session.add_message(sys_msg);
-                store
-                    .save_message(
-                        &session.id,
-                        &Message::system("You are a helpful assistant."),
-                    )
-                    .unwrap();
 
                 // 10 user+assistant message pairs.
                 for j in 0..10u64 {
@@ -118,8 +129,6 @@ fn bench_memory_per_session(c: &mut Criterion) {
                     store.save_message(&session.id, &assistant_msg).unwrap();
                     session.add_message(assistant_msg);
                 }
-
-                store.create_session(&session).unwrap();
             }
 
             let final_rss = current_rss_kb();
@@ -153,14 +162,12 @@ fn bench_memory_per_session(c: &mut Criterion) {
                 session.meta.provider = Some("ollama".to_string());
                 session.meta.model = Some("llama3".to_string());
 
+                // Parent row must be persisted before any message insert (FK).
+                store.create_session(&session).unwrap();
+
                 let sys_msg = Message::system("You are a helpful assistant.");
+                store.save_message(&session.id, &sys_msg).unwrap();
                 session.add_message(sys_msg);
-                store
-                    .save_message(
-                        &session.id,
-                        &Message::system("You are a helpful assistant."),
-                    )
-                    .unwrap();
 
                 for j in 0..5u64 {
                     let user_text = format!(
@@ -179,8 +186,6 @@ fn bench_memory_per_session(c: &mut Criterion) {
                     store.save_message(&session.id, &assistant_msg).unwrap();
                     session.add_message(assistant_msg);
                 }
-
-                store.create_session(&session).unwrap();
             }
 
             let final_rss = current_rss_kb();
@@ -214,14 +219,12 @@ fn bench_memory_per_session(c: &mut Criterion) {
                 session.meta.provider = Some("ollama".to_string());
                 session.meta.model = Some("llama3".to_string());
 
+                // Parent row must be persisted before any message insert (FK).
+                store.create_session(&session).unwrap();
+
                 let sys_msg = Message::system("You are a helpful assistant.");
+                store.save_message(&session.id, &sys_msg).unwrap();
                 session.add_message(sys_msg);
-                store
-                    .save_message(
-                        &session.id,
-                        &Message::system("You are a helpful assistant."),
-                    )
-                    .unwrap();
 
                 for j in 0..3u64 {
                     let user_text = format!("User message {j} in session {i}.");
@@ -234,8 +237,6 @@ fn bench_memory_per_session(c: &mut Criterion) {
                     store.save_message(&session.id, &assistant_msg).unwrap();
                     session.add_message(assistant_msg);
                 }
-
-                store.create_session(&session).unwrap();
             }
 
             let final_rss = current_rss_kb();
@@ -261,13 +262,16 @@ fn bench_session_store_overhead(c: &mut Criterion) {
 
     // Measure: just opening a SessionStore and its base memory.
     group.bench_function("open_empty_store", |b| {
+        // Keep the `TempDir` alive for the whole iteration: dropping it early
+        // would delete the directory and leave `SessionStore::open` recreating
+        // an orphan dir on every iteration.
         b.iter_with_setup(
             || {
                 let dir = tempfile::tempdir().unwrap();
                 let path = dir.path().join("bench.db");
-                path
+                (dir, path)
             },
-            |path| {
+            |(_dir, path)| {
                 let store = SessionStore::open(&path).unwrap();
                 black_box(&store);
             },
