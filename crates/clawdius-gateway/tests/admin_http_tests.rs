@@ -20,6 +20,11 @@ use clawdius_gateway::admin::{admin_router, AdminState, RoleStore};
 use std::sync::Arc;
 use tower::ServiceExt;
 
+/// The key every request helper sends. Must match the `api_key` handed to
+/// `AdminState::new` below — the router's `require_api_key` middleware compares
+/// the `x-api-key` header against it and answers 401 on any mismatch.
+const TEST_API_KEY: &str = "test-admin-key";
+
 /// Build a test admin state with fresh billing and usage trackers.
 ///
 /// `AdminState` is `#[non_exhaustive]` — deliberately, because its `auth`
@@ -31,14 +36,18 @@ fn test_admin_state() -> Arc<AdminState> {
     Arc::new(AdminState::new(
         Arc::new(BillingManager::new()),
         Arc::new(TenantUsageTracker::new()),
-        "test-admin-key".to_string(),
+        TEST_API_KEY.to_string(),
         RoleStore::default(),
     ))
 }
 
 /// Helper: send a GET request and return (status, body text).
 async fn get(app: &axum::Router, path: &str) -> (StatusCode, String) {
-    let req = Request::builder().uri(path).body(Body::empty()).unwrap();
+    let req = Request::builder()
+        .uri(path)
+        .header("x-api-key", TEST_API_KEY)
+        .body(Body::empty())
+        .unwrap();
     let resp = app.clone().oneshot(req).await.unwrap();
     let status = resp.status();
     let body = axum::body::to_bytes(resp.into_body(), usize::MAX)
@@ -53,6 +62,7 @@ async fn post_json(app: &axum::Router, path: &str, json_body: &str) -> (StatusCo
         .method("POST")
         .uri(path)
         .header("content-type", "application/json")
+        .header("x-api-key", TEST_API_KEY)
         .body(Body::from(json_body.to_string()))
         .unwrap();
     let resp = app.clone().oneshot(req).await.unwrap();
@@ -69,6 +79,7 @@ async fn put_json(app: &axum::Router, path: &str, json_body: &str) -> (StatusCod
         .method("PUT")
         .uri(path)
         .header("content-type", "application/json")
+        .header("x-api-key", TEST_API_KEY)
         .body(Body::from(json_body.to_string()))
         .unwrap();
     let resp = app.clone().oneshot(req).await.unwrap();
@@ -84,6 +95,7 @@ async fn delete(app: &axum::Router, path: &str) -> (StatusCode, String) {
     let req = Request::builder()
         .method("DELETE")
         .uri(path)
+        .header("x-api-key", TEST_API_KEY)
         .body(Body::empty())
         .unwrap();
     let resp = app.clone().oneshot(req).await.unwrap();
