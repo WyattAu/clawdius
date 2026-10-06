@@ -21,13 +21,19 @@ use std::sync::Arc;
 use tower::ServiceExt;
 
 /// Build a test admin state with fresh billing and usage trackers.
+///
+/// `AdminState` is `#[non_exhaustive]` — deliberately, because its `auth`
+/// and `rbac` fields only exist under this crate's `auth` feature, and Cargo
+/// unifies features graph-wide. An integration test is a separate crate, so a
+/// struct literal is not available here; `AdminState::new` is the supported
+/// construction and is exactly what a downstream host must use.
 fn test_admin_state() -> Arc<AdminState> {
-    Arc::new(AdminState {
-        billing: Arc::new(BillingManager::new()),
-        usage: Arc::new(TenantUsageTracker::new()),
-        api_key: "test-admin-key".to_string(),
-        roles: RoleStore::default(),
-    })
+    Arc::new(AdminState::new(
+        Arc::new(BillingManager::new()),
+        Arc::new(TenantUsageTracker::new()),
+        "test-admin-key".to_string(),
+        RoleStore::default(),
+    ))
 }
 
 /// Helper: send a GET request and return (status, body text).
