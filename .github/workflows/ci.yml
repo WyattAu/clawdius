@@ -58,7 +58,14 @@ jobs:
         run: cargo test --workspace --lib --locked
 
       - name: Test integration
-        run: cargo test --workspace --test integration --locked
+        # The `integration` target includes `integration/rpc_communication.rs`,
+        # which imports `clawdius_core::rpc` -- a module gated behind the `rpc`
+        # feature. Running the step without `--features rpc` therefore failed to
+        # COMPILE, in every job that ran it, with
+        #   error[E0432]: unresolved import `clawdius_core::rpc`
+        # The gate was not reporting a test failure; it was not building. protoc
+        # is installed above, which this target's build script needs.
+        run: cargo test --workspace --test integration --features rpc --locked
 
       - name: Install cargo-deny
         run: cargo install cargo-deny --locked
