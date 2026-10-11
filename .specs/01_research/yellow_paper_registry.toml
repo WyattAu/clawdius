@@ -2,8 +2,8 @@
 # Tracks all Yellow Papers and their relationships
 
 [metadata]
-last_updated = "2026-03-31T00:00:00Z"
-total_papers = 8
+last_updated = "2026-10-11T00:00:00Z"
+total_papers = 16
 
 [[yellow_paper]]
 id = "YP-FSM-NEXUS-001"
@@ -179,3 +179,201 @@ lemmas_from = []
 [yellow_paper.consumers]
 blue_papers = ["BP-MESSAGING-GATEWAY-001"]
 proof_files = []
+
+[[yellow_paper]]
+id = "YP-SANDBOX-FUEL-002"
+title = "Fuel Accounting — Outcome-Typed Metering"
+status = "APPROVED"
+version = "1.0.0"
+created = "2026-10-11"
+author = "Loop"
+confidence_level = 0.93
+tqa_level = 4
+
+[yellow_paper.scope]
+domain = "Verified Runtimes"
+theorems = ["fuel_conservation", "fuel_consumed_bounded", "fuel_exhaustion_error", "memory_limit_enforced", "limits_nonzero"]
+
+[yellow_paper.dependencies]
+axioms_from = []
+lemmas_from = []
+
+[yellow_paper.consumers]
+blue_papers = ["BP-SANDBOX-002"]
+proof_files = ["proof_sandbox_extended.lean"]
+
+[[yellow_paper]]
+id = "YP-RING-FREE-RUNNING-002"
+title = "Ring Buffers — Free-Running Counters, Definitional Occupancy"
+status = "APPROVED"
+version = "1.0.0"
+created = "2026-10-11"
+author = "Loop"
+confidence_level = 0.94
+tqa_level = 4
+
+[yellow_paper.scope]
+domain = "Concurrent Data Structures"
+theorems = ["len_le_capacity", "empty_iff", "full_iff", "injective_window", "fifo_ordering"]
+
+[yellow_paper.dependencies]
+axioms_from = []
+lemmas_from = []
+
+[yellow_paper.consumers]
+blue_papers = ["BP-MEMORY-002"]
+proof_files = ["proof_ring_buffer_extended.lean"]
+
+[[yellow_paper]]
+id = "YP-CACHE-EVICTION-003"
+title = "Cache — Configured Invariants and Honest Eviction Order"
+status = "APPROVED"
+version = "1.0.0"
+created = "2026-10-11"
+author = "Loop"
+confidence_level = 0.92
+tqa_level = 4
+
+[yellow_paper.scope]
+domain = "Systems / Verified Caching"
+theorems = ["default_ttl_positive", "max_entries_positive", "fifo_eviction"]
+
+[yellow_paper.dependencies]
+axioms_from = []
+lemmas_from = []
+
+[yellow_paper.consumers]
+blue_papers = []
+proof_files = ["proof_cache.lean"]
+
+[[yellow_paper]]
+id = "YP-RPC-DISPATCH-003"
+title = "RPC — Responses are Related to Requests, Not Merely Similar"
+status = "APPROVED"
+version = "1.0.0"
+created = "2026-10-11"
+author = "Loop"
+confidence_level = 0.94
+tqa_level = 4
+
+[yellow_paper.scope]
+domain = "Distributed Systems"
+theorems = ["response_id_matches_request", "batch_ordering"]
+
+[yellow_paper.dependencies]
+axioms_from = []
+lemmas_from = []
+
+[yellow_paper.consumers]
+blue_papers = []
+proof_files = ["proof_rpc.lean"]
+
+[[yellow_paper]]
+id = "YP-SYMBOL-INDEX-002"
+title = "Symbol Index — Insertion, Independence, and Counting"
+status = "APPROVED"
+version = "1.0.0"
+created = "2026-10-11"
+author = "Loop"
+confidence_level = 0.93
+tqa_level = 4
+
+[yellow_paper.scope]
+domain = "Language Tooling"
+theorems = ["independent_uris", "kind_counts_bounded"]
+
+[yellow_paper.dependencies]
+axioms_from = []
+lemmas_from = []
+
+[yellow_paper.consumers]
+blue_papers = []
+proof_files = ["proof_symbol_index.lean"]
+
+[[yellow_paper]]
+id = "YP-BUDGET-MONOTONE-006"
+title = "Budget Monotonicity — Refuted Inside the Proof Assistant"
+status = "APPROVED (refutation)"
+version = "1.0.0"
+created = "2026-10-11"
+author = "Loop"
+confidence_level = 0.97
+tqa_level = 4
+
+[yellow_paper.scope]
+domain = "LLM Agent Systems / Verified Resource Allocation"
+theorems = ["budget_monotonicity_fails", "scan_cost_le_total_add"]
+
+[yellow_paper.dependencies]
+axioms_from = []
+lemmas_from = []
+
+[yellow_paper.consumers]
+blue_papers = []
+proof_files = ["token_budget_scan.lean"]
+
+[[yellow_paper]]
+id = "YP-CONCURRENT-PLACEMENT-007"
+title = "Concurrent Tool Execution — Placement and No-Cross-Talk"
+status = "APPROVED"
+version = "1.0.0"
+created = "2026-10-11"
+author = "Loop"
+confidence_level = 0.95
+tqa_level = 4
+
+[yellow_paper.scope]
+domain = "Concurrency"
+theorems = ["place_length", "place_self", "place_other"]
+
+[yellow_paper.dependencies]
+axioms_from = []
+lemmas_from = []
+
+[yellow_paper.consumers]
+blue_papers = []
+proof_files = ["concurrent_execution.lean"]
+
+[[yellow_paper]]
+id = "YP-VFS-NORMALIZE-008"
+title = "VFS — Lexical Normalization Composes"
+status = "DRAFT"
+version = "0.1.0"
+created = "2026-10-11"
+author = "Loop"
+confidence_level = 0.90
+tqa_level = 3
+
+[yellow_paper.scope]
+domain = "Security / Filesystem"
+theorems = ["normalize_nil", "normalize_leading_dot"]
+
+[yellow_paper.dependencies]
+axioms_from = []
+lemmas_from = []
+
+[yellow_paper.consumers]
+blue_papers = []
+proof_files = ["vfs_safety.lean"]
+
+[[yellow_paper]]
+id = "YP-AGENT-THINK-ONLY-009"
+title = "Thought-Only Runs — Non-Termination by Design"
+status = "APPROVED"
+version = "1.0.0"
+created = "2026-10-11"
+author = "Loop"
+confidence_level = 0.95
+tqa_level = 4
+
+[yellow_paper.scope]
+domain = "Agent Systems / Liveness"
+theorems = ["thoughts_not_terminal"]
+
+[yellow_paper.dependencies]
+axioms_from = []
+lemmas_from = []
+
+[yellow_paper.consumers]
+blue_papers = []
+proof_files = ["agent_loop.lean"]
