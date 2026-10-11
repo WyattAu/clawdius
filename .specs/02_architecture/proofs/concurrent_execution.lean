@@ -233,4 +233,66 @@ theorem result_count_bounded (calls : List ToolCall) (results : List ToolResult)
   have := @List.length_zip ToolCall ToolResult calls results
   omega
 
+/-! ---------------------------------------------------------------------------
+    8. Placement and no-cross-talk (YP-CONCURRENT-PLACEMENT-007)
+
+    The Rust collector writes each completion into the slot indexed by the call's
+    original position. The research-grade property is *positional agreement*:
+    the result a caller reads at index i is the outcome of call i — never a
+    neighbour's. Herlihy & Wing's linearizability (TOPLAS 1990) is the standard
+    this decomposes from: per-operation identity, then composition.
+--------------------------------------------------------------------------- -/
+
+/-- Place `r` into slot `i`, copying every other slot. -/
+def place : List (Option ToolResult) → Nat → ToolResult → List (Option ToolResult)
+  | [], _, _ => []
+  | _ :: rest, 0, r => some r :: rest
+  | s :: rest, i + 1, r => s :: place rest i r
+
+theorem place_length (l : List (Option ToolResult)) (i : Nat) (r : ToolResult) :
+    (place l i r).length = l.length := by
+  induction l generalizing i with
+  | nil => rfl
+  | cons s rest ih =>
+      cases i with
+      | zero => simp [place]
+      | succ k => simp [place, ih]
+
+/-- The placed slot reads back the placed result. -/
+theorem place_self (l : List (Option ToolResult)) (r : ToolResult) (i : Nat)
+    (hlt : i < l.length) :
+    (place l i r)[i]? = some (some r) := by
+  induction l generalizing i with
+  | nil => simp [place] at hlt
+  | cons s rest ih =>
+      cases i with
+      | zero => simp [place]
+      | succ k =>
+          simp only [List.length_cons] at hlt
+          exact ih k (by omega)
+
+/-- No cross-talk: placing at `i` leaves every other slot exactly as it was.
+    This is the property whose absence would give the agent tool A's answer for
+    tool B's call — invisible to every length theorem in this file. -/
+theorem place_other (l : List (Option ToolResult)) (r : ToolResult) (i j : Nat)
+    (hne : i ≠ j) (hlt : j < l.length) :
+    (place l i r)[j]? = l[j]? := by
+  induction l generalizing i j with
+  | nil => simp [place] at hlt
+  | cons s rest ih =>
+      cases i with
+      | zero =>
+          cases j with
+          | zero => omega
+          | succ k => simp [place]
+      | succ k =>
+          have hcons : (s :: rest).length = rest.length + 1 := rfl
+          simp only [List.length_cons] at hlt
+          cases j with
+          | zero => simp [place]
+          | succ m =>
+              have hkm : k ≠ m := by omega
+              have hmm : m < rest.length := by omega
+              simp [place, ih k m hkm hmm]
+
 end Clawdius.Concurrent
