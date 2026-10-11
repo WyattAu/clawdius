@@ -88,17 +88,23 @@ theorem timestamp_monotonic (entry : CacheEntry String String) (now : Nat) :
   intro h
   simp [h]
 
+/-- A validated configuration: positivity is carried by the constructor, the
+    same pattern `ValidLimits` established for the sandbox. The old theorems
+    asserted positivity of an arbitrary record, which no proof can supply. -/
+structure ValidCacheConfig where
+  config : CacheConfig
+  ttl_pos : config.defaultTtl > 0
+  entries_pos : config.maxEntries > 0
+
 -- Default TTL is positive
-theorem default_ttl_positive (config : CacheConfig) :
-    config.defaultTtl > 0 := by
-  -- Configuration invariant.
-  sorry
+theorem default_ttl_positive (v : ValidCacheConfig) :
+    v.config.defaultTtl > 0 :=
+  v.ttl_pos
 
 -- Max entries is positive
-theorem max_entries_positive (config : CacheConfig) :
-    config.maxEntries > 0 := by
-  -- Configuration invariant.
-  sorry
+theorem max_entries_positive (v : ValidCacheConfig) :
+    v.config.maxEntries > 0 :=
+  v.entries_pos
 
 -- Cache key uniqueness: no duplicate keys in a valid cache
 theorem key_uniqueness (entries : List (CacheEntry String String)) :
@@ -107,13 +113,44 @@ theorem key_uniqueness (entries : List (CacheEntry String String)) :
     keys.length ≤ entries.length := by
   simp [List.length_map]
 
--- FIFO eviction order: oldest entries evicted first
-theorem fifo_eviction (entries : List (CacheEntry String String)) :
-    entries.length > 1 →
-    let sorted := entries  -- sorted by createdAt ascending
-    Option.map CacheEntry.createdAt (List.head? sorted) ≤
-    Option.map CacheEntry.createdAt (List.getLast? sorted) := by
-  intro _
-  -- After sorting by createdAt ascending, head <= last.
-  -- Implementation note: requires sorting comparator, left as proof sketch.
-  sorry
+/-- The eviction order as a typed hypothesis: adjacent entries are ordered, and
+    the ordering chains. A comment claiming a list "is sorted" is not a
+    hypothesis; this predicate is. -/
+inductive SortedByCreatedAt : List (CacheEntry String String) → Prop where
+  | nil : SortedByCreatedAt []
+  | single (e : CacheEntry String String) : SortedByCreatedAt [e]
+  | cons (a b : CacheEntry String String) (rest : List (CacheEntry String String))
+      (h : a.createdAt ≤ b.createdAt)
+      (hs : SortedByCreatedAt (b :: rest)) : SortedByCreatedAt (a :: b :: rest)
+
+-- FIFO eviction order: oldest entries evicted first. The head and last elements
+-- are quantified inside so the induction carries them per-case.
+theorem fifo_eviction {entries : List (CacheEntry String String)}
+    (hs : SortedByCreatedAt entries) :
+    ∀ {first last : CacheEntry String String},
+      entries.head? = some first →
+      entries.getLast? = some last →
+      first.createdAt ≤ last.createdAt := by
+  induction hs with
+  | nil => intro first last hfirst _; simp at hfirst
+  | single e =>
+      intro first last hfirst hlast
+      simp at hfirst hlast
+      subst hfirst
+      subst hlast
+      exact Nat.le_refl _
+  | cons a b rest h_ab hs' ih =>
+      intro first last hfirst hlast
+      simp at hfirst
+      subst hfirst
+      cases rest with
+      | nil =>
+          simp at hlast
+          subst hlast
+          exact h_ab
+      | cons c rest' =>
+          -- The tail's own ordering gives b ≤ its last; the adjacent witness gives
+          -- a ≤ b; the chain closes.
+          have hb : (b :: c :: rest').head? = some b := rfl
+          have ih' := ih hb hlast
+          exact Nat.le_trans h_ab ih'

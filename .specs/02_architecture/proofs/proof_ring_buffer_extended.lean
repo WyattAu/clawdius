@@ -172,7 +172,7 @@ nonzero multiple of the capacity while both positions are smaller than it.
 The window is expressed from the *masked* head, which is where the physical
 indexing actually starts; `r.head % capacity` is itself below capacity. -/
 
-theorem injective_window (r : Ring) (i j : Nat) (hi : i < r.len) (hj : j < r.len)
+theorem injective_window (r : Ring) (i j : Nat) (hj : j < r.len)
     (hij : i < j) :
     ((r.head % r.config.capacity) + i) % r.config.capacity
       ≠ ((r.head % r.config.capacity) + j) % r.config.capacity := by
@@ -226,5 +226,5 @@ theorem fifo_ordering (r : Ring) (h : r.len > 0) :
       omega
     have hlen0 : r.len = r.tail - r.head := rfl
     have hinj := injective_window r 0 (r.len - 1)
-      (by have h := h; rw [hlen0] at h; have h1 := r.ordered; omega) (by omega) (by omega)
+      (by omega) (by omega)
     exact Or.inl hinj

@@ -43,22 +43,32 @@ inductive RpcResponse where
   | notification : RpcResponse  -- no id
   deriving Repr
 
--- Response ID matches request ID
-theorem response_id_matches_request (req : RpcRequest) (resp : RpcResponse) :
-    match resp with
-    | RpcResponse.success rid _ => rid = req.id
-    | RpcResponse.error rid _ _ => rid = req.id
-    | RpcResponse.notification => True := by
-  -- This theorem states the *property* that a response's ID equals the request's ID.
-  -- The proof depends on the specific resp; we case-split and use simp to normalize.
-  cases resp with
-  | success rid val =>
-    -- Need to show rid = req.id. Without additional hypothesis, this is not provable
-    -- in general. The property holds when the response was constructed for this request.
-    -- Marked as sorry pending stronger preconditions on response construction.
-    sorry
-  | error rid code msg => sorry
-  | notification => trivial
+/-- The dispatch relation: *this* response answers *this* request. The linkage
+    the old theorem asserted without a model is here a two-constructor relation;
+    notifications have no constructor, which is the JSON-RPC 2.0 rule made
+    type-level — a notification answers nothing, so no derivation can relate one
+    to a request. -/
+
+inductive ResponseFor : RpcRequest → RpcResponse → Prop where
+  | success (req : RpcRequest) (value : JsonValue) :
+      ResponseFor req (RpcResponse.success req.id value)
+  | error (req : RpcRequest) (code : Int) (message : String) :
+      ResponseFor req (RpcResponse.error req.id code message)
+
+/-- The ID-matching property, named so the theorem and the batch statement share
+    one match shape instead of two spellings of it. -/
+def ResponseIdMatches (req : RpcRequest) (resp : RpcResponse) : Prop :=
+  match resp with
+  | RpcResponse.success rid _ => rid = req.id
+  | RpcResponse.error rid _ _ => rid = req.id
+  | RpcResponse.notification => True
+
+-- Response ID matches request ID, for responses produced by the dispatch relation.
+theorem response_id_matches_request (req : RpcRequest) (resp : RpcResponse)
+    (h : ResponseFor req resp) : ResponseIdMatches req resp := by
+  cases h with
+  | success req => rfl
+  | error req => rfl
 
 -- Method dispatch is total (every request gets a response)
 theorem dispatch_is_total (req : RpcRequest) :
@@ -118,20 +128,24 @@ theorem error_preserves_context (req : RpcRequest) (code : Int) (msg : String) :
     | _ => False := by
   simp
 
--- Batch request responses maintain ordering
+-- Batch request responses maintain ordering: position i answers request i, *by
+-- the dispatch relation*. Equal lengths alone relate nothing — two lists of the
+-- same length can be entirely uncorrelated, which is what the old unconditional
+-- statement missed.
 theorem batch_ordering (reqs : List RpcRequest) (resps : List RpcResponse)
-    (hlen : resps.length = reqs.length) :
-    (∀ i : Fin reqs.length,
-     have h_idx : i.val < resps.length := by
-       have hbound : i.val < reqs.length := i.2
-       rw [hlen]
-       exact hbound
-     match resps.get ⟨i.val, h_idx⟩ with
-     | RpcResponse.success rid _ => rid = (reqs.get i).id
-     | RpcResponse.error rid _ _ => rid = (reqs.get i).id
-     | RpcResponse.notification => True) := by
+    (hlen : resps.length = reqs.length)
+    (hdispatch : ∀ i : Fin reqs.length,
+      ResponseFor (reqs.get i) (resps.get ⟨i.val, by
+        have hbound : i.val < reqs.length := i.2
+        rw [hlen]
+        exact hbound⟩)) :
+    ∀ i : Fin reqs.length,
+      ResponseIdMatches (reqs.get i) (resps.get ⟨i.val, by
+        have hbound : i.val < reqs.length := i.2
+        rw [hlen]
+        exact hbound⟩) := by
   intro i
-  sorry
+  exact response_id_matches_request (reqs.get i) _ (hdispatch i)
 
 -- Parse error response for malformed JSON
 theorem parse_error_response :

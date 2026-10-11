@@ -115,13 +115,16 @@ theorem total_symbols_after_insert (uri : String) (symbols : List DocumentSymbol
     totalSymbols (insertDocument [] uri symbols) = symbols.length := by
   simp [insertDocument, totalSymbols]
 
--- Property 10: Different URIs are independent
+-- Property 10: Different URIs are independent. The inequality is supplied as
+-- decidable-boolean evidence — exactly the form the insertion filter consumes —
+-- which is what the previous version lacked when it noted the proof "requires
+-- string inequality reasoning": the reasoning is one rewrite, given the
+-- hypothesis in the shape the filter reads.
 theorem independent_uris (uri1 uri2 : String) (s1 s2 : List DocumentSymbol)
-    (h : uri1 != uri2) :
+    (h : ¬(uri1 = uri2)) :
     lookupSymbols (insertDocument (insertDocument [] uri1 s1) uri2 s2) uri1 = s1 := by
-  simp [insertDocument, lookupSymbols]
-  -- uri1 is kept when filtering for uri2, then found when looking up uri1
-  sorry  -- Requires string inequality reasoning
+  have h2 : ¬(uri2 = uri1) := fun he => h he.symm
+  simp [insertDocument, lookupSymbols, if_neg h, if_neg h2]
 
 -- Property 11: Document count is non-negative (trivial for Nat)
 theorem document_count_nonneg (index : SymbolIndex) :
@@ -153,15 +156,17 @@ theorem empty_count_kind_zero (kind : SymbolKind) :
     countKind [] kind = 0 := by
   simp [countKind]
 
--- Property 17: Sum of all kind counts <= total (pigeonhole)
--- This follows from the fact that each symbol has exactly one kind
--- and sum of filtered counts is at most the total length
+-- Property 17: Sum of three kind counts <= total (pigeonhole). Each count is
+-- already bounded by the total (`kind_count_le_total`); the sum bound is then
+-- arithmetic over three instances of that one fact.
 theorem kind_counts_bounded (symbols : List DocumentSymbol) :
     countKind symbols SymbolKind.function_ +
     countKind symbols SymbolKind.class_ +
     countKind symbols SymbolKind.struct_ <= 3 * symbols.length := by
-  simp [countKind]
-  sorry
+  have h1 := kind_count_le_total symbols SymbolKind.function_
+  have h2 := kind_count_le_total symbols SymbolKind.class_
+  have h3 := kind_count_le_total symbols SymbolKind.struct_
+  omega
 
 -- Property 18: Index is idempotent under no-op
 -- Inserting empty symbols list still creates a document entry
