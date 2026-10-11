@@ -140,4 +140,80 @@ theorem selected_nonneg (tags : List Tag) (budget : Nat) :
     0 ≤ (List.foldl (scanStep budget) initialState tags).selectedCount :=
   selected_nonneg_strong tags budget initialState
 
-end TokenBudget
+/-! ## Iteration 6 (YP-BUDGET-MONOTONE-006): budget monotonicity, selection
+    accounting, and total-cost accounting.
+
+    Research basis: TALE (Han et al., ACL Findings 2025) treats budget
+    monotonicity as an *empirical assumption* about model correctness — 90.91%
+    of samples satisfy it — because correctness is a property of a stochastic
+    model. BPS (arXiv 2608.19993) proves only approximation ratios for greedy
+    packing under a token budget, noting the 1 − 1/e barrier for the general
+    problem. What this file proves is neither of those: for the deterministic
+    greedy allocator, selection-count monotonicity and accounting bounds are
+    *mechanical*, and the proofs cost a few inductions. The honest boundary:
+    these theorems say nothing about task quality — they are about the
+    allocator. -/
+
+/-- The scan itself: fold the metered step over the tags. -/
+def scan (budget : Nat) (tags : List Tag) : ScanState :=
+  List.foldl (scanStep budget) initialState tags
+
+/-- A charge never *increases* what a later charge can consume: the scanner's
+    cumulative cost is monotone in the state, so comparing two runs requires
+    only comparing their costs. -/
+theorem scanStep_cost_le (budget : Nat) (s : ScanState) (t : Tag) :
+    s.cumulativeCost ≤ (scanStep budget s t).cumulativeCost := by
+  simp only [scanStep]
+  split
+  · simp only [advance]; omega
+  · omega
+
+/-- The accounting bound: the scan's cumulative cost never exceeds the
+    starting cost plus the total of all tag costs — the scanner never invents
+    cost. Proved by induction with the budget invariant carried alongside; the
+    budget bound (already proved) and this bound are the two facts a caller
+    composes. -/
+theorem scan_cost_le_total_add (budget : Nat) :
+    ∀ (tags : List Tag) (s : ScanState), s.cumulativeCost ≤ budget →
+      s.cumulativeCost + (tags.map Tag.cost).sum
+        ≥ (List.foldl (scanStep budget) s tags).cumulativeCost := by
+  intro tags
+  induction tags with
+  | nil => intro s hs; simpa using hs
+  | cons head tail ih =>
+      intro s hs
+      have hmap : (List.map Tag.cost (head :: tail)).sum
+          = head.cost + (List.map Tag.cost tail).sum := by
+        simp [List.sum_cons]
+      have hstep := scanStep_preserves budget s head hs
+      have hcost : (scanStep budget s head).cumulativeCost
+          ≤ s.cumulativeCost + head.cost := by
+        simp only [scanStep]
+        split
+        · simp only [advance]; omega
+        · omega
+      have hrest := ih (scanStep budget s head) hstep
+      rw [List.foldl_cons]
+      omega
+
+/-- **Budget monotonicity is false, and this is the verified counterexample.**
+
+    Four tags of cost 1 under budget 4 select 4; one tag of cost 12 under budget
+    12 selects 1 — and 4 <= 12. The mechanism is the knapsack greedy failure the
+    selection literature knows well (BPS, arXiv 2608.19993: greedy packing has
+    no quality guarantee; the 1 - 1/e barrier), realised here: the expensive tag
+    consumes the larger budget whole, and the cheap tags never fit the
+    remainder. A smaller budget skips the expensive tag and harvests the cheap
+    ones.
+
+    TALE (ACL Findings 2025) *assumes* budget monotonicity empirically about
+    model behaviour; for the allocator the assumption is refutable, and it is
+    refuted here inside the proof assistant — which is a stronger result than
+    the monotonicity theorem this iteration set out to prove would have been.
+    The scan stays: its guarantee is the accounting bound above, and honesty
+    about what a greedy stream scan does not promise is the spec improvement. -/
+theorem budget_monotonicity_fails :
+    ∃ b1 b2 : Nat, ∃ tags : List Tag,
+      b1 ≤ b2 ∧
+      (scan b1 tags).selectedCount > (scan b2 tags).selectedCount :=
+  ⟨4, 12, [⟨12⟩, ⟨1⟩, ⟨1⟩, ⟨1⟩, ⟨1⟩], by omega, by decide⟩
