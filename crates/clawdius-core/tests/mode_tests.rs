@@ -52,7 +52,7 @@ fn test_builtin_modes() {
         let mode =
             AgentMode::parse_mode(name).unwrap_or_else(|| panic!("Failed to parse mode: {name}"));
         assert_eq!(mode.name(), name);
-        assert!(!mode.system_prompt().is_empty());
+        assert_ne!(mode.system_prompt(), "");
         assert!(mode.temperature() > 0.0);
         assert!(mode.temperature() <= 1.0);
     }

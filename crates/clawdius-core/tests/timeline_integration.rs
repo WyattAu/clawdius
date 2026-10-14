@@ -64,7 +64,7 @@ async fn test_create_checkpoint() {
 
     let checkpoint_id = manager.create_checkpoint("initial").await.unwrap();
 
-    assert!(!checkpoint_id.0.is_empty());
+    assert_ne!(checkpoint_id.0, "");
 }
 
 #[tokio::test]
@@ -81,7 +81,7 @@ async fn test_create_checkpoint_with_description() {
         .await
         .unwrap();
 
-    assert!(!checkpoint_id.0.is_empty());
+    assert_ne!(checkpoint_id.0, "");
 
     let checkpoint = manager.get_checkpoint(&checkpoint_id).unwrap();
     assert!(checkpoint.is_some());
@@ -289,7 +289,7 @@ async fn test_checkpoint_id_creation() {
     let id2 = CheckpointId::new();
 
     assert_ne!(id1.0, id2.0);
-    assert!(!id1.0.is_empty());
+    assert_ne!(id1.0, "");
 }
 
 #[tokio::test]
@@ -359,7 +359,7 @@ mod watcher_tests {
         assert_eq!(config.debounce_interval, Duration::from_secs(30));
         assert!(config.auto_checkpoint);
         assert_eq!(config.max_checkpoints_per_hour, 120);
-        assert!(!config.ignore_patterns.is_empty());
+        assert_ne!(config.ignore_patterns, [] as [std::string::String; 0]);
     }
 
     #[test]

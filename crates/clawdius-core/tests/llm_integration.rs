@@ -634,7 +634,7 @@ mod error_handling_tests {
             id: "test".to_string(),
         };
         let enhanced = error.into_enhanced();
-        assert!(!enhanced.message().is_empty());
+        assert_ne!(enhanced.message(), "");
     }
 }
 
@@ -825,7 +825,7 @@ mod mock_llm_client_tests {
             received.push(chunk);
         }
 
-        assert!(!received.is_empty());
+        assert_ne!(received, [] as [std::string::String; 0]);
     }
 
     #[tokio::test]

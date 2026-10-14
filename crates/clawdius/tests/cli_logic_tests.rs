@@ -504,13 +504,13 @@ fn test_invalid_events_filtered_out() {
 #[test]
 fn test_empty_string_yields_no_events() {
     let events = parse_webhook_events("");
-    assert!(events.is_empty());
+    assert_eq!(events, [] as [TestWebhookEvent; 0]);
 }
 
 #[test]
 fn test_all_invalid_yields_no_events() {
     let events = parse_webhook_events("foo,bar,baz");
-    assert!(events.is_empty());
+    assert_eq!(events, [] as [TestWebhookEvent; 0]);
 }
 
 #[test]
@@ -522,7 +522,7 @@ fn test_whitespace_around_events_trimmed() {
 #[test]
 fn test_case_sensitive_events() {
     let events = parse_webhook_events("Session.Created");
-    assert!(events.is_empty());
+    assert_eq!(events, [] as [TestWebhookEvent; 0]);
 }
 
 #[test]
@@ -668,7 +668,7 @@ fn skill_args_three_params() {
 #[test]
 fn skill_args_empty() {
     let params = parse_skill_args("");
-    assert!(params.is_empty());
+    assert_eq!(params, [] as [(&str, &str); 0]);
 }
 
 #[test]
@@ -939,7 +939,7 @@ fn parse_excludes(input: Option<String>) -> Vec<String> {
 
 #[test]
 fn excludes_none_yields_empty() {
-    assert!(parse_excludes(None).is_empty());
+    assert_eq!(parse_excludes(None), [] as [std::string::String; 0]);
 }
 
 #[test]
@@ -963,7 +963,7 @@ fn excludes_whitespace_trimmed() {
 #[test]
 fn excludes_empty_string_yields_empty() {
     let ex = parse_excludes(Some(String::new()));
-    assert!(ex.is_empty());
+    assert_eq!(ex, [] as [std::string::String; 0]);
 }
 
 #[test]
@@ -1906,7 +1906,7 @@ fn parse_git_commit_no_files() {
         Some(Commands::Git {
             action: GitCommands::Commit { files, message },
         }) => {
-            assert!(files.is_empty());
+            assert_eq!(files, [] as [std::string::String; 0]);
             assert!(message.is_none());
         },
         other => panic!("expected Git::Commit, got: {other:?}"),

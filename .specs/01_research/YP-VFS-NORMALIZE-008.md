@@ -1,7 +1,7 @@
 ---
 document_id: YP-VFS-NORMALIZE-008
-version: 1.0.0
-status: DRAFT
+version: 1.1.0
+status: APPROVED
 domain: Security / Filesystem
 subdomains: [Lexical Path Normalization, Traversal Defence]
 created: 2026-10-11
@@ -9,7 +9,7 @@ author: Loop
 proof_files: [vfs_safety.lean]
 confidence_level: 0.94
 tqa_level: 4
-research_iterations: 8
+research_iterations: 9
 ---
 
 # Yellow Paper: VFS — Lexical Normalization Composes
@@ -43,3 +43,15 @@ POSIX and RFC 3986 both specify normalization **algorithmically over segments** 
 - P1: `0 ∉ normalize p` for every `p` — dots cannot survive normalization.
 - P2: `normalize (normalize p) = normalize p` — the canonical form is canonical.
 - P3: `normalize (0 :: p) = normalize p` — a leading escape attempt changes nothing.
+
+## YP-6: Proof outcome (loop 2, iteration 1 — 2026-10-14)
+
+All three predictions are now **asserted and machine-checked** in
+`vfs_safety.lean` (`normalize_no_dots`, `normalize_idempotent`,
+`normalize_leading_dot`), on top of the pop-semantics model this YP
+specified (`normAux` over a push/pop stack, `pop` a no-op at the root
+boundary). Key proof architecture: `normAux` returns the stack in push
+order and `normalize` reverses, which makes split transparency
+(`normAux_compose`) an easy induction and idempotence follow from
+dot-freedom + dot-free identity (`normalize_eq_self_of_dotfree`).
+`lake build`: 43 jobs, 0 sorries, 0 errors. Status: DRAFT → APPROVED.

@@ -2,8 +2,32 @@
 # Tracks all Yellow Papers and their relationships
 
 [metadata]
-last_updated = "2026-10-11T00:00:00Z"
-total_papers = 16
+last_updated = "2026-10-14T00:00:00Z"
+total_papers = 17
+
+[[yellow_paper]]
+id = "YP-CAPABILITY-010"
+title = "Capability System — Attenuation Is Not Enough, Authority Must Be Non-Delegatable"
+status = "APPROVED"
+version = "1.0.0"
+created = "2026-10-14"
+author = "Loop"
+confidence_level = 0.93
+tqa_level = 4
+
+[yellow_paper.scope]
+domain = "Software Engineering"
+algorithms = ["ALG-CAP-DERIVE-001"]
+theorems = ["THM-CAP-T1", "THM-CAP-T2", "THM-CAP-T3"]
+test_vector_file = "test_vectors_capability.toml"
+constraints_file = "domain_constraints_security.toml"
+
+[yellow_paper.dependencies]
+axioms_from = ["postulate_signature_unforgeable"]
+lemmas_from = []
+
+[yellow_paper.consumers]
+blue_papers = ["BP-SECURITY-CAPABILITY-001"]
 
 [[yellow_paper]]
 id = "YP-FSM-NEXUS-001"
@@ -337,8 +361,8 @@ proof_files = ["concurrent_execution.lean"]
 [[yellow_paper]]
 id = "YP-VFS-NORMALIZE-008"
 title = "VFS — Lexical Normalization Composes"
-status = "DRAFT"
-version = "0.1.0"
+status = "APPROVED"
+version = "1.1.0"
 created = "2026-10-11"
 author = "Loop"
 confidence_level = 0.90

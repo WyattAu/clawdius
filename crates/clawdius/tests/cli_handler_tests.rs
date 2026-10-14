@@ -244,7 +244,7 @@ fn test_cli_ship_checks() {
             action: ShipAction::Checks { branch, files },
         }) => {
             assert_eq!(branch, "feature/x");
-            assert!(files.is_empty());
+            assert_eq!(files, [] as [std::string::String; 0]);
         },
         other => panic!("expected Ship::Checks, got: {other:?}"),
     }
@@ -322,7 +322,7 @@ fn test_cli_ship_commit_message_minimal() {
                     scope,
                 },
         }) => {
-            assert!(files.is_empty());
+            assert_eq!(files, [] as [std::string::String; 0]);
             assert_eq!(description, "add feature");
             assert!(scope.is_none());
         },
@@ -373,7 +373,7 @@ fn test_cli_skill_run_no_args() {
             action: SkillAction::Run { name, arguments },
         }) => {
             assert_eq!(name, "lint");
-            assert!(arguments.is_empty());
+            assert_eq!(arguments, "");
         },
         other => panic!("expected Skill::Run, got: {other:?}"),
     }
@@ -406,7 +406,7 @@ fn test_cli_lsp_start_with_root() {
             action: LspCommands::Start { server, args, root },
         }) => {
             assert_eq!(server, "pylsp");
-            assert!(args.is_empty());
+            assert_eq!(args, [] as [std::string::String; 0]);
             assert_eq!(root.as_deref(), Some("/project"));
         },
         other => panic!("expected Lsp::Start, got: {other:?}"),

@@ -54,7 +54,7 @@ async fn test_full_checkpoint_workflow() {
         .await
         .unwrap();
 
-    assert!(!cp1.id.is_empty());
+    assert_ne!(cp1.id, "");
     assert_eq!(cp1.description, "Initial version");
     assert!(!cp1.files.is_empty());
 

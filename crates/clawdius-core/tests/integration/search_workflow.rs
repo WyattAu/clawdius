@@ -14,7 +14,7 @@ async fn test_search_result_structure() {
 
     assert_eq!(result.title, "Rust Programming Language");
     assert_eq!(result.url, "https://www.rust-lang.org/");
-    assert!(!result.snippet.is_empty());
+    assert_ne!(result.snippet, "");
 }
 
 #[tokio::test]
@@ -130,7 +130,7 @@ async fn test_empty_search_results() {
     let results: Vec<SearchResult> = vec![];
     let formatted = format_results_for_llm(&results);
 
-    assert!(formatted.is_empty());
+    assert_eq!(formatted, "");
 }
 
 #[tokio::test]

@@ -273,7 +273,7 @@ impl PlatformAdapter for MockAdapter {
 async fn test_gateway_new() {
     let gateway = MessageGateway::new();
     let platforms = gateway.registered_platforms().await;
-    assert!(platforms.is_empty());
+    assert_eq!(platforms, [] as [clawdius_gateway::adapter::Platform; 0]);
 }
 
 #[tokio::test]
@@ -366,7 +366,7 @@ fn test_platform_config_new() {
     let config = PlatformConfig::new(Platform::Telegram);
     assert!(config.enabled);
     assert!(config.api_token.is_none());
-    assert!(config.allowed_users.is_empty());
+    assert_eq!(config.allowed_users, [] as [std::string::String; 0]);
 }
 
 #[test]

@@ -284,7 +284,7 @@ mod error_path_tests {
     fn test_parse_error_message_contains_detail() {
         let result = parse_request("{invalid");
         let err = result.unwrap_err();
-        assert!(!err.message.is_empty());
+        assert_ne!(err.message, "");
     }
 }
 

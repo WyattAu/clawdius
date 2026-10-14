@@ -722,7 +722,7 @@ fn test_tool_result_without_metadata() {
 fn test_shell_sandbox_config_defaults() {
     let config = ShellSandboxConfig::default();
 
-    assert!(!config.blocked_commands.is_empty());
+    assert_ne!(config.blocked_commands, [] as [std::string::String; 0]);
     assert!(config.blocked_commands.contains(&"rm -rf /".to_string()));
     assert_eq!(config.timeout_secs, 120);
     assert_eq!(config.max_output_bytes, 1_048_576);

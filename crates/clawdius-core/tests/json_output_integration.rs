@@ -60,7 +60,7 @@ fn test_json_output_error() {
     assert!(!output.success);
     assert_eq!(output.error, Some("Something went wrong".to_string()));
     assert_eq!(output.session_id, "session-456");
-    assert!(output.content.is_empty());
+    assert_eq!(output.content, "");
 }
 
 #[test]
@@ -185,7 +185,7 @@ fn test_verify_result_success() {
 
     assert!(result.success);
     assert!(result.errors.is_empty());
-    assert!(result.warnings.is_empty());
+    assert_eq!(result.warnings, [] as [std::string::String; 0]);
 }
 
 #[test]
