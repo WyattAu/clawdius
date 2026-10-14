@@ -229,3 +229,91 @@ theorem valid_chain_preserves_integrity (entries : List AuditEntry)
 -- Handlers filter queries by this tenant_id.
 
 end Clawdius.Security
+
+-- ---------------------------------------------------------------------------
+-- Workspace-scoped normalization (YP-SECURITY-POLICY-011, loop 2 it. 3)
+-- ---------------------------------------------------------------------------
+
+namespace Workspace
+
+/-- Component-wise prefix: `dir` is a component prefix of `path`. -/
+def isComponentPrefix (dir path : List Nat) : Prop := ∃ rest, path = dir ++ rest
+
+/-- THE UNSOUNDNESS WITNESS: the character-prefix check used by
+`validatePath` accepts a sibling directory. `/srv/ws` is a string
+prefix of `/srv/ws-evildir/x` (Snyk, "Zip Slip", 2018: the sibling
+directory falsely passes). The current `startsWith` model is therefore
+proven unsound, not merely suspected. -/
+theorem raw_prefix_bypass_exists :
+    ∃ workspace filePath : String,
+      filePath.startsWith workspace = true ∧
+      filePath.startsWith (workspace ++ "/") = false :=
+  ⟨"/srv/ws", "/srv/ws-evildir/x", by native_decide, by native_decide⟩
+
+/-- Pop the top component, clamped at the workspace floor: popping is a
+no-op once the stack is exactly `floor` components long — chroot
+semantics expressed lexically. -/
+def popWithin (floor : Nat) (acc : List Nat) : List Nat :=
+  if floor < acc.length then acc.tail else acc
+
+def normAuxWithin (floor : Nat) (p : List Nat) (acc : List Nat) : List Nat :=
+  match p with
+  | [] => acc
+  | 0 :: rest => normAuxWithin floor rest (popWithin floor acc)
+  | c :: rest => normAuxWithin floor rest (c :: acc)
+
+def normalizeWithin (floor : Nat) (p : List Nat) : List Nat :=
+  (normAuxWithin floor p []).reverse
+
+theorem normAuxWithin_nil (floor : Nat) (acc : List Nat) :
+    normAuxWithin floor [] acc = acc := rfl
+
+theorem normAuxWithin_zero (floor : Nat) (rest acc : List Nat) :
+    normAuxWithin floor (0 :: rest) acc = normAuxWithin floor rest (popWithin floor acc) := rfl
+
+theorem normAuxWithin_cons (floor : Nat) (c : Nat) (rest acc : List Nat) (hc : c ≠ 0) :
+    normAuxWithin floor (c :: rest) acc = normAuxWithin floor rest (c :: acc) := by
+  cases c with
+  | zero => exact absurd hc (by simp)
+  | succ n => rfl
+
+/-- Pop lemmas: `popWithin` is the identity on the empty stack, drops
+the top when the floor allows it, and clamps otherwise. -/
+theorem popWithin_nil (floor : Nat) : popWithin floor [] = [] := rfl
+
+theorem popWithin_cons (floor : Nat) (a : Nat) (tl : List Nat) :
+    popWithin floor (a :: tl) =
+      if floor < (a :: tl).length then tl else a :: tl := rfl
+
+/-- Floor lemma: the stack never drops below the workspace root.
+Pushes grow it; pops are clamped by `popWithin`. -/
+theorem normAuxWithin_floor_lemma (floor : Nat) (r acc : List Nat)
+    (h : floor ≤ acc.length) :
+    floor ≤ (normAuxWithin floor r acc).length := by
+  induction r generalizing acc with
+  | nil => exact h
+  | cons c rest ih =>
+    cases acc with
+    | nil =>
+      cases c with
+      | zero =>
+        rw [normAuxWithin_zero, popWithin_nil]
+        exact ih [] (by have := h; simp at this; omega)
+      | succ n =>
+        rw [normAuxWithin_cons (hc := by simp)]
+        exact ih ((n + 1) :: []) (by simp only [List.length_cons]; omega)
+    | cons a tl =>
+      cases c with
+      | zero =>
+        rw [normAuxWithin_zero, popWithin_cons]
+        by_cases hcond : floor < (a :: tl).length
+        · rw [if_pos hcond]
+          have h2 : tl.length + 1 = (a :: tl).length := rfl
+          exact ih tl (by omega)
+        · rw [if_neg hcond]
+          exact ih (a :: tl) h
+      | succ n =>
+        rw [normAuxWithin_cons (hc := by simp)]
+        exact ih ((n + 1) :: a :: tl) (by rw [List.length_cons]; omega)
+
+
