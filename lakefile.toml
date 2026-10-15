@@ -55,8 +55,8 @@ roots = ["vfs_safety"]
 
 [[lean_lib]]
 name = "ProofAudit"
-srcDir = ".clawdius/specs/02_architecture/proofs"
-roots = ["proof_audit"]
+srcDir = ".specs/02_architecture/proofs"
+roots = ["audit"]
 
 [[lean_lib]]
 name = "ProofCapability"

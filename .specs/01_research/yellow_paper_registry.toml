@@ -3,7 +3,31 @@
 
 [metadata]
 last_updated = "2026-10-15T00:00:00Z"
-total_papers = 19
+total_papers = 20
+
+[[yellow_paper]]
+id = "YP-AUDIT-013"
+title = "Audit — The Integrity Layer Must Commit to Content, Not Assert It"
+status = "APPROVED"
+version = "1.0.0"
+created = "2026-10-15"
+author = "Loop"
+confidence_level = 0.93
+tqa_level = 4
+
+[yellow_paper.scope]
+domain = "Compliance"
+algorithms = ["ALG-AUDIT-CHAIN-001"]
+theorems = ["THM-AUD-T0", "THM-AUD-T1", "THM-AUD-T2"]
+test_vector_file = "test_vectors_capability.toml"
+constraints_file = "domain_constraints_security.toml"
+
+[yellow_paper.dependencies]
+axioms_from = ["ehash_inj"]
+lemmas_from = []
+
+[yellow_paper.consumers]
+blue_papers = ["BP-AUDIT-LOG-001"]
 
 [[yellow_paper]]
 id = "YP-SANITIZER-012"
