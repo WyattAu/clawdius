@@ -173,4 +173,90 @@ theorem pipeline_soundness
     pathDepth (List.replicate patCount 2) initDepth ≥ 0 :=
   core_soundness inputLen patCount baseId initDepth h1 h2 h3
 
+
+-- ===========================================================================
+-- Part 5: Deletion sanitization vs enumerated blocklists
+-- (YP-SANITIZER-012, loop 2 iteration 4)
+-- ===========================================================================
+
+/-! Model: commands are component lists (Nat); component `0` is the
+metacharacter (shell control byte). Two sanitization disciplines exist:
+
+1. **Deletion** (`sanitize`): strip every metacharacter from the input.
+   Provably sound (no metachar survives) and idempotent.
+2. **Enumeration** (a finite blocklist `B` of known-bad commands).
+   Provably incomplete: the generative attack space outruns any finite
+   enumeration (`blocklist_incomplete`) — the formal version of
+   OWASP's "denylisting relies on knowing all attacks that exist". -/
+
+/-- Deletion sanitizer: strip every metacharacter (0) from the input. -/
+def sanitize : List Nat → List Nat
+  | [] => []
+  | 0 :: rest => sanitize rest
+  | c :: rest => c :: sanitize rest
+
+/-- SOUNDNESS (T1): no metacharacter survives deletion-based
+sanitization — for every input, the output is metachar-free. -/
+theorem sanitize_strips_metachars (cs : List Nat) :
+    ∀ x ∈ sanitize cs, x ≠ 0 := by
+  induction cs with
+  | nil => intro x hx; exact absurd hx (by simp [sanitize])
+  | cons c rest ih =>
+    cases c with
+    | zero => exact ih
+    | succ n =>
+      intro x hx
+      cases List.mem_cons.mp hx with
+      | inl h => rw [h]; exact Nat.succ_ne_zero n
+      | inr h => exact ih x h
+
+/-- IDEMPOTENCE (T2): sanitizing twice equals sanitizing once — the
+clean form is canonical. -/
+theorem sanitize_idempotent (cs : List Nat) :
+    sanitize (sanitize cs) = sanitize cs := by
+  induction cs with
+  | nil => rfl
+  | cons c rest ih =>
+    cases c with
+    | zero => exact ih
+    | succ n => simp only [sanitize, ih]
+
+/-- Longest blocklisted command length. -/
+def maxLen (B : List (List Nat)) : Nat :=
+  B.foldr (fun b m => max b.length m) 0
+
+theorem maxLen_ge (B : List (List Nat)) (b : List Nat) (hb : b ∈ B) :
+    b.length ≤ maxLen B := by
+  induction B with
+  | nil => exact absurd hb List.not_mem_nil
+  | cons c rest ih =>
+    cases List.mem_cons.mp hb with
+    | inl h =>
+      unfold maxLen
+      rw [h]
+      simp only [List.foldr_cons]
+      exact Nat.le_max_left _ _
+    | inr h =>
+      refine Nat.le_trans (ih h) ?_
+      unfold maxLen
+      simp only [List.foldr_cons]
+      exact Nat.le_max_right _ _
+
+/-- INCOMPLETENESS (T3): for ANY finite enumerated blocklist `B`, there
+exists a dangerous command (one containing the metacharacter) that `B`
+does not list. The generative attack space outruns any finite
+enumeration — the formal version of OWASP's allowlist-over-denylist
+discipline. Enumeration-based blocking is therefore unsound as a
+security boundary and may only be used as a convenience layer. -/
+theorem blocklist_incomplete (B : List (List Nat)) :
+    ∃ cs, 0 ∈ cs ∧ (∀ b ∈ B, cs ≠ b) := by
+  refine ⟨0 :: List.replicate (maxLen B) 1, List.mem_cons_self, ?_⟩
+  intro b hb heq
+  have hbl := maxLen_ge B b hb
+  have hclen : (0 :: List.replicate (maxLen B) 1).length = maxLen B + 1 := by
+    simp [List.length_cons, List.length_replicate]
+  rw [heq] at hclen
+  omega
+
 end Clawdius.Sanitizer
+

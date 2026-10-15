@@ -2,8 +2,32 @@
 # Tracks all Yellow Papers and their relationships
 
 [metadata]
-last_updated = "2026-10-14T00:00:00Z"
-total_papers = 18
+last_updated = "2026-10-15T00:00:00Z"
+total_papers = 19
+
+[[yellow_paper]]
+id = "YP-SANITIZER-012"
+title = "Sanitizer — Deletion Is Provable, Enumeration Is Provably Incomplete"
+status = "APPROVED"
+version = "1.0.0"
+created = "2026-10-15"
+author = "Loop"
+confidence_level = 0.94
+tqa_level = 4
+
+[yellow_paper.scope]
+domain = "Security"
+algorithms = ["ALG-SAN-DELETE-001"]
+theorems = ["THM-SAN-T1", "THM-SAN-T2", "THM-SAN-T3"]
+test_vector_file = "test_vectors_capability.toml"
+constraints_file = "domain_constraints_security.toml"
+
+[yellow_paper.dependencies]
+axioms_from = []
+lemmas_from = ["YP-VFS-NORMALIZE-008"]
+
+[yellow_paper.consumers]
+blue_papers = ["BP-SECURITY-CAPABILITY-001"]
 
 [[yellow_paper]]
 id = "YP-SECURITY-POLICY-011"
