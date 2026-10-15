@@ -3,7 +3,31 @@
 
 [metadata]
 last_updated = "2026-10-15T00:00:00Z"
-total_papers = 21
+total_papers = 22
+
+[[yellow_paper]]
+id = "YP-HOST-KERNEL-015"
+title = "Host — Crash-Only Redesign of the Lifecycle Model"
+status = "APPROVED"
+version = "1.0.0"
+created = "2026-10-15"
+author = "Loop"
+confidence_level = 0.94
+tqa_level = 4
+
+[yellow_paper.scope]
+domain = "Software Engineering"
+algorithms = ["ALG-HOST-RESTART-001"]
+theorems = ["THM-HOST-T1", "THM-HOST-T1C", "THM-HOST-T2"]
+test_vector_file = "test_vectors_fsm.toml"
+constraints_file = "domain_constraints_performance.toml"
+
+[yellow_paper.dependencies]
+axioms_from = []
+lemmas_from = []
+
+[yellow_paper.consumers]
+blue_papers = ["BP-HOST-KERNEL-001"]
 
 [[yellow_paper]]
 id = "YP-CONTAINER-014"
