@@ -47,11 +47,22 @@ inductive SafetyProperty where
   | TenantIsolated : SafetyProperty        -- Tenant isolation preserved
   deriving Repr
 
+-- How the obligation's safety property is verified. The trust order:
+-- formal (machine-checked) > tool (compiler/linter/test output) >
+-- test (execution) > review (human) -- Necula-Lee PCC discipline: the
+-- checker must be mechanical; human review is the weakest evidence.
+inductive VerificationMethod where
+  | formal : VerificationMethod
+  | tool : VerificationMethod
+  | test : VerificationMethod
+  | review : VerificationMethod
+  deriving Repr, DecidableEq
+
 -- A proof obligation for a code edit.
 structure ProofObligation where
   edit : CodeEdit
   property : SafetyProperty
-  proofMethod : String  -- Description of how the property is verified
+  proofMethod : VerificationMethod
   deriving Repr
 
 -- A proof carrier: a code edit with its proof obligations.
@@ -125,5 +136,58 @@ structure ProofSketch where
 --
 -- This provides a chain of evidence from code change to safety argument,
 -- which is essential for the US Air Force's compliance requirements.
+
+
+-- ---------------------------------------------------------------------------
+-- Verification Method Algebra (YP-PROOF-CARRYING-017, loop 2 it. 9)
+-- ---------------------------------------------------------------------------
+
+/-- Trust ordering: `methodAtLeast a b` — method `a` provides at least
+the assurance of method `b`. Review is the weakest evidence; formal is
+the strongest. -/
+def methodAtLeast : VerificationMethod → VerificationMethod → Bool
+  | .formal, _ => true
+  | .tool, .tool | .tool, .test | .tool, .review => true
+  | .test, .test | .test, .review => true
+  | .review, .review => true
+  | _, _ => false
+
+/-- T1 (review is weakest): every method dominates review — a
+review-only obligation is the least evidence there is. -/
+theorem review_weakest (m : VerificationMethod) :
+    methodAtLeast m .review = true := by
+  cases m <;> rfl
+
+/-- T2 (formal is strongest): formal dominates every method. -/
+theorem formal_strongest (m : VerificationMethod) :
+    methodAtLeast .formal m = true := by
+  cases m <;> rfl
+
+/-- T3 (transitivity): the trust ordering is transitive. -/
+theorem methodAtLeast_trans (a b c : VerificationMethod)
+    (h1 : methodAtLeast a b = true) (h2 : methodAtLeast b c = true) :
+    methodAtLeast a c = true := by
+  cases a <;> cases b <;> cases c <;> simp_all [methodAtLeast]
+
+/-- A certificate is MACHINE-CHECKED when every obligation's method is
+at least `tool` — the Necula-Lee floor: the checker must be mechanical.
+Deliberately NOT satisfied by `ProofSketch` confidence floats: a
+confidence number is not evidence (2026 survey: 40-60% bypass rates for
+informal defenses). -/
+def machineCertified (obligations : List ProofObligation) : Bool :=
+  obligations.all (fun o => methodAtLeast o.proofMethod .tool)
+
+/-- T4 (downgrade safety): a machine-checked certificate remains valid
+under the weakest acceptance bar — downgrading the requirement never
+invalidates machine evidence. -/
+theorem machine_certified_downgrade_safe (obligations : List ProofObligation)
+    (h : machineCertified obligations = true) :
+    obligations.all (fun o => methodAtLeast o.proofMethod .review) = true := by
+  show (obligations.all (fun o => methodAtLeast o.proofMethod .review)) = true
+  unfold machineCertified at h
+  rw [List.all_eq_true] at h
+  rw [List.all_eq_true]
+  intro o ho
+  exact methodAtLeast_trans o.proofMethod .tool .review (h o ho) (review_weakest .tool)
 
 end Clawdius.ProofCarryingCode
