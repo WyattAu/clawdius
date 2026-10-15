@@ -3,7 +3,31 @@
 
 [metadata]
 last_updated = "2026-10-15T00:00:00Z"
-total_papers = 22
+total_papers = 23
+
+[[yellow_paper]]
+id = "YP-FSM-016"
+title = "FSM — Recovery Is Deadlock-Free but Requires a Retry Budget"
+status = "APPROVED"
+version = "1.0.0"
+created = "2026-10-15"
+author = "Loop"
+confidence_level = 0.92
+tqa_level = 4
+
+[yellow_paper.scope]
+domain = "Software Engineering"
+algorithms = ["ALG-FSM-RECOVER-001"]
+theorems = ["THM-FSM-PROG", "THM-FSM-RECOVERY", "THM-FSM-LIVELOCK"]
+test_vector_file = "test_vectors_fsm.toml"
+constraints_file = "domain_constraints_performance.toml"
+
+[yellow_paper.dependencies]
+axioms_from = []
+lemmas_from = ["YP-HOST-KERNEL-015"]
+
+[yellow_paper.consumers]
+blue_papers = ["BP-NEXUS-FSM-001"]
 
 [[yellow_paper]]
 id = "YP-HOST-KERNEL-015"
