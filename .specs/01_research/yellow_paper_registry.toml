@@ -3,7 +3,31 @@
 
 [metadata]
 last_updated = "2026-10-15T00:00:00Z"
-total_papers = 20
+total_papers = 21
+
+[[yellow_paper]]
+id = "YP-CONTAINER-014"
+title = "Container — Defense-in-Depth Blocks Misconfiguration, Not the Kernel"
+status = "APPROVED"
+version = "1.0.0"
+created = "2026-10-15"
+author = "Loop"
+confidence_level = 0.92
+tqa_level = 4
+
+[yellow_paper.scope]
+domain = "Security"
+algorithms = ["ALG-CONT-LAYERING-001"]
+theorems = ["THM-CONT-T1", "THM-CONT-T1A", "THM-CONT-T2", "THM-CONT-T3"]
+test_vector_file = "test_vectors_capability.toml"
+constraints_file = "domain_constraints_security.toml"
+
+[yellow_paper.dependencies]
+axioms_from = []
+lemmas_from = []
+
+[yellow_paper.consumers]
+blue_papers = ["BP-CONTAINER-SANDBOX-001"]
 
 [[yellow_paper]]
 id = "YP-AUDIT-013"

@@ -65,8 +65,8 @@ roots = ["capability"]
 
 [[lean_lib]]
 name = "ProofContainer"
-srcDir = ".clawdius/specs/02_architecture/proofs"
-roots = ["proof_container"]
+srcDir = ".specs/02_architecture/proofs"
+roots = ["container"]
 
 [[lean_lib]]
 name = "ProofFsm"
