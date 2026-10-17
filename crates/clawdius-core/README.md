@@ -52,13 +52,13 @@ cargo build -p clawdius-core --features vector-db,embeddings
 ### LLM Integration
 
 ```rust,no_run
-use clawdius_core::llm::{LlmConfig, create_provider, ChatMessage, ChatRole};
+use clawdius_core::llm::{ResolvedLlmConfig, create_provider, ChatMessage, ChatRole};
 use clawdius_core::llm::providers::LlmClient;
 
 # #[tokio::main]
 # async fn main() -> clawdius_core::Result<()> {
 // Create provider from environment
-let config = LlmConfig::from_env("anthropic")?;
+let config = ResolvedLlmConfig::from_env("anthropic")?;
 let provider = create_provider(&config)?;
 
 // Send message
@@ -121,7 +121,8 @@ let tool = ToolSpec {
 // Tool results are structured
 let result = ToolResult {
     success: true,
-    output: "Hello, World!".to_string(),
+    content: "Hello, World!".to_string(),
+    is_error: false,
     metadata: Some(json!({ "exit_code": 0 })),
 };
 ```
@@ -162,6 +163,7 @@ let config = SandboxConfig {
     tier,
     network: false,
     mounts: vec![],
+    allow_unisolated: false,
 };
 
 // Execute command in sandbox
@@ -225,7 +227,8 @@ let tool = ToolSpec {
 // Return structured results
 let result = ToolResult {
     success: true,
-    output: json!({ "result": "Processed successfully" }).to_string(),
+    content: json!({ "result": "Processed successfully" }).to_string(),
+    is_error: false,
     metadata: Some(json!({ "tokens_used": 42 })),
 };
 ```
@@ -305,10 +308,10 @@ export OLLAMA_API_BASE="http://localhost:11434"
 ### Programmatic Configuration
 
 ```rust,no_run
-use clawdius_core::llm::{LlmConfig, create_provider};
+use clawdius_core::llm::{ResolvedLlmConfig, create_provider};
 
 # fn main() -> clawdius_core::Result<()> {
-let config = LlmConfig {
+let config = ResolvedLlmConfig {
     provider: "openai".to_string(),
     model: "gpt-4".to_string(),
     api_key: std::env::var("OPENAI_API_KEY").ok(),
@@ -383,7 +386,7 @@ cargo test -p clawdius-core --features hft-mode
 use clawdius_core::{Error, Result};
 
 fn test_provider_error() -> Result<()> {
-    let config = clawdius_core::llm::LlmConfig::from_env("anthropic")?;
+    let config = clawdius_core::llm::ResolvedLlmConfig::from_env("anthropic")?;
     let _provider = clawdius_core::llm::create_provider(&config)?;
     Ok(())
 }

@@ -47,7 +47,8 @@
 //!
 //! let result = ToolResult {
 //!     success: true,
-//!     output: "File contents...".to_string(),
+//!     content: "File contents...".to_string(),
+//!     is_error: false,
 //!     metadata: Some(json!({
 //!         "lines": 42,
 //!         "bytes": 1024
@@ -71,7 +72,8 @@
 //!
 //! let error_result = ToolResult {
 //!     success: false,
-//!     output: "Error: File not found".to_string(),
+//!     content: "Error: File not found".to_string(),
+//!     is_error: true,
 //!     metadata: None,
 //! };
 //! ```
