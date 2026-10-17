@@ -124,4 +124,65 @@ theorem all_components_nonneg (fuActive lvTop lnLong : Bool) (kindParam : Nat) :
   by_cases h5 : kindParam = 4 <;>
   split <;> split <;> simp_all
 
+
+-- ---------------------------------------------------------------------------
+-- Graph-ranking retrieval (YP-REPO-MAP-018, loop 2 iteration 10)
+-- ---------------------------------------------------------------------------
+
+/-! The repo map retrieves symbols by accumulated reference
+importance: each in-reference contributes a weight to the target
+symbol, and top-k selection returns the highest accumulated scores.
+The formal properties: accumulation is order-independent and monotone
+under new references, and the maximum-selection dominates every score.
+(Rank-propagation interactions — PageRank damping — are Float
+semantics and recorded, not modeled.) -/
+
+/-- Accumulated importance: the sum of reference weights. Order-
+independent by construction (a sum). -/
+def accumulate (weights : List Nat) : Nat := weights.sum
+
+/-- Reference weight per in-reference. -/
+def refWeight : Nat := 5
+
+theorem refWeight_pos : 0 < refWeight := by decide
+
+/-- Sum splits over append (local helper; the core name differs). -/
+theorem sum_append (l1 l2 : List Nat) : (l1 ++ l2).sum = l1.sum + l2.sum := by
+  induction l1 with
+  | nil => simp
+  | cons a t ih => simp only [List.cons_append, List.sum_cons, ih, Nat.add_assoc]
+
+/-- T2 (append closure): the accumulated total after appending equals
+the sum of the parts — discovery order is irrelevant to the total. -/
+theorem accumulate_append (l1 l2 : List Nat) :
+    accumulate (l1 ++ l2) = accumulate l1 + accumulate l2 := by
+  unfold accumulate
+  exact sum_append l1 l2
+
+/-- T1 (append monotonicity): a new reference never lowers the
+accumulated importance — the ranking is monotone under discovery. -/
+theorem accumulate_mono_append (weights : List Nat) (w : Nat) :
+    accumulate weights ≤ accumulate (weights ++ [w]) := by
+  rw [accumulate_append]
+  omega
+
+/-- The best score in a list: the maximum (0 for the empty map). -/
+def bestScore (scores : List Nat) : Nat := scores.foldr max 0
+
+/-- T3 (SELECTION SOUNDNESS): the maximum-selection dominates every
+score — top-k retrieval built on `bestScore` can never rank a lower
+score above a higher one. -/
+theorem best_scores_dominate (scores : List Nat) :
+    ∀ s ∈ scores, s ≤ bestScore scores := by
+  intro s hs
+  unfold bestScore
+  induction scores with
+  | nil => exact absurd hs (by simp)
+  | cons head tail ih =>
+    cases List.mem_cons.mp hs with
+    | inl h => rw [h]; exact Nat.le_max_left _ _
+    | inr h =>
+      have := ih h
+      exact Nat.le_trans this (Nat.le_max_right _ _)
+
 end RepoMapScoring

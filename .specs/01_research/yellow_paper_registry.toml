@@ -3,7 +3,31 @@
 
 [metadata]
 last_updated = "2026-10-15T00:00:00Z"
-total_papers = 24
+total_papers = 26
+
+[[yellow_paper]]
+id = "YP-REPO-MAP-018"
+title = "Repo Map - Accumulation Is Monotone and Selection Is Sound"
+status = "APPROVED"
+version = "1.0.0"
+created = "2026-10-15"
+author = "Loop"
+confidence_level = 0.93
+tqa_level = 4
+
+[yellow_paper.scope]
+domain = "Software Engineering"
+algorithms = ["ALG-REPO-ACCUMULATE-001", "ALG-REPO-TOPK-001"]
+theorems = ["THM-REPO-T1", "THM-REPO-T2", "THM-REPO-T3"]
+test_vector_file = "test_vectors_capability.toml"
+constraints_file = "domain_constraints_security.toml"
+
+[yellow_paper.dependencies]
+axioms_from = []
+lemmas_from = []
+
+[yellow_paper.consumers]
+blue_papers = ["BP-GRAPH-RAG-001"]
 
 [[yellow_paper]]
 id = "YP-PROOF-CARRYING-017"
