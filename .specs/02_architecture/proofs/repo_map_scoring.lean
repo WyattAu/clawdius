@@ -249,3 +249,48 @@ share with every new out-edge. -/
 theorem damped_share_strictly_shrinks :
     dampedShare 5 3 < dampedShare 5 2 ∧ dampedShare 5 2 < dampedShare 5 1 := by
   decide
+
+-- ---------------------------------------------------------------------------
+-- P4b (structure level): damping fails append-monotonicity on a graph
+-- (YP-REPO-MAP-018 YP-7, loop 4 it. 4)
+-- ---------------------------------------------------------------------------
+
+/-! `damped_add_lowers_old_neighbor` witnessed the single-share failure.
+Iteration 4 scales the witness to the STRUCTURE level: ranks computed
+from an edge list, where the perturbation is exactly the additive
+model's scenario — appending one edge. The append-monotonicity theorem
+(`accumulate_mono_append`) has NO analogue under damping: appending the
+edge (0 → 2) lowers node 1's rank, though node 1's own references did
+not change. -/
+
+/-- Out-degree of `j`: how many references leave `j`. -/
+def outdeg (refs : List (Nat × Nat)) (j : Nat) : Nat :=
+  (refs.filter (fun e => e.1 == j)).length
+
+/-- Damped rank of `target`: every in-reference from `j` contributes
+`weight * scale / (10 * outdeg j)` — the weight split across the
+referrer's out-edges (scale 10 keeps it in `Nat`). -/
+def dampedRank (refs : List (Nat × Nat)) (scale weight target : Nat) : Nat :=
+  (refs.filter (fun e => e.2 == target)).foldl
+    (fun acc e => acc + weight * scale / (10 * outdeg refs e.1)) 0
+
+/-- THE STRUCTURE-LEVEL ANTI-MONOTONICITY: appending the edge (0 → 2)
+— which does not touch node 1 or any of its references — lowers node
+1's rank from 5 to 2. The additive model's `accumulate_mono_append`
+holds for the same append by arithmetic; the damped model's analogue is
+false, and now machine-checked at the graph level. -/
+theorem damped_append_lowers :
+    dampedRank [(0, 1)] 10 5 1 = 5 ∧
+    dampedRank [(0, 1), (0, 2)] 10 5 1 = 2 ∧
+    dampedRank [(0, 1), (0, 2)] 10 5 1 < dampedRank [(0, 1)] 10 5 1 := by
+  rw [show dampedRank [(0, 1)] 10 5 1 = 5 from rfl,
+      show dampedRank [(0, 1), (0, 2)] 10 5 1 = 2 from rfl]
+  exact ⟨rfl, rfl, by decide⟩
+
+/-- AND Nat truncation breaks weight conservation: the two shares do
+not sum back to the weight (2 + 2 ≠ 5). Exact conservation requires
+rationals — so a correct damping model needs the rational/Float
+machinery the estate rejected for ranking, on top of sacrificing
+monotonicity. Two independent defects, one design. -/
+theorem damped_truncation_breaks_conservation :
+    dampedShare 5 2 + dampedShare 5 2 ≠ 5 := by decide

@@ -112,3 +112,18 @@ theorem (a witness like the one above, machine-checked) plus an explicit
 statement of which monotonicity theorems it sacrifices. Any model that
 keeps `accumulate_mono_append` true is not damping — it is the additive
 model with extra steps.
+
+**Machine-checked (loop 4, iterations 1 + 4).** Both halves now exist in
+`repo_map_scoring.lean`:
+
+- `damped_add_lowers_old_neighbor` — the single-share witness (5 → 2).
+- `damped_append_lowers` — the STRUCTURE-level theorem: ranks computed
+  from an edge list (`dampedRank` over `outdeg`), and appending the edge
+  (0 → 2) — which touches neither node 1 nor its references — lowers
+  node 1's rank from 5 to 2. This is `accumulate_mono_append`'s exact
+  scenario, proven false under damping.
+- `damped_truncation_breaks_conservation` — a second, independent
+  defect: under Nat truncation the shares do not sum back to the weight
+  (2 + 2 ≠ 5). Exact conservation requires rationals. A correct damping
+  model therefore needs the rational/Float machinery the estate rejected
+  AND sacrifices append-monotonicity — two independent costs, one design.

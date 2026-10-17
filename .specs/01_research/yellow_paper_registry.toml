@@ -21,6 +21,8 @@ algorithms = ["ALG-REPO-ACCUMULATE-001", "ALG-REPO-TOPK-001"]
 theorems = ["THM-REPO-T1", "THM-REPO-T2", "THM-REPO-T3",
   # loop 3 it. 1 — attainment; it. 9 — damping decision recorded (YP-7)
   "THM-REPO-P4-ATTAINED",
+  # loop 4 it. 4 — structure-level anti-monotonicity + truncation defect
+  "THM-REPO-DAMPED-APPEND-LOWERS", "THM-REPO-DAMPED-TRUNCATION",
 ]
 test_vector_file = "test_vectors_capability.toml"
 constraints_file = "domain_constraints_security.toml"
