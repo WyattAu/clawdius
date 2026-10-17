@@ -9,7 +9,7 @@ total_papers = 26
 id = "YP-REPO-MAP-018"
 title = "Repo Map - Accumulation Is Monotone and Selection Is Sound"
 status = "APPROVED"
-version = "1.0.0"
+version = "1.1.0"
 created = "2026-10-15"
 author = "Loop"
 confidence_level = 0.93
@@ -18,7 +18,10 @@ tqa_level = 4
 [yellow_paper.scope]
 domain = "Software Engineering"
 algorithms = ["ALG-REPO-ACCUMULATE-001", "ALG-REPO-TOPK-001"]
-theorems = ["THM-REPO-T1", "THM-REPO-T2", "THM-REPO-T3"]
+theorems = ["THM-REPO-T1", "THM-REPO-T2", "THM-REPO-T3",
+  # loop 3 it. 1 — attainment; it. 9 — damping decision recorded (YP-7)
+  "THM-REPO-P4-ATTAINED",
+]
 test_vector_file = "test_vectors_capability.toml"
 constraints_file = "domain_constraints_security.toml"
 
