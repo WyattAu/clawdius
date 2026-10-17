@@ -238,42 +238,108 @@ terminal-adjacent pair (continuousMonitoring / knowledgeTransfer)
 recovers into each other — see the honest boundary in T3. -/
 def recover (p : Phase) : Phase :=
   match p with
+  | .archive => .archive
   | .continuousMonitoring => .knowledgeTransfer
   | .knowledgeTransfer => .continuousMonitoring
   | _ => .continuousMonitoring
 
-theorem recover_in_pair (p : Phase) :
+theorem recover_in_pair (p : Phase) (hne : p ≠ .archive) :
     recover p = .continuousMonitoring ∨ recover p = .knowledgeTransfer := by
-  cases p <;> simp [recover]
+  cases p with
+  | archive => exact absurd rfl hne
+  | continuousMonitoring => exact Or.inr rfl
+  | knowledgeTransfer => exact Or.inl rfl
+  | _ => exact Or.inl rfl
 
-theorem recover_ne_archive (p : Phase) : recover p ≠ .archive := by
-  cases p <;> simp [recover]
+/-- Archive is terminal under failures: a failed archive phase stays
+archived. For non-archive phases, recovery lands in the monitoring
+pair. -/
+theorem recover_ne_archive (p : Phase) (hne : p ≠ .archive) :
+    recover p ≠ .archive := by
+  cases p with
+  | archive => exact absurd rfl hne
+  | contextDiscovery => decide
+  | environmentMaterialization => decide
+  | requirementsEngineering => decide
+  | epistemologicalDiscovery => decide
+  | crossLingualIntegration => decide
+  | supplyChainHardening => decide
+  | architecture => decide
+  | concurrencyAnalysis => decide
+  | securityEngineering => decide
+  | resourceManagement => decide
+  | performanceEngineering => decide
+  | crossPlatformCompatibility => decide
+  | adversarialLoop => decide
+  | cicdEngineering => decide
+  | documentation => decide
+  | knowledgeBase => decide
+  | executionGraph => decide
+  | supplyMonitoring => decide
+  | deployment => decide
+  | operations => decide
+  | closure => decide
+  | continuousMonitoring => decide
+  | knowledgeTransfer => decide
 
 /-- The effective transition: normal `next`, falling back to recovery
 when the phase fails (terminal phases recover into the monitoring
 pair). -/
 def advance (p : Phase) : Phase := (next p).getD (recover p)
 
-/-- DEADLOCK-FREEDOM UNDER FAILURE: the effective transition is total
-and always yields a live phase — the run can never get stuck, even
-when phases fail. -/
-theorem always_progresses (p : Phase) :
+/-- DEADLOCK-FREEDOM UNDER FAILURE: every non-terminal phase either has
+a normal transition or recovers into the monitoring pair. (The archive
+phase is terminal: no progress obligation.) -/
+theorem always_progresses (p : Phase) (h : p ≠ .archive) :
     (next p).isSome = true ∨ recover p ≠ p := by
-  cases p <;> simp [next, recover] <;> rfl
+  cases p with
+  | archive => exact absurd h (by simp)
+  | _ => exact Or.inl rfl
+
+/-- Failure-interleaved step: `fails = true` routes through recovery. -/
+def stepF (fails : Bool) (p : Phase) : Phase :=
+  if fails then recover p else (next p).getD p
+
+/-- Bounded-failure iteration: the pipeline through a schedule of
+failures (`true` = the phase at that position failed). -/
+def nextIterF : List Bool → Phase → Phase
+  | [], p => p
+  | f :: rest, p => nextIterF rest (stepF f p)
+
+/-- T-budget (absorbing form): the archive phase is terminal under
+failures too — a failure at `archive` keeps the run archived (the
+un-archive defect of the first recovery draft is fixed). The numeric
+distance bound is deliberately omitted: recovery teleports to
+continuousMonitoring (distance 21), so a per-failure additive bound of
++21 would be FALSE for phases already closer to archive (e.g.
+operations, distance 19 → 21). The honest statements are:
+budget_absorbing here + recovery_reaches_archive below. -/
+theorem budget_absorbing (fails : List Bool) :
+    ∀ p : Phase, p = Phase.archive → nextIterF fails p = Phase.archive := by
+  intro p h
+  induction fails generalizing p h with
+  | nil => exact h
+  | cons f rest ih =>
+    cases f with
+    | true =>
+      show nextIterF rest (recover p) = Phase.archive
+      rw [h]
+      exact ih Phase.archive rfl
+    | false =>
+      show nextIterF rest ((next p).getD p) = Phase.archive
+      rw [h, next]
+      exact ih Phase.archive rfl
 
 /-- T3 (recovery is bounded): from every phase, ONE recovery step lands
 in the monitoring pair, and `archive` is reached within 2 further
 transitions — even if every remaining phase fails again. -/
 theorem recovery_reaches_archive (p : Phase) :
     ∃ n, nextIter n (recover p) = some .archive := by
-  have hpair := recover_in_pair p
-  rcases hpair with h | h
-  · refine ⟨2, ?_⟩
-    rw [h]
-    rfl
-  · refine ⟨1, ?_⟩
-    rw [h]
-    rfl
+  cases p with
+  | archive => exact ⟨0, rfl⟩
+  | knowledgeTransfer => exact ⟨2, rfl⟩
+  | continuousMonitoring => exact ⟨1, rfl⟩
+  | _ => exact ⟨2, rfl⟩
 
 /-- THE HONEST BOUNDARY (T3b): recovery is deadlock-free but NOT
 termination-preserving under unbounded failures — a failure at
