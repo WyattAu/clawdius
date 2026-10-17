@@ -78,6 +78,73 @@ fail loudly if the model drifts.
 - P3 (proved, T2): for every hardening value `h`, `blocked h
   .KernelExploit = false` — kernel-class risk requires a trust-boundary
   change (microVM), not more container options.
-- P4 (recorded, not asserted): microVM placement (Kata/Firecracker)
-  restores the 3-boundary structure; modeling that boundary is future
-  work (component COMP-SANDBOX-002).
+- P4 (proved, T4/T4a–e, loop 3 it. 4): microVM placement closes the
+  kernel class (`blockedWith h .microVM .KernelExploit = true`) because
+  the host kernel leaves the guest TCB — but it does **not** replace guest
+  hardening (T4c/T4c′: the misconfiguration verdict is unchanged), and it
+  **relocates** rather than removes the boundary: a VMM enters the TCB
+  (T4d). Syscall interception (gVisor) does **not** close the kernel
+  class (T4a) — reduced surface, same trust domain (T4e).
+
+## YP-6: The microVM boundary, modelled (loop 3, iteration 4)
+
+P3 established that the kernel class needs a trust-boundary *change*, and
+left P4 as a recorded-but-unasserted obligation. Iteration 4 discharged it
+by reading the three real isolation technologies instead of guessing at
+them — and they do not agree.
+
+### Sources
+
+- **NIST SP 800-190** (Application Container Security Guide, Sept 2017) —
+  container isolation "is not as high as that provided by hypervisors";
+  shared-kernel boundary sits below every software layer. (Basis of P3.)
+- **gVisor security model** (`gvisor.dev/docs/architecture_guide/security`)
+  — gVisor exists "to provide additional defense against the exploitation
+  of kernel bugs by untrusted userspace code". *Additional* defense, and
+  its FAQ treats VMs as a separate posture. Sentry reimplements the system
+  API in user space, but memory management is still delegated to the host
+  kernel: the host kernel remains in the TCB.
+- **Kata Containers architecture**
+  (`github.com/kata-containers/kata-containers/docs/design/architecture`)
+  — hardware virtualization is "a second layer of defence" on top of the
+  container. Containers still run inside the VM.
+- **Firecracker jailer** (`firecracker/docs/jailer.md`) — the jailer exists
+  to isolate *the Firecracker process itself* (chroot, cgroups, uid/gid,
+  netns, new PID namespace; statically linked musl build required, version
+  matched to the jailer).
+
+### The three classes
+
+| Class | Technology | Host kernel in guest TCB? | New TCB component |
+|-------|-----------|--------------------------|-------------------|
+| `sharedKernel` | runc/crun | yes | — |
+| `intercepted` | gVisor | **yes** (memory delegated) | Sentry |
+| `microVM` | Kata / Firecracker | no | VMM (jailed) |
+
+### Findings
+
+1. **gVisor is not a microVM** (T4a, T4e). Marketing groups it with
+   sandboxing, but it shares the trust outcome with a plain container:
+   `blockedWith h .intercepted .KernelExploit = false`. It reduces attack
+   surface; it does not create a trust domain.
+2. **A microVM closes the kernel class** (T4) — the first thing in this
+   component that blocks it.
+3. **A microVM does not replace hardening** (T4c/T4c′). Kata's own
+   framing is a *second layer*: the misconfiguration verdict is literally
+   unchanged (`rfl`), so shipping a microVM and dropping seccomp/caps would
+   regress the one class that is currently closed.
+4. **The boundary is relocated, not eliminated** (T4d). MicroVM removes the
+   host kernel from the TCB and adds the VMM. That is a trade, not a proof
+   of safety: the guarantee becomes "the VMM is small, jailed, and
+   auditable" (hence the jailer). Honest framing for the run manager: the
+   kernel-class risk is *relocated to a component we now must patch*, not
+   solved.
+
+### Spec defect found while proving this
+
+T1/T1a–d stated their preconditions as `h1 : h.noNewPrivileges` — a `Bool`
+*value*, not a proposition, so each precondition asserted nothing beyond
+the field itself. The proofs were still sound (a `false` layer cannot
+satisfy T1 — verified by probe), but the statements were opaque. Rewritten
+as explicit equations (`= true` / `= false`); same proofs, readable
+preconditions.

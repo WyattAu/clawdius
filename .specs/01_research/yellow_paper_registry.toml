@@ -105,7 +105,7 @@ blue_papers = ["BP-HOST-KERNEL-001"]
 id = "YP-CONTAINER-014"
 title = "Container — Defense-in-Depth Blocks Misconfiguration, Not the Kernel"
 status = "APPROVED"
-version = "1.0.0"
+version = "1.1.0"
 created = "2026-10-15"
 author = "Loop"
 confidence_level = 0.92
@@ -114,7 +114,12 @@ tqa_level = 4
 [yellow_paper.scope]
 domain = "Security"
 algorithms = ["ALG-CONT-LAYERING-001"]
-theorems = ["THM-CONT-T1", "THM-CONT-T1A", "THM-CONT-T2", "THM-CONT-T3"]
+theorems = [
+  "THM-CONT-T1", "THM-CONT-T1A", "THM-CONT-T2", "THM-CONT-T3",
+  # loop 3 it. 4 — microVM boundary (P4 discharged)
+  "THM-CONT-T4", "THM-CONT-T4A", "THM-CONT-T4B", "THM-CONT-T4C",
+  "THM-CONT-T4D", "THM-CONT-T4E",
+]
 test_vector_file = "test_vectors_capability.toml"
 constraints_file = "domain_constraints_security.toml"
 
