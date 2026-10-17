@@ -602,7 +602,7 @@ tqa_level = 4
 domain = "Security"
 algorithms = ["ALG-SEC-TIER-ISOLATION-001"]
 theorems = ["THM-TIER-T1", "THM-TIER-T2", "THM-TIER-T3", "THM-TIER-T4"]
-test_vector_file = "test_vectors_capability.toml"
+test_vector_file = "test_vectors_tier_isolation.toml"
 constraints_file = "domain_constraints_security.toml"
 
 [yellow_paper.dependencies]

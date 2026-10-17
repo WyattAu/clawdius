@@ -1,0 +1,374 @@
+# Test Vector Specification for the Sandbox Tier x Isolation Policy
+#
+# Mirrors selectTier in .specs/02_architecture/proofs/tier_isolation.lean
+# (YP-SECURITY-TIER-019). The proofs T1-T4 cover the constraint classes;
+# this table is the FULL 21-combination policy surface as data, for
+# external validation of any implementation (Rust tier selector, shell
+# policy check, etc).
+#
+# Toolchain names MUST match the Lean Toolchain constructors:
+#   rust, cpp, vulkan, nodeJs, python, ruby, llmReasoning
+# TrustLevel: trustedAudited, trusted, untrusted
+# Isolation: sharedKernel (host kernel in TCB), intercepted (host kernel
+#   in TCB — gVisor-class, reduced surface only), microVM (kernel closed)
+
+[metadata]
+algorithm_id = "ALG-SEC-TIER-ISOLATION-001"
+algorithm_version = "1.1.0"
+generation_date = "2026-10-17T17:30:00Z"
+generator = "manual"
+verification_status = "verified"
+
+[[test_vector]]
+id = "TV-TIER-001"
+name = "rust x trustedAudited -> tier1 (sharedKernel)"
+category = "nominal"
+priority = "normal"
+description = "Policy row: rust at trustedAudited trust lands in tier1 (sharedKernel)"
+
+[test_vector.input]
+toolchain = { type = "string", value = "rust" }
+trust = { type = "string", value = "trustedAudited" }
+
+[test_vector.expected_output]
+tier = { type = "string", value = "tier1" }
+isolation_class = { type = "string", value = "sharedKernel" }
+host_kernel_in_tcb = { type = "boolean", value = true }
+
+[[test_vector]]
+id = "TV-TIER-002"
+name = "rust x trusted -> tier4 (microVM)"
+category = "boundary"
+priority = "normal"
+description = "Policy row: rust at trusted trust lands in tier4 (microVM)"
+
+[test_vector.input]
+toolchain = { type = "string", value = "rust" }
+trust = { type = "string", value = "trusted" }
+
+[test_vector.expected_output]
+tier = { type = "string", value = "tier4" }
+isolation_class = { type = "string", value = "microVM" }
+host_kernel_in_tcb = { type = "boolean", value = false }
+
+[[test_vector]]
+id = "TV-TIER-003"
+name = "rust x untrusted -> tier4 (microVM)"
+category = "critical"
+priority = "critical"
+description = "Policy row: rust at untrusted trust lands in tier4 (microVM)"
+
+[test_vector.input]
+toolchain = { type = "string", value = "rust" }
+trust = { type = "string", value = "untrusted" }
+
+[test_vector.expected_output]
+tier = { type = "string", value = "tier4" }
+isolation_class = { type = "string", value = "microVM" }
+host_kernel_in_tcb = { type = "boolean", value = false }
+
+[test_vector.assertions]
+kernel_class_closed = true
+
+[[test_vector]]
+id = "TV-TIER-004"
+name = "cpp x trustedAudited -> tier1 (sharedKernel)"
+category = "nominal"
+priority = "normal"
+description = "Policy row: cpp at trustedAudited trust lands in tier1 (sharedKernel)"
+
+[test_vector.input]
+toolchain = { type = "string", value = "cpp" }
+trust = { type = "string", value = "trustedAudited" }
+
+[test_vector.expected_output]
+tier = { type = "string", value = "tier1" }
+isolation_class = { type = "string", value = "sharedKernel" }
+host_kernel_in_tcb = { type = "boolean", value = true }
+
+[[test_vector]]
+id = "TV-TIER-005"
+name = "cpp x trusted -> tier4 (microVM)"
+category = "boundary"
+priority = "normal"
+description = "Policy row: cpp at trusted trust lands in tier4 (microVM)"
+
+[test_vector.input]
+toolchain = { type = "string", value = "cpp" }
+trust = { type = "string", value = "trusted" }
+
+[test_vector.expected_output]
+tier = { type = "string", value = "tier4" }
+isolation_class = { type = "string", value = "microVM" }
+host_kernel_in_tcb = { type = "boolean", value = false }
+
+[[test_vector]]
+id = "TV-TIER-006"
+name = "cpp x untrusted -> tier4 (microVM)"
+category = "critical"
+priority = "critical"
+description = "Policy row: cpp at untrusted trust lands in tier4 (microVM)"
+
+[test_vector.input]
+toolchain = { type = "string", value = "cpp" }
+trust = { type = "string", value = "untrusted" }
+
+[test_vector.expected_output]
+tier = { type = "string", value = "tier4" }
+isolation_class = { type = "string", value = "microVM" }
+host_kernel_in_tcb = { type = "boolean", value = false }
+
+[test_vector.assertions]
+kernel_class_closed = true
+
+[[test_vector]]
+id = "TV-TIER-007"
+name = "vulkan x trustedAudited -> tier1 (sharedKernel)"
+category = "nominal"
+priority = "normal"
+description = "Policy row: vulkan at trustedAudited trust lands in tier1 (sharedKernel)"
+
+[test_vector.input]
+toolchain = { type = "string", value = "vulkan" }
+trust = { type = "string", value = "trustedAudited" }
+
+[test_vector.expected_output]
+tier = { type = "string", value = "tier1" }
+isolation_class = { type = "string", value = "sharedKernel" }
+host_kernel_in_tcb = { type = "boolean", value = true }
+
+[[test_vector]]
+id = "TV-TIER-008"
+name = "vulkan x trusted -> tier4 (microVM)"
+category = "boundary"
+priority = "normal"
+description = "Policy row: vulkan at trusted trust lands in tier4 (microVM)"
+
+[test_vector.input]
+toolchain = { type = "string", value = "vulkan" }
+trust = { type = "string", value = "trusted" }
+
+[test_vector.expected_output]
+tier = { type = "string", value = "tier4" }
+isolation_class = { type = "string", value = "microVM" }
+host_kernel_in_tcb = { type = "boolean", value = false }
+
+[[test_vector]]
+id = "TV-TIER-009"
+name = "vulkan x untrusted -> tier4 (microVM)"
+category = "critical"
+priority = "critical"
+description = "Policy row: vulkan at untrusted trust lands in tier4 (microVM)"
+
+[test_vector.input]
+toolchain = { type = "string", value = "vulkan" }
+trust = { type = "string", value = "untrusted" }
+
+[test_vector.expected_output]
+tier = { type = "string", value = "tier4" }
+isolation_class = { type = "string", value = "microVM" }
+host_kernel_in_tcb = { type = "boolean", value = false }
+
+[test_vector.assertions]
+kernel_class_closed = true
+
+[[test_vector]]
+id = "TV-TIER-010"
+name = "nodeJs x trustedAudited -> tier4 (microVM)"
+category = "nominal"
+priority = "normal"
+description = "Policy row: nodeJs at trustedAudited trust lands in tier4 (microVM)"
+
+[test_vector.input]
+toolchain = { type = "string", value = "nodeJs" }
+trust = { type = "string", value = "trustedAudited" }
+
+[test_vector.expected_output]
+tier = { type = "string", value = "tier4" }
+isolation_class = { type = "string", value = "microVM" }
+host_kernel_in_tcb = { type = "boolean", value = false }
+
+[[test_vector]]
+id = "TV-TIER-011"
+name = "nodeJs x trusted -> tier2 (sharedKernel)"
+category = "boundary"
+priority = "normal"
+description = "Policy row: nodeJs at trusted trust lands in tier2 (sharedKernel)"
+
+[test_vector.input]
+toolchain = { type = "string", value = "nodeJs" }
+trust = { type = "string", value = "trusted" }
+
+[test_vector.expected_output]
+tier = { type = "string", value = "tier2" }
+isolation_class = { type = "string", value = "sharedKernel" }
+host_kernel_in_tcb = { type = "boolean", value = true }
+
+[[test_vector]]
+id = "TV-TIER-012"
+name = "nodeJs x untrusted -> tier4 (microVM)"
+category = "critical"
+priority = "critical"
+description = "Policy row: nodeJs at untrusted trust lands in tier4 (microVM)"
+
+[test_vector.input]
+toolchain = { type = "string", value = "nodeJs" }
+trust = { type = "string", value = "untrusted" }
+
+[test_vector.expected_output]
+tier = { type = "string", value = "tier4" }
+isolation_class = { type = "string", value = "microVM" }
+host_kernel_in_tcb = { type = "boolean", value = false }
+
+[test_vector.assertions]
+kernel_class_closed = true
+
+[[test_vector]]
+id = "TV-TIER-013"
+name = "python x trustedAudited -> tier4 (microVM)"
+category = "nominal"
+priority = "normal"
+description = "Policy row: python at trustedAudited trust lands in tier4 (microVM)"
+
+[test_vector.input]
+toolchain = { type = "string", value = "python" }
+trust = { type = "string", value = "trustedAudited" }
+
+[test_vector.expected_output]
+tier = { type = "string", value = "tier4" }
+isolation_class = { type = "string", value = "microVM" }
+host_kernel_in_tcb = { type = "boolean", value = false }
+
+[[test_vector]]
+id = "TV-TIER-014"
+name = "python x trusted -> tier2 (sharedKernel)"
+category = "boundary"
+priority = "normal"
+description = "Policy row: python at trusted trust lands in tier2 (sharedKernel)"
+
+[test_vector.input]
+toolchain = { type = "string", value = "python" }
+trust = { type = "string", value = "trusted" }
+
+[test_vector.expected_output]
+tier = { type = "string", value = "tier2" }
+isolation_class = { type = "string", value = "sharedKernel" }
+host_kernel_in_tcb = { type = "boolean", value = true }
+
+[[test_vector]]
+id = "TV-TIER-015"
+name = "python x untrusted -> tier4 (microVM)"
+category = "critical"
+priority = "critical"
+description = "Policy row: python at untrusted trust lands in tier4 (microVM)"
+
+[test_vector.input]
+toolchain = { type = "string", value = "python" }
+trust = { type = "string", value = "untrusted" }
+
+[test_vector.expected_output]
+tier = { type = "string", value = "tier4" }
+isolation_class = { type = "string", value = "microVM" }
+host_kernel_in_tcb = { type = "boolean", value = false }
+
+[test_vector.assertions]
+kernel_class_closed = true
+
+[[test_vector]]
+id = "TV-TIER-016"
+name = "ruby x trustedAudited -> tier4 (microVM)"
+category = "nominal"
+priority = "normal"
+description = "Policy row: ruby at trustedAudited trust lands in tier4 (microVM)"
+
+[test_vector.input]
+toolchain = { type = "string", value = "ruby" }
+trust = { type = "string", value = "trustedAudited" }
+
+[test_vector.expected_output]
+tier = { type = "string", value = "tier4" }
+isolation_class = { type = "string", value = "microVM" }
+host_kernel_in_tcb = { type = "boolean", value = false }
+
+[[test_vector]]
+id = "TV-TIER-017"
+name = "ruby x trusted -> tier2 (sharedKernel)"
+category = "boundary"
+priority = "normal"
+description = "Policy row: ruby at trusted trust lands in tier2 (sharedKernel)"
+
+[test_vector.input]
+toolchain = { type = "string", value = "ruby" }
+trust = { type = "string", value = "trusted" }
+
+[test_vector.expected_output]
+tier = { type = "string", value = "tier2" }
+isolation_class = { type = "string", value = "sharedKernel" }
+host_kernel_in_tcb = { type = "boolean", value = true }
+
+[[test_vector]]
+id = "TV-TIER-018"
+name = "ruby x untrusted -> tier4 (microVM)"
+category = "critical"
+priority = "critical"
+description = "Policy row: ruby at untrusted trust lands in tier4 (microVM)"
+
+[test_vector.input]
+toolchain = { type = "string", value = "ruby" }
+trust = { type = "string", value = "untrusted" }
+
+[test_vector.expected_output]
+tier = { type = "string", value = "tier4" }
+isolation_class = { type = "string", value = "microVM" }
+host_kernel_in_tcb = { type = "boolean", value = false }
+
+[test_vector.assertions]
+kernel_class_closed = true
+
+[[test_vector]]
+id = "TV-TIER-019"
+name = "llmReasoning x trustedAudited -> tier3 (intercepted)"
+category = "boundary"
+priority = "critical"
+description = "Policy row: llmReasoning at trustedAudited trust lands in tier3 (intercepted)"
+
+[test_vector.input]
+toolchain = { type = "string", value = "llmReasoning" }
+trust = { type = "string", value = "trustedAudited" }
+
+[test_vector.expected_output]
+tier = { type = "string", value = "tier3" }
+isolation_class = { type = "string", value = "intercepted" }
+host_kernel_in_tcb = { type = "boolean", value = true }
+
+[[test_vector]]
+id = "TV-TIER-020"
+name = "llmReasoning x trusted -> tier3 (intercepted)"
+category = "boundary"
+priority = "critical"
+description = "Policy row: llmReasoning at trusted trust lands in tier3 (intercepted)"
+
+[test_vector.input]
+toolchain = { type = "string", value = "llmReasoning" }
+trust = { type = "string", value = "trusted" }
+
+[test_vector.expected_output]
+tier = { type = "string", value = "tier3" }
+isolation_class = { type = "string", value = "intercepted" }
+host_kernel_in_tcb = { type = "boolean", value = true }
+
+[[test_vector]]
+id = "TV-TIER-021"
+name = "llmReasoning x untrusted -> tier3 (intercepted)"
+category = "boundary"
+priority = "critical"
+description = "Policy row: llmReasoning at untrusted trust lands in tier3 (intercepted)"
+
+[test_vector.input]
+toolchain = { type = "string", value = "llmReasoning" }
+trust = { type = "string", value = "untrusted" }
+
+[test_vector.expected_output]
+tier = { type = "string", value = "tier3" }
+isolation_class = { type = "string", value = "intercepted" }
+host_kernel_in_tcb = { type = "boolean", value = true }
