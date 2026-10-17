@@ -5,9 +5,10 @@ defaultTargets = [
   "ProofRepoMapScoring", "ProofSanitizerSoundness", "ProofSecurityPolicy",
   "ProofTokenBudgetScan", "ProofVfsSafety",
   "ProofAudit", "ProofCapability", "ProofContainer", "ProofFsm",
-  "ProofHost", "ProofRingBuffer", "ProofSandbox",
-  "ProofSandboxExtended", "ProofRpc", "ProofRingBufferExtended", "ProofCache",
-  "ProofSymbolIndex", "ProofGatewayRouting",
+  "ProofHost",
+  "ProofSandboxExtended", "ProofSandboxPolicy", "ProofRpc",
+  "ProofRingBufferExtended", "ProofCache", "ProofSymbolIndex",
+  "ProofGatewayRouting",
 ]
 
 [[lean_lib]]
@@ -75,23 +76,18 @@ roots = ["fsm"]
 
 [[lean_lib]]
 name = "ProofHost"
-srcDir = ".clawdius/specs/02_architecture/proofs"
-roots = ["proof_host"]
-
-[[lean_lib]]
-name = "ProofRingBuffer"
-srcDir = ".clawdius/specs/02_architecture/proofs"
-roots = ["proof_ring_buffer"]
-
-[[lean_lib]]
-name = "ProofSandbox"
-srcDir = ".clawdius/specs/02_architecture/proofs"
-roots = ["proof_sandbox"]
+srcDir = ".specs/02_architecture/proofs"
+roots = ["host"]
 
 [[lean_lib]]
 name = "ProofSandboxExtended"
 srcDir = ".specs/02_architecture/proofs"
 roots = ["proof_sandbox_extended"]
+
+[[lean_lib]]
+name = "ProofSandboxPolicy"
+srcDir = ".specs/02_architecture/proofs"
+roots = ["sandbox_policy"]
 
 [[lean_lib]]
 name = "ProofRpc"
