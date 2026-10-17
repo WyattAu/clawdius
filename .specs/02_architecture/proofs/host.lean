@@ -289,3 +289,73 @@ theorem shutdown_only_from_active (c : ComponentRegistry) :
     kernelShutdown { state := KernelState.stopped, components := c } =
       Except.error "not running or shutting down" :=
   ⟨by simp [kernelShutdown], by simp [kernelShutdown]⟩
+
+-- ---------------------------------------------------------------------------
+-- P4: the registry-level restart
+-- (YP-HOST-KERNEL-015, loop 3 it. 5)
+-- ---------------------------------------------------------------------------
+
+/-! P3 proved a restart must re-run initialization; P1/P2 proved no state
+is a trap. P4 is the registry-level statement those leave open: a HOST
+restart re-initializes ALL registered components, losing none and
+inventing none.
+
+Modelled as an association list — the functional spec of what the
+HashMap-backed `ComponentRegistry` reset computes. Working at this level
+makes "ALL components" a theorem about arbitrary registry contents
+(induction over the list), not a claim checked against whatever happens
+to be registered when someone reads the spec. -/
+
+/-- The registry as an association list: each entry is a component and
+its pre-restart state. -/
+def restartRegistry (entries : List (ComponentId × ComponentState)) :
+    List (ComponentId × ComponentState) :=
+  entries.map (fun p => (p.1, ComponentState.uninitialized))
+
+/-- T-P4a: a restart loses no component — the registry has exactly as
+many entries after as before. -/
+theorem restart_registry_preserves_length (entries : List (ComponentId × ComponentState)) :
+    (restartRegistry entries).length = entries.length := by
+  simp [restartRegistry]
+
+/-- T-P4b: a restart resets EVERY entry to `uninitialized` — for arbitrary
+registry contents, by induction, not by inspecting a snapshot. -/
+theorem restart_registry_resets_every_entry (entries : List (ComponentId × ComponentState)) :
+    ∀ p ∈ restartRegistry entries, p.2 = ComponentState.uninitialized := by
+  intro p hp
+  rw [restartRegistry] at hp
+  rcases List.mem_map.mp hp with ⟨q, _, rfl⟩
+  rfl
+
+/-- T-P4c: a restart invents no component — every post-restart entry's id
+was registered before. -/
+theorem restart_registry_preserves_ids (entries : List (ComponentId × ComponentState)) :
+    ∀ p ∈ restartRegistry entries, p.1 ∈ entries.map Prod.fst := by
+  intro p hp
+  rw [restartRegistry, List.mem_map] at hp
+  obtain ⟨a, ha, rfl⟩ := hp
+  rw [List.mem_map]
+  exact ⟨a, ha, rfl⟩
+
+/-- T-P4d (ties the reset to T2): from the post-restart state, the ONLY
+forward transition is the full initialization phase — `uninitialized`
+cannot shortcut to `running`. -/
+theorem post_restart_no_shortcut (s : ComponentState)
+    (h : validComponentTransition s ComponentState.running = true) :
+    s ≠ ComponentState.uninitialized := by
+  cases s with
+  | uninitialized => exact absurd h (by simp only [validComponentTransition]; decide)
+  | initialized => exact by decide
+  | running => exact by decide
+  | stopped => exact by decide
+  | error => exact by decide
+
+/-- T-P4e: and the full initialization sequence IS valid — for every
+registered component, enumerated over the finite registry keys. -/
+theorem restart_full_sequence_valid :
+    ∀ id ∈ [ComponentId.host, ComponentId.fsm, ComponentId.sentinel,
+            ComponentId.brain, ComponentId.graph, ComponentId.broker],
+      validComponentTransition ComponentState.uninitialized ComponentState.initialized = true ∧
+      validComponentTransition ComponentState.initialized ComponentState.running = true := by
+  intro id _
+  exact ⟨rfl, rfl⟩

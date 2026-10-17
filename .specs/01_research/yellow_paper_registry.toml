@@ -81,7 +81,7 @@ blue_papers = ["BP-NEXUS-FSM-001"]
 id = "YP-HOST-KERNEL-015"
 title = "Host — Crash-Only Redesign of the Lifecycle Model"
 status = "APPROVED"
-version = "1.0.0"
+version = "1.1.0"
 created = "2026-10-15"
 author = "Loop"
 confidence_level = 0.94
@@ -90,7 +90,11 @@ tqa_level = 4
 [yellow_paper.scope]
 domain = "Software Engineering"
 algorithms = ["ALG-HOST-RESTART-001"]
-theorems = ["THM-HOST-T1", "THM-HOST-T1C", "THM-HOST-T2"]
+theorems = [
+  "THM-HOST-T1", "THM-HOST-T1C", "THM-HOST-T2",
+  # loop 3 it. 5 — registry-level restart (P4 discharged)
+  "THM-HOST-T4A", "THM-HOST-T4B", "THM-HOST-T4C", "THM-HOST-T4D", "THM-HOST-T4E",
+]
 test_vector_file = "test_vectors_fsm.toml"
 constraints_file = "domain_constraints_performance.toml"
 

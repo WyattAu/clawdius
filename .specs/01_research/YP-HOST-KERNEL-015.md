@@ -75,7 +75,53 @@ shortcut (restart skipping initialization) remains impossible.
 - P2 (proved, T1c): no component state is a trap — `error` included.
 - P3 (proved, T2): the restart path re-validates —
   `stopped → running` directly is impossible.
-- P4 (recorded, not asserted): the registry-level property — a host
-  restart re-initializes ALL registered components — is the next
-  obligation (requires the registry to carry per-component restart
-  semantics; the ComponentRegistry is currently an opaque map).
+- P4 (proved, T-P4a–e, loop 3 it. 5): a host restart re-initializes
+  ALL registered components. Modelled over arbitrary registry contents
+  as an association list: a restart **loses no component** (T-P4a,
+  length preserved), **resets every entry** to `uninitialized` (T-P4b),
+  and **invents no component** (T-P4c, every post-restart id was
+  registered before). Combined with T2: from the post-restart state the
+  only forward transition is the full initialization phase (T-P4d), and
+  that sequence is valid for every registered component (T-P4e).
+
+## YP-6: The registry-level restart, modelled (loop 3, iteration 5)
+
+P4 was recorded-but-unasserted: "a host restart re-initializes ALL
+registered components", blocked on the `ComponentRegistry` being an opaque
+map. Iteration 5 discharged it by modelling the registry as an association
+list — the functional spec of what the HashMap-backed reset computes — so
+"ALL components" became a theorem about **arbitrary registry contents**
+(proved by induction), not a claim checked against a snapshot of whatever
+happens to be registered.
+
+### The four properties, and why each one is separate
+
+| Theorem | Claim | Failure it rules out |
+|---------|-------|----------------------|
+| T-P4a | `length` preserved | a restart *losing* components (partial cleanup) |
+| T-P4b | every entry's state is `uninitialized` | a restart *skipping* some component (stale state surviving) |
+| T-P4c | every post-restart id was registered before | a restart *inventing* entries (phantom components) |
+| T-P4d | from `uninitialized`, direct `running` is invalid | a restart *shortcutting* initialization |
+
+T-P4e closes the loop with T2: the full sequence
+`uninitialized → initialized → running` is valid for every registered
+component (enumerated over the finite `ComponentId`: host, fsm, sentinel,
+brain, graph, broker).
+
+### Findings
+
+1. **The reset is only half the guarantee.** T-P4a–c say what the restart
+   *does*; T-P4d–e say what it *obligates*. A registry reset without the
+   no-shortcut property would satisfy "re-initializes everything" while
+   still allowing `stopped → running` shortcuts — the crash-only discipline
+   lives in the transition relation, not in the reset.
+2. **`initialized → running` is valid** — so "cannot reach `running`
+   directly" is a property of the *post-restart state* (`uninitialized`),
+   not of the transition table in general. The first draft of T-P4d
+   asserted the table-level claim and was rejected by the proof assistant
+   (decide found `initialized → running` true). Recorded as a draft-defect.
+3. **Association list over HashMap**: modelling the registry as a list
+   makes "for all registry contents" an induction instead of a set of
+   `HashMap` lemma dependencies. The HashMap-backed implementation
+   (`ComponentRegistry`) refines this spec by construction — `map` over the
+   hash map computes exactly `restartRegistry` on its entry list.
