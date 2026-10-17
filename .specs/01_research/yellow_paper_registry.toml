@@ -589,6 +589,30 @@ blue_papers = []
 proof_files = ["vfs_safety.lean"]
 
 [[yellow_paper]]
+id = "YP-SECURITY-TIER-019"
+title = "Sandbox Tier × Isolation Class — the Policy Must Not Claim What the Boundary Does Not Deliver"
+status = "APPROVED"
+version = "1.0.0"
+created = "2026-10-17"
+author = "Loop"
+confidence_level = 0.93
+tqa_level = 4
+
+[yellow_paper.scope]
+domain = "Security"
+algorithms = ["ALG-SEC-TIER-ISOLATION-001"]
+theorems = ["THM-TIER-T1", "THM-TIER-T2", "THM-TIER-T3", "THM-TIER-T4"]
+test_vector_file = "test_vectors_capability.toml"
+constraints_file = "domain_constraints_security.toml"
+
+[yellow_paper.dependencies]
+axioms_from = []
+lemmas_from = ["YP-CONTAINER-014", "YP-SECURITY-POLICY-011"]
+
+[yellow_paper.consumers]
+blue_papers = ["BP-SANDBOX-TIERS-001"]
+
+[[yellow_paper]]
 id = "YP-AGENT-THINK-ONLY-009"
 title = "Thought-Only Runs — Non-Termination by Design"
 status = "APPROVED"

@@ -6,8 +6,8 @@ defaultTargets = [
   "ProofTokenBudgetScan", "ProofVfsSafety",
   "ProofAudit", "ProofCapability", "ProofContainer", "ProofFsm",
   "ProofHost",
-  "ProofSandboxExtended", "ProofSandboxPolicy", "ProofRpc",
-  "ProofRingBufferExtended", "ProofCache", "ProofSymbolIndex",
+  "ProofSandboxExtended", "ProofSandboxPolicy", "ProofTierIsolation",
+  "ProofRpc", "ProofRingBufferExtended", "ProofCache", "ProofSymbolIndex",
   "ProofGatewayRouting",
 ]
 
@@ -88,6 +88,11 @@ roots = ["proof_sandbox_extended"]
 name = "ProofSandboxPolicy"
 srcDir = ".specs/02_architecture/proofs"
 roots = ["sandbox_policy"]
+
+[[lean_lib]]
+name = "ProofTierIsolation"
+srcDir = ".specs/02_architecture/proofs"
+roots = ["tier_isolation"]
 
 [[lean_lib]]
 name = "ProofRpc"
