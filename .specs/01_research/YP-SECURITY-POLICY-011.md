@@ -67,7 +67,53 @@ expressed lexically) are the new artifacts.
   character-prefix check passes and containment fails.
 - P2 (proved, T1): floor-clamped normalization is closed under appends —
   no suffix can pop a contained path out of the workspace.
-- P3 (recorded, not asserted): the *first* `floor` components of the
-  normalized result equal the workspace components exactly
-  (component-identity closure — stronger than the length form of T1;
-  next iteration's work).
+- P3 (proved, `normalized_prefix_is_workspace` + the root invariant,
+  loop 3 it. 6): for a file inside the workspace — `f = d ++ rest` — the
+  first `|d|` components of the normalized path are EXACTLY `d`
+  (component-identity closure). Witnessed from below:
+  `unclamped_prefix_escapes` — at `floor = 0` the same walk eats into the
+  workspace prefix; the clamp is the entire content of P3.
+
+## YP-6: Component-identity closure, modelled (loop 3, iteration 6)
+
+P1 was the falsifiable witness (the character-prefix model is unsound); T1
+was the length form of the fix. P3 — recorded last loop — is the identity
+form: not "at least |workspace| components" but "THE workspace components,
+in order".
+
+### The lemma chain (each one forced by the one before it)
+
+1. `normAuxWithin_composition` — walking `p ++ q` is walking `p` then `q`
+   with the stack threaded through. Needed to split the file path into
+   workspace + remainder.
+2. `normAuxWithin_all_push` — a walk with no `..` is a pure push sequence:
+   the result is `p.reverse ++ acc`. (First draft had the orientation
+   backwards — `acc ++ p.reverse` — and a concrete evaluation killed it:
+   push PREPENDS, so the deepest component ends up at the head.)
+3. `normAuxWithin_root_invariant` — THE heart: for any walk and any
+   starting stack with `floor ≤ |acc|`, the last `floor` stack elements
+   are unchanged. Pops are clamped above the root; pushes grow below it.
+   This is chroot semantics stated as an invariant instead of a promise.
+4. `normalized_prefix_is_workspace` (P3) — combine 1–3: the normalized
+   file's first `|d|` components equal `d`.
+5. `unclamped_prefix_escapes` — the counter-witness: at `floor = 0` the
+   same walk removes a workspace component. P3 without the clamp is FALSE,
+   so the clamp is the entire content of the property.
+
+### Findings
+
+1. **The accumulator orientation is the whole proof.** `normAuxWithin`
+   stores the stack deepest-first (push prepends); the workspace prefix
+   therefore lives at the stack's *tail*, and the invariant is a
+   `take`-on-the-reversed-stack statement. The first draft of the
+   invariant used `take` directly and failed against the pop case
+   (`acc.tail` removes the head — the deepest component — never the
+   workspace root).
+2. **CI-grade honesty on the witness**: P3 is stated WITH its
+   counter-witness in the same commit (`unclamped_prefix_escapes`), so the
+   property cannot quietly drift into "true because we said so" — remove
+   the clamp and a machine-checked escape exists.
+3. `List.take_append_of_le_left` changed names across core releases; the
+   needed lemma is restated locally as `take_append_last` with its own
+   proof, so this file no longer depends on which core release supplied
+   which name.

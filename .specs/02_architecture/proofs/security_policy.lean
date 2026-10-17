@@ -317,3 +317,135 @@ theorem normAuxWithin_floor_lemma (floor : Nat) (r acc : List Nat)
         exact ih ((n + 1) :: a :: tl) (by rw [List.length_cons]; omega)
 
 
+
+-- ---------------------------------------------------------------------------
+-- P3: component-identity closure (YP-SECURITY-POLICY-011, loop 3 it. 6)
+-- ---------------------------------------------------------------------------
+
+/-! T1 proved the LENGTH form: a contained path normalizes to at least
+|workspace| components. P3 is the stronger IDENTITY form: for a file
+inside the workspace, the first |workspace| components of the normalized
+path ARE the workspace components — same components, same order. A length
+bound is satisfied by any sibling with a long enough name in this lexical
+model; component identity is not.
+
+The accumulator in `normAuxWithin` is a stack stored deepest-first (push
+prepends, pop removes the head), so "the workspace-root prefix survives"
+is a statement about the LAST `floor` stack elements — i.e.
+`(stack.reverse).take floor` after the final reverse. -/
+
+/-- Taking `n` from a list with one extra element appended leaves the
+first `n` untouched, provided they were already there. (Core's
+append-take lemmas changed names across releases; this one is stated
+locally so the proof below does not depend on which release we are on.) -/
+theorem take_append_last (n : Nat) (l : List Nat) (a : Nat) (h : n ≤ l.length) :
+    (l ++ [a]).take n = l.take n := by
+  induction l generalizing n with
+  | nil =>
+    cases n with
+    | zero => rfl
+    | succ m => exact absurd h (by simp)
+  | cons b tl ih =>
+    cases n with
+    | zero => rfl
+    | succ m =>
+      have h' : m ≤ tl.length := by
+        have h3 : (b :: tl).length = tl.length + 1 := rfl
+        omega
+      show b :: ((tl ++ [a]).take m) = b :: tl.take m
+      rw [ih m h']
+
+/-- Normalization composes: walking `p ++ q` is walking `p` then `q`,
+with the stack threaded through. -/
+theorem normAuxWithin_composition (floor : Nat) (p q acc : List Nat) :
+    normAuxWithin floor (p ++ q) acc
+      = normAuxWithin floor q (normAuxWithin floor p acc) := by
+  induction p generalizing acc with
+  | nil => rfl
+  | cons c rest ih =>
+    rw [List.cons_append]
+    cases c with
+    | zero => rw [normAuxWithin_zero]; exact ih (popWithin floor acc)
+    | succ n =>
+      rw [normAuxWithin_cons (hc := by simp)]
+      exact ih ((n + 1) :: acc)
+
+/-- A walk with no `..` components (no zeroes) is a pure push sequence:
+the result is the stack followed by the reversed input. -/
+theorem normAuxWithin_all_push (floor : Nat) (p acc : List Nat)
+    (h : ∀ c ∈ p, c ≠ 0) :
+    normAuxWithin floor p acc = p.reverse ++ acc := by
+  induction p generalizing acc with
+  | nil => simp [normAuxWithin_nil]
+  | cons c rest ih =>
+    have hc : c ≠ 0 := h c (by simp)
+    have hrest : ∀ x ∈ rest, x ≠ 0 := fun x hx =>
+      h x (List.mem_cons_of_mem c hx)
+    rw [normAuxWithin_cons (hc := hc), ih (c :: acc) hrest, List.reverse_cons,
+      List.append_assoc, List.cons_append, List.nil_append]
+
+/-- THE ROOT INVARIANT (the heart of P3): normalization never alters the
+workspace-root suffix of the stack — pops are clamped above it, pushes
+grow below it. Expressed on the reversed stack: the first `floor`
+document-order components are the ones the walk started with. -/
+theorem normAuxWithin_root_invariant (floor : Nat) (p acc : List Nat)
+    (h : floor ≤ acc.length) :
+    (normAuxWithin floor p acc).reverse.take floor = acc.reverse.take floor := by
+  induction p generalizing acc with
+  | nil => rfl
+  | cons c rest ih =>
+    cases c with
+    | zero =>
+      rw [normAuxWithin_zero]
+      cases acc with
+      | nil =>
+        have h0 : floor = 0 := by
+          have h2 := h
+          simp only [List.length_nil] at h2
+          omega
+        subst h0
+        simp
+      | cons a tl =>
+        rw [popWithin_cons]
+        by_cases hlt : floor < (a :: tl).length
+        · rw [if_pos hlt]
+          have h1 : floor ≤ tl.length := by
+            have h2 : tl.length + 1 = (a :: tl).length := rfl
+            omega
+          rw [ih tl h1, List.reverse_cons, take_append_last floor tl.reverse a
+            (by simpa using h1)]
+        · rw [if_neg hlt, ih (a :: tl) h]
+    | succ n =>
+      have h' : floor ≤ ((n + 1) :: acc).length := by
+        rw [List.length_cons]; omega
+      rw [normAuxWithin_cons (hc := by simp), ih ((n + 1) :: acc) h',
+        List.reverse_cons, take_append_last floor acc.reverse (n + 1)
+        (by simpa using h)]
+
+/-- P3 (component-identity closure): a file inside the workspace —
+`f = d ++ rest` — normalizes to a path whose first `|d|` components are
+EXACTLY `d`. Containment is component-exact: not "long enough" (T1) but
+"the same components, in the same order". -/
+theorem normalized_prefix_is_workspace (d rest : List Nat)
+    (hd : ∀ c ∈ d, c ≠ 0) :
+    (normalizeWithin d.length (d ++ rest)).take d.length = d := by
+  have hcomp := normAuxWithin_composition d.length d rest []
+  have hpush := normAuxWithin_all_push d.length d [] hd
+  rw [normalizeWithin, hcomp, hpush, List.append_nil]
+  have hin : d.length ≤ d.reverse.length := by simp
+  have hinv := normAuxWithin_root_invariant d.length rest d.reverse hin
+  rw [hinv, List.reverse_reverse, List.take_length]
+
+/-- THE P3 WITNESS: without the floor clamp, the same walk eats into the
+workspace prefix. `d = [1,1]` with a single `..`: at `floor = 0` the pop
+removes a workspace component and closure FAILS; at `floor = |d|` the pop
+is clamped and closure holds. The clamp is not decoration — it is the
+entire content of P3. -/
+theorem unclamped_prefix_escapes :
+    ∃ d rest : List Nat,
+      (∀ c ∈ d, c ≠ 0) ∧
+      (normalizeWithin 0 (d ++ rest)).take d.length ≠ d ∧
+      (normalizeWithin d.length (d ++ rest)).take d.length = d :=
+  ⟨[1, 1], [0], by simp, by native_decide, by
+    have := normalized_prefix_is_workspace [1, 1] [0] (by simp)
+    exact this⟩
