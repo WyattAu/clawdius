@@ -185,4 +185,29 @@ theorem best_scores_dominate (scores : List Nat) :
       have := ih h
       exact Nat.le_trans this (Nat.le_max_right _ _)
 
+/-- P4 (ATTAINMENT): the maximum is attained by a real symbol — the
+top-1 selection is not synthetic. Induction: either the tail's best is
+bounded by the head (head attains), or the tail is non-empty and its
+maximum is attained by the induction hypothesis. -/
+theorem best_attained (scores : List Nat) (hne : scores ≠ []) :
+    ∃ s, s ∈ scores ∧ s = bestScore scores := by
+  induction scores with
+  | nil => exact absurd rfl hne
+  | cons a t ih =>
+    unfold bestScore at *
+    by_cases h : t.foldr max 0 ≤ a
+    · refine ⟨a, List.mem_cons_self, ?_⟩
+      simp only [List.foldr_cons]
+      rw [Nat.max_eq_left h]
+    · have ht : t ≠ [] := by
+        intro hnil
+        rw [hnil] at h
+        simp at h
+      obtain ⟨s, hs_mem, hs_eq⟩ := ih ht
+      have hle : a ≤ List.foldr max 0 t := Nat.le_of_lt (by omega)
+      refine ⟨s, List.mem_cons_of_mem _ hs_mem, ?_⟩
+      simp only [List.foldr_cons]
+      rw [hs_eq, Nat.max_comm]
+      exact (Nat.max_eq_left hle).symm
+
 end RepoMapScoring
