@@ -191,7 +191,7 @@ blue_papers = ["BP-SECURITY-CAPABILITY-001"]
 id = "YP-SECURITY-POLICY-011"
 title = "Security Policy — String Prefixes Are Not Path Containment"
 status = "APPROVED"
-version = "1.1.0"
+version = "1.2.0"
 created = "2026-10-14"
 author = "Loop"
 confidence_level = 0.92
@@ -204,6 +204,9 @@ theorems = [
   "THM-SEC-T0", "THM-SEC-T1",
   # loop 3 it. 6 — component-identity closure (P3 discharged)
   "THM-SEC-P3", "THM-SEC-P3-ROOT-INV", "THM-SEC-P3-WITNESS",
+  # loop 4 it. 5 — invariant ledger (SecurityInvariants lie replaced)
+  "THM-SEC-LEDGER-TOTALITY", "THM-SEC-LEDGER-EXHAUSTIVE",
+  "THM-SEC-LEDGER-SECRET-ISOLATION",
 ]
 test_vector_file = "test_vectors_capability.toml"
 constraints_file = "domain_constraints_security.toml"

@@ -117,3 +117,35 @@ in order".
    needed lemma is restated locally as `take_append_last` with its own
    proof, so this file no longer depends on which core release supplied
    which name.
+
+## YP-8: The invariant ledger (loop 4, iteration 5)
+
+The legacy sandbox spec carried a `SecurityInvariants` record: four Prop
+fields, all inhabited by `True`. A record of True props asserts nothing —
+it is the type-level version of "trust me", and it predated every proof
+in this tree.
+
+Replaced by `invariant_ledger.lean`: an invariant ledger where each of
+the four legacy slots is bound to the canonical proof that discharges it
+(`capability.lean : unforgeability`, `capability.lean :
+attenuation_only_sound`, `sandbox_policy.lean : forbidden_key_detected`,
+`security_policy.lean : validate_path_rejects_traversal`), with two
+structural theorems:
+
+- **T-ledger-totality**: every slot is discharged by a NON-EMPTY named
+  witness. Adding a slot without its discharger is a compile error (the
+  match becomes non-exhaustive).
+- **T-ledger-exhaustiveness**: no invariant slot exists outside the
+  ledger. Dropping a slot silently is impossible — `Slot` IS the legacy
+  field list.
+
+The secretIsolation slot is demonstrated at full strength in the ledger
+file: detection implies the credential-class disjunction, proved in-file.
+
+### Design rule this establishes
+
+An invariant record must carry PROOFS, not `True`s. A record of True
+props is the type-level version of "trust me" — and it predated every
+proof in this tree. Any future invariant slot follows the ledger
+pattern: add to `Slot`, add its discharger, prove the discharger's
+target exists.

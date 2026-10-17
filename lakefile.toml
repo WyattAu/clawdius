@@ -7,6 +7,7 @@ defaultTargets = [
   "ProofAudit", "ProofCapability", "ProofContainer", "ProofFsm",
   "ProofHost",
   "ProofSandboxExtended", "ProofSandboxPolicy", "ProofTierIsolation",
+  "ProofInvariantLedger",
   "ProofRpc", "ProofRingBufferExtended", "ProofCache", "ProofSymbolIndex",
   "ProofGatewayRouting",
 ]
@@ -93,6 +94,11 @@ roots = ["sandbox_policy"]
 name = "ProofTierIsolation"
 srcDir = ".specs/02_architecture/proofs"
 roots = ["tier_isolation"]
+
+[[lean_lib]]
+name = "ProofInvariantLedger"
+srcDir = ".specs/02_architecture/proofs"
+roots = ["invariant_ledger"]
 
 [[lean_lib]]
 name = "ProofRpc"
