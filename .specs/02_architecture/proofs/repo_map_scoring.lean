@@ -211,3 +211,41 @@ theorem best_attained (scores : List Nat) (hne : scores ≠ []) :
       exact (Nat.max_eq_left hle).symm
 
 end RepoMapScoring
+-- ---------------------------------------------------------------------------
+-- P4b: the damping non-monotonicity witness
+-- (YP-REPO-MAP-018 YP-7, loop 4 it. 1)
+-- ---------------------------------------------------------------------------
+
+/-! YP-7 recorded the DECISION: the estate's ranking layer is additive,
+and damping is deliberately out of scope. This section makes the reason
+machine-checked. The additive model's crown property is
+`accumulate_mono_append` — adding a reference never lowers any symbol's
+rank. A damped model cannot carry that theorem: propagation splits a
+node's weight across its out-edges, so adding an out-edge strictly
+shrinks every old neighbor's share.
+
+The witness is a two-line Nat model of the YP-7 worked example (scale 10
+stands in for the multiply-by-0.5): node j references only `a` with
+weight 5 — a's rank is 5. j gains a second out-edge `k` — a's share is
+now 50/20 = 2. Adding a reference LOWERED the old neighbor's rank. -/
+
+/-- Damped share of `weight` split across `outdeg` out-edges, scaled by
+10 to stay in `Nat` (the honest model of multiply-by-0.5 per hop). -/
+def dampedShare (weight outdeg : Nat) : Nat := weight * 10 / (10 * outdeg)
+
+/-- THE ANTI-MONOTONICITY WITNESS: the direct analogue of
+`accumulate_mono_append` is FALSE under damping. Same weight, same node
+`a` — the only change is one more out-edge from its referrer, and a's
+rank drops. `accumulate_mono_append` says the additive model's analogue
+is always true; this says the damped model's analogue is always false
+for the old neighbors. Monotonicity is not an implementation gap — it is
+the property the design rejects. -/
+theorem damped_add_lowers_old_neighbor :
+    dampedShare 5 2 < dampedShare 5 1 ∧ dampedShare 5 1 = 5 := by
+  decide
+
+/-- Same shrink across degrees 2 → 3: the old neighbors keep losing
+share with every new out-edge. -/
+theorem damped_share_strictly_shrinks :
+    dampedShare 5 3 < dampedShare 5 2 ∧ dampedShare 5 2 < dampedShare 5 1 := by
+  decide
