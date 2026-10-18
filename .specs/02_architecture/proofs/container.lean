@@ -133,21 +133,18 @@ theorem hardened_blocks_misconfig (h : Hardening)
 
 /-- T1a-d (per-layer necessity): removing ANY single layer reopens the
 misconfiguration class — the layers compose, none is redundant. -/
-theorem layer_noNewPrivileges_necessary (h : Hardening) (hne : h.noNewPrivileges = false)
-    (h2 : h.readOnlyRoot = true) (h3 : h.capsDropped = true)
-    (h4 : h.seccompSet = true) :
+theorem layer_noNewPrivileges_necessary (h : Hardening)
+    (hne : h.noNewPrivileges = false) :
     blocked h .Misconfig = false := by
   simp [blocked, hne]
 
 theorem layer_readOnlyRoot_necessary (h : Hardening) (h1 : h.noNewPrivileges = true)
-    (hne : h.readOnlyRoot = false) (h3 : h.capsDropped = true)
-    (h4 : h.seccompSet = true) :
+    (hne : h.readOnlyRoot = false) :
     blocked h .Misconfig = false := by
   simp [blocked, h1, hne]
 
 theorem layer_capsDropped_necessary (h : Hardening) (h1 : h.noNewPrivileges = true)
-    (h2 : h.readOnlyRoot = true) (hne : h.capsDropped = false)
-    (h4 : h.seccompSet = true) :
+    (h2 : h.readOnlyRoot = true) (hne : h.capsDropped = false) :
     blocked h .Misconfig = false := by
   simp [blocked, h1, h2, hne]
 
