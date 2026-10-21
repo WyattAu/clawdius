@@ -1,0 +1,121 @@
+# Weekly vet-store reconciliation bot — template.
+#
+# Install in each repo that carries supply-chain/:
+#   cp templates/vet-reconcile.yml <repo>/.github/workflows/vet-reconcile.yml
+#
+# Why: Dependabot waves (weekly, Mondays) move Cargo.lock faster than the
+# store is reconciled by hand. The vet gate (`cargo vet --locked`, shared
+# rust-kit.yml) then fails repo-wide with `X:<version> missing [...]` —
+# exactly the failure class that took the whole estate red twice in one
+# week (October 2026). This bot runs the reconciliation loop *before* the
+# gate can go red, and holds the result in a reviewable PR instead of
+# pushing trust decisions silently.
+#
+# What it does: runs `cargo vet --locked`, parses every unvetted entry,
+# appends an exemption at the exact criteria vet demanded (direct
+# dependencies want safe-to-deploy, transitives safe-to-run — the loop
+# reads the criteria from vet's output; hardcoding one or the other never
+# converges), formats the store with `cargo vet fmt`, and repeats until
+# clean or the pass cap. Drift becomes a PR, reviewed like any other.
+#
+# Loop-safety: schedule/workflow_dispatch only — the bot PR's pull_request
+# event does not re-trigger this workflow, but does run the repo's normal
+# CI including the vet gate, which is the point.
+#
+# Pair with vet-refresh.yml (imports stay fresh) and prune exemptions
+# covered by imported audits (`cargo vet prune`) so this ledger shrinks
+# toward the crates that genuinely have no upstream audit.
+
+name: vet-reconcile
+
+on:
+  schedule:
+    - cron: "30 4 * * 3" # Wednesdays 04:30 UTC, after the Tuesday refresh
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: vet-reconcile
+  cancel-in-progress: false
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  reconcile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install cargo-vet
+        run: cargo install --locked cargo-vet --version 0.10.2
+      - name: Reconcile the store
+        run: |
+          set -e
+          for pass in 1 2 3 4 5 6 7 8; do
+            OUT=$(cargo vet --locked 2>&1 || true)
+            MISSING=$(printf '%s\n' "$OUT" | grep -oE '^  [a-z0-9_.+-]+:[^ ]* missing \["[^"]+"\]' || true)
+            if [ -z "$MISSING" ]; then
+              echo "store clean on pass $pass"
+              break
+            fi
+            printf '%s\n' "$MISSING" | while IFS= read -r line; do
+              NAME=$(printf '%s' "$line" | cut -d: -f1 | tr -d ' ')
+              REST=$(printf '%s' "$line" | cut -d: -f2-)
+              VER=$(printf '%s' "$REST" | sed 's/ missing.*//')
+              CRIT=$(printf '%s' "$line" | grep -oE '\["[^"]+"\]' | tr -d '[]')
+              printf '\n[[exemptions.%s]]\nversion = "%s"\ncriteria = "%s"\n' \
+                "$NAME" "$VER" "$CRIT" >> supply-chain/config.toml
+            done
+            cargo vet fmt
+            echo "pass $pass: $(printf '%s\n' "$MISSING" | wc -l) entries added"
+          done
+          # Fail loudly if still unclean after the pass cap — the PR must
+          # never claim a reconciliation it did not complete.
+          cargo vet --locked > /dev/null
+      - name: Detect store drift
+        id: drift
+        run: |
+          if git diff --exit-code supply-chain/; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "store already covers the tree — no PR needed"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            git diff --stat supply-chain/
+          fi
+      - name: Create reconcile PR
+        if: steps.drift.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v8
+        with:
+          branch: vet/reconcile-store
+          title: "vet: reconcile the exemptions store"
+          commit-message: "vet: reconcile the exemptions store"
+          labels: dependencies
+          body: |
+            ## What
+
+            Bulk exemption reconciliation, produced automatically by the
+            weekly `vet-reconcile` bot: every `cargo vet --locked` unvetted
+            entry got an exemption at the criteria vet demanded, and the
+            store was normalized with `cargo vet fmt`.
+
+            ## Why
+
+            The Dependabot wave (weekly, Mondays) moves `Cargo.lock` faster
+            than the store is reconciled by hand, and the shared vet gate
+            (`cargo vet --locked`, rust-kit.yml) fails repo-wide. This PR
+            closes the gap before the gate goes red.
+
+            ## Checklist
+
+            - [ ] CI green (the `vet` job is the real check)
+            - [ ] Skim the new entries: the criteria must match vet's demand
+                  (direct dependencies `safe-to-deploy`, transitives
+                  `safe-to-run`)
+            - [ ] Anything with a real upstream audit should migrate out of
+                  exemptions once the aggregates are imported — prune, don't
+                  accumulate
