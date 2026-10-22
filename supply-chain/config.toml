@@ -3601,6 +3601,10 @@ criteria = "safe-to-deploy"
 version = "0.103.15"
 criteria = "safe-to-deploy"
 
+[[exemptions.rustls-webpki]]
+version = "0.103.16"
+criteria = "safe-to-deploy"
+
 [[exemptions.rustversion]]
 version = "1.0.22"
 criteria = "safe-to-deploy"
@@ -4071,6 +4075,10 @@ criteria = "safe-to-deploy"
 
 [[exemptions.sync_wrapper]]
 version = "1.0.2"
+criteria = "safe-to-deploy"
+
+[[exemptions.synstructure]]
+version = "0.14.0"
 criteria = "safe-to-deploy"
 
 [[exemptions.sysctl]]
@@ -5243,6 +5251,10 @@ criteria = "safe-to-deploy"
 
 [[exemptions.yoke-derive]]
 version = "0.8.2"
+criteria = "safe-to-deploy"
+
+[[exemptions.yoke-derive]]
+version = "0.8.4"
 criteria = "safe-to-deploy"
 
 [[exemptions.zbus]]
