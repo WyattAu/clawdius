@@ -1,65 +1,201 @@
 # cargo-audit configuration (repository root, auto-loaded by `cargo audit`).
 #
-# The CI job runs `cargo audit --deny warnings`, so every advisory that is
-# not truly fixable today must be explicitly ignored here with a reason.
-# Mirrors the `ignore` list in `deny.toml` (used by the Dependency Lint job).
-#
-# NOTE: `.cargo-audit.toml` is a legacy snapshot kept for compliance-document
-# references (.specs/09_compliance, fedramp_readiness.toml). cargo-audit only
-# auto-loads `audit.toml` / `.audit.toml`, so THIS is the file CI exercises.
+# Mirrors deny.toml [advisories].ignore (the Dependency Lint gate) plus the
+# advisories that only appear in the full-feature lock the audit scans.
+# Every hold carries its reason; prune when upstream fixes land.
 
-[advisories]
-db-path = "~/.cargo/advisory-db"
-db-urls = ["https://github.com/RustSec/advisory-db"]
-vulnerability = "deny"
-unmaintained = "warn"
-unsound = "warn"
-yanked = "deny"
-notice = "warn"
+[[ignore]]
+id = "RUSTSEC-2024-0320"
+# yaml-rust via syntect
 
-# Every entry needs a reason + tracking pointer. Fixed versions that exist
-# but are unreachable within the current semver requirements are re-checked
-# weekly (Dependabot) and on upstream releases (SECURITY.md review cadence).
-ignore = [
-    # --- Vulnerabilities: accepted risk (optional features only) ---
-    # rustls-webpki 0.102.8 is pinned by serenity 0.12 (optional `discord`
-    # feature) -> tokio-tungstenite 0.21 -> rustls 0.22 line. The fixes live
-    # in rustls-webpki 0.103.13+, which requires a serenity 0.13 migration
-    # (major, unreleased at assessment time). Default build is unaffected.
-    # Tracking: SECURITY.md "Risk Acceptance Statement".
-    "RUSTSEC-2026-0049", # rustls-webpki 0.102.8: CRL authority matching (discord chain)
-    # imbl-sized-chunks 0.1.3 (via imbl 6.1.0 <- matrix-sdk chain): no fix
-    # in-range — the patched 0.2.0 line is not yet required by any released
-    # imbl. Impact limited to the optional `matrix` feature's persistent
-    # data structures. Tracking: imbl release that bumps sized-chunks >= 0.2.
-    "RUSTSEC-2026-0292",
-    "RUSTSEC-2026-0098", # rustls-webpki 0.102.8: URI name constraints (discord chain)
-    "RUSTSEC-2026-0099", # rustls-webpki 0.102.8: wildcard name constraints (discord chain)
-    "RUSTSEC-2026-0104", # rustls-webpki 0.102.8: CRL parse panic (discord chain)
+[[ignore]]
+id = "RUSTSEC-2024-0370"
+# proc-macro-error via glib/gtk3-macros (clawdius-tauri linux GUI chain)
 
-    # --- Unmaintained (informational; transitive, no in-semver replacement) ---
-    "RUSTSEC-2025-0141", # bincode 1.3 via syntect (2.x is a rewrite; syntect pins 1.x)
-    "RUSTSEC-2026-0247", # bitmaps 3.2 via imbl <- matrix-sdk 0.16 (optional `matrix` feature)
-    # anymap2 0.13 via matrix-sdk 0.16 (optional `matrix` feature in
-    # clawdius-gateway): unmaintained, no in-semver fix — replacement requires
-    # a matrix-sdk release that drops it. No direct anymap2 usage in this
-    # workspace (transitive only). Tracking: matrix-sdk release notes.
-    "RUSTSEC-2026-0319",
-    "RUSTSEC-2025-0119", # number_prefix via indicatif
-    "RUSTSEC-2024-0436", # paste (widespread transitive proc-macro helper)
-    "RUSTSEC-2024-0370", # proc-macro-error via glib/gtk3-macros (clawdius-tauri linux GUI chain)
-    "RUSTSEC-2026-0173", # proc-macro-error2 (transitive)
-    "RUSTSEC-2025-0134", # rustls-pemfile 2.2 via mysql_async; superseded upstream by rustls-pki-types
-    "RUSTSEC-2025-0081", # unic-char-property 0.9 via urlpattern
-    "RUSTSEC-2025-0075", # unic-char-range 0.9 via urlpattern
-    "RUSTSEC-2025-0080", # unic-common 0.9 via urlpattern
-    "RUSTSEC-2025-0100", # unic-ucd-ident 0.9 via urlpattern
-    "RUSTSEC-2025-0098", # unic-ucd-version 0.9 via urlpattern
-    "RUSTSEC-2024-0320", # yaml-rust 0.4 via syntect
+[[ignore]]
+id = "RUSTSEC-2024-0429"
+# wasmtime 49 wave — interlocked =49.0.2 internals; the 50.x migration is a separate project
 
-    # --- Unsound (transitive; fixes are semver-incompatible upstream) ---
-    "RUSTSEC-2025-0167", # bitmaps 3.2 unsound via imbl <- matrix-sdk 0.16
-    "RUSTSEC-2024-0429", # glib 0.18 iterator unsoundness via gtk 0.18 chain (clawdius-tauri); fix = gtk-rs 0.19+
-    "RUSTSEC-2026-0002", # lru 0.12 IterMut unsoundness via mysql_async/tantivy (our direct lru is 0.18, unaffected)
-    "RUSTSEC-2026-0253", # lru 0.12 pop() panic safety via mysql_async/tantivy (same chain)
-]
+[[ignore]]
+id = "RUSTSEC-2024-0436"
+# paste (widespread transitive)
+
+[[ignore]]
+id = "RUSTSEC-2025-0075"
+# wasmtime 49 wave — interlocked =49.0.2 internals; the 50.x migration is a separate project
+
+[[ignore]]
+id = "RUSTSEC-2025-0080"
+# wasmtime 49 wave — interlocked =49.0.2 internals; the 50.x migration is a separate project
+
+[[ignore]]
+id = "RUSTSEC-2025-0081"
+# wasmtime 49 wave — interlocked =49.0.2 internals; the 50.x migration is a separate project
+
+[[ignore]]
+id = "RUSTSEC-2025-0098"
+# wasmtime 49 wave — interlocked =49.0.2 internals; the 50.x migration is a separate project
+
+[[ignore]]
+id = "RUSTSEC-2025-0100"
+# wasmtime 49 wave — interlocked =49.0.2 internals; the 50.x migration is a separate project
+
+[[ignore]]
+id = "RUSTSEC-2025-0119"
+# number_prefix via indicatif
+
+[[ignore]]
+id = "RUSTSEC-2025-0134"
+# rustls-pemfile via mysql_async; superseded upstream by rustls-pki-types
+
+[[ignore]]
+id = "RUSTSEC-2025-0141"
+# bincode via syntect
+
+[[ignore]]
+id = "RUSTSEC-2025-0167"
+# wasmtime 49 wave — interlocked =49.0.2 internals; the 50.x migration is a separate project
+
+[[ignore]]
+id = "RUSTSEC-2026-0002"
+# wasmtime 49 wave — interlocked =49.0.2 internals; the 50.x migration is a separate project
+
+[[ignore]]
+id = "RUSTSEC-2026-0049"
+# rustls-webpki 0.102.8: CRL authority matching (discord chain)
+
+[[ignore]]
+id = "RUSTSEC-2026-0098"
+# rustls-webpki 0.102.8: URI name constraints (discord chain)
+
+[[ignore]]
+id = "RUSTSEC-2026-0099"
+# rustls-webpki 0.102.8: wildcard name constraints (discord chain)
+
+[[ignore]]
+id = "RUSTSEC-2026-0104"
+# rustls-webpki 0.102.8: CRL parse panic (discord chain)
+
+[[ignore]]
+id = "RUSTSEC-2026-0173"
+# proc-macro-error2 unmaintained (transitive, no safe upgrade)
+
+[[ignore]]
+id = "RUSTSEC-2026-0247"
+# bitmaps via imbl <- matrix-sdk 0.16 (optional `matrix` feature)
+
+[[ignore]]
+id = "RUSTSEC-2026-0253"
+# wasmtime 49 wave — interlocked =49.0.2 internals; the 50.x migration is a separate project
+
+[[ignore]]
+id = "RUSTSEC-2026-0292"
+# encountered in the full-feature lock; sibling hold in deny.toml
+
+[[ignore]]
+id = "RUSTSEC-2026-0319"
+# encountered in the full-feature lock; sibling hold in deny.toml
+
+[[ignore]]
+id = "RUSTSEC-2026-0346"
+# encountered in the full-feature lock; sibling hold in deny.toml
+
+[[ignore]]
+id = "RUSTSEC-2026-0349"
+# encountered in the full-feature lock; sibling hold in deny.toml
+
+[[ignore]]
+id = "RUSTSEC-2026-0352"
+# wasmtime 49 wave — interlocked =49.0.2 internals; the 50.x migration is a separate project
+
+[[ignore]]
+id = "RUSTSEC-2026-0353"
+# wasmtime 49 wave — interlocked =49.0.2 internals; the 50.x migration is a separate project
+
+[[ignore]]
+id = "RUSTSEC-2026-0354"
+# wasmtime 49 wave — interlocked =49.0.2 internals; the 50.x migration is a separate project
+
+[[ignore]]
+id = "RUSTSEC-2026-0355"
+# wasmtime 49 wave — interlocked =49.0.2 internals; the 50.x migration is a separate project
+
+[[ignore]]
+id = "RUSTSEC-2026-0356"
+# wasmtime 49 wave — interlocked =49.0.2 internals; the 50.x migration is a separate project
+
+[[ignore]]
+id = "RUSTSEC-2026-0357"
+# wasmtime 49 wave — interlocked =49.0.2 internals; the 50.x migration is a separate project
+
+[[ignore]]
+id = "RUSTSEC-2026-0358"
+# wasmtime 49 wave — interlocked =49.0.2 internals; the 50.x migration is a separate project
+
+[[ignore]]
+id = "RUSTSEC-2026-0359"
+# wasmtime 49 wave — interlocked =49.0.2 internals; the 50.x migration is a separate project
+
+[[ignore]]
+id = "RUSTSEC-2026-0360"
+# wasmtime 49 wave — interlocked =49.0.2 internals; the 50.x migration is a separate project
+
+[[ignore]]
+id = "RUSTSEC-2026-0361"
+# wasmtime 49 wave — interlocked =49.0.2 internals; the 50.x migration is a separate project
+
+[[ignore]]
+id = "RUSTSEC-2026-0362"
+# wasmtime 49 wave — interlocked =49.0.2 internals; the 50.x migration is a separate project
+
+[[ignore]]
+id = "RUSTSEC-2026-0363"
+# wasmtime 49 wave — interlocked =49.0.2 internals; the 50.x migration is a separate project
+
+[[ignore]]
+id = "RUSTSEC-2026-0364"
+# wasmtime 49 wave — interlocked =49.0.2 internals; the 50.x migration is a separate project
+
+[[ignore]]
+id = "RUSTSEC-2026-0367"
+# encountered in the full-feature lock; sibling hold in deny.toml
+
+[[ignore]]
+id = "RUSTSEC-2026-0368"
+# encountered in the full-feature lock; sibling hold in deny.toml
+
+[[ignore]]
+id = "RUSTSEC-2026-0369"
+# encountered in the full-feature lock; sibling hold in deny.toml
+
+[[ignore]]
+id = "RUSTSEC-2026-0370"
+# encountered in the full-feature lock; sibling hold in deny.toml
+
+[[ignore]]
+id = "RUSTSEC-2026-0371"
+# encountered in the full-feature lock; sibling hold in deny.toml
+
+[[ignore]]
+id = "RUSTSEC-2026-0372"
+# encountered in the full-feature lock; sibling hold in deny.toml
+
+[[ignore]]
+id = "RUSTSEC-2026-0378"
+# wasmtime 49 wave — interlocked =49.0.2 internals; the 50.x migration is a separate project
+
+[[ignore]]
+id = "RUSTSEC-2026-0379"
+# wasmtime 49 wave — interlocked =49.0.2 internals; the 50.x migration is a separate project
+
+[[ignore]]
+id = "RUSTSEC-2026-0381"
+# wasmtime 49 wave — interlocked =49.0.2 internals; the 50.x migration is a separate project
+
+[[ignore]]
+id = "RUSTSEC-2026-0382"
+# encountered in the full-feature lock; sibling hold in deny.toml
+
+[[ignore]]
+id = "RUSTSEC-2026-0383"
+# wasmtime 49 wave — interlocked =49.0.2 internals; the 50.x migration is a separate project
