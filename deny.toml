@@ -31,6 +31,27 @@ ignore = [
     "RUSTSEC-2025-0119", # number_prefix via indicatif
     "RUSTSEC-2024-0370", # proc-macro-error via glib/gtk3-macros (clawdius-tauri linux GUI chain)
     "RUSTSEC-2025-0134", # rustls-pemfile via mysql_async; superseded upstream by rustls-pki-types
+# The wasmtime 49 advisory wave (October 2026). The matrix/wasm stack's
+  # interlocked `=49.0.2` internals block the 49.0.4 point release, and the
+  # 50.x line is a migration project (tauri + rustls 0.22 -> 0.23 ride
+  # along), not a patch. Held as one unit until that migration lands.
+  "RUSTSEC-2026-0352",
+  "RUSTSEC-2026-0353",
+  "RUSTSEC-2026-0354",
+  "RUSTSEC-2026-0355",
+  "RUSTSEC-2026-0356",
+  "RUSTSEC-2026-0357",
+  "RUSTSEC-2026-0358",
+  "RUSTSEC-2026-0359",
+  "RUSTSEC-2026-0360",
+  "RUSTSEC-2026-0361",
+  "RUSTSEC-2026-0362",
+  "RUSTSEC-2026-0363",
+  "RUSTSEC-2026-0364",
+  "RUSTSEC-2026-0378",
+  "RUSTSEC-2026-0379",
+  "RUSTSEC-2026-0381",
+  "RUSTSEC-2026-0383",
     "RUSTSEC-2025-0081", # unic-char-property via urlpattern
     "RUSTSEC-2025-0075", # unic-char-range via urlpattern
     "RUSTSEC-2025-0080", # unic-common via urlpattern

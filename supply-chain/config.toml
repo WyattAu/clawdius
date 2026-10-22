@@ -441,8 +441,16 @@ criteria = "safe-to-deploy"
 version = "8.0.3"
 criteria = "safe-to-deploy"
 
+[[exemptions.brotli]]
+version = "8.0.4"
+criteria = "safe-to-deploy"
+
 [[exemptions.brotli-decompressor]]
 version = "5.0.1"
+criteria = "safe-to-deploy"
+
+[[exemptions.brotli-decompressor]]
+version = "5.0.3"
 criteria = "safe-to-deploy"
 
 [[exemptions.bs58]]
@@ -3555,6 +3563,10 @@ criteria = "safe-to-deploy"
 
 [[exemptions.rustls]]
 version = "0.23.37"
+criteria = "safe-to-deploy"
+
+[[exemptions.rustls]]
+version = "0.23.46"
 criteria = "safe-to-deploy"
 
 [[exemptions.rustls-native-certs]]
