@@ -67,7 +67,7 @@ jobs:
               NAME=$(printf '%s' "$line" | cut -d: -f1 | tr -d ' ')
               REST=$(printf '%s' "$line" | cut -d: -f2-)
               VER=$(printf '%s' "$REST" | sed 's/ missing.*//')
-              CRIT=$(printf '%s' "$line" | grep -oE '\["[^"]+"\]' | tr -d '[]')
+              CRIT=$(printf '%s' "$line" | grep -oE '\["[^"]+"\]' | tr -d '[]"')
               printf '\n[[exemptions.%s]]\nversion = "%s"\ncriteria = "%s"\n' \
                 "$NAME" "$VER" "$CRIT" >> supply-chain/config.toml
             done
