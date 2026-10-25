@@ -6,7 +6,7 @@ metadata:
   audience: agents
   workflow: research-loop
   opencode/slash: "true"
-  opencode/autoinvoke: "false"
+  opencode/autoinvoke: "true"
 ---
 
 ## What I do
