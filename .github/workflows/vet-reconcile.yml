@@ -18,6 +18,13 @@
 # converges), formats the store with `cargo vet fmt`, and repeats until
 # clean or the pass cap. Drift becomes a PR, reviewed like any other.
 #
+# Two-version crates: a crate can legitimately sit in one graph under two
+# majors (a new direct requirement plus an old transitive one). Moving the
+# store entry to the newest version every run oscillates forever, each pass
+# re-flagging the version the last pass dropped. When a crate's entry moves,
+# check whether the old version is still in Cargo.lock; if it is, hold BOTH
+# entries until the old major actually leaves the graph.
+#
 # Loop-safety: schedule/workflow_dispatch only — the bot PR's pull_request
 # event does not re-trigger this workflow, but does run the repo's normal
 # CI including the vet gate, which is the point.
@@ -53,6 +60,8 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - name: Install cargo-vet
         run: cargo install --locked cargo-vet --version 0.10.2
+      - name: Refresh imports
+        run: cargo vet regenerate imports
       - name: Reconcile the store
         run: |
           set -e
