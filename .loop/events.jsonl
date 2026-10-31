@@ -1,0 +1,5 @@
+{"at":1793280967692,"phase":"plan","iteration":0,"event":"prompt","text":"[proof-loop] iteration 1/1 — phase PLAN\n\nPHASE: plan. Write the iteration plan to `.loop/plan.md` (create the dir):\n- th"}
+{"at":1793281302816,"phase":"plan","iteration":0,"event":"gate-pass","gate":"(none)","detail":"no executable gate for this phase/project"}
+{"at":1793281302816,"phase":"research","iteration":0,"event":"prompt","text":"[proof-loop] iteration 1/1 — phase RESEARCH (this iteration: plan ✓)\n\nPHASE: research. Resolve the plan's unknowns from "}
+{"at":1793281454730,"phase":"research","iteration":0,"event":"gate-pass","gate":"(none)","detail":"no executable gate for this phase/project"}
+{"at":1793281454730,"phase":"research","iteration":1,"event":"prompt","text":"[proof-loop] LOOP STOPPING — iteration limit (1) reached with all gates green\n\nWrite a wrap-up (also to `.loop/handoff.m"}
