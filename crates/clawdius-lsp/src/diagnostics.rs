@@ -149,11 +149,7 @@ mod tests {
     fn test_unwrap_ignored_in_comment() {
         let code = "// let x = foo.unwrap();\nfn main() {}\n";
         let diags = analyze_diagnostics(code);
-<<<<<<< Updated upstream
         assert!(diags.is_empty(), "diagnostics should be empty");
-=======
-        assert_eq!(diags, [] as [tower_lsp::lsp_types::Diagnostic; 0]);
->>>>>>> Stashed changes
     }
 
     #[test]
@@ -168,10 +164,6 @@ mod tests {
     fn test_clean_code() {
         let code = "fn main() {\n    println!(\"hello\");\n}\n";
         let diags = analyze_diagnostics(code);
-<<<<<<< Updated upstream
         assert!(diags.is_empty(), "diagnostics should be empty");
-=======
-        assert_eq!(diags, [] as [tower_lsp::lsp_types::Diagnostic; 0]);
->>>>>>> Stashed changes
     }
 }
