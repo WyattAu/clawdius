@@ -183,3 +183,59 @@ theorem verify_append (events : List AuditEvent) (e : AuditEvent) (stored : List
     Verify (events ++ [e]) (stored ++ [ehash e]) := by
   show chainOf (events ++ [e]) = stored ++ [ehash e]
   rw [chain_append, h]
+
+-- ---------------------------------------------------------------------------
+-- Part 3: External anchoring (YP-AUDIT-013 P3 — RFC 6962/9162, loop 5)
+-- ---------------------------------------------------------------------------
+
+/-- The external anchor of length `n`: the first `n` position-bound hashes
+of the chain. CT generalizes this to a signed Merkle STH; the model keeps
+Part 2's flat-hash shape, so the anchor is the prefix segment itself. A
+signer stamps this value, so per-read trust in the STORER of the full
+head is no longer required for the first `n` events.
+
+Scope honesty: for `n = 0` the anchor is `[]` and pins nothing — the
+binding theorem below is about the signer's chosen `n`. The
+`anchor_suffix_unpinned` witness ships the honest limitation alongside. -/
+noncomputable def anchoredPrefix (n : Nat) (events : List AuditEvent) : List Nat :=
+  (chainOf events).take n
+
+/-- ANCHOR BINDING (T3 — the P3 core): equal anchors pin equal prefixes.
+A storage-level attacker may serve a different full head, but the first
+`n` events are forced — any rewrite is a fresh `ehash` preimage per
+position, i.e. a collision (`ehash_inj`). This is what "an external
+signer on the chain head" buys: trust in the signer replaces per-read
+trust in whoever stores the log. -/
+theorem anchor_pins_prefix (n : Nat) (rec pres : List AuditEvent)
+    (h : anchoredPrefix n rec = anchoredPrefix n pres) :
+    rec.take n = pres.take n := by
+  unfold anchoredPrefix at h
+  have h2 : (rec.take n).map ehash = (pres.take n).map ehash := by
+    simpa [chainOf] using h
+  exact chainOf_inj _ _ h2
+
+/-- DETECTION: a rewrite of the anchored prefix changes the anchor. With
+the signer's stamp matching at most one prefix (mod `ehash` collisions),
+prefix tampering cannot pass anchoring undetected. -/
+theorem anchor_detects_prefix_rewrite (n : Nat) (rec pres : List AuditEvent)
+    (hne : rec.take n ≠ pres.take n) :
+    anchoredPrefix n rec ≠ anchoredPrefix n pres :=
+  fun h => hne (anchor_pins_prefix n rec pres h)
+
+/-- COUNTER-WITNESS (house rule 6 — ship the limitation with the
+property): the anchor pins ONLY the prefix. Two histories agreeing on
+the first event share the `n = 1` anchor yet differ overall — a fork
+BEYOND the anchor is invisible to the signer. Detecting the tail
+requires a fresh anchor covering it, which is why periodic
+re-anchoring is part of the operational checklist (RFC 9162 §2).
+
+Non-vacuity (house rule 8): the shared-anchor hypothesis holds with
+`n = 1` in the witness below, so `anchor_pins_prefix` constrains
+something; at `n = 0` it is intentionally vacuous (empty anchor). -/
+theorem anchor_suffix_unpinned :
+    ∃ rec pres : List AuditEvent, ∃ n : Nat,
+      anchoredPrefix n rec = anchoredPrefix n pres ∧ rec ≠ pres := by
+  refine ⟨[⟨"anchor-witness", .Authentication, .Info, "audit.append", .Success, 0⟩],
+          [⟨"anchor-witness", .Authentication, .Info, "audit.append", .Success, 1⟩], 1, ?_, ?_⟩
+  · simp [anchoredPrefix, chainOf]
+  · decide
