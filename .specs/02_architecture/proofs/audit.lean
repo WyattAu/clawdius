@@ -236,6 +236,7 @@ theorem anchor_suffix_unpinned :
     ∃ rec pres : List AuditEvent, ∃ n : Nat,
       anchoredPrefix n rec = anchoredPrefix n pres ∧ rec ≠ pres := by
   refine ⟨[⟨"anchor-witness", .Authentication, .Info, "audit.append", .Success, 0⟩],
-          [⟨"anchor-witness", .Authentication, .Info, "audit.append", .Success, 1⟩], 1, ?_, ?_⟩
+          [⟨"anchor-witness", .Authentication, .Info, "audit.append", .Success, 0⟩,
+           ⟨"anchor-witness", .Authentication, .Info, "audit.append", .Success, 1⟩], 1, ?_, ?_⟩
   · simp [anchoredPrefix, chainOf]
   · decide
