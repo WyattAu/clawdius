@@ -36,6 +36,14 @@ ignore = [
   # 50.x line is a migration project (tauri + rustls 0.22 -> 0.23 ride
   # along), not a patch. Held as one unit until that migration lands.
   "RUSTSEC-2026-0352",
+  "RUSTSEC-2026-0391", # wasmtime 49.0.2 wave
+  "RUSTSEC-2026-0398", # wasmtime 49.0.2 wave
+  "RUSTSEC-2026-0403", # wasmtime 49.0.2 wave
+  "RUSTSEC-2026-0410", # wasmtime 49.0.2 wave
+  "RUSTSEC-2026-0420", # wasmtime 49.0.2 wave
+  "RUSTSEC-2026-0422", # wasmtime 49.0.2: typed i31/nullref type-check panic
+  "RUSTSEC-2026-0423", # wasmtime 49.0.2: cross-engine struct supertype confusion
+  "RUSTSEC-2026-0424", # wasmtime 49.0.2: borrowed-resource transfer memory
   "RUSTSEC-2026-0353",
   "RUSTSEC-2026-0354",
   "RUSTSEC-2026-0355",
@@ -106,7 +114,6 @@ allow = []
 deny = []
 skip = [
     { name = "winnow", version = "0.7" },
-    { name = "toml", version = "0.8" },
 ]
 skip-tree = []
 
