@@ -12,6 +12,7 @@ use super::components::{
     ChatView, CommandAutocomplete, DiffView, FileList, MentionAutocomplete, SessionEntry,
     SessionPicker, Spinner, SyntaxHighlighter, WorkspaceSwitcher,
 };
+use super::components::{FleetManager, FleetManagerWidget};
 use super::theme;
 use super::types::{AppMode, InputMode, LayoutMode, Message, TuiEvent};
 use super::vim::VimKeymap;
@@ -304,6 +305,10 @@ pub struct App {
     session_picker: SessionPicker,
     /// Workspace switcher popup.
     workspace_switcher: WorkspaceSwitcher,
+    /// Fleet manager: repos, dev cycles, hard-gate dashboard.
+    pub fleet: FleetManager,
+    /// Repo whose dev cycle is currently running through the agentic loop.
+    fleet_active_cycle: Option<String>,
     /// File watcher for live file change detection.
     file_watcher: Option<clawdius_core::watch::FileWatcher>,
     /// Receiver for file watcher events.
@@ -325,7 +330,7 @@ impl App {
             session: None,
             session_manager,
             config,
-            mode: AppMode::Chat,
+            mode: AppMode::Fleet,
             layout_mode: LayoutMode::Single,
             secondary_mode: AppMode::Diff,
             agent_mode: AgentMode::Code,
@@ -343,12 +348,14 @@ impl App {
             stream_rx: None,
             workspace_context: Self::build_workspace_context(),
             request_timeout_secs: 120,
-            tool_executor: Arc::new(TuiToolExecutor::new(workspace_root)),
+            tool_executor: Arc::new(TuiToolExecutor::new(workspace_root.clone())),
             conversation_history: Vec::new(),
             tools_enabled: true,
             iteration_count: 0,
             session_picker: SessionPicker::new(),
             workspace_switcher: WorkspaceSwitcher::new(),
+            fleet: FleetManager::new(&workspace_root),
+            fleet_active_cycle: None,
             file_watcher: None,
             file_watcher_rx: None,
             command_autocomplete: CommandAutocomplete::new(),
@@ -487,6 +494,7 @@ impl App {
                 return Ok(());
             },
             AppMode::Chat => self.handle_chat_key(key).await?,
+            AppMode::Fleet => self.handle_fleet_key(key)?,
             AppMode::FileBrowser => self.handle_file_browser_key(key),
             AppMode::Diff => self.handle_diff_key(key),
         }
@@ -540,6 +548,9 @@ impl App {
                 },
                 KeyCode::Char('3') => {
                     self.mode = AppMode::Diff;
+                },
+                KeyCode::Char('f') => {
+                    self.mode = AppMode::Fleet;
                 },
                 _ => {},
             },
@@ -766,6 +777,9 @@ impl App {
             },
             "files" | "ls" => {
                 self.mode = AppMode::FileBrowser;
+            },
+            "fleet" => {
+                self.mode = AppMode::Fleet;
             },
             "diff" => {
                 self.mode = AppMode::Diff;
@@ -1146,6 +1160,140 @@ impl App {
         }
     }
 
+    /// Handle keys while the fleet manager screen is active.
+    ///
+    /// `j`/`k` move the selection, `s` toggles a repo active/inactive, `r`
+    /// queues a continue-the-dev-cycle task, `Enter` dispatches the
+    /// selected repo's next task and runs it through the agentic loop
+    /// rooted at that repo, `d` toggles the hard-gate review dashboard
+    /// (`a` approve / `x` reject), `S` rescans, `q`/`Esc`/`Tab` return to
+    /// chat.
+    #[allow(clippy::missing_errors_doc)]
+    fn handle_fleet_key(&mut self, key: KeyEvent) -> anyhow::Result<()> {
+        use crossterm::event::{KeyCode, KeyModifiers};
+        if key.modifiers.contains(KeyModifiers::CONTROL) && matches!(key.code, KeyCode::Char('c')) {
+            self.should_quit = true;
+            return Ok(());
+        }
+        if self.fleet.dashboard {
+            match key.code {
+                KeyCode::Char('a') => {
+                    self.fleet.approve_selected_flag();
+                    self.fleet.persist();
+                },
+                KeyCode::Char('x') => {
+                    self.fleet.reject_selected_flag();
+                    self.fleet.persist();
+                },
+                KeyCode::Char('d' | 'q') | KeyCode::Esc => {
+                    self.fleet.close_dashboard();
+                },
+                _ => {},
+            }
+            return Ok(());
+        }
+        match key.code {
+            KeyCode::Char('j') | KeyCode::Down => self.fleet.move_down(),
+            KeyCode::Char('k') | KeyCode::Up => self.fleet.up(),
+            KeyCode::Char('s') => {
+                self.fleet.toggle_active();
+                self.fleet.persist();
+            },
+            KeyCode::Char('r') => {
+                self.fleet.enqueue_continue();
+                self.fleet.persist();
+            },
+            KeyCode::Enter => self.run_fleet_cycle()?,
+            KeyCode::Char('d') => self.fleet.open_dashboard(),
+            KeyCode::Char('S') => {
+                self.fleet.scan();
+                self.fleet.persist();
+            },
+            KeyCode::Char('p') => self.fleet.persist(),
+            KeyCode::Char('q' | '1') | KeyCode::Esc | KeyCode::Tab => {
+                self.mode = AppMode::Chat;
+            },
+            KeyCode::Char('?') => self.mode = AppMode::Help,
+            _ => {},
+        }
+        Ok(())
+    }
+
+    /// Dispatch the selected repo's next dev-cycle task and run it through
+    /// the agentic loop with a tool executor rooted at that repo.
+    ///
+    /// The cycle's finish (or failure) is reported back through the fleet
+    /// router when the stream delivers `TuiEvent::Done` / `TuiEvent::Error`,
+    /// which applies the hard-gate policy: with skip-on-finish enabled the
+    /// gates are skipped and flagged for human review on the dashboard.
+    fn run_fleet_cycle(&mut self) -> anyhow::Result<()> {
+        if self.is_loading {
+            return Ok(());
+        }
+        let Some(decision) = self.fleet.dispatch_selected() else {
+            self.fleet.rebuild_rows();
+            return Ok(());
+        };
+        let repo = decision.repo.clone();
+        let repo_path = self.fleet.state.registry.get(&repo).map_or_else(
+            || self.fleet.scan_root.to_string_lossy().into_owned(),
+            |e| e.path.clone(),
+        );
+        self.fleet.mark_running();
+
+        self.chat_view.add_message(Message::system(format!(
+            "fleet: dispatching cycle for {repo} ({repo_path})"
+        )));
+
+        let session = self.session_manager.get_or_create_active()?;
+        self.session = Some(session);
+
+        let user_content = format!(
+            "Repository: {repo}\nPath: {repo_path}\n\nFleet task:\n{}",
+            decision.task
+        );
+        self.conversation_history.push(ChatMessage {
+            role: ChatRole::User,
+            content: user_content,
+        });
+        let mut stream_msg = Message::assistant("");
+        stream_msg.streaming = true;
+        self.chat_view.add_message(stream_msg);
+        self.is_loading = true;
+        self.spinner.tick();
+        self.iteration_count = 0;
+        self.fleet_active_cycle = Some(repo);
+
+        let (tx, rx) = mpsc::channel::<TuiEvent>(256);
+        self.stream_rx = Some(rx);
+
+        let provider = self.create_provider()?;
+        let tools = if self.tools_enabled {
+            TuiToolExecutor::tool_definitions()
+        } else {
+            Vec::new()
+        };
+        let tool_executor = Arc::new(TuiToolExecutor::new(PathBuf::from(repo_path)));
+        let messages = self.conversation_history.clone();
+        let system_prompt = self.agent_mode.system_prompt().to_string();
+        let timeout_secs = self.request_timeout_secs;
+
+        tokio::spawn(async move {
+            run_agentic_loop(
+                provider,
+                messages,
+                system_prompt,
+                tools,
+                tool_executor,
+                tx,
+                timeout_secs,
+            )
+            .await;
+        });
+
+        Ok(())
+    }
+
     async fn send_message(&mut self) -> anyhow::Result<()> {
         let message: String = std::mem::take(&mut self.input);
 
@@ -1306,6 +1454,9 @@ impl App {
                         self.is_loading = false;
                         self.iteration_count = 0;
                         self.stream_rx = None;
+                        if let Some(repo) = self.fleet_active_cycle.take() {
+                            self.fleet.report_finish(&repo);
+                        }
                     },
                     TuiEvent::Error(e) => {
                         self.chat_view.finish_streaming();
@@ -1314,6 +1465,9 @@ impl App {
                         self.is_loading = false;
                         self.iteration_count = 0;
                         self.stream_rx = None;
+                        if let Some(repo) = self.fleet_active_cycle.take() {
+                            self.fleet.report_failure(&repo);
+                        }
                     },
                 }
                 true
@@ -1737,6 +1891,7 @@ impl App {
     pub const fn scroll_up(&mut self) {
         match self.mode {
             AppMode::Chat => self.chat_view.scroll_up(),
+            AppMode::Fleet => self.fleet.up(),
             AppMode::FileBrowser => self.file_list.up(),
             AppMode::Diff => self.diff_view.scroll_up(),
             AppMode::Help => {},
@@ -1747,6 +1902,7 @@ impl App {
     pub fn scroll_down(&mut self) {
         match self.mode {
             AppMode::Chat => self.chat_view.scroll_down(50),
+            AppMode::Fleet => self.fleet.move_down(),
             AppMode::FileBrowser => self.file_list.down(),
             AppMode::Diff => self.diff_view.scroll_down(50),
             AppMode::Help => {},
@@ -1856,6 +2012,7 @@ impl App {
 
         let mode_text = match self.mode {
             AppMode::Chat => "CHAT",
+            AppMode::Fleet => "FLEET",
             AppMode::FileBrowser => "FILES",
             AppMode::Diff => "DIFF",
             AppMode::Help => "HELP",
@@ -1904,10 +2061,18 @@ impl App {
     fn draw_main_content(&self, f: &mut Frame<'_>, area: Rect, mode: AppMode) {
         match mode {
             AppMode::Chat => self.draw_messages(f, area),
+            AppMode::Fleet => self.draw_fleet(f, area),
             AppMode::FileBrowser => self.draw_file_browser(f, area),
             AppMode::Diff => self.draw_diff(f, area),
             AppMode::Help => Self::draw_help(f, area),
         }
+    }
+
+    /// Render the fleet manager (repo list, or gate review dashboard).
+    fn draw_fleet(&self, f: &mut Frame<'_>, area: Rect) {
+        let theme = theme::current();
+        let widget = FleetManagerWidget::new(&self.fleet, theme);
+        f.render_widget(widget, area);
     }
 
     fn draw_messages(&self, f: &mut Frame<'_>, area: Rect) {
@@ -1939,6 +2104,7 @@ impl App {
                 Style::default().fg(Color::Yellow),
             )),
             Line::from("  Tab        - Switch between views"),
+            Line::from("  f          - Fleet manager (repos, cycles, gate dashboard)"),
             Line::from("  1-3        - Jump to specific view (Chat, Files, Diff)"),
             Line::from("  q/Esc      - Quit / Close popup"),
             Line::from("  ?          - Toggle this help"),

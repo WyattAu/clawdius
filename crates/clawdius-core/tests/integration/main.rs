@@ -1,3 +1,6 @@
+// The rpc communication module is gated behind the `rpc` feature; without
+// it this target compiles empty (CI runs it with `--features rpc`).
+#![cfg(feature = "rpc")]
 #![allow(
     dead_code,
     missing_docs,

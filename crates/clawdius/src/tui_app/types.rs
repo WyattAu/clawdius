@@ -94,6 +94,8 @@ pub enum PhaseStatus {
 pub enum AppMode {
     #[default]
     Chat,
+    /// Fleet manager: all supervised repos, dev cycles, gate dashboard.
+    Fleet,
     FileBrowser,
     Diff,
     Help,

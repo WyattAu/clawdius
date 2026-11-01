@@ -2,7 +2,11 @@
 //!
 //! Tests LRU caching, timeout handling, smart fallbacks,
 //! and language-specific completions.
+//!
+//! The completion handler lives behind the `rpc` feature; without it this
+//! target compiles empty (CI runs it with `--features rpc`).
 
+#![cfg(feature = "rpc")]
 #![allow(
     dead_code,
     missing_docs,
