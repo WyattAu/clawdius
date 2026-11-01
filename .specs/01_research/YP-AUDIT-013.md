@@ -1,6 +1,6 @@
 ---
 document_id: YP-AUDIT-013
-version: 1.0.0
+version: 1.1.0
 status: APPROVED
 domain: Compliance / Audit Integrity
 subdomains: [Tamper-Evident Logging, Hash Chains, Append-Only Storage]
@@ -73,8 +73,33 @@ capability system's signature postulate.
 - P2 (proved, T2): for every suffix event `e`, the appended log
   verifies against the extended head — the monitor's consistency check
   always succeeds for honest appends.
-- P3 (recorded, not asserted): an external signer on the chain head
-  (periodic anchoring, per the zatona/CT checklist) — the model trusts
-  whoever stores the head; anchoring distributes that trust. Next
-  iteration's work, alongside the component-identity closure of
-  YP-SECURITY-POLICY-011 P3.
+- P3 (proved, T3): an external signer on the chain head — periodic
+  anchoring per the CT checklist. `anchoredPrefix` + `anchor_pins_prefix`
+  (audit.lean Part 3): equal `n`-anchors force equal first-`n` events, so
+  trust in the signer replaces per-read trust in whoever stores the log,
+  and a prefix rewrite changes the anchor (`anchor_detects_prefix_rewrite`).
+  Honest scope shipped with the property (house rule 6): the anchor pins
+  ONLY the prefix — `anchor_suffix_unpinned` is the fork-beyond-`n`
+  witness, which is why re-anchoring is periodic (RFC 9162 §2). The
+  component-identity closure of YP-SECURITY-POLICY-011 P3 remains open.
+
+## YP-6: Findings — loop 5 (external anchoring)
+
+The P3 prediction graduated. `audit.lean` Part 3 adds `anchoredPrefix`,
+`anchor_pins_prefix` (T3 — equal anchors force equal prefixes, via
+`ehash_inj` lifted through `chainOf_inj`), `anchor_detects_prefix_rewrite`
+(contrapositive: prefix rewrites change the anchor), and the
+counter-witness `anchor_suffix_unpinned` — two histories sharing the
+`n = 1` anchor with divergent tails, proving the anchor pins only the
+prefix.
+
+Model choice worth recording: the anchor is the flat prefix segment
+`(chainOf events).take n`, not a Merkle root. Part 2's flat-hash shape
+keeps the file import-free; a Merkle STH is the natural deepening if
+per-query inclusion proofs are ever needed, not just prefix binding.
+
+Anchoring shape sources: RFC 6962 §2.1 (signed tree head binds tree size
++ root), RFC 9162 §1 (the trust gap, stated verbatim) and §2 (anchoring
+cadence), Crosby–Wallach (2009) §4 — re-checked against the tree during
+this loop; the `zatona` pointer from YP-5 is dangling (no such repo) and
+has been dropped from the checklist reference.

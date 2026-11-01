@@ -143,7 +143,7 @@ blue_papers = ["BP-CONTAINER-SANDBOX-001"]
 id = "YP-AUDIT-013"
 title = "Audit — The Integrity Layer Must Commit to Content, Not Assert It"
 status = "APPROVED"
-version = "1.0.0"
+version = "1.1.0"
 created = "2026-10-15"
 author = "Loop"
 confidence_level = 0.93
@@ -152,7 +152,7 @@ tqa_level = 4
 [yellow_paper.scope]
 domain = "Compliance"
 algorithms = ["ALG-AUDIT-CHAIN-001"]
-theorems = ["THM-AUD-T0", "THM-AUD-T1", "THM-AUD-T2"]
+theorems = ["THM-AUD-T0", "THM-AUD-T1", "THM-AUD-T2", "THM-AUD-T3"]
 test_vector_file = "test_vectors_capability.toml"
 constraints_file = "domain_constraints_security.toml"
 
