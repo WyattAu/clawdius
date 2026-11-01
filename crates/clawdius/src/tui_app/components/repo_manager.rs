@@ -542,7 +542,7 @@ mod tests {
         std::fs::create_dir_all(repo.join(".git")).unwrap();
         let mut manager = FleetManager::new(tmp.path());
         manager.enqueue_continue();
-        manager.dispatch_selected();
+        let _ = manager.dispatch_selected();
         manager.mark_running();
         manager.report_finish("demo");
         manager.open_dashboard();

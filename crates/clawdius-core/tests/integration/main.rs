@@ -1,3 +1,5 @@
+//! Integration test root: session flow and tool execution end-to-end.
+//!
 // The rpc communication module is gated behind the `rpc` feature; without
 // it this target compiles empty (CI runs it with `--features rpc`).
 #![cfg(feature = "rpc")]

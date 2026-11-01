@@ -29,7 +29,7 @@ use tempfile::TempDir;
 /// set and then clear provider keys, so without a lock they race: one test's
 /// `remove_var` can land between another's `set_var` and its read, which is how
 /// `test_llm_config_from_env_openai` came to fail with "API key not set for
-/// OpenAI" while setting that very variable a line earlier.
+/// `OpenAI`" while setting that very variable a line earlier.
 ///
 /// Taking this guard for the whole body of an env-mutating test makes the
 /// set/read/clear sequence atomic with respect to the other five.
@@ -37,7 +37,9 @@ static ENV_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
 #[test]
 fn test_llm_config_from_env_anthropic() {
-    let _env = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    let _env = ENV_LOCK
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     unsafe {
         std::env::set_var("ANTHROPIC_API_KEY", "test-anthropic-key");
     }
@@ -52,7 +54,9 @@ fn test_llm_config_from_env_anthropic() {
 
 #[test]
 fn test_llm_config_from_env_openai() {
-    let _env = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    let _env = ENV_LOCK
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     unsafe {
         std::env::set_var("OPENAI_API_KEY", "test-openai-key");
     }
@@ -67,7 +71,9 @@ fn test_llm_config_from_env_openai() {
 
 #[test]
 fn test_llm_config_from_env_ollama() {
-    let _env = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    let _env = ENV_LOCK
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     unsafe {
         std::env::set_var("OLLAMA_BASE_URL", "http://custom-ollama:11434");
     }
@@ -85,7 +91,9 @@ fn test_llm_config_from_env_ollama() {
 
 #[test]
 fn test_llm_config_from_env_zai() {
-    let _env = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    let _env = ENV_LOCK
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     unsafe {
         std::env::set_var("ZAI_API_KEY", "test-zai-key");
     }
@@ -100,7 +108,9 @@ fn test_llm_config_from_env_zai() {
 
 #[test]
 fn test_llm_config_missing_key() {
-    let _env = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    let _env = ENV_LOCK
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     unsafe {
         std::env::remove_var("ANTHROPIC_API_KEY");
     }
@@ -671,7 +681,9 @@ fn test_shell_sandbox_config_defaults() {
 
 #[test]
 fn test_llm_runtime_config_custom_model() {
-    let _env = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    let _env = ENV_LOCK
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     unsafe {
         std::env::set_var("OPENAI_API_KEY", "test-key");
     }
