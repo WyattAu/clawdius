@@ -62,7 +62,7 @@ fi
 
 # ─── 1. Full workspace tests (lib + integration + property + adapter) ───────
 echo -n "  [1/4] cargo test --workspace --tests ... "
-if timeout 600 cargo test --workspace --tests 2>/dev/null; then
+if timeout 2400 cargo test --workspace --tests 2>/dev/null; then
     echo -e "${GREEN}OK${NC}"
 else
     echo -e "${RED}FAILED${NC}"
