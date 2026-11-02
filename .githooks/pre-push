@@ -72,7 +72,7 @@ fi
 
 # ─── 2. Clippy (strict) ────────────────────────────────────────────────────
 echo -n "  [2/4] cargo clippy --workspace --all-targets -- -D warnings ... "
-if timeout 300 cargo clippy --workspace --all-targets -- -D warnings 2>/dev/null; then
+if timeout 1800 cargo clippy --workspace --all-targets -- -D warnings 2>/dev/null; then
     echo -e "${GREEN}OK${NC}"
 else
     echo -e "${RED}FAILED${NC}"
