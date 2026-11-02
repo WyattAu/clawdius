@@ -99,7 +99,7 @@ fn test_llm_config_from_env_zai() {
     }
     let config = ResolvedLlmConfig::from_env("zai").unwrap();
     assert_eq!(config.provider, "zai");
-    assert_eq!(config.model, "zai-default");
+    assert_eq!(config.model, "zai-coding::glm-4.6");
     assert_eq!(config.api_key, Some("test-zai-key".to_string()));
     unsafe {
         std::env::remove_var("ZAI_API_KEY");
