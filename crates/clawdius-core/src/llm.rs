@@ -484,7 +484,11 @@ impl ResolvedLlmConfig {
                 let key = std::env::var("ZAI_API_KEY").map_err(|_| {
                     Error::Config(ErrorHelpers::api_key_missing("Z.AI", "ZAI_API_KEY").to_string())
                 })?;
-                (Some(key), None, "zai-default".to_string())
+                // Same routing as the config path: the `zai-coding::` prefix
+                // selects api.z.ai/api/coding/paas/v4/ and must reach the
+                // adapter (a bare "zai-default" made genai fall through to
+                // the Ollama adapter).
+                (Some(key), None, "zai-coding::glm-4.6".to_string())
             },
             "deepseek" => {
                 let key = std::env::var("DEEPSEEK_API_KEY").map_err(|_| {

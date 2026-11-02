@@ -27,14 +27,40 @@ pub struct ZaiProvider {
 impl ZaiProvider {
     pub fn new(api_key: &str, model: Option<&str>) -> Result<Self> {
         let key = api_key.to_string();
+        let raw_model = model.unwrap_or("glm-4.6").to_string();
+        // The `zai-coding::` / `zai::` prefixes select the coding endpoint.
+        // genai does not know them and would resolve the adapter to its
+        // Ollama fallback (404 "model not found" against localhost:11434),
+        // so pin AdapterKind::Zai via a target resolver and strip the
+        // prefix before the wire.
+        let coding = raw_model.starts_with("zai-coding::") || raw_model.starts_with("zai::");
+        let wire_model = raw_model
+            .split_once("::")
+            .map(|(_, rest)| rest.to_string())
+            .unwrap_or_else(|| raw_model.clone());
+        let endpoint_base = if coding {
+            "https://api.z.ai/api/coding/paas/v4/"
+        } else {
+            "https://api.z.ai/api/paas/v4/"
+        };
+
+        let target_resolver = genai::resolver::ServiceTargetResolver::from_resolver_fn(
+            move |service_target: genai::ServiceTarget| -> genai::resolver::Result<genai::ServiceTarget> {
+                let genai::ServiceTarget { model, .. } = service_target;
+                Ok(genai::ServiceTarget {
+                    endpoint: genai::resolver::Endpoint::from_owned(endpoint_base.to_string()),
+                    auth: genai::resolver::AuthData::from_single(key.clone()),
+                    model: genai::ModelIden::new(genai::adapter::AdapterKind::Zai, model.model_name),
+                })
+            },
+        );
+
         let client = genai::Client::builder()
-            .with_auth_resolver_fn(move |_model_iden| {
-                Ok(Some(genai::resolver::AuthData::from_single(key.clone())))
-            })
+            .with_service_target_resolver(target_resolver)
             .build();
         Ok(Self {
             client,
-            model: model.unwrap_or("glm-4.6").to_string(),
+            model: wire_model,
         })
     }
 }
