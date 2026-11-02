@@ -8,10 +8,9 @@ vs the robustness bar set by OpenClaw's 23 hardened channel adapters.
 
 The basics are seamless: every platform adapter translates to one unified
 message type, streaming edits exist, the gateway fans out with per-adapter
-health. But under failure the adapters are *delicate*: fixed backoffs, no
-stall recovery, no crash-safe ingestion offsets, one callback race that can
-silently drop messages, and inline dispatch that lets one slow chat starve
-all others. Each finding below cites the file and the fix.
+health. The Telegram adapter has since been hardened (see "Status" per
+finding); the other 8 adapters still carry platform-specific variants of
+findings 3-6. Each finding cites the file and the fix.
 
 ## What already works
 
@@ -27,54 +26,58 @@ all others. Each finding below cites the file and the fix.
 
 ## Gaps, ranked by seamlessness impact
 
-### 1. Message loss window at startup (callback race) — `telegram.rs:210-216, 234-235`
-`set_message_callback` sets the callback inside a *spawned* tokio task, and
-`start()` works around the race with a 50ms sleep before cloning it. If the
-spawn lands after the clone, the entire polling session runs with
-`callback = None`: every incoming message hits the
-"no callback is set" warn path and is dropped. Fix: store the callback in a
-`std::sync::Mutex` (set synchronously, no spawn), drop the sleep.
+Status legend: FIXED (this audit cycle), OPEN (still to do).
 
-### 2. Duplicate/stale replies after restart (no persisted offset) — `telegram.rs:153, 170`
-`last_update_id` starts at 0 every process start, so Telegram re-delivers
-its queued updates: the bot re-answers old messages. Fix: persist the
-confirmed offset to `.clawdius/gateway/telegram-offset-<bot>.json` (atomic
-write) and confirm it after processing, mirroring OpenClaw's
-`update-offset-store.ts` (versioned, bot-id bound).
+### 1. Message loss window at startup (callback race) - FIXED
+Was `telegram.rs`: `set_message_callback` set the callback inside a spawned
+tokio task and `start()` papered over the race with a 50ms sleep; if the
+spawn landed after the clone, the whole polling session ran with no
+callback and dropped every message. Now: a synchronous `std::sync::Mutex`
+with the sleep removed.
 
-### 3. One slow chat starves all chats (inline dispatch) — `telegram.rs:172`
-`dispatch_with(...).await` runs the gateway handler *inside* the polling
-loop. An LLM turn takes seconds; while it runs, no `get_updates` happens,
-Telegram queues up, and other chats wait. Fix: spawn per-message delivery
-with a bounded semaphore (lane model), keep the poll loop hot.
+### 2. Duplicate/stale replies after restart (no persisted offset) - FIXED
+Was `telegram.rs`: `last_update_id` restarted at 0, so Telegram re-delivered
+its queued updates and the bot re-answered old messages. Now: the confirmed
+offset persists to `.clawdius/gateway/telegram-offset.json` (atomic write,
+versioned envelope) after every batch and at shutdown, overridable via
+`settings["offset_path"]`; shared primitive in `src/robust.rs`
+(`load_offset`/`store_offset`).
 
-### 4. Tight retry loops under platform outages — `telegram.rs:181-190`
-Network errors retry after a fixed 2s, everything else after a fixed 5s, with
-no jitter and no cap. A Telegram-side outage produces a hot loop (and 409
-conflicts if a second instance polls). Fix: shared exponential backoff with
-jitter (2s to 30s, factor 1.8, jitter 0.25) plus a stall watchdog that
-force-recycles a hung poller (OpenClaw's `polling-session.ts` +
-`stall-watchdog.ts` pattern).
+### 3. One slow chat starves all chats (inline dispatch) - FIXED
+Was `telegram.rs`: the gateway handler ran inline inside the polling loop.
+Now each inbound message is delivered on a spawned task bounded by a
+64-permit semaphore, keeping the poll loop hot while LLM turns drain.
 
-### 5. MarkdownV2 send failures are terminal — `telegram.rs:261`
-User text rarely escapes cleanly to MarkdownV2; a parse error fails the send
-with no plain-text fallback. Fix: on `parse`-class errors, resend with no
-parse mode.
+### 4. Tight retry loops under platform outages - FIXED
+Was `telegram.rs`: fixed 2s/5s sleeps, no jitter, no cap. Now a shared
+`robust::Backoff` (2s to 30s, factor 1.8, jitter 0.25, reset on success).
+Still OPEN: a stall watchdog that force-recycles a hung poller.
 
-### 6. Media silently dropped — `telegram.rs:84-89`
+### 5. MarkdownV2 send failures are terminal - FIXED
+Was `telegram.rs`: a parse error failed the send outright. Now the send
+falls back to plain text on the first failure (logged).
+
+### 6. Media silently dropped - OPEN
 Photos/voice arrive with empty text and no caption; `convert_update` returns
 `None` and the message vanishes. Attachments are always `Vec::new()`.
 Fix: map Telegram media to the existing `Attachment` type (the struct is
 already there, `adapter.rs:144-158`) and download via
 `download_attachment`.
 
-### 7. Same patterns across the other 8 adapters
+### 7. `edit_message` edits a nonexistent chat - OPEN (new finding)
+`adapters/telegram.rs` `edit_message` calls
+`bot.edit_message_text(ChatId(0), MessageId(mid), ...)`; Telegram requires
+the real chat id, so streaming edits via this path fail with message-not-
+found. The `PlatformAdapter::edit_message` trait only passes `message_id`,
+so the chat id must be threaded through (a trait change across adapters) or
+the adapter must remember the chat per message id.
+
+### 8. Same patterns across the other 8 adapters - OPEN
 Discord/Slack/Matrix/Teams/WhatsApp/Signal/RocketChat/Webhook each carry
-platform-specific variants of gaps 3-6. The shared fix is a `gateway-core`
-module with: `backoff.rs` (one retry/backoff primitive used by all
-adapters), `offset_store.rs` (atomic, versioned ingestion offsets),
-`lanes.rs` (per-chat delivery lanes), `watchdog.rs` (stall detection). Then
-each adapter shrinks to format translation + platform API calls.
+platform-specific variants of findings 3-6. The shared fix is now
+available in `src/robust.rs` (`Backoff`, offset store); adopt it per
+adapter, then add `lanes.rs` (per-chat delivery lanes) and a stall
+watchdog.
 
 ## Platform coverage note
 

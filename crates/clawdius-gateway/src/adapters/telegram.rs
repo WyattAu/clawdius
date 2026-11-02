@@ -19,18 +19,28 @@
 //! - Long-polling with graceful shutdown via `tokio::sync::Notify`
 //! - Rate limit awareness
 
+use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
-use tokio::sync::{Mutex, Notify};
+use tokio::sync::{Notify, Semaphore};
 
 use crate::adapter::{
     AdapterHealth, IncomingMessage, MessageCallback, OutgoingMessage, Platform, PlatformAdapter,
     PlatformConfig,
 };
 use crate::error::GatewayError;
+use crate::robust::{load_offset, store_offset, Backoff};
 use teloxide::prelude::*;
 use teloxide::types::{ChatId, MessageId, ParseMode, ReplyParameters, UpdateKind};
+
+/// Default path for the persisted Telegram update offset, relative to the
+/// gateway's working directory.
+pub const DEFAULT_OFFSET_PATH: &str = ".clawdius/gateway/telegram-offset.json";
+
+/// Maximum concurrently-delivered inbound messages; the poll loop stays hot
+/// while slow handlers (LLM turns) drain through this semaphore.
+const MAX_CONCURRENT_DELIVERY: usize = 64;
 
 /// Telegram adapter implementation.
 ///
@@ -39,6 +49,11 @@ use teloxide::types::{ChatId, MessageId, ParseMode, ReplyParameters, UpdateKind}
 pub struct TelegramAdapter {
     bot: teloxide::Bot,
     /// Callback for delivering incoming messages to the gateway.
+    ///
+    /// A synchronous mutex: `set_message_callback` must not race `start()`
+    /// (the previous spawned-task + 50ms-sleep dance could leave the whole
+    /// polling session running with no callback, silently dropping every
+    /// message).
     message_callback: Arc<Mutex<Option<MessageCallback>>>,
     /// Notification for shutting down the polling loop.
     cancel_notify: Arc<Notify>,
@@ -48,6 +63,8 @@ pub struct TelegramAdapter {
     messages_processed: Arc<AtomicU64>,
     /// Count of errors encountered.
     error_count: Arc<AtomicU64>,
+    /// Where the ingestion offset is persisted across restarts.
+    offset_path: Option<PathBuf>,
 }
 
 impl TelegramAdapter {
@@ -61,20 +78,28 @@ impl TelegramAdapter {
             running: Arc::new(AtomicBool::new(false)),
             messages_processed: Arc::new(AtomicU64::new(0)),
             error_count: Arc::new(AtomicU64::new(0)),
+            offset_path: Some(PathBuf::from(DEFAULT_OFFSET_PATH)),
         }
     }
 
     /// Create from a PlatformConfig.
+    ///
+    /// The offset file defaults to [`DEFAULT_OFFSET_PATH`]; override with
+    /// `config.settings["offset_path"]` (string).
     pub fn from_config(config: &PlatformConfig) -> Result<Self, GatewayError> {
         let token = config
             .api_token
             .as_ref()
             .ok_or_else(|| GatewayError::Config("TELEGRAM_BOT_TOKEN not set".to_string()))?;
-        Ok(Self::new(token))
+        let mut adapter = Self::new(token);
+        if let Some(raw) = config.settings.get("offset_path").and_then(|v| v.as_str()) {
+            adapter.offset_path = Some(PathBuf::from(raw));
+        }
+        Ok(adapter)
     }
 
     /// Convert a teloxide Update into an IncomingMessage.
-    async fn convert_update(update: teloxide::types::Update) -> Option<IncomingMessage> {
+    fn convert_update(update: teloxide::types::Update) -> Option<IncomingMessage> {
         let message = match update.kind {
             UpdateKind::Message(msg) => msg,
             _ => return None,
@@ -112,27 +137,17 @@ impl TelegramAdapter {
         })
     }
 
-    /// Dispatch an incoming message via the callback.
-    async fn dispatch_message(&self, message: IncomingMessage) {
-        let callback = {
-            let guard = self.message_callback.lock().await;
-            guard.clone()
-        };
-
-        if let Some(cb) = callback {
-            cb(message).await;
-            self.messages_processed.fetch_add(1, Ordering::Relaxed);
-        } else {
-            tracing::warn!("Telegram adapter received message but no callback is set");
-        }
-    }
-
-    /// Dispatch a message using pre-cloned callback and counters (no &self).
-    async fn dispatch_with(
-        callback: &Option<MessageCallback>,
+    /// Dispatch a message on a spawned task so a slow handler (an LLM turn
+    /// is seconds) never blocks the poll loop; bounded by `permits`.
+    async fn dispatch_spawned(
+        callback: Option<MessageCallback>,
         message: IncomingMessage,
-        processed: &AtomicU64,
+        processed: Arc<AtomicU64>,
+        permits: Arc<Semaphore>,
     ) {
+        let Ok(_permit) = permits.acquire_owned().await else {
+            return;
+        };
         if let Some(cb) = callback {
             cb(message).await;
             processed.fetch_add(1, Ordering::Relaxed);
@@ -142,34 +157,75 @@ impl TelegramAdapter {
     }
 
     /// Run the long-polling loop until cancelled.
+    ///
+    /// Hardened per the gateway audit: exponential backoff with jitter on
+    /// transport errors (instead of fixed sleeps), and the confirmed update
+    /// offset persisted to `offset_path` after every batch and on shutdown,
+    /// so restarts neither re-answer old messages nor lose new ones.
     async fn run_polling_with(
         bot: teloxide::Bot,
-        callback: Option<MessageCallback>,
+        callback: Arc<Mutex<Option<MessageCallback>>>,
         cancel: Arc<Notify>,
         running: &AtomicBool,
-        processed: &AtomicU64,
+        processed: Arc<AtomicU64>,
         errors: &AtomicU64,
+        offset_path: Option<PathBuf>,
     ) {
-        let mut last_update_id: i32 = 0;
+        let permits = Arc::new(Semaphore::new(MAX_CONCURRENT_DELIVERY));
+        let mut last_update_id: i64 = offset_path
+            .as_deref()
+            .and_then(load_offset)
+            .map_or(0, |stored| stored.offset);
+        if last_update_id > 0 {
+            tracing::info!(
+                since = last_update_id,
+                "resuming Telegram updates from stored offset"
+            );
+        }
+        let mut backoff = Backoff::new(
+            std::time::Duration::from_secs(2),
+            std::time::Duration::from_secs(30),
+            1.8,
+            0.25,
+        );
 
         loop {
             tokio::select! {
-                _ = cancel.notified() => {
+                () = cancel.notified() => {
                     tracing::info!("Telegram polling stopped");
                     break;
                 }
                 result = bot.get_updates()
-                    .offset(last_update_id)
+                    .offset(i32::try_from(last_update_id).unwrap_or(i32::MAX))
                     .timeout(35u32)
                     .allowed_updates(vec![teloxide::types::AllowedUpdate::Message])
                     .limit(100u8)
                 => {
                     match result {
                         Ok(updates) => {
+                            backoff.reset();
                             for update in &updates {
-                                last_update_id = (update.id.0 + 1) as i32;
-                                if let Some(incoming) = Self::convert_update(update.clone()).await {
-                                    Self::dispatch_with(&callback, incoming, processed).await;
+                                last_update_id = i64::from(update.id.0) + 1;
+                                if let Some(incoming) =
+                                    Self::convert_update(update.clone())
+                                {
+                                    let cb = callback
+                                        .lock()
+                                        .ok()
+                                        .and_then(|guard| guard.clone());
+                                    tokio::spawn(Self::dispatch_spawned(
+                                        cb,
+                                        incoming,
+                                        Arc::clone(&processed),
+                                        Arc::clone(&permits),
+                                    ));
+                                }
+                            }
+                            if !updates.is_empty() {
+                                if let Some(path) = &offset_path {
+                                    if let Err(e) = store_offset(path, last_update_id) {
+                                        tracing::warn!("could not persist update offset: {e}");
+                                    }
                                 }
                             }
                         }
@@ -178,21 +234,24 @@ impl TelegramAdapter {
                             tracing::warn!("Telegram rate limited, retrying after {dur:?}");
                             tokio::time::sleep(dur).await;
                         }
-                        Err(teloxide::RequestError::Network(err)) => {
-                            tracing::warn!("Telegram network error: {err}, retrying in 2s");
+                        Err(err) => {
+                            let delay = backoff.next_delay();
+                            tracing::warn!(
+                                "Telegram polling error: {err}; retrying in {delay:?}"
+                            );
                             errors.fetch_add(1, Ordering::Relaxed);
-                            tokio::time::sleep(std::time::Duration::from_secs(2)).await;
-                        }
-                        Err(e) => {
-                            tracing::error!("Telegram polling error: {e}");
-                            errors.fetch_add(1, Ordering::Relaxed);
-                            tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+                            tokio::time::sleep(delay).await;
                         }
                     }
                 }
             }
         }
 
+        if let Some(path) = &offset_path {
+            if let Err(e) = store_offset(path, last_update_id) {
+                tracing::warn!("could not persist update offset on shutdown: {e}");
+            }
+        }
         running.store(false, Ordering::Relaxed);
     }
 }
@@ -208,11 +267,11 @@ impl PlatformAdapter for TelegramAdapter {
     }
 
     fn set_message_callback(&self, callback: MessageCallback) {
-        let cb = Arc::clone(&self.message_callback);
-        tokio::spawn(async move {
-            let mut guard = cb.lock().await;
+        // Synchronous: by the time start() spawns the poll loop the callback
+        // is guaranteed to be visible (no spawn race, no sleep heuristic).
+        if let Ok(mut guard) = self.message_callback.lock() {
             *guard = Some(callback);
-        });
+        }
     }
 
     async fn start(&self) -> Result<(), GatewayError> {
@@ -231,18 +290,25 @@ impl PlatformAdapter for TelegramAdapter {
 
         self.running.store(true, Ordering::Relaxed);
 
-        // Wait for the message callback to be set (brief wait)
-        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
-
         // Spawn the polling loop
         let bot = self.bot.clone();
-        let callback = self.message_callback.lock().await.clone();
+        let callback = Arc::clone(&self.message_callback);
         let cancel = Arc::clone(&self.cancel_notify);
         let running = Arc::clone(&self.running);
         let processed = Arc::clone(&self.messages_processed);
         let errors = Arc::clone(&self.error_count);
+        let offset_path = self.offset_path.clone();
         tokio::spawn(async move {
-            Self::run_polling_with(bot, callback, cancel, &running, &processed, &errors).await;
+            Self::run_polling_with(
+                bot,
+                callback,
+                cancel,
+                &running,
+                processed,
+                &errors,
+                offset_path,
+            )
+            .await;
         });
 
         Ok(())
@@ -263,6 +329,21 @@ impl PlatformAdapter for TelegramAdapter {
         if let Some(ref reply_to) = message.reply_to {
             if let Ok(reply_id) = reply_to.parse::<i32>() {
                 request = request.reply_parameters(ReplyParameters::new(MessageId(reply_id)));
+            }
+        }
+
+        if request.clone().await.is_err() {
+            // MarkdownV2 rejects most raw user text (unescaped punctuation);
+            // fall back to plain text rather than failing the reply.
+            tracing::warn!(
+                "Telegram markdown send failed; retrying as plain text for chat {}",
+                message.chat_id
+            );
+            request = self.bot.send_message(chat_id, message.text.clone());
+            if let Some(ref reply_to) = message.reply_to {
+                if let Ok(reply_id) = reply_to.parse::<i32>() {
+                    request = request.reply_parameters(ReplyParameters::new(MessageId(reply_id)));
+                }
             }
         }
 
@@ -370,7 +451,7 @@ mod tests {
     #[test]
     fn test_parse_chat_id_valid() {
         let chat_id = parse_chat_id("123456");
-        assert_eq!(chat_id.0, 123456);
+        assert_eq!(chat_id.0, 123_456);
     }
 
     #[test]
@@ -382,7 +463,7 @@ mod tests {
     #[test]
     fn test_parse_chat_id_negative() {
         let chat_id = parse_chat_id("-1001234567890");
-        assert_eq!(chat_id.0, -1001234567890);
+        assert_eq!(chat_id.0, -1_001_234_567_890);
     }
 
     #[test]

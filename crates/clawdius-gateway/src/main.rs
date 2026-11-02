@@ -248,15 +248,14 @@ async fn register_platform(gateway: &mut MessageGateway, platform: &Platform, cl
         Platform::Telegram => {
             #[cfg(feature = "telegram")]
             {
-                match cli.telegram_token.as_ref() {
-                    Some(token) => {
-                        let config = PlatformConfig::with_token(*platform, token);
-                        gateway
-                            .register_adapter(TelegramAdapter::new(token), config)
-                            .await;
-                        tracing::info!("Registered adapter for platform: {platform}");
-                    },
-                    None => tracing::warn!("Skipping telegram: TELEGRAM_BOT_TOKEN not set"),
+                if let Some(token) = cli.telegram_token.as_ref() {
+                    let config = PlatformConfig::with_token(*platform, token);
+                    gateway
+                        .register_adapter(TelegramAdapter::new(token), config)
+                        .await;
+                    tracing::info!("Registered adapter for platform: {platform}");
+                } else {
+                    tracing::warn!("Skipping telegram: TELEGRAM_BOT_TOKEN not set");
                 }
             }
             #[cfg(not(feature = "telegram"))]

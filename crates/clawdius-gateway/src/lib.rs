@@ -48,6 +48,7 @@ pub mod formatter;
 pub mod gateway;
 pub mod handler;
 pub mod rate_limit;
+pub mod robust;
 
 pub use adapter::{IncomingMessage, OutgoingMessage, PlatformAdapter, PlatformConfig};
 pub use error::GatewayError;
