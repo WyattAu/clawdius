@@ -6,8 +6,13 @@
 # if the agent cannot fix a one-function defect in a real repo layout,
 # the tool surface is not done. Bounded: 25-minute job cap, one repo.
 #
-# Provider key comes from secrets (DEEPSEEK_API_KEY or ZAI_API_KEY);
-# without one the job exits 0 with a skip notice so the gate stays green.
+# Provider key comes from secrets. Use a METERED PAY-AS-YOU-GO API key
+# (DEEPSEEK_API_KEY, or a standard Z.AI/Open.bigmodel API key) — CI usage
+# via an unsupported third-party tool violates the GLM Coding Plan
+# subscription terms (see docs.z.ai/legal-agreement/subscription-terms:
+# plan quota is limited to officially supported tools; SDK access from
+# your own applications is grounds for suspension/ban). Without a secret
+# the job exits 0 with a skip notice so the gate stays green.
 
 name: Dogfood
 
