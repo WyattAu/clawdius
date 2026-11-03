@@ -40,11 +40,20 @@ jobs:
         env:
           DEEPSEEK_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
           ZAI_KEY: ${{ secrets.ZAI_API_KEY }}
+          GOOGLE_KEY: ${{ secrets.GOOGLE_API_KEY }}
         run: |
+          # Use a METERED key (see comment above). For GOOGLE_API_KEY:
+          # attach billing to the project (Paid Service) so repo code sent
+          # through the agent is NOT used for Google product improvement —
+          # free-tier prompts are human-reviewable by policy.
           if [ -n "$DEEPSEEK_KEY" ]; then
             echo "provider=deepseek" >> "$GITHUB_OUTPUT"
             echo "key=$DEEPSEEK_KEY" >> "$GITHUB_OUTPUT"
             echo "env=DEEPSEEK_API_KEY" >> "$GITHUB_OUTPUT"
+          elif [ -n "$GOOGLE_KEY" ]; then
+            echo "provider=google" >> "$GITHUB_OUTPUT"
+            echo "key=$GOOGLE_KEY" >> "$GITHUB_OUTPUT"
+            echo "env=GOOGLE_API_KEY" >> "$GITHUB_OUTPUT"
           elif [ -n "$ZAI_KEY" ]; then
             echo "provider=zai" >> "$GITHUB_OUTPUT"
             echo "key=$ZAI_KEY" >> "$GITHUB_OUTPUT"
