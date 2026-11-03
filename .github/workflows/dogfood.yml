@@ -89,10 +89,11 @@ jobs:
           [dependencies]
           EOF
           cat > src/lib.rs <<'EOF'
-          /// Adds two numbers. The `.sub` call below is the defect the
-          /// agent must find and fix; cargo test fails until it is `+`.
+          /// Adds two numbers. The `-` below is the seeded defect: the
+          /// crate compiles, cargo test fails on the assertion, and the
+          /// agent must find and fix it.
           pub fn add(a: i64, b: i64) -> i64 {
-              a.sub(b)
+              a - b
           }
 
           #[cfg(test)]
