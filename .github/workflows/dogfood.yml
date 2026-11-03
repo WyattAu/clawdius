@@ -43,9 +43,11 @@ jobs:
           GOOGLE_KEY: ${{ secrets.GOOGLE_API_KEY }}
         run: |
           # Use a METERED key (see comment above). For GOOGLE_API_KEY:
-          # attach billing to the project (Paid Service) so repo code sent
-          # through the agent is NOT used for Google product improvement —
-          # free-tier prompts are human-reviewable by policy.
+          # free tier is accepted for PUBLIC-repo dogfood (the tool and its
+          # target code are open source; Google's free-tier product-
+          # improvement/human-review pipeline is harmless on public code).
+          # ATTACH BILLING (Paid Service) before pointing the agent at
+          # private repos — free-tier prompts are human-reviewable.
           if [ -n "$DEEPSEEK_KEY" ]; then
             echo "provider=deepseek" >> "$GITHUB_OUTPUT"
             echo "key=$DEEPSEEK_KEY" >> "$GITHUB_OUTPUT"
