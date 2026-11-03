@@ -69,7 +69,7 @@ first matching file). Core modules `tools/search.rs` + `tools/todo.rs`,
 | Shell + sandbox | permission+scan | sandboxed bash | 8 backends, refuse-by-default | VERIFY end-to-end |
 | Subagents (Task tool) | background child sessions | AgentTool fork/resume | DAG planner exists; no in-loop subagent tool | MISSING |
 | Todo/plan tracking | todo tool | TodoWrite | **todo_write/todo_read** | PARITY |
-| Web fetch | yes | WebFetch | chromiumoxide daemon, no agent tool | MISSING tool binding |
+| Web fetch | yes | WebFetch | **web_fetch** (SSRF guard: loopback/RFC1918/link-local/`.internal`/single-label refused; 20KB text cap) | PARITY |
 | Web search | yes | WebSearch | **web_search** (DuckDuckGo default) | PARITY |
 | Repo context conventions | injects AGENTS.md | injects CLAUDE.md | **loads AGENTS.md then CLAUDE.md, 8KB cap** | PARITY |
 | Skills/SKILL.md | skills + plugins | skills | `skills` module exists | VERIFY |
@@ -112,15 +112,16 @@ first matching file). Core modules `tools/search.rs` + `tools/todo.rs`,
 
 ## Execution order to green
 
-1. **Grow the agent tool surface to Claude Code parity** (grep/glob tools,
-   todo tool, subagent tool binding, web fetch/search bindings, AGENTS.md/
-   CLAUDE.md context loading). Without this nothing else matters: it is the
-   difference between a demo and a daily driver.
-2. **E2E harness**: `docs` stays; add `tests/e2e/` driving the real binary
-   headless (`--version`, `chat` with a real key, `sprint` on a scratch
-   repo, `analyze`, gateway mock platform, MCP handshake), each recording
-   output as the row's evidence.
-3. **Dogfood CI job** against a scratch estate repo (the ladder above).
+1. **Grow the agent tool surface to Claude Code parity** — **in progress,
+   2026-11-02/03: 13 tools** (grep/glob/web_search/web_fetch/todo_write/
+   todo_read added; AGENTS.md/CLAUDE.md context loading live). Remaining
+   breadth: subagent tool binding.
+2. **E2E harness**: `tests/e2e/verify_workflows.sh` drives the real binary
+   headless; first sheet 8 PASS / 1 account-side skip.
+3. **Dogfood CI job**: `.github/workflows/dogfood.yml` (weekly +
+   manual) — clones the repo, seeds a known-broken test, hands the repair
+   to the agent, asserts the fix. Needs `DEEPSEEK_API_KEY` or
+   `ZAI_API_KEY` as a repo secret; skips cleanly without one.
 4. **Session durability + provider OAuth** (the two remaining structural
    gaps).
 5. Migration is allowed per-workflow only when its row says VERIFIED and

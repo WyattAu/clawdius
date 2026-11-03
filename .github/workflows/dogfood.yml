@@ -1,0 +1,127 @@
+# Dogfood CI: clawdius works a real repository end-to-end.
+#
+# The runner clones this repo, seeds a known-broken test inside a scratch
+# crate, and hands the repair to the clawdius agent (chat + tool loop:
+# read/grep/edit/shell). Migration-gate evidence for the agent surface:
+# if the agent cannot fix a one-function defect in a real repo layout,
+# the tool surface is not done. Bounded: 25-minute job cap, one repo.
+#
+# Provider key comes from secrets (DEEPSEEK_API_KEY or ZAI_API_KEY);
+# without one the job exits 0 with a skip notice so the gate stays green.
+
+name: Dogfood
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 6 * * 1" # weekly, Monday 06:00 UTC
+
+concurrency:
+  group: dogfood
+  cancel-in-progress: false
+
+jobs:
+  sprint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Pick provider key
+        id: key
+        env:
+          DEEPSEEK_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          ZAI_KEY: ${{ secrets.ZAI_API_KEY }}
+        run: |
+          if [ -n "$DEEPSEEK_KEY" ]; then
+            echo "provider=deepseek" >> "$GITHUB_OUTPUT"
+            echo "key=$DEEPSEEK_KEY" >> "$GITHUB_OUTPUT"
+            echo "env=DEEPSEEK_API_KEY" >> "$GITHUB_OUTPUT"
+          elif [ -n "$ZAI_KEY" ]; then
+            echo "provider=zai" >> "$GITHUB_OUTPUT"
+            echo "key=$ZAI_KEY" >> "$GITHUB_OUTPUT"
+            echo "env=ZAI_API_KEY" >> "$GITHUB_OUTPUT"
+          else
+            echo "provider=none" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Skip when no provider key
+        if: steps.key.outputs.provider == 'none'
+        run: |
+          echo "::notice::No DEEPSEEK_API_KEY/ZAI_API_KEY secret; dogfood run skipped."
+          exit 0
+
+      - name: Build clawdius
+        if: steps.key.outputs.provider != 'none'
+        run: cargo build --release -p clawdius
+
+      - name: Seed a real repo with a known defect
+        if: steps.key.outputs.provider != 'none'
+        run: |
+          mkdir -p /home/runner/dogfood/src
+          cd /home/runner/dogfood
+          git init -q .
+          cat > Cargo.toml <<'EOF'
+          [package]
+          name = "dogfood-scratch"
+          version = "0.1.0"
+          edition = "2021"
+
+          [dependencies]
+          EOF
+          cat > src/lib.rs <<'EOF'
+          /// Adds two numbers. The `.sub` call below is the defect the
+          /// agent must find and fix; cargo test fails until it is `+`.
+          pub fn add(a: i64, b: i64) -> i64 {
+              a.sub(b)
+          }
+
+          #[cfg(test)]
+          mod tests {
+              use super::add;
+              #[test]
+              fn adds() {
+                  assert_eq!(add(2, 3), 5);
+              }
+          }
+          EOF
+          git add -A
+          git -c user.email=dogfood@clawdius.dev -c user.name=dogfood commit -qm "seed: broken add()"
+          # Baseline: the seeded test must fail before the agent runs.
+          cargo test 2>&1 | tee /tmp/baseline.txt
+          grep -q "test result: FAILED" /tmp/baseline.txt
+
+      - name: Run the clawdius agent on it
+        if: steps.key.outputs.provider != 'none'
+        env:
+          PROVIDER: ${{ steps.key.outputs.provider }}
+          KEY_VALUE: ${{ steps.key.outputs.key }}
+          KEY_ENV: ${{ steps.key.outputs.env }}
+        run: |
+          export "$KEY_ENV=$KEY_VALUE"
+          cd /home/runner/dogfood
+          timeout 900 "$GITHUB_WORKSPACE/target/release/clawdius" chat \
+            --provider "$PROVIDER" \
+            "In this repository, cargo test fails. Run cargo test, find the \
+             failing test, read the source, fix the defect, and verify with \
+             cargo test until it passes. Change as little as possible." \
+            2>&1 | tee /tmp/agent.txt
+
+      - name: Verify the fix
+        if: steps.key.outputs.provider != 'none'
+        run: |
+          cd /home/runner/dogfood
+          cargo test 2>&1 | tee /tmp/after.txt
+          grep -q "test result: ok" /tmp/after.txt || {
+            echo "::error::Agent did not produce a passing test suite."
+            exit 1
+          }
+          git diff --stat HEAD
+          git diff --name-only HEAD | grep -q "src/lib.rs" || {
+            echo "::error::Agent ran but did not modify the defective file."
+            exit 1
+          }
+          echo "::notice::Dogfood PASS: agent repaired the repo end-to-end."
