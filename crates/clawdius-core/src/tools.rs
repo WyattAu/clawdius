@@ -92,7 +92,9 @@ pub mod editor;
 pub mod file;
 pub mod git;
 pub mod html_compressor;
+pub mod search;
 pub mod shell;
+pub mod todo;
 pub mod web_search;
 
 use serde::{Deserialize, Serialize};

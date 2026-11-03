@@ -56,17 +56,24 @@ binary, real scratch repo, real Z.AI API):
 
 ### 2. Agent surface (the daily-driver gap)
 
+**2026-11-02: tool surface 8 -> 13.** Added `grep` (regex content search,
+.gitignore-aware), `glob` (recursive `**` patterns), `web_search` (async
+bridge to DuckDuckGo/Google/Bing), `todo_write`/`todo_read` (Claude Code
+`TodoWrite` semantics), and AGENTS.md/CLAUDE.md context injection (8KB cap,
+first matching file). Core modules `tools/search.rs` + `tools/todo.rs`,
+42 core tool tests green.
+
 | Capability | opencode | Claude Code | clawdius | Status |
 |---|---|---|---|---|
-| File read/write/edit/glob/grep | yes | yes | read/write/edit/list only | MISSING grep+glob tools |
+| File read/write/edit/glob/grep | yes | yes | read/write/edit/list + **grep/glob** | PARITY (13 tools; still below CC's ~40 breadth) |
 | Shell + sandbox | permission+scan | sandboxed bash | 8 backends, refuse-by-default | VERIFY end-to-end |
 | Subagents (Task tool) | background child sessions | AgentTool fork/resume | DAG planner exists; no in-loop subagent tool | MISSING |
-| Todo/plan tracking | todo tool | TodoWrite | sprint phases only | MISSING |
+| Todo/plan tracking | todo tool | TodoWrite | **todo_write/todo_read** | PARITY |
 | Web fetch | yes | WebFetch | chromiumoxide daemon, no agent tool | MISSING tool binding |
-| Web search | yes | WebSearch | none | MISSING |
+| Web search | yes | WebSearch | **web_search** (DuckDuckGo default) | PARITY |
+| Repo context conventions | injects AGENTS.md | injects CLAUDE.md | **loads AGENTS.md then CLAUDE.md, 8KB cap** | PARITY |
 | Skills/SKILL.md | skills + plugins | skills | `skills` module exists | VERIFY |
 | Hooks | plugin hooks | Session hooks | AgentHook trait | MODULE |
-| CLAUDE.md/AGENTS.md context | injects AGENTS.md | injects CLAUDE.md | workspace repo-map only | MISSING .md context loading |
 | Slash commands | yes | ~50 | ~25 `:` commands | PARITY-ish, VERIFY |
 | Editor integration (ACP/VS Code) | ACP + SDK | VS Code ext | `clawdius-code` helper + LSP | MODULE |
 | Worktrees | pluggable strategy | yes | checkpoint module | MODULE |

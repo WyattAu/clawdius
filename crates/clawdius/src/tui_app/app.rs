@@ -4,8 +4,9 @@
 //! detected, executed, and results fed back to the LLM automatically.
 
 use std::collections::HashMap;
+use std::fmt::Write as _;
 use std::path::PathBuf;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use super::components;
 use super::components::{
@@ -39,12 +40,18 @@ use clawdius_core::{
 };
 
 /// Built-in tool executor for the TUI. Uses clawdius-core tools directly
-/// (`FileTool`, `ShellTool`, `GitTool`) to handle tool calls from the LLM.
+/// (`FileTool`, `ShellTool`, `GitTool`, `SearchTool`, `WebSearchTool`) to
+/// handle tool calls from the LLM.
 #[allow(clippy::struct_field_names)]
 pub struct TuiToolExecutor {
     file_tool: Arc<FileTool>,
     shell_tool: Arc<ShellTool>,
     git_tool: Arc<GitTool>,
+    search_tool: Arc<clawdius_core::tools::search::SearchTool>,
+    web_search: Arc<clawdius_core::tools::web_search::WebSearchTool>,
+    /// Session todo list (Claude Code `TodoWrite` semantics), replaced on
+    /// each `todo_write` call.
+    todos: Mutex<Vec<clawdius_core::tools::todo::TodoItem>>,
 }
 
 impl TuiToolExecutor {
@@ -61,6 +68,9 @@ impl TuiToolExecutor {
             file_tool,
             shell_tool,
             git_tool,
+            search_tool: Arc::new(clawdius_core::tools::search::SearchTool::new()),
+            web_search: Arc::new(clawdius_core::tools::web_search::WebSearchTool::default()),
+            todos: Mutex::new(Vec::new()),
         }
     }
 
@@ -75,6 +85,16 @@ impl TuiToolExecutor {
                 .with_description("Edit a section of a file. Args: { path: string, old_string: string, new_string: string }"),
             Tool::new("list_directory")
                 .with_description("List files in a directory. Args: { path: string, recursive?: boolean }"),
+            Tool::new("grep")
+                .with_description("Regex search file contents (respects .gitignore). Args: { pattern: string, path?: string, include?: string, max_results?: number }"),
+            Tool::new("glob")
+                .with_description("List files matching a glob pattern ('**' crosses directories). Args: { pattern: string, path?: string }"),
+            Tool::new("web_search")
+                .with_description("Search the web. Args: { query: string, limit?: number }"),
+            Tool::new("todo_write")
+                .with_description("Replace the session todo list. Args: { todos: [ { content: string, status: pending|in_progress|completed } ] }"),
+            Tool::new("todo_read")
+                .with_description("Show the current session todo list. Args: {}"),
             Tool::new("shell")
                 .with_description("Run a shell command. Args: { command: string, timeout?: number }"),
             Tool::new("git_status")
@@ -96,6 +116,11 @@ impl TuiToolExecutor {
             "write_file" => self.exec_write_file(&args),
             "edit_file" => self.exec_edit_file(&args),
             "list_directory" => self.exec_list_directory(&args),
+            "grep" => self.exec_grep(&args),
+            "glob" => self.exec_glob(&args),
+            "web_search" => self.exec_web_search(&args),
+            "todo_write" => self.exec_todo_write(&args),
+            "todo_read" => self.exec_todo_read(),
             "shell" | "run_command" => self.exec_shell(&args),
             "git_status" => match self.git_tool.status(None) {
                 Ok(output) => (output, false),
@@ -262,6 +287,122 @@ impl TuiToolExecutor {
             Err(e) => (format!("Error: {e}"), true),
         }
     }
+
+    fn exec_grep(&self, args: &HashMap<String, serde_json::Value>) -> (String, bool) {
+        use clawdius_core::tools::search::resolve_root;
+        let Some(pattern) = args.get("pattern").and_then(serde_json::Value::as_str) else {
+            return (("grep requires { pattern: string }".to_string()), true);
+        };
+        let path = args
+            .get("path")
+            .and_then(serde_json::Value::as_str)
+            .unwrap_or(".");
+        let include = args.get("include").and_then(serde_json::Value::as_str);
+        let max = usize::try_from(
+            args.get("max_results")
+                .and_then(serde_json::Value::as_u64)
+                .unwrap_or(100),
+        )
+        .unwrap_or(100);
+        let root = resolve_root(path);
+        match self.search_tool.grep(pattern, &root, include, max) {
+            Ok(hits) if hits.is_empty() => (format!("No matches for '{pattern}'"), false),
+            Ok(hits) => {
+                let mut body = String::new();
+                for m in &hits {
+                    let _ = writeln!(body, "{}:{}: {}", m.path, m.line, m.text);
+                }
+                (format!("{} matches:\n{body}", hits.len()), false)
+            },
+            Err(e) => (format!("Error: {e}"), true),
+        }
+    }
+
+    fn exec_glob(&self, args: &HashMap<String, serde_json::Value>) -> (String, bool) {
+        use clawdius_core::tools::search::resolve_root;
+        let Some(pattern) = args.get("pattern").and_then(serde_json::Value::as_str) else {
+            return (("glob requires { pattern: string }".to_string()), true);
+        };
+        let path = args
+            .get("path")
+            .and_then(serde_json::Value::as_str)
+            .unwrap_or(".");
+        let root = resolve_root(path);
+        match self.search_tool.glob(pattern, &root) {
+            Ok(paths) if paths.is_empty() => (format!("No files match '{pattern}'"), false),
+            Ok(paths) => (
+                format!("{} files:\n{}\n", paths.len(), paths.join("\n")),
+                false,
+            ),
+            Err(e) => (format!("Error: {e}"), true),
+        }
+    }
+
+    fn exec_web_search(&self, args: &HashMap<String, serde_json::Value>) -> (String, bool) {
+        let Some(query) = args.get("query").and_then(serde_json::Value::as_str) else {
+            return (("web_search requires { query: string }".to_string()), true);
+        };
+        let limit = usize::try_from(
+            args.get("limit")
+                .and_then(serde_json::Value::as_u64)
+                .unwrap_or(5),
+        )
+        .unwrap_or(5);
+        let web = Arc::clone(&self.web_search);
+        // The executor is sync but we are inside the tokio runtime; bridge
+        // the async search onto the current worker thread.
+        let result = tokio::task::block_in_place(|| {
+            tokio::runtime::Handle::try_current().map(|h| h.block_on(web.search(query, limit)))
+        });
+        match result {
+            Ok(Ok(results)) if results.is_empty() => (format!("No results for '{query}'"), false),
+            Ok(Ok(results)) => {
+                let mut body = String::new();
+                for r in &results {
+                    let _ = writeln!(
+                        body,
+                        "- {} ({}):\n  {}",
+                        r.title,
+                        r.url,
+                        r.snippet.chars().take(300).collect::<String>()
+                    );
+                }
+                (format!("{} results:\n{body}", results.len()), false)
+            },
+            Ok(Err(e)) => (format!("web_search failed: {e}"), true),
+            Err(e) => (
+                format!("web_search unavailable outside a runtime: {e}"),
+                true,
+            ),
+        }
+    }
+
+    fn exec_todo_write(&self, args: &HashMap<String, serde_json::Value>) -> (String, bool) {
+        use clawdius_core::tools::todo::{parse_todos, render_todos};
+        let Some(todos_value) = args.get("todos") else {
+            return (("todo_write requires { todos: [...] }".to_string()), true);
+        };
+        let parsed = parse_todos(todos_value);
+        if parsed.is_empty() {
+            return (
+                ("todo_write: no valid entries (need content per item)".to_string()),
+                true,
+            );
+        }
+        let rendered = render_todos(&parsed);
+        if let Ok(mut guard) = self.todos.lock() {
+            *guard = parsed;
+        }
+        (format!("Todo list updated.\n{rendered}"), false)
+    }
+
+    fn exec_todo_read(&self) -> (String, bool) {
+        use clawdius_core::tools::todo::render_todos;
+        self.todos.lock().map_or_else(
+            |_| (("todo list locked".to_string()), true),
+            |guard| (render_todos(&guard), false),
+        )
+    }
 }
 
 /// Maximum number of agentic iterations (tool-call loops) per user message.
@@ -379,9 +520,27 @@ impl App {
             return None;
         }
 
+        // Project instruction files (AGENTS.md / CLAUDE.md convention):
+        // prepend them so the agent honors repo conventions from turn one.
+        let instructions = ["AGENTS.md", "CLAUDE.md"]
+            .iter()
+            .map(|name| cwd.join(name))
+            .find(|p| p.is_file())
+            .and_then(|p| std::fs::read_to_string(p).ok())
+            .map(|body| {
+                let mut body = body.trim().to_string();
+                if body.chars().count() > 8_000 {
+                    body = body.chars().take(8_000).collect();
+                    body.push_str("\n... (truncated)");
+                }
+                format!("## Project Instructions\n{body}\n\n")
+            });
+
         match clawdius_core::workspace::WorkspaceContextBuilder::build_single(&cwd, None) {
-            Ok(ctx) if !ctx.trim().is_empty() => Some(ctx),
-            _ => None,
+            Ok(ctx) if !ctx.trim().is_empty() => {
+                Some(format!("{}{ctx}", instructions.unwrap_or_default()))
+            },
+            _ => instructions,
         }
     }
 
