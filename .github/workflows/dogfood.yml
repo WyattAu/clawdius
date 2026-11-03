@@ -120,8 +120,9 @@ jobs:
         run: |
           export "$KEY_ENV=$KEY_VALUE"
           cd /home/runner/dogfood
-          timeout 900 "$GITHUB_WORKSPACE/target/release/clawdius" chat \
+          timeout 900 "$GITHUB_WORKSPACE/target/release/clawdius" auto \
             --provider "$PROVIDER" \
+            --fail-on-test-failure \
             "In this repository, cargo test fails. Run cargo test, find the \
              failing test, read the source, fix the defect, and verify with \
              cargo test until it passes. Change as little as possible." \

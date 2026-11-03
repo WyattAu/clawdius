@@ -773,7 +773,7 @@ impl ModelRouter {
         let (cheap_provider, cheap_model) = match primary_provider {
             "anthropic" => ("anthropic", "claude-3-5-haiku-20241022"),
             "openai" => ("openai", "gpt-4o-mini"),
-            "google" => ("google", "gemini-2.0-flash"),
+            "google" => ("google", "gemini-3.8-flash"),
             "zai" => ("zai", "glm-4.6"),
             "openrouter" => ("openrouter", "google/gemma-3-4b-it:free"),
             "opencode-go" => ("opencode-go", "mimo-v2.5"),
@@ -1016,7 +1016,7 @@ mod tests {
         assert!(table.contains_key("claude-sonnet-4-20250514"));
         assert!(table.contains_key("gpt-4o"));
         assert!(table.contains_key("glm-4.6"));
-        assert!(table.contains_key("gemini-2.0-flash"));
+        assert!(table.contains_key("gemini-3.8-flash"));
 
         // Free models
         assert_eq!(table["google/gemma-3-4b-it:free"].input_per_1m, 0.0);
