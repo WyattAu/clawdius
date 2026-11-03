@@ -95,6 +95,7 @@ pub mod html_compressor;
 pub mod search;
 pub mod shell;
 pub mod todo;
+pub mod web;
 pub mod web_search;
 
 use serde::{Deserialize, Serialize};

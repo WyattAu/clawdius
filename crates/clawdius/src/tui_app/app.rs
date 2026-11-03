@@ -121,7 +121,7 @@ impl TuiToolExecutor {
             "grep" => self.exec_grep(&args),
             "glob" => self.exec_glob(&args),
             "web_search" => self.exec_web_search(&args),
-            "web_fetch" => self.exec_web_fetch(&args),
+            "web_fetch" => Self::exec_web_fetch(&args),
             "todo_write" => self.exec_todo_write(&args),
             "todo_read" => self.exec_todo_read(),
             "shell" | "run_command" => self.exec_shell(&args),
@@ -380,7 +380,7 @@ impl TuiToolExecutor {
         }
     }
 
-    fn exec_web_fetch(&self, args: &HashMap<String, serde_json::Value>) -> (String, bool) {
+    fn exec_web_fetch(args: &HashMap<String, serde_json::Value>) -> (String, bool) {
         use clawdius_core::tools::web::fetch_text;
         let Some(url) = args.get("url").and_then(serde_json::Value::as_str) else {
             return (("web_fetch requires { url: string }".to_string()), true);
