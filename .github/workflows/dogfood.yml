@@ -19,7 +19,9 @@ name: Dogfood
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 6 * * 1" # weekly, Monday 06:00 UTC
+    # Daily 08:00 UTC — just after the Pacific-midnight free-tier quota
+    # reset (~07:34), so a fresh 20-request budget is available per run.
+    - cron: "0 8 * * *"
 
 concurrency:
   group: dogfood
@@ -127,6 +129,7 @@ jobs:
             echo "Agent attempt $attempt of 3"
             if timeout 900 "$GITHUB_WORKSPACE/target/release/clawdius" auto \
               --provider "$PROVIDER" \
+              --max-iterations 15 \
               --fail-on-test-failure \
               "In this repository, cargo test fails. Run cargo test, find the \
                failing test, read the source, fix the defect, and verify with \
