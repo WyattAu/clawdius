@@ -444,7 +444,7 @@ impl ResolvedLlmConfig {
                         ErrorHelpers::api_key_missing("Google", "GOOGLE_API_KEY").to_string(),
                     )
                 })?;
-                (Some(key), None, "gemini-3.8-flash".to_string())
+                (Some(key), None, "gemini-flash-latest".to_string())
             },
             "openai" => {
                 let key = std::env::var("OPENAI_API_KEY").map_err(|_| {
@@ -622,7 +622,7 @@ impl ResolvedLlmConfig {
                 let cfg = config.google.as_ref();
                 let model = cfg
                     .and_then(|c| c.model.clone())
-                    .unwrap_or_else(|| "gemini-3.8-flash".to_string());
+                    .unwrap_or_else(|| "gemini-flash-latest".to_string());
 
                 let api_key = Self::load_api_key(
                     "GOOGLE_API_KEY",
