@@ -16,6 +16,7 @@ pub(super) async fn handle_auto(
     config_path: Option<PathBuf>,
     output_format: OutputFormat,
 ) -> anyhow::Result<()> {
+    use clawdius_core::config::RetryConfig;
     use clawdius_core::llm::providers::LlmClient;
     use clawdius_core::llm::{
         create_provider_with_retry, ChatMessage, ChatRole, ResolvedLlmConfig,
@@ -47,9 +48,18 @@ pub(super) async fn handle_auto(
         llm_config.model.clone_from(m);
     }
 
-    // Retry wrapper: transient provider failures (503 high-demand, rate
-    // limits, timeouts) must not kill an autonomous run on the first call.
-    let llm_client = match create_provider_with_retry(&llm_config, None) {
+    // Retry wrapper with an autonomous-run window: provider capacity
+    // failures (Google 503 high-demand windows last minutes) must be
+    // outlasted, not surrendered after ~3 seconds of backoff.
+    let llm_client = match create_provider_with_retry(
+        &llm_config,
+        Some(RetryConfig {
+            max_retries: 6,
+            initial_delay_ms: 2_000,
+            max_delay_ms: 30_000,
+            ..RetryConfig::default()
+        }),
+    ) {
         Ok(client) => client,
         Err(e) => {
             let result = ActionResult::error("auto", task.clone(), e.to_string());

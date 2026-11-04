@@ -118,15 +118,25 @@ jobs:
           KEY_VALUE: ${{ steps.key.outputs.key }}
           KEY_ENV: ${{ steps.key.outputs.env }}
         run: |
+          set -o pipefail
           export "$KEY_ENV=$KEY_VALUE"
           cd /home/runner/dogfood
-          timeout 900 "$GITHUB_WORKSPACE/target/release/clawdius" auto \
-            --provider "$PROVIDER" \
-            --fail-on-test-failure \
-            "In this repository, cargo test fails. Run cargo test, find the \
-             failing test, read the source, fix the defect, and verify with \
-             cargo test until it passes. Change as little as possible." \
-            2>&1 | tee /tmp/agent.txt
+          # Provider capacity 503s come in minute-scale windows; the retry
+          # wrapper survives short ones, this loop survives long ones.
+          for attempt in 1 2 3; do
+            echo "Agent attempt $attempt of 3"
+            if timeout 900 "$GITHUB_WORKSPACE/target/release/clawdius" auto \
+              --provider "$PROVIDER" \
+              --fail-on-test-failure \
+              "In this repository, cargo test fails. Run cargo test, find the \
+               failing test, read the source, fix the defect, and verify with \
+               cargo test until it passes. Change as little as possible." \
+              2>&1 | tee /tmp/agent.txt; then
+              break
+            fi
+            echo "Agent attempt failed; sleeping 60s before retry..."
+            sleep 60
+          done
 
       - name: Verify the fix
         if: steps.key.outputs.provider != 'none'
