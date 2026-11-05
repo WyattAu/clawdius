@@ -84,7 +84,7 @@ impl RunJournal {
 
     /// Where this journal persists.
     #[must_use]
-    pub const fn path(&self) -> &Path {
+    pub fn path(&self) -> &Path {
         &self.path
     }
 
@@ -205,7 +205,7 @@ mod tests {
                 .unwrap();
             // Simulate a crash mid-write: append a torn line.
             let mut raw = std::fs::OpenOptions::new().append(true).open(&path).unwrap();
-            raw.write_all(br##"{"t":"tool_ca"##.as_bytes()).unwrap();
+            raw.write_all(br##"{"t":"tool_ca"##).unwrap();
         }
         let events = RunJournal::replay(&path).unwrap();
         assert_eq!(events.len(), 1);

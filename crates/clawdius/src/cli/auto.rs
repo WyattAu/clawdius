@@ -17,7 +17,6 @@ pub(super) async fn handle_auto(
     output_format: OutputFormat,
 ) -> anyhow::Result<()> {
     use clawdius_core::config::RetryConfig;
-    use clawdius_core::llm::providers::LlmClient;
     use clawdius_core::llm::{
         create_provider_with_retry, ChatMessage, ChatRole, ResolvedLlmConfig,
     };
@@ -46,6 +45,16 @@ pub(super) async fn handle_auto(
     let mut llm_config = ResolvedLlmConfig::from_config(&config.llm, &provider)?;
     if let Some(ref m) = model {
         llm_config.model.clone_from(m);
+    }
+
+    // Crash-safe run journal (opencode-parity: durable runs).
+    let journal_path = std::env::current_dir()?.join(".clawdius/runs/auto-latest.jsonl");
+    let mut journal = clawdius_core::session::journal::RunJournal::open(&journal_path).ok();
+    if let Some(j) = journal.as_mut() {
+        let _ = j.record(&clawdius_core::session::journal::JournalEvent::Started {
+            task: task.clone(),
+            provider: provider.clone(),
+        });
     }
 
     // Retry wrapper with an autonomous-run window: provider capacity
@@ -211,6 +220,14 @@ pub(super) async fn handle_auto(
     session_manager
         .add_message(&mut session, assistant_msg.clone())
         .await?;
+
+    // Journal the run outcome (crash trail: .clawdius/runs/auto-latest.jsonl)
+    if let Some(j) = journal.as_mut() {
+        let _ = j.record(&clawdius_core::session::journal::JournalEvent::Finished {
+            ok: tests_passed,
+            note: format!("auto run in {}ms", duration.as_millis()),
+        });
+    }
 
     // Build result
     let result = ActionResult::success(

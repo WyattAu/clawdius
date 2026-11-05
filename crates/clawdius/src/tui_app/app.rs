@@ -431,9 +431,8 @@ impl TuiToolExecutor {
         let Some(task) = args.get("task").and_then(serde_json::Value::as_str) else {
             return (("subagent requires { task: string }".to_string()), true);
         };
-        let guard = match self.subagent.lock() {
-            Ok(g) => g,
-            Err(_) => return (("subagent host locked".to_string()), true),
+        let Ok(guard) = self.subagent.lock() else {
+            return (("subagent host locked".to_string()), true);
         };
         let Some(tool) = guard.as_ref() else {
             return (
