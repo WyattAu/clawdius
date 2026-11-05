@@ -129,6 +129,7 @@ jobs:
             echo "Agent attempt $attempt of 3"
             if timeout 900 "$GITHUB_WORKSPACE/target/release/clawdius" auto \
               --provider "$PROVIDER" \
+              --model gemini-flash-lite-latest \
               --max-iterations 15 \
               --fail-on-test-failure \
               "In this repository, cargo test fails. Run cargo test, find the \
