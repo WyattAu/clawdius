@@ -67,7 +67,7 @@ first matching file). Core modules `tools/search.rs` + `tools/todo.rs`,
 |---|---|---|---|---|
 | File read/write/edit/glob/grep | yes | yes | read/write/edit/list + **grep/glob** | PARITY (13 tools; still below CC's ~40 breadth) |
 | Shell + sandbox | permission+scan | sandboxed bash | 8 backends, refuse-by-default | VERIFY end-to-end |
-| Subagents (Task tool) | background child sessions | AgentTool fork/resume | DAG planner exists; no in-loop subagent tool | MISSING |
+| Subagents (Task tool) | background child sessions | AgentTool fork/resume | **subagent engine tested** (`tools/subagent.rs`: bounded inner loop, tool-call budget, output caps, error-feedback; 4 mock-driven tests); TUI/auto binding next | MODULE |
 | Todo/plan tracking | todo tool | TodoWrite | **todo_write/todo_read** | PARITY |
 | Web fetch | yes | WebFetch | **web_fetch** (SSRF guard: loopback/RFC1918/link-local/`.internal`/single-label refused; 20KB text cap) | PARITY |
 | Web search | yes | WebSearch | **web_search** (DuckDuckGo default) | PARITY |
