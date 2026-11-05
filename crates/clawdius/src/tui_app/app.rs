@@ -52,6 +52,9 @@ pub struct TuiToolExecutor {
     /// Session todo list (Claude Code `TodoWrite` semantics), replaced on
     /// each `todo_write` call.
     todos: Mutex<Vec<clawdius_core::tools::todo::TodoItem>>,
+    /// Nested agent loop host, installed per agentic run (see
+    /// `run_agentic_loop`).
+    subagent: Mutex<Option<clawdius_core::tools::subagent::SubagentTool>>,
 }
 
 impl TuiToolExecutor {
@@ -71,6 +74,7 @@ impl TuiToolExecutor {
             search_tool: Arc::new(clawdius_core::tools::search::SearchTool::new()),
             web_search: Arc::new(clawdius_core::tools::web_search::WebSearchTool::default()),
             todos: Mutex::new(Vec::new()),
+            subagent: Mutex::new(None),
         }
     }
 
@@ -97,6 +101,8 @@ impl TuiToolExecutor {
                 .with_description("Replace the session todo list. Args: { todos: [ { content: string, status: pending|in_progress|completed } ] }"),
             Tool::new("todo_read")
                 .with_description("Show the current session todo list. Args: {}"),
+            Tool::new("subagent")
+                .with_description("Delegate a focused subtask to a nested agent (bounded loop; returns a summary). Args: { task: string }"),
             Tool::new("shell")
                 .with_description("Run a shell command. Args: { command: string, timeout?: number }"),
             Tool::new("git_status")
@@ -124,6 +130,7 @@ impl TuiToolExecutor {
             "web_fetch" => Self::exec_web_fetch(&args),
             "todo_write" => self.exec_todo_write(&args),
             "todo_read" => self.exec_todo_read(),
+            "subagent" => self.exec_subagent(&args),
             "shell" | "run_command" => self.exec_shell(&args),
             "git_status" => match self.git_tool.status(None) {
                 Ok(output) => (output, false),
@@ -398,6 +405,50 @@ impl TuiToolExecutor {
                 format!("web_fetch unavailable outside a runtime: {e}"),
                 true,
             ),
+        }
+    }
+
+    /// Install the nested agent loop host for this run. Called from
+    /// `run_agentic_loop` once its provider exists.
+    fn install_subagent(
+        &self,
+        client: Arc<dyn LlmClient>,
+        tools: Vec<Tool>,
+        executor: clawdius_core::tools::subagent::SubToolExecutor,
+    ) {
+        let tool = clawdius_core::tools::subagent::SubagentTool::new(
+            client,
+            tools,
+            executor,
+            clawdius_core::tools::subagent::SubagentConfig::default(),
+        );
+        if let Ok(mut guard) = self.subagent.lock() {
+            *guard = Some(tool);
+        }
+    }
+
+    fn exec_subagent(&self, args: &HashMap<String, serde_json::Value>) -> (String, bool) {
+        let Some(task) = args.get("task").and_then(serde_json::Value::as_str) else {
+            return (("subagent requires { task: string }".to_string()), true);
+        };
+        let guard = match self.subagent.lock() {
+            Ok(g) => g,
+            Err(_) => return (("subagent host locked".to_string()), true),
+        };
+        let Some(tool) = guard.as_ref() else {
+            return (
+                ("subagent host not installed for this run".to_string()),
+                true,
+            );
+        };
+        let task = task.to_string();
+        let result = tokio::task::block_in_place(|| {
+            tokio::runtime::Handle::try_current().map(|h| h.block_on(tool.run(&task)))
+        });
+        match result {
+            Ok(Ok(summary)) => (format!("Subagent summary:\n{summary}"), false),
+            Ok(Err(e)) => (format!("subagent failed: {e}"), true),
+            Err(e) => (format!("subagent unavailable outside a runtime: {e}"), true),
         }
     }
 
@@ -2502,6 +2553,20 @@ async fn run_agentic_loop(
     tx: mpsc::Sender<TuiEvent>,
     timeout_secs: u64,
 ) {
+    // Install the subagent host for this run: the loop's own provider and
+    // executor are exactly what a nested delegation needs.
+    let provider_arc: Arc<dyn LlmClient> = Arc::new(provider);
+    {
+        let exec_for_sub = Arc::clone(&tool_executor);
+        let sub_exec: clawdius_core::tools::subagent::SubToolExecutor =
+            Arc::new(move |name: &str, args: &str| exec_for_sub.execute_tool(name, args));
+        tool_executor.install_subagent(
+            Arc::clone(&provider_arc),
+            TuiToolExecutor::tool_definitions(),
+            sub_exec,
+        );
+    }
+    let provider = provider_arc;
     // Ensure system prompt is present
     if messages.is_empty() || !matches!(messages[0].role, ChatRole::System) {
         messages.insert(

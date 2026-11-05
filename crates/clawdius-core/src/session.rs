@@ -152,6 +152,7 @@
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used))]
 
 pub mod compactor;
+pub mod journal;
 pub mod manager;
 pub mod membership;
 pub mod store;
