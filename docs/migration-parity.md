@@ -56,18 +56,26 @@ binary, real scratch repo, real Z.AI API):
 
 ### 2. Agent surface (the daily-driver gap)
 
-**2026-11-02: tool surface 8 -> 13.** Added `grep` (regex content search,
-.gitignore-aware), `glob` (recursive `**` patterns), `web_search` (async
-bridge to DuckDuckGo/Google/Bing), `todo_write`/`todo_read` (Claude Code
-`TodoWrite` semantics), and AGENTS.md/CLAUDE.md context injection (8KB cap,
-first matching file). Core modules `tools/search.rs` + `tools/todo.rs`,
-42 core tool tests green.
+**2026-11-02: tool surface 8 -> 15.** Added `grep`, `glob`, `web_search`,
+`web_fetch`, `todo_write`/`todo_read`, `subagent`, and AGENTS.md/CLAUDE.md
+context injection. Core modules `tools/search.rs`, `tools/todo.rs`,
+`tools/subagent.rs` (bounded nested loop), `tools/web.rs` — 49 core tool
+tests green.
+
+**2026-11-06: DOGFOOD VERIFIED IN CI.** The Dogfood workflow runs clawdius
+autonomously against a seeded broken repo: run 13 passed - the agent used
+its tool loop (shell -> read -> edit -> re-test) to repair the defect with
+zero human intervention ("Dogfood PASS: agent repaired the repo
+end-to-end", run 42140686924). Seven pre-run failures surfaced and fixed
+six real bugs: gemini model sunsets (x2), genai Ollama fallback for the
+zai prefix, missing GoogleProvider chat_with_tools, missing Google
+routing in LlmClientWithRetry, and a seed that did not compile.
 
 | Capability | opencode | Claude Code | clawdius | Status |
 |---|---|---|---|---|
 | File read/write/edit/glob/grep | yes | yes | read/write/edit/list + **grep/glob** | PARITY (13 tools; still below CC's ~40 breadth) |
-| Shell + sandbox | permission+scan | sandboxed bash | 8 backends, refuse-by-default | VERIFY end-to-end |
-| Subagents (Task tool) | background child sessions | AgentTool fork/resume | **subagent engine tested** (`tools/subagent.rs`: bounded inner loop, tool-call budget, output caps, error-feedback; 4 mock-driven tests); TUI/auto binding next | MODULE |
+| Shell + sandbox | permission+scan | sandboxed bash | 8 backends, refuse-by-default | dogfood-verified in CI |
+| Subagents (Task tool) | background child sessions | AgentTool fork/resume | **subagent engine bound to auto mode + dogfood CI run** (`tools/subagent.rs`, 4 mock tests + run 13 E2E) | PARITY-ish |
 | Todo/plan tracking | todo tool | TodoWrite | **todo_write/todo_read** | PARITY |
 | Web fetch | yes | WebFetch | **web_fetch** (SSRF guard: loopback/RFC1918/link-local/`.internal`/single-label refused; 20KB text cap) | PARITY |
 | Web search | yes | WebSearch | **web_search** (DuckDuckGo default) | PARITY |
