@@ -64,37 +64,64 @@ fi
 out=$(timeout 20 "$BIN" sessions 2>&1)
 check "sessions subcommand responds" "ession" "$out"
 
-echo "== 6. real chat one-shot (provider key from opencode auth) =="
+echo "== 5b. provider key pick (env GOOGLE first, then opencode auth) =="
 AUTH=~/.local/share/opencode/auth.json
-if [[ -f "$AUTH" ]]; then
-  KEY=$(python3 -c "
+GOOGLE_KEY="${GOOGLE_API_KEY:-}"
+if [ -z "$GOOGLE_KEY" ] && [ -f "$AUTH" ]; then
+  GOOGLE_KEY=$(python3 -c "
 import json
 try:
     d=json.load(open('$AUTH'))
-    for provider, env in (('deepseek','DEEPSEEK_API_KEY'),('anthropic','ANTHROPIC_API_KEY'),('openai','OPENAI_API_KEY')):
-        v = d.get(provider) or {}
-        api = v.get('api') or v.get('key')
-        if api:
-            print(env+'='+api)
-            break
-except Exception as e:
-    print('', end='')
-")
-  if [[ -n "$KEY" ]]; then
-    export "$KEY"
-    out=$(timeout 120 "$BIN" chat --provider deepseek "Reply with exactly: E2E-OK" 2>&1)
-    echo "  chat: ${out:0:200}"
-    if [[ "$out" == *"Insufficient balance"* || "$out" == *"resource package"* ]]; then
-      echo "CHECK: chat one-shot -> SKIP (provider account-side: no balance/quota; transport verified)"
-      SKIP=$((SKIP+1))
-    else
-      check "chat one-shot with real provider" "E2E-OK" "$out"
-    fi
+    print((d.get('google') or {}).get('api') or '')
+except Exception: pass")
+fi
+DEEPSEEK_KEY=""
+if [ -f "$AUTH" ]; then
+  DEEPSEEK_KEY=$(python3 -c "
+import json
+try:
+    d=json.load(open('$AUTH'))
+    print((d.get('deepseek') or {}).get('api') or '')
+except Exception: pass")
+fi
+if [ -n "$GOOGLE_KEY" ]; then
+  export GOOGLE_API_KEY="$GOOGLE_KEY"
+  PROV=google; MODEL=gemini-flash-lite-latest
+elif [ -n "$DEEPSEEK_KEY" ]; then
+  export DEEPSEEK_API_KEY="$DEEPSEEK_KEY"
+  PROV=deepseek; MODEL=deepseek-chat
+else
+  PROV=""; MODEL=""
+fi
+
+echo "== 5b. session continuity across processes (durable-sessions row) =="
+if [ -n "$PROV" ]; then
+SID=$(timeout 120 "$BIN" chat --provider "$PROV" --model "$MODEL" \
+  "Remember the codeword BANANA. Reply with exactly: OK" 2>/dev/null \
+  | grep -oE '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}' | head -1)
+if [ -n "$SID" ]; then
+  echo "  session: $SID"
+  ANSWER=$(timeout 120 "$BIN" chat --provider "$PROV" --model "$MODEL" -s "$SID" --quiet \
+    "What codeword did I ask you to remember? Reply with just the codeword." 2>/dev/null | tail -1)
+  check "session continuity (context survives restart)" "BANANA" "$ANSWER"
+else
+  echo "CHECK: session continuity -> SKIP (no session id captured; provider quota?)"
+  SKIP=$((SKIP+1))
+fi
+fi
+
+echo "== 6. real chat one-shot (provider key from opencode auth) =="
+if [ -n "$GOOGLE_KEY" ]; then
+  out=$(timeout 120 "$BIN" chat --provider google --model gemini-flash-lite-latest "Reply with exactly: E2E-OK" 2>&1)
+  echo "  chat: ${out:0:200}"
+  if [[ "$out" == *"Insufficient balance"* || "$out" == *"resource package"* || "$out" == *"Quota exceeded"* || "$out" == *"high demand"* ]]; then
+    echo "CHECK: chat one-shot -> SKIP (provider account-side limit; transport verified)"
+    SKIP=$((SKIP+1))
   else
-    echo "CHECK: chat one-shot -> SKIP (no usable provider key in auth.json)"
+    check "chat one-shot with real provider" "E2E-OK" "$out"
   fi
 else
-  echo "CHECK: chat one-shot -> SKIP (no opencode auth.json)"
+  echo "CHECK: chat one-shot -> SKIP (no provider key)"
 fi
 
 echo

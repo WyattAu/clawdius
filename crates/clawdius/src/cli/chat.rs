@@ -11,7 +11,7 @@ pub(super) async fn handle_chat(
     prompt: Option<String>,
     model: Option<String>,
     provider: String,
-    _session: Option<String>,
+    session_id: Option<String>,
     use_editor: bool,
     mode_name: String,
     exit_after_response: bool,
@@ -78,7 +78,21 @@ pub(super) async fn handle_chat(
 
     let config = load_config(config_path.as_deref())?;
     let session_manager = SessionManager::new(&config)?;
-    let mut session = session_manager.get_or_create_active()?;
+    // Resume the requested session (with its conversation history) when
+    // given; otherwise create/load the active one. History replays into
+    // the LLM context so `chat -s <id>` continues where that session left
+    // off.
+    let mut session = match session_id.as_deref() {
+        Some(id_str) => {
+            let uuid = uuid::Uuid::parse_str(id_str)
+                .map_err(|e| anyhow::anyhow!("Invalid session id '{id_str}': {e}"))?;
+            let sid = clawdius_core::session::SessionId(uuid);
+            session_manager
+                .load_session(&sid)?
+                .ok_or_else(|| anyhow::anyhow!("Session {id_str} not found"))?
+        },
+        None => session_manager.get_or_create_active()?,
+    };
 
     // Load agent mode
     let modes_dir = std::env::current_dir()?.join(".clawdius").join("modes");
@@ -119,18 +133,39 @@ pub(super) async fn handle_chat(
         },
     };
 
-    // Build messages with mode-specific system prompt
-    let system_message = ChatMessage {
+    // Build messages with mode-specific system prompt. On `-s <id>`
+    // resume, replay the session history (last 20 turns) so the model has
+    // the conversation context; otherwise this is just the system prompt.
+    let mut messages = vec![ChatMessage {
         role: ChatRole::System,
         content: mode.system_prompt().to_string(),
-    };
-
+    }];
+    const HISTORY_CAP: usize = 20;
+    let history: Vec<_> = session
+        .messages
+        .iter()
+        .rev()
+        .take(HISTORY_CAP)
+        .rev()
+        .collect();
+    for m in &history {
+        let role = match m.role {
+            clawdius_core::session::MessageRole::System => ChatRole::System,
+            clawdius_core::session::MessageRole::User => ChatRole::User,
+            clawdius_core::session::MessageRole::Assistant => ChatRole::Assistant,
+            other => {
+                let _ = other;
+                ChatRole::User
+            },
+        };
+        let content = m.as_text().unwrap_or_default().to_string();
+        messages.push(ChatMessage { role, content });
+    }
     let user_message = ChatMessage {
         role: ChatRole::User,
         content: context_str.clone(),
     };
-
-    let messages = vec![system_message, user_message];
+    messages.push(user_message);
 
     if output_format == OutputFormat::Text {
         println!("Provider: {provider}");
