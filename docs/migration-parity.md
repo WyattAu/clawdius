@@ -101,7 +101,7 @@ routing in LlmClientWithRetry, and a seed that did not compile.
 | Capability | opencode | Claude Code | clawdius | Status |
 |---|---|---|---|---|
 | Providers | 44 | 1 (+bedrock) | 11 | PARITY-sufficient, VERIFY each |
-| Provider OAuth login | yes (Copilot/ChatGPT/Claude) | yes | none | MISSING |
+| Provider OAuth login | yes (Copilot/ChatGPT/Claude) | yes | **DESIGN shipped** (`docs/provider-oauth-design.md`: Anthropic/OpenAI flows, keyring store, auth CLI, refresh-on-401) | DESIGN |
 | Retry/failover | route executor | internal | per-provider retry | VERIFY |
 | Task-aware model routing | static agent configs | model switch | 7 task types auto-select | VERIFY |
 
