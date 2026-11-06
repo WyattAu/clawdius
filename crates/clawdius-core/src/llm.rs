@@ -1076,3 +1076,31 @@ pub fn create_provider_with_retry(
     let retry = retry_config.unwrap_or_default();
     Ok(LlmClientWithRetry::new(provider, retry))
 }
+
+#[async_trait::async_trait]
+impl LlmClient for LlmClientWithRetry {
+    /// Retried per the configured policy (server errors, rate limits,
+    /// timeouts) before surfacing.
+    async fn chat(&self, messages: Vec<ChatMessage>) -> Result<String> {
+        LlmClientWithRetry::chat(self, messages).await
+    }
+
+    async fn chat_stream(
+        &self,
+        messages: Vec<ChatMessage>,
+    ) -> Result<tokio::sync::mpsc::Receiver<String>> {
+        self.provider.chat_stream(messages).await
+    }
+
+    async fn chat_with_tools(
+        &self,
+        messages: Vec<ChatMessage>,
+        tools: Vec<crate::llm::providers::Tool>,
+    ) -> Result<crate::llm::providers::ChatWithToolsResult> {
+        LlmClientWithRetry::chat_with_tools(self, messages, tools).await
+    }
+
+    fn count_tokens(&self, text: &str) -> usize {
+        self.provider.count_tokens(text)
+    }
+}

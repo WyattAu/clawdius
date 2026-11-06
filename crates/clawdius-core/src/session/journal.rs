@@ -134,7 +134,8 @@ impl RunJournal {
                 JournalEvent::Started { .. } => started = true,
                 JournalEvent::ToolCall { name, .. } => last_tool = name,
                 JournalEvent::Finished { ok, note } => {
-                    finished_note = Some(format!("{} ({})", note, if ok { "ok" } else { "failed" }));
+                    finished_note =
+                        Some(format!("{} ({})", note, if ok { "ok" } else { "failed" }));
                 },
                 _ => {},
             }
@@ -204,7 +205,10 @@ mod tests {
                 })
                 .unwrap();
             // Simulate a crash mid-write: append a torn line.
-            let mut raw = std::fs::OpenOptions::new().append(true).open(&path).unwrap();
+            let mut raw = std::fs::OpenOptions::new()
+                .append(true)
+                .open(&path)
+                .unwrap();
             raw.write_all(br##"{"t":"tool_ca"##).unwrap();
         }
         let events = RunJournal::replay(&path).unwrap();

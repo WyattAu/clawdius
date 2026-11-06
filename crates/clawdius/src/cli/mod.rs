@@ -1196,6 +1196,7 @@ pub mod action;
 pub mod analyze;
 pub mod auth;
 pub mod auto;
+pub mod auto_tools;
 pub mod chat;
 pub mod checkpoint;
 pub mod complete;

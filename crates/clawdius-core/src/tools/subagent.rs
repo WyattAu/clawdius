@@ -51,6 +51,7 @@ pub struct SubagentTool {
     tools: Vec<Tool>,
     executor: SubToolExecutor,
     config: SubagentConfig,
+    system: String,
 }
 
 const SUBAGENT_SYSTEM: &str = "You are a focused subagent completing one \
@@ -72,7 +73,15 @@ impl SubagentTool {
             tools,
             executor,
             config,
+            system: SUBAGENT_SYSTEM.to_string(),
         }
+    }
+
+    /// Override the subagent system prompt (e.g. with the caller's agent-mode prompt).
+    #[must_use]
+    pub fn system_prompt(mut self, prompt: impl Into<String>) -> Self {
+        self.system = prompt.into();
+        self
     }
 
     /// Run the delegation loop for `task` and return the subagent summary.
@@ -85,7 +94,7 @@ impl SubagentTool {
         let mut messages = vec![
             ChatMessage {
                 role: ChatRole::System,
-                content: SUBAGENT_SYSTEM.to_string(),
+                content: self.system.clone(),
             },
             ChatMessage {
                 role: ChatRole::User,
