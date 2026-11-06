@@ -888,9 +888,10 @@ impl LlmClientWithRetry {
             LlmProvider::DeepSeek(p) => p.chat_with_tools(messages, tools).await,
             LlmProvider::Zai(p) => p.chat_with_tools(messages, tools).await,
             LlmProvider::OpencodeGo(p) => p.chat_with_tools(messages, tools).await,
-            LlmProvider::Google(_) | LlmProvider::Ollama(_) | LlmProvider::Local(_) => {
+            LlmProvider::Google(p) => p.chat_with_tools(messages, tools).await,
+            LlmProvider::Ollama(_) | LlmProvider::Local(_) => {
                 Err(crate::Error::Llm(
-                    "Tool calling not supported by this provider. Use Anthropic, OpenAI, OpenRouter, DeepSeek, or ZAI."
+                    "Tool calling not supported by this provider. Use Anthropic, OpenAI, OpenRouter, DeepSeek, Google, or ZAI."
                         .to_string(),
                 ))
             },
