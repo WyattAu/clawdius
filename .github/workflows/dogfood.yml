@@ -134,9 +134,13 @@ jobs:
               --model gemini-flash-lite-latest \
               --max-iterations 15 \
               --fail-on-test-failure \
-              "In this repository, cargo test fails. Run cargo test, find the \
-               failing test, read the source, fix the defect, and verify with \
-               cargo test until it passes. Change as little as possible." \
+              "IMPORTANT: You MUST use your tools to make changes. Never merely \
+               describe a fix — apply it. In this repository, cargo test fails. \
+               1. Use the shell tool to run 'cargo test' and see the failure. \
+               2. Use the read_file tool to read the failing source file. \
+               3. Use the edit_file tool to fix the defect. \
+               4. Use the shell tool to run 'cargo test' again and confirm it passes. \
+               Change as little as possible." \
               2>&1 | tee /tmp/agent.txt; then
               break
             fi
