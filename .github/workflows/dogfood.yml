@@ -154,8 +154,9 @@ jobs:
             exit 1
           }
           git diff --stat HEAD
-          # Compare against the seed commit — the agent may commit its fix.
-          git diff --name-only "$SEED_SHA" HEAD | grep -q "src/lib.rs" || {
+          # Working tree vs seed commit: covers fixes the agent committed
+          # AND fixes left uncommitted.
+          git diff --name-only "$SEED_SHA" | grep -q "src/lib.rs" || {
             echo "::error::Agent ran but did not modify the defective file."
             exit 1
           }
