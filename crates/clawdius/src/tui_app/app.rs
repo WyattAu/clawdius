@@ -2566,6 +2566,24 @@ async fn run_agentic_loop(
         );
     }
     let provider = provider_arc;
+
+    // Crash-safe run journal (durable-runs parity; best-effort).
+    let mut run_journal = std::env::current_dir().ok().and_then(|cwd| {
+        clawdius_core::session::journal::RunJournal::open(
+            &cwd.join(".clawdius/runs/tui-latest.jsonl"),
+        )
+        .ok()
+    });
+    if let Some(j) = run_journal.as_mut() {
+        let _ = j.record(&clawdius_core::session::journal::JournalEvent::Started {
+            task: messages
+                .last()
+                .map(|m| m.content.chars().take(200).collect())
+                .unwrap_or_default(),
+            provider: "tui".to_string(),
+        });
+    }
+
     // Ensure system prompt is present
     if messages.is_empty() || !matches!(messages[0].role, ChatRole::System) {
         messages.insert(
@@ -2691,7 +2709,23 @@ async fn run_agentic_loop(
                     })
                     .await;
 
+                if let Some(j) = run_journal.as_mut() {
+                    let _ = j.record(&clawdius_core::session::journal::JournalEvent::ToolCall {
+                        n: 0,
+                        name: name.clone(),
+                        args: arguments.clone(),
+                    });
+                }
+
                 let (output, is_error) = tool_executor.execute_tool(&name, &arguments);
+
+                if let Some(j) = run_journal.as_mut() {
+                    let _ = j.record(&clawdius_core::session::journal::JournalEvent::ToolResult {
+                        n: 0,
+                        name: name.clone(),
+                        is_error,
+                    });
+                }
 
                 let _ = tx
                     .send(TuiEvent::ToolResult {
