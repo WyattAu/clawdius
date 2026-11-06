@@ -5,7 +5,7 @@ use futures::StreamExt;
 use genai::chat::{ChatMessage, ChatRequest};
 use tokio::sync::mpsc;
 
-use crate::llm::providers::LlmClient;
+use crate::llm::providers::{ChatWithToolsResult, LlmClient};
 use crate::llm::{ChatMessage as ClawdiusMessage, ChatRole};
 use crate::{Error, Result};
 
@@ -53,6 +53,37 @@ impl LlmClient for GoogleProvider {
             .first_text()
             .map(std::string::ToString::to_string)
             .ok_or_else(|| Error::Llm("No response text".into()))
+    }
+
+    /// Send a chat message with function definitions and get structured
+    /// tool calls back. genai's Gemini adapter supports native function
+    /// calling; `response.content.tool_calls()` yields the requested calls.
+    async fn chat_with_tools(
+        &self,
+        messages: Vec<ClawdiusMessage>,
+        tools: Vec<genai::chat::Tool>,
+    ) -> Result<ChatWithToolsResult> {
+        let genai_messages: Vec<ChatMessage> = messages
+            .into_iter()
+            .map(|m| match m.role {
+                ChatRole::System => ChatMessage::system(m.content),
+                ChatRole::User => ChatMessage::user(m.content),
+                ChatRole::Assistant => ChatMessage::assistant(m.content),
+            })
+            .collect();
+        let chat_req = ChatRequest::new(genai_messages).with_tools(tools);
+
+        let response = self
+            .client
+            .exec_chat(&self.model, chat_req, None)
+            .await
+            .map_err(|e| Error::Llm(e.to_string()))?;
+
+        let text = response.content.first_text().unwrap_or("").to_string();
+        let tool_calls: Vec<genai::chat::ToolCall> =
+            response.content.tool_calls().into_iter().cloned().collect();
+
+        Ok(ChatWithToolsResult { text, tool_calls })
     }
     async fn chat_with_options(
         &self,
