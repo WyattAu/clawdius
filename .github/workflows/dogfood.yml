@@ -109,6 +109,8 @@ jobs:
           EOF
           git add -A
           git -c user.email=dogfood@clawdius.dev -c user.name=dogfood commit -qm "seed: broken add()"
+          SEED_SHA=$(git rev-parse HEAD)
+          echo "SEED_SHA=$SEED_SHA" >> "$GITHUB_ENV"
           # Baseline: the seeded test must fail before the agent runs.
           cargo test 2>&1 | tee /tmp/baseline.txt
           grep -q "test result: FAILED" /tmp/baseline.txt
@@ -152,7 +154,8 @@ jobs:
             exit 1
           }
           git diff --stat HEAD
-          git diff --name-only HEAD | grep -q "src/lib.rs" || {
+          # Compare against the seed commit — the agent may commit its fix.
+          git diff --name-only "$SEED_SHA" HEAD | grep -q "src/lib.rs" || {
             echo "::error::Agent ran but did not modify the defective file."
             exit 1
           }
