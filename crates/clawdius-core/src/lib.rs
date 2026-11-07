@@ -36,6 +36,7 @@ pub mod api;
 #[cfg(feature = "audit")]
 #[doc(hidden)]
 pub mod audit;
+pub mod auth;
 #[cfg(feature = "billing")]
 #[doc(hidden)]
 pub mod billing;

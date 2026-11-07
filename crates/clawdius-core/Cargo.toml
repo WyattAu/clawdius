@@ -146,6 +146,7 @@ tree-sitter-php.workspace = true
 # Filesystem utilities (not available in WASM)
 which.workspace = true
 tempfile.workspace = true
+sha2.workspace = true
 ignore.workspace = true
 notify.workspace = true
 walkdir.workspace = true
