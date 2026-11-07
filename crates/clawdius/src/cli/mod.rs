@@ -800,6 +800,23 @@ pub enum AuthCommands {
         #[arg(help = "Provider name")]
         provider: String,
     },
+
+    #[command(about = "Show per-provider auth state (API key + OAuth token)")]
+    Status,
+
+    #[command(about = "Store an OAuth token set (JSON) for a provider — headless import")]
+    SetOAuth {
+        #[arg(help = "Provider name (anthropic, openai)")]
+        provider: String,
+        #[arg(help = "Token set JSON: {access_token, refresh_token?, expires_at?, updated_at?}")]
+        token_json: String,
+    },
+
+    #[command(about = "Delete a stored OAuth token set")]
+    DeleteOAuth {
+        #[arg(help = "Provider name (anthropic, openai)")]
+        provider: String,
+    },
 }
 
 #[derive(Debug, Subcommand)]

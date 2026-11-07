@@ -1251,6 +1251,25 @@ pub mod keyring_storage {
         }
     }
 
+    /// Store an OAuth token set under `oauth/<provider>`.
+    ///
+    /// The payload is the serialized [`OAuthTokenSet`] (access token,
+    /// optional refresh token, expiry) — one opaque keyring secret per
+    /// provider, never synced or logged.
+    pub fn set_oauth_token(&self, provider: &str, token_json: &str) -> crate::Result<()> {
+        self.set_api_key(&format!("oauth/{provider}"), token_json)
+    }
+
+    /// Retrieve the stored OAuth token JSON; `None` when absent.
+    pub fn get_oauth_token(&self, provider: &str) -> crate::Result<Option<String>> {
+        self.get_api_key(&format!("oauth/{provider}"))
+    }
+
+    /// Delete the stored OAuth token; `Ok(())` when absent.
+    pub fn delete_oauth_token(&self, provider: &str) -> crate::Result<()> {
+        self.delete_api_key(&format!("oauth/{provider}"))
+    }
+
     impl Default for KeyringStorage {
         fn default() -> Self {
             Self::new()
@@ -1394,5 +1413,37 @@ mod tests {
         };
         let errors = config.validate();
         assert!(errors.is_empty(), "Custom config has errors: {:?}", errors);
+    }
+}
+
+/// OAuth token set for a subscription-plan provider (Anthropic, OpenAI).
+///
+/// Stored serialized in the OS keyring under `oauth/<provider>`; the
+/// access token is the secret sent as `Authorization: Bearer`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OAuthTokenSet {
+    /// Bearer token sent on LLM requests.
+    pub access_token: String,
+    /// Long-lived token used to mint new access tokens.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub refresh_token: Option<String>,
+    /// When the access token expires (RFC 3339). Absent for tokens
+    /// without server-reported expiry.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub expires_at: Option<String>,
+    /// When the set was last refreshed (RFC 3339).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub updated_at: Option<String>,
+}
+
+impl OAuthTokenSet {
+    /// Whether the access token is past its reported expiry.
+    #[must_use]
+    pub fn expired(&self) -> bool {
+        self.expires_at.as_deref().map_or(false, |e| {
+            chrono::DateTime::parse_from_rfc3339(e)
+                .map(|t| t < chrono::Utc::now())
+                .unwrap_or(false)
+        })
     }
 }

@@ -151,12 +151,11 @@ pub(super) async fn handle_chat(
     for m in &history {
         let role = match m.role {
             clawdius_core::session::MessageRole::System => ChatRole::System,
-            clawdius_core::session::MessageRole::User => ChatRole::User,
+            // Tool results and user messages both feed the model as user
+            // turns (clawdius-core session history is provider-agnostic).
+            clawdius_core::session::MessageRole::User
+            | clawdius_core::session::MessageRole::Tool => ChatRole::User,
             clawdius_core::session::MessageRole::Assistant => ChatRole::Assistant,
-            other => {
-                let _ = other;
-                ChatRole::User
-            },
         };
         let content = m.as_text().unwrap_or_default().to_string();
         messages.push(ChatMessage { role, content });
