@@ -90,7 +90,7 @@ routing in LlmClientWithRetry, and a seed that did not compile.
 
 | Capability | opencode | Claude Code | clawdius | Status |
 |---|---|---|---|---|
-| Persistence across restarts | event-sourced, crash-safe | JSONL resume | SQLite sessions | VERIFY |
+| Persistence across restarts | event-sourced, crash-safe | JSONL resume | SQLite + **session resume verified cross-process** (`chat -s <id>` history replay, 2026-11-06 E2E) + run journals (auto + TUI) | VERIFY->PASS (CLI resume) |
 | Resume/fork/undo | fork/move/revert | --resume/rewind | checkpoint module | MODULE |
 | Auto-compaction | precomputed + steerable | auto-compact | `compactor.rs` | VERIFY |
 | Cost/budget caps | usage stats | cost tracking | Budget enforcement | VERIFY |
