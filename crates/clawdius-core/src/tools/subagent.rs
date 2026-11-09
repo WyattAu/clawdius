@@ -20,6 +20,7 @@ use serde_json::Value;
 use crate::error::{Error, Result};
 use crate::llm::providers::{ChatWithToolsResult, LlmClient, Tool};
 use crate::llm::{ChatMessage, ChatRole};
+use crate::tools::loop_guard::{state_hash, LoopGuard, LoopStatus};
 
 /// Executes a named tool with JSON arguments: `(output, is_error)`.
 pub type SubToolExecutor = Arc<dyn Fn(&str, &str) -> (String, bool) + Send + Sync>;
@@ -52,6 +53,24 @@ pub struct SubagentTool {
     executor: SubToolExecutor,
     config: SubagentConfig,
     system: String,
+    /// Semantic loop detector knobs.
+    pub engine_options: crate::tools::subagent::EngineOptions,
+}
+
+/// Extra knobs for the engine loop.
+#[derive(Debug, Clone)]
+pub struct EngineOptions {
+    /// Loop-detection: halt after this many visits of an identical
+    /// semantic state. `Some(2)` (halt on 2nd repeat) is the default.
+    pub max_state_repeats: usize,
+}
+
+impl Default for EngineOptions {
+    fn default() -> Self {
+        Self {
+            max_state_repeats: 2,
+        }
+    }
 }
 
 const SUBAGENT_SYSTEM: &str = "You are a focused subagent completing one \
@@ -74,6 +93,7 @@ impl SubagentTool {
             executor,
             config,
             system: SUBAGENT_SYSTEM.to_string(),
+            engine_options: EngineOptions::default(),
         }
     }
 
@@ -81,6 +101,13 @@ impl SubagentTool {
     #[must_use]
     pub fn system_prompt(mut self, prompt: impl Into<String>) -> Self {
         self.system = prompt.into();
+        self
+    }
+
+    /// Install a semantic loop detector (engine option).
+    #[must_use]
+    pub fn with_engine_options(mut self, options: EngineOptions) -> Self {
+        self.engine_options = options;
         self
     }
 
@@ -102,12 +129,27 @@ impl SubagentTool {
             },
         ];
         let mut tool_calls_used = 0usize;
+        let mut loop_guard = LoopGuard::new(self.engine_options.max_state_repeats);
 
         for _iteration in 0..self.config.max_iterations {
             let result: ChatWithToolsResult = self
                 .client
                 .chat_with_tools(messages.clone(), self.tools.clone())
                 .await?;
+
+            // Semantic loop detection: identical (response + tool names)
+            // state on consecutive observation means the run is spinning.
+            let mut state_parts: Vec<String> = vec![result.text.clone()];
+            for call in &result.tool_calls {
+                state_parts.push(call.fn_name.clone());
+            }
+            let state = state_hash(&state_parts);
+            if let LoopStatus::Repeat(count) = loop_guard.observe(&format!("{state}")) {
+                return Err(Error::Llm(format!(
+                    "semantic loop detected: state repeated {count} time(s) with no progress; \
+                     the run is spinning — change strategy or inputs"
+                )));
+            }
 
             messages.push(ChatMessage {
                 role: ChatRole::Assistant,
@@ -273,8 +315,9 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn iteration_budget_forces_summary() {
-        let seen = Arc::new(Mutex::new(Vec::new()));
+    async fn identical_states_halt_with_loop_detection() {
+        // Blueprint item 46: a run visiting the same semantic state twice
+        // is spinning - the engine halts it instead of burning the budget.
         let scripted: Vec<ChatWithToolsResult> = (0..10)
             .map(|_| ChatWithToolsResult {
                 text: String::new(),
@@ -283,8 +326,8 @@ mod tests {
             .collect();
         let client = Arc::new(MockClient {
             scripted_tools: Mutex::new(pop_order(&scripted)),
-            final_text: "budget summary".to_string(),
-            seen_plain_chat: Arc::clone(&seen),
+            final_text: String::new(),
+            seen_plain_chat: Arc::new(Mutex::new(Vec::new())),
         });
         let executor: SubToolExecutor =
             Arc::new(|_name: &str, _args: &str| (String::from("x"), false));
@@ -298,15 +341,42 @@ mod tests {
             },
         );
 
-        let summary = tool.run("endless").await.unwrap();
-        assert_eq!(summary, "budget summary");
-        assert!(
-            seen.lock()
-                .unwrap()
-                .iter()
-                .any(|c| c.contains("Iteration budget reached")),
-            "final summary turn must be requested"
+        let err = tool.run("endless").await.unwrap_err();
+        assert!(err.to_string().contains("semantic loop detected"));
+    }
+
+    #[tokio::test]
+    async fn distinct_progress_never_triggers_loop_detection() {
+        let scripted: Vec<ChatWithToolsResult> = (0..6)
+            .map(|i| ChatWithToolsResult {
+                text: format!("progress step {i}"),
+                tool_calls: vec![ToolCall {
+                    call_id: format!("c{i}"),
+                    fn_name: "echo".to_string(),
+                    fn_arguments: serde_json::json!({ "i": i }),
+                    thought_signatures: None,
+                }],
+            })
+            .collect();
+        let client = Arc::new(MockClient {
+            scripted_tools: Mutex::new(scripted),
+            final_text: "budget summary".to_string(),
+            seen_plain_chat: Arc::new(Mutex::new(Vec::new())),
+        });
+        let executor: SubToolExecutor =
+            Arc::new(|_name: &str, _args: &str| (String::from("x"), false));
+        let tool = SubagentTool::new(
+            client,
+            Vec::new(),
+            executor,
+            SubagentConfig {
+                max_iterations: 6,
+                ..SubagentConfig::default()
+            },
         );
+
+        let summary = tool.run("evolving").await.unwrap();
+        assert_eq!(summary, "budget summary");
     }
 
     #[tokio::test]
