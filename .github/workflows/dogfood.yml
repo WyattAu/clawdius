@@ -148,6 +148,37 @@ jobs:
             sleep 60
           done
 
+      - name: Fallback leg — freellmapi (optional, secrets-gated)
+        if: steps.key.outputs.provider != 'none'
+        env:
+          FREELLMAPI_URL: ${{ secrets.FREELLMAPI_BASE_URL }}
+          FREELLMAPI_KEY: ${{ secrets.FREELLMAPI_KEY }}
+          SEED_SHA: ${{ env.SEED_SHA }}
+        run: |
+          cd /home/runner/dogfood
+          # Skip when the primary provider already repaired the repo.
+          if git diff --name-only "$SEED_SHA" 2>/dev/null | grep -q "src/lib.rs"; then
+            echo "Primary provider already repaired the repo."
+            exit 0
+          fi
+          if [ -z "$FREELLMAPI_URL" ]; then
+            echo "No FREELLMAPI_BASE_URL secret; freellmapi leg skipped."
+            exit 0
+          fi
+          export OPENAI_BASE_URL="$FREELLMAPI_URL"
+          export OPENAI_API_KEY="${FREELLMAPI_KEY:-freellmapi-local}"
+          echo "Agent attempt via freellmapi at $FREELLMAPI_URL"
+          timeout 900 "$GITHUB_WORKSPACE/target/release/clawdius" auto \
+            --provider openai-compatible \
+            --model auto \
+            --max-iterations 15 \
+            --fail-on-test-failure \
+            "IMPORTANT: You MUST use your tools to make changes. In this \
+             repository, cargo test fails. Run 'cargo test', read the failing \
+             source, fix the defect with edit_file, and confirm 'cargo test' \
+             passes. Change as little as possible." \
+            2>&1 | tee /tmp/agent-freellm.txt
+
       - name: Verify the fix
         if: steps.key.outputs.provider != 'none'
         run: |

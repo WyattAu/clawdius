@@ -446,7 +446,7 @@ impl ResolvedLlmConfig {
                 })?;
                 (Some(key), None, "gemini-flash-latest".to_string())
             },
-            "openai" => {
+            "openai" | "openai-compatible" => {
                 let key = std::env::var("OPENAI_API_KEY").map_err(|_| {
                     Error::Config(
                         ErrorHelpers::api_key_missing("OpenAI", "OPENAI_API_KEY").to_string(),
@@ -597,7 +597,7 @@ impl ResolvedLlmConfig {
 
                 (model, Some(api_key), None)
             },
-            "openai" => {
+            "openai" | "openai-compatible" => {
                 let cfg = config.openai.as_ref();
                 let model = cfg
                     .and_then(|c| c.model.clone())
@@ -982,14 +982,22 @@ pub fn create_provider(config: &ResolvedLlmConfig) -> Result<LlmProvider> {
                 Some(&config.model),
             )?))
         },
-        "openai" => {
+        "openai" | "openai-compatible" => {
             let api_key = config.api_key.as_ref().ok_or_else(|| {
                 Error::Config(ErrorHelpers::api_key_missing("OpenAI", "OPENAI_API_KEY").to_string())
             })?;
-            Ok(LlmProvider::OpenAi(providers::openai::OpenAIProvider::new(
-                api_key,
-                Some(&config.model),
-            )?))
+            // OPENAI_BASE_URL overrides the endpoint for OpenAI-compatible
+            // servers (freellmapi, LocalAI, vLLM, llama.cpp, OpenRouter).
+            let base_url = std::env::var("OPENAI_BASE_URL")
+                .ok()
+                .filter(|u| !u.is_empty());
+            Ok(LlmProvider::OpenAi(
+                providers::openai::OpenAIProvider::with_base_url(
+                    api_key,
+                    Some(&config.model),
+                    base_url,
+                )?,
+            ))
         },
         "openrouter" => {
             let api_key = config.api_key.as_ref().ok_or_else(|| {

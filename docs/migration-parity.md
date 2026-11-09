@@ -47,7 +47,8 @@ binary, real scratch repo, real Z.AI API):
 
 | Workflow | opencode | Claude Code | clawdius | Status |
 |---|---|---|---|---|
-| One-shot prompt from terminal | `run` | `-p` | `chat` | VERIFIED (transport; E2E-OK needs a funded key) |
+| One-shot prompt from terminal | `run` | `-p` | `chat` | VERIFIED (run 13: E2E-OK + repair loop green) |
+| OpenAI-compatible endpoints | 44 providers incl. self-host | - | **OPENAI_BASE_URL override + `openai-compatible` provider alias** (freellmapi/LocalAI/vLLM/llama.cpp) | PARITY |
 | Interactive TUI | SolidJS TUI | Ink REPL | ratatui (fleet opens first) | MODULE |
 | Streaming responses | yes | yes | yes | VERIFY |
 | Tool calling loop | yes | yes | yes (8 tools) | VERIFY |

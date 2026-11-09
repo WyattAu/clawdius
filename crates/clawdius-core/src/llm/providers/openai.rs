@@ -16,19 +16,57 @@ use crate::{Error, Result};
 pub struct OpenAIProvider {
     client: genai::Client,
     model: String,
+    base_url: Option<String>,
 }
 
 impl OpenAIProvider {
     pub fn new(api_key: &str, model: Option<&str>) -> Result<Self> {
+        Self::with_base_url(api_key, model, None)
+    }
+
+    /// Create the provider pointing at a custom OpenAI-compatible
+    /// endpoint (freellmapi, LocalAI, vLLM, llama.cpp, OpenRouter).
+    ///
+    /// The resolver pins `ServiceTarget.base_url` to `base_url` — genai's
+    /// OpenAI adapter would otherwise always target `api.openai.com`.
+    pub fn with_base_url(
+        api_key: &str,
+        model: Option<&str>,
+        base_url: Option<String>,
+    ) -> Result<Self> {
         let key = api_key.to_string();
-        let client = genai::Client::builder()
-            .with_auth_resolver_fn(move |_model_iden| {
-                Ok(Some(genai::resolver::AuthData::from_single(key.clone())))
-            })
-            .build();
+        let model_name = model.unwrap_or("gpt-4o").to_string();
+
+        let client = match base_url.clone() {
+            Some(url) => {
+                let target_resolver = genai::resolver::ServiceTargetResolver::from_resolver_fn(
+                    move |service_target: genai::ServiceTarget| -> genai::resolver::Result<genai::ServiceTarget> {
+                        let genai::ServiceTarget { model, auth, .. } = service_target;
+                        Ok(genai::ServiceTarget {
+                            endpoint: genai::resolver::Endpoint::from_owned(url.clone()),
+                            auth,
+                            model,
+                        })
+                    },
+                );
+                genai::Client::builder()
+                    .with_service_target_resolver(target_resolver)
+                    .with_auth_resolver_fn(move |_model_iden| {
+                        Ok(Some(genai::resolver::AuthData::from_single(key.clone())))
+                    })
+                    .build()
+            },
+            None => genai::Client::builder()
+                .with_auth_resolver_fn(move |_model_iden| {
+                    Ok(Some(genai::resolver::AuthData::from_single(key.clone())))
+                })
+                .build(),
+        };
+
         Ok(Self {
             client,
-            model: model.unwrap_or("gpt-4o").to_string(),
+            model: model_name,
+            base_url,
         })
     }
 }
