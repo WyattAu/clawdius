@@ -92,13 +92,16 @@ pub mod editor;
 pub mod file;
 pub mod git;
 pub mod html_compressor;
+pub mod loop_guard;
 pub mod metamorphic;
+pub mod oracle_guard;
 pub mod output_filter;
 pub mod search;
 pub mod shell;
 pub mod subagent;
 pub mod test_impact;
 pub mod todo;
+pub mod vcr;
 pub mod web;
 pub mod web_search;
 
