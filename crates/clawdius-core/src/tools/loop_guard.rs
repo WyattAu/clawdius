@@ -22,21 +22,18 @@ pub enum LoopStatus {
 /// Rolling detector over semantic state hashes.
 #[derive(Debug)]
 pub struct LoopGuard {
-    seen: HashSet<u64>,
-    order: Vec<u64>,
+    /// Visit count per state hash.
+    visits: std::collections::HashMap<u64, usize>,
     max_repeats: usize,
-    repeats: usize,
 }
 
 impl LoopGuard {
-    /// Guard that halts after `max_repeats` visits of the same state.
+    /// Guard that halts after `max_repeats` repeats of the same state.
     #[must_use]
     pub fn new(max_repeats: usize) -> Self {
         Self {
-            seen: HashSet::new(),
-            order: Vec::new(),
+            visits: std::collections::HashMap::new(),
             max_repeats,
-            repeats: 0,
         }
     }
 
@@ -45,43 +42,32 @@ impl LoopGuard {
     /// `state` should combine the LLM response text, tool names called,
     /// and (for repair loops) the compiler/test output — anything that
     /// distinguishes "genuinely progressed" from "spinning".
-    ///
-    /// # Panics
-    ///
-    /// Never panics.
+    #[must_use]
     pub fn observe(&mut self, state: &str) -> LoopStatus {
-        let hash = Sha256::digest(state.as_bytes());
-        let key = u64::from_be_bytes(hash[..8].try_into().unwrap_or([0; 8]));
-        if self.seen.contains(&key) {
-            self.repeats += 1;
-            if self.repeats >= self.max_repeats {
-                return LoopStatus::Repeat(self.repeats);
-            }
-            // Still count the visit in history ordering.
-            self.order.push(key);
-            return LoopStatus::Repeat(self.repeats);
+        let key = {
+            let hash = Sha256::digest(state.as_bytes());
+            u64::from_be_bytes(hash[..8].try_into().unwrap_or([0; 8]))
+        };
+        let visits = self.visits.entry(key).or_insert(0);
+        *visits += 1;
+        // First visit = progress. The (max_repeats)th repeat halts.
+        if *visits > self.max_repeats {
+            LoopStatus::Repeat(*visits)
+        } else {
+            LoopStatus::Continue
         }
-        self.seen.insert(key);
-        self.order.push(key);
-        LoopStatus::Continue
     }
 
     /// Distinct states observed so far.
     #[must_use]
     pub fn distinct_states(&self) -> usize {
-        self.seen.len()
+        self.visits.len()
     }
 
-    /// Total observations.
+    /// Whether any state has been repeated to the halt threshold.
     #[must_use]
-    pub fn observations(&self) -> usize {
-        self.order.len()
-    }
-
-    /// Whether the loop threshold has been reached.
-    #[must_use]
-    pub const fn is_looping(&self) -> bool {
-        self.repeats >= self.max_repeats
+    pub fn is_looping(&self) -> bool {
+        self.visits.values().any(|v| *v > self.max_repeats)
     }
 }
 
@@ -113,11 +99,13 @@ mod tests {
     }
 
     #[test]
-    fn repeated_state_counts_and_triggers() {
+    fn repeats_halt_on_visit_beyond_max() {
+        // max_repeats = 2: two visits of the same state are tolerated,
+        // the third halts.
         let mut guard = LoopGuard::new(2);
-        let _ = guard.observe("same");
-        assert_eq!(guard.observe("same"), LoopStatus::Repeat(1));
-        assert_eq!(guard.observe("same"), LoopStatus::Repeat(2));
+        assert_eq!(guard.observe("same"), LoopStatus::Continue);
+        assert_eq!(guard.observe("same"), LoopStatus::Continue);
+        assert_eq!(guard.observe("same"), LoopStatus::Repeat(3));
         assert!(guard.is_looping());
     }
 

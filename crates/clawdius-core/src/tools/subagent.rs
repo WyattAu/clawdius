@@ -130,6 +130,7 @@ impl SubagentTool {
         ];
         let mut tool_calls_used = 0usize;
         let mut loop_guard = LoopGuard::new(self.engine_options.max_state_repeats);
+        let mut strategy_bounces = 0usize;
 
         for _iteration in 0..self.config.max_iterations {
             let result: ChatWithToolsResult = self
@@ -145,9 +146,20 @@ impl SubagentTool {
             }
             let state = state_hash(&state_parts);
             if let LoopStatus::Repeat(count) = loop_guard.observe(&format!("{state}")) {
+                if strategy_bounces == 0 {
+                    strategy_bounces += 1;
+                    messages.push(ChatMessage {
+                        role: ChatRole::User,
+                        content: "You are repeating the same approach without progress. \
+                                  Try a FUNDAMENTALLY DIFFERENT strategy: different files, \
+                                  different commands, or question your earlier assumptions."
+                            .to_string(),
+                    });
+                    continue;
+                }
                 return Err(Error::Llm(format!(
-                    "semantic loop detected: state repeated {count} time(s) with no progress; \
-                     the run is spinning — change strategy or inputs"
+                    "semantic loop detected: state repeated {count} time(s) even after a \
+                     strategy change; the run is spinning"
                 )));
             }
 
@@ -336,13 +348,16 @@ mod tests {
             Vec::new(),
             executor,
             SubagentConfig {
-                max_iterations: 3,
+                max_iterations: 4,
                 ..SubagentConfig::default()
             },
         );
 
         let err = tool.run("endless").await.unwrap_err();
-        assert!(err.to_string().contains("semantic loop detected"));
+        assert!(
+            err.to_string().contains("semantic loop detected"),
+            "second spin after the strategy bounce must hard-fail"
+        );
     }
 
     #[tokio::test]
