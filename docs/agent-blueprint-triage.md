@@ -122,6 +122,16 @@ marked ★ (feasible in clawdius now).
 | IX. Multi-tenant (38–40) | PARTIAL | 38 RLS query validators (auth crate + postgres feature); 39 read-replica routing; 40 DRR fair-share schedulers |
 | X. IDE/micro-arch (41–50) | PARTIAL | 41 known_hosts injection; 42 POSIX binary normalization (Nix!); ★43 pre-commit dry-run emulation (fleet: sys-save gate precedent); 44 compat matrix solver; 45–50 SIMD/cache-line items → clawdius-unsafe crate territory |
 
+### Live CI verification (2026-11-06/07)
+
+Dogfood runs 13-15 exercised the loop-detection + bounce + retry stack
+against a real spinning model: attempts that spun were fast-failed by
+the detector (cheap), the job-level retry gave fresh attempts, and run
+15 completed the repair ("Dogfood PASS", run 42620338543). Refinement
+noted: the state hash currently covers response-text + tool-names;
+adding tool-RESULT hashing would reduce false positives on legitimately
+repeated identical invocations.
+
 ### Cross-program synthesis (both 100-item sets)
 
 Six items recur across all three lists and form the convergent core:
