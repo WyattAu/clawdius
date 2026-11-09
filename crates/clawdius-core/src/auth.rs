@@ -6,8 +6,10 @@
 //! CLI's job (`clawdius auth login <provider>` — Phase 2 CLI surface).
 
 pub mod oauth;
+pub mod redirect;
 
 pub use oauth::{
     anthropic_endpoints, authorize_url, base64_url_safe, exchange_code, openai_endpoints,
     token_set_from_response, OAuthEndpoints, Pkce,
 };
+pub use redirect::{capture_code, parse_callback, CallbackParams};

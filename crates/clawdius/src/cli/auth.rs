@@ -82,6 +82,56 @@ pub(super) async fn handle_auth(action: AuthCommands) -> anyhow::Result<()> {
             storage.delete_oauth_token(&provider)?;
             println!("✓ OAuth token deleted for {provider}");
         },
+        AuthCommands::Login {
+            provider,
+            code,
+            port,
+        } => {
+            use clawdius_core::auth::oauth;
+            use std::sync::Arc;
+
+            let endpoints = match provider.as_str() {
+                "anthropic" => oauth::anthropic_endpoints(),
+                "openai" => oauth::openai_endpoints(),
+                other => anyhow::bail!(
+                    "OAuth not available for '{other}' (supported: anthropic, openai)"
+                ),
+            };
+            let port = port.unwrap_or(endpoints.redirect_port);
+            let pkce = oauth::Pkce::generate()?;
+
+            match code.as_deref() {
+                // Headless: the user visited the URL elsewhere and pasted the code.
+                Some(pasted) => {
+                    let token = oauth::exchange_code(&endpoints, pasted, &pkce.verifier, port)
+                        .await
+                        .map_err(|e| anyhow::anyhow!("{e}"))?;
+                    let json = serde_json::to_string(&token)?;
+                    storage.set_oauth_token(&provider, &json)?;
+                    println!("✓ OAuth token stored for {provider}");
+                },
+                // Browser flow: print URL, capture the loopback redirect.
+                None => {
+                    let url = oauth::authorize_url(&endpoints, &pkce, port);
+                    println!("Open this URL to authorize {provider}:");
+                    println!("  {url}");
+                    println!("Waiting for callback on http://localhost:{port}/callback ...");
+                    let params = clawdius_core::auth::redirect::capture_code(port, 300)
+                        .await
+                        .map_err(|e| anyhow::anyhow!("{e}"))?;
+                    if let Some(err) = params.error {
+                        anyhow::bail!("Authorization denied: {err}");
+                    }
+                    let token =
+                        oauth::exchange_code(&endpoints, &params.code, &pkce.verifier, port)
+                            .await
+                            .map_err(|e| anyhow::anyhow!("{e}"))?;
+                    let json = serde_json::to_string(&token)?;
+                    storage.set_oauth_token(&provider, &json)?;
+                    println!("✓ OAuth token stored for {provider}");
+                },
+            }
+        },
     }
 
     Ok(())

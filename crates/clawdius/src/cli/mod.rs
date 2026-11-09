@@ -817,6 +817,19 @@ pub enum AuthCommands {
         #[arg(help = "Provider name (anthropic, openai)")]
         provider: String,
     },
+
+    #[command(about = "Authorize a subscription provider via OAuth (opens browser)")]
+    Login {
+        #[arg(help = "Provider name (anthropic, openai)")]
+        provider: String,
+        #[arg(
+            long,
+            help = "Paste an authorization code instead of the browser flow (headless)"
+        )]
+        code: Option<String>,
+        #[arg(long, help = "Override the loopback capture port")]
+        port: Option<u16>,
+    },
 }
 
 #[derive(Debug, Subcommand)]
