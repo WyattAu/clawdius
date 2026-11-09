@@ -81,3 +81,54 @@ order. Status: HAVE / PARTIAL / FEASIBLE-NOW / RESEARCH (novel science).
 3. Metamorphic oracle synthesis (50) — property stubs in test synthesis
 4. Entropy-gated rollback (5) + Lyapunov termination Lean proof (12)
 5. Test impact analysis (2) + flaky bisection (17)
+
+
+## Addendum — 100 production failure-mode items (2026-11-07, second agent discussion)
+
+Two more lists from the same discussion: 50 ground-level production
+failure modes (terminal/git/test/observability/DB/network/security/
+multi-repo/ergonomics/cost/deploy) + 50 low-level systems items
+(kernel bypass, CUDA, storage engines, allocators, streaming, compilers,
+PKI, multi-tenant, micro-arch). Cluster-level triage; standout items
+marked ★ (feasible in clawdius now).
+
+### Ground-level production (50)
+
+| Cluster | Status | ★ Standouts / notes |
+|---|---|---|
+| I. Terminal & runtime (1–9) | PARTIAL | ★3 virtual token pager (our compact_output is the seed — needs scratch-file + line-slice API); ★6 non-interactive PTY enforcer (shell tool sets env, lacks stdin-null); 1 daemon supervisor; 2 port remap; ★7 .env.example structural diff; 8 loopback tunneling; 9 PID-namespace reaping |
+| II. Git safety (10–14) | PARTIAL | ★10 worktree isolation (fleet uses worktrees — productize); ★11 append-only git interceptor (block reset --hard/force-push at command validation); 12 AST replacers (tree-sitter); 13 conflict-marker ingestion (our own repo hit this — committed markers!); 14 atomic micro-commits |
+| III. Test fraud (15–19) | PARTIAL | ★15 immutable test oracle mask (reject diffs that weaken assertions); 16 mutation score gate; 17 taint-tracked target isolation (mock-of-SUT = invalid); ★18 suppression-diff quota (no net-new @ts-ignore/noqa); 19 heap-delta leak detection |
+| IV. Cross-file (20–24) | PARTIAL | 20 LSP rename propagation (clawdius-lsp); 21 acyclic module check; 22 native-first import audit; 23 hallucinated-API type gate; 24 runtime-target syntax lint |
+| V. DB & schema (25–29) | PARTIAL | 25 squawk migration linter; 26 auto-rollback test transactions; 27 N+1 query-count alerts; 28 CoW seed branching; 29 zero-raw-SQL lint |
+| VI. Network & API (30–34) | PARTIAL | ★30 VCR/WireMock recording (biggest agent-test enabler); 31 resilience contracts (timeout+backoff required); 32 semantic payload assertions; 33 SSO/HTML interception shield; 34 TSAN/-race gates |
+| VII. Hygiene (35–39) | PARTIAL | ★35 in-tree formatter invocation post-edit; 36 debug-statement scrubber; 37 unused-symbol pruner; ★38 pre-commit secret detection (gitleaks — estate has it); 39 cyclomatic complexity cap |
+| VIII. Frontend (40–43) | MISSING | 40–43 Playwright visual/console/a11y/CSS-scope gates (clawdius has web/tauri crates — applicable) |
+| IX. Cost & latency (44–47) | PARTIAL | 44 cache-pinned prompt prefixes; 45 dual-stream silent execution (auto --quiet partially); ★46 semantic state-hash loop detection; ★47 impacted-only test filtering (TIA module shipped) |
+| X. Deploy & PR (48–50) | PARTIAL | 48 reviewer-centric intent diffs; 49 self-rebasing branch bots; 50 canary rollback triggers (gateway has health primitives) |
+
+### Low-level systems (50)
+
+| Cluster | Status | Notes |
+|---|---|---|
+| I. Kernel bypass (1–5) | N/A-MOST | TCP/epoll/SO_REUSEPORT/UDP — applies to gateway crate only; ★5 TCP FIN half-close test harness is portable |
+| II. CUDA/GPU (6–11) | N/A | clawdius-core has candle (ML feature) — defer until GPU features active |
+| III. Storage engines (12–16) | N/A-MOST | Applies to storage-backed features; ★13 dm-flakey crash-consistency harness pairs with our journal (power-cut semantics) |
+| IV. Allocators (17–20) | PARTIAL | 17 Go safepoints N/A (Rust); 18 jemalloc decay clawdius uses mimalloc; ★19 Tarjan SCC retain-cycle detection applicable to Rust Rc graphs in tests; 20 TLS dlopen audit N/A |
+| V. Streaming (21–24) | PARTIAL | 21–22 Kafka/Flink N/A yet; 23 key-entropy skew analyzer portable; 24 backpressure invariants apply to gateway mpsc channels |
+| VI. Compilers/linkers (25–29) | PARTIAL | 25 ThinLTO budgeting; 26 static-init fiasco (Rust: const-fn discipline, mostly moot); ★29 hermetic cache-reproducibility (sccache in CI — direct hit) |
+| VII. PKI/auth (30–33) | PARTIAL | ★31 idempotent token-refresh mutex — DIRECT match for the OAuth design (refresh-on-401 must coalesce concurrent refreshes); 30 mTLS rotation (gateway); 32 STS auto-refresh proxies; 33 lockfile strictness (cargo --locked already) |
+| VIII. Sagas (34–37) | PARTIAL | 34 saga chaos reversal; 35 enriched DLQ envelopes; ★36 deep dependency-aware health checks (gateway /healthz upgrade); 37 sliding-window circuit breaker (matches our resilience roadmap) |
+| IX. Multi-tenant (38–40) | PARTIAL | 38 RLS query validators (auth crate + postgres feature); 39 read-replica routing; 40 DRR fair-share schedulers |
+| X. IDE/micro-arch (41–50) | PARTIAL | 41 known_hosts injection; 42 POSIX binary normalization (Nix!); ★43 pre-commit dry-run emulation (fleet: sys-save gate precedent); 44 compat matrix solver; 45–50 SIMD/cache-line items → clawdius-unsafe crate territory |
+
+### Cross-program synthesis (both 100-item sets)
+
+Six items recur across all three lists and form the convergent core:
+1. **Output pager + delta distillation** (done: output_filter)
+2. **Impacted-only test selection** (done: test_impact)
+3. **Append-only test oracle protection + suppression quotas** (feasible)
+4. **Deterministic capture/replay for network + time** (feasible: VCR harness)
+5. **Idempotent token-refresh coalescing** (OAuth design §6 — add mutex)
+6. **Semantic state-hash loop detection** (feasible: hash errors+AST per iteration)
+
