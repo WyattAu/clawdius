@@ -16,6 +16,9 @@ use crate::{Error, Result};
 pub struct OpenAIProvider {
     client: genai::Client,
     model: String,
+    /// Retained for introspection/logging; the resolver pins the
+    /// endpoint at request time.
+    #[allow(dead_code)]
     base_url: Option<String>,
 }
 

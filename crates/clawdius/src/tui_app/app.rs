@@ -119,7 +119,7 @@ impl TuiToolExecutor {
         let args: HashMap<String, serde_json::Value> =
             serde_json::from_str(arguments).unwrap_or_default();
 
-        match name {
+        let (output, is_error) = match name {
             "read_file" => self.exec_read_file(&args),
             "write_file" => self.exec_write_file(&args),
             "edit_file" => self.exec_edit_file(&args),
@@ -139,7 +139,18 @@ impl TuiToolExecutor {
             "git_diff" => self.exec_git_diff(&args),
             "git_log" => self.exec_git_log(&args),
             _ => (format!("Unknown tool: {name}"), true),
-        }
+        };
+
+        // Blueprint 14/32/48: scrub secrets, collapse repetition, cap size
+        // before the output enters model context.
+        let (scrubbed, redactions) = clawdius_core::tools::output_filter::scrub_secrets(&output);
+        let compacted = clawdius_core::tools::output_filter::compact_output(&scrubbed, 20_000);
+        let output = if redactions > 0 {
+            format!("{compacted}\n[{redactions} credential-shaped string(s) redacted]")
+        } else {
+            compacted
+        };
+        (output, is_error)
     }
 
     // --- Tool arm helpers (extracted from execute_tool) ---

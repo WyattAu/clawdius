@@ -92,6 +92,7 @@ pub mod editor;
 pub mod file;
 pub mod git;
 pub mod html_compressor;
+pub mod output_filter;
 pub mod search;
 pub mod shell;
 pub mod subagent;

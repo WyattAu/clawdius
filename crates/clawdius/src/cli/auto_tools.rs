@@ -70,7 +70,7 @@ impl AutoToolHost {
                 .unwrap_or("")
                 .to_string()
         };
-        match name {
+        let (output, is_error) = match name {
             "read_file" => {
                 let params = FileReadParams {
                     path: s("path"),
@@ -232,6 +232,17 @@ impl AutoToolHost {
                 )
                 .map_or_else(|e| (format!("Error: {e}"), true), |out| (out, false)),
             other => (format!("Unknown tool: {other}"), true),
-        }
+        };
+
+        // Blueprint 14/32/48: scrub secrets, collapse repetition, cap size
+        // before the output enters model context.
+        let (scrubbed, redactions) = clawdius_core::tools::output_filter::scrub_secrets(&output);
+        let compacted = clawdius_core::tools::output_filter::compact_output(&scrubbed, 20_000);
+        let output = if redactions > 0 {
+            format!("{compacted}\n[{redactions} credential-shaped string(s) redacted]")
+        } else {
+            compacted
+        };
+        (output, is_error)
     }
 }
