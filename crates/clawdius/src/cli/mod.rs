@@ -818,6 +818,12 @@ pub enum AuthCommands {
         provider: String,
     },
 
+    #[command(about = "Refresh an OAuth access token using its stored refresh token")]
+    Refresh {
+        #[arg(help = "Provider name (anthropic, openai)")]
+        provider: String,
+    },
+
     #[command(about = "Authorize a subscription provider via OAuth (opens browser)")]
     Login {
         #[arg(help = "Provider name (anthropic, openai)")]

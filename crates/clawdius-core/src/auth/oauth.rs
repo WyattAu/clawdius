@@ -147,6 +147,44 @@ pub async fn exchange_code(
     token_set_from_response(&body).ok_or_else(|| "token response missing access_token".to_string())
 }
 
+/// Refresh an expired access token using a refresh token
+/// (`grant_type=refresh_token`). Returns the updated token set.
+///
+/// # Errors
+///
+/// Transport and provider errors surface as strings.
+pub async fn refresh_token(
+    endpoints: &OAuthEndpoints,
+    refresh_token: &str,
+) -> std::result::Result<OAuthTokenSet, String> {
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(30))
+        .build()
+        .map_err(|e| e.to_string())?;
+    let form = [
+        ("grant_type", "refresh_token"),
+        ("refresh_token", refresh_token),
+        ("client_id", endpoints.client_id),
+    ];
+    let response = client
+        .post(endpoints.token_url)
+        .form(&form)
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let status = response.status();
+    let body: Value = response
+        .json()
+        .await
+        .map_err(|e| format!("invalid refresh response: {e}"))?;
+    if !status.is_success() {
+        return Err(format!("refresh failed: HTTP {status}: {body}"));
+    }
+    token_set_from_response(&body)
+        .ok_or_else(|| "refresh response missing access_token".to_string())
+}
+
 /// Extract an [`OAuthTokenSet`] from a provider token response.
 #[must_use]
 pub fn token_set_from_response(response: &Value) -> Option<OAuthTokenSet> {

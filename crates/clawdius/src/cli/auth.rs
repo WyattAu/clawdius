@@ -82,6 +82,34 @@ pub(super) async fn handle_auth(action: AuthCommands) -> anyhow::Result<()> {
             storage.delete_oauth_token(&provider)?;
             println!("✓ OAuth token deleted for {provider}");
         },
+        AuthCommands::Refresh { provider } => {
+            use clawdius_core::auth::oauth::{
+                anthropic_endpoints, openai_endpoints, refresh_oauth_token,
+            };
+            let stored = storage
+                .get_oauth_token(&provider)?
+                .ok_or_else(|| anyhow::anyhow!("No OAuth token stored for {provider}"))?;
+            let set: clawdius_core::config::OAuthTokenSet = serde_json::from_str(&stored)
+                .map_err(|e| anyhow::anyhow!("Stored token corrupted: {e}"))?;
+            let refresh = set
+                .refresh_token
+                .as_ref()
+                .ok_or_else(|| anyhow::anyhow!("No refresh token in stored set"))?;
+
+            let endpoints = match provider.as_str() {
+                "anthropic" => anthropic_endpoints(),
+                "openai" => openai_endpoints(),
+                other => anyhow::bail!("OAuth refresh not available for '{other}'"),
+            };
+            let updated = refresh_oauth_token(&endpoints, refresh)
+                .await
+                .map_err(|e| anyhow::anyhow!("{e}"))?;
+            storage.set_oauth_token(&provider, &serde_json::to_string(&updated)?)?;
+            println!("✓ OAuth token refreshed for {provider}");
+            if let Some(exp) = &updated.expires_at {
+                println!("  expires: {exp}");
+            }
+        },
         AuthCommands::Login {
             provider,
             code,
