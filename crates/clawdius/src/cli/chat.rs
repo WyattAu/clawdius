@@ -94,6 +94,16 @@ pub(super) async fn handle_chat(
         None => session_manager.get_or_create_active()?,
     };
 
+    // Crash-safe JSONL trail (durable-sessions parity) — best-effort:
+    // failures never block the chat flow.
+    let mut event_log = clawdius_core::session::events::SessionEventLog::open(
+        &clawdius_core::session::events::default_path(
+            &session.id.to_string(),
+            &std::env::current_dir()?,
+        ),
+    )
+    .ok();
+
     // Load agent mode
     let modes_dir = std::env::current_dir()?.join(".clawdius").join("modes");
     let mode = AgentMode::load_by_name(&mode_name, &modes_dir)
@@ -200,11 +210,17 @@ pub(super) async fn handle_chat(
     }
 
     let user_msg = clawdius_core::session::Message::user(&message);
+    if let Some(log) = event_log.as_mut() {
+        let _ = log.append_message(&user_msg);
+    }
     session_manager
         .add_message(&mut session, user_msg.clone())
         .await?;
 
     let assistant_msg = clawdius_core::session::Message::assistant(&response);
+    if let Some(log) = event_log.as_mut() {
+        let _ = log.append_message(&assistant_msg);
+    }
     session_manager
         .add_message(&mut session, assistant_msg.clone())
         .await?;
