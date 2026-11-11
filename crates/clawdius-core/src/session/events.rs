@@ -12,9 +12,10 @@ use std::fs::File;
 use std::io::{BufRead, BufReader, BufWriter, Write};
 use std::path::{Path, PathBuf};
 
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-use crate::session::{Message, MessageRole};
+use crate::session::{types::MessageContent, Message, MessageRole, Session, SessionId};
 
 /// One logged conversation message.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -123,6 +124,56 @@ pub(crate) fn role_name_test(role: MessageRole) -> &'static str {
     role_name(role)
 }
 
+/// Rebuild a session from its event log — the crash-recovery path when
+/// the SQLite store is lost. Title derives from the first user message.
+///
+/// Returns `None` when the log has no replayable messages.
+#[must_use]
+pub fn rebuild_session(session_id: &str, log_path: &Path) -> Option<Session> {
+    let events = SessionEventLog::replay(log_path).unwrap_or_default();
+    if events.is_empty() {
+        return None;
+    }
+    let uuid = uuid::Uuid::parse_str(session_id).ok()?;
+    let mut messages = Vec::with_capacity(events.len());
+    for ev in &events {
+        let role = match ev.role.as_str() {
+            "assistant" => MessageRole::Assistant,
+            "system" => MessageRole::System,
+            "tool" => MessageRole::Tool,
+            _ => MessageRole::User,
+        };
+        messages.push(Message {
+            id: uuid::Uuid::new_v4(),
+            role,
+            content: MessageContent::Text(ev.content.clone()),
+            tokens: None,
+            created_at: DateTime::parse_from_rfc3339(&ev.timestamp)
+                .map(|t| t.with_timezone(&chrono::Utc))
+                .unwrap_or_else(|_| chrono::Utc::now()),
+            tool_calls: Vec::new(),
+            metadata: serde_json::Map::new(),
+        });
+    }
+    let title = messages
+        .first()
+        .and_then(Message::as_text)
+        .map(|t| t.chars().take(60).collect::<String>());
+    let created = messages
+        .first()
+        .map(|m| m.created_at)
+        .unwrap_or_else(chrono::Utc::now);
+    Some(Session {
+        id: SessionId(uuid::Uuid::parse_str(session_id).ok()?),
+        title,
+        messages,
+        meta: Default::default(),
+        token_usage: Default::default(),
+        created_at: created,
+        updated_at: chrono::Utc::now(),
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -175,6 +226,34 @@ mod tests {
         let events = SessionEventLog::replay(&path).unwrap();
         assert_eq!(events.len(), 1, "torn line skipped");
         assert_eq!(events[0].content, "hello");
+    }
+
+    #[test]
+    fn rebuild_session_from_events() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = default_path("777e6543-a1b2-4c3d-9e4f-aabbccddeeff", dir.path());
+        {
+            let mut log = SessionEventLog::open(&path).unwrap();
+            log.append_message(&sample(MessageRole::User, "first question"))
+                .unwrap();
+            log.append_message(&sample(MessageRole::Assistant, "first answer"))
+                .unwrap();
+        }
+        let sid = "777e6543-a1b2-4c3d-9e4f-aabbccddeeff";
+        let session = rebuild_session(sid, &path).unwrap();
+        assert_eq!(session.messages.len(), 2);
+        assert_eq!(session.messages[0].as_text(), Some("first question"));
+        assert!(session
+            .title
+            .as_deref()
+            .is_some_and(|t| t.contains("first")));
+    }
+
+    #[test]
+    fn rebuild_empty_log_is_none() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = default_path("empty", dir.path());
+        assert!(rebuild_session("777e6543-a1b2-4c3d-9e4f-aabbccddeeff", &path).is_none());
     }
 
     #[test]
