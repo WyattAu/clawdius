@@ -46,6 +46,104 @@ impl Default for SubagentConfig {
     }
 }
 
+/// The typed per-run state of the delegation loop (the "blackboard").
+///
+/// Every mutable fact the engine loop needs lives here — transcript,
+/// budgets, bounce counter, loop guard — instead of loose locals in
+/// `run()`. The controller (`SubagentTool::run`) mutates the blackboard
+/// through the transition methods below and renders the model-visible
+/// slice with [`LoopBlackboard::context`]; control state never leaks
+/// into the transcript.
+struct LoopBlackboard {
+    messages: Vec<ChatMessage>,
+    tool_calls_used: usize,
+    strategy_bounces: usize,
+    loop_guard: LoopGuard,
+    max_tool_calls: usize,
+}
+
+impl LoopBlackboard {
+    fn new(
+        task: &str,
+        system_prompt: &str,
+        max_state_repeats: usize,
+        max_tool_calls: usize,
+    ) -> Self {
+        Self {
+            messages: vec![
+                ChatMessage {
+                    role: ChatRole::System,
+                    content: system_prompt.to_string(),
+                },
+                ChatMessage {
+                    role: ChatRole::User,
+                    content: task.to_string(),
+                },
+            ],
+            tool_calls_used: 0,
+            strategy_bounces: 0,
+            loop_guard: LoopGuard::new(max_state_repeats),
+            max_tool_calls,
+        }
+    }
+
+    /// Semantic state = response text + requested tool names, hashed;
+    /// observed on every model turn for loop detection.
+    fn observe_state(&mut self, text: &str, tool_names: &[String]) -> LoopStatus {
+        let mut state_parts: Vec<String> = vec![text.to_string()];
+        state_parts.extend(tool_names.iter().cloned());
+        let state = state_hash(&state_parts);
+        self.loop_guard.observe(&state.to_string())
+    }
+
+    /// First repeat: bounce once with a strategy-change instruction.
+    /// Returns `false` when the bounce budget is exhausted (hard fail).
+    fn bounce(&mut self) -> bool {
+        if self.strategy_bounces == 0 {
+            self.strategy_bounces += 1;
+            self.messages.push(ChatMessage {
+                role: ChatRole::User,
+                content: "You are repeating the same approach without progress. \
+                          Try a FUNDAMENTALLY DIFFERENT strategy: different files, \
+                          different commands, or question your earlier assumptions."
+                    .to_string(),
+            });
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Remaining tool-execution budget for this turn.
+    fn remaining_tool_calls(&self) -> usize {
+        self.max_tool_calls.saturating_sub(self.tool_calls_used)
+    }
+
+    fn record_tool_call(&mut self) {
+        self.tool_calls_used += 1;
+    }
+
+    fn push_assistant(&mut self, content: String) {
+        self.messages.push(ChatMessage {
+            role: ChatRole::Assistant,
+            content,
+        });
+    }
+
+    fn push_user(&mut self, content: String) {
+        self.messages.push(ChatMessage {
+            role: ChatRole::User,
+            content,
+        });
+    }
+
+    /// The model-visible slice: the transcript itself (control state is
+    /// carried by the engine, not the context).
+    fn context(&self) -> &[ChatMessage] {
+        &self.messages
+    }
+}
+
 /// A bounded nested agent loop.
 pub struct SubagentTool {
     client: Arc<dyn LlmClient>,
@@ -118,43 +216,28 @@ impl SubagentTool {
     /// Provider errors and empty tool-call payloads surface as
     /// [`crate::Error::Llm`].
     pub async fn run(&self, task: &str) -> Result<String> {
-        let mut messages = vec![
-            ChatMessage {
-                role: ChatRole::System,
-                content: self.system.clone(),
-            },
-            ChatMessage {
-                role: ChatRole::User,
-                content: task.to_string(),
-            },
-        ];
-        let mut tool_calls_used = 0usize;
-        let mut loop_guard = LoopGuard::new(self.engine_options.max_state_repeats);
-        let mut strategy_bounces = 0usize;
+        let mut board = LoopBlackboard::new(
+            task,
+            &self.system,
+            self.engine_options.max_state_repeats,
+            self.config.max_tool_calls,
+        );
 
         for _iteration in 0..self.config.max_iterations {
             let result: ChatWithToolsResult = self
                 .client
-                .chat_with_tools(messages.clone(), self.tools.clone())
+                .chat_with_tools(board.context().to_vec(), self.tools.clone())
                 .await?;
 
             // Semantic loop detection: identical (response + tool names)
             // state on consecutive observation means the run is spinning.
-            let mut state_parts: Vec<String> = vec![result.text.clone()];
-            for call in &result.tool_calls {
-                state_parts.push(call.fn_name.clone());
-            }
-            let state = state_hash(&state_parts);
-            if let LoopStatus::Repeat(count) = loop_guard.observe(&format!("{state}")) {
-                if strategy_bounces == 0 {
-                    strategy_bounces += 1;
-                    messages.push(ChatMessage {
-                        role: ChatRole::User,
-                        content: "You are repeating the same approach without progress. \
-                                  Try a FUNDAMENTALLY DIFFERENT strategy: different files, \
-                                  different commands, or question your earlier assumptions."
-                            .to_string(),
-                    });
+            let tool_names: Vec<String> = result
+                .tool_calls
+                .iter()
+                .map(|call| call.fn_name.clone())
+                .collect();
+            if let LoopStatus::Repeat(count) = board.observe_state(&result.text, &tool_names) {
+                if board.bounce() {
                     continue;
                 }
                 return Err(Error::Llm(format!(
@@ -163,10 +246,7 @@ impl SubagentTool {
                 )));
             }
 
-            messages.push(ChatMessage {
-                role: ChatRole::Assistant,
-                content: result.text.clone(),
-            });
+            board.push_assistant(result.text.clone());
 
             if result.tool_calls.is_empty() {
                 return Ok(if result.text.trim().is_empty() {
@@ -178,14 +258,14 @@ impl SubagentTool {
 
             let mut feedback = String::from("Tool results:\n");
             for call in &result.tool_calls {
-                if tool_calls_used >= self.config.max_tool_calls {
+                if board.remaining_tool_calls() == 0 {
                     feedback.push_str(&format!(
                         "{}: skipped (tool-call budget exhausted)\n",
                         call.fn_name
                     ));
                     continue;
                 }
-                tool_calls_used += 1;
+                board.record_tool_call();
                 let args =
                     serde_json::to_string(&call.fn_arguments).unwrap_or_else(|_| "{}".to_string());
                 let (output, is_error) = (self.executor)(&call.fn_name, &args);
@@ -196,18 +276,12 @@ impl SubagentTool {
                     format_tool_result(&output, is_error, self.config.max_output_chars)
                 ));
             }
-            messages.push(ChatMessage {
-                role: ChatRole::User,
-                content: feedback,
-            });
+            board.push_user(feedback);
         }
 
         // Iterations exhausted: one plain turn for the final summary.
-        messages.push(ChatMessage {
-            role: ChatRole::User,
-            content: "Iteration budget reached. Report your final summary now.".to_string(),
-        });
-        self.client.chat(messages).await
+        board.push_user("Iteration budget reached. Report your final summary now.".to_string());
+        self.client.chat(board.context().to_vec()).await
     }
 }
 
@@ -232,6 +306,58 @@ mod tests {
     use super::*;
     use crate::llm::providers::ToolCall;
     use std::sync::Mutex;
+
+    // ---- blackboard state machine (no provider needed) ----
+
+    #[test]
+    fn blackboard_bounces_once_then_hard_fails() {
+        let mut board = LoopBlackboard::new("task", "sys", 2, 10);
+        assert!(board.bounce(), "first bounce allowed");
+        assert!(!board.bounce(), "second bounce refused");
+    }
+
+    #[test]
+    fn blackboard_tool_budget_exhaustion() {
+        let mut board = LoopBlackboard::new("task", "sys", 2, 2);
+        assert_eq!(board.remaining_tool_calls(), 2);
+        board.record_tool_call();
+        board.record_tool_call();
+        assert_eq!(board.remaining_tool_calls(), 0);
+    }
+
+    #[test]
+    fn blackboard_repeats_identical_state() {
+        let mut board = LoopBlackboard::new("task", "sys", 2, 10);
+        let names = vec!["grep".to_string()];
+        assert!(matches!(
+            board.observe_state("thinking", &names),
+            LoopStatus::Continue
+        ));
+        // Same state again: guard counts up to max_state_repeats (2).
+        assert!(matches!(
+            board.observe_state("thinking", &names),
+            LoopStatus::Continue
+        ));
+        assert!(matches!(
+            board.observe_state("thinking", &names),
+            LoopStatus::Repeat(_)
+        ));
+    }
+
+    #[test]
+    fn blackboard_transcript_shape_is_stable() {
+        let mut board = LoopBlackboard::new("the task", "the system", 2, 10);
+        board.push_assistant("resp".into());
+        board.push_user("feedback".into());
+        let ctx = board.context();
+        assert_eq!(ctx.len(), 4);
+        assert!(matches!(ctx[0].role, ChatRole::System));
+        assert_eq!(ctx[1].content, "the task");
+        assert!(matches!(ctx[2].role, ChatRole::Assistant));
+        assert!(matches!(ctx[3].role, ChatRole::User));
+    }
+
+    // ---- scripted end-to-end loop tests ----
 
     /// Scripted client: pops pre-built tool-call results, then serves the
     /// final text for plain `chat` calls.
