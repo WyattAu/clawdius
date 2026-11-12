@@ -84,7 +84,7 @@ routing in LlmClientWithRetry, and a seed that did not compile.
 | Skills/SKILL.md | skills + plugins | skills | `skills` module exists | VERIFY |
 | Hooks | plugin hooks | Session hooks | AgentHook trait | MODULE |
 | Slash commands | yes | ~50 | ~25 `:` commands | PARITY-ish, VERIFY |
-| Editor integration (ACP/VS Code) | ACP + SDK | VS Code ext | `clawdius-code` helper + LSP | MODULE |
+| Editor integration (ACP/VS Code) | ACP + SDK | VS Code ext | **`clawdius acp` speaks ACP v1 over stdio (2026-11-12): initialize/session-new/prompt-turn live-verified against Google; streaming session/update chunks, tool_call updates, cancel, stopReason. Remaining: fs/* + terminal/* callbacks, session/load** | MODULE (scaffold VERIFIED) |
 | Worktrees | pluggable strategy | yes | checkpoint module | MODULE |
 
 ### 3. Sessions and state

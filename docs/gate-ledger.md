@@ -20,3 +20,14 @@ A skipped gate is acceptable only when the same check has been run
 manually in the same session with captured output, OR the commit is
 docs-only. The daily scheduled Dogfood run + full pre-push gate on
 gated pushes remain the authoritative verification.
+
+## 2026-11-12 — streaming + ACP arc
+- Skipped pre-commit hooks on 6 commits (CLAWDIUS_SKIP_HOOKS=1) during
+  the streaming/ACP push series. Compensating evidence, per commit:
+  fmt + clippy -D warnings on both crates, clawdius-core lib 1230
+  tests green, clawdius lib 127 green (incl. 5-6 ACP + 4 blackboard
+  unit tests), E2E harness 12 PASS / 0 FAIL / 2 SKIP (live Google).
+  Live verifications: chat --stream returns STREAM-OK in chunks;
+  clawdius acp full prompt turn returns agent_message_chunk +
+  stopReason end_turn; btrfs flap re-applications verified by in-tree
+  grep before every git add.
