@@ -179,6 +179,15 @@ jobs:
              passes. Change as little as possible." \
             2>&1 | tee /tmp/agent-freellm.txt
 
+      - name: Upload run journal
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: run-journal
+          path: /home/runner/dogfood/.clawdius/runs/
+          if-no-files-found: ignore
+          retention-days: 30
+
       - name: Verify the fix
         if: steps.key.outputs.provider != 'none'
         run: |
