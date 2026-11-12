@@ -333,6 +333,12 @@ pub enum Commands {
         write: bool,
     },
 
+    #[command(about = "Render the morning briefing from run journals (Telegram-ready markdown)")]
+    Briefing {
+        #[arg(long, help = "Runs directory (defaults to .clawdius/runs)")]
+        runs_dir: Option<PathBuf>,
+    },
+
     #[command(
         about = "Run as an ACP agent (Agent Client Protocol over stdio; for editors like Zed)"
     )]
@@ -1413,6 +1419,13 @@ pub async fn handle_command(
             Ok(())
         },
         Commands::Acp { provider, model } => acp::handle_acp(provider, model, config_path).await,
+        Commands::Briefing { runs_dir } => {
+            let dir = runs_dir.unwrap_or_else(|| PathBuf::from(".clawdius/runs"));
+            let date = chrono::Utc::now().date_naive().to_string();
+            let b = clawdius_core::session::briefing::build(&dir, &date);
+            print!("{}", clawdius_core::session::briefing::render_markdown(&b));
+            Ok(())
+        },
         Commands::Metrics {
             format,
             output,

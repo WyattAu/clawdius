@@ -151,6 +151,7 @@
 // Test builds keep unwrap/expect for brevity (fleet convention, see lib.rs).
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used))]
 
+pub mod briefing;
 pub mod compactor;
 pub mod consolidation;
 pub mod events;
