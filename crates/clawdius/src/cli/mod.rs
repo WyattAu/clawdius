@@ -320,6 +320,15 @@ pub enum Commands {
         action: AuthCommands,
     },
 
+    #[command(about = "Consolidate run journals into a learnings digest")]
+    Consolidate {
+        #[arg(long, help = "Runs directory (defaults to .clawdius/runs)")]
+        runs_dir: Option<PathBuf>,
+
+        #[arg(long, help = "Write digest to .clawdius/learnings/<date>.md")]
+        write: bool,
+    },
+
     #[command(about = "Show performance metrics")]
     Metrics {
         #[arg(short = 'f', long, value_enum, default_value = "text")]
@@ -1366,6 +1375,21 @@ pub async fn handle_command(
         },
         #[cfg(feature = "keyring")]
         Commands::Auth { action } => auth::handle_auth(action).await,
+        Commands::Consolidate { runs_dir, write } => {
+            let dir = runs_dir.unwrap_or_else(|| PathBuf::from(".clawdius/runs"));
+            let report = clawdius_core::session::consolidation::consolidate(&dir);
+            let date = chrono::Utc::now().date_naive().to_string();
+            let md = clawdius_core::session::consolidation::render_markdown(&report, &date);
+            if write {
+                let out_dir = PathBuf::from(".clawdius/learnings");
+                std::fs::create_dir_all(&out_dir)?;
+                let path = out_dir.join(format!("{date}.md"));
+                std::fs::write(&path, &md)?;
+                println!("Digest written to {}", path.display());
+            }
+            println!("{md}");
+            Ok(())
+        },
         Commands::Metrics {
             format,
             output,
