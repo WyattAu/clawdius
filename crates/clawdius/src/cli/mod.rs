@@ -148,6 +148,10 @@ pub enum Commands {
         #[arg(long)]
         #[arg(help = "Autonomous mode - auto-approve all tool executions")]
         auto_approve: bool,
+
+        #[arg(long)]
+        #[arg(help = "Stream tokens as they arrive (text output only)")]
+        stream: bool,
     },
 
     #[command(about = "Autonomous CI/CD mode - run without interaction")]
@@ -1286,6 +1290,7 @@ pub async fn handle_command(
             exit,
             quiet,
             auto_approve: _,
+            stream,
         } => {
             chat::handle_chat(
                 prompt,
@@ -1298,6 +1303,7 @@ pub async fn handle_command(
                 quiet,
                 config_path,
                 output_format,
+                stream,
             )
             .await
         },

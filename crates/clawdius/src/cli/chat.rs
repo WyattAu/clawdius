@@ -18,6 +18,7 @@ pub(super) async fn handle_chat(
     quiet_mode: bool,
     config_path: Option<PathBuf>,
     output_format: OutputFormat,
+    stream: bool,
 ) -> anyhow::Result<()> {
     use clawdius_core::llm::providers::LlmClient;
     use clawdius_core::llm::{create_provider, ChatMessage, ChatRole, ResolvedLlmConfig};
@@ -183,31 +184,71 @@ pub(super) async fn handle_chat(
         println!();
     }
 
-    if output_format == OutputFormat::Text {
-        print!("Thinking...");
-        io::stdout().flush()?;
+    if stream && output_format != OutputFormat::Text {
+        anyhow::bail!("--stream requires text output format (drop --output json)");
     }
 
     let start = Instant::now();
-    let response = match llm_client.chat(messages).await {
-        Ok(resp) => resp,
-        Err(e) => {
-            if output_format == OutputFormat::Text {
+    let response = if stream {
+        // Streaming path: print chunks as they arrive; the durable
+        // session trail below records the identical assembled text.
+        match llm_client.chat_stream(messages).await {
+            Ok(mut rx) => {
+                let mut assembled = String::new();
+                while let Some(chunk) = rx.recv().await {
+                    assembled.push_str(&chunk);
+                    print!("{chunk}");
+                    io::stdout().flush()?;
+                }
                 println!();
-            }
-            formatter.format_error(
-                &mut io::stderr(),
-                &e.to_string(),
-                Some(session.id.to_string().as_str()),
-            )?;
-            return Err(e.into());
-        },
+                if assembled.is_empty() {
+                    formatter.format_error(
+                        &mut io::stderr(),
+                        "stream produced no output — the provider errored mid-stream (details above)",
+                        Some(session.id.to_string().as_str()),
+                    )?;
+                    anyhow::bail!("stream produced no output");
+                }
+                Ok(assembled)
+            },
+            Err(e) => {
+                formatter.format_error(
+                    &mut io::stderr(),
+                    &e.to_string(),
+                    Some(session.id.to_string().as_str()),
+                )?;
+                Err(e.into())
+            },
+        }
+    } else {
+        if output_format == OutputFormat::Text {
+            print!("Thinking...");
+            io::stdout().flush()?;
+        }
+        let resp = match llm_client.chat(messages).await {
+            Ok(resp) => resp,
+            Err(e) => {
+                if output_format == OutputFormat::Text {
+                    println!();
+                }
+                formatter.format_error(
+                    &mut io::stderr(),
+                    &e.to_string(),
+                    Some(session.id.to_string().as_str()),
+                )?;
+                return Err(e.into());
+            },
+        };
+        if output_format == OutputFormat::Text {
+            println!("\x1b[2K\r");
+        }
+        Ok(resp)
+    };
+    let response = match response {
+        Ok(r) => r,
+        Err(e) => return Err(e),
     };
     let duration = start.elapsed();
-
-    if output_format == OutputFormat::Text {
-        println!("\x1b[2K\r");
-    }
 
     let user_msg = clawdius_core::session::Message::user(&message);
     if let Some(log) = event_log.as_mut() {
@@ -225,16 +266,25 @@ pub(super) async fn handle_chat(
         .add_message(&mut session, assistant_msg.clone())
         .await?;
 
-    formatter.format_chat_response(
-        &mut io::stdout(),
-        &response,
-        &session.id.to_string(),
-        &provider,
-        model.as_deref(),
-        0,
-        0,
-        duration.as_millis() as u64,
-    )?;
+    if stream {
+        // Chunks already printed above — footer only.
+        println!(
+            "\n---\nSession: {} | Provider: {provider} | {} ms",
+            session.id,
+            duration.as_millis()
+        );
+    } else {
+        formatter.format_chat_response(
+            &mut io::stdout(),
+            &response,
+            &session.id.to_string(),
+            &provider,
+            model.as_deref(),
+            0,
+            0,
+            duration.as_millis() as u64,
+        )?;
+    }
 
     Ok(())
 }

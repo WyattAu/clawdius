@@ -68,11 +68,13 @@ echo "== 5b. provider key pick (env GOOGLE first, then opencode auth) =="
 AUTH=~/.local/share/opencode/auth.json
 GOOGLE_KEY="${GOOGLE_API_KEY:-}"
 if [ -z "$GOOGLE_KEY" ] && [ -f "$AUTH" ]; then
+  # opencode auth.json stores the key under 'key' ('api' was the old shape)
   GOOGLE_KEY=$(python3 -c "
 import json
 try:
     d=json.load(open('$AUTH'))
-    print((d.get('google') or {}).get('api') or '')
+    g=d.get('google') or {}
+    print(g.get('key') or g.get('api') or '')
 except Exception: pass")
 fi
 DEEPSEEK_KEY=""
@@ -81,7 +83,8 @@ if [ -f "$AUTH" ]; then
 import json
 try:
     d=json.load(open('$AUTH'))
-    print((d.get('deepseek') or {}).get('api') or '')
+    ds=d.get('deepseek') or {}
+    print(ds.get('key') or ds.get('api') or '')
 except Exception: pass")
 fi
 if [ -n "$GOOGLE_KEY" ]; then
@@ -120,8 +123,21 @@ if [ -n "$GOOGLE_KEY" ]; then
   else
     check "chat one-shot with real provider" "E2E-OK" "$out"
   fi
+
+  echo "== 7. streaming round trip (--stream prints tokens live) =="
+  sout=$(timeout 120 "$BIN" chat --provider google --model gemini-flash-lite-latest --stream --quiet \
+    "Reply with exactly: STREAM-OK" 2>&1)
+  echo "  stream: ${sout:0:200}"
+  if [[ "$sout" == *"Insufficient balance"* || "$sout" == *"resource package"* || "$sout" == *"Quota exceeded"* || "$sout" == *"high demand"* ]]; then
+    echo "CHECK: streaming round trip -> SKIP (provider account-side limit)"
+    SKIP=$((SKIP+1))
+  else
+    check "streaming round trip" "STREAM-OK" "$sout"
+  fi
 else
   echo "CHECK: chat one-shot -> SKIP (no provider key)"
+  echo "CHECK: streaming round trip -> SKIP (no provider key)"
+  SKIP=$((SKIP+2))
 fi
 
 echo
