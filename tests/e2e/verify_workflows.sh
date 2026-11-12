@@ -140,6 +140,14 @@ else
   SKIP=$((SKIP+2))
 fi
 
+echo "== 8. ACP handshake (offline; Agent Client Protocol row) =="
+acp_out=$(printf '%s\n%s\n' \
+  '{"jsonrpc":"2.0","id":0,"method":"initialize","params":{"protocolVersion":1}}' \
+  '{"jsonrpc":"2.0","id":1,"method":"session/new","params":{"cwd":"'"$scratch"'"}}' \
+  | timeout 30 "$BIN" acp 2>/dev/null || true)
+check "ACP initialize negotiates v1" '"protocolVersion":1' "$acp_out"
+check "ACP session/new returns id" '"sessionId"' "$acp_out"
+
 echo
 echo "RESULT: PASS=$PASS FAIL=$FAIL SKIP=$SKIP"
 cd / && rm -rf "$scratch"
