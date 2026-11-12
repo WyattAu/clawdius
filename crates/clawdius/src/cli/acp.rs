@@ -362,7 +362,13 @@ impl AcpServer {
         }
         match outcome {
             Some(Ok(summary)) => {
-                if !summary.trim().is_empty() {
+                // The final summary is usually the same text the last
+                // ModelTurn already streamed — skip the duplicate chunk.
+                let already_streamed = out.iter().rev().any(|m| {
+                    m["params"]["update"]["sessionUpdate"] == "agent_message_chunk"
+                        && m["params"]["update"]["content"]["text"] == summary.as_str()
+                });
+                if !already_streamed && !summary.trim().is_empty() {
                     out.push(json!({
                         "jsonrpc": "2.0", "method": "session/update",
                         "params": { "sessionId": sid, "update": {

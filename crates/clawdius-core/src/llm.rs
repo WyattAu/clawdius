@@ -932,10 +932,23 @@ impl providers::LlmClient for LlmProvider {
         messages: Vec<ChatMessage>,
         tools: Vec<genai::chat::Tool>,
     ) -> Result<providers::ChatWithToolsResult> {
-        // Dispatch through the inherent method so trait objects
-        // (`Arc<dyn LlmClient>`) keep provider tool calling — the trait
-        // default would otherwise swallow it with "not supported".
-        LlmProvider::chat_with_tools(self, messages, tools).await
+        // Direct enum dispatch so trait objects (`Arc<dyn LlmClient>`)
+        // keep provider tool calling — the trait default would otherwise
+        // swallow it with "not supported". (Delegating to the same-named
+        // trait method here recurses to stack overflow — verified live.)
+        match self {
+            LlmProvider::Anthropic(p) => p.chat_with_tools(messages, tools).await,
+            LlmProvider::Google(p) => p.chat_with_tools(messages, tools).await,
+            LlmProvider::OpenAi(p) => p.chat_with_tools(messages, tools).await,
+            LlmProvider::OpenRouter(p) => p.chat_with_tools(messages, tools).await,
+            LlmProvider::DeepSeek(p) => p.chat_with_tools(messages, tools).await,
+            LlmProvider::Zai(p) => p.chat_with_tools(messages, tools).await,
+            LlmProvider::OpencodeGo(p) => p.chat_with_tools(messages, tools).await,
+            LlmProvider::Ollama(_) | LlmProvider::Local(_) => Err(crate::Error::Llm(
+                "Tool calling not supported by this provider. Use Anthropic, OpenAI, OpenRouter, DeepSeek, Google, or ZAI."
+                    .to_string(),
+            )),
+        }
     }
 
     async fn chat_stream(
