@@ -432,6 +432,7 @@ fn test_chat_with_all_flags() {
             exit,
             editor,
             quiet: _,
+            stream: _,
         } => {
             assert_eq!(prompt.as_deref(), Some("hello"));
             assert_eq!(model.as_deref(), Some("claude-3-opus"));

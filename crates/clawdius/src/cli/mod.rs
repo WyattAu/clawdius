@@ -333,6 +333,21 @@ pub enum Commands {
         write: bool,
     },
 
+    #[command(
+        about = "Run as an ACP agent (Agent Client Protocol over stdio; for editors like Zed)"
+    )]
+    Acp {
+        #[arg(short = 'P', long, default_value = "anthropic")]
+        #[arg(
+            help = "Provider to use (anthropic, openai, deepseek, ollama, zai, openrouter, opencode-go)"
+        )]
+        provider: String,
+
+        #[arg(short, long)]
+        #[arg(help = "Model to use (defaults to provider's default model)")]
+        model: Option<String>,
+    },
+
     #[command(about = "Show performance metrics")]
     Metrics {
         #[arg(short = 'f', long, value_enum, default_value = "text")]
@@ -1241,6 +1256,7 @@ pub enum GitCommands {
     Status,
 }
 
+pub mod acp;
 pub mod action;
 pub mod analyze;
 pub mod auth;
@@ -1396,6 +1412,7 @@ pub async fn handle_command(
             println!("{md}");
             Ok(())
         },
+        Commands::Acp { provider, model } => acp::handle_acp(provider, model, config_path).await,
         Commands::Metrics {
             format,
             output,

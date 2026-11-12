@@ -927,6 +927,17 @@ impl providers::LlmClient for LlmProvider {
         }
     }
 
+    async fn chat_with_tools(
+        &self,
+        messages: Vec<ChatMessage>,
+        tools: Vec<genai::chat::Tool>,
+    ) -> Result<providers::ChatWithToolsResult> {
+        // Dispatch through the inherent method so trait objects
+        // (`Arc<dyn LlmClient>`) keep provider tool calling — the trait
+        // default would otherwise swallow it with "not supported".
+        LlmProvider::chat_with_tools(self, messages, tools).await
+    }
+
     async fn chat_stream(
         &self,
         messages: Vec<ChatMessage>,

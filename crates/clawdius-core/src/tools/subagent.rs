@@ -144,6 +144,33 @@ impl LoopBlackboard {
     }
 }
 
+/// Observational events emitted during a delegation run, for hosts that
+/// surface progress (ACP `session/update`, TUI). Events never mutate the
+/// loop — they are a view of the blackboard transitions.
+#[derive(Debug, Clone)]
+pub enum EngineEvent {
+    /// The model produced a turn (text, possibly with tool calls).
+    ModelTurn { text: String },
+    /// A tool execution is starting.
+    ToolCallStart {
+        id: String,
+        name: String,
+        args: String,
+    },
+    /// A tool execution finished.
+    ToolCallEnd {
+        id: String,
+        name: String,
+        output: String,
+        is_error: bool,
+    },
+    /// The loop guard bounced the run with a strategy-change instruction.
+    StrategyBounce,
+}
+
+/// Sink for [`EngineEvent`]s.
+pub type EventSink = Arc<dyn Fn(EngineEvent) + Send + Sync>;
+
 /// A bounded nested agent loop.
 pub struct SubagentTool {
     client: Arc<dyn LlmClient>,
@@ -153,6 +180,8 @@ pub struct SubagentTool {
     system: String,
     /// Semantic loop detector knobs.
     pub engine_options: crate::tools::subagent::EngineOptions,
+    /// Optional observational sink (ACP/TUI progress).
+    event_sink: Option<EventSink>,
 }
 
 /// Extra knobs for the engine loop.
@@ -192,6 +221,7 @@ impl SubagentTool {
             config,
             system: SUBAGENT_SYSTEM.to_string(),
             engine_options: EngineOptions::default(),
+            event_sink: None,
         }
     }
 
@@ -200,6 +230,19 @@ impl SubagentTool {
     pub fn system_prompt(mut self, prompt: impl Into<String>) -> Self {
         self.system = prompt.into();
         self
+    }
+
+    /// Install an observational event sink (ACP/TUI progress view).
+    #[must_use]
+    pub fn with_event_sink(mut self, sink: EventSink) -> Self {
+        self.event_sink = Some(sink);
+        self
+    }
+
+    fn emit(&self, event: EngineEvent) {
+        if let Some(sink) = &self.event_sink {
+            sink(event);
+        }
     }
 
     /// Install a semantic loop detector (engine option).
@@ -223,11 +266,17 @@ impl SubagentTool {
             self.config.max_tool_calls,
         );
 
+        let mut call_seq = 0usize;
+
         for _iteration in 0..self.config.max_iterations {
             let result: ChatWithToolsResult = self
                 .client
                 .chat_with_tools(board.context().to_vec(), self.tools.clone())
                 .await?;
+
+            self.emit(EngineEvent::ModelTurn {
+                text: result.text.clone(),
+            });
 
             // Semantic loop detection: identical (response + tool names)
             // state on consecutive observation means the run is spinning.
@@ -238,6 +287,7 @@ impl SubagentTool {
                 .collect();
             if let LoopStatus::Repeat(count) = board.observe_state(&result.text, &tool_names) {
                 if board.bounce() {
+                    self.emit(EngineEvent::StrategyBounce);
                     continue;
                 }
                 return Err(Error::Llm(format!(
@@ -268,7 +318,20 @@ impl SubagentTool {
                 board.record_tool_call();
                 let args =
                     serde_json::to_string(&call.fn_arguments).unwrap_or_else(|_| "{}".to_string());
+                let call_id = format!("call_{call_seq}");
+                call_seq += 1;
+                self.emit(EngineEvent::ToolCallStart {
+                    id: call_id.clone(),
+                    name: call.fn_name.clone(),
+                    args: args.clone(),
+                });
                 let (output, is_error) = (self.executor)(&call.fn_name, &args);
+                self.emit(EngineEvent::ToolCallEnd {
+                    id: call_id,
+                    name: call.fn_name.clone(),
+                    output: output.clone(),
+                    is_error,
+                });
                 feedback.push_str(&format!(
                     "{} ({}): {}\n",
                     call.fn_name,
