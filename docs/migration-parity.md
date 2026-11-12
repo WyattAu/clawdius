@@ -121,17 +121,20 @@ routing in LlmClientWithRetry, and a seed that did not compile.
 
 ## Execution order to green
 
-1. **Grow the agent tool surface to Claude Code parity** — **in progress,
-   2026-11-02/03: 13 tools** (grep/glob/web_search/web_fetch/todo_write/
-   todo_read added; AGENTS.md/CLAUDE.md context loading live). Remaining
-   breadth: subagent tool binding.
-2. **E2E harness**: `tests/e2e/verify_workflows.sh` drives the real binary
-   headless; first sheet 8 PASS / 1 account-side skip.
-3. **Dogfood CI job**: `.github/workflows/dogfood.yml` (weekly +
-   manual) — clones the repo, seeds a known-broken test, hands the repair
-   to the agent, asserts the fix. Needs `DEEPSEEK_API_KEY` or
-   `ZAI_API_KEY` as a repo secret; skips cleanly without one.
-4. **Session durability + provider OAuth** (the two remaining structural
-   gaps).
+1. ✅ **Agent tool surface** — 15 tools (grep/glob/web_search/web_fetch/
+   todo_write/todo_read/subagent), AGENTS.md/CLAUDE.md context loading,
+   **loop detection + strategy bounce live in the engine**. Remaining
+   breadth vs Claude Code (~40 tools): incremental.
+2. ✅ **E2E harness** — `tests/e2e/verify_workflows.sh` drives the real
+   binary headless: 9 PASS / 2 SKIP (live LLM round trip, session
+   continuity cross-process, MCP handshake, analyze).
+3. ✅ **Dogfood CI job — verified green** (runs 13, and scheduled greens
+   Nov 6/7; agent repairs a seeded repo unattended; run journals
+   uploaded as artifacts). Skips cleanly without provider secrets.
+4. ⚠️ **PARTIAL** — session durability: journals (auto + TUI) + JSONL
+   event trail + rebuild-from-events + `chat -s` resume all shipped and
+   E2E-verified. Remaining: event-sourced internals beyond the JSONL
+   trail. Provider OAuth: phases 1–4 shipped (`auth
+   login/status/refresh`); live consent test pending your accounts.
 5. Migration is allowed per-workflow only when its row says VERIFIED and
    the dogfood ladder has one live consumer.
