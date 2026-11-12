@@ -78,9 +78,9 @@ order. Status: HAVE / PARTIAL / FEASIBLE-NOW / RESEARCH (novel science).
 
 1. ✅ **output_filter.rs** — secret scrub + repetition-collapse + delta (14/32/48)
 2. ✅ **Post-edit rustfmt hook** (49)
-3. Metamorphic oracle synthesis (50) — property stubs in test synthesis
-4. Entropy-gated rollback (5) + Lyapunov termination Lean proof (12)
-5. Test impact analysis (2) + flaky bisection (17)
+3. ✅ **Metamorphic oracle synthesis** (50) — `tools/metamorphic.rs`, 5 MR classes + stub synthesis
+4. ⚠️ PARTIAL — **Lyapunov termination Lean proof (12)** shipped (`agent_loop.lean`, 5 theorems); entropy-gated rollback (5) remains
+5. ⚠️ PARTIAL — **Test impact analysis (2)** shipped (`tools/test_impact.rs`); flaky bisection (17) remains
 
 
 ## Addendum — 100 production failure-mode items (2026-11-07, second agent discussion)
