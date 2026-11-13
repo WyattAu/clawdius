@@ -146,6 +146,17 @@ impl FallbackCoordinator {
         self.ledger.mark_limited(provider, cooldown);
     }
 
+    /// Record a rate-limit failure with a provider-supplied cooldown.
+    ///
+    /// Providers usually say when to come back (`retryDelay: 37s`,
+    /// `retry in 37s`). Honouring it beats the generic policy cooldown:
+    /// free tiers reset in under a minute while the default cooldown is
+    /// minutes, and rotating away to an unconfigured provider is worse
+    /// than waiting.
+    pub fn note_limited_for(&mut self, provider: &str, cooldown: Duration) {
+        self.ledger.mark_limited(provider, cooldown);
+    }
+
     /// Record a non-rate-limit failure (counts toward the budget).
     pub fn note_failed(&mut self) {
         self.attempts += 1;

@@ -292,10 +292,35 @@ async fn run_task_with_rotation(
             Err(e) => {
                 let text = format!("{e:#}");
                 if is_rate_limit(&text) {
-                    println!("    `{provider}` rate-limited — rotating");
-                    coordinator.note_limited(&provider);
+                    // Honour the provider's own reset window when it gives
+                    // one; free tiers reset in under a minute while the
+                    // policy cooldown is minutes.
+                    if let Some(wait) = parse_retry_delay(&text) {
+                        // The provider told us when it will be back. Wait
+                        // for it: rotating to the next provider in the
+                        // chain is usually worse, because the chain's other
+                        // entries may be unconfigured or out of credit.
+                        println!(
+                            "    `{provider}` rate-limited — waiting {}s (provider hint), then retrying",
+                            wait.as_secs()
+                        );
+                        coordinator.note_limited_for(&provider, wait);
+                        std::thread::sleep(wait + Duration::from_secs(2));
+                    } else {
+                        println!("    `{provider}` rate-limited — rotating");
+                        coordinator.note_limited(&provider);
+                    }
                 } else {
+                    // Not a quota problem: retrying the same provider with
+                    // the same inputs cannot help. Report the task as RED
+                    // and move on to the next task.
                     coordinator.note_failed();
+                    return Ok(CycleReport {
+                        outcome: CycleOutcome::Red,
+                        note: text,
+                        branch: None,
+                        pr_url: None,
+                    });
                 }
                 last_error = Some(text);
             },
@@ -438,13 +463,9 @@ async fn run_task_once(
         },
         Err(e) => {
             cleanup(false);
-            let text = format!("{e:#}");
-            Ok(CycleReport {
-                outcome: CycleOutcome::Red,
-                note: text,
-                branch: None,
-                pr_url: None,
-            })
+            // Propagate, not Red: the caller distinguishes a quota failure
+            // (rotate/park) from a genuine task failure (RED).
+            Err(e)
         },
     }
 }
@@ -588,6 +609,34 @@ fn provider_chain(preferred: &str) -> Vec<String> {
     chain
 }
 
+/// Extract the provider's own reset window from an error body.
+///
+/// Recognises the shapes seen live: `"retryDelay": "37s"` (Gemini),
+/// `retry in 37` / `retry after 37` (many gateways), and
+/// `Please retry in 37.037196929s`. Capped at 30 minutes so a bogus
+/// number cannot park the loop for a day.
+fn parse_retry_delay(text: &str) -> Option<Duration> {
+    let lower = text.to_lowercase();
+    let after = |needle: &str| lower.find(needle).map(|i| &lower[i..]);
+    let seconds = after("\"retrydelay\"")
+        .or_else(|| after("retry in "))
+        .or_else(|| after("retry after "))
+        .and_then(first_number)?;
+    let wait = Duration::from_secs(seconds.max(1));
+    Some(wait.min(Duration::from_mins(30)))
+}
+
+/// First unsigned integer at the start of `text` (after skipping
+/// non-digits), fractional part ignored.
+fn first_number(text: &str) -> Option<u64> {
+    let start = text.find(|c: char| c.is_ascii_digit())?;
+    let digits: String = text[start..]
+        .chars()
+        .take_while(char::is_ascii_digit)
+        .collect();
+    digits.parse().ok()
+}
+
 fn is_rate_limit(text: &str) -> bool {
     let lower = text.to_lowercase();
     [
@@ -653,6 +702,26 @@ mod tests {
         assert!(is_rate_limit("RESOURCE_EXHAUSTED: quota exceeded"));
         assert!(!is_rate_limit("semantic loop detected"));
         assert!(!is_rate_limit("compile error: expected `;`"));
+    }
+
+    #[test]
+    fn retry_delay_reads_the_shapes_providers_actually_send() {
+        let gemini = r#"{"error":{"details":[{"@type":"type.googleapis.com/google.rpc.RetryInfo","retryDelay":"37s"}]}}"#;
+        assert_eq!(parse_retry_delay(gemini), Some(Duration::from_secs(37)));
+
+        let prose = "Please retry in 37.037196929s.";
+        assert_eq!(parse_retry_delay(prose), Some(Duration::from_secs(37)));
+
+        let gateway = "Rate limited. Retry after 12 seconds.";
+        assert_eq!(parse_retry_delay(gateway), Some(Duration::from_secs(12)));
+
+        assert_eq!(parse_retry_delay("compile error: expected `;`"), None);
+    }
+
+    #[test]
+    fn retry_delay_is_capped_so_a_bogus_hint_cannot_park_the_loop() {
+        let absurd = r#"{"retryDelay":"86400s"}"#;
+        assert_eq!(parse_retry_delay(absurd), Some(Duration::from_mins(30)));
     }
 
     #[test]
