@@ -66,20 +66,21 @@ impl LoopBlackboard {
     fn new(
         task: &str,
         system_prompt: &str,
+        history: Vec<ChatMessage>,
         max_state_repeats: usize,
         max_tool_calls: usize,
     ) -> Self {
+        let mut messages = vec![ChatMessage {
+            role: ChatRole::System,
+            content: system_prompt.to_string(),
+        }];
+        messages.extend(history);
+        messages.push(ChatMessage {
+            role: ChatRole::User,
+            content: task.to_string(),
+        });
         Self {
-            messages: vec![
-                ChatMessage {
-                    role: ChatRole::System,
-                    content: system_prompt.to_string(),
-                },
-                ChatMessage {
-                    role: ChatRole::User,
-                    content: task.to_string(),
-                },
-            ],
+            messages,
             tool_calls_used: 0,
             strategy_bounces: 0,
             loop_guard: LoopGuard::new(max_state_repeats),
@@ -182,6 +183,8 @@ pub struct SubagentTool {
     pub engine_options: crate::tools::subagent::EngineOptions,
     /// Optional observational sink (ACP/TUI progress).
     event_sink: Option<EventSink>,
+    /// Prior conversation turns (cross-turn memory for ACP/TUI hosts).
+    history: Vec<ChatMessage>,
 }
 
 /// Extra knobs for the engine loop.
@@ -222,7 +225,16 @@ impl SubagentTool {
             system: SUBAGENT_SYSTEM.to_string(),
             engine_options: EngineOptions::default(),
             event_sink: None,
+            history: Vec::new(),
         }
+    }
+
+    /// Seed the loop with prior conversation turns (cross-turn memory).
+    /// The transcript becomes `[system] + history + [task]`.
+    #[must_use]
+    pub fn with_history(mut self, history: Vec<ChatMessage>) -> Self {
+        self.history = history;
+        self
     }
 
     /// Override the subagent system prompt (e.g. with the caller's agent-mode prompt).
@@ -262,6 +274,7 @@ impl SubagentTool {
         let mut board = LoopBlackboard::new(
             task,
             &self.system,
+            self.history.clone(),
             self.engine_options.max_state_repeats,
             self.config.max_tool_calls,
         );
@@ -374,14 +387,14 @@ mod tests {
 
     #[test]
     fn blackboard_bounces_once_then_hard_fails() {
-        let mut board = LoopBlackboard::new("task", "sys", 2, 10);
+        let mut board = LoopBlackboard::new("task", "sys", Vec::new(), 2, 10);
         assert!(board.bounce(), "first bounce allowed");
         assert!(!board.bounce(), "second bounce refused");
     }
 
     #[test]
     fn blackboard_tool_budget_exhaustion() {
-        let mut board = LoopBlackboard::new("task", "sys", 2, 2);
+        let mut board = LoopBlackboard::new("task", "sys", Vec::new(), 2, 2);
         assert_eq!(board.remaining_tool_calls(), 2);
         board.record_tool_call();
         board.record_tool_call();
@@ -390,7 +403,7 @@ mod tests {
 
     #[test]
     fn blackboard_repeats_identical_state() {
-        let mut board = LoopBlackboard::new("task", "sys", 2, 10);
+        let mut board = LoopBlackboard::new("task", "sys", Vec::new(), 2, 10);
         let names = vec!["grep".to_string()];
         assert!(matches!(
             board.observe_state("thinking", &names),
@@ -408,8 +421,22 @@ mod tests {
     }
 
     #[test]
+    fn blackboard_history_sits_between_system_and_task() {
+        let history = vec![ChatMessage {
+            role: ChatRole::Assistant,
+            content: "prior answer".into(),
+        }];
+        let board = LoopBlackboard::new("the task", "the system", history, 2, 10);
+        let ctx = board.context();
+        assert_eq!(ctx.len(), 3);
+        assert!(matches!(ctx[0].role, ChatRole::System));
+        assert_eq!(ctx[1].content, "prior answer");
+        assert_eq!(ctx[2].content, "the task");
+    }
+
+    #[test]
     fn blackboard_transcript_shape_is_stable() {
-        let mut board = LoopBlackboard::new("the task", "the system", 2, 10);
+        let mut board = LoopBlackboard::new("the task", "the system", Vec::new(), 2, 10);
         board.push_assistant("resp".into());
         board.push_user("feedback".into());
         let ctx = board.context();
