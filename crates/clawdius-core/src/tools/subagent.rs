@@ -90,9 +90,15 @@ impl LoopBlackboard {
 
     /// Semantic state = response text + requested tool names, hashed;
     /// observed on every model turn for loop detection.
-    fn observe_state(&mut self, text: &str, tool_names: &[String]) -> LoopStatus {
+    /// Record this turn's observable state.
+    ///
+    /// `calls` must carry each call's arguments, not just its name: two
+    /// turns that both read a file are only a repeat when they read the
+    /// SAME file. Hashing names alone flagged legitimate multi-file work
+    /// as a spin and hard-failed the run (live-caught on the dev loop).
+    fn observe_state(&mut self, text: &str, calls: &[String]) -> LoopStatus {
         let mut state_parts: Vec<String> = vec![text.to_string()];
-        state_parts.extend(tool_names.iter().cloned());
+        state_parts.extend(calls.iter().cloned());
         let state = state_hash(&state_parts);
         self.loop_guard.observe(&state.to_string())
     }
@@ -291,14 +297,24 @@ impl SubagentTool {
                 text: result.text.clone(),
             });
 
-            // Semantic loop detection: identical (response + tool names)
-            // state on consecutive observation means the run is spinning.
-            let tool_names: Vec<String> = result
+            // Semantic loop detection: identical (response + tool call
+            // fingerprints) state on consecutive observation means the run
+            // is spinning. The fingerprint includes the arguments, so
+            // reading file A then file B is progress, not a repeat.
+            let call_fingerprints: Vec<String> = result
                 .tool_calls
                 .iter()
-                .map(|call| call.fn_name.clone())
+                .map(|call| {
+                    format!(
+                        "{}:{}",
+                        call.fn_name,
+                        serde_json::to_string(&call.fn_arguments)
+                            .unwrap_or_else(|_| "{}".to_string())
+                    )
+                })
                 .collect();
-            if let LoopStatus::Repeat(count) = board.observe_state(&result.text, &tool_names) {
+            if let LoopStatus::Repeat(count) = board.observe_state(&result.text, &call_fingerprints)
+            {
                 if board.bounce() {
                     self.emit(EngineEvent::StrategyBounce);
                     continue;
@@ -404,20 +420,34 @@ mod tests {
     #[test]
     fn blackboard_repeats_identical_state() {
         let mut board = LoopBlackboard::new("task", "sys", Vec::new(), 2, 10);
-        let names = vec!["grep".to_string()];
+        let calls = vec!["grep:{\"pattern\":\"TODO\"}".to_string()];
         assert!(matches!(
-            board.observe_state("thinking", &names),
+            board.observe_state("thinking", &calls),
             LoopStatus::Continue
         ));
         // Same state again: guard counts up to max_state_repeats (2).
         assert!(matches!(
-            board.observe_state("thinking", &names),
+            board.observe_state("thinking", &calls),
             LoopStatus::Continue
         ));
         assert!(matches!(
-            board.observe_state("thinking", &names),
+            board.observe_state("thinking", &calls),
             LoopStatus::Repeat(_)
         ));
+    }
+
+    /// Counter-witness for the bug that killed live dev-loop runs: the
+    /// same tool with different arguments is progress, not a spin.
+    #[test]
+    fn blackboard_distinguishes_same_tool_with_different_arguments() {
+        let mut board = LoopBlackboard::new("task", "sys", Vec::new(), 2, 10);
+        for path in ["src/a.rs", "src/b.rs", "src/c.rs", "src/d.rs"] {
+            let calls = vec![format!("read_file:{{\"path\":\"{path}\"}}")];
+            assert!(
+                matches!(board.observe_state("", &calls), LoopStatus::Continue),
+                "reading {path} must not be treated as a repeat"
+            );
+        }
     }
 
     #[test]
