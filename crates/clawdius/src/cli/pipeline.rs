@@ -7,7 +7,10 @@
 //! consolidation loop sees it.
 
 use anyhow::{anyhow, Result};
-use clawdius_core::orchestrator::pipeline::{run_gate, GateResult, Pipeline, PipelineError};
+use clawdius_core::orchestrator::fallback::{EscalationRequest, OpencodeEscalator};
+use clawdius_core::orchestrator::pipeline::{
+    run_gate, GateResult, Pipeline, PipelineError, StageKind,
+};
 use std::path::PathBuf;
 
 /// How many prior failure notes a repeated stage carries.
@@ -159,15 +162,70 @@ async fn run_pipeline(
             return Ok(());
         }
         if loop_no >= pipeline.max_loops {
+            // Last resort: hand the whole thing to opencode with the
+            // failure context, then re-run the gates once on its work.
+            println!("\n=== loops exhausted — escalating to opencode (last resort) ===");
+            let escalator = OpencodeEscalator::new(workdir.clone());
+            let request = EscalationRequest {
+                task: pipeline.goal.clone(),
+                failed_provider: provider.clone(),
+                failure_notes: gate_failures.clone(),
+            };
+            let report = escalator.escalate(&request);
+            let (esc_ok, esc_note) = match report {
+                Ok(report) => {
+                    println!(
+                        "    opencode: {} ({} ms){}",
+                        if report.ok { "ok" } else { "failed" },
+                        report.duration_ms,
+                        if report.ok {
+                            format!("\n    {}", first_lines(&report.output, 5))
+                        } else {
+                            String::new()
+                        },
+                    );
+                    (report.ok, format!("opencode exit-ok={}", report.ok))
+                },
+                Err(e) => {
+                    println!("    opencode spawn failed: {e}");
+                    (false, format!("opencode spawn failed: {e}"))
+                },
+            };
+            if esc_ok {
+                let recheck: Vec<GateResult> =
+                    [StageKind::Verify, StageKind::Test, StageKind::Lint]
+                        .iter()
+                        .map(|k| run_gate(k, &workdir))
+                        .collect();
+                let all_green = recheck.iter().all(|g| g.ok);
+                for g in &recheck {
+                    println!(
+                        "    recheck {}: {}",
+                        g.slug,
+                        if g.ok { "PASS" } else { "FAIL" }
+                    );
+                }
+                if all_green {
+                    journal.record(&clawdius_core::session::journal::JournalEvent::Finished {
+                        ok: true,
+                        note: format!("green after opencode escalation ({esc_note})"),
+                    })?;
+                    println!(
+                        "\nPipeline `{}` GREEN via opencode escalation.",
+                        pipeline.name
+                    );
+                    return Ok(());
+                }
+            }
             journal.record(&clawdius_core::session::journal::JournalEvent::Finished {
                 ok: false,
                 note: format!(
-                    "gates still red after {loop_no} loop(s): {}",
+                    "gates still red after {loop_no} loop(s) + escalation: {} ({esc_note})",
                     gate_failures.join("; ")
                 ),
             })?;
             return Err(anyhow!(
-                "pipeline `{}` still failing after {loop_no} loop(s): {}",
+                "pipeline `{}` still failing after {loop_no} loop(s): {} (escalation: {esc_note})",
                 pipeline.name,
                 gate_failures.join("; ")
             ));
