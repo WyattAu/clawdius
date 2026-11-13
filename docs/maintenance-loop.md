@@ -62,11 +62,22 @@ gets lint/deps/docs/tests attention on a rotation.
 ## Provider rotation
 
 A quota or rate-limit failure is not a task failure. The loop reuses
-`FallbackCoordinator`: the failing provider is marked cooling down, the
-next provider in the chain is tried, and after `MAX_PROVIDER_ROTATIONS`
-attempts the task is recorded as `error`. When every provider in the
-chain is cooling down, the loop parks until the soonest reset instead of
-burning the interval on guaranteed failures.
+`FallbackCoordinator` and distinguishes two cases:
+
+| Error carries a reset hint | Behaviour |
+| --- | --- |
+| yes (`retryDelay: 37s`, `retry in 37`, `retry after 12`) | wait that long, then retry the same provider |
+| no | mark it cooling down and try the next provider in the chain |
+
+Waiting beats rotating when the provider says when it will be back: the
+chain's other entries may be unconfigured or out of credit, so failing
+over can turn a 40-second wait into a dead task. The hint is capped at
+30 minutes so a bogus value cannot park the loop for a day.
+
+After `MAX_PROVIDER_ROTATIONS` attempts the task is recorded as `error`.
+When every provider in the chain is cooling down, the loop parks until
+the soonest reset instead of burning the interval on guaranteed
+failures.
 
 Rate-limit shapes recognised: HTTP 429, `rate limit`, `quota`,
 `insufficient balance`, `RESOURCE_EXHAUSTED`, `too many requests`.
