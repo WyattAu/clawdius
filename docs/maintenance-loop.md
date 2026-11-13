@@ -168,3 +168,12 @@ jq -r '[.kind, .outcome] | @tsv' .clawdius/maintenance/ledger.jsonl \
 - Gates are deterministic shell ground truth, not model judgement.
 - The ledger is append-only; history is never rewritten.
 - Provider quota errors rotate; they do not fail the task.
+- No stage may write to the primary checkout. The loop snapshots
+  `git status --porcelain` before each cycle and reverts any tracked file
+  that becomes dirty during it, recording the paths in the ledger. A
+  green cycle downgrades to `error` if a leak was detected.
+
+The leak guard assumes the loop is the only writer to the checkout while
+a cycle runs. If another agent or a human edits the same working tree
+concurrently, their tracked-file edits can be reverted as leaks — run
+the loop from its own clone, or do not edit the checkout during a cycle.
