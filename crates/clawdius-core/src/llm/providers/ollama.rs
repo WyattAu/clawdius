@@ -8,7 +8,7 @@ use genai::resolver::{AuthData, Endpoint, ServiceTargetResolver};
 use genai::{ModelIden, ServiceTarget};
 use tokio::sync::mpsc;
 
-use crate::llm::providers::LlmClient;
+use crate::llm::providers::{ChatWithToolsResult, LlmClient};
 use crate::llm::{ChatMessage as ClawdiusMessage, ChatRole};
 use crate::{Error, Result};
 
@@ -122,6 +122,40 @@ impl LlmClient for OllamaProvider {
         });
 
         Ok(rx)
+    }
+
+    /// Native tool calling through Ollama's `/api/chat` `tools` field.
+    ///
+    /// The default trait impl refuses, which made every local run of the
+    /// dev loop fail at the implementation stage. Ollama has supported
+    /// tools since 0.3 and `llama3.2` is the flagship tool-calling model,
+    /// so the local path can run the loop with no quota at all.
+    async fn chat_with_tools(
+        &self,
+        messages: Vec<ClawdiusMessage>,
+        tools: Vec<genai::chat::Tool>,
+    ) -> Result<ChatWithToolsResult> {
+        let genai_messages: Vec<ChatMessage> = messages
+            .into_iter()
+            .map(|m| match m.role {
+                ChatRole::System => ChatMessage::system(m.content),
+                ChatRole::User => ChatMessage::user(m.content),
+                ChatRole::Assistant => ChatMessage::assistant(m.content),
+            })
+            .collect();
+
+        let chat_req = ChatRequest::new(genai_messages).with_tools(tools);
+        let response = self
+            .client
+            .exec_chat(&self.model, chat_req, None)
+            .await
+            .map_err(|e| Error::Llm(e.to_string()))?;
+
+        let text = response.content.first_text().unwrap_or("").to_string();
+        let tool_calls: Vec<genai::chat::ToolCall> =
+            response.content.tool_calls().into_iter().cloned().collect();
+
+        Ok(ChatWithToolsResult { text, tool_calls })
     }
 
     fn count_tokens(&self, text: &str) -> usize {
