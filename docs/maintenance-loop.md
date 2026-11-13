@@ -54,7 +54,8 @@ Each kind carries a standing goal that is used when the task's own
 | `issue` | Fix a reported issue at its root cause, with a regression test |
 | `custom` | Whatever the task's goal says, ending green |
 
-When the backlog runs dry and `--replenish` is on (the default), the loop
+When the backlog runs dry and replenish is on (the default; disable with
+`--no-replenish`), the loop
 enqueues one standing task per kind per day, so a quiet repository still
 gets lint/deps/docs/tests attention on a rotation.
 
@@ -88,7 +89,7 @@ clawdius maintain --max-cycles 20
 
 Flags: `--backlog`, `--worktree-root`, `--provider`, `--model`,
 `--interval`, `--once`, `--max-cycles`, `--dry-run`, `--no-pr`,
-`--replenish`.
+`--no-replenish` (replenish is on by default).
 
 ## Running it detached
 

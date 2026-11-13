@@ -392,12 +392,8 @@ pub enum Commands {
         #[arg(long, help = "Commit to the branch but do not open a PR")]
         no_pr: bool,
 
-        #[arg(
-            long,
-            default_value_t = true,
-            help = "Enqueue standing tasks when the backlog is dry"
-        )]
-        replenish: bool,
+        #[arg(long, help = "Do not enqueue standing tasks when the backlog is dry")]
+        no_replenish: bool,
     },
 
     #[command(about = "Render the morning briefing from run journals (Telegram-ready markdown)")]
@@ -1509,7 +1505,7 @@ pub async fn handle_command(
             model,
             worktree_root,
             no_pr,
-            replenish,
+            no_replenish,
         } => {
             maintain::handle_maintain(
                 backlog,
@@ -1521,7 +1517,7 @@ pub async fn handle_command(
                 model,
                 worktree_root,
                 no_pr,
-                replenish,
+                !no_replenish,
                 config_path,
             )
             .await
