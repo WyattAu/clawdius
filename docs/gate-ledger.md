@@ -61,3 +61,57 @@ gated pushes remain the authoritative verification.
 - Local gate now equals CI: `cargo clippy --workspace --all-targets
   --locked -- -D warnings -A missing_docs` exits 0 on 1.96, 1.99 and
   1.100; core 1245 + clawdius 128 lib tests green.
+
+## 2026-11-13 — dev-loop + 24/7 maintenance arc
+Live runs of `clawdius pipeline dev-loop` and `clawdius maintain` found
+eight defects that unit tests never would have. Each is fixed with a
+test or a recorded live observation; none were papered over.
+
+| # | Defect (live symptom) | Fix |
+| --- | --- | --- |
+| 1 | `list_directory {}` failed path validation; model retried the identical call until the loop guard fired | omitted `path` defaults to the repo root (`07d3938`) |
+| 2 | tools shipped prose argument hints, so models emitted `{}` for every tool | real JSON Schema on all 12 tools (`f43ae6c`) |
+| 3 | loop guard hashed tool NAMES, so reading several files looked like a spin and hard-failed the run | fingerprint includes arguments; counter-witness test (`a873ac4`) |
+| 4 | pipeline errors were mapped to RED before rotation saw them, so a 429 ended the task | errors propagate; quota rotates (`fe32f17`) |
+| 5 | cooldown ignored the provider's `retryDelay` (Gemini free tier: 5 RPM, 37 s reset vs a 5 min policy) | parse and honour the hint, capped at 30 min (`fe32f17`) |
+| 6 | no stage timeout: a retired Gemini model name made the adapter hang forever | 10-minute stage ceiling (`3fb1cd8`) |
+| 7 | Ollama base URL concatenated without a separator → bare reqwest "builder error"; `chat -P ollama` was broken too | normalise to a trailing slash (`f8e2015`) |
+| 8 | `LlmProvider` enum dispatch hard-refused Ollama tool calls, so the provider override was dead code | both dispatch sites delegate (`a5ccb3d`) |
+
+Plus a safety defect found by reading the escalation log: opencode
+resolves the git project root, so escalating inside a worktree made it
+edit the MAIN checkout and spend real quota. Worktree runs no longer
+escalate, and every cycle snapshots/reverts main-tree leaks (`4887838`).
+
+Verified live on a scratch repo (`/tmp/opencode/looptest`, two
+deliberately failing tests):
+
+- planning stage runs as a single chat call and its deliverable chains
+  into the implementation stage's prompt;
+- implementation stage executes real tool calls (`read_file`, `edit_file`,
+  `shell`) against the worktree;
+- all three gates run as deterministic shell ground truth, loop 2 repeats
+  from `implementation`, and a red tail reports the gate output;
+- the maintenance loop creates `maint/<id>`, commits + pushes + opens a
+  PR on green, discards worktree and branch on red, and appends a ledger
+  record either way;
+- cycle evidence (run journal + stage deliverables) is preserved under
+  `.clawdius/maintenance/runs/<task-id>/` even when the worktree is
+  discarded.
+
+Provider reality on this host, 2026-11-13 — the loop cannot depend on
+any hosted key:
+
+| Provider | State |
+| --- | --- |
+| google | free tier 5 RPM + daily cap, exhausted by these runs |
+| deepseek | `402 Insufficient Balance` |
+| opencode-go | key expired |
+| zai-coding-plan | off-limits (supported-tools-only ToS) |
+| anthropic / openai | not configured |
+| ollama (local) | works, including tool calling after #7 and #8 |
+
+Open: no green live run yet. `llama3.2:3b` drives the tool loop but
+mangles `Cargo.toml`; a stronger local coder model is the next attempt.
+The pipeline itself is not implicated — every stage, gate, loop and
+cleanup path has been observed working.
