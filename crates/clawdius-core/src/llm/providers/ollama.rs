@@ -20,7 +20,7 @@ pub struct OllamaProvider {
 impl OllamaProvider {
     pub fn new(base_url: &str, model: Option<&str>) -> Result<Self> {
         let model_name = model.unwrap_or("llama3.2").to_string();
-        let base_url = base_url.to_string();
+        let base_url = normalize_base_url(base_url);
 
         let target_resolver = ServiceTargetResolver::from_resolver_fn(
             move |service_target: ServiceTarget| -> genai::resolver::Result<ServiceTarget> {
@@ -45,6 +45,15 @@ impl OllamaProvider {
             model: model_name,
         })
     }
+}
+
+/// genai's Ollama adapter builds `{base_url}api/chat` by concatenation, so
+/// a base URL without a trailing slash produces `http://localhost:11434api/chat`
+/// and reqwest fails with a bare "builder error" — no hint that the URL is
+/// malformed. Normalise once, here.
+fn normalize_base_url(url: &str) -> String {
+    let trimmed = url.trim_end_matches('/');
+    format!("{trimmed}/")
 }
 
 #[async_trait]
@@ -176,5 +185,30 @@ impl LlmClient for OllamaProvider {
             let punct_count = text.chars().filter(|c| c.is_ascii_punctuation()).count();
             words + (punct_count / 4)
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn base_url_always_ends_with_a_slash() {
+        assert_eq!(
+            normalize_base_url("http://localhost:11434"),
+            "http://localhost:11434/"
+        );
+        assert_eq!(
+            normalize_base_url("http://localhost:11434/"),
+            "http://localhost:11434/"
+        );
+        assert_eq!(
+            normalize_base_url("http://box:11434///"),
+            "http://box:11434/"
+        );
+        assert_eq!(
+            normalize_base_url("http://localhost:11434/ollama"),
+            "http://localhost:11434/ollama/"
+        );
     }
 }
