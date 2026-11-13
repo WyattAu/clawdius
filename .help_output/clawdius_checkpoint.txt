@@ -1,0 +1,17 @@
+Manage file checkpoints
+
+Usage: clawdius checkpoint <COMMAND>
+
+Commands:
+  create    Create a checkpoint
+  list      List all checkpoints
+  show      Show checkpoint details
+  restore   Restore to a checkpoint
+  compare   Compare two checkpoints
+  delete    Delete a checkpoint
+  cleanup   Clean up old checkpoints
+  timeline  Show checkpoint timeline
+  help      Print this message or the help of the given subcommand(s)
+
+Options:
+  -h, --help  Print help

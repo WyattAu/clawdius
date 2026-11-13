@@ -1,0 +1,14 @@
+View and manage configuration
+
+Usage: clawdius config <COMMAND>
+
+Commands:
+  show  Show current configuration (masks API keys)
+  get   Get a specific config value
+  set   Set a specific config value
+  path  Show the path to the config file
+  list  List available config keys
+  help  Print this message or the help of the given subcommand(s)
+
+Options:
+  -h, --help  Print help

@@ -1,0 +1,24 @@
+Autonomous CI/CD mode - run without interaction
+
+Usage: clawdius auto [OPTIONS] <TASK>
+
+Arguments:
+  <TASK>  Task to execute (e.g., 'fix failing tests', 'implement feature X')
+
+Options:
+  -m, --model <MODEL>
+          Model to use (defaults to provider's default model)
+  -P, --provider <PROVIDER>
+          Provider to use (anthropic, openai, deepseek, ollama, zai, openrouter, opencode-go) [default: anthropic]
+      --max-iterations <MAX_ITERATIONS>
+          Maximum iterations before stopping (default: 50)
+      --run-tests
+          Run tests after changes
+      --auto-commit
+          Commit changes automatically
+      --fail-on-test-failure
+          Fail if tests fail after changes
+      --output-format <OUTPUT_FORMAT>
+          Output format for CI logging (text, json, github-actions)
+  -h, --help
+          Print help

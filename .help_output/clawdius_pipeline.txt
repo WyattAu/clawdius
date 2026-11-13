@@ -1,0 +1,14 @@
+Run the formalized dev pipeline (research -> implement -> gates -> repeat)
+
+Usage: clawdius pipeline [OPTIONS] <NAME> <GOAL>
+
+Arguments:
+  <NAME>  Pipeline name (product-loop)
+  <GOAL>  The goal to drive the pipeline with
+
+Options:
+      --dry-run                Print the execution plan without running
+      --max-loops <MAX_LOOPS>  Override the loop budget
+  -P, --provider <PROVIDER>    Provider for LLM stages [default: anthropic]
+  -m, --model <MODEL>          Model for LLM stages (defaults to provider's default)
+  -h, --help                   Print help

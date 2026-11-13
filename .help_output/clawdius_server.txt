@@ -1,0 +1,8 @@
+Start the Clawdius HTTP server
+
+Usage: clawdius server [OPTIONS]
+
+Options:
+      --host <HOST>  [default: 0.0.0.0]
+  -p, --port <PORT>  [default: 8080]
+  -h, --help         Print help

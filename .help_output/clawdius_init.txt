@@ -1,0 +1,9 @@
+Initialize a new Clawdius project in the current directory
+
+Usage: clawdius init [NAME]
+
+Arguments:
+  [NAME]  Project name (defaults to directory name)
+
+Options:
+  -h, --help  Print help

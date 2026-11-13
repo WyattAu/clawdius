@@ -1,0 +1,8 @@
+Interactive setup wizard for first-time users
+
+Usage: clawdius setup [OPTIONS]
+
+Options:
+  -q, --quick                Skip welcome screen
+  -P, --provider <PROVIDER>  Pre-select provider (anthropic, openai, ollama, zai)
+  -h, --help                 Print help

@@ -1,0 +1,13 @@
+Generate documentation for code
+
+Usage: clawdius doc [OPTIONS] <FILE>
+
+Arguments:
+  <FILE>  File path
+
+Options:
+  -e, --element <ELEMENT>  Element to document (function, struct, module)
+  -f, --format <FORMAT>    Documentation format (auto, rustdoc, jsdoc, pydoc, markdown) [default: auto]
+  -o, --output <OUTPUT>    Output file path (defaults to stdout)
+      --inline             Include inline comments
+  -h, --help               Print help

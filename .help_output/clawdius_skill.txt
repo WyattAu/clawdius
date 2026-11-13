@@ -1,0 +1,11 @@
+List and execute markdown skills
+
+Usage: clawdius skill <COMMAND>
+
+Commands:
+  list  List available skills
+  run   Execute a skill by name
+  help  Print this message or the help of the given subcommand(s)
+
+Options:
+  -h, --help  Print help

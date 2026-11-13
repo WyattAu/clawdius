@@ -1,0 +1,12 @@
+Manage language settings
+
+Usage: clawdius lang <COMMAND>
+
+Commands:
+  list  List supported languages
+  set   Set display language
+  show  Show current language
+  help  Print this message or the help of the given subcommand(s)
+
+Options:
+  -h, --help  Print help

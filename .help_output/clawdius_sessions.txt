@@ -1,0 +1,8 @@
+List and manage sessions
+
+Usage: clawdius sessions [OPTIONS]
+
+Options:
+  -d, --delete <DELETE>  Delete a session
+  -s, --search <SEARCH>  Search sessions
+  -h, --help             Print help

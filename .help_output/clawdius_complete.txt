@@ -1,0 +1,14 @@
+Get inline code completions from LLM
+
+Usage: clawdius complete [OPTIONS] <FILE> <LINE> <CHARACTER>
+
+Arguments:
+  <FILE>       Source file path
+  <LINE>       Line number (0-indexed)
+  <CHARACTER>  Character position (0-indexed)
+
+Options:
+  -l, --language <LANGUAGE>  Programming language
+  -P, --provider <PROVIDER>  LLM provider to use [default: ollama]
+  -m, --model <MODEL>        Model name
+  -h, --help                 Print help

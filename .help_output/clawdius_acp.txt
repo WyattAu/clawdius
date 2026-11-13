@@ -1,0 +1,8 @@
+Run as an ACP agent (Agent Client Protocol over stdio; for editors like Zed)
+
+Usage: clawdius acp [OPTIONS]
+
+Options:
+  -P, --provider <PROVIDER>  Provider to use (anthropic, openai, deepseek, ollama, zai, openrouter, opencode-go) [default: anthropic]
+  -m, --model <MODEL>        Model to use (defaults to provider's default model)
+  -h, --help                 Print help

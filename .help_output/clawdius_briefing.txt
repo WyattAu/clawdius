@@ -1,0 +1,7 @@
+Render the morning briefing from run journals (Telegram-ready markdown)
+
+Usage: clawdius briefing [OPTIONS]
+
+Options:
+      --runs-dir <RUNS_DIR>  Runs directory (defaults to .clawdius/runs)
+  -h, --help                 Print help

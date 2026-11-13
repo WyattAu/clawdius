@@ -1,0 +1,9 @@
+Edit a long prompt in external editor
+
+Usage: clawdius edit [OPTIONS]
+
+Options:
+  -i, --initial <INITIAL>      Optional initial content
+  -e, --editor <EDITOR>        Editor to use (defaults to $EDITOR)
+  -x, --extension <EXTENSION>  File extension for syntax highlighting (default: md)
+  -h, --help                   Print help

@@ -1,0 +1,11 @@
+Generate tests for code
+
+Usage: clawdius test [OPTIONS] <FILE>
+
+Arguments:
+  <FILE>  File path
+
+Options:
+  -f, --function <FUNCTION>  Function name to generate tests for (generates for all if not specified)
+  -o, --output <OUTPUT>      Output file path (defaults to <file>_test.<ext>)
+  -h, --help                 Print help

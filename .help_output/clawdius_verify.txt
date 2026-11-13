@@ -1,0 +1,8 @@
+Run Lean4 proof verification
+
+Usage: clawdius verify [OPTIONS] --proof <PROOF>
+
+Options:
+  -p, --proof <PROOF>          Path to .lean proof file or directory
+      --lean-path <LEAN_PATH>  Path to lean binary
+  -h, --help                   Print help

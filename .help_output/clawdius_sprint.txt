@@ -1,0 +1,26 @@
+Run an agentic sprint (think -> plan -> build -> review -> test -> ship -> reflect)
+
+Usage: clawdius sprint [OPTIONS] <TASK>
+
+Arguments:
+  <TASK>  Task description for the sprint
+
+Options:
+  -n, --max-iterations <MAX_ITERATIONS>
+          Maximum build-test iterations [default: 3]
+      --real-execution
+          Enable real command execution (build, test)
+      --auto-approve
+          Auto-approve all phases without confirmation
+  -P, --provider <PROVIDER>
+          LLM provider [default: deepseek]
+  -m, --model <MODEL>
+          Specific model to use
+      --browser-qa-url <BROWSER_QA_URL>
+          URL for browser-based QA in the Test phase
+      --resume
+          Resume from the most recent saved sprint state
+      --lsp <COMMAND>
+          LSP server command for code intelligence (e.g., --lsp "rust-analyzer")
+  -h, --help
+          Print help

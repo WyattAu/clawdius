@@ -1,0 +1,9 @@
+Verify container image signature and SBOM
+
+Usage: clawdius verify-image <IMAGE_REF>
+
+Arguments:
+  <IMAGE_REF>  Container image reference (e.g., ghcr.io/org/clawdius:latest)
+
+Options:
+  -h, --help  Print help

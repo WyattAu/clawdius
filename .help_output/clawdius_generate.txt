@@ -1,0 +1,28 @@
+Generate code using agentic AI
+
+Usage: clawdius generate [OPTIONS] <PROMPT>
+
+Arguments:
+  <PROMPT>  Description of what to generate
+
+Options:
+  -f, --files <FILES>
+          Target files to generate/modify (comma-separated)
+  -M, --mode <MODE>
+          Generation mode: single-pass, iterative, agent [default: single-pass]
+  -T, --trust <TRUST>
+          Trust level for apply: low, medium, high [default: medium]
+  -t, --test-strategy <TEST_STRATEGY>
+          Test execution strategy: sandboxed, direct, skip
+  -i, --max-iterations <MAX_ITERATIONS>
+          Max iterations for iterative/agent mode [default: 5]
+      --dry-run
+          Dry run - preview changes without applying
+  -P, --provider <PROVIDER>
+          LLM provider to use [default: anthropic]
+  -m, --model <MODEL>
+          Model to use
+  -R, --timeout-secs <TIMEOUT_SECS>
+          Timeout in seconds for LLM operations
+  -h, --help
+          Print help

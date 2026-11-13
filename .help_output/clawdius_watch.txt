@@ -1,0 +1,13 @@
+Watch files for changes and trigger auto-analysis
+
+Usage: clawdius watch [OPTIONS] [PATH]
+
+Arguments:
+  [PATH]  Path to watch (file or directory) [default: .]
+
+Options:
+      --ignore <IGNORE>            Patterns to ignore (comma-separated)
+      --auto-analyze               Enable auto-analysis on changes
+      --debounce-ms <DEBOUNCE_MS>  Debounce interval in milliseconds [default: 500]
+  -v, --verbose                    Enable verbose output
+  -h, --help                       Print help

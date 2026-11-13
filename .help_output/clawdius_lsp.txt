@@ -1,0 +1,17 @@
+Language Server Protocol operations
+
+Usage: clawdius lsp <COMMAND>
+
+Commands:
+  start         Start an LSP server for a language
+  complete      Get completions at a position
+  hover         Get hover information at a position
+  definition    Go to definition
+  references    Find references
+  symbols       Get document symbols
+  diagnostics   Get diagnostics for a file
+  code-actions  Get code actions for a range
+  help          Print this message or the help of the given subcommand(s)
+
+Options:
+  -h, --help  Print help

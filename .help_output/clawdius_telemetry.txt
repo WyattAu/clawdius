@@ -1,0 +1,10 @@
+Configure telemetry settings
+
+Usage: clawdius telemetry [OPTIONS]
+
+Options:
+  -e, --enable                  Enable telemetry
+  -d, --disable                 Disable telemetry
+      --enable-metrics          Enable metrics collection
+      --enable-crash-reporting  Enable crash reporting
+  -h, --help                    Print help

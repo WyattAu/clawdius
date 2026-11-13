@@ -1,0 +1,53 @@
+High-Assurance Rust-Native Engineering Engine
+
+Usage: clawdius [OPTIONS] [COMMAND]
+
+Commands:
+  chat          Send a chat message to the LLM
+  auto          Autonomous CI/CD mode - run without interaction
+  init          Initialize a new Clawdius project in the current directory
+  setup         Interactive setup wizard for first-time users
+  sessions      List and manage sessions
+  refactor      Plan and execute a cross-language refactor
+  action        Apply a code action
+  test          Generate tests for code
+  doc           Generate documentation for code
+  verify        Run Lean4 proof verification
+  verify-image  Verify container image signature and SBOM
+  consolidate   Consolidate run journals into a learnings digest
+  pipeline      Run the formalized dev pipeline (research -> implement -> gates -> repeat)
+  maintain      Run the 24/7 maintenance loop: backlog tasks through the dev pipeline, one worktree per task
+  briefing      Render the morning briefing from run journals (Telegram-ready markdown)
+  acp           Run as an ACP agent (Agent Client Protocol over stdio; for editors like Zed)
+  metrics       Show performance metrics
+  telemetry     Configure telemetry settings
+  checkpoint    Manage file checkpoints
+  timeline      Manage file timeline and version history
+  modes         Manage agent modes
+  lang          Manage language settings
+  edit          Edit a long prompt in external editor
+  webhook       Manage webhooks for event notifications
+  generate      Generate code using agentic AI
+  lsp           Language Server Protocol operations
+  memory        Manage project memory (CLAWDIUS.md)
+  models        Manage local LLM models (Ollama)
+  complete      Get inline code completions from LLM
+  analyze       Analyze codebase for architecture drift and technical debt
+  watch         Watch files for changes and trigger auto-analysis
+  git           Git workflow operations
+  sprint        Run an agentic sprint (think -> plan -> build -> review -> test -> ship -> reflect)
+  ship          Run pre-ship checks or generate a commit message
+  skill         List and execute markdown skills
+  server        Start the Clawdius HTTP server
+  config        View and manage configuration
+  help          Print this message or the help of the given subcommand(s)
+
+Options:
+  -n, --no-tui                         Run without TUI (headless mode)
+  -c, --cwd <CWD>                      Working directory [default: .]
+  -f, --output-format <OUTPUT_FORMAT>  Output format (text, json, stream-json) [default: text] [possible values: text, json, stream-json]
+  -q, --quiet                          Quiet mode (no progress indicators)
+  -C, --config <CONFIG>                Path to config file (defaults to .clawdius/config.toml)
+  -L, --lang <LANG>                    Language for output (en, zh, ja, ko, de, fr, es, it, pt, ru)
+  -h, --help                           Print help
+  -V, --version                        Print version

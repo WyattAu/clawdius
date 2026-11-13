@@ -1,0 +1,14 @@
+Apply a code action
+
+Usage: clawdius action [OPTIONS] <ACTION> <FILE>
+
+Arguments:
+  <ACTION>  Action to apply (extract-function, extract-variable, inline-variable, rename, move-module, generate-tests)
+  <FILE>    File path
+
+Options:
+  -l, --line <LINE>              Line number
+  -c, --column <COLUMN>          Column number
+  -s, --end-line <END_LINE>      End line for selection
+      --end-column <END_COLUMN>  End column for selection
+  -h, --help                     Print help

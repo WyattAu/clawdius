@@ -1,0 +1,10 @@
+Plan and execute a cross-language refactor
+
+Usage: clawdius refactor [OPTIONS] --from <FROM> --to <TO>
+
+Options:
+  -f, --from <FROM>  Source language (e.g., typescript, python)
+  -t, --to <TO>      Target language (e.g., rust, go)
+  -p, --path <PATH>  Path to file or directory [default: .]
+      --dry-run      Preview changes without applying
+  -h, --help         Print help

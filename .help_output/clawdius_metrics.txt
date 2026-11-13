@@ -1,0 +1,10 @@
+Show performance metrics
+
+Usage: clawdius metrics [OPTIONS]
+
+Options:
+  -f, --format <FORMAT>  Output format (text, json, html) [default: text] [possible values: text, json, html]
+  -o, --output <OUTPUT>  Output file path (prints to stdout if not specified)
+  -r, --reset            Reset metrics after displaying
+  -w, --watch            Watch mode - continuously display metrics
+  -h, --help             Print help

@@ -1,0 +1,16 @@
+Run the 24/7 maintenance loop: backlog tasks through the dev pipeline, one worktree per task
+
+Usage: clawdius maintain [OPTIONS]
+
+Options:
+      --backlog <BACKLOG>              Backlog path (defaults to .clawdius/maintenance/backlog.json)
+      --once                           Run one cycle and exit
+      --dry-run                        Print the backlog and paths without running
+      --max-cycles <MAX_CYCLES>        Stop after this many cycles
+      --interval <INTERVAL>            Seconds between cycles [default: 900]
+  -P, --provider <PROVIDER>            Preferred provider; rotates on rate limits [default: google]
+  -m, --model <MODEL>                  Model for LLM stages (defaults to provider's default)
+      --worktree-root <WORKTREE_ROOT>  Worktree root (defaults to .clawdius/worktrees)
+      --no-pr                          Commit to the branch but do not open a PR
+      --no-replenish                   Do not enqueue standing tasks when the backlog is dry
+  -h, --help                           Print help

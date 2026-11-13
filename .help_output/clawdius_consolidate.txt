@@ -1,0 +1,8 @@
+Consolidate run journals into a learnings digest
+
+Usage: clawdius consolidate [OPTIONS]
+
+Options:
+      --runs-dir <RUNS_DIR>  Runs directory (defaults to .clawdius/runs)
+      --write                Write digest to .clawdius/learnings/<date>.md
+  -h, --help                 Print help

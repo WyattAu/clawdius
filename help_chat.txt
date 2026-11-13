@@ -1,0 +1,18 @@
+Send a chat message to the LLM
+
+Usage: clawdius chat [OPTIONS] [PROMPT]
+
+Arguments:
+  [PROMPT]  The message to send (use '-' for stdin)
+
+Options:
+  -m, --model <MODEL>        Model to use (defaults to provider's default model)
+  -P, --provider <PROVIDER>  Provider to use (anthropic, openai, deepseek, ollama, zai, openrouter, opencode-go) [default: anthropic]
+  -s, --session <SESSION>    Continue from session ID
+  -e, --editor               Open external editor to compose message
+  -M, --mode <MODE>          Agent mode (code, architect, ask, debug, review, refactor, test, auto, or custom mode name) [default: code]
+      --exit                 Non-interactive mode - exit after response (auto-enabled when prompt provided)
+      --quiet                Quiet mode (suppress all output except response)
+      --auto-approve         Autonomous mode - auto-approve all tool executions
+      --stream               Stream tokens as they arrive (text output only)
+  -h, --help                 Print help
