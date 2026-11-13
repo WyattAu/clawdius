@@ -44,6 +44,7 @@ use tokio::sync::RwLock;
 use tracing::{info, warn};
 
 pub mod fallback;
+pub mod pipeline;
 pub mod queue;
 pub mod resource_governor;
 pub mod worker;
