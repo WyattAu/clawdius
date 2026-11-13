@@ -76,8 +76,6 @@ pub struct Cli {
     #[arg(help = "Output format (text, json, stream-json)")]
     pub output_format: OutputFormat,
 
-    #[arg(short, long)]
-    #[arg(help = "Quiet mode (no progress indicators)")]
     /// Quiet mode (no progress indicators)
     #[arg(short, long)]
     pub quiet: bool,
