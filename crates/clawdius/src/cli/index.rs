@@ -1,9 +1,9 @@
 #![cfg(feature = "vector-db")]
 
 use super::OutputFormat;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
-use clawdius_core::output::{OutputFormat as CoreOutputFormat, OutputFormatter, OutputOptions};
+use clawdius_core::output::{OutputFormat as CoreOutputFormat, OutputFormatter};
 
 pub(super) async fn handle_index(
     path: Option<PathBuf>,
@@ -14,8 +14,9 @@ pub(super) async fn handle_index(
     use clawdius_core::WorkspaceIndexer;
     use std::io;
 
-    let workspace_path =
-        path.unwrap_or_else(|| std::env::current_dir().expect("failed to get current directory"));
+    // `current_dir` and the caller-supplied path share the io::Result
+    // shape, so `?` converts the io error into anyhow directly.
+    let workspace_path = path.map_or_else(std::env::current_dir, Ok)?;
 
     let options = OutputOptions {
         format: CoreOutputFormat::from(output_format),
@@ -55,8 +56,8 @@ pub(super) async fn handle_index(
             stats.symbols_found,
             stats.references_found,
             stats.embeddings_created,
-            duration.as_millis() as u64,
-            stats.errors.clone(),
+            u64::try_from(duration.as_millis()).unwrap_or(u64::MAX),
+            stats.errors,
         );
 
         formatter.format_index_result(&mut io::stdout(), &result)?;
@@ -76,8 +77,8 @@ pub(super) async fn handle_index(
             stats.symbols_found,
             stats.references_found,
             stats.embeddings_created,
-            duration.as_millis() as u64,
-            stats.errors.clone(),
+            u64::try_from(duration.as_millis()).unwrap_or(u64::MAX),
+            stats.errors,
         );
 
         formatter.format_index_result(&mut io::stdout(), &result)?;
