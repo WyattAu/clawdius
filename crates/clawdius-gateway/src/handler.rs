@@ -82,7 +82,7 @@ impl ClawdiusHandler {
             message_history: Arc::new(RwLock::new(HashMap::new())),
             system_prompt: GATEWAY_SYSTEM_PROMPT.to_string(),
             max_history: 50,
-            cache: Arc::new(LlmResponseCache::new(Duration::from_secs(300), 1000)),
+            cache: Arc::new(LlmResponseCache::new(Duration::from_mins(5), 1000)),
             #[cfg(feature = "audit")]
             audit: None,
         }

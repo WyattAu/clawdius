@@ -267,7 +267,7 @@ impl AuthService {
     pub fn invalidate_session(&self, jti: &str) -> Result<()> {
         self.revoked_sessions.write().insert(
             jti.to_string(),
-            std::time::Instant::now() + std::time::Duration::from_secs(3600),
+            std::time::Instant::now() + std::time::Duration::from_hours(1),
         );
         tracing::info!("Session {} revoked", jti);
         Ok(())
@@ -344,7 +344,7 @@ impl AuthService {
             let cache = self.jwks_cache.read();
             if let Some(cached) = cache.get(jwks_uri) {
                 // Cache for 1 hour
-                if cached.fetched_at.elapsed() < std::time::Duration::from_secs(3600) {
+                if cached.fetched_at.elapsed() < std::time::Duration::from_hours(1) {
                     return Ok(cached.keys.clone());
                 }
             }

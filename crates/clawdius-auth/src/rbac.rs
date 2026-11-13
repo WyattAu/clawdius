@@ -368,6 +368,9 @@ pub struct RequirePermissionGuard {
 impl<S: Send + Sync> FromRequestParts<S> for RequirePermissionGuard {
     type Rejection = RbacError;
 
+    // `unused_async_trait_impl` exists in newer clippy only; 1.96
+    // (CI pin) errors on the unknown lint.
+    #[allow(unknown_lints)]
     #[allow(clippy::unused_async_trait_impl)]
     async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
         let missing_permission = || RbacError::InsufficientPermissions {

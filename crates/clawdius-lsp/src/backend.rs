@@ -227,6 +227,9 @@ impl ClawdiusLspBackend {
     /// # Errors
     /// This method does not currently return errors.
     #[allow(clippy::unused_async)]
+    // `unused_async_trait_impl` exists in newer clippy only; 1.96 (CI
+    // pin) errors on the unknown lint, so gate it via unknown_lints.
+    #[allow(unknown_lints)]
     #[allow(clippy::unused_async_trait_impl)]
     pub async fn verify(&self, _params: Value) -> LspResult<Value> {
         Ok(serde_json::json!({
