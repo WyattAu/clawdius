@@ -333,6 +333,31 @@ pub enum Commands {
         write: bool,
     },
 
+    #[command(
+        about = "Run the formalized dev pipeline (research -> implement -> gates -> repeat)"
+    )]
+    Pipeline {
+        #[arg(help = "Pipeline name (product-loop)")]
+        name: String,
+
+        #[arg(help = "The goal to drive the pipeline with")]
+        goal: String,
+
+        #[arg(long, help = "Print the execution plan without running")]
+        dry_run: bool,
+
+        #[arg(long, help = "Override the loop budget")]
+        max_loops: Option<usize>,
+
+        #[arg(short = 'P', long, default_value = "anthropic")]
+        #[arg(help = "Provider for LLM stages")]
+        provider: String,
+
+        #[arg(short, long)]
+        #[arg(help = "Model for LLM stages (defaults to provider's default)")]
+        model: Option<String>,
+    },
+
     #[command(about = "Render the morning briefing from run journals (Telegram-ready markdown)")]
     Briefing {
         #[arg(long, help = "Runs directory (defaults to .clawdius/runs)")]
@@ -1283,6 +1308,7 @@ pub mod memory;
 pub mod metrics;
 pub mod models;
 pub mod modes;
+pub mod pipeline;
 pub mod server;
 pub mod sessions;
 pub mod setup;
@@ -1419,6 +1445,17 @@ pub async fn handle_command(
             Ok(())
         },
         Commands::Acp { provider, model } => acp::handle_acp(provider, model, config_path).await,
+        Commands::Pipeline {
+            name,
+            goal,
+            dry_run,
+            max_loops,
+            provider,
+            model,
+        } => {
+            pipeline::handle_pipeline(name, goal, dry_run, max_loops, provider, model, config_path)
+                .await
+        },
         Commands::Briefing { runs_dir } => {
             let dir = runs_dir.unwrap_or_else(|| PathBuf::from(".clawdius/runs"));
             let date = chrono::Utc::now().date_naive().to_string();
