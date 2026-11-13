@@ -78,7 +78,7 @@ Rate-limit shapes recognised: HTTP 429, `rate limit`, `quota`,
 clawdius maintain --dry-run
 
 # One cycle (useful in CI or for a smoke test)
-clawdius maintain --once -P google --model gemini-3.8-flash
+clawdius maintain --once -P google --model gemini-3.5-flash
 
 # Continuous, 15 minutes between cycles, no PRs (commit to branch only)
 clawdius maintain --interval 900 --no-pr
@@ -86,6 +86,11 @@ clawdius maintain --interval 900 --no-pr
 # Bounded soak: 20 cycles then exit
 clawdius maintain --max-cycles 20
 ```
+
+Model names age: `gemini-2.5-flash` was retired (404) and the API's own
+migration hint pointed at a model that does not exist yet, so verify the
+name against the provider's model list before pinning it in a unit file.
+`gemini-3.5-flash` is current at the time of writing.
 
 Flags: `--backlog`, `--worktree-root`, `--provider`, `--model`,
 `--interval`, `--once`, `--max-cycles`, `--dry-run`, `--no-pr`,
@@ -115,7 +120,7 @@ After=network-online.target
 Type=simple
 WorkingDirectory=%h/dev/src/github.com/WyattAu/clawdius
 EnvironmentFile=%h/.config/clawdius/env
-ExecStart=%h/.cargo/bin/clawdius maintain --interval 900 -P google --model gemini-3.8-flash
+ExecStart=%h/.cargo/bin/clawdius maintain --interval 900 -P google --model gemini-3.5-flash
 Restart=on-failure
 RestartSec=60
 
