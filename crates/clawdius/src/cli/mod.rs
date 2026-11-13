@@ -356,6 +356,50 @@ pub enum Commands {
         model: Option<String>,
     },
 
+    #[command(
+        about = "Run the 24/7 maintenance loop: backlog tasks through the dev pipeline, one worktree per task"
+    )]
+    Maintain {
+        #[arg(
+            long,
+            help = "Backlog path (defaults to .clawdius/maintenance/backlog.json)"
+        )]
+        backlog: Option<PathBuf>,
+
+        #[arg(long, help = "Run one cycle and exit")]
+        once: bool,
+
+        #[arg(long, help = "Print the backlog and paths without running")]
+        dry_run: bool,
+
+        #[arg(long, help = "Stop after this many cycles")]
+        max_cycles: Option<usize>,
+
+        #[arg(long, default_value_t = 900, help = "Seconds between cycles")]
+        interval: u64,
+
+        #[arg(short = 'P', long, default_value = "google")]
+        #[arg(help = "Preferred provider; rotates on rate limits")]
+        provider: String,
+
+        #[arg(short, long)]
+        #[arg(help = "Model for LLM stages (defaults to provider's default)")]
+        model: Option<String>,
+
+        #[arg(long, help = "Worktree root (defaults to .clawdius/worktrees)")]
+        worktree_root: Option<PathBuf>,
+
+        #[arg(long, help = "Commit to the branch but do not open a PR")]
+        no_pr: bool,
+
+        #[arg(
+            long,
+            default_value_t = true,
+            help = "Enqueue standing tasks when the backlog is dry"
+        )]
+        replenish: bool,
+    },
+
     #[command(about = "Render the morning briefing from run journals (Telegram-ready markdown)")]
     Briefing {
         #[arg(long, help = "Runs directory (defaults to .clawdius/runs)")]
@@ -1302,6 +1346,7 @@ pub mod git;
 pub mod index;
 pub mod lang;
 pub mod lsp;
+pub mod maintain;
 pub mod memory;
 pub mod metrics;
 pub mod models;
@@ -1453,6 +1498,33 @@ pub async fn handle_command(
         } => {
             pipeline::handle_pipeline(name, goal, dry_run, max_loops, provider, model, config_path)
                 .await
+        },
+        Commands::Maintain {
+            backlog,
+            once,
+            dry_run,
+            max_cycles,
+            interval,
+            provider,
+            model,
+            worktree_root,
+            no_pr,
+            replenish,
+        } => {
+            maintain::handle_maintain(
+                backlog,
+                once,
+                dry_run,
+                max_cycles,
+                interval,
+                provider,
+                model,
+                worktree_root,
+                no_pr,
+                replenish,
+                config_path,
+            )
+            .await
         },
         Commands::Briefing { runs_dir } => {
             let dir = runs_dir.unwrap_or_else(|| PathBuf::from(".clawdius/runs"));

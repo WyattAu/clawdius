@@ -53,14 +53,37 @@ fn pipeline_err(e: &PipelineError) -> anyhow::Error {
     anyhow!("invalid pipeline: {e}")
 }
 
-/// Execute the pipeline with loop control.
+/// Execute the pipeline in the process working directory.
 async fn run_pipeline(
     pipeline: &Pipeline,
     provider: String,
     model: Option<String>,
     config_path: Option<PathBuf>,
 ) -> Result<()> {
-    let workdir = std::env::current_dir()?;
+    run_pipeline_in(
+        std::env::current_dir()?,
+        pipeline,
+        provider,
+        model,
+        config_path,
+    )
+    .await
+}
+
+/// Execute the pipeline with loop control against an explicit workdir.
+///
+/// `workdir` is where gates run, where stage artifacts land, and where
+/// the journal goes. Callers that pass a directory other than the
+/// process cwd (the maintenance loop runs each task in a git worktree)
+/// must also enter it, because the implementation stage's tool host
+/// resolves paths against the process cwd.
+pub(super) async fn run_pipeline_in(
+    workdir: PathBuf,
+    pipeline: &Pipeline,
+    provider: String,
+    model: Option<String>,
+    config_path: Option<PathBuf>,
+) -> Result<()> {
     let journal_path = workdir.join(format!(".clawdius/runs/pipeline-{}.jsonl", pipeline.name));
     let mut journal = clawdius_core::session::journal::RunJournal::open(&journal_path)?;
     journal.record(&clawdius_core::session::journal::JournalEvent::Started {

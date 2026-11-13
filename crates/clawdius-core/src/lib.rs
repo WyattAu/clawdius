@@ -64,6 +64,7 @@ pub mod integrity;
 pub mod invoice;
 pub mod llm;
 pub mod lsp;
+pub mod maintenance;
 pub mod mcp;
 pub mod memory;
 pub mod metrics;
