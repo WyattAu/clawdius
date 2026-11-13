@@ -396,38 +396,7 @@ async fn run_task_once(
     let branch = format!("maint/{}", sanitize(&task.id));
     let wt = worktrees.join(sanitize(&task.id));
 
-    // Start clean: an interrupted previous run may have left a worktree.
-    if wt.exists() {
-        let _ = Command::new("git")
-            .args(["-C", &repo.to_string_lossy()])
-            .args(["worktree", "remove", "--force", &wt.to_string_lossy()])
-            .output();
-        let _ = std::fs::remove_dir_all(&wt);
-    }
-    let _ = Command::new("git")
-        .args(["-C", &repo.to_string_lossy()])
-        .args(["branch", "-D", &branch])
-        .output();
-
-    std::fs::create_dir_all(worktrees)?;
-    let added = Command::new("git")
-        .args(["-C", &repo.to_string_lossy()])
-        .args([
-            "worktree",
-            "add",
-            "-b",
-            &branch,
-            &wt.to_string_lossy(),
-            "HEAD",
-        ])
-        .output()
-        .context("git worktree add")?;
-    if !added.status.success() {
-        return Err(anyhow!(
-            "git worktree add failed: {}",
-            String::from_utf8_lossy(&added.stderr).trim()
-        ));
-    }
+    reset_worktree(repo, &wt, &branch, worktrees)?;
 
     let result = run_pipeline_in(&wt, task, provider, model, config_path).await;
 
@@ -516,6 +485,45 @@ async fn run_task_once(
             Err(e)
         },
     }
+}
+
+/// Prepare a fresh worktree at `wt` on a new `branch`.
+///
+/// A killed cycle can leave three kinds of debris, and the order matters:
+/// the worktree registration outlives a deleted directory, and a branch
+/// that is still "checked out" in that stale registration cannot be
+/// deleted — so `worktree remove` (dir gone), then `worktree prune`
+/// (clears the registration), and only then `branch -D` (`4887838`-style
+/// cleanup, learned live: without the prune, `worktree add -b` aborts
+/// with "branch already exists" and the task burns as RED in 0.1 s).
+fn reset_worktree(repo: &Path, wt: &Path, branch: &str, worktrees: &Path) -> Result<()> {
+    let repo_arg = repo.to_string_lossy().to_string();
+    let wt_arg = wt.to_string_lossy().to_string();
+
+    let _ = Command::new("git")
+        .args(["-C", &repo_arg, "worktree", "remove", "--force", &wt_arg])
+        .output();
+    let _ = std::fs::remove_dir_all(wt);
+    let _ = Command::new("git")
+        .args(["-C", &repo_arg, "worktree", "prune"])
+        .output();
+    let _ = Command::new("git")
+        .args(["-C", &repo_arg, "branch", "-D", branch])
+        .output();
+
+    std::fs::create_dir_all(worktrees)?;
+    let added = Command::new("git")
+        .args(["-C", &repo_arg])
+        .args(["worktree", "add", "-b", branch, &wt_arg, "HEAD"])
+        .output()
+        .context("git worktree add")?;
+    if !added.status.success() {
+        return Err(anyhow!(
+            "git worktree add failed: {}",
+            String::from_utf8_lossy(&added.stderr).trim()
+        ));
+    }
+    Ok(())
 }
 
 /// Copy a worktree's `.clawdius/` run artifacts into the main repo.
@@ -800,6 +808,54 @@ fn repo_root() -> Result<PathBuf> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Regression test for the live failure: a deleted worktree directory
+    /// leaves a stale registration that pins the branch; the reset must
+    /// still produce a fresh worktree on that branch name.
+    #[test]
+    fn worktree_reset_survives_a_stale_registration() {
+        if Command::new("git").arg("--version").output().is_err() {
+            return;
+        }
+        let dir = tempfile::tempdir().unwrap();
+        let repo = dir.path();
+        // `git -c` options must come before the subcommand.
+        let git = |args: &[&str]| {
+            Command::new("git")
+                .args(["-C", repo.to_str().unwrap()])
+                .args(["-c", "user.email=t@t", "-c", "user.name=t"])
+                .args(args)
+                .output()
+                .unwrap()
+        };
+        assert!(git(&["init", "-q"]).status.success());
+        std::fs::write(repo.join("f.txt"), "x").unwrap();
+        assert!(git(&["add", "-A"]).status.success());
+        assert!(git(&["commit", "-qm", "seed"]).status.success());
+
+        let wt = repo.join("wt");
+        let add = |branch: &str| {
+            Command::new("git")
+                .args(["-C", repo.to_str().unwrap()])
+                .args([
+                    "worktree",
+                    "add",
+                    "-b",
+                    branch,
+                    wt.to_str().unwrap(),
+                    "HEAD",
+                ])
+                .output()
+                .unwrap()
+        };
+        assert!(add("maint/x").status.success(), "first add must succeed");
+        // Simulate a killed cycle: directory gone, registration stale.
+        std::fs::remove_dir_all(&wt).unwrap();
+
+        reset_worktree(repo, &wt, "maint/x", &repo.join("worktrees"))
+            .expect("reset must clear the stale registration and re-create the worktree");
+        assert!(wt.join(".git").exists() || wt.exists());
+    }
 
     #[test]
     fn porcelain_parser_handles_renames_quotes_and_untracked() {
