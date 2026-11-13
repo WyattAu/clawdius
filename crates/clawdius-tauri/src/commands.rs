@@ -116,6 +116,12 @@ fn default_models() -> Vec<ModelInfo> {
     ]
 }
 
+/// Liveness probe for the desktop shell.
+///
+/// # Errors
+///
+/// Never fails in practice; the `String` error side exists for the
+/// Tauri command signature.
 #[cfg(feature = "desktop")]
 #[tauri::command]
 pub fn health_check() -> Result<HealthResponse, String> {
@@ -135,6 +141,11 @@ pub fn health_check() -> Result<HealthResponse, String> {
     })
 }
 
+/// List models available to the desktop shell.
+///
+/// # Errors
+///
+/// Returns the error text when config loading fails.
 #[cfg(feature = "desktop")]
 #[tauri::command]
 pub fn list_models() -> Result<Vec<ModelInfo>, String> {
@@ -209,6 +220,12 @@ pub fn list_models() -> Result<Vec<ModelInfo>, String> {
     Ok(models)
 }
 
+/// Send one chat message through the configured provider.
+///
+/// # Errors
+///
+/// Returns the error text when config resolution or the provider call
+/// fails.
 #[cfg(feature = "desktop")]
 #[tauri::command]
 pub async fn send_message(request: SendMessageRequest) -> Result<SendMessageResponse, String> {
@@ -242,6 +259,11 @@ pub async fn send_message(request: SendMessageRequest) -> Result<SendMessageResp
     })
 }
 
+/// Summarize stored sessions for the session browser.
+///
+/// # Errors
+///
+/// Returns the error text when the session store cannot be opened.
 #[cfg(feature = "desktop")]
 #[tauri::command]
 pub fn list_sessions() -> Result<Vec<SessionSummary>, String> {
@@ -275,8 +297,18 @@ pub fn list_sessions() -> Result<Vec<SessionSummary>, String> {
     Ok(summaries)
 }
 
+/// Load one session's full detail by id.
+///
+/// Tauri command arguments are owned values by contract, so `id` is
+/// taken by value even though the body only borrows it.
+///
+/// # Errors
+///
+/// Returns the error text when the id is malformed, the store cannot
+/// be opened, or the session does not exist.
 #[cfg(feature = "desktop")]
 #[tauri::command]
+#[allow(clippy::needless_pass_by_value)]
 pub fn get_session(id: String) -> Result<SessionDetail, String> {
     let config = clawdius_core::Config::load_or_default();
     let sessions_path = &config.storage.sessions_path;
@@ -309,7 +341,7 @@ pub fn get_session(id: String) -> Result<SessionDetail, String> {
                     .into_iter()
                     .filter_map(|p| match p {
                         clawdius_core::session::types::ContentPart::Text { text } => Some(text),
-                        _ => None,
+                        clawdius_core::session::types::ContentPart::Image { .. } => None,
                     })
                     .collect::<Vec<_>>()
                     .join("\n"),
@@ -334,7 +366,14 @@ pub fn get_session(id: String) -> Result<SessionDetail, String> {
     })
 }
 
+/// Build and run the desktop app window.
+///
+/// # Panics
+///
+/// Panics when the Tauri runtime cannot start (missing frontend dist,
+/// invalid context) — there is no desktop app to fall back to.
 #[cfg(feature = "desktop")]
+#[allow(clippy::expect_used)] // documented under `# Panics` above
 pub fn run_tauri_app() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
