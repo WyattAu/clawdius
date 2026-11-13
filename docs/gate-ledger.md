@@ -115,3 +115,37 @@ Open: no green live run yet. `llama3.2:3b` drives the tool loop but
 mangles `Cargo.toml`; a stronger local coder model is the next attempt.
 The pipeline itself is not implicated — every stage, gate, loop and
 cleanup path has been observed working.
+
+## 2026-11-13 (later) — first green cycle; loop running 24/7
+The open item from the arc above is closed: the maintenance loop
+recorded its first GREEN cycle against the scratch repo.
+
+| # | Defect (live symptom) | Fix |
+| --- | --- | --- |
+| 10 | crash left a stale worktree registration pinning the branch; `worktree add -b` aborted and burned the task as RED in 0.1 s | `reset_worktree`: remove → prune → branch -D → add, with an integration test reproducing the exact debris (`26c0d32`) |
+| 11 | "nothing to commit" (message on STDOUT, exit 1) recorded a satisfied task as RED with an empty stderr | empty staged set → GREEN "nothing to change", no branch, no PR (`a3bc598`) |
+
+Observed end to end, scratch repo, provider google/gemini-3.1-flash-lite:
+
+```text
+verify PASS  570.7s -> 5.8s   (shared CARGO_TARGET_DIR, warm)
+test   PASS  962.0s -> 223.0s
+lint   PASS   85.3s -> 21.1s
+cycle  1705s -> 314s
+2026-11-13T22:40:57Z deps-2026-11-13 green "gates green; nothing to change"
+```
+
+Two operational notes for the next operator:
+
+- **Run the loop from its own clone.** The leak guard assumes the loop is
+  the sole writer of its checkout; the shared dev checkout has a second
+  active agent session. `clawdius-maint` (local clone, GitHub origin) is
+  the loop home.
+- **Set `CARGO_TARGET_DIR` in the loop's environment** to a dedicated
+  dir (e.g. `/home/wyatt/dev/.targets/clawdius-maint-loop`): worktrees
+  do not inherit the primary repo's untracked `.cargo/config.toml`, so
+  without it every cycle pays a cold workspace build.
+
+Live process: `clawdius-maint/.clawdius/maintenance/loop.pid`
+(interval 1800 s, google / gemini-3.1-flash-lite). Real-change cycles
+(docs/tests tasks) are expected to produce the first pushed branch + PR.
