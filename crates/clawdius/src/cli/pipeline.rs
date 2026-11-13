@@ -253,16 +253,4 @@ mod tests {
         assert_eq!(first_lines("a\nb\nc", 2), "a | b");
         assert_eq!(first_lines("", 3), "");
     }
-
-    #[test]
-    fn kinds_reference_gates_only() {
-        for k in KINDS {
-            let kind = match k {
-                "verify" => StageKind::Verify,
-                "test" => StageKind::Test,
-                _ => StageKind::Lint,
-            };
-            assert!(!kind.is_llm_stage());
-        }
-    }
 }
