@@ -358,6 +358,13 @@ async fn run_task_once(
 
     let result = run_pipeline_in(&wt, task, provider, model, config_path).await;
 
+    // Preserve the cycle's evidence before the worktree disappears: the
+    // auto-run journal and the pipeline's stage deliverables are the only
+    // record of what the model actually did (live-caught: a red cycle
+    // removed the worktree and took the journal with it, so the spin was
+    // undiagnosable).
+    preserve_artifacts(&wt, repo, &task.id);
+
     let cleanup = |green: bool| {
         let _ = Command::new("git")
             .args(["-C", &repo.to_string_lossy()])
@@ -440,6 +447,39 @@ async fn run_task_once(
             })
         },
     }
+}
+
+/// Copy a worktree's `.clawdius/` run artifacts into the main repo.
+fn preserve_artifacts(worktree: &Path, repo: &Path, task_id: &str) {
+    let src = worktree.join(".clawdius");
+    if !src.exists() {
+        return;
+    }
+    let dest = repo
+        .join(".clawdius/maintenance/runs")
+        .join(sanitize(task_id));
+    for sub in ["runs", "pipeline"] {
+        let from = src.join(sub);
+        if from.is_dir() {
+            let _ = copy_dir(&from, &dest.join(sub));
+        }
+    }
+}
+
+/// Recursively copy `from` into `to` (best effort; artifacts are evidence,
+/// not correctness).
+fn copy_dir(from: &Path, to: &Path) -> std::io::Result<()> {
+    std::fs::create_dir_all(to)?;
+    for entry in std::fs::read_dir(from)? {
+        let entry = entry?;
+        let target = to.join(entry.file_name());
+        if entry.file_type()?.is_dir() {
+            copy_dir(&entry.path(), &target)?;
+        } else {
+            std::fs::copy(entry.path(), &target)?;
+        }
+    }
+    Ok(())
 }
 
 /// Run the dev pipeline with `workdir` as the process cwd.
