@@ -99,6 +99,29 @@ pub(super) async fn handle_maintain(
         // Re-read the backlog every cycle: humans and other agents edit it.
         let mut backlog = Backlog::load(&backlog_path)?;
 
+        // Anything still `running` comes from a crashed instance (this
+        // process sets `running` only for the task it is executing now).
+        let recovered = backlog.reset_stale_running();
+        if !recovered.is_empty() {
+            println!(
+                "recovered {} task(s) left running by a dead cycle: {}",
+                recovered.len(),
+                recovered.join(", ")
+            );
+            ledger.append(&CycleRecord {
+                at: now_rfc3339(),
+                task_id: recovered.join(","),
+                kind: TaskKind::Custom,
+                outcome: CycleOutcome::Idle,
+                provider: provider.clone(),
+                branch: None,
+                pr_url: None,
+                note: "reset to pending after an interrupted cycle".to_string(),
+                duration_ms: 0,
+            })?;
+            backlog.save(&backlog_path)?;
+        }
+
         if backlog.next_pending().is_none() {
             if replenish {
                 if let Some(task) = replenish_task(&backlog) {

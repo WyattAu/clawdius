@@ -201,6 +201,24 @@ impl Backlog {
         }
     }
 
+    /// Reset every `running` task back to `pending` and return their ids.
+    ///
+    /// A crash mid-cycle leaves its task marked `running` forever, and
+    /// `next_pending` skips it — the queue silently starves (live-caught:
+    /// one killed cycle left the backlog dry for every later cycle).
+    /// The runner calls this at cycle start, when any `running` task is
+    /// by definition from a dead instance.
+    pub fn reset_stale_running(&mut self) -> Vec<String> {
+        let mut recovered = Vec::new();
+        for task in &mut self.tasks {
+            if task.status == TaskStatus::Running {
+                task.status = TaskStatus::Pending;
+                recovered.push(task.id.clone());
+            }
+        }
+        recovered
+    }
+
     /// Append a task (ids must be unique).
     ///
     /// # Errors
@@ -476,6 +494,24 @@ mod tests {
             assert!(!kind.slug().is_empty());
             assert!(kind.default_goal().len() > 20);
         }
+    }
+
+    #[test]
+    fn stale_running_tasks_recover_to_pending() {
+        let mut b = Backlog::default();
+        b.push(task("stuck", TaskKind::Lint, 9)).unwrap();
+        b.push(task("fresh", TaskKind::Docs, 1)).unwrap();
+        b.set_status("stuck", TaskStatus::Running);
+
+        let recovered = b.reset_stale_running();
+        assert_eq!(recovered, vec!["stuck".to_string()]);
+        assert_eq!(
+            b.next_pending().map(|t| t.id.as_str()),
+            Some("stuck"),
+            "a recovered task must be selectable again"
+        );
+        // Idempotent: a clean backlog recovers nothing.
+        assert!(b.reset_stale_running().is_empty());
     }
 
     #[test]
