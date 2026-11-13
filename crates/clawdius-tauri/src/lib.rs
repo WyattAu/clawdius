@@ -7,6 +7,10 @@
 // Leptos 0.8 / tachys generates deeply nested generic types that exceed the
 // default recursion limit of 128. 256 matches the Leptos docs recommendation.
 #![recursion_limit = "256"]
+// leptos component + `TypedBuilder` derive generate a zero-variant
+// marker enum per component under the workspace ssr/csr feature mix
+// (macro artifact, not dead code).
+#![allow(clippy::empty_enums)]
 // Frontend Leptos components are self-documenting via their view markup.
 #![allow(missing_docs)]
 

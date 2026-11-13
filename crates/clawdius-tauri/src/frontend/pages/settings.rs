@@ -20,8 +20,7 @@ pub fn SettingsPage(
         cs.available_providers
             .iter()
             .find(|p| p.name == cs.current_provider)
-            .map(|p| p.models.clone())
-            .unwrap_or_default()
+            .map_or_else(Default::default, |p| p.models.clone())
     });
 
     view! {

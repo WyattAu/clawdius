@@ -266,19 +266,19 @@ pub fn parse_saml_response_xml(
                 } else if in_attribute_value {
                     match current_attr_name.as_str() {
                         "email" | "emailAddress" | "urn:oid:0.9.2342.19200300.100.1.3" => {
-                            attributes.email = Some(text.clone());
+                            attributes.email = Some(text);
                         },
                         "name" | "displayName" | "urn:oid:2.16.840.1.113730.3.1.241" => {
-                            attributes.name = Some(text.clone());
+                            attributes.name = Some(text);
                         },
                         "givenName" | "urn:oid:2.5.4.42" => {
-                            attributes.given_name = Some(text.clone());
+                            attributes.given_name = Some(text);
                         },
                         "sn" | "surname" | "urn:oid:2.5.4.4" => {
-                            attributes.family_name = Some(text.clone());
+                            attributes.family_name = Some(text);
                         },
                         "groups" | "memberOf" => {
-                            attributes.groups.push(text.clone());
+                            attributes.groups.push(text);
                         },
                         _ => {},
                     }

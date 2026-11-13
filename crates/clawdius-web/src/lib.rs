@@ -1,6 +1,10 @@
 //! Clawdius web frontend: Leptos app and server API types.
+//!
+//! `clippy::empty_enums` is allowed crate-wide for the same leptos
+//! component + `TypedBuilder` derive artifact as clawdius-ui.
 
 #![deny(unsafe_code)]
+#![allow(clippy::empty_enums)]
 
 /// Root Leptos application (SPA shell).
 pub mod app;

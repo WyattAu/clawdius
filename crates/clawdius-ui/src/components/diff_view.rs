@@ -243,8 +243,8 @@ fn diff_line_view(line: &DiffLine) -> AnyView {
     let bg = line_bg(&line.kind);
     let fg = line_color(&line.kind);
     let prefix = line_prefix(&line.kind);
-    let old_num = line.old_line.map(|n| n.to_string()).unwrap_or_default();
-    let new_num = line.new_line.map(|n| n.to_string()).unwrap_or_default();
+    let old_num = line.old_line.map_or_else(String::new, |n| n.to_string());
+    let new_num = line.new_line.map_or_else(String::new, |n| n.to_string());
     view! {
         <div
             class=format!("diff-line diff-{:?}", line.kind).to_lowercase()
