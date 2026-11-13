@@ -422,11 +422,25 @@ async fn run_task_once(
 
     match result {
         Ok(()) => {
-            // Commit the green work on the branch.
+            // Commit the green work on the branch — or record a no-op:
+            // gates green on an untouched tree is a satisfied task (live:
+            // the deps cycle found everything current, and "nothing to
+            // commit" exits non-zero with its message on STDOUT, which
+            // read as an empty stderr failure).
             let _ = Command::new("git")
                 .args(["-C", &wt.to_string_lossy()])
                 .args(["add", "-A"])
                 .output();
+            let staged = dirty_paths(&wt);
+            if staged.is_empty() {
+                cleanup(false);
+                return Ok(CycleReport {
+                    outcome: CycleOutcome::Green,
+                    note: "gates green; nothing to change".to_string(),
+                    branch: None,
+                    pr_url: None,
+                });
+            }
             let commit = Command::new("git")
                 .args(["-C", &wt.to_string_lossy()])
                 .args(["-c", "user.name=clawdius-maint"])
@@ -444,10 +458,18 @@ async fn run_task_once(
                 .output()?;
             if !commit.status.success() {
                 let stderr = String::from_utf8_lossy(&commit.stderr).trim().to_string();
+                let stdout = String::from_utf8_lossy(&commit.stdout).trim().to_string();
                 cleanup(false);
                 return Ok(CycleReport {
                     outcome: CycleOutcome::Red,
-                    note: format!("gates green but commit failed: {stderr}"),
+                    note: format!(
+                        "gates green but commit failed: {stderr}{}",
+                        if stdout.is_empty() {
+                            String::new()
+                        } else {
+                            format!(" | stdout: {}", first_line(&stdout))
+                        }
+                    ),
                     branch: None,
                     pr_url: None,
                 });
@@ -524,6 +546,14 @@ fn reset_worktree(repo: &Path, wt: &Path, branch: &str, worktrees: &Path) -> Res
         ));
     }
     Ok(())
+}
+
+/// First non-empty line of `text`.
+fn first_line(text: &str) -> String {
+    text.lines()
+        .find(|l| !l.trim().is_empty())
+        .unwrap_or("")
+        .to_string()
 }
 
 /// Copy a worktree's `.clawdius/` run artifacts into the main repo.
@@ -855,6 +885,19 @@ mod tests {
         reset_worktree(repo, &wt, "maint/x", &repo.join("worktrees"))
             .expect("reset must clear the stale registration and re-create the worktree");
         assert!(wt.join(".git").exists() || wt.exists());
+    }
+
+    #[test]
+    fn no_op_cycles_are_green_not_red() {
+        // "nothing to commit" exits non-zero with its message on stdout;
+        // the empty staged set is what actually decides the outcome.
+        let staged = parse_porcelain("");
+        assert!(staged.is_empty());
+        assert_eq!(
+            first_line("On branch main\nnothing to commit"),
+            "On branch main"
+        );
+        assert_eq!(first_line("\n\n"), "");
     }
 
     #[test]
