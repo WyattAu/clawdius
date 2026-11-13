@@ -150,6 +150,9 @@ pub(super) async fn handle_maintain(
         backlog.save(&backlog_path)?;
 
         let started = Instant::now();
+        // Safety net: the cycle must not touch the primary tree. Snapshot
+        // it so anything that leaks is detected and reverted.
+        let tree_before = dirty_paths(&repo);
         let outcome = run_task_with_rotation(
             &task,
             &repo,
@@ -161,10 +164,32 @@ pub(super) async fn handle_maintain(
         )
         .await;
 
-        let (cycle_outcome, note, branch, pr_url) = match outcome {
+        let (mut cycle_outcome, mut note, branch, pr_url) = match outcome {
             Ok(cycle) => (cycle.outcome, cycle.note, cycle.branch, cycle.pr_url),
             Err(e) => (CycleOutcome::Error, format!("{e:#}"), None, None),
         };
+
+        // A stage that resolved the git project root instead of the
+        // worktree (opencode does exactly this) would write to the main
+        // tree. Revert those files and say so.
+        let leaked = revert_leaks(&repo, &tree_before);
+        if !leaked.is_empty() {
+            println!(
+                "    !! {} file(s) written outside the worktree — reverted: {}",
+                leaked.len(),
+                leaked.join(", ")
+            );
+            note = format!(
+                "{note} [leak: {} file(s) reverted outside the worktree: {}]",
+                leaked.len(),
+                leaked.join(", ")
+            );
+            if cycle_outcome == CycleOutcome::Green {
+                // The green commit was made in the worktree; a leak means
+                // the cycle's evidence is not trustworthy.
+                cycle_outcome = CycleOutcome::Error;
+            }
+        }
 
         let status = match cycle_outcome {
             CycleOutcome::Green => TaskStatus::Done,
@@ -528,6 +553,9 @@ async fn run_pipeline_in(
         provider.to_string(),
         model.map(String::from),
         config_path.map(Path::to_path_buf),
+        // No opencode escalation inside a worktree: opencode resolves the
+        // project via git and would edit the main tree.
+        false,
     )
     .await;
     std::env::set_current_dir(&previous).ok();
@@ -673,6 +701,63 @@ fn sanitize(id: &str) -> String {
         .collect()
 }
 
+/// Paths currently dirty in `repo` (tracked modifications and untracked
+/// files alike), from `git status --porcelain`.
+fn dirty_paths(repo: &Path) -> std::collections::BTreeSet<String> {
+    let output = Command::new("git")
+        .args(["-C", &repo.to_string_lossy(), "status", "--porcelain"])
+        .output();
+    match output {
+        Ok(out) => parse_porcelain(&String::from_utf8_lossy(&out.stdout)),
+        Err(_) => std::collections::BTreeSet::new(),
+    }
+}
+
+/// Parse `git status --porcelain` output into a set of paths.
+///
+/// Rename lines (`R  old -> new`) report the destination, because that is
+/// the path that exists on disk now.
+fn parse_porcelain(text: &str) -> std::collections::BTreeSet<String> {
+    let mut paths = std::collections::BTreeSet::new();
+    for line in text.lines() {
+        if line.len() <= 3 {
+            continue;
+        }
+        let rest = line[3..].trim();
+        let path = rest.split(" -> ").last().unwrap_or(rest);
+        paths.insert(path.trim_matches('"').to_string());
+    }
+    paths
+}
+
+/// Revert tracked files that became dirty during the cycle.
+///
+/// Untracked files are reported but never deleted: removing a file we did
+/// not create is worse than leaving it for a human.
+fn revert_leaks(repo: &Path, before: &std::collections::BTreeSet<String>) -> Vec<String> {
+    let after = dirty_paths(repo);
+    let mut reverted = Vec::new();
+    for path in after.difference(before) {
+        let tracked = Command::new("git")
+            .args([
+                "-C",
+                &repo.to_string_lossy(),
+                "ls-files",
+                "--error-unmatch",
+                path,
+            ])
+            .output()
+            .is_ok_and(|o| o.status.success());
+        if tracked {
+            let _ = Command::new("git")
+                .args(["-C", &repo.to_string_lossy(), "checkout", "--", path])
+                .output();
+            reverted.push(path.clone());
+        }
+    }
+    reverted
+}
+
 /// Repository root via git, falling back to the process cwd.
 fn repo_root() -> Result<PathBuf> {
     let output = Command::new("git")
@@ -692,6 +777,25 @@ fn repo_root() -> Result<PathBuf> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn porcelain_parser_handles_renames_quotes_and_untracked() {
+        let text = " M src/lib.rs\n?? .clawdius/maintenance/backlog.json\nR  old.rs -> new.rs\nA  added.rs\n";
+        let paths = parse_porcelain(text);
+        assert!(paths.contains("src/lib.rs"));
+        assert!(paths.contains(".clawdius/maintenance/backlog.json"));
+        assert!(paths.contains("new.rs"), "renames report the destination");
+        assert!(!paths.contains("old.rs"));
+        assert!(paths.contains("added.rs"));
+        assert_eq!(paths.len(), 4);
+    }
+
+    #[test]
+    fn porcelain_parser_ignores_short_and_empty_lines() {
+        assert!(parse_porcelain("").is_empty());
+        assert!(parse_porcelain("\n\n").is_empty());
+        assert!(parse_porcelain("M ").is_empty());
+    }
 
     #[test]
     fn rate_limit_detection_covers_the_real_error_shapes() {

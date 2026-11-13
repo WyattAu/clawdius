@@ -73,6 +73,7 @@ async fn run_pipeline(
         provider,
         model,
         config_path,
+        true,
     )
     .await
 }
@@ -90,6 +91,7 @@ pub(super) async fn run_pipeline_in(
     provider: String,
     model: Option<String>,
     config_path: Option<PathBuf>,
+    escalate: bool,
 ) -> Result<()> {
     let journal_path = workdir.join(format!(".clawdius/runs/pipeline-{}.jsonl", pipeline.name));
     let mut journal = clawdius_core::session::journal::RunJournal::open(&journal_path)?;
@@ -222,9 +224,25 @@ pub(super) async fn run_pipeline_in(
             })?;
             return Ok(());
         }
+        if loop_no >= pipeline.max_loops && !escalate {
+            journal.record(&clawdius_core::session::journal::JournalEvent::Finished {
+                ok: false,
+                note: format!("gates still red after {loop_no} loop(s); escalation disabled"),
+            })?;
+            return Err(anyhow!(
+                "pipeline `{}` still failing after {loop_no} loop(s): {}",
+                pipeline.name,
+                gate_failures.join("; ")
+            ));
+        }
         if loop_no >= pipeline.max_loops {
             // Last resort: hand the whole thing to opencode with the
             // failure context, then re-run the gates once on its work.
+            //
+            // Only safe when `workdir` is the git project root: opencode
+            // resolves the project through git, so inside a linked
+            // worktree it operates on the MAIN tree (live-caught: it
+            // edited the main repo's src/lib.rs and spent real quota).
             println!("\n=== loops exhausted — escalating to opencode (last resort) ===");
             let escalator = OpencodeEscalator::new(workdir.clone());
             let request = EscalationRequest {
