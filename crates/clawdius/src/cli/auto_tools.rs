@@ -42,21 +42,131 @@ impl AutoToolHost {
     }
 
     /// Tool definitions sent to the model.
+    ///
+    /// Every tool carries a real JSON Schema: models that only see prose
+    /// argument hints routinely emit `{}` (live-caught with flash-lite
+    /// calling `read_file {}` until the loop guard fired).
     #[must_use]
     pub fn tool_definitions() -> Vec<Tool> {
+        let s = |t: &str| serde_json::json!({ "type": t });
+        let schema = |props: serde_json::Value, required: &[&str]| {
+            serde_json::json!({
+                "type": "object",
+                "properties": props,
+                "required": required,
+            })
+        };
+
         vec![
-            Tool::new("read_file").with_description("Read file contents. Args: { path: string, offset?: number, limit?: number }"),
-            Tool::new("write_file").with_description("Write content to a file. Args: { path: string, content: string }"),
-            Tool::new("edit_file").with_description("Edit a section of a file. Args: { path: string, old_string: string, new_string: string }"),
-            Tool::new("list_directory").with_description("List files in a directory. Args: { path?: string }"),
-            Tool::new("grep").with_description("Regex search file contents (respects .gitignore). Args: { pattern: string, path?: string, include?: string, max_results?: number }"),
-            Tool::new("glob").with_description("List files matching a glob. Args: { pattern: string, path?: string }"),
-            Tool::new("todo_write").with_description("Replace the session todo list. Args: { todos: [ { content: string, status: pending|in_progress|completed } ] }"),
-            Tool::new("todo_read").with_description("Show the current session todo list. Args: {}"),
-            Tool::new("shell").with_description("Run a shell command. Args: { command: string, timeout?: number }"),
-            Tool::new("git_status").with_description("Show git working tree status. Args: {}"),
-            Tool::new("git_diff").with_description("Show git diff. Args: { staged?: boolean, file?: string }"),
-            Tool::new("git_log").with_description("Show git commit log. Args: { count?: number, file?: string }"),
+            Tool::new("read_file")
+                .with_description("Read a file's contents. Prefer offset/limit for large files.")
+                .with_schema(schema(
+                    serde_json::json!({
+                        "path": s("string"),
+                        "offset": s("integer"),
+                        "limit": s("integer"),
+                    }),
+                    &["path"],
+                )),
+            Tool::new("write_file")
+                .with_description("Write content to a file, creating parent directories.")
+                .with_schema(schema(
+                    serde_json::json!({
+                        "path": s("string"),
+                        "content": s("string"),
+                    }),
+                    &["path", "content"],
+                )),
+            Tool::new("edit_file")
+                .with_description(
+                    "Replace an exact old_string with new_string in a file. old_string must \
+                     match exactly once.",
+                )
+                .with_schema(schema(
+                    serde_json::json!({
+                        "path": s("string"),
+                        "old_string": s("string"),
+                        "new_string": s("string"),
+                    }),
+                    &["path", "old_string", "new_string"],
+                )),
+            Tool::new("list_directory")
+                .with_description("List files in a directory (defaults to the repo root).")
+                .with_schema(schema(serde_json::json!({ "path": s("string") }), &[])),
+            Tool::new("grep")
+                .with_description("Regex search file contents, respecting .gitignore.")
+                .with_schema(schema(
+                    serde_json::json!({
+                        "pattern": s("string"),
+                        "path": s("string"),
+                        "include": s("string"),
+                        "max_results": s("integer"),
+                    }),
+                    &["pattern"],
+                )),
+            Tool::new("glob")
+                .with_description("List files matching a glob pattern, e.g. **/*.rs.")
+                .with_schema(schema(
+                    serde_json::json!({
+                        "pattern": s("string"),
+                        "path": s("string"),
+                    }),
+                    &["pattern"],
+                )),
+            Tool::new("todo_write")
+                .with_description("Replace the session todo list.")
+                .with_schema(schema(
+                    serde_json::json!({
+                        "todos": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "content": s("string"),
+                                    "status": {
+                                        "type": "string",
+                                        "enum": ["pending", "in_progress", "completed"],
+                                    },
+                                },
+                                "required": ["content", "status"],
+                            },
+                        },
+                    }),
+                    &["todos"],
+                )),
+            Tool::new("todo_read")
+                .with_description("Show the current session todo list.")
+                .with_schema(schema(serde_json::json!({}), &[])),
+            Tool::new("shell")
+                .with_description("Run a shell command in the workspace and return its output.")
+                .with_schema(schema(
+                    serde_json::json!({
+                        "command": s("string"),
+                        "timeout": s("integer"),
+                    }),
+                    &["command"],
+                )),
+            Tool::new("git_status")
+                .with_description("Show the git working tree status.")
+                .with_schema(schema(serde_json::json!({}), &[])),
+            Tool::new("git_diff")
+                .with_description("Show the git diff (unstaged, or staged when requested).")
+                .with_schema(schema(
+                    serde_json::json!({
+                        "staged": s("boolean"),
+                        "file": s("string"),
+                    }),
+                    &[],
+                )),
+            Tool::new("git_log")
+                .with_description("Show recent commits.")
+                .with_schema(schema(
+                    serde_json::json!({
+                        "count": s("integer"),
+                        "file": s("string"),
+                    }),
+                    &[],
+                )),
         ]
     }
 
