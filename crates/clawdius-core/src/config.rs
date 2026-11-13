@@ -1249,25 +1249,25 @@ pub mod keyring_storage {
                 ))),
             }
         }
-    }
 
-    /// Store an OAuth token set under `oauth/<provider>`.
-    ///
-    /// The payload is the serialized [`OAuthTokenSet`] (access token,
-    /// optional refresh token, expiry) — one opaque keyring secret per
-    /// provider, never synced or logged.
-    pub fn set_oauth_token(&self, provider: &str, token_json: &str) -> crate::Result<()> {
-        self.set_api_key(&format!("oauth/{provider}"), token_json)
-    }
+        /// Store an OAuth token set under `oauth/<provider>`.
+        ///
+        /// The payload is the serialized [`OAuthTokenSet`] (access token,
+        /// optional refresh token, expiry) — one opaque keyring secret per
+        /// provider, never synced or logged.
+        pub fn set_oauth_token(&self, provider: &str, token_json: &str) -> crate::Result<()> {
+            self.set_api_key(&format!("oauth/{provider}"), token_json)
+        }
 
-    /// Retrieve the stored OAuth token JSON; `None` when absent.
-    pub fn get_oauth_token(&self, provider: &str) -> crate::Result<Option<String>> {
-        self.get_api_key(&format!("oauth/{provider}"))
-    }
+        /// Retrieve the stored OAuth token JSON; `None` when absent.
+        pub fn get_oauth_token(&self, provider: &str) -> crate::Result<Option<String>> {
+            self.get_api_key(&format!("oauth/{provider}"))
+        }
 
-    /// Delete the stored OAuth token; `Ok(())` when absent.
-    pub fn delete_oauth_token(&self, provider: &str) -> crate::Result<()> {
-        self.delete_api_key(&format!("oauth/{provider}"))
+        /// Delete the stored OAuth token; `Ok(())` when absent.
+        pub fn delete_oauth_token(&self, provider: &str) -> crate::Result<()> {
+            self.delete_api_key(&format!("oauth/{provider}"))
+        }
     }
 
     impl Default for KeyringStorage {
