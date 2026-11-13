@@ -889,12 +889,10 @@ impl LlmClientWithRetry {
             LlmProvider::Zai(p) => p.chat_with_tools(messages, tools).await,
             LlmProvider::OpencodeGo(p) => p.chat_with_tools(messages, tools).await,
             LlmProvider::Google(p) => p.chat_with_tools(messages, tools).await,
-            LlmProvider::Ollama(_) | LlmProvider::Local(_) => {
-                Err(crate::Error::Llm(
-                    "Tool calling not supported by this provider. Use Anthropic, OpenAI, OpenRouter, DeepSeek, Google, or ZAI."
-                        .to_string(),
-                ))
-            },
+            // Ollama has native tool calling; Local falls through to the
+            // trait default, which reports the honest "not supported".
+            LlmProvider::Ollama(p) => p.chat_with_tools(messages, tools).await,
+            LlmProvider::Local(p) => p.chat_with_tools(messages, tools).await,
         }
     }
 
@@ -944,10 +942,8 @@ impl providers::LlmClient for LlmProvider {
             LlmProvider::DeepSeek(p) => p.chat_with_tools(messages, tools).await,
             LlmProvider::Zai(p) => p.chat_with_tools(messages, tools).await,
             LlmProvider::OpencodeGo(p) => p.chat_with_tools(messages, tools).await,
-            LlmProvider::Ollama(_) | LlmProvider::Local(_) => Err(crate::Error::Llm(
-                "Tool calling not supported by this provider. Use Anthropic, OpenAI, OpenRouter, DeepSeek, Google, or ZAI."
-                    .to_string(),
-            )),
+            LlmProvider::Ollama(p) => p.chat_with_tools(messages, tools).await,
+            LlmProvider::Local(p) => p.chat_with_tools(messages, tools).await,
         }
     }
 
