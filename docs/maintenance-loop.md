@@ -15,6 +15,11 @@ cycle cannot leave the checkout dirty or half-merged.
 | `.clawdius/worktrees/<task-id>` | ephemeral | per-cycle git worktree, removed after the cycle |
 | `maint/<task-id>` | git branch | survives only when the cycle went green |
 
+`/.clawdius/maintenance/` is gitignored by default: the ledger is
+runtime state, and the reviewable artifact is the pull request, not the
+queue. A repository that wants the ledger in history can un-ignore it
+and commit both files — they are plain JSON/JSONL.
+
 Backlog writes are atomic (temp file + rename), so a crash mid-write
 cannot truncate the queue. A corrupt backlog is reported as an error
 rather than silently replaced — a lost queue is worse than a loud one.

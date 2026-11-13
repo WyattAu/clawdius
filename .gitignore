@@ -256,6 +256,11 @@ logs/
 /.reports/*.html
 /.knowledge_graph/cache/
 /.clawdius/cache/
+/.clawdius/learnings/
+/.clawdius/maintenance/
+/.clawdius/pipeline/
+/.clawdius/runs/
+/.clawdius/worktrees/
 *.clawdius-session
 
 # -----------------------------------------------------------------------------
