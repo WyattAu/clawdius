@@ -148,6 +148,33 @@ journalctl --user -u clawdius-maint -f
 Keep provider keys in `~/.config/clawdius/env` (mode 0600), not in the
 unit file.
 
+## Choosing a local model
+
+Ollama support is per model template, not per server. A model whose
+template does not parse tool calls returns them as **text**:
+
+```text
+content: '{"name": "read_file", "arguments": {"path": "src/lib.rs"}}'
+tool_calls: null
+```
+
+clawdius sees no tool call, the stage "completes" without acting, and the
+gates catch it — correct, but a wasted cycle. Probe before trusting a
+model:
+
+```bash
+curl -s http://localhost:11434/api/chat -d '{
+  "model": "llama3.2:3b", "stream": false,
+  "messages": [{"role":"user","content":"Read src/lib.rs with read_file."}],
+  "tools": [{"type":"function","function":{"name":"read_file",
+    "parameters":{"type":"object","properties":{"path":{"type":"string"}},
+    "required":["path"]}}}]
+}' | jq -c '.message.tool_calls'
+```
+
+`null` means the model cannot drive the loop. Observed 2026-11-13:
+`llama3.2:3b` returns a structured call; `qwen2.5-coder:7b` returns text.
+
 ## Reading the ledger
 
 ```bash
