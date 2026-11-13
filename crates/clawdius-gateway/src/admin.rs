@@ -744,6 +744,9 @@ async fn health_check() -> impl IntoResponse {
 /// Returns Ok(()) if auth is not configured (API key only) or if the token has the permission.
 /// Returns Err response if the token is missing or lacks permission.
 #[cfg(feature = "auth")]
+/// Idiomatic axum guard: `Err` carries a ready `Response`; the async
+/// signature is kept for handler uniformity.
+#[allow(clippy::unused_async, clippy::result_large_err)]
 async fn check_rbac_permission(
     headers: &HeaderMap,
     state: &AdminState,

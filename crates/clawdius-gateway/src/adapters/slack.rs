@@ -24,8 +24,7 @@
 use std::sync::Arc;
 
 use crate::adapter::{
-    AdapterHealth, IncomingMessage, MessageCallback, OutgoingMessage, Platform, PlatformAdapter,
-    PlatformConfig,
+    AdapterHealth, MessageCallback, OutgoingMessage, Platform, PlatformAdapter, PlatformConfig,
 };
 use crate::error::GatewayError;
 

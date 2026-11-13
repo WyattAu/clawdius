@@ -73,17 +73,6 @@ impl DiscordAdapter {
         self.http.get_or_init(reqwest::Client::new)
     }
 
-    /// Convert a Discord message ID string to serenity's type.
-    fn parse_message_id(id: &str) -> Result<serenity::model::id::MessageId, GatewayError> {
-        id.parse::<u64>()
-            .map(serenity::model::id::MessageId::new)
-            .map_err(|e| GatewayError::Adapter {
-                platform: "discord".to_string(),
-                message: format!("invalid message_id: {id}"),
-                source: Some(Box::new(e)),
-            })
-    }
-
     /// Convert a Discord channel ID string to serenity's type.
     fn parse_channel_id(id: &str) -> Result<serenity::model::id::ChannelId, GatewayError> {
         id.parse::<u64>()

@@ -24,8 +24,7 @@
 use std::sync::Arc;
 
 use crate::adapter::{
-    AdapterHealth, IncomingMessage, MessageCallback, OutgoingMessage, Platform, PlatformAdapter,
-    PlatformConfig,
+    AdapterHealth, MessageCallback, OutgoingMessage, Platform, PlatformAdapter, PlatformConfig,
 };
 use crate::error::GatewayError;
 
@@ -39,6 +38,8 @@ pub struct MatrixAdapter {
     /// The bot's access token.
     access_token: String,
     /// The bot's full Matrix ID (@user:homeserver.org).
+    /// Adapter identity; not consulted in the hot path.
+    #[allow(dead_code)]
     user_id: String,
     /// Counter of messages successfully processed.
     messages_processed: std::sync::atomic::AtomicU64,

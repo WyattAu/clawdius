@@ -266,15 +266,14 @@ async fn register_platform(gateway: &mut MessageGateway, platform: &Platform, cl
         Platform::Discord => {
             #[cfg(feature = "discord")]
             {
-                match cli.discord_token.as_ref() {
-                    Some(token) => {
-                        let config = PlatformConfig::with_token(*platform, token);
-                        gateway
-                            .register_adapter(DiscordAdapter::new(token), config)
-                            .await;
-                        tracing::info!("Registered adapter for platform: {platform}");
-                    },
-                    None => tracing::warn!("Skipping discord: DISCORD_BOT_TOKEN not set"),
+                if let Some(token) = cli.discord_token.as_ref() {
+                    let config = PlatformConfig::with_token(*platform, token);
+                    gateway
+                        .register_adapter(DiscordAdapter::new(token), config)
+                        .await;
+                    tracing::info!("Registered adapter for platform: {platform}");
+                } else {
+                    tracing::warn!("Skipping discord: DISCORD_BOT_TOKEN not set");
                 }
             }
             #[cfg(not(feature = "discord"))]
@@ -285,15 +284,14 @@ async fn register_platform(gateway: &mut MessageGateway, platform: &Platform, cl
         Platform::Slack => {
             #[cfg(feature = "slack")]
             {
-                match cli.slack_token.as_ref() {
-                    Some(token) => {
-                        let config = PlatformConfig::with_token(*platform, token);
-                        gateway
-                            .register_adapter(SlackAdapter::new(token), config)
-                            .await;
-                        tracing::info!("Registered adapter for platform: {platform}");
-                    },
-                    None => tracing::warn!("Skipping slack: SLACK_BOT_TOKEN not set"),
+                if let Some(token) = cli.slack_token.as_ref() {
+                    let config = PlatformConfig::with_token(*platform, token);
+                    gateway
+                        .register_adapter(SlackAdapter::new(token), config)
+                        .await;
+                    tracing::info!("Registered adapter for platform: {platform}");
+                } else {
+                    tracing::warn!("Skipping slack: SLACK_BOT_TOKEN not set");
                 }
             }
             #[cfg(not(feature = "slack"))]
@@ -302,19 +300,18 @@ async fn register_platform(gateway: &mut MessageGateway, platform: &Platform, cl
         Platform::Matrix => {
             #[cfg(feature = "matrix")]
             {
-                match (
+                if let (Some(homeserver), Some(token), Some(user_id)) = (
                     cli.matrix_homeserver.as_ref(),
                     cli.matrix_token.as_ref(),
                     cli.matrix_user_id.as_ref(),
                 ) {
-                    (Some(homeserver), Some(token), Some(user_id)) => {
-                        let config = PlatformConfig::with_token(*platform, token);
-                        gateway
-                            .register_adapter(MatrixAdapter::new(homeserver, token, user_id), config)
-                            .await;
-                        tracing::info!("Registered adapter for platform: {platform}");
-                    }
-                    _ => tracing::warn!("Skipping matrix: MATRIX_HOMESERVER, MATRIX_ACCESS_TOKEN, and MATRIX_USER_ID must all be set"),
+                    let config = PlatformConfig::with_token(*platform, token);
+                    gateway
+                        .register_adapter(MatrixAdapter::new(homeserver, token, user_id), config)
+                        .await;
+                    tracing::info!("Registered adapter for platform: {platform}");
+                } else {
+                    tracing::warn!("Skipping matrix: MATRIX_HOMESERVER, MATRIX_ACCESS_TOKEN, and MATRIX_USER_ID must all be set");
                 }
             }
             #[cfg(not(feature = "matrix"))]
@@ -458,11 +455,10 @@ async fn main() -> anyhow::Result<()> {
     // Initialize audit logging if config provides audit settings
     #[cfg(feature = "audit")]
     {
-        let config = if let Some(ref path) = cli.config {
-            clawdius_core::Config::load(path).ok()
-        } else {
-            clawdius_core::Config::load_default().ok()
-        };
+        let config = cli.config.as_ref().map_or_else(
+            || clawdius_core::Config::load_default().ok(),
+            |path| clawdius_core::Config::load(path).ok(),
+        );
         if let Some(ref config) = config {
             match clawdius_core::audit::AuditManager::from_config(&config.messaging.audit) {
                 Ok(manager) => {
@@ -567,7 +563,9 @@ async fn main() -> anyhow::Result<()> {
                     admin_state.roles.clone(),
                 );
                 with_auth.attach_auth(Arc::clone(&auth_arc), Arc::clone(&rbac_arc));
-                let admin_state = Arc::new(with_auth);
+                // Auth-bearing state replaces the plain one; the SAML
+                // block below consumes its own bindings.
+                let _admin_state = Arc::new(with_auth);
 
                 let sp_config = Arc::new(clawdius_auth::SamlSpConfig {
                     entity_id: std::env::var("SAML_ENTITY_ID")

@@ -177,8 +177,7 @@ impl MessageGateway {
         {
             if let Some(sso_token) = message.metadata.get("sso_token").and_then(|v| v.as_str()) {
                 let auth_guard = self.auth_service.read().await;
-                let rbac_guard = self.rbac_service.read().await;
-                if let (Some(auth), Some(rbac)) = (auth_guard.as_ref(), rbac_guard.as_ref()) {
+                if let Some(auth) = auth_guard.as_ref() {
                     match auth.validate_session(sso_token) {
                         Ok(claims) => {
                             // SSO token valid — update user info from claims
