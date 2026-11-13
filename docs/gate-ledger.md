@@ -43,3 +43,21 @@ gated pushes remain the authoritative verification.
 - Known-left: pipeline LLM stages reuse the auto engine — full
   end-to-end product-loop run is a dogfood-scale action, not yet
   executed (gates + stage prompts verified).
+
+## 2026-11-13 — dependency-security arc
+- libsqlite3-sys 0.38.2 -> 0.39.1 (rusqlite 0.41): clears RUSTSEC-2026-0459,
+  the cargo-deny advisories blocker. Core+clawdius suites green on 0.41.
+- wasmtime family 49.0.2 -> 49.0.5, zip 7.4.0, zstd 0.13.4: clears
+  RUSTSEC-2026-0420/0422/0423/0424/0429 + the zstd cross-stream leak.
+- OPEN (documented, not ignored): vodozemac 0.9 -> 0.11.2
+  (RUSTSEC-2026-0510/0451) requires matrix-sdk 0.17 — blocked by a
+  serenity/reqwest feature-rename cascade in the gateway graph
+  (rustls-tls -> rustls). This is a gateway-adapter migration, not a
+  lockfile bump; the Security workflow will hold the vodozemac pair
+  until it lands.
+- CI toolchain discovery: dtolnay/rust-toolchain@1.96 pins the ACTION,
+  not the toolchain — the jobs run LATEST STABLE (1.100 today). Local
+  sweeps must use `rustup run stable cargo clippy ...` to match.
+- Local gate now equals CI: `cargo clippy --workspace --all-targets
+  --locked -- -D warnings -A missing_docs` exits 0 on 1.96, 1.99 and
+  1.100; core 1245 + clawdius 128 lib tests green.
