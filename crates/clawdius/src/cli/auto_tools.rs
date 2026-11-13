@@ -113,7 +113,11 @@ impl AutoToolHost {
                 }
             },
             "list_directory" => {
-                let params = FileListParams { path: s("path") };
+                // `path` is optional in the schema; an omitted arg arrives
+                // as "" and fails path validation. Default to the root.
+                let raw = s("path");
+                let path = if raw.is_empty() { ".".to_string() } else { raw };
+                let params = FileListParams { path };
                 self.file.list(params).map_or_else(
                     |e| (format!("Error: {e}"), true),
                     |entries| (entries.join("\n"), false),
