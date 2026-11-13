@@ -416,7 +416,7 @@ fn acp_tool_kind(name: &str) -> &'static str {
 mod tests {
     use super::*;
     use clawdius_core::llm::providers::{Tool, ToolCall};
-        use clawdius_core::llm::{ChatMessage, ChatWithToolsResult};
+    use clawdius_core::llm::{ChatMessage, ChatWithToolsResult};
     use std::sync::Mutex as StdMutex;
 
     struct ScriptedClient {
