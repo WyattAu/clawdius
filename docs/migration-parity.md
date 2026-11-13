@@ -138,3 +138,12 @@ routing in LlmClientWithRetry, and a seed that did not compile.
    login/status/refresh`); live consent test pending your accounts.
 5. Migration is allowed per-workflow only when its row says VERIFIED and
    the dogfood ladder has one live consumer.
+
+
+## 2026-11-13 — fallback escalation + formalized dev pipeline
+
+| Capability | opencode | clawdius | Evidence | Status |
+|---|---|---|---|---|
+| Last-resort agent hand-off | (is the fallback) | `OpencodeEscalator` runs `opencode run --archived --format json --agent build` in-workspace; captures sessionID for continuation | 6 unit tests incl. fake-binary E2E; wired as pipeline exhaustion path | VERIFIED (module) |
+| Rate-limit-aware rotation | ad hoc | `RateLimitLedger` + `FallbackCoordinator`: per-provider cooldowns, `Park(resume_in)` until soonest window, budget-based `Escalate` | unit-tested rotation/park/escalate decision table | VERIFIED (module) |
+| Formalized dev pipeline | workflows external | `clawdius pipeline product-loop <goal>`: research → suggestions → planning → implement → verify/test/lint gates → repeat; loop-budget exhaustion escalates to opencode; journal per run | plan dry-run verified live; gates unit-tested; harness 12 PASS | VERIFIED (module) |

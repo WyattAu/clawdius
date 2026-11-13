@@ -31,3 +31,15 @@ gated pushes remain the authoritative verification.
   clawdius acp full prompt turn returns agent_message_chunk +
   stopReason end_turn; btrfs flap re-applications verified by in-tree
   grep before every git add.
+
+## 2026-11-13 — lock repair, fallback, pipeline arc
+- Skipped pre-commit hooks on 8 commits (CLAWDIUS_SKIP_HOOKS=1).
+  Compensating evidence: clawdius-core lib 1245 green (fallback 6,
+  pipeline 5, history 1, subagent 10), clawdius lib 128 green, clippy
+  -D warnings on both crates per commit, E2E harness 12 PASS / 0 FAIL
+  / 2 SKIP with live provider calls. Cargo.lock repair verified with
+  `cargo metadata --locked` before commit (CI red since 2026-11-12
+  15:58 caused by missing ignore/globset/sha2-0.11 lock entries).
+- Known-left: pipeline LLM stages reuse the auto engine — full
+  end-to-end product-loop run is a dogfood-scale action, not yet
+  executed (gates + stage prompts verified).
