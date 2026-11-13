@@ -63,7 +63,9 @@ impl TaskKind {
             Self::Deps => {
                 "Upgrade dependencies that have newer patch or minor releases, one at a time, \
                  keeping the gates green. Do not cross major versions. If an upgrade breaks \
-                 the build, revert that upgrade and record why."
+                 the build, revert that upgrade and record why. The pipeline runs the full \
+                 gates after your edits; use `cargo check -p <crate>` for quick feedback and \
+                 never run the whole workspace test suite yourself."
             },
             Self::Docs => {
                 "Bring the documentation in line with the code: fix stale commands, missing \
@@ -71,7 +73,9 @@ impl TaskKind {
             },
             Self::Tests => {
                 "Add focused tests for untested public behaviour. Every new test must fail \
-                 before the change and pass after; no assertion-free tests."
+                 before the change and pass after; no assertion-free tests. The pipeline \
+                 runs the full gates after your edits; use `cargo test -p <crate> <filter>` \
+                 for quick feedback and never run the whole workspace suite yourself."
             },
             Self::Issue => "Fix the reported issue at its root cause and add a regression test.",
             Self::Custom => "Complete the task as described, ending with the gates green.",
