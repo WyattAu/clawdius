@@ -127,6 +127,41 @@ impl Pipeline {
         }
     }
 
+    /// The engineering-only loop for `goal`: plan → implement → gates,
+    /// repeating the implement..lint tail. No research stages — for
+    /// testing the loop mechanics and for goals that need no market
+    /// study.
+    #[must_use]
+    pub fn dev_loop(goal: &str) -> Self {
+        let mk = |kind: StageKind, instruction: &str| Stage {
+            kind,
+            instruction: instruction.to_string(),
+        };
+        let mk_gate = |kind: StageKind| Stage {
+            kind,
+            instruction: String::new(),
+        };
+        Self {
+            name: "dev-loop".to_string(),
+            goal: goal.to_string(),
+            stages: vec![
+                mk(
+                    StageKind::ArchitecturePlanning,
+                    "Produce a short step-by-step plan with acceptance criteria. Keep it minimal: this loop exists to converge fast.",
+                ),
+                mk(
+                    StageKind::Implementation,
+                    "Implement the plan against the working tree. Use the available tools; finish by running the gates.",
+                ),
+                mk_gate(StageKind::Verify),
+                mk_gate(StageKind::Test),
+                mk_gate(StageKind::Lint),
+            ],
+            max_loops: 2,
+            repeat_from: 2, // restart at Implementation on gate failure
+        }
+    }
+
     /// Structural validation: non-empty, gates present, repeat index sane.
     ///
     /// # Errors
@@ -309,6 +344,17 @@ mod tests {
         );
         assert_eq!(p.repeat_from, 4);
         assert!(p.stages.iter().filter(|s| s.kind.is_llm_stage()).count() == 5);
+    }
+
+    #[test]
+    fn dev_loop_validates_and_starts_repeat_at_implementation() {
+        let p = Pipeline::dev_loop("g");
+        p.validate().expect("dev-loop must validate");
+        assert_eq!(p.name, "dev-loop");
+        assert_eq!(p.stages[0].kind, StageKind::ArchitecturePlanning);
+        assert_eq!(p.stages[2].kind, StageKind::Verify);
+        assert_eq!(p.repeat_from, 2);
+        assert!(!p.stages.iter().any(|s| s.kind == StageKind::MarketResearch));
     }
 
     #[test]
