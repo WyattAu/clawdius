@@ -158,7 +158,7 @@ impl Pipeline {
                 mk_gate(StageKind::Lint),
             ],
             max_loops: 2,
-            repeat_from: 2, // restart at Implementation on gate failure
+            repeat_from: 1, // restart at Implementation on gate failure
         }
     }
 
@@ -353,7 +353,8 @@ mod tests {
         assert_eq!(p.name, "dev-loop");
         assert_eq!(p.stages[0].kind, StageKind::ArchitecturePlanning);
         assert_eq!(p.stages[2].kind, StageKind::Verify);
-        assert_eq!(p.repeat_from, 2);
+        assert_eq!(p.repeat_from, 1); // implementation
+        assert_eq!(p.stages[p.repeat_from].kind, StageKind::Implementation);
         assert!(!p.stages.iter().any(|s| s.kind == StageKind::MarketResearch));
     }
 
