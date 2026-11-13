@@ -7,6 +7,8 @@
 //! consolidation loop sees it.
 
 use anyhow::{anyhow, Result};
+use clawdius_core::llm::providers::LlmClient;
+use clawdius_core::llm::{create_provider, ChatMessage, ChatRole, ResolvedLlmConfig};
 use clawdius_core::orchestrator::fallback::{EscalationRequest, OpencodeEscalator};
 use clawdius_core::orchestrator::pipeline::{
     run_gate, GateResult, Pipeline, PipelineError, StageKind,
@@ -71,6 +73,7 @@ async fn run_pipeline(
     let mut gate_failures: Vec<String> = Vec::new();
     let mut loop_no = 1usize;
     let mut stage_index = 0usize;
+    let mut prev_stage_output: Option<String> = None;
 
     loop {
         let stage = &pipeline.stages[stage_index];
@@ -81,6 +84,10 @@ async fn run_pipeline(
                 "[pipeline {} loop {}/{}] [stage {}] {}\n\nOverall goal: {}",
                 pipeline.name, loop_no, pipeline.max_loops, slug, stage.instruction, pipeline.goal
             );
+            if let Some(prev) = &prev_stage_output {
+                task.push_str("\n\nPrevious stage output (context):\n");
+                task.push_str(&prev.chars().take(4_000).collect::<String>());
+            }
             if !gate_failures.is_empty() {
                 task.push_str("\n\nPrevious gate failures to fix:\n");
                 for note in gate_failures.iter().rev().take(FAILURE_CONTEXT_CAP) {
@@ -96,27 +103,40 @@ async fn run_pipeline(
                 name: format!("pipeline:{slug}"),
                 args: String::new(),
             });
-            // The auto engine owns the tool loop for this stage.
-            let outcome = super::auto::handle_auto(
-                task,
-                model.clone(),
-                provider.clone(),
-                None,  // default iteration budget
-                false, // gates run here, not in auto
-                false, // no auto-commit mid-pipeline
-                false, // pipeline gates decide pass/fail
-                None,
-                config_path.clone(),
-                super::OutputFormat::Text,
-            )
-            .await;
+            // Implementation keeps the full auto tool loop; every other
+            // LLM stage is a text deliverable — one chat call, no tools
+            // (the 15-tool loop invites thrash on pure writing work).
+            let outcome = if stage.kind == StageKind::Implementation {
+                super::auto::handle_auto(
+                    task,
+                    model.clone(),
+                    provider.clone(),
+                    None,  // default iteration budget
+                    false, // gates run here, not in auto
+                    false, // no auto-commit mid-pipeline
+                    false, // pipeline gates decide pass/fail
+                    None,
+                    config_path.clone(),
+                    super::OutputFormat::Text,
+                )
+                .await
+                .map(|()| String::from("implementation stage complete"))
+            } else {
+                run_chat_stage(&task, &provider, model.as_deref(), config_path.as_deref()).await
+            };
             let is_error = outcome.is_err();
             let _ = journal.record(&clawdius_core::session::journal::JournalEvent::ToolResult {
                 n: loop_no,
                 name: format!("pipeline:{slug}"),
                 is_error,
             });
-            outcome?;
+            let stage_output = outcome?;
+            // Persist the deliverable and feed it to the next stage.
+            let out_dir = workdir.join(".clawdius/pipeline").join(&pipeline.name);
+            std::fs::create_dir_all(&out_dir)?;
+            let out_path = out_dir.join(format!("{loop_no}-{slug}.md"));
+            std::fs::write(&out_path, &stage_output)?;
+            prev_stage_output = Some(stage_output);
             gate_failures.clear();
         } else {
             println!("--- [loop {loop_no}] GATE stage: {slug} ---");
@@ -239,6 +259,36 @@ async fn run_pipeline(
             pipeline.max_loops,
         );
     }
+}
+
+/// One chat round for a text-deliverable stage (no tool loop).
+async fn run_chat_stage(
+    prompt: &str,
+    provider: &str,
+    model: Option<&str>,
+    config_path: Option<&std::path::Path>,
+) -> Result<String> {
+    let config = super::load_config(config_path)?;
+    let mut llm_config = ResolvedLlmConfig::from_config(&config.llm, provider)?;
+    if let Some(m) = model {
+        llm_config.model = m.to_string();
+    }
+    let client = create_provider(&llm_config)?;
+    client
+        .chat(vec![
+            ChatMessage {
+                role: ChatRole::System,
+                content: "You are a precise software planning assistant. Respond with the \
+                          deliverable only — no tool use, no questions, no preamble."
+                    .to_string(),
+            },
+            ChatMessage {
+                role: ChatRole::User,
+                content: prompt.to_string(),
+            },
+        ])
+        .await
+        .map_err(|e| anyhow!("chat stage failed: {e}"))
 }
 
 fn first_lines(text: &str, n: usize) -> String {
