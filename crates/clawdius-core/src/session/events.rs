@@ -118,12 +118,6 @@ impl SessionEventLog {
     }
 }
 
-/// Message-role to stable role-name mapping (test-visible).
-#[cfg(test)]
-pub(crate) fn role_name_test(role: MessageRole) -> &'static str {
-    role_name(role)
-}
-
 /// Rebuild a session from its event log — the crash-recovery path when
 /// the SQLite store is lost. Title derives from the first user message.
 ///
