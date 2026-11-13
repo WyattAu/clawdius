@@ -196,10 +196,10 @@ pub struct LanceDBVectorStore {
 impl LanceDBVectorStore {
     pub async fn open(path: &Path) -> Result<Self> {
         let _path = path.to_path_buf();
-        todo!(
-            "LanceDBVectorStore::open — connect to LanceDB at {:?}",
-            _path
-        )
+        Err(crate::Error::Config(format!(
+            "LanceDBVectorStore is not implemented yet (feature lance-db): connect to {}",
+            _path.display()
+        )))
     }
 }
 
@@ -211,7 +211,9 @@ impl PersistentVectorStore for LanceDBVectorStore {
         _collection: &str,
         _embeddings: Vec<StoredEmbedding>,
     ) -> Result<()> {
-        todo!("LanceDBVectorStore::store_embeddings — insert embeddings into LanceDB table")
+        Err(crate::Error::Config(
+            "LanceDBVectorStore::store_embeddings is not implemented yet".to_string(),
+        ))
     }
 
     async fn query_similar(
@@ -220,19 +222,27 @@ impl PersistentVectorStore for LanceDBVectorStore {
         _query: &[f32],
         _k: usize,
     ) -> Result<Vec<SimilarityResult>> {
-        todo!("LanceDBVectorStore::query_similar — execute vector search on LanceDB")
+        Err(crate::Error::Config(
+            "LanceDBVectorStore::query_similar is not implemented yet".to_string(),
+        ))
     }
 
     async fn delete_collection(&self, _collection: &str) -> Result<()> {
-        todo!("LanceDBVectorStore::delete_collection — drop LanceDB table")
+        Err(crate::Error::Config(
+            "LanceDBVectorStore::delete_collection is not implemented yet".to_string(),
+        ))
     }
 
     async fn collection_info(&self, _collection: &str) -> Result<CollectionInfo> {
-        todo!("LanceDBVectorStore::collection_info — read table metadata from LanceDB")
+        Err(crate::Error::Config(
+            "LanceDBVectorStore::collection_info is not implemented yet".to_string(),
+        ))
     }
 
     async fn health_check(&self) -> Result<HealthStatus> {
-        todo!("LanceDBVectorStore::health_check — verify LanceDB connection is alive")
+        Err(crate::Error::Config(
+            "LanceDBVectorStore::health_check is not implemented yet".to_string(),
+        ))
     }
 }
 
