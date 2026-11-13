@@ -56,7 +56,9 @@ impl TaskKind {
             Self::Lint => {
                 "Make the deterministic gates green: cargo fmt, clippy with -D warnings, \
                  and the test suite. Fix the underlying causes; do not weaken lints, delete \
-                 tests, or add blanket allows without a stated reason."
+                 tests, or add blanket allows without a stated reason. The pipeline runs \
+                 the full gates after your edits, so do not run the whole workspace test \
+                 suite yourself."
             },
             Self::Deps => {
                 "Upgrade dependencies that have newer patch or minor releases, one at a time, \

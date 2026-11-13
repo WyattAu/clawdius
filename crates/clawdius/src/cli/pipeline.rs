@@ -18,12 +18,16 @@ use std::path::PathBuf;
 /// How many prior failure notes a repeated stage carries.
 const FAILURE_CONTEXT_CAP: usize = 6;
 
-/// Hard ceiling on one LLM stage.
+/// Hard ceiling on one text-deliverable LLM stage.
 ///
 /// A 24/7 loop must never wedge on a single provider call. Live-caught:
 /// a retired Gemini model name made the adapter hang instead of
 /// returning 404, and the cycle sat in the planning stage forever.
 const STAGE_TIMEOUT: std::time::Duration = std::time::Duration::from_mins(10);
+
+/// Ceiling for the implementation stage, which runs the tool loop and
+/// may legitimately wait minutes on a cold `cargo` build.
+const IMPL_STAGE_TIMEOUT: std::time::Duration = std::time::Duration::from_mins(30);
 
 pub(super) async fn handle_pipeline(
     name: String,
@@ -158,12 +162,17 @@ pub(super) async fn run_pipeline_in(
                     run_chat_stage(&task, &provider, model.as_deref(), config_path.as_deref()).await
                 }
             };
-            let outcome = tokio::time::timeout(STAGE_TIMEOUT, stage_future)
+            let ceiling = if stage.kind == StageKind::Implementation {
+                IMPL_STAGE_TIMEOUT
+            } else {
+                STAGE_TIMEOUT
+            };
+            let outcome = tokio::time::timeout(ceiling, stage_future)
                 .await
                 .unwrap_or_else(|_| {
                     Err(anyhow!(
                         "stage `{slug}` timed out after {}s",
-                        STAGE_TIMEOUT.as_secs()
+                        ceiling.as_secs()
                     ))
                 });
             let is_error = outcome.is_err();
