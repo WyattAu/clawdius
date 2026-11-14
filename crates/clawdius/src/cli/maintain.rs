@@ -118,6 +118,8 @@ pub(super) async fn handle_maintain(
                 pr_url: None,
                 note: "reset to pending after an interrupted cycle".to_string(),
                 duration_ms: 0,
+                tool_calls: 0,
+                files_changed: 0,
             })?;
             backlog.save(&backlog_path)?;
         }
@@ -149,6 +151,8 @@ pub(super) async fn handle_maintain(
                     pr_url: None,
                     note: "no pending task".to_string(),
                     duration_ms: 0,
+                    tool_calls: 0,
+                    files_changed: 0,
                 })?;
                 if once {
                     break;
@@ -187,9 +191,23 @@ pub(super) async fn handle_maintain(
         )
         .await;
 
-        let (mut cycle_outcome, mut note, branch, pr_url) = match outcome {
-            Ok(cycle) => (cycle.outcome, cycle.note, cycle.branch, cycle.pr_url),
-            Err(e) => (CycleOutcome::Error, format!("{e:#}"), None, None),
+        let (
+            mut cycle_outcome,
+            mut note,
+            branch,
+            pr_url,
+            outcome_tool_calls,
+            outcome_files_changed,
+        ) = match outcome {
+            Ok(cycle) => (
+                cycle.outcome,
+                cycle.note,
+                cycle.branch,
+                cycle.pr_url,
+                cycle.tool_calls,
+                cycle.files_changed,
+            ),
+            Err(e) => (CycleOutcome::Error, format!("{e:#}"), None, None, 0, 0),
         };
 
         // A stage that resolved the git project root instead of the
@@ -236,6 +254,8 @@ pub(super) async fn handle_maintain(
             pr_url,
             note: note.clone(),
             duration_ms: u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX),
+            tool_calls: outcome_tool_calls,
+            files_changed: outcome_files_changed,
         };
         ledger.append(&record)?;
 
@@ -295,6 +315,10 @@ struct CycleReport {
     note: String,
     branch: Option<String>,
     pr_url: Option<String>,
+    /// Tool calls the model made (from the preserved run journal).
+    tool_calls: u32,
+    /// Files the cycle changed on the branch.
+    files_changed: u32,
 }
 
 /// Run one task, rotating providers on quota errors.
@@ -327,6 +351,8 @@ async fn run_task_with_rotation(
                     ),
                     branch: None,
                     pr_url: None,
+                    tool_calls: 0,
+                    files_changed: 0,
                 })
             },
         };
@@ -368,6 +394,8 @@ async fn run_task_with_rotation(
                         note: text,
                         branch: None,
                         pr_url: None,
+                        tool_calls: 0,
+                        files_changed: 0,
                     });
                 }
                 last_error = Some(text);
@@ -380,6 +408,8 @@ async fn run_task_with_rotation(
         note: last_error.unwrap_or_else(|| "all attempts failed".to_string()),
         branch: None,
         pr_url: None,
+        tool_calls: 0,
+        files_changed: 0,
     })
 }
 
@@ -397,6 +427,7 @@ async fn run_task_once(
     let wt = worktrees.join(sanitize(&task.id));
 
     reset_worktree(repo, &wt, &branch, worktrees)?;
+    let base = current_head(repo);
 
     let result = run_pipeline_in(&wt, task, provider, model, config_path).await;
 
@@ -406,6 +437,7 @@ async fn run_task_once(
     // removed the worktree and took the journal with it, so the spin was
     // undiagnosable).
     preserve_artifacts(&wt, repo, &task.id);
+    let tool_calls = count_journal_tool_calls(&wt);
 
     let cleanup = |green: bool| {
         let _ = Command::new("git")
@@ -427,19 +459,30 @@ async fn run_task_once(
             // the deps cycle found everything current, and "nothing to
             // commit" exits non-zero with its message on STDOUT, which
             // read as an empty stderr failure).
+            // The model may have committed inside the tool loop despite
+            // the prompt (live: the deps cycle committed a schemars bump,
+            // the empty staged set read as "nothing to change", and the
+            // branch — with the work — was deleted). Count its commits
+            // before calling the cycle a no-op.
+            let model_commits = commits_since(base.as_deref(), &wt);
             let _ = Command::new("git")
                 .args(["-C", &wt.to_string_lossy()])
                 .args(["add", "-A"])
                 .output();
             let staged = dirty_paths(&wt);
-            if staged.is_empty() {
+            if staged.is_empty() && model_commits == 0 {
                 cleanup(false);
                 return Ok(CycleReport {
                     outcome: CycleOutcome::Green,
-                    note: "gates green; nothing to change".to_string(),
+                    note: format!("gates green; nothing to change ({tool_calls} tool calls)"),
                     branch: None,
                     pr_url: None,
+                    tool_calls,
+                    files_changed: 0,
                 });
+            }
+            if staged.is_empty() && model_commits > 0 {
+                println!("    model made {model_commits} commit(s) inside the tool loop");
             }
             let commit = Command::new("git")
                 .args(["-C", &wt.to_string_lossy()])
@@ -472,8 +515,12 @@ async fn run_task_once(
                     ),
                     branch: None,
                     pr_url: None,
+                    tool_calls,
+                    files_changed: 0,
                 });
             }
+
+            let files_changed = count_changed_files(repo, base.as_deref(), &wt);
 
             // Push and open a PR when a remote exists.
             let push_ok = Command::new("git")
@@ -492,12 +539,16 @@ async fn run_task_once(
             Ok(CycleReport {
                 outcome: CycleOutcome::Green,
                 note: if push_ok {
-                    format!("committed to `{branch}`")
+                    format!("committed to `{branch}` ({files_changed} file(s) changed)")
                 } else {
-                    format!("committed to local branch `{branch}` (no remote push)")
+                    format!(
+                        "committed to local branch `{branch}` ({files_changed} file(s), no remote push)"
+                    )
                 },
                 branch: Some(branch),
                 pr_url,
+                tool_calls,
+                files_changed,
             })
         },
         Err(e) => {
@@ -546,6 +597,82 @@ fn reset_worktree(repo: &Path, wt: &Path, branch: &str, worktrees: &Path) -> Res
         ));
     }
     Ok(())
+}
+
+/// The repo's current HEAD sha (None when it cannot be determined).
+fn current_head(repo: &Path) -> Option<String> {
+    let out = Command::new("git")
+        .args(["-C", &repo.to_string_lossy(), "rev-parse", "HEAD"])
+        .output()
+        .ok()?;
+    if out.status.success() {
+        Some(String::from_utf8_lossy(&out.stdout).trim().to_string())
+    } else {
+        None
+    }
+}
+
+/// How many commits `branch` (checked out in `wt`) has beyond `base`.
+fn commits_since(base: Option<&str>, wt: &Path) -> u32 {
+    let Some(base) = base else {
+        return 0;
+    };
+    let out = Command::new("git")
+        .args([
+            "-C",
+            &wt.to_string_lossy(),
+            "rev-list",
+            "--count",
+            &format!("{base}..HEAD"),
+        ])
+        .output();
+    match out {
+        Ok(o) if o.status.success() => String::from_utf8_lossy(&o.stdout)
+            .trim()
+            .parse()
+            .unwrap_or(0),
+        _ => 0,
+    }
+}
+
+/// Tool calls recorded in the worktree's preserved auto journal.
+fn count_journal_tool_calls(worktree: &Path) -> u32 {
+    let path = worktree.join(".clawdius/runs/auto-latest.jsonl");
+    let Ok(text) = std::fs::read_to_string(&path) else {
+        return 0;
+    };
+    u32::try_from(
+        text.lines()
+            .filter(|l| l.contains("\"t\":\"tool_call\""))
+            .count(),
+    )
+    .unwrap_or(u32::MAX)
+}
+
+/// Files changed on the branch relative to the cycle's base commit.
+fn count_changed_files(_repo: &Path, base: Option<&str>, wt: &Path) -> u32 {
+    let Some(base) = base else {
+        return 0;
+    };
+    let out = Command::new("git")
+        .args([
+            "-C",
+            &wt.to_string_lossy(),
+            "diff",
+            "--name-only",
+            &format!("{base}..HEAD"),
+        ])
+        .output();
+    match out {
+        Ok(o) if o.status.success() => u32::try_from(
+            String::from_utf8_lossy(&o.stdout)
+                .lines()
+                .filter(|l| !l.trim().is_empty())
+                .count(),
+        )
+        .unwrap_or(u32::MAX),
+        _ => 0,
+    }
 }
 
 /// First non-empty line of `text`.
@@ -597,7 +724,7 @@ async fn run_pipeline_in(
     model: Option<&str>,
     config_path: Option<&Path>,
 ) -> Result<()> {
-    let mut pipeline = Pipeline::dev_loop(task.effective_goal());
+    let mut pipeline = Pipeline::dev_loop(task.effective_goal().as_str());
     // Maintenance tasks are small; two loops is plenty and bounds cost.
     pipeline.max_loops = 2;
     pipeline
@@ -625,10 +752,15 @@ async fn run_pipeline_in(
 
 /// Open a PR for a green branch; returns the URL when `gh` succeeds.
 fn open_pr(repo: &Path, branch: &str, task: &Task) -> Option<String> {
+    let title = format!(
+        "maint({}): {}",
+        task.kind.slug(),
+        first_line(task.effective_goal().as_str())
+    );
     let output = Command::new("gh")
         .current_dir(repo)
         .args(["pr", "create", "--head", branch, "--fill", "--title"])
-        .arg(format!("maint({}): {}", task.kind.slug(), task.id))
+        .arg(&title)
         .args(["--body"])
         .arg(format!(
             "Automated maintenance cycle.\n\nGoal:\n\n{}\n\nGates: fmt, clippy -D warnings, tests.\n",

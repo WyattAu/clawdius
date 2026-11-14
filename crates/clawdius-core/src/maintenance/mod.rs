@@ -64,13 +64,17 @@ impl TaskKind {
             Self::Deps => {
                 "Upgrade dependencies that have newer patch or minor releases, one at a time, \
                  keeping the gates green. Do not cross major versions. If an upgrade breaks \
-                 the build, revert that upgrade and record why. The pipeline runs the full \
-                 gates after your edits; use `cargo check -p <crate>` for quick feedback and \
-                 never run the whole workspace test suite yourself."
+                 the build, revert that upgrade and record why. Start from `cargo update \
+                 --dry-run`; do not install new tools (no cargo install). The pipeline runs \
+                 the full gates after your edits; use `cargo check -p <crate>` for quick \
+                 feedback and never run the whole workspace test suite yourself."
             },
             Self::Docs => {
                 "Bring the documentation in line with the code: fix stale commands, missing \
-                 flags, and broken cross-references. Prefer small accurate edits over rewrites."
+                 flags, and broken cross-references. Prefer small accurate edits over rewrites. \
+                 Do not generate output dumps: no new directories of captured --help text, no \
+                 scripts that generate such files, no scratch notes at the repo root. Edit the \
+                 existing docs under docs/ and README.md in place."
             },
             Self::Tests => {
                 "Add focused tests for untested public behaviour. Every new test must fail \
@@ -116,6 +120,16 @@ pub struct Task {
 }
 
 impl Task {
+    /// Suffix appended to every effective goal: the loop owns committing.
+    ///
+    /// Live: a deps cycle committed its work inside the tool loop, and the
+    /// runner's empty-staged-set check then discarded the branch as a
+    /// no-op. Prompts are the first line of defence; the runner also
+    /// detects pre-existing commits.
+    pub const NO_COMMIT_SUFFIX: &'static str =
+        " Do not run git commit, git push, or gh: leave your changes in the \
+         working tree and the pipeline will commit, push, and open the PR.";
+
     /// A new pending task with the kind's standing goal.
     #[must_use]
     pub fn new(id: impl Into<String>, kind: TaskKind, priority: u8) -> Self {
@@ -130,12 +144,13 @@ impl Task {
 
     /// The goal to hand the engine (never empty).
     #[must_use]
-    pub fn effective_goal(&self) -> &str {
-        if self.goal.trim().is_empty() {
-            self.kind.default_goal()
+    pub fn effective_goal(&self) -> String {
+        let base = if self.goal.trim().is_empty() {
+            self.kind.default_goal().to_string()
         } else {
-            &self.goal
-        }
+            self.goal.trim().to_string()
+        };
+        format!("{base}{}", Self::NO_COMMIT_SUFFIX)
     }
 }
 
@@ -292,6 +307,12 @@ pub struct CycleRecord {
     pub note: String,
     #[serde(default)]
     pub duration_ms: u64,
+    /// Tool calls the model made this cycle (0 when unknown).
+    #[serde(default)]
+    pub tool_calls: u32,
+    /// Files changed on the branch (0 when nothing was committed).
+    #[serde(default)]
+    pub files_changed: u32,
 }
 
 /// The append-only cycle ledger.
@@ -455,6 +476,8 @@ mod tests {
             pr_url: None,
             note: "gates green".into(),
             duration_ms: 1234,
+            tool_calls: 7,
+            files_changed: 2,
         };
         ledger.append(&rec).unwrap();
         ledger.append(&rec).unwrap();
@@ -485,7 +508,22 @@ mod tests {
 
         let mut t = task("y", TaskKind::Custom, 0);
         t.goal = "  do the thing  ".into();
-        assert_eq!(t.effective_goal(), "  do the thing  ");
+        assert!(t.effective_goal().starts_with("do the thing"));
+        for kind in [
+            TaskKind::Lint,
+            TaskKind::Deps,
+            TaskKind::Docs,
+            TaskKind::Tests,
+            TaskKind::Issue,
+            TaskKind::Custom,
+        ] {
+            let mut t = task("z", kind, 0);
+            t.goal.clear();
+            assert!(
+                t.effective_goal().ends_with("open the PR."),
+                "every goal must carry the no-commit suffix"
+            );
+        }
     }
 
     #[test]
