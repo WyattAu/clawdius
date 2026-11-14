@@ -58,7 +58,8 @@ impl TaskKind {
                  and the test suite. Fix the underlying causes; do not weaken lints, delete \
                  tests, or add blanket allows without a stated reason. The pipeline runs \
                  the full gates after your edits, so do not run the whole workspace test \
-                 suite yourself."
+                 suite yourself. If the tree is already clean, say so and finish — do not \
+                 re-run the same check repeatedly; on a healthy repo this task is a no-op."
             },
             Self::Deps => {
                 "Upgrade dependencies that have newer patch or minor releases, one at a time, \
