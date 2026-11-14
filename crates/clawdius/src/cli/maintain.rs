@@ -726,6 +726,12 @@ fn first_number(text: &str) -> Option<u64> {
     digits.parse().ok()
 }
 
+/// Quota, rate-limit AND capacity errors: all transient provider states
+/// that waiting or rotating can fix, unlike a compile failure.
+///
+/// Capacity shapes were added live: Gemini returned 503 UNAVAILABLE
+/// "currently experiencing high demand … Please try again later", which
+/// the quota-only matcher let through as a task failure.
 fn is_rate_limit(text: &str) -> bool {
     let lower = text.to_lowercase();
     [
@@ -736,6 +742,12 @@ fn is_rate_limit(text: &str) -> bool {
         "insufficient balance",
         "resource_exhausted",
         "too many requests",
+        "503",
+        "service unavailable",
+        "unavailable",
+        "high demand",
+        "overloaded",
+        "try again later",
     ]
     .iter()
     .any(|needle| lower.contains(needle))
@@ -926,8 +938,15 @@ mod tests {
         ));
         assert!(is_rate_limit("Insufficient Balance"));
         assert!(is_rate_limit("RESOURCE_EXHAUSTED: quota exceeded"));
+        // Capacity errors live-caught on 2026-11-14 (Gemini 503).
+        assert!(is_rate_limit(
+            "Request failed with status code '503 Service Unavailable'. \
+             This model is currently experiencing high demand."
+        ));
+        assert!(is_rate_limit("model is overloaded, please retry"));
         assert!(!is_rate_limit("semantic loop detected"));
         assert!(!is_rate_limit("compile error: expected `;`"));
+        assert!(!is_rate_limit("error[E0308]: mismatched types"));
     }
 
     #[test]
