@@ -535,6 +535,8 @@ pub struct App {
     pub fleet: FleetManager,
     /// Repo whose dev cycle is currently running through the agentic loop.
     fleet_active_cycle: Option<String>,
+    /// Whether the OpenCode session follower task has been spawned.
+    opencode_follower_active: bool,
     /// File watcher for live file change detection.
     file_watcher: Option<clawdius_core::watch::FileWatcher>,
     /// Receiver for file watcher events.
@@ -581,6 +583,7 @@ impl App {
             session_picker: SessionPicker::new(),
             workspace_switcher: WorkspaceSwitcher::new(),
             fleet: FleetManager::new(&workspace_root),
+            opencode_follower_active: false,
             fleet_active_cycle: None,
             file_watcher: None,
             file_watcher_rx: None,
@@ -1419,6 +1422,15 @@ impl App {
             self.should_quit = true;
             return Ok(());
         }
+        if self.fleet.sessions_view {
+            match key.code {
+                KeyCode::Char('j') | KeyCode::Down => self.fleet.sessions_down(),
+                KeyCode::Char('k') | KeyCode::Up => self.fleet.sessions_up(),
+                KeyCode::Char('o' | 'q') | KeyCode::Esc => self.fleet.close_sessions(),
+                _ => {},
+            }
+            return Ok(());
+        }
         if self.fleet.dashboard {
             match key.code {
                 KeyCode::Char('a') => {
@@ -1449,6 +1461,7 @@ impl App {
             },
             KeyCode::Enter => self.run_fleet_cycle()?,
             KeyCode::Char('d') => self.fleet.open_dashboard(),
+            KeyCode::Char('o') => self.open_opencode_sessions(),
             KeyCode::Char('S') => {
                 self.fleet.scan();
                 self.fleet.persist();
@@ -1461,6 +1474,116 @@ impl App {
             _ => {},
         }
         Ok(())
+    }
+
+    /// Open the OpenCode sessions pane and start the live follower.
+    ///
+    /// The follower is spawned once per TUI session: it lists sessions,
+    /// then subscribes to the server's event stream and re-lists on any
+    /// session event (idle/error/update), so the pane reflects runs
+    /// finishing in any other OpenCode tab. It reconnects with a short
+    /// backoff if the server restarts, and exits when the TUI drops the
+    /// receiver.
+    fn open_opencode_sessions(&mut self) {
+        self.fleet.open_sessions();
+        if self.opencode_follower_active {
+            return;
+        }
+        self.opencode_follower_active = true;
+        self.fleet
+            .set_sessions(Vec::new(), "attaching to the OpenCode server…".to_string());
+        let (tx, rx) = mpsc::channel::<TuiEvent>(64);
+        self.stream_rx = Some(rx);
+        tokio::spawn(async move {
+            use clawdius_core::fleet::{OpenCodeClient, OpenCodeEvent};
+            use futures::StreamExt as _;
+            loop {
+                let client = match OpenCodeClient::discover() {
+                    Ok(c) => c,
+                    Err(e) => {
+                        let status = format!("no OpenCode server: {e}");
+                        if tx
+                            .send(TuiEvent::OpencodeSessions {
+                                sessions: Vec::new(),
+                                status,
+                            })
+                            .await
+                            .is_err()
+                        {
+                            return;
+                        }
+                        tokio::time::sleep(std::time::Duration::from_secs(30)).await;
+                        continue;
+                    },
+                };
+                let send_snapshot = |sessions: Vec<clawdius_core::fleet::SessionSummary>| {
+                    let tx = tx.clone();
+                    async move {
+                        tx.send(TuiEvent::OpencodeSessions {
+                            sessions,
+                            status: "live".to_string(),
+                        })
+                        .await
+                        .is_ok()
+                    }
+                };
+                let mut sessions = match client.list_sessions().await {
+                    Ok(s) => s,
+                    Err(e) => {
+                        if tx
+                            .send(TuiEvent::OpencodeSessions {
+                                sessions: Vec::new(),
+                                status: format!("list failed: {e}"),
+                            })
+                            .await
+                            .is_err()
+                        {
+                            return;
+                        }
+                        tokio::time::sleep(std::time::Duration::from_secs(10)).await;
+                        continue;
+                    },
+                };
+                sessions.sort_by(|a, b| b.updated_ms.cmp(&a.updated_ms));
+                if !send_snapshot(sessions.clone()).await {
+                    return;
+                }
+                let Ok(mut events) = client.events().await else {
+                    tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+                    continue;
+                };
+                let mut refresh = tokio::time::interval(std::time::Duration::from_secs(20));
+                loop {
+                    tokio::select! {
+                        ev = events.next() => {
+                            match ev {
+                                Some(Ok(OpenCodeEvent::SessionIdle { .. }
+                                    | OpenCodeEvent::SessionError { .. }
+                                    | OpenCodeEvent::SessionUpdated { .. })) => {
+                                    if let Ok(mut fresh) = client.list_sessions().await {
+                                        fresh.sort_by(|a, b| b.updated_ms.cmp(&a.updated_ms));
+                                        if !send_snapshot(fresh).await {
+                                            return;
+                                        }
+                                    }
+                                },
+                                Some(Ok(OpenCodeEvent::Other { .. })) => {},
+                                Some(Err(_)) | None => break, // reconnect
+                            }
+                        },
+                        _ = refresh.tick() => {
+                            if let Ok(mut fresh) = client.list_sessions().await {
+                                fresh.sort_by(|a, b| b.updated_ms.cmp(&a.updated_ms));
+                                if !send_snapshot(fresh).await {
+                                    return;
+                                }
+                            }
+                        },
+                    }
+                }
+                tokio::time::sleep(std::time::Duration::from_secs(3)).await;
+            }
+        });
     }
 
     /// Dispatch the selected repo's next dev-cycle task and run it through
@@ -1701,6 +1824,9 @@ impl App {
                         if let Some(repo) = self.fleet_active_cycle.take() {
                             self.fleet.report_finish(&repo);
                         }
+                    },
+                    TuiEvent::OpencodeSessions { sessions, status } => {
+                        self.fleet.set_sessions(sessions, status);
                     },
                     TuiEvent::Error(e) => {
                         self.chat_view.finish_streaming();
