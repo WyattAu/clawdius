@@ -399,8 +399,8 @@ async fn run_task_with_rotation(
                             return Ok(CycleReport {
                                 outcome: CycleOutcome::Red,
                                 note: format!(
-                                    "provider `{provider}` quota exhausted (resets in ~{}h); task retried after the reset",
-                                    wait.as_secs() / 3600
+                                    "provider `{provider}` quota exhausted (reset hint exceeds {}s); task retried after the reset",
+                                    MAX_HONORED_WAIT.as_secs()
                                 ),
                                 branch: None,
                                 pr_url: None,
