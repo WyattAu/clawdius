@@ -34,6 +34,19 @@ const REPLENISH_ROTATION: [TaskKind; 4] = [
 /// How many provider rotations one task gets before it is marked failed.
 const MAX_PROVIDER_ROTATIONS: usize = 3;
 
+/// Longest provider reset hint the loop will sleep through. A hint
+/// beyond this is a daily quota reset: sleeping would wedge the task for
+/// hours (live: 5 attempts x 30 min against a 16 h hint), so the cycle
+/// fails fast and the task is retried after the reset.
+const MAX_HONORED_WAIT: Duration = Duration::from_secs(600);
+
+/// Whether a provider reset hint is short enough to sleep through.
+/// Longer hints are daily quota resets: the cycle fails fast instead of
+/// sleeping for hours.
+fn should_honor_wait(wait: Duration) -> bool {
+    wait <= MAX_HONORED_WAIT
+}
+
 pub(super) async fn handle_maintain(
     backlog_path: Option<PathBuf>,
     once: bool,
@@ -370,6 +383,31 @@ async fn run_task_with_rotation(
                     // one; free tiers reset in under a minute while the
                     // policy cooldown is minutes.
                     if let Some(wait) = parse_retry_delay(&text) {
+                        // A hint longer than the cycle interval is a daily
+                        // quota reset, not a transient throttle. Sleeping
+                        // through it (capped at 30 min per attempt, times
+                        // the attempt budget) wedged a task in `running`
+                        // for hours while the ledger said idle. Fail the
+                        // cycle promptly instead; the next replenish or
+                        // rotation retries after the reset.
+                        if !should_honor_wait(wait) {
+                            println!(
+                                "    `{provider}` quota exhausted — resets in {}s; not sleeping, failing the cycle",
+                                wait.as_secs()
+                            );
+                            coordinator.note_limited_for(&provider, wait);
+                            return Ok(CycleReport {
+                                outcome: CycleOutcome::Red,
+                                note: format!(
+                                    "provider `{provider}` quota exhausted (resets in ~{}h); task retried after the reset",
+                                    wait.as_secs() / 3600
+                                ),
+                                branch: None,
+                                pr_url: None,
+                                tool_calls: 0,
+                                files_changed: 0,
+                            });
+                        }
                         // The provider told us when it will be back. Wait
                         // for it: rotating to the next provider in the
                         // chain is usually worse, because the chain's other
@@ -1079,6 +1117,20 @@ mod tests {
         assert!(!is_rate_limit("semantic loop detected"));
         assert!(!is_rate_limit("compile error: expected `;`"));
         assert!(!is_rate_limit("error[E0308]: mismatched types"));
+    }
+
+    #[test]
+    fn long_reset_hints_fail_fast_instead_of_sleeping() {
+        // Live: gemini-4 free tier returned retryDelay=57923s (~16h).
+        // Sleeping through it (30-min cap x 3 attempts) wedged a task in
+        // `running` for hours while the ledger said idle.
+        let sixteen_hours = Duration::from_secs(57_923);
+        assert!(!should_honor_wait(sixteen_hours));
+        assert!(should_honor_wait(Duration::from_secs(37)));
+        assert!(should_honor_wait(MAX_HONORED_WAIT));
+        assert!(!should_honor_wait(
+            MAX_HONORED_WAIT + Duration::from_secs(1)
+        ));
     }
 
     #[test]
