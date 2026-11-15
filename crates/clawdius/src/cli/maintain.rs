@@ -419,17 +419,36 @@ async fn run_task_with_rotation(
                         // cycle promptly instead; the next replenish or
                         // rotation retries after the reset.
                         if !should_honor_wait(wait) {
-                            println!(
-                                "    `{provider}` quota exhausted — resets in {}s; not sleeping, failing the cycle",
-                                wait.as_secs()
-                            );
+                            // `limit: 0` is not a spent daily quota: the
+                            // model has no free-tier allocation at all
+                            // (live: gemini-4-argon answered every probe
+                            // with limit: 0 for ~12 h of requeue-parks).
+                            // The task stays requeued, but the note must
+                            // point at the real fix: switch --model.
+                            let no_allocation = text.contains("limit: 0");
+                            if no_allocation {
+                                println!(
+                                    "    `{provider}` model has no free-tier allocation (limit: 0) — switch --model"
+                                );
+                            } else {
+                                println!(
+                                    "    `{provider}` quota exhausted — resets in {}s; not sleeping, failing the cycle",
+                                    wait.as_secs()
+                                );
+                            }
                             coordinator.note_limited_for(&provider, wait);
                             return Ok(CycleReport {
                                 outcome: CycleOutcome::Red,
-                                note: format!(
-                                    "provider `{provider}` quota exhausted (reset hint exceeds {}s); task retried after the reset",
-                                    MAX_HONORED_WAIT.as_secs()
-                                ),
+                                note: if no_allocation {
+                                    format!(
+                                        "provider `{provider}` model has no free-tier allocation (limit: 0); switch --model — task kept pending"
+                                    )
+                                } else {
+                                    format!(
+                                        "provider `{provider}` quota exhausted (reset hint exceeds {}s); task retried after the reset",
+                                        MAX_HONORED_WAIT.as_secs()
+                                    )
+                                },
                                 quota_blocked: true,
                                 branch: None,
                                 pr_url: None,
