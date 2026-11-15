@@ -203,6 +203,7 @@ pub(super) async fn handle_maintain(
             &repo,
             &worktrees,
             &mut coordinator,
+            &provider,
             model.as_deref(),
             no_pr,
             config_path.as_deref(),
@@ -366,12 +367,31 @@ struct CycleReport {
     quota_blocked: bool,
 }
 
+/// `--model` names a model in the *preferred* provider's namespace:
+/// `auto` is a router alias, `glm-4.5-flash` a Z.AI id. Handing it to a
+/// rotated-in provider is meaningless and actively harmful — genai does
+/// not recognise the name and falls back to the Ollama adapter (live:
+/// `model 'auto' not found` from localhost:11434 after a Google rotation).
+/// Rotated providers use their own default model.
+fn model_for_attempt<'a>(
+    preferred: &str,
+    provider: &str,
+    model: Option<&'a str>,
+) -> Option<&'a str> {
+    if provider == preferred {
+        model
+    } else {
+        None
+    }
+}
+
 /// Run one task, rotating providers on quota errors.
 async fn run_task_with_rotation(
     task: &Task,
     repo: &Path,
     worktrees: &Path,
     coordinator: &mut FallbackCoordinator,
+    preferred: &str,
     model: Option<&str>,
     no_pr: bool,
     config_path: Option<&Path>,
@@ -403,8 +423,25 @@ async fn run_task_with_rotation(
             },
         };
 
-        println!("    attempt {attempt}: provider `{provider}`");
-        match run_task_once(task, repo, worktrees, &provider, model, no_pr, config_path).await {
+        let attempt_model = model_for_attempt(preferred, &provider, model);
+        match attempt_model {
+            Some(m) => println!("    attempt {attempt}: provider `{provider}` model `{m}`"),
+            None => println!(
+                "    attempt {attempt}: provider `{provider}` (default model — `{}` is {preferred}'s)",
+                model.unwrap_or("-")
+            ),
+        }
+        match run_task_once(
+            task,
+            repo,
+            worktrees,
+            &provider,
+            attempt_model,
+            no_pr,
+            config_path,
+        )
+        .await
+        {
             Ok(report) => {
                 coordinator.note_solved(&provider);
                 return Ok(report);
@@ -1438,5 +1475,24 @@ mod tests {
         assert!(task
             .id
             .ends_with(&chrono::Utc::now().format("%Y-%m-%d").to_string()));
+    }
+
+    #[test]
+    fn the_model_flag_only_applies_to_the_preferred_provider() {
+        // Live: after a router failure the loop rotated to `google` and
+        // still passed `auto`, which genai resolved to the Ollama adapter.
+        assert_eq!(
+            model_for_attempt("openai-compatible", "openai-compatible", Some("auto")),
+            Some("auto")
+        );
+        assert_eq!(
+            model_for_attempt("openai-compatible", "google", Some("auto")),
+            None
+        );
+        assert_eq!(
+            model_for_attempt("google", "zai", Some("gemini-3.5-flash")),
+            None
+        );
+        assert_eq!(model_for_attempt("google", "google", None), None);
     }
 }
