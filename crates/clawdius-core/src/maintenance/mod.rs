@@ -117,6 +117,11 @@ pub struct Task {
     #[serde(default)]
     pub priority: u8,
     pub status: TaskStatus,
+    /// How many times the loop has requeued this task after a failed
+    /// cycle. Bounded by the caller so a genuinely broken task cannot
+    /// spin forever; older backlog files deserialize as 0.
+    #[serde(default)]
+    pub attempts: u32,
 }
 
 impl Task {
@@ -139,6 +144,7 @@ impl Task {
             goal: kind.default_goal().to_string(),
             priority,
             status: TaskStatus::Pending,
+            attempts: 0,
         }
     }
 

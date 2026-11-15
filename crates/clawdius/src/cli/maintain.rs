@@ -145,13 +145,12 @@ pub(super) async fn handle_maintain(
 
         if backlog.next_pending().is_none() {
             if replenish {
-                if let Some(task) = replenish_task(&backlog) {
+                if let Some(task) = replenish_task(&mut backlog)? {
                     println!(
                         "backlog dry — enqueued `{}` ({})",
                         task.id,
                         task.kind.slug()
                     );
-                    backlog.push(task)?;
                     backlog.save(&backlog_path)?;
                 }
             }
@@ -892,17 +891,44 @@ fn open_pr(repo: &Path, branch: &str, task: &Task) -> Option<String> {
 }
 
 /// Enqueue one standing task per day when the backlog is dry.
-fn replenish_task(backlog: &Backlog) -> Option<Task> {
+/// How many times a failed task is requeued before the loop leaves it
+/// failed. One retry per task per day: enough to recover from a transient
+/// provider or environment fault, not enough to spin on a broken goal.
+const MAX_TASK_ATTEMPTS: u32 = 2;
+
+/// Give the loop its next unit of work when nothing is pending.
+///
+/// Order: a kind today's rotation has not run yet, then a retry of a
+/// task that failed today. Without the retry the loop idles from the
+/// moment today's four kinds are spent — live: eleven hours idle with a
+/// failed `docs-2026-11-15` sitting in the backlog, one cycle after the
+/// defect that failed it was fixed.
+fn replenish_task(backlog: &mut Backlog) -> Result<Option<Task>> {
     let today = chrono::Utc::now().format("%Y-%m-%d").to_string();
     for kind in REPLENISH_ROTATION {
         let id = format!("{}-{today}", kind.slug());
         if !backlog.tasks.iter().any(|t| t.id == id) {
             let mut task = Task::new(id, kind, 5);
             task.goal = kind.default_goal().to_string();
-            return Some(task);
+            backlog.push(task.clone())?;
+            return Ok(Some(task));
         }
     }
-    None
+    let retryable = backlog
+        .tasks
+        .iter_mut()
+        .filter(|t| {
+            t.status == TaskStatus::Failed
+                && t.attempts < MAX_TASK_ATTEMPTS
+                && t.id.ends_with(&today)
+        })
+        .max_by_key(|t| t.priority);
+    let Some(retryable) = retryable else {
+        return Ok(None);
+    };
+    retryable.status = TaskStatus::Pending;
+    retryable.attempts += 1;
+    Ok(Some(retryable.clone()))
 }
 
 /// Backlog status for a finished cycle. A quota-blocked failure is the
@@ -1325,13 +1351,16 @@ mod tests {
     #[test]
     fn replenish_enqueues_one_standing_task_per_kind_per_day() {
         let mut backlog = Backlog::default();
-        let first = replenish_task(&backlog).expect("first replenish");
+        let first = replenish_task(&mut backlog)
+            .expect("replenish")
+            .expect("first replenish");
         assert_eq!(first.kind, TaskKind::Lint);
-        backlog.push(first.clone()).unwrap();
+        assert_eq!(backlog.tasks.len(), 1, "replenish must persist the task");
 
-        let second = replenish_task(&backlog).expect("second replenish");
+        let second = replenish_task(&mut backlog)
+            .expect("replenish")
+            .expect("second replenish");
         assert_eq!(second.kind, TaskKind::Deps);
-        backlog.push(second).unwrap();
 
         // Every kind for today exists -> nothing left to enqueue.
         for kind in REPLENISH_ROTATION {
@@ -1340,6 +1369,74 @@ mod tests {
                 backlog.push(Task::new(id, kind, 5)).unwrap();
             }
         }
-        assert!(replenish_task(&backlog).is_none());
+        assert!(replenish_task(&mut backlog).expect("replenish").is_none());
+    }
+
+    #[test]
+    fn replenish_retries_todays_failed_task_once_then_gives_up() {
+        // Live: the loop idled for eleven hours with a failed
+        // `docs-2026-11-15` in the backlog, one cycle after the defect
+        // that failed it was fixed.
+        let today = chrono::Utc::now().format("%Y-%m-%d").to_string();
+        let mut backlog = Backlog::default();
+        for kind in REPLENISH_ROTATION {
+            let id = format!("{}-{today}", kind.slug());
+            let mut task = Task::new(id, kind, 5);
+            if kind == TaskKind::Docs {
+                task.status = TaskStatus::Failed;
+            } else {
+                task.status = TaskStatus::Done;
+            }
+            backlog.push(task).unwrap();
+        }
+
+        let retry = replenish_task(&mut backlog)
+            .expect("replenish")
+            .expect("failed task is retried");
+        assert_eq!(retry.kind, TaskKind::Docs);
+        assert_eq!(retry.status, TaskStatus::Pending);
+        assert_eq!(retry.attempts, 1);
+        // The retry is what the scheduler now sees.
+        assert_eq!(
+            backlog.next_pending().map(|t| t.id.clone()),
+            Some(retry.id.clone())
+        );
+
+        // Second failure exhausts the budget: no third run.
+        for task in &mut backlog.tasks {
+            if task.id == retry.id {
+                task.status = TaskStatus::Failed;
+            }
+        }
+        let again = replenish_task(&mut backlog)
+            .expect("replenish")
+            .expect("second retry");
+        assert_eq!(again.attempts, MAX_TASK_ATTEMPTS);
+        for task in &mut backlog.tasks {
+            if task.id == again.id {
+                task.status = TaskStatus::Failed;
+            }
+        }
+        assert!(replenish_task(&mut backlog).expect("replenish").is_none());
+    }
+
+    #[test]
+    fn replenish_ignores_failures_from_previous_days() {
+        // Yesterday's failure is stale: the standing rotation recreates
+        // the kind today, so retrying it would duplicate work.
+        let mut backlog = Backlog::default();
+        for kind in REPLENISH_ROTATION {
+            let id = format!("{}-2020-01-01", kind.slug());
+            let mut task = Task::new(id, kind, 5);
+            task.status = TaskStatus::Failed;
+            backlog.push(task).unwrap();
+        }
+        let task = replenish_task(&mut backlog)
+            .expect("replenish")
+            .expect("today's rotation is enqueued");
+        assert_eq!(task.kind, TaskKind::Lint);
+        assert!(task
+            .id
+            .ends_with(&chrono::Utc::now().format("%Y-%m-%d").to_string()));
     }
 }
