@@ -128,7 +128,7 @@ curl http://localhost:8081/api/gateway/health
 | `:generate <query>` | Generate code into directory |
 | `:build` | Run `cargo build` |
 | `:test` | Run `cargo test` |
-| `:doc` | Generate documentation |
+| `:exit` | Exit the TUI |doc` | Generate documentation |
 | `:verify` | Run Lean4 proof verification |
 | `:checkpoint` | Create file checkpoint |
 | `:timeline` | View file timeline |
