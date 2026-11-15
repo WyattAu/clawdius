@@ -9,6 +9,7 @@
 // Test builds keep unwrap/expect for brevity (fleet convention, see lib.rs).
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used))]
 
+pub mod bridge;
 pub mod client;
 pub mod handler;
 pub mod protocol;
