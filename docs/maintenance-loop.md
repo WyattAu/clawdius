@@ -90,7 +90,41 @@ the soonest reset instead of burning the interval on guaranteed
 failures.
 
 Rate-limit shapes recognised: HTTP 429, `rate limit`, `quota`,
-`insufficient balance`, `RESOURCE_EXHAUSTED`, `too many requests`.
+`insufficient balance`, `RESOURCE_EXHAUSTED`, `too many requests`,
+`overloaded`, `try again later`.
+
+The chain itself only contains providers the stages can authenticate
+against: a fallback with no key is not a rescue, it is a dead end
+(live: a hint-less Z.AI throttle rotated into a keyless Anthropic and
+the cycle reported "API key not set for Anthropic" as the task's
+failure). `provider_chain` resolves each candidate through the same
+`ResolvedLlmConfig` the stages use, so "configured" means exactly what
+the stage will find. The `--provider` you pass stays first regardless —
+choosing an unkeyed provider is operator error and should fail loudly.
+
+## Free-tier models (measured 2026-11-15)
+
+Provider capacity is the binding constraint on how much the loop can do.
+Probe a model before pinning it: a 429 with `limit: 0` means **no
+allocation at all**, not "spent today", and Google attaches a bogus
+~16 h `retryDelay` to those denials.
+
+| Provider / model | Free-tier reality |
+| --- | --- |
+| Google `gemini-4-argon`, `gemini-4-carbon`, `gemini-3.1-pro-preview` | `limit: 0` on every metric — never usable on a free key |
+| Google `gemini-2.5-pro`, `gemini-2.5-flash` | closed to new users |
+| Google `gemini-3-flash-preview` | works, 20 requests/day — one cycle needs ~15 |
+| Google `gemini-3.1-flash-lite` | real daily headroom; weakest output quality (writes empty artifacts) |
+| Z.AI `glm-4.5-flash` (metered `api/paas/v4`) | **free, no request ceiling, 131k context, native tool calling** |
+| Z.AI `glm-4.7-flash` (metered) | free too, but 429 `code 1305` overload more often |
+
+Z.AI free Flash models are reached on the **metered** endpoint, not the
+coding-plan one: leave the model unprefixed (`--model glm-4.5-flash`).
+`zai-coding::` / `zai::` prefixes select `api/coding/paas/v4/`, which is
+the Coding Plan entitlement and must not be used by CI or unsupported
+tools. A `code 1305` "temporarily overloaded" is a transient throttle,
+already covered by the rate-limit classifier; with no reset hint it
+rotates, so keep the chain honest (above).
 
 ## Loop context
 

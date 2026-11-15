@@ -14,6 +14,7 @@
 //! so the loop survives restarts, crashes and context loss.
 
 use anyhow::{anyhow, Context, Result};
+use clawdius_core::config::LlmConfig;
 use clawdius_core::maintenance::{
     now_rfc3339, Backlog, CycleOutcome, CycleRecord, Ledger, Task, TaskKind, TaskStatus,
 };
@@ -93,8 +94,13 @@ pub(super) async fn handle_maintain(
     );
     println!();
 
+    // Only providers the stages can actually authenticate against enter
+    // the rotation; a missing key is not a rescue, it is a dead end.
+    let llm_config = super::load_config(config_path.as_deref())
+        .map(|c| c.llm)
+        .unwrap_or_default();
     let mut coordinator = FallbackCoordinator::new(FallbackPolicy {
-        chain: provider_chain(&provider),
+        chain: provider_chain(&provider, &llm_config),
         max_attempts: MAX_PROVIDER_ROTATIONS,
         cooldown: Duration::from_mins(5),
     });
@@ -937,10 +943,21 @@ fn default_backlog(repo: &Path) -> PathBuf {
     repo.join(".clawdius/maintenance/backlog.json")
 }
 
-fn provider_chain(preferred: &str) -> Vec<String> {
+/// Preferred provider first, then configured fallbacks.
+///
+/// A fallback with no key cannot rescue a cycle: rotating into it turns a
+/// transient throttle into a config error that reads like a task failure
+/// (live: a Z.AI overload rotated into an exhausted Google key and the
+/// cycle reported RED instead of retrying). `ResolvedLlmConfig` is the
+/// same resolution the stage uses, so "configured" here means exactly
+/// "the stage would find a key".
+fn provider_chain(preferred: &str, llm: &LlmConfig) -> Vec<String> {
     let mut chain = vec![preferred.to_string()];
     for fallback in ["google", "anthropic", "deepseek", "zai"] {
-        if fallback != preferred {
+        if fallback == preferred {
+            continue;
+        }
+        if clawdius_core::llm::ResolvedLlmConfig::from_config(llm, fallback).is_ok() {
             chain.push(fallback.to_string());
         }
     }
@@ -1260,11 +1277,41 @@ mod tests {
 
     #[test]
     fn provider_chain_starts_with_preference_and_has_no_duplicates() {
-        let chain = provider_chain("google");
+        let chain = provider_chain("google", &LlmConfig::default());
         assert_eq!(chain[0], "google");
         let mut seen = std::collections::HashSet::new();
         for p in &chain {
             assert!(seen.insert(p.clone()), "duplicate provider {p}");
+        }
+    }
+
+    #[test]
+    fn provider_chain_skips_providers_with_no_key() {
+        // Live: a Z.AI throttle rotated into Google, whose key was
+        // exhausted, and the cycle died as a task failure. Unconfigured
+        // providers must never enter the rotation.
+        let mut llm = LlmConfig::default();
+        llm.deepseek = Some(clawdius_core::config::ProviderConfig {
+            model: None,
+            api_key_env: None,
+            api_key: Some("sk-test".into()),
+            base_url: None,
+        });
+        let chain = provider_chain("zai", &llm);
+        assert_eq!(chain[0], "zai");
+        assert!(chain.contains(&"deepseek".to_string()));
+        // Every fallback is one the stages can authenticate against (the
+        // preferred provider is the operator's choice and stays first).
+        for p in chain.iter().skip(1) {
+            assert!(
+                clawdius_core::llm::ResolvedLlmConfig::from_config(&llm, p).is_ok(),
+                "{p} entered the chain without credentials"
+            );
+        }
+        // A provider with no config and no env key stays out. Skipped if
+        // the test environment exports one, since env wins over config.
+        if std::env::var("ANTHROPIC_API_KEY").is_err() {
+            assert!(!chain.contains(&"anthropic".to_string()));
         }
     }
 
