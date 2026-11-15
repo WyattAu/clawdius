@@ -774,6 +774,21 @@ fn first_line(text: &str) -> String {
         .to_string()
 }
 
+/// A goal may be one long line; the PR title needs the first sentence,
+/// capped. Live: flash-lite's default goal is a 600-char single line and
+/// became the whole PR title.
+fn first_sentence_capped(text: &str, cap: usize) -> String {
+    let line = first_line(text);
+    // Sentences end at . or ; — colons introduce lists, not sentence ends.
+    let end = line.find(['.', ';']).map_or(line.len(), |i| i + 1);
+    let mut s: String = line.chars().take(end).collect();
+    if s.chars().count() > cap {
+        s = s.chars().take(cap - 1).collect();
+        s.push('…');
+    }
+    s
+}
+
 /// Copy a worktree's `.clawdius/` run artifacts into the main repo.
 fn preserve_artifacts(worktree: &Path, repo: &Path, task_id: &str) {
     let src = worktree.join(".clawdius");
@@ -846,7 +861,7 @@ fn open_pr(repo: &Path, branch: &str, task: &Task) -> Option<String> {
     let title = format!(
         "maint({}): {}",
         task.kind.slug(),
-        first_line(task.effective_goal().as_str())
+        first_sentence_capped(task.effective_goal().as_str(), 70)
     );
     let output = Command::new("gh")
         .current_dir(repo)
@@ -1205,6 +1220,22 @@ mod tests {
         assert_eq!(status_for(CycleOutcome::Red, false), TaskStatus::Failed);
         assert_eq!(status_for(CycleOutcome::Green, false), TaskStatus::Done);
         assert_eq!(status_for(CycleOutcome::Idle, false), TaskStatus::Pending);
+    }
+
+    #[test]
+    fn pr_titles_take_the_first_sentence_and_cap_the_rest() {
+        let goal = "Upgrade dependencies that have newer patch or minor releases, one at \
+                    a time, keeping the gates green. Do not cross major versions.";
+        // The first sentence exceeds the cap: the cap wins, ellipsized.
+        assert_eq!(
+            first_sentence_capped(goal, 70),
+            "Upgrade dependencies that have newer patch or minor releases, one at …"
+        );
+        // A short sentence passes through untouched.
+        assert_eq!(
+            first_sentence_capped("Fix the flaky gate: it reorders.", 200),
+            "Fix the flaky gate: it reorders."
+        );
     }
 
     #[test]
