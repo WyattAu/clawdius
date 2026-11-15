@@ -211,6 +211,7 @@ pub(super) async fn handle_maintain(
             pr_url,
             outcome_tool_calls,
             outcome_files_changed,
+            quota_blocked,
         ) = match outcome {
             Ok(cycle) => (
                 cycle.outcome,
@@ -219,8 +220,17 @@ pub(super) async fn handle_maintain(
                 cycle.pr_url,
                 cycle.tool_calls,
                 cycle.files_changed,
+                cycle.quota_blocked,
             ),
-            Err(e) => (CycleOutcome::Error, format!("{e:#}"), None, None, 0, 0),
+            Err(e) => (
+                CycleOutcome::Error,
+                format!("{e:#}"),
+                None,
+                None,
+                0,
+                0,
+                false,
+            ),
         };
 
         // A stage that resolved the git project root instead of the
@@ -245,11 +255,7 @@ pub(super) async fn handle_maintain(
             }
         }
 
-        let status = match cycle_outcome {
-            CycleOutcome::Green => TaskStatus::Done,
-            CycleOutcome::Red | CycleOutcome::Error => TaskStatus::Failed,
-            CycleOutcome::Idle => TaskStatus::Pending,
-        };
+        let status = status_for(cycle_outcome, quota_blocked);
         backlog.set_status(&task.id, status);
         backlog.save(&backlog_path)?;
 
@@ -292,6 +298,23 @@ pub(super) async fn handle_maintain(
             break;
         }
 
+        // A quota-blocked cycle requeued its task. Park until the reset:
+        // the chain's other entries are usually unconfigured, and letting
+        // the rotation reach them spends the task on a guaranteed config
+        // error (live: "API key not set for Anthropic" on a quota-red).
+        if quota_blocked {
+            let wait = coordinator.ledger.soonest_reset().map_or_else(
+                || Duration::from_secs(interval_secs),
+                |d| d.max(Duration::from_secs(interval_secs)),
+            );
+            println!(
+                "    provider quota blocked — task requeued, parking {}s",
+                wait.as_secs()
+            );
+            sleep_or_stop(wait.as_secs());
+            continue;
+        }
+
         // If every provider is cooling down, park until the soonest reset
         // rather than burning the interval on guaranteed failures.
         if let Some(resume_in) = coordinator.ledger.soonest_reset() {
@@ -332,6 +355,10 @@ struct CycleReport {
     tool_calls: u32,
     /// Files the cycle changed on the branch.
     files_changed: u32,
+    /// The cycle failed only because the provider's quota is spent until a
+    /// known reset: the task is requeued (not failed) and the loop parks
+    /// until the reset instead of rotating to unconfigured providers.
+    quota_blocked: bool,
 }
 
 /// Run one task, rotating providers on quota errors.
@@ -362,6 +389,7 @@ async fn run_task_with_rotation(
                         attempt - 1,
                         last_error.unwrap_or_else(|| "unknown".to_string())
                     ),
+                    quota_blocked: false,
                     branch: None,
                     pr_url: None,
                     tool_calls: 0,
@@ -402,6 +430,7 @@ async fn run_task_with_rotation(
                                     "provider `{provider}` quota exhausted (reset hint exceeds {}s); task retried after the reset",
                                     MAX_HONORED_WAIT.as_secs()
                                 ),
+                                quota_blocked: true,
                                 branch: None,
                                 pr_url: None,
                                 tool_calls: 0,
@@ -430,6 +459,7 @@ async fn run_task_with_rotation(
                     return Ok(CycleReport {
                         outcome: CycleOutcome::Red,
                         note: text,
+                        quota_blocked: false,
                         branch: None,
                         pr_url: None,
                         tool_calls: 0,
@@ -444,6 +474,7 @@ async fn run_task_with_rotation(
     Ok(CycleReport {
         outcome: CycleOutcome::Error,
         note: last_error.unwrap_or_else(|| "all attempts failed".to_string()),
+        quota_blocked: false,
         branch: None,
         pr_url: None,
         tool_calls: 0,
@@ -513,6 +544,7 @@ async fn run_task_once(
                 return Ok(CycleReport {
                     outcome: CycleOutcome::Green,
                     note: format!("gates green; nothing to change ({tool_calls} tool calls)"),
+                    quota_blocked: false,
                     branch: None,
                     pr_url: None,
                     tool_calls,
@@ -551,6 +583,7 @@ async fn run_task_once(
                             format!(" | stdout: {}", first_line(&stdout))
                         }
                     ),
+                    quota_blocked: false,
                     branch: None,
                     pr_url: None,
                     tool_calls,
@@ -583,6 +616,7 @@ async fn run_task_once(
                         "committed to local branch `{branch}` ({files_changed} file(s), no remote push)"
                     )
                 },
+                quota_blocked: false,
                 branch: Some(branch),
                 pr_url,
                 tool_calls,
@@ -829,6 +863,17 @@ fn replenish_task(backlog: &Backlog) -> Option<Task> {
         }
     }
     None
+}
+
+/// Backlog status for a finished cycle. A quota-blocked failure is the
+/// provider's problem, not the task's: requeue it for after the reset.
+const fn status_for(outcome: CycleOutcome, quota_blocked: bool) -> TaskStatus {
+    match outcome {
+        CycleOutcome::Green => TaskStatus::Done,
+        CycleOutcome::Idle => TaskStatus::Pending,
+        CycleOutcome::Red | CycleOutcome::Error if quota_blocked => TaskStatus::Pending,
+        CycleOutcome::Red | CycleOutcome::Error => TaskStatus::Failed,
+    }
 }
 
 fn print_backlog(backlog: &Backlog, path: &Path) {
@@ -1131,6 +1176,16 @@ mod tests {
         assert!(!should_honor_wait(
             MAX_HONORED_WAIT + Duration::from_secs(1)
         ));
+    }
+
+    #[test]
+    fn quota_reds_requeue_and_hard_reds_fail() {
+        use clawdius_core::maintenance::TaskStatus;
+        assert_eq!(status_for(CycleOutcome::Red, true), TaskStatus::Pending);
+        assert_eq!(status_for(CycleOutcome::Error, true), TaskStatus::Pending);
+        assert_eq!(status_for(CycleOutcome::Red, false), TaskStatus::Failed);
+        assert_eq!(status_for(CycleOutcome::Green, false), TaskStatus::Done);
+        assert_eq!(status_for(CycleOutcome::Idle, false), TaskStatus::Pending);
     }
 
     #[test]
