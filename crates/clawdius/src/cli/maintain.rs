@@ -1077,6 +1077,19 @@ fn is_rate_limit(text: &str) -> bool {
         "high demand",
         "overloaded",
         "try again later",
+        // Gateway/upstream shapes: a router or gateway in front of the
+        // provider reports the provider's hiccup as 502/504. Live: the
+        // FreeLLMAPI router turned one empty GLM completion into a 502
+        // "provider-side failure", which the matcher let through as a
+        // task failure.
+        "502",
+        "504",
+        "bad gateway",
+        "gateway timeout",
+        "upstream_failed",
+        "provider_error",
+        "empty completion",
+        "empty_completion",
     ]
     .iter()
     .any(|needle| lower.contains(needle))
@@ -1273,6 +1286,11 @@ mod tests {
              This model is currently experiencing high demand."
         ));
         assert!(is_rate_limit("model is overloaded, please retry"));
+        // Gateway shapes live-caught on 2026-11-15 (router 502).
+        assert!(is_rate_limit(
+            "Request failed with status code '502 Bad Gateway'. \"code\":\"upstream_failed\""
+        ));
+        assert!(is_rate_limit("empty completion from GLM-4.5 Flash"));
         assert!(!is_rate_limit("semantic loop detected"));
         assert!(!is_rate_limit("compile error: expected `;`"));
         assert!(!is_rate_limit("error[E0308]: mismatched types"));
