@@ -62,17 +62,27 @@ gets lint/deps/docs/tests attention on a rotation.
 ## Provider rotation
 
 A quota or rate-limit failure is not a task failure. The loop reuses
-`FallbackCoordinator` and distinguishes two cases:
+`FallbackCoordinator` and distinguishes three cases:
 
 | Error carries a reset hint | Behaviour |
 | --- | --- |
-| yes (`retryDelay: 37s`, `retry in 37`, `retry after 12`) | wait that long, then retry the same provider |
+| yes, ≤ 10 min (`retryDelay: 37s`, `retry in 37`) | wait that long, then retry the same provider |
+| yes, > 10 min (free-tier daily resets: `retryDelay: 57923s`) | fail the cycle fast (≈1 s), requeue the task as `pending`, park until the reset |
 | no | mark it cooling down and try the next provider in the chain |
 
 Waiting beats rotating when the provider says when it will be back: the
 chain's other entries may be unconfigured or out of credit, so failing
-over can turn a 40-second wait into a dead task. The hint is capped at
-30 minutes so a bogus value cannot park the loop for a day.
+over can turn a 40-second wait into a dead task. Sleeping beats
+failing for short hints; for a multi-hour hint it wedged a task in
+`running` for hours while the ledger said idle — hence the 10-minute
+threshold (`MAX_HONORED_WAIT`). The parsed hint is capped at 30
+minutes so a bogus value cannot park the loop for a day.
+
+A quota-blocked cycle never marks the task `failed` and never lets the
+rotation reach the rest of the chain (live: a quota-red followed by
+"API key not set for Anthropic" recorded as the task's failure).
+`status_for` decides: red/error with `quota_blocked` → `pending`;
+otherwise red/error → `failed`.
 
 After `MAX_PROVIDER_ROTATIONS` attempts the task is recorded as `error`.
 When every provider in the chain is cooling down, the loop parks until
@@ -81,6 +91,22 @@ failures.
 
 Rate-limit shapes recognised: HTTP 429, `rate limit`, `quota`,
 `insufficient balance`, `RESOURCE_EXHAUSTED`, `too many requests`.
+
+## Loop context
+
+Every loop stage (implementation tool loop and single-call text stages)
+gets the same context the TUI and opencode give their models:
+
+- the repo's `AGENTS.md` (else `CLAUDE.md`), capped at 8k chars;
+- up to 2 skills whose name/description tokens overlap the task text,
+  bodies inlined (3k chars each) — inlined rather than referenced,
+  because the loop's `read_file` rejects paths outside the workspace.
+
+Skill roots: `<repo>/.opencode/skills`, `<repo>/.claude/skills`,
+`~/.agents/skills`, `~/.config/opencode/skills`, `~/.clawdius/skills`
+(repo roots first, first root wins on name collisions). Selection is
+deterministic whole-word token matching — no LLM, no randomness; see
+`crates/clawdius-core/src/context/loop_context.rs`.
 
 ## Commands
 
