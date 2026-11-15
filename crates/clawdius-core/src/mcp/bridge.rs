@@ -207,6 +207,12 @@ impl McpBridge {
     }
 
     /// Tool definitions for the loop, `mcp__`-prefixed.
+    ///
+    /// Schemas are sanitized to Google's function-declaration subset:
+    /// the API rejects valid-JSON-Schema keys like `additionalProperties`
+    /// with a hard 400, so anything beyond {type, format, description,
+    /// nullable, enum, items, properties, required} is stripped. Stripping
+    /// is harmless for permissive providers.
     #[must_use]
     pub fn tool_definitions(&self) -> Vec<crate::llm::providers::Tool> {
         self.tools
@@ -214,7 +220,7 @@ impl McpBridge {
             .map(|t| {
                 crate::llm::providers::Tool::new(t.name.clone())
                     .with_description(t.description.clone())
-                    .with_schema(t.input_schema.clone())
+                    .with_schema(sanitize_schema(&t.input_schema))
             })
             .collect()
     }
@@ -469,6 +475,49 @@ pub fn parse_opencode_config(raw: &str) -> Result<Vec<ServerSpec>, String> {
     Ok(specs)
 }
 
+/// Google's function-declaration API accepts a strict JSON-Schema subset;
+/// keys outside it are a hard 400 ("Unknown name \"additionalProperties\"").
+#[must_use]
+pub fn sanitize_schema(schema: &Value) -> Value {
+    const ALLOWED: &[&str] = &[
+        "type",
+        "format",
+        "description",
+        "nullable",
+        "enum",
+        "items",
+        "properties",
+        "required",
+    ];
+    match schema {
+        Value::Object(map) => {
+            let mut out = serde_json::Map::new();
+            for (key, value) in map {
+                if !ALLOWED.contains(&key.as_str()) {
+                    continue;
+                }
+                let cleaned = match key.as_str() {
+                    "properties" => Value::Object(
+                        value
+                            .as_object()
+                            .map(|m| {
+                                m.iter()
+                                    .map(|(k, v)| (k.clone(), sanitize_schema(v)))
+                                    .collect()
+                            })
+                            .unwrap_or_default(),
+                    ),
+                    "items" => sanitize_schema(value),
+                    _ => value.clone(),
+                };
+                out.insert(key.clone(), cleaned);
+            }
+            Value::Object(out)
+        },
+        other => other.clone(),
+    }
+}
+
 /// Strip JSONC comments and trailing commas. String literals are
 /// preserved (a `//` inside a string is content, not a comment).
 #[must_use]
@@ -585,6 +634,39 @@ mod tests {
         assert_eq!(split_prefixed("read_file"), None);
         assert_eq!(split_prefixed("mcp__no__"), None);
         assert_eq!(split_prefixed("mcp____tool"), None);
+    }
+
+    #[test]
+    fn schemas_are_sanitized_to_googles_subset() {
+        // Live: Google 400s on additionalProperties with "Unknown name".
+        let raw = serde_json::json!({
+            "type": "object",
+            "properties": {
+                "path": {"type": "string", "minLength": 1, "default": "x"},
+                "opts": {
+                    "type": "object",
+                    "additionalProperties": {"type": "string"},
+                    "properties": {"depth": {"type": "integer", "title": "Depth"}}
+                }
+            },
+            "required": ["path"],
+            "additionalProperties": false,
+            "$schema": "http://json-schema.org/draft-07/schema#"
+        });
+        let clean = sanitize_schema(&raw);
+        let s = serde_json::to_string(&clean).unwrap();
+        assert!(!s.contains("additionalProperties"));
+        assert!(!s.contains("$schema"));
+        assert!(!s.contains("minLength"));
+        assert!(!s.contains("\"title\""));
+        assert!(!s.contains("\"default\""));
+        assert_eq!(clean["type"], "object");
+        assert_eq!(clean["required"], serde_json::json!(["path"]));
+        assert_eq!(clean["properties"]["path"]["type"], "string");
+        assert_eq!(
+            clean["properties"]["opts"]["properties"]["depth"]["type"],
+            "integer"
+        );
     }
 
     #[test]
