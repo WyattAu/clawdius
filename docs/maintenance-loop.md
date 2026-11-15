@@ -180,7 +180,20 @@ OPENAI_API_KEY=$(cat ~/.config/opencode/keys/freellmapi) \
 
 `auto` lets the router pick a model that still has quota; pin a model id
 (`glm-4.5-flash`, `gemma-4-26b-a4b-it`) when output quality matters more
-than capacity. Two wiring facts cost a debugging session each:
+than capacity. Measured on 2026-11-15, that distinction is not academic:
+
+| Loop model | Cycle output |
+| --- | --- |
+| `auto` (→ `gemini-3.1-flash-lite`) | GREEN docs cycle whose only edit **corrupted** a README table row (`| :exit | Exit the TUI |doc` \| Generate documentation \|`); gates passed because markdown is not compiled |
+| `auto:smart` (→ `gemini-3.8-flash`) | RED lint cycle: semantic-loop guard tripped after 4 identical states |
+| `glm-4.5-flash` (pinned, via router or direct) | 3 clean cycles, 14–16 tool calls each, one real dependency-refresh PR |
+
+The router's `auto` strategies optimise reliability and speed, so they
+land on the cheapest model with quota left, not the one that can hold an
+edit together. Pin the model and let the router do what it is good at:
+key health checks, per-key rate tracking, and 429 failover.
+
+Two wiring facts cost a debugging session each:
 
 - **The base URL needs its trailing slash.** genai appends
   `chat/completions` to whatever endpoint is configured, so
