@@ -341,13 +341,22 @@ async fn run_chat_stage(
         llm_config.model = m.to_string();
     }
     let client = create_provider(&llm_config)?;
+    // Same context the implementation loop gets: repo conventions and
+    // matching skills, so planning does not invent rules the repo states.
+    let context = clawdius_core::context::build_loop_context(&std::env::current_dir()?, prompt);
+    let mut system = "You are a precise software planning assistant. Respond with the \
+                      deliverable only — no tool use, no questions, no preamble."
+        .to_string();
+    if !context.is_empty() {
+        system.push_str("\n\n");
+        system.push_str(&context.block);
+        println!("    context: {}", context.summary());
+    }
     client
         .chat(vec![
             ChatMessage {
                 role: ChatRole::System,
-                content: "You are a precise software planning assistant. Respond with the \
-                          deliverable only — no tool use, no questions, no preamble."
-                    .to_string(),
+                content: system,
             },
             ChatMessage {
                 role: ChatRole::User,

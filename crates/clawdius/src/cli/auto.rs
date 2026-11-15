@@ -156,6 +156,22 @@ pub(super) async fn handle_auto(
             (out, is_err)
         })
     };
+    // Loop context: the repo's conventions and the skills that match this
+    // task. The TUI and opencode both give their models these; tool loops
+    // used to get neither, so they guessed at conventions the repo spells
+    // out. Inlined (not advertised as paths) because the loop's read_file
+    // refuses paths outside the workspace root.
+    let workspace_root = std::env::current_dir()?;
+    let loop_context = clawdius_core::context::build_loop_context(&workspace_root, &task);
+    let mut system_prompt = mode.system_prompt().to_string();
+    if !loop_context.is_empty() {
+        system_prompt.push_str("\n\n");
+        system_prompt.push_str(&loop_context.block);
+        if output_format == OutputFormat::Text {
+            println!("Loop context: {}", loop_context.summary());
+        }
+    }
+
     let engine = clawdius_core::tools::subagent::SubagentTool::new(
         client,
         tools,
@@ -165,7 +181,7 @@ pub(super) async fn handle_auto(
             ..clawdius_core::tools::subagent::SubagentConfig::default()
         },
     )
-    .system_prompt(mode.system_prompt().to_string());
+    .system_prompt(system_prompt);
 
     if output_format == OutputFormat::Text {
         println!("Working...");

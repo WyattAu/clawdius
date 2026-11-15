@@ -14,6 +14,7 @@ mod aggregator;
 mod builder;
 mod cache;
 mod compactor;
+mod loop_context;
 mod mentions;
 mod window_manager;
 
@@ -22,6 +23,7 @@ pub use aggregator::{AggregatedContext, ContextAggregator, FileContext, SymbolCo
 pub use builder::{ContextBuilder, ContextContent};
 pub use cache::{CacheStats, CachedContext, ContextCache};
 pub use compactor::{CompactResult, ContextCompactor, ContextCompactorConfig, ProviderTokenLimits};
+pub use loop_context::{build as build_loop_context, LoopContext, SkillDoc};
 pub use mentions::{Mention, MentionParser, MentionResolver};
 pub use window_manager::{ContextWindowManager, FileInfo};
 
