@@ -159,6 +159,49 @@ cycle's `MCP:` line; a hung *call* costs 30s, not the cycle.
 
 See `crates/clawdius-core/src/mcp/bridge.rs`.
 
+## FreeLLMAPI router (free-tier pool)
+
+A single free model is a hard ceiling: Google's free tier is 20
+requests/day on the Flash models, and one cycle needs ~15. FreeLLMAPI
+(`github.com/tashfeenahmed/freellmapi`) is a self-hosted router that puts
+every free tier behind one OpenAI-compatible endpoint, tracks per-key
+RPM/RPD/TPM/TPD caps, and fails over on 429/5xx. The loop talks to it as
+an ordinary OpenAI-compatible provider — no code path is special-cased.
+
+```bash
+# install / update (Docker; ~/freellmapi, dashboard on :3001)
+curl -fsSL https://freellmapi.co/install.sh | bash
+
+# loop against the pool; the trailing slash is load-bearing
+OPENAI_BASE_URL=http://localhost:3001/v1/ \
+OPENAI_API_KEY=$(cat ~/.config/opencode/keys/freellmapi) \
+  clawdius maintain --interval 1800 -P openai-compatible --model auto
+```
+
+`auto` lets the router pick a model that still has quota; pin a model id
+(`glm-4.5-flash`, `gemma-4-26b-a4b-it`) when output quality matters more
+than capacity. Two wiring facts cost a debugging session each:
+
+- **The base URL needs its trailing slash.** genai appends
+  `chat/completions` to whatever endpoint is configured, so
+  `http://localhost:3001/v1` becomes `/v1chat/completions` (the SPA
+  fallback answers with HTML).
+- **Custom endpoints must pin `AdapterKind::OpenAI`.** genai infers the
+  adapter from the model name, and an unknown name — a router alias like
+  `auto`, or any local model — falls back to the Ollama adapter and posts
+  to `/v1/api/chat`. `OpenAIProvider::with_base_url` pins it.
+
+Credentials live outside the repo: `~/.config/opencode/keys/freellmapi`
+(the router's unified key, mode 0600) and
+`~/.config/opencode/keys/freellmapi-admin` (dashboard login). Provider
+keys are entered on the dashboard's Keys page; the router stores them
+AES-256-GCM encrypted in its own volume. Upstream terms still apply when
+traffic is proxied, so the Z.AI entry is only reachable through the three
+free Flash models the catalog lists for it (`glm-4.5-flash`,
+`glm-4.7-flash`, `glm-4.6v-flash`) — no paid GLM model can be selected,
+and no plan quota is consumed. Strict separation means removing that key
+and leaving Z.AI as a direct fallback instead.
+
 ## Commands
 
 ```bash
