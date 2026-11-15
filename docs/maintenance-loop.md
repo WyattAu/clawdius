@@ -108,6 +108,23 @@ Skill roots: `<repo>/.opencode/skills`, `<repo>/.claude/skills`,
 deterministic whole-word token matching — no LLM, no randomness; see
 `crates/clawdius-core/src/context/loop_context.rs`.
 
+### MCP tools
+
+The loop's tool list also extends with opencode's MCP fleet (same
+`servers` map in `~/.config/opencode/opencode.jsonc`), exposed as
+`mcp__<server>__<tool>`. Local stdio servers only in v1 — remote
+(`url`) entries need an HTTP transport. A server that fails to launch,
+initialize, or answer within 8s is skipped with the reason in the
+cycle's `MCP:` line; a hung *call* costs 30s, not the cycle.
+
+| Environment variable | Effect |
+| --- | --- |
+| `CLAWDIUS_MCP=off` | disable the bridge |
+| `CLAWDIUS_MCP_SERVERS=a,b` | restrict to those servers |
+| `CLAWDIUS_MCP_CONFIG` | override the config path |
+
+See `crates/clawdius-core/src/mcp/bridge.rs`.
+
 ## Commands
 
 ```bash
