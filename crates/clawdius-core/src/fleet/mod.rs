@@ -35,7 +35,9 @@ pub mod router;
 
 pub use cycle::{CyclePhase, DevCycle};
 pub use gates::{GateDecision, GateId, GatePolicy, GateRecord, GateStatus, ReviewQueue};
-pub use opencode_client::{MessageSummary, ModelRef, OpenCodeClient, SessionSummary};
+pub use opencode_client::{
+    MessageSummary, ModelRef, OpenCodeClient, OpenCodeEvent, SessionSummary,
+};
 pub use registry::{RepoEntry, RepoRegistry};
 pub use router::{DispatchDecision, FleetRouter};
 

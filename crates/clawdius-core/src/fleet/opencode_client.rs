@@ -98,6 +98,88 @@ impl ModelRef {
     }
 }
 
+/// One event from the server's `GET /api/event` SSE stream, narrowed to
+/// what a fleet dashboard reacts to. Everything unrecognised stays
+/// [`OpenCodeEvent::Other`] with its type string — never dropped silently.
+#[derive(Debug, Clone, PartialEq)]
+pub enum OpenCodeEvent {
+    /// A session finished generating (`session.idle`).
+    SessionIdle {
+        /// Session that went idle.
+        session_id: String,
+    },
+    /// A run failed (`session.error`).
+    SessionError {
+        /// Session that errored.
+        session_id: String,
+        /// Error text, when the server carried one.
+        error: Option<String>,
+    },
+    /// Session metadata changed (`session.updated`).
+    SessionUpdated {
+        /// Session that changed.
+        session_id: String,
+    },
+    /// Any other event type (message.part.updated, …).
+    Other {
+        /// The server's event type string.
+        kind: String,
+    },
+}
+
+impl OpenCodeEvent {
+    /// Parse one SSE `data:` payload (a JSON event envelope).
+    #[must_use]
+    pub fn parse(payload: &str) -> Option<Self> {
+        let v: serde_json::Value = serde_json::from_str(payload).ok()?;
+        let kind = v.get("type").and_then(|t| t.as_str())?.to_string();
+        let props = v.get("properties");
+        let session_id = props
+            .and_then(|p| p.get("sessionID"))
+            .and_then(|s| s.as_str())
+            .map(str::to_string)
+            .or_else(|| {
+                props
+                    .and_then(|p| p.get("info"))
+                    .and_then(|i| i.get("id"))
+                    .and_then(|s| s.as_str())
+                    .map(str::to_string)
+            });
+        match kind.as_str() {
+            "session.idle" => Some(Self::SessionIdle {
+                session_id: session_id.unwrap_or_default(),
+            }),
+            "session.error" => Some(Self::SessionError {
+                session_id: session_id.unwrap_or_default(),
+                error: props.and_then(|p| p.get("error")).map(|e| e.to_string()),
+            }),
+            "session.updated" => Some(Self::SessionUpdated {
+                session_id: session_id.unwrap_or_default(),
+            }),
+            _ => Some(Self::Other { kind }),
+        }
+    }
+}
+
+/// Parse one SSE frame into its `data:` payloads (multi-line data
+/// joined). Returns `None` for comments, keep-alives, and frames with no
+/// data line.
+fn parse_sse_frame(frame: &str) -> Option<String> {
+    let mut data_lines: Vec<&str> = Vec::new();
+    for line in frame.lines() {
+        if let Some(rest) = line.strip_prefix("data:") {
+            data_lines.push(rest.strip_prefix(' ').unwrap_or(rest));
+        }
+        // "event:", "id:", ":" comments are ignored — the payload's own
+        // `type` field is the discriminator.
+    }
+    if data_lines.is_empty() {
+        None
+    } else {
+        Some(data_lines.join("\n"))
+    }
+}
+
 // --- wire types (server adds fields freely; everything defaults) ---
 
 #[derive(Deserialize, Default)]
@@ -580,6 +662,106 @@ impl OpenCodeClient {
             .await?;
         Ok(())
     }
+
+    /// Subscribe to the server's live event stream (`GET /api/event`).
+    ///
+    /// The stream stays open until the server closes it or the request
+    /// fails; frames without a parseable JSON payload are skipped. On a
+    /// stream error, drop the stream and call again — the server treats
+    /// each request as a fresh subscription.
+    ///
+    /// # Errors
+    ///
+    /// [`Error::Session`] when the request cannot be made or is rejected.
+    pub async fn events(
+        &self,
+    ) -> Result<impl futures::Stream<Item = Result<OpenCodeEvent, Error>>, Error> {
+        use futures::StreamExt;
+
+        let url = format!("{}/api/event", self.base_url);
+        let resp = self
+            .http
+            .get(&url)
+            .header("Authorization", self.auth_header())
+            .header("Accept", "text/event-stream")
+            .timeout(Duration::from_secs(u64::from(u32::MAX)))
+            .send()
+            .await
+            .map_err(|e| Error::Session(format!("GET /api/event failed: {e}")))?;
+        let resp = Self::check_status_only(resp, "/api/event").await?;
+        Ok(resp
+            .bytes_stream()
+            .scan(SseSplitter::default(), |st, chunk| {
+                let frames = match chunk {
+                    Ok(bytes) => {
+                        st.push(&bytes);
+                        st.drain_frames()
+                    },
+                    Err(e) => vec![Err(Error::Session(format!("event stream error: {e}")))],
+                };
+                futures::future::ready(Some(futures::stream::iter(frames)))
+            })
+            .flatten()
+            .filter_map(|res| {
+                futures::future::ready(match res {
+                    Err(e) => Some(Err(e)),
+                    Ok(frame) => parse_sse_frame(&frame)
+                        .and_then(|payload| OpenCodeEvent::parse(&payload).map(Ok)),
+                })
+            }))
+    }
+
+    /// Status check without JSON parsing (SSE bodies are not JSON).
+    async fn check_status_only(
+        resp: reqwest::Response,
+        path: &str,
+    ) -> Result<reqwest::Response, Error> {
+        let status = resp.status();
+        if status == reqwest::StatusCode::UNAUTHORIZED {
+            return Err(Error::Session(format!(
+                "{path}: unauthorized; the service password in \
+                 ~/.config/opencode/service.json does not match the running server"
+            )));
+        }
+        if !status.is_success() {
+            return Err(Error::Session(format!("{path}: HTTP {status}")));
+        }
+        Ok(resp)
+    }
+}
+
+/// Splits an SSE byte stream into blank-line-separated frames across
+/// chunk boundaries. Buffers at most [`SseSplitter::MAX_BUFFER`] bytes to
+/// bound memory on hostile streams.
+#[derive(Default)]
+struct SseSplitter {
+    buf: Vec<u8>,
+}
+
+impl SseSplitter {
+    const MAX_BUFFER: usize = 1 << 20;
+
+    fn push(&mut self, bytes: &[u8]) {
+        if self.buf.len() + bytes.len() <= Self::MAX_BUFFER {
+            self.buf.extend_from_slice(bytes);
+        } else {
+            // Oversized frame: drop it rather than grow unbounded.
+            self.buf.clear();
+        }
+    }
+
+    fn drain_frames(&mut self) -> Vec<Result<String, Error>> {
+        // Frames end at a blank line (`\n\n`). CRLF servers leave a
+        // trailing `\r` on the frame; `lines()` in `parse_sse_frame`
+        // strips it, so only the LF LF boundary needs handling here.
+        let mut frames = Vec::new();
+        while let Some(pos) = self.buf.windows(2).position(|w| w == b"\n\n") {
+            let frame = String::from_utf8_lossy(&self.buf[..pos]).into_owned();
+            self.buf.drain(..pos + 2);
+            frames.push(Ok(frame));
+        }
+        frames
+    }
 }
 
 /// Percent-encode only what a query value must not contain.
@@ -821,6 +1003,135 @@ mod tests {
         let err = OpenCodeClient::discover_with(bin.to_str().expect("utf8"), &service_json)
             .expect_err("should fail");
         assert!(err.to_string().contains("service start"), "{err}");
+    }
+
+    #[test]
+    fn sse_frame_parses_data_lines_and_ignores_comments() {
+        let frame = "event: session.idle\nid: 1\ndata: {\"type\":\"x\"}\n:keep-alive\n";
+        assert_eq!(parse_sse_frame(frame), Some("{\"type\":\"x\"}".to_string()));
+        assert_eq!(parse_sse_frame(": ping\n\n"), None);
+        assert_eq!(parse_sse_frame("event: foo\n"), None);
+    }
+
+    #[test]
+    fn sse_frame_joins_multi_line_data() {
+        let frame = "data: {\"a\":\ndata: 1}\n\n";
+        assert_eq!(parse_sse_frame(frame), Some("{\"a\":\n1}".to_string()));
+    }
+
+    #[test]
+    fn splitter_reassembles_frames_across_chunk_boundaries() {
+        let mut st = SseSplitter::default();
+        assert!(st.drain_frames().is_empty(), "nothing before a boundary");
+        st.push(b"data: {\"type\":\"session.id");
+        assert!(st.drain_frames().is_empty());
+        st.push(b"le\"} \n\ndata: {\"type\":\"other\"}\n\ntail");
+        let frames: Vec<String> = st
+            .drain_frames()
+            .into_iter()
+            .map(|r| r.expect("frame ok"))
+            .collect();
+        assert_eq!(
+            frames,
+            vec![
+                "data: {\"type\":\"session.idle\"} ".to_string(),
+                "data: {\"type\":\"other\"}".to_string(),
+            ]
+        );
+    }
+
+    #[test]
+    fn splitter_caps_hostile_frames() {
+        let mut st = SseSplitter::default();
+        st.push(&vec![b'x'; SseSplitter::MAX_BUFFER + 1]);
+        assert!(st.buf.is_empty(), "oversized buffer dropped");
+    }
+
+    #[test]
+    fn events_parse_across_the_live_shapes() {
+        let idle =
+            OpenCodeEvent::parse(r#"{"type":"session.idle","properties":{"sessionID":"ses_a"}}"#)
+                .expect("idle");
+        assert_eq!(
+            idle,
+            OpenCodeEvent::SessionIdle {
+                session_id: "ses_a".to_string()
+            }
+        );
+
+        let err = OpenCodeEvent::parse(
+            r#"{"type":"session.error","properties":{"sessionID":"ses_b","error":{"name":"X","message":"boom"}}}"#,
+        )
+        .expect("error");
+        let OpenCodeEvent::SessionError { session_id, error } = err else {
+            panic!("wrong variant");
+        };
+        assert_eq!(session_id, "ses_b");
+        assert!(error.expect("error text").contains("boom"));
+
+        let upd = OpenCodeEvent::parse(
+            r#"{"type":"session.updated","properties":{"info":{"id":"ses_c"}}}"#,
+        )
+        .expect("updated");
+        assert_eq!(
+            upd,
+            OpenCodeEvent::SessionUpdated {
+                session_id: "ses_c".to_string()
+            }
+        );
+
+        let other = OpenCodeEvent::parse(r#"{"type":"message.part.updated","properties":{}}"#)
+            .expect("other");
+        assert_eq!(
+            other,
+            OpenCodeEvent::Other {
+                kind: "message.part.updated".to_string()
+            }
+        );
+
+        assert!(OpenCodeEvent::parse("not json").is_none());
+    }
+
+    #[tokio::test]
+    async fn events_stream_receives_parsed_events() {
+        // Mock SSE server: two frames, then hold the connection open.
+        use std::io::{BufRead, BufReader, Write};
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").expect("bind");
+        let addr = listener.local_addr().expect("addr");
+        std::thread::spawn(move || {
+            let Ok((sock, _)) = listener.accept() else {
+                return;
+            };
+            let mut reader = BufReader::new(sock.try_clone().expect("clone"));
+            let mut line = String::new();
+            loop {
+                line.clear();
+                if reader.read_line(&mut line).unwrap_or(0) == 0 {
+                    break;
+                }
+                if line == "\r\n" {
+                    break;
+                }
+            }
+            let mut sock = sock;
+            let body = "data: {\"type\":\"session.idle\",\"properties\":{\"sessionID\":\"ses_z\"}}\n\n: keep-alive\n\n";
+            let _ = write!(
+                sock,
+                "HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+                body.len(),
+                body
+            );
+        });
+        let client = OpenCodeClient::attach(format!("http://{addr}"), "pw").expect("attach");
+        use futures::StreamExt;
+        let mut stream = client.events().await.expect("subscribe");
+        let first = stream.next().await.expect("one event").expect("ok");
+        assert_eq!(
+            first,
+            OpenCodeEvent::SessionIdle {
+                session_id: "ses_z".to_string()
+            }
+        );
     }
 
     /// Live check against the machine's real OpenCode server:
