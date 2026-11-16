@@ -57,6 +57,19 @@ pub struct DriverReport {
     pub worktree: Option<PathBuf>,
 }
 
+/// Outcome of collecting a finished task branch.
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct CollectReport {
+    /// Task slug that was collected.
+    pub slug: String,
+    /// Branch that was merged (`fleet/<slug>`).
+    pub branch: String,
+    /// Repo HEAD before the merge.
+    pub head_before: String,
+    /// Repo HEAD after the merge.
+    pub head_after: String,
+}
+
 /// Driver for headless `opencode run` tasks with worktree isolation.
 pub struct OpencodeDriver {
     /// opencode binary (env `OPENCODE_BIN` overrides).
@@ -253,6 +266,100 @@ impl OpencodeDriver {
             worktree: None,
         })
     }
+
+    /// Outcome of collecting a finished task branch.
+    #[derive(Debug, Clone, serde::Serialize)]
+    pub struct CollectReport {
+        /// Task slug that was collected.
+        pub slug: String,
+        /// Branch that was merged (`fleet/<slug>`).
+        pub branch: String,
+        /// Repo HEAD before the merge.
+        pub head_before: String,
+        /// Repo HEAD after the merge.
+        pub head_after: String,
+    }
+
+    /// Collect a finished task: fast-forward the main repo's current
+    /// branch to `fleet/<slug>`.
+    ///
+    /// Preconditions (each surfaces as an error when violated):
+    /// - the main checkout is clean (no uncommitted changes),
+    /// - the merge is a fast-forward; a diverged target needs a rebase
+    ///   of the worktree branch first (deliberate: no machine-authored
+    ///   merge-commit resolutions).
+    ///
+    /// # Errors
+    ///
+    /// Git failures, dirty checkouts, missing branches, and
+    /// non-fast-forward targets surface as [`crate::Error::Llm`].
+    pub fn collect(&self, slug: &str) -> Result<CollectReport, crate::Error> {
+        let branch = format!("fleet/{slug}");
+        let git = |args: &[&str]| -> Result<std::process::Output, crate::Error> {
+            Command::new("git")
+                .current_dir(&self.repo)
+                .args(args)
+                .output()
+                .map_err(|e| crate::Error::Llm(format!("git spawn failed: {e}")))
+        };
+        // Main checkout must be clean of MODIFIED tracked files (the
+        // worktree pool dir is untracked and never blocks a merge).
+        let status = git(&["status", "--porcelain", "--untracked-files=no"])?;
+        if !status.stdout.is_empty() {
+            return Err(crate::Error::Llm(
+                "main checkout has uncommitted changes — commit or stash before collect".into(),
+            ));
+        }
+        // Branch must exist.
+        if !git(&["show-ref", "--verify", "--quiet", &format!("refs/heads/{branch}")])?
+            .status
+            .success()
+        {
+            return Err(crate::Error::Llm(format!("branch `{branch}` does not exist")));
+        }
+        let head_before =
+            String::from_utf8_lossy(&git(&["rev-parse", "HEAD"])?.stdout).trim().to_string();
+        let merge = git(&["merge", "--ff-only", &branch])?;
+        if !merge.status.success() {
+            return Err(crate::Error::Llm(format!(
+                "target diverged from `{branch}` — rebase the worktree branch and retry: {}",
+                String::from_utf8_lossy(&merge.stderr).trim()
+            )));
+        }
+        let head_after =
+            String::from_utf8_lossy(&git(&["rev-parse", "HEAD"])?.stdout).trim().to_string();
+        Ok(CollectReport { slug: slug.to_string(), branch, head_before, head_after })
+    }
+
+    /// Remove a task's worktree and branch (post-collect cleanup, or
+    /// abandonment). Force flags are used because worktrees accumulate
+    /// untracked build artifacts.
+    ///
+    /// # Errors
+    ///
+    /// The branch delete failing surfaces as [`crate::Error::Llm`];
+    /// a missing worktree is tolerated (idempotent abandonment).
+    pub fn discard(&self, slug: &str) -> Result<(), crate::Error> {
+        let path = self.worktree_root.join(slug);
+        let branch = format!("fleet/{slug}");
+        let _ = Command::new("git")
+            .current_dir(&self.repo)
+            .args(["worktree", "remove", "--force"])
+            .arg(&path)
+            .output();
+        let out = Command::new("git")
+            .current_dir(&self.repo)
+            .args(["branch", "-D", &branch])
+            .output()
+            .map_err(|e| crate::Error::Llm(format!("git spawn failed: {e}")))?;
+        if !out.status.success() {
+            return Err(crate::Error::Llm(format!(
+                "branch delete failed: {}",
+                String::from_utf8_lossy(&out.stderr).trim()
+            )));
+        }
+        Ok(())
+    }
 }
 
 /// Pull the opencode session id out of a `--format json` stdout.
@@ -403,6 +510,86 @@ mod tests {
         t.timeout = Duration::from_millis(300);
         let err = driver.run(&t).unwrap_err();
         assert!(err.to_string().contains("exceeded timeout"), "got: {err}");
+    }
+
+    #[test]
+    fn collect_fast_forwards_and_reports_heads() {
+        let dir = tempfile::tempdir().unwrap();
+        let repo = temp_git_repo(&dir);
+        let (fake, _record) = fake_opencode(&dir, r#"{"sessionID":"ses_c"}"#, "");
+        let driver = OpencodeDriver {
+            bin: fake,
+            repo: repo.clone(),
+            worktree_root: repo.join(".fleet-worktrees"),
+            default_timeout: Duration::from_secs(10),
+        };
+        let wt = driver.prepare_worktree("feat").unwrap();
+        std::fs::write(wt.join("g.txt"), "work").unwrap();
+        let git_wt = |args: &[&str]| {
+            Command::new("git").current_dir(&wt).args(args).output().unwrap()
+        };
+        git_wt(&["add", "."]);
+        git_wt(&["commit", "-q", "-m", "feat: g"]);
+
+        let report = driver.collect("feat").unwrap();
+        assert_eq!(report.branch, "fleet/feat");
+        assert_ne!(report.head_before, report.head_after);
+        assert!(repo.join("g.txt").is_file());
+        let again = driver.collect("feat").unwrap();
+        assert_eq!(again.head_before, again.head_after);
+    }
+
+    #[test]
+    fn collect_rejects_dirty_main_and_diverged_target() {
+        let dir = tempfile::tempdir().unwrap();
+        let repo = temp_git_repo(&dir);
+        let (fake, _record) = fake_opencode(&dir, "{}", "");
+        let driver = OpencodeDriver {
+            bin: fake,
+            repo: repo.clone(),
+            worktree_root: repo.join(".fleet-worktrees"),
+            default_timeout: Duration::from_secs(10),
+        };
+        driver.prepare_worktree("feat").unwrap();
+
+        // Dirty main checkout -> refused (a MODIFIED tracked file; an
+        // untracked one does not block a merge).
+        std::fs::write(repo.join("f.txt"), "dirty").unwrap();
+        let err = driver.collect("feat").unwrap_err();
+        assert!(err.to_string().contains("uncommitted changes"), "got: {err}");
+        Command::new("git").current_dir(&repo).args(["checkout", "--", "f.txt"]).output().unwrap();
+
+        // Diverged target -> refused (non-fast-forward): BOTH sides
+        // advance. (Only moving main keeps fleet/feat an ancestor and
+        // `--ff-only` is a legal no-op "already up to date".)
+        let git = |args: &[&str], cwd: &PathBuf| {
+            Command::new("git").current_dir(cwd).args(args).output().unwrap()
+        };
+        let wt = driver.worktree_root.join("feat");
+        std::fs::write(wt.join("w.txt"), "work").unwrap();
+        git(&["add", "."], &wt);
+        git(&["commit", "-q", "-m", "feat: w"], &wt);
+        git(&["commit", "-q", "--allow-empty", "-m", "main moved on"], &repo);
+        let err = driver.collect("feat").unwrap_err();
+        assert!(err.to_string().contains("diverged"), "got: {err}");
+    }
+
+    #[test]
+    fn discard_removes_worktree_and_branch() {
+        let dir = tempfile::tempdir().unwrap();
+        let repo = temp_git_repo(&dir);
+        let (fake, _record) = fake_opencode(&dir, "{}", "");
+        let driver = OpencodeDriver {
+            bin: fake,
+            repo: repo.clone(),
+            worktree_root: repo.join(".fleet-worktrees"),
+            default_timeout: Duration::from_secs(10),
+        };
+        let wt = driver.prepare_worktree("gone").unwrap();
+        assert!(wt.is_dir());
+        driver.discard("gone").unwrap();
+        assert!(!wt.exists());
+        assert!(driver.discard("gone").is_err());
     }
 
     #[test]
