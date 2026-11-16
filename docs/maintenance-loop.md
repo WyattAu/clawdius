@@ -62,17 +62,27 @@ gets lint/deps/docs/tests attention on a rotation.
 ## Provider rotation
 
 A quota or rate-limit failure is not a task failure. The loop reuses
-`FallbackCoordinator` and distinguishes two cases:
+`FallbackCoordinator` and distinguishes three cases:
 
 | Error carries a reset hint | Behaviour |
 | --- | --- |
-| yes (`retryDelay: 37s`, `retry in 37`, `retry after 12`) | wait that long, then retry the same provider |
+| yes, ≤ 10 min (`retryDelay: 37s`, `retry in 37`) | wait that long, then retry the same provider |
+| yes, > 10 min (free-tier daily resets: `retryDelay: 57923s`) | fail the cycle fast (≈1 s), requeue the task as `pending`, park until the reset |
 | no | mark it cooling down and try the next provider in the chain |
 
 Waiting beats rotating when the provider says when it will be back: the
 chain's other entries may be unconfigured or out of credit, so failing
-over can turn a 40-second wait into a dead task. The hint is capped at
-30 minutes so a bogus value cannot park the loop for a day.
+over can turn a 40-second wait into a dead task. Sleeping beats
+failing for short hints; for a multi-hour hint it wedged a task in
+`running` for hours while the ledger said idle — hence the 10-minute
+threshold (`MAX_HONORED_WAIT`). The parsed hint is capped at 30
+minutes so a bogus value cannot park the loop for a day.
+
+A quota-blocked cycle never marks the task `failed` and never lets the
+rotation reach the rest of the chain (live: a quota-red followed by
+"API key not set for Anthropic" recorded as the task's failure).
+`status_for` decides: red/error with `quota_blocked` → `pending`;
+otherwise red/error → `failed`.
 
 After `MAX_PROVIDER_ROTATIONS` attempts the task is recorded as `error`.
 When every provider in the chain is cooling down, the loop parks until
@@ -80,7 +90,130 @@ the soonest reset instead of burning the interval on guaranteed
 failures.
 
 Rate-limit shapes recognised: HTTP 429, `rate limit`, `quota`,
-`insufficient balance`, `RESOURCE_EXHAUSTED`, `too many requests`.
+`insufficient balance`, `RESOURCE_EXHAUSTED`, `too many requests`,
+`overloaded`, `try again later`.
+
+The chain itself only contains providers the stages can authenticate
+against: a fallback with no key is not a rescue, it is a dead end
+(live: a hint-less Z.AI throttle rotated into a keyless Anthropic and
+the cycle reported "API key not set for Anthropic" as the task's
+failure). `provider_chain` resolves each candidate through the same
+`ResolvedLlmConfig` the stages use, so "configured" means exactly what
+the stage will find. The `--provider` you pass stays first regardless —
+choosing an unkeyed provider is operator error and should fail loudly.
+
+## Free-tier models (measured 2026-11-15)
+
+Provider capacity is the binding constraint on how much the loop can do.
+Probe a model before pinning it: a 429 with `limit: 0` means **no
+allocation at all**, not "spent today", and Google attaches a bogus
+~16 h `retryDelay` to those denials.
+
+| Provider / model | Free-tier reality |
+| --- | --- |
+| Google `gemini-4-argon`, `gemini-4-carbon`, `gemini-3.1-pro-preview` | `limit: 0` on every metric — never usable on a free key |
+| Google `gemini-2.5-pro`, `gemini-2.5-flash` | closed to new users |
+| Google `gemini-3-flash-preview` | works, 20 requests/day — one cycle needs ~15 |
+| Google `gemini-3.1-flash-lite` | real daily headroom; weakest output quality (writes empty artifacts) |
+| Z.AI `glm-4.5-flash` (metered `api/paas/v4`) | **free, no request ceiling, 131k context, native tool calling** |
+| Z.AI `glm-4.7-flash` (metered) | free too, but 429 `code 1305` overload more often |
+
+Z.AI free Flash models are reached on the **metered** endpoint, not the
+coding-plan one: leave the model unprefixed (`--model glm-4.5-flash`).
+`zai-coding::` / `zai::` prefixes select `api/coding/paas/v4/`, which is
+the Coding Plan entitlement and must not be used by CI or unsupported
+tools. A `code 1305` "temporarily overloaded" is a transient throttle,
+already covered by the rate-limit classifier; with no reset hint it
+rotates, so keep the chain honest (above).
+
+## Loop context
+
+Every loop stage (implementation tool loop and single-call text stages)
+gets the same context the TUI and opencode give their models:
+
+- the repo's `AGENTS.md` (else `CLAUDE.md`), capped at 8k chars;
+- up to 2 skills whose name/description tokens overlap the task text,
+  bodies inlined (3k chars each) — inlined rather than referenced,
+  because the loop's `read_file` rejects paths outside the workspace.
+
+Skill roots: `<repo>/.opencode/skills`, `<repo>/.claude/skills`,
+`~/.agents/skills`, `~/.config/opencode/skills`, `~/.clawdius/skills`
+(repo roots first, first root wins on name collisions). Selection is
+deterministic whole-word token matching — no LLM, no randomness; see
+`crates/clawdius-core/src/context/loop_context.rs`.
+
+### MCP tools
+
+The loop's tool list also extends with opencode's MCP fleet (same
+`servers` map in `~/.config/opencode/opencode.jsonc`), exposed as
+`mcp__<server>__<tool>`. Local stdio servers only in v1 — remote
+(`url`) entries need an HTTP transport. A server that fails to launch,
+initialize, or answer within 8s is skipped with the reason in the
+cycle's `MCP:` line; a hung *call* costs 30s, not the cycle.
+
+| Environment variable | Effect |
+| --- | --- |
+| `CLAWDIUS_MCP=off` | disable the bridge |
+| `CLAWDIUS_MCP_SERVERS=a,b` | restrict to those servers |
+| `CLAWDIUS_MCP_CONFIG` | override the config path |
+
+See `crates/clawdius-core/src/mcp/bridge.rs`.
+
+## FreeLLMAPI router (free-tier pool)
+
+A single free model is a hard ceiling: Google's free tier is 20
+requests/day on the Flash models, and one cycle needs ~15. FreeLLMAPI
+(`github.com/tashfeenahmed/freellmapi`) is a self-hosted router that puts
+every free tier behind one OpenAI-compatible endpoint, tracks per-key
+RPM/RPD/TPM/TPD caps, and fails over on 429/5xx. The loop talks to it as
+an ordinary OpenAI-compatible provider — no code path is special-cased.
+
+```bash
+# install / update (Docker; ~/freellmapi, dashboard on :3001)
+curl -fsSL https://freellmapi.co/install.sh | bash
+
+# loop against the pool; the trailing slash is load-bearing
+OPENAI_BASE_URL=http://localhost:3001/v1/ \
+OPENAI_API_KEY=$(cat ~/.config/opencode/keys/freellmapi) \
+  clawdius maintain --interval 1800 -P openai-compatible --model auto
+```
+
+`auto` lets the router pick a model that still has quota; pin a model id
+(`glm-4.5-flash`, `gemma-4-26b-a4b-it`) when output quality matters more
+than capacity. Measured on 2026-11-15, that distinction is not academic:
+
+| Loop model | Cycle output |
+| --- | --- |
+| `auto` (→ `gemini-3.1-flash-lite`) | GREEN docs cycle whose only edit **corrupted** a README table row (`| :exit | Exit the TUI |doc` \| Generate documentation \|`); gates passed because markdown is not compiled |
+| `auto:smart` (→ `gemini-3.8-flash`) | RED lint cycle: semantic-loop guard tripped after 4 identical states |
+| `glm-4.5-flash` (pinned, via router or direct) | 3 clean cycles, 14–16 tool calls each, one real dependency-refresh PR |
+
+The router's `auto` strategies optimise reliability and speed, so they
+land on the cheapest model with quota left, not the one that can hold an
+edit together. Pin the model and let the router do what it is good at:
+key health checks, per-key rate tracking, and 429 failover.
+
+Two wiring facts cost a debugging session each:
+
+- **The base URL needs its trailing slash.** genai appends
+  `chat/completions` to whatever endpoint is configured, so
+  `http://localhost:3001/v1` becomes `/v1chat/completions` (the SPA
+  fallback answers with HTML).
+- **Custom endpoints must pin `AdapterKind::OpenAI`.** genai infers the
+  adapter from the model name, and an unknown name — a router alias like
+  `auto`, or any local model — falls back to the Ollama adapter and posts
+  to `/v1/api/chat`. `OpenAIProvider::with_base_url` pins it.
+
+Credentials live outside the repo: `~/.config/opencode/keys/freellmapi`
+(the router's unified key, mode 0600) and
+`~/.config/opencode/keys/freellmapi-admin` (dashboard login). Provider
+keys are entered on the dashboard's Keys page; the router stores them
+AES-256-GCM encrypted in its own volume. Upstream terms still apply when
+traffic is proxied, so the Z.AI entry is only reachable through the three
+free Flash models the catalog lists for it (`glm-4.5-flash`,
+`glm-4.7-flash`, `glm-4.6v-flash`) — no paid GLM model can be selected,
+and no plan quota is consumed. Strict separation means removing that key
+and leaving Z.AI as a direct fallback instead.
 
 ## Commands
 

@@ -14,6 +14,7 @@
 //! so the loop survives restarts, crashes and context loss.
 
 use anyhow::{anyhow, Context, Result};
+use clawdius_core::config::LlmConfig;
 use clawdius_core::maintenance::{
     now_rfc3339, Backlog, CycleOutcome, CycleRecord, Ledger, Task, TaskKind, TaskStatus,
 };
@@ -33,6 +34,19 @@ const REPLENISH_ROTATION: [TaskKind; 4] = [
 
 /// How many provider rotations one task gets before it is marked failed.
 const MAX_PROVIDER_ROTATIONS: usize = 3;
+
+/// Longest provider reset hint the loop will sleep through. A hint
+/// beyond this is a daily quota reset: sleeping would wedge the task for
+/// hours (live: 5 attempts x 30 min against a 16 h hint), so the cycle
+/// fails fast and the task is retried after the reset.
+const MAX_HONORED_WAIT: Duration = Duration::from_secs(600);
+
+/// Whether a provider reset hint is short enough to sleep through.
+/// Longer hints are daily quota resets: the cycle fails fast instead of
+/// sleeping for hours.
+fn should_honor_wait(wait: Duration) -> bool {
+    wait <= MAX_HONORED_WAIT
+}
 
 pub(super) async fn handle_maintain(
     backlog_path: Option<PathBuf>,
@@ -80,8 +94,13 @@ pub(super) async fn handle_maintain(
     );
     println!();
 
+    // Only providers the stages can actually authenticate against enter
+    // the rotation; a missing key is not a rescue, it is a dead end.
+    let llm_config = super::load_config(config_path.as_deref())
+        .map(|c| c.llm)
+        .unwrap_or_default();
     let mut coordinator = FallbackCoordinator::new(FallbackPolicy {
-        chain: provider_chain(&provider),
+        chain: provider_chain(&provider, &llm_config),
         max_attempts: MAX_PROVIDER_ROTATIONS,
         cooldown: Duration::from_mins(5),
     });
@@ -126,13 +145,12 @@ pub(super) async fn handle_maintain(
 
         if backlog.next_pending().is_none() {
             if replenish {
-                if let Some(task) = replenish_task(&backlog) {
+                if let Some(task) = replenish_task(&mut backlog)? {
                     println!(
                         "backlog dry — enqueued `{}` ({})",
                         task.id,
                         task.kind.slug()
                     );
-                    backlog.push(task)?;
                     backlog.save(&backlog_path)?;
                 }
             }
@@ -185,6 +203,7 @@ pub(super) async fn handle_maintain(
             &repo,
             &worktrees,
             &mut coordinator,
+            &provider,
             model.as_deref(),
             no_pr,
             config_path.as_deref(),
@@ -198,6 +217,7 @@ pub(super) async fn handle_maintain(
             pr_url,
             outcome_tool_calls,
             outcome_files_changed,
+            quota_blocked,
         ) = match outcome {
             Ok(cycle) => (
                 cycle.outcome,
@@ -206,8 +226,17 @@ pub(super) async fn handle_maintain(
                 cycle.pr_url,
                 cycle.tool_calls,
                 cycle.files_changed,
+                cycle.quota_blocked,
             ),
-            Err(e) => (CycleOutcome::Error, format!("{e:#}"), None, None, 0, 0),
+            Err(e) => (
+                CycleOutcome::Error,
+                format!("{e:#}"),
+                None,
+                None,
+                0,
+                0,
+                false,
+            ),
         };
 
         // A stage that resolved the git project root instead of the
@@ -232,11 +261,7 @@ pub(super) async fn handle_maintain(
             }
         }
 
-        let status = match cycle_outcome {
-            CycleOutcome::Green => TaskStatus::Done,
-            CycleOutcome::Red | CycleOutcome::Error => TaskStatus::Failed,
-            CycleOutcome::Idle => TaskStatus::Pending,
-        };
+        let status = status_for(cycle_outcome, quota_blocked);
         backlog.set_status(&task.id, status);
         backlog.save(&backlog_path)?;
 
@@ -279,6 +304,23 @@ pub(super) async fn handle_maintain(
             break;
         }
 
+        // A quota-blocked cycle requeued its task. Park until the reset:
+        // the chain's other entries are usually unconfigured, and letting
+        // the rotation reach them spends the task on a guaranteed config
+        // error (live: "API key not set for Anthropic" on a quota-red).
+        if quota_blocked {
+            let wait = coordinator.ledger.soonest_reset().map_or_else(
+                || Duration::from_secs(interval_secs),
+                |d| d.max(Duration::from_secs(interval_secs)),
+            );
+            println!(
+                "    provider quota blocked — task requeued, parking {}s",
+                wait.as_secs()
+            );
+            sleep_or_stop(wait.as_secs());
+            continue;
+        }
+
         // If every provider is cooling down, park until the soonest reset
         // rather than burning the interval on guaranteed failures.
         if let Some(resume_in) = coordinator.ledger.soonest_reset() {
@@ -319,6 +361,28 @@ struct CycleReport {
     tool_calls: u32,
     /// Files the cycle changed on the branch.
     files_changed: u32,
+    /// The cycle failed only because the provider's quota is spent until a
+    /// known reset: the task is requeued (not failed) and the loop parks
+    /// until the reset instead of rotating to unconfigured providers.
+    quota_blocked: bool,
+}
+
+/// `--model` names a model in the *preferred* provider's namespace:
+/// `auto` is a router alias, `glm-4.5-flash` a Z.AI id. Handing it to a
+/// rotated-in provider is meaningless and actively harmful — genai does
+/// not recognise the name and falls back to the Ollama adapter (live:
+/// `model 'auto' not found` from localhost:11434 after a Google rotation).
+/// Rotated providers use their own default model.
+fn model_for_attempt<'a>(
+    preferred: &str,
+    provider: &str,
+    model: Option<&'a str>,
+) -> Option<&'a str> {
+    if provider == preferred {
+        model
+    } else {
+        None
+    }
 }
 
 /// Run one task, rotating providers on quota errors.
@@ -327,6 +391,7 @@ async fn run_task_with_rotation(
     repo: &Path,
     worktrees: &Path,
     coordinator: &mut FallbackCoordinator,
+    preferred: &str,
     model: Option<&str>,
     no_pr: bool,
     config_path: Option<&Path>,
@@ -349,6 +414,7 @@ async fn run_task_with_rotation(
                         attempt - 1,
                         last_error.unwrap_or_else(|| "unknown".to_string())
                     ),
+                    quota_blocked: false,
                     branch: None,
                     pr_url: None,
                     tool_calls: 0,
@@ -357,8 +423,25 @@ async fn run_task_with_rotation(
             },
         };
 
-        println!("    attempt {attempt}: provider `{provider}`");
-        match run_task_once(task, repo, worktrees, &provider, model, no_pr, config_path).await {
+        let attempt_model = model_for_attempt(preferred, &provider, model);
+        match attempt_model {
+            Some(m) => println!("    attempt {attempt}: provider `{provider}` model `{m}`"),
+            None => println!(
+                "    attempt {attempt}: provider `{provider}` (default model — `{}` is {preferred}'s)",
+                model.unwrap_or("-")
+            ),
+        }
+        match run_task_once(
+            task,
+            repo,
+            worktrees,
+            &provider,
+            attempt_model,
+            no_pr,
+            config_path,
+        )
+        .await
+        {
             Ok(report) => {
                 coordinator.note_solved(&provider);
                 return Ok(report);
@@ -370,6 +453,51 @@ async fn run_task_with_rotation(
                     // one; free tiers reset in under a minute while the
                     // policy cooldown is minutes.
                     if let Some(wait) = parse_retry_delay(&text) {
+                        // A hint longer than the cycle interval is a daily
+                        // quota reset, not a transient throttle. Sleeping
+                        // through it (capped at 30 min per attempt, times
+                        // the attempt budget) wedged a task in `running`
+                        // for hours while the ledger said idle. Fail the
+                        // cycle promptly instead; the next replenish or
+                        // rotation retries after the reset.
+                        if !should_honor_wait(wait) {
+                            // `limit: 0` is not a spent daily quota: the
+                            // model has no free-tier allocation at all
+                            // (live: gemini-4-argon answered every probe
+                            // with limit: 0 for ~12 h of requeue-parks).
+                            // The task stays requeued, but the note must
+                            // point at the real fix: switch --model.
+                            let no_allocation = text.contains("limit: 0");
+                            if no_allocation {
+                                println!(
+                                    "    `{provider}` model has no free-tier allocation (limit: 0) — switch --model"
+                                );
+                            } else {
+                                println!(
+                                    "    `{provider}` quota exhausted — resets in {}s; not sleeping, failing the cycle",
+                                    wait.as_secs()
+                                );
+                            }
+                            coordinator.note_limited_for(&provider, wait);
+                            return Ok(CycleReport {
+                                outcome: CycleOutcome::Red,
+                                note: if no_allocation {
+                                    format!(
+                                        "provider `{provider}` model has no free-tier allocation (limit: 0); switch --model — task kept pending"
+                                    )
+                                } else {
+                                    format!(
+                                        "provider `{provider}` quota exhausted (reset hint exceeds {}s); task retried after the reset",
+                                        MAX_HONORED_WAIT.as_secs()
+                                    )
+                                },
+                                quota_blocked: true,
+                                branch: None,
+                                pr_url: None,
+                                tool_calls: 0,
+                                files_changed: 0,
+                            });
+                        }
                         // The provider told us when it will be back. Wait
                         // for it: rotating to the next provider in the
                         // chain is usually worse, because the chain's other
@@ -392,6 +520,7 @@ async fn run_task_with_rotation(
                     return Ok(CycleReport {
                         outcome: CycleOutcome::Red,
                         note: text,
+                        quota_blocked: false,
                         branch: None,
                         pr_url: None,
                         tool_calls: 0,
@@ -406,6 +535,7 @@ async fn run_task_with_rotation(
     Ok(CycleReport {
         outcome: CycleOutcome::Error,
         note: last_error.unwrap_or_else(|| "all attempts failed".to_string()),
+        quota_blocked: false,
         branch: None,
         pr_url: None,
         tool_calls: 0,
@@ -475,6 +605,7 @@ async fn run_task_once(
                 return Ok(CycleReport {
                     outcome: CycleOutcome::Green,
                     note: format!("gates green; nothing to change ({tool_calls} tool calls)"),
+                    quota_blocked: false,
                     branch: None,
                     pr_url: None,
                     tool_calls,
@@ -513,6 +644,7 @@ async fn run_task_once(
                             format!(" | stdout: {}", first_line(&stdout))
                         }
                     ),
+                    quota_blocked: false,
                     branch: None,
                     pr_url: None,
                     tool_calls,
@@ -545,6 +677,7 @@ async fn run_task_once(
                         "committed to local branch `{branch}` ({files_changed} file(s), no remote push)"
                     )
                 },
+                quota_blocked: false,
                 branch: Some(branch),
                 pr_url,
                 tool_calls,
@@ -683,6 +816,21 @@ fn first_line(text: &str) -> String {
         .to_string()
 }
 
+/// A goal may be one long line; the PR title needs the first sentence,
+/// capped. Live: flash-lite's default goal is a 600-char single line and
+/// became the whole PR title.
+fn first_sentence_capped(text: &str, cap: usize) -> String {
+    let line = first_line(text);
+    // Sentences end at . or ; — colons introduce lists, not sentence ends.
+    let end = line.find(['.', ';']).map_or(line.len(), |i| i + 1);
+    let mut s: String = line.chars().take(end).collect();
+    if s.chars().count() > cap {
+        s = s.chars().take(cap - 1).collect();
+        s.push('…');
+    }
+    s
+}
+
 /// Copy a worktree's `.clawdius/` run artifacts into the main repo.
 fn preserve_artifacts(worktree: &Path, repo: &Path, task_id: &str) {
     let src = worktree.join(".clawdius");
@@ -755,7 +903,7 @@ fn open_pr(repo: &Path, branch: &str, task: &Task) -> Option<String> {
     let title = format!(
         "maint({}): {}",
         task.kind.slug(),
-        first_line(task.effective_goal().as_str())
+        first_sentence_capped(task.effective_goal().as_str(), 70)
     );
     let output = Command::new("gh")
         .current_dir(repo)
@@ -780,17 +928,55 @@ fn open_pr(repo: &Path, branch: &str, task: &Task) -> Option<String> {
 }
 
 /// Enqueue one standing task per day when the backlog is dry.
-fn replenish_task(backlog: &Backlog) -> Option<Task> {
+/// How many times a failed task is requeued before the loop leaves it
+/// failed. One retry per task per day: enough to recover from a transient
+/// provider or environment fault, not enough to spin on a broken goal.
+const MAX_TASK_ATTEMPTS: u32 = 2;
+
+/// Give the loop its next unit of work when nothing is pending.
+///
+/// Order: a kind today's rotation has not run yet, then a retry of a
+/// task that failed today. Without the retry the loop idles from the
+/// moment today's four kinds are spent — live: eleven hours idle with a
+/// failed `docs-2026-11-15` sitting in the backlog, one cycle after the
+/// defect that failed it was fixed.
+fn replenish_task(backlog: &mut Backlog) -> Result<Option<Task>> {
     let today = chrono::Utc::now().format("%Y-%m-%d").to_string();
     for kind in REPLENISH_ROTATION {
         let id = format!("{}-{today}", kind.slug());
         if !backlog.tasks.iter().any(|t| t.id == id) {
             let mut task = Task::new(id, kind, 5);
             task.goal = kind.default_goal().to_string();
-            return Some(task);
+            backlog.push(task.clone())?;
+            return Ok(Some(task));
         }
     }
-    None
+    let retryable = backlog
+        .tasks
+        .iter_mut()
+        .filter(|t| {
+            t.status == TaskStatus::Failed
+                && t.attempts < MAX_TASK_ATTEMPTS
+                && t.id.ends_with(&today)
+        })
+        .max_by_key(|t| t.priority);
+    let Some(retryable) = retryable else {
+        return Ok(None);
+    };
+    retryable.status = TaskStatus::Pending;
+    retryable.attempts += 1;
+    Ok(Some(retryable.clone()))
+}
+
+/// Backlog status for a finished cycle. A quota-blocked failure is the
+/// provider's problem, not the task's: requeue it for after the reset.
+const fn status_for(outcome: CycleOutcome, quota_blocked: bool) -> TaskStatus {
+    match outcome {
+        CycleOutcome::Green => TaskStatus::Done,
+        CycleOutcome::Idle => TaskStatus::Pending,
+        CycleOutcome::Red | CycleOutcome::Error if quota_blocked => TaskStatus::Pending,
+        CycleOutcome::Red | CycleOutcome::Error => TaskStatus::Failed,
+    }
 }
 
 fn print_backlog(backlog: &Backlog, path: &Path) {
@@ -820,10 +1006,21 @@ fn default_backlog(repo: &Path) -> PathBuf {
     repo.join(".clawdius/maintenance/backlog.json")
 }
 
-fn provider_chain(preferred: &str) -> Vec<String> {
+/// Preferred provider first, then configured fallbacks.
+///
+/// A fallback with no key cannot rescue a cycle: rotating into it turns a
+/// transient throttle into a config error that reads like a task failure
+/// (live: a Z.AI overload rotated into an exhausted Google key and the
+/// cycle reported RED instead of retrying). `ResolvedLlmConfig` is the
+/// same resolution the stage uses, so "configured" here means exactly
+/// "the stage would find a key".
+fn provider_chain(preferred: &str, llm: &LlmConfig) -> Vec<String> {
     let mut chain = vec![preferred.to_string()];
     for fallback in ["google", "anthropic", "deepseek", "zai"] {
-        if fallback != preferred {
+        if fallback == preferred {
+            continue;
+        }
+        if clawdius_core::llm::ResolvedLlmConfig::from_config(llm, fallback).is_ok() {
             chain.push(fallback.to_string());
         }
     }
@@ -880,6 +1077,19 @@ fn is_rate_limit(text: &str) -> bool {
         "high demand",
         "overloaded",
         "try again later",
+        // Gateway/upstream shapes: a router or gateway in front of the
+        // provider reports the provider's hiccup as 502/504. Live: the
+        // FreeLLMAPI router turned one empty GLM completion into a 502
+        // "provider-side failure", which the matcher let through as a
+        // task failure.
+        "502",
+        "504",
+        "bad gateway",
+        "gateway timeout",
+        "upstream_failed",
+        "provider_error",
+        "empty completion",
+        "empty_completion",
     ]
     .iter()
     .any(|needle| lower.contains(needle))
@@ -1076,9 +1286,54 @@ mod tests {
              This model is currently experiencing high demand."
         ));
         assert!(is_rate_limit("model is overloaded, please retry"));
+        // Gateway shapes live-caught on 2026-11-15 (router 502).
+        assert!(is_rate_limit(
+            "Request failed with status code '502 Bad Gateway'. \"code\":\"upstream_failed\""
+        ));
+        assert!(is_rate_limit("empty completion from GLM-4.5 Flash"));
         assert!(!is_rate_limit("semantic loop detected"));
         assert!(!is_rate_limit("compile error: expected `;`"));
         assert!(!is_rate_limit("error[E0308]: mismatched types"));
+    }
+
+    #[test]
+    fn long_reset_hints_fail_fast_instead_of_sleeping() {
+        // Live: gemini-4 free tier returned retryDelay=57923s (~16h).
+        // Sleeping through it (30-min cap x 3 attempts) wedged a task in
+        // `running` for hours while the ledger said idle.
+        let sixteen_hours = Duration::from_secs(57_923);
+        assert!(!should_honor_wait(sixteen_hours));
+        assert!(should_honor_wait(Duration::from_secs(37)));
+        assert!(should_honor_wait(MAX_HONORED_WAIT));
+        assert!(!should_honor_wait(
+            MAX_HONORED_WAIT + Duration::from_secs(1)
+        ));
+    }
+
+    #[test]
+    fn quota_reds_requeue_and_hard_reds_fail() {
+        use clawdius_core::maintenance::TaskStatus;
+        assert_eq!(status_for(CycleOutcome::Red, true), TaskStatus::Pending);
+        assert_eq!(status_for(CycleOutcome::Error, true), TaskStatus::Pending);
+        assert_eq!(status_for(CycleOutcome::Red, false), TaskStatus::Failed);
+        assert_eq!(status_for(CycleOutcome::Green, false), TaskStatus::Done);
+        assert_eq!(status_for(CycleOutcome::Idle, false), TaskStatus::Pending);
+    }
+
+    #[test]
+    fn pr_titles_take_the_first_sentence_and_cap_the_rest() {
+        let goal = "Upgrade dependencies that have newer patch or minor releases, one at \
+                    a time, keeping the gates green. Do not cross major versions.";
+        // The first sentence exceeds the cap: the cap wins, ellipsized.
+        assert_eq!(
+            first_sentence_capped(goal, 70),
+            "Upgrade dependencies that have newer patch or minor releases, one at …"
+        );
+        // A short sentence passes through untouched.
+        assert_eq!(
+            first_sentence_capped("Fix the flaky gate: it reorders.", 200),
+            "Fix the flaky gate: it reorders."
+        );
     }
 
     #[test]
@@ -1103,11 +1358,43 @@ mod tests {
 
     #[test]
     fn provider_chain_starts_with_preference_and_has_no_duplicates() {
-        let chain = provider_chain("google");
+        let chain = provider_chain("google", &LlmConfig::default());
         assert_eq!(chain[0], "google");
         let mut seen = std::collections::HashSet::new();
         for p in &chain {
             assert!(seen.insert(p.clone()), "duplicate provider {p}");
+        }
+    }
+
+    #[test]
+    fn provider_chain_skips_providers_with_no_key() {
+        // Live: a Z.AI throttle rotated into Google, whose key was
+        // exhausted, and the cycle died as a task failure. Unconfigured
+        // providers must never enter the rotation.
+        let llm = LlmConfig {
+            deepseek: Some(clawdius_core::config::ProviderConfig {
+                model: None,
+                api_key_env: None,
+                api_key: Some("sk-test".into()),
+                base_url: None,
+            }),
+            ..LlmConfig::default()
+        };
+        let chain = provider_chain("zai", &llm);
+        assert_eq!(chain[0], "zai");
+        assert!(chain.contains(&"deepseek".to_string()));
+        // Every fallback is one the stages can authenticate against (the
+        // preferred provider is the operator's choice and stays first).
+        for p in chain.iter().skip(1) {
+            assert!(
+                clawdius_core::llm::ResolvedLlmConfig::from_config(&llm, p).is_ok(),
+                "{p} entered the chain without credentials"
+            );
+        }
+        // A provider with no config and no env key stays out. Skipped if
+        // the test environment exports one, since env wins over config.
+        if std::env::var("ANTHROPIC_API_KEY").is_err() {
+            assert!(!chain.contains(&"anthropic".to_string()));
         }
     }
 
@@ -1121,13 +1408,16 @@ mod tests {
     #[test]
     fn replenish_enqueues_one_standing_task_per_kind_per_day() {
         let mut backlog = Backlog::default();
-        let first = replenish_task(&backlog).expect("first replenish");
+        let first = replenish_task(&mut backlog)
+            .expect("replenish")
+            .expect("first replenish");
         assert_eq!(first.kind, TaskKind::Lint);
-        backlog.push(first.clone()).unwrap();
+        assert_eq!(backlog.tasks.len(), 1, "replenish must persist the task");
 
-        let second = replenish_task(&backlog).expect("second replenish");
+        let second = replenish_task(&mut backlog)
+            .expect("replenish")
+            .expect("second replenish");
         assert_eq!(second.kind, TaskKind::Deps);
-        backlog.push(second).unwrap();
 
         // Every kind for today exists -> nothing left to enqueue.
         for kind in REPLENISH_ROTATION {
@@ -1136,6 +1426,93 @@ mod tests {
                 backlog.push(Task::new(id, kind, 5)).unwrap();
             }
         }
-        assert!(replenish_task(&backlog).is_none());
+        assert!(replenish_task(&mut backlog).expect("replenish").is_none());
+    }
+
+    #[test]
+    fn replenish_retries_todays_failed_task_once_then_gives_up() {
+        // Live: the loop idled for eleven hours with a failed
+        // `docs-2026-11-15` in the backlog, one cycle after the defect
+        // that failed it was fixed.
+        let today = chrono::Utc::now().format("%Y-%m-%d").to_string();
+        let mut backlog = Backlog::default();
+        for kind in REPLENISH_ROTATION {
+            let id = format!("{}-{today}", kind.slug());
+            let mut task = Task::new(id, kind, 5);
+            if kind == TaskKind::Docs {
+                task.status = TaskStatus::Failed;
+            } else {
+                task.status = TaskStatus::Done;
+            }
+            backlog.push(task).unwrap();
+        }
+
+        let retry = replenish_task(&mut backlog)
+            .expect("replenish")
+            .expect("failed task is retried");
+        assert_eq!(retry.kind, TaskKind::Docs);
+        assert_eq!(retry.status, TaskStatus::Pending);
+        assert_eq!(retry.attempts, 1);
+        // The retry is what the scheduler now sees.
+        assert_eq!(
+            backlog.next_pending().map(|t| t.id.clone()),
+            Some(retry.id.clone())
+        );
+
+        // Second failure exhausts the budget: no third run.
+        for task in &mut backlog.tasks {
+            if task.id == retry.id {
+                task.status = TaskStatus::Failed;
+            }
+        }
+        let again = replenish_task(&mut backlog)
+            .expect("replenish")
+            .expect("second retry");
+        assert_eq!(again.attempts, MAX_TASK_ATTEMPTS);
+        for task in &mut backlog.tasks {
+            if task.id == again.id {
+                task.status = TaskStatus::Failed;
+            }
+        }
+        assert!(replenish_task(&mut backlog).expect("replenish").is_none());
+    }
+
+    #[test]
+    fn replenish_ignores_failures_from_previous_days() {
+        // Yesterday's failure is stale: the standing rotation recreates
+        // the kind today, so retrying it would duplicate work.
+        let mut backlog = Backlog::default();
+        for kind in REPLENISH_ROTATION {
+            let id = format!("{}-2020-01-01", kind.slug());
+            let mut task = Task::new(id, kind, 5);
+            task.status = TaskStatus::Failed;
+            backlog.push(task).unwrap();
+        }
+        let task = replenish_task(&mut backlog)
+            .expect("replenish")
+            .expect("today's rotation is enqueued");
+        assert_eq!(task.kind, TaskKind::Lint);
+        assert!(task
+            .id
+            .ends_with(&chrono::Utc::now().format("%Y-%m-%d").to_string()));
+    }
+
+    #[test]
+    fn the_model_flag_only_applies_to_the_preferred_provider() {
+        // Live: after a router failure the loop rotated to `google` and
+        // still passed `auto`, which genai resolved to the Ollama adapter.
+        assert_eq!(
+            model_for_attempt("openai-compatible", "openai-compatible", Some("auto")),
+            Some("auto")
+        );
+        assert_eq!(
+            model_for_attempt("openai-compatible", "google", Some("auto")),
+            None
+        );
+        assert_eq!(
+            model_for_attempt("google", "zai", Some("gemini-3.5-flash")),
+            None
+        );
+        assert_eq!(model_for_attempt("google", "google", None), None);
     }
 }

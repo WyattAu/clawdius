@@ -22,6 +22,31 @@ pub struct OpenAIProvider {
     base_url: Option<String>,
 }
 
+/// Pin a custom endpoint to genai's OpenAI adapter.
+///
+/// genai infers the adapter from the model name, and a name it does not
+/// know — a router alias like `auto`, or any local model — falls back to
+/// the Ollama adapter (live: `POST /v1/api/chat` 404 against a
+/// FreeLLMAPI router). A custom base URL is OpenAI-compatible by
+/// definition, so the adapter is pinned and the model name is passed
+/// through untouched.
+fn pin_openai_compatible(
+    url: String,
+) -> impl Fn(genai::ServiceTarget) -> genai::resolver::Result<genai::ServiceTarget>
+       + Clone
+       + Send
+       + Sync
+       + 'static {
+    move |service_target: genai::ServiceTarget| -> genai::resolver::Result<genai::ServiceTarget> {
+        let genai::ServiceTarget { model, auth, .. } = service_target;
+        Ok(genai::ServiceTarget {
+            endpoint: genai::resolver::Endpoint::from_owned(url.clone()),
+            auth,
+            model: genai::ModelIden::new(genai::adapter::AdapterKind::OpenAI, model.model_name),
+        })
+    }
+}
+
 impl OpenAIProvider {
     pub fn new(api_key: &str, model: Option<&str>) -> Result<Self> {
         Self::with_base_url(api_key, model, None)
@@ -43,14 +68,7 @@ impl OpenAIProvider {
         let client = match base_url.clone() {
             Some(url) => {
                 let target_resolver = genai::resolver::ServiceTargetResolver::from_resolver_fn(
-                    move |service_target: genai::ServiceTarget| -> genai::resolver::Result<genai::ServiceTarget> {
-                        let genai::ServiceTarget { model, auth, .. } = service_target;
-                        Ok(genai::ServiceTarget {
-                            endpoint: genai::resolver::Endpoint::from_owned(url.clone()),
-                            auth,
-                            model,
-                        })
-                    },
+                    pin_openai_compatible(url),
                 );
                 genai::Client::builder()
                     .with_service_target_resolver(target_resolver)
@@ -195,5 +213,47 @@ impl LlmClient for OpenAIProvider {
 
     fn count_tokens(&self, text: &str) -> usize {
         text.split_whitespace().count()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use genai::adapter::AdapterKind;
+
+    fn target(adapter: AdapterKind, model: &str) -> genai::ServiceTarget {
+        genai::ServiceTarget {
+            endpoint: genai::resolver::Endpoint::from_owned(
+                "https://api.openai.com/v1/".to_string(),
+            ),
+            auth: genai::resolver::AuthData::from_single("k".to_string()),
+            model: genai::ModelIden::new(adapter, model),
+        }
+    }
+
+    #[test]
+    fn custom_endpoints_always_use_the_openai_adapter() {
+        // Live: model `auto` through a router alias resolved to the
+        // Ollama adapter and posted to /v1/api/chat (404).
+        let resolve = pin_openai_compatible("http://localhost:3001/v1/".to_string());
+        for (incoming, name) in [
+            (AdapterKind::Ollama, "auto"),
+            (AdapterKind::Ollama, "glm-4.5-flash"),
+            (AdapterKind::Gemini, "gemini-3.6-flash"),
+        ] {
+            let out = resolve(target(incoming, name)).expect("resolver");
+            assert_eq!(out.model.adapter_kind, AdapterKind::OpenAI);
+            assert_eq!(out.model.model_name.as_str(), name);
+            assert_eq!(out.endpoint.base_url(), "http://localhost:3001/v1/");
+        }
+    }
+
+    #[test]
+    fn base_url_without_a_trailing_slash_is_passed_through_verbatim() {
+        // The adapter appends `chat/completions`, so the caller owns the
+        // `/v1/` suffix; this test pins that we do not rewrite it.
+        let resolve = pin_openai_compatible("http://localhost:3001/v1".to_string());
+        let out = resolve(target(AdapterKind::Ollama, "auto")).expect("resolver");
+        assert_eq!(out.endpoint.base_url(), "http://localhost:3001/v1");
     }
 }

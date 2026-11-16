@@ -106,9 +106,31 @@ pub(super) async fn handle_auto(
     let tool_executor = Arc::new(crate::cli::auto_tools::AutoToolHost::new(
         std::env::current_dir()?,
     ));
-    let tools = crate::cli::auto_tools::AutoToolHost::tool_definitions();
+    let mut tools = crate::cli::auto_tools::AutoToolHost::tool_definitions();
+
+    // Bridge opencode's MCP fleet into this loop (same servers opencode
+    // models use). `CLAWDIUS_MCP=off` disables; `CLAWDIUS_MCP_SERVERS=a,b`
+    // restricts. A dead server is skipped, never fatal.
+    let mcp_bridge = match clawdius_core::mcp::bridge::McpBridge::from_env() {
+        Ok(Some(bridge)) => {
+            tools.extend(bridge.tool_definitions());
+            if output_format == OutputFormat::Text {
+                println!("MCP: {}", bridge.summary());
+            }
+            Some(Arc::new(bridge))
+        },
+        Ok(None) => None,
+        Err(e) => {
+            if output_format == OutputFormat::Text {
+                println!("MCP bridge unavailable: {e}");
+            }
+            None
+        },
+    };
+
     let exec_for_sub = Arc::clone(&tool_executor);
     let journal_for_sub = Arc::clone(&journal);
+    let mcp_for_sub = mcp_bridge.clone();
     let sub_exec: clawdius_core::tools::subagent::SubToolExecutor = {
         let exec = Arc::clone(&exec_for_sub);
         let j = Arc::clone(&journal_for_sub);
@@ -120,7 +142,10 @@ pub(super) async fn handle_auto(
                     args: args.to_string(),
                 });
             }
-            let (out, is_err) = exec.execute(name, args);
+            let (out, is_err) = match mcp_for_sub.as_ref() {
+                Some(bridge) if name.starts_with("mcp__") => bridge.execute(name, args),
+                _ => exec.execute(name, args),
+            };
             if let Ok(mut run) = j.lock() {
                 let _ = run.record(&clawdius_core::session::journal::JournalEvent::ToolResult {
                     n: 0,
@@ -131,6 +156,22 @@ pub(super) async fn handle_auto(
             (out, is_err)
         })
     };
+    // Loop context: the repo's conventions and the skills that match this
+    // task. The TUI and opencode both give their models these; tool loops
+    // used to get neither, so they guessed at conventions the repo spells
+    // out. Inlined (not advertised as paths) because the loop's read_file
+    // refuses paths outside the workspace root.
+    let workspace_root = std::env::current_dir()?;
+    let loop_context = clawdius_core::context::build_loop_context(&workspace_root, &task);
+    let mut system_prompt = mode.system_prompt().to_string();
+    if !loop_context.is_empty() {
+        system_prompt.push_str("\n\n");
+        system_prompt.push_str(&loop_context.block);
+        if output_format == OutputFormat::Text {
+            println!("Loop context: {}", loop_context.summary());
+        }
+    }
+
     let engine = clawdius_core::tools::subagent::SubagentTool::new(
         client,
         tools,
@@ -140,7 +181,7 @@ pub(super) async fn handle_auto(
             ..clawdius_core::tools::subagent::SubagentConfig::default()
         },
     )
-    .system_prompt(mode.system_prompt().to_string());
+    .system_prompt(system_prompt);
 
     if output_format == OutputFormat::Text {
         println!("Working...");
