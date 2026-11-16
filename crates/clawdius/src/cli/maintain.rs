@@ -1371,13 +1371,15 @@ mod tests {
         // Live: a Z.AI throttle rotated into Google, whose key was
         // exhausted, and the cycle died as a task failure. Unconfigured
         // providers must never enter the rotation.
-        let mut llm = LlmConfig::default();
-        llm.deepseek = Some(clawdius_core::config::ProviderConfig {
-            model: None,
-            api_key_env: None,
-            api_key: Some("sk-test".into()),
-            base_url: None,
-        });
+        let llm = LlmConfig {
+            deepseek: Some(clawdius_core::config::ProviderConfig {
+                model: None,
+                api_key_env: None,
+                api_key: Some("sk-test".into()),
+                base_url: None,
+            }),
+            ..LlmConfig::default()
+        };
         let chain = provider_chain("zai", &llm);
         assert_eq!(chain[0], "zai");
         assert!(chain.contains(&"deepseek".to_string()));
