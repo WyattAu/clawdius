@@ -26,9 +26,12 @@
 //! - [`cycle`] — the per-repo dev-cycle state machine
 //! - [`gates`] — hard-gate policy, skip-and-flag, review queue
 //! - [`router`] — the central agent's task routing across repos
+//! - [`opencode_driver`] — headless `opencode run` CLI transport with
+//!   worktree-per-task isolation and session continuation
 
 pub mod cycle;
 pub mod gates;
+pub mod opencode_driver;
 pub mod registry;
 pub mod router;
 
