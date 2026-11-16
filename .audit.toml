@@ -199,3 +199,45 @@ id = "RUSTSEC-2026-0382"
 [[ignore]]
 id = "RUSTSEC-2026-0383"
 # wasmtime 49 wave — interlocked =49.0.2 internals; the 50.x migration is a separate project
+
+# November 2026 advisory wave — all under optional gateway features or
+# upstream-pinned transitives; see SECURITY.md "Risk Acceptance Statement".
+[[ignore]]
+id = "RUSTSEC-2026-0346"
+# rustls 0.22.4 via serenity 0.12 -> tokio-tungstenite 0.21 (discord chain)
+
+[[ignore]]
+id = "RUSTSEC-2026-0349"
+# rustls 0.22.4 via serenity 0.12 -> tokio-tungstenite 0.21 (discord chain)
+
+[[ignore]]
+id = "RUSTSEC-2026-0382"
+# rustls-webpki 0.102.8 via serenity 0.12 (discord chain); 0.103.16 needs serenity 0.13
+
+[[ignore]]
+id = "RUSTSEC-2026-0292"
+# imbl-sized-chunks 0.1.3 via imbl <- eyeball-im <- matrix-sdk 0.16 (matrix feature)
+
+[[ignore]]
+id = "RUSTSEC-2026-0451"
+# vodozemac 0.9.0 via matrix-sdk 0.16 (matrix feature); 0.11.2 needs matrix-sdk 0.17
+
+[[ignore]]
+id = "RUSTSEC-2026-0510"
+# vodozemac 0.9.0 via matrix-sdk 0.16 (matrix feature); 0.11.2 needs matrix-sdk 0.17
+
+[[ignore]]
+id = "RUSTSEC-2026-0367"
+# zip 7.4 via candle-core (optional ML stack); candle-core pins ^7, fixes in zip 9
+
+[[ignore]]
+id = "RUSTSEC-2026-0368"
+# zip 7.4 via candle-core (optional ML stack); candle-core pins ^7, fixes in zip 9
+
+[[ignore]]
+id = "RUSTSEC-2026-0369"
+# zip 7.4 via candle-core (optional ML stack); candle-core pins ^7, fixes in zip 9
+
+[[ignore]]
+id = "RUSTSEC-2026-0429"
+# zip 7.4 via candle-core (optional ML stack); candle-core pins ^7, fixes in zip 9
