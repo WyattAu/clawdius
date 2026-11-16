@@ -136,7 +136,7 @@ async-trait = "0.1"
 lru = "0.18"
 
 # === Crypto (encryption at rest) ===
-aes-gcm = "0.11.0-rc.4"
+aes-gcm = "0.11"
 hmac = "0.13"
 sha2 = "0.11"
 hmac-sha256 = "1"
@@ -161,9 +161,9 @@ similar = "2.6"
 # === Vector Database ===
 # Upgraded to 0.27.x to fix RUSTSEC-2026-0044, RUSTSEC-2026-0048, RUSTSEC-2026-0049
 lancedb = "0.27"
-arrow = "57"
-arrow-array = "57"
-arrow-schema = "57"
+arrow = "57.3.2"
+arrow-array = "57.3.2"
+arrow-schema = "57.3.2"
 
 # === ML/Embeddings ===
 candle-core = "0.10"
