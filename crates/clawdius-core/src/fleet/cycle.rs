@@ -90,6 +90,12 @@ impl DevCycle {
                 CyclePhase::Dispatched | CyclePhase::Running,
                 CyclePhase::FinishReported,
             )
+            // Execution failure: requeue straight from the working
+            // phases (the run died before any finish could be reported).
+            | (
+                CyclePhase::Dispatched | CyclePhase::Running,
+                CyclePhase::Requeued,
+            )
             | (
                 CyclePhase::FinishReported,
                 CyclePhase::Completed | CyclePhase::GatesSkipped | CyclePhase::Requeued,
@@ -111,6 +117,20 @@ impl DevCycle {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn execution_failure_requeues_from_running() {
+        let mk = |phase| DevCycle {
+            repo: "r".into(),
+            task: "t".into(),
+            phase,
+            updated_at: chrono::Utc::now(),
+            note: None,
+        };
+        assert!(mk(CyclePhase::Running).transition(CyclePhase::Requeued));
+        assert!(mk(CyclePhase::Dispatched).transition(CyclePhase::Requeued));
+        assert!(!mk(CyclePhase::Completed).transition(CyclePhase::Requeued));
+    }
+
     use super::*;
 
     #[test]
