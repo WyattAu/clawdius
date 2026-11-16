@@ -78,7 +78,7 @@ pub enum TuiEvent {
     Done,
     /// An error occurred.
     Error(String),
-    /// A fresh OpenCode session snapshot (from the attached server).
+    /// A fresh `OpenCode` session snapshot (from the attached server).
     OpencodeSessions {
         sessions: Vec<clawdius_core::fleet::SessionSummary>,
         status: String,

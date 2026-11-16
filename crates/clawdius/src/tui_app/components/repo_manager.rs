@@ -60,13 +60,13 @@ pub struct FleetManager {
     pub scan_root: PathBuf,
     /// Status line shown under the list.
     pub status_line: String,
-    /// Live OpenCode sessions (from the attached background server).
+    /// Live `OpenCode` sessions (from the attached background server).
     pub sessions: Vec<SessionSummary>,
     /// Show the sessions pane instead of the repo list.
     pub sessions_view: bool,
     /// Selected session row.
     pub sessions_selected: usize,
-    /// OpenCode attach/refresh status shown in the pane footer.
+    /// `OpenCode` attach/refresh status shown in the pane footer.
     pub opencode_status: String,
 }
 
@@ -124,14 +124,14 @@ impl FleetManager {
         self.status_line = format!("scanned {} repo(s)", self.state.registry.entries.len());
     }
 
-    /// Show the OpenCode sessions pane (attach status until data lands).
-    pub fn open_sessions(&mut self) {
+    /// Show the `OpenCode` sessions pane (attach status until data lands).
+    pub const fn open_sessions(&mut self) {
         self.sessions_view = true;
         self.sessions_selected = 0;
     }
 
     /// Leave the sessions pane back to the repo list.
-    pub fn close_sessions(&mut self) {
+    pub const fn close_sessions(&mut self) {
         self.sessions_view = false;
     }
 
@@ -145,14 +145,14 @@ impl FleetManager {
     }
 
     /// Move the session selection down one row.
-    pub fn sessions_down(&mut self) {
+    pub const fn sessions_down(&mut self) {
         if self.sessions_selected + 1 < self.sessions.len() {
             self.sessions_selected += 1;
         }
     }
 
     /// Move the session selection up one row.
-    pub fn sessions_up(&mut self) {
+    pub const fn sessions_up(&mut self) {
         self.sessions_selected = self.sessions_selected.saturating_sub(1);
     }
 
@@ -541,6 +541,92 @@ fn truncate(s: &str, max: usize) -> String {
     )
 }
 
+impl FleetManagerWidget<'_> {
+    /// Render the live `OpenCode` sessions pane: every session on the
+    /// attached background server, newest activity first.
+    fn render_sessions(&self, area: Rect, buf: &mut ratatui::buffer::Buffer) {
+        let block = Block::default()
+            .title(" Fleet — OpenCode sessions ")
+            .borders(Borders::ALL)
+            .border_style(self.theme.border_focus());
+        let content_height = area.height.saturating_sub(2) as usize;
+        let mut lines: Vec<Line<'static>> = Vec::new();
+
+        lines.push(Line::from(Span::styled(
+            format!(
+                "  {:<9} {:<20} {:>9} {:>9}  {}",
+                "OUTCOME", "MODEL", "IN", "OUT", "TITLE"
+            ),
+            self.theme.title().add_modifier(Modifier::BOLD),
+        )));
+
+        if self.manager.sessions.is_empty() {
+            lines.push(Line::from(Span::styled(
+                format!("  {}", self.manager.opencode_status),
+                self.theme.muted(),
+            )));
+        } else {
+            let rows_visible = content_height.saturating_sub(2);
+            let start = self
+                .manager
+                .sessions_selected
+                .saturating_sub(rows_visible.saturating_sub(1));
+            for (i, s) in self
+                .manager
+                .sessions
+                .iter()
+                .enumerate()
+                .skip(start)
+                .take(rows_visible)
+            {
+                let selected = i == self.manager.sessions_selected;
+                let outcome = s.outcome.as_deref().unwrap_or("running");
+                let model = match (&s.provider_id, &s.model_id) {
+                    (Some(p), Some(m)) => format!("{p}/{m}"),
+                    _ => "-".to_string(),
+                };
+                let line = format!(
+                    "  {:<9} {:<20} {:>9} {:>9}  {}",
+                    truncate(outcome, 9),
+                    truncate(&model, 20),
+                    compact_tokens(s.input_tokens),
+                    compact_tokens(s.output_tokens),
+                    truncate(s.title.as_deref().unwrap_or("-"), 40),
+                );
+                let style = if selected {
+                    self.theme.status_highlight()
+                } else {
+                    self.theme.assistant_message()
+                };
+                lines.push(Line::from(Span::styled(line, style)));
+            }
+        }
+
+        let footer = format!(
+            "[j/k] move  [o/q] close  |  {} session(s)  |  {}",
+            self.manager.sessions.len(),
+            self.manager.opencode_status
+        );
+        lines.push(Line::from(Span::styled(footer, self.theme.muted())));
+
+        let paragraph = Paragraph::new(lines).block(block);
+        paragraph.render(area, buf);
+    }
+}
+
+/// Compact token counts (`1.2M`, `484k`, `512`).
+// Display only: token counts lose sub-unit precision by design.
+#[allow(clippy::cast_precision_loss)]
+fn compact_tokens(n: u64) -> String {
+    if n >= 1_000_000 {
+        format!("{:.1}M", n as f64 / 1_000_000.0)
+    } else if n >= 1_000 {
+        format!("{}k", n / 1_000)
+    } else {
+        n.to_string()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -689,89 +775,5 @@ mod tests {
         }
         let reloaded = FleetManager::new(tmp.path());
         assert_eq!(reloaded.state.router.queue_len("demo"), 1);
-    }
-}
-
-impl FleetManagerWidget<'_> {
-    /// Render the live OpenCode sessions pane: every session on the
-    /// attached background server, newest activity first.
-    fn render_sessions(&self, area: Rect, buf: &mut ratatui::buffer::Buffer) {
-        let block = Block::default()
-            .title(" Fleet — OpenCode sessions ")
-            .borders(Borders::ALL)
-            .border_style(self.theme.border_focus());
-        let content_height = area.height.saturating_sub(2) as usize;
-        let mut lines: Vec<Line<'static>> = Vec::new();
-
-        lines.push(Line::from(Span::styled(
-            format!(
-                "  {:<9} {:<20} {:>9} {:>9}  {}",
-                "OUTCOME", "MODEL", "IN", "OUT", "TITLE"
-            ),
-            self.theme.title().add_modifier(Modifier::BOLD),
-        )));
-
-        if self.manager.sessions.is_empty() {
-            lines.push(Line::from(Span::styled(
-                format!("  {}", self.manager.opencode_status),
-                self.theme.muted(),
-            )));
-        } else {
-            let rows_visible = content_height.saturating_sub(2);
-            let start = self
-                .manager
-                .sessions_selected
-                .saturating_sub(rows_visible.saturating_sub(1));
-            for (i, s) in self
-                .manager
-                .sessions
-                .iter()
-                .enumerate()
-                .skip(start)
-                .take(rows_visible)
-            {
-                let selected = i == self.manager.sessions_selected;
-                let outcome = s.outcome.as_deref().unwrap_or("running");
-                let model = match (&s.provider_id, &s.model_id) {
-                    (Some(p), Some(m)) => format!("{p}/{m}"),
-                    _ => "-".to_string(),
-                };
-                let line = format!(
-                    "  {:<9} {:<20} {:>9} {:>9}  {}",
-                    truncate(outcome, 9),
-                    truncate(&model, 20),
-                    compact_tokens(s.input_tokens),
-                    compact_tokens(s.output_tokens),
-                    truncate(s.title.as_deref().unwrap_or("-"), 40),
-                );
-                let style = if selected {
-                    self.theme.status_highlight()
-                } else {
-                    self.theme.assistant_message()
-                };
-                lines.push(Line::from(Span::styled(line, style)));
-            }
-        }
-
-        let footer = format!(
-            "[j/k] move  [o/q] close  |  {} session(s)  |  {}",
-            self.manager.sessions.len(),
-            self.manager.opencode_status
-        );
-        lines.push(Line::from(Span::styled(footer, self.theme.muted())));
-
-        let paragraph = Paragraph::new(lines).block(block);
-        paragraph.render(area, buf);
-    }
-}
-
-/// Compact token counts (`1.2M`, `484k`, `512`).
-fn compact_tokens(n: u64) -> String {
-    if n >= 1_000_000 {
-        format!("{:.1}M", n as f64 / 1_000_000.0)
-    } else if n >= 1_000 {
-        format!("{}k", n / 1_000)
-    } else {
-        n.to_string()
     }
 }
