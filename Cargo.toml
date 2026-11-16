@@ -153,7 +153,7 @@ urlencoding = "2.1"
 wasmtime-wasi = "49"
 
 # === Token Counting ===
-tiktoken-rs = "0.5"
+tiktoken-rs = "0.12"
 
 # === Diff ===
 similar = "2.6"
