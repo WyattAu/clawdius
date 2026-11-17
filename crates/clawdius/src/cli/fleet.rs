@@ -12,8 +12,8 @@ use super::FleetCommands;
 use clawdius_core::fleet::opencode_driver::{FleetTask, OpencodeDriver};
 
 /// Build the driver for a repo.
-fn driver_for(repo: &PathBuf) -> OpencodeDriver {
-    OpencodeDriver::new(repo.clone())
+fn driver_for(repo: impl Into<PathBuf>) -> OpencodeDriver {
+    OpencodeDriver::new(repo.into())
 }
 
 /// Print a header line and the driver's report.
@@ -115,8 +115,7 @@ pub(super) fn handle_fleet(action: FleetCommands) -> anyhow::Result<()> {
         },
 
         FleetCommands::Collect { slug } => {
-            let cwd = std::env::current_dir()?;
-            let driver = driver_for(cwd);
+            let driver = driver_for(std::env::current_dir()?);
             let report = driver.collect(&slug)?;
             println!(
                 "fleet: collected `{}` ({} -> {})",
@@ -133,8 +132,7 @@ pub(super) fn handle_fleet(action: FleetCommands) -> anyhow::Result<()> {
             title,
             body,
         } => {
-            let cwd = std::env::current_dir()?;
-            let driver = driver_for(cwd);
+            let driver = driver_for(std::env::current_dir()?);
             let title = title.unwrap_or_else(|| format!("fleet/{slug}: automated task"));
             let body = body.unwrap_or_else(|| format!("Automated fleet task `{slug}`."));
             let report = driver.publish(&slug, &remote, &base, &title, &body)?;
@@ -154,7 +152,7 @@ pub(super) fn handle_fleet(action: FleetCommands) -> anyhow::Result<()> {
                 println!("fleet: no worktree pool at {}", pool.display());
                 return Ok(());
             }
-            let mut entries: Vec<_> = std::fs::read_dir(&pool)?
+            let mut entries: Vec<_> = std::fs::read_dir(pool)?
                 .filter_map(Result::ok)
                 .map(|e| e.path())
                 .filter(|p| p.is_dir())
