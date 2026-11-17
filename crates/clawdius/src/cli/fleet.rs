@@ -6,12 +6,10 @@
 //! the same primitives; this module is the human-in-the-loop path.
 
 use std::path::PathBuf;
-use std::sync::Arc;
 use std::time::Duration;
 
 use super::FleetCommands;
 use clawdius_core::fleet::opencode_driver::{FleetTask, OpencodeDriver};
-use clawdius_core::fleet::{GatePolicy, ReviewQueue};
 
 /// Build the driver for a repo.
 fn driver_for(repo: &PathBuf) -> OpencodeDriver {
@@ -38,7 +36,7 @@ fn print_report(slug: &str, ok: bool, output: &str, duration_ms: u64) {
     }
 }
 
-pub(super) async fn handle_fleet(action: FleetCommands) -> anyhow::Result<()> {
+pub(super) fn handle_fleet(action: FleetCommands) -> anyhow::Result<()> {
     match action {
         FleetCommands::Work {
             repo,
@@ -114,11 +112,11 @@ pub(super) async fn handle_fleet(action: FleetCommands) -> anyhow::Result<()> {
                 driver.discard(&slug)?;
                 println!("fleet: worktree discarded");
             }
-            Ok(())
         },
 
         FleetCommands::Collect { slug } => {
-            let driver = driver_for(&std::env::current_dir()?);
+            let cwd = std::env::current_dir()?;
+            let driver = driver_for(cwd);
             let report = driver.collect(&slug)?;
             println!(
                 "fleet: collected `{}` ({} -> {})",
@@ -126,7 +124,6 @@ pub(super) async fn handle_fleet(action: FleetCommands) -> anyhow::Result<()> {
                 &report.head_before[..8.min(report.head_before.len())],
                 &report.head_after[..8.min(report.head_after.len())]
             );
-            Ok(())
         },
 
         FleetCommands::Publish {
@@ -136,30 +133,29 @@ pub(super) async fn handle_fleet(action: FleetCommands) -> anyhow::Result<()> {
             title,
             body,
         } => {
-            let driver = driver_for(&std::env::current_dir()?);
+            let cwd = std::env::current_dir()?;
+            let driver = driver_for(cwd);
             let title = title.unwrap_or_else(|| format!("fleet/{slug}: automated task"));
             let body = body.unwrap_or_else(|| format!("Automated fleet task `{slug}`."));
             let report = driver.publish(&slug, &remote, &base, &title, &body)?;
             match report.pr_url {
                 Some(url) => println!("fleet: PR opened: {url}"),
                 None => println!(
-                    "fleet: pushed `{}` (gh unavailable — open the PR by hand)",
-                    slug
+                    "fleet: pushed `{slug}` (gh unavailable — open the PR by hand)"
                 ),
             }
-            Ok(())
         },
 
         FleetCommands::Status => {
             let cwd = std::env::current_dir()?;
             let driver = driver_for(&cwd);
-            let pool = driver.worktree_root.clone();
+            let pool = &driver.worktree_root;
             if !pool.is_dir() {
                 println!("fleet: no worktree pool at {}", pool.display());
                 return Ok(());
             }
             let mut entries: Vec<_> = std::fs::read_dir(&pool)?
-                .filter_map(|e| e.ok())
+                .filter_map(Result::ok)
                 .map(|e| e.path())
                 .filter(|p| p.is_dir())
                 .collect();
@@ -173,7 +169,7 @@ pub(super) async fn handle_fleet(action: FleetCommands) -> anyhow::Result<()> {
                     .args(["rev-list", "--left-right", "--count", "HEAD...HEAD"])
                     .output();
                 let _ = out; // rev-list against itself is a placeholder; branch list is the datum
-                println!("fleet: {}", slug);
+                println!("fleet: {slug}");
             }
             let branches = std::process::Command::new("git")
                 .current_dir(&cwd)
@@ -185,27 +181,7 @@ pub(super) async fn handle_fleet(action: FleetCommands) -> anyhow::Result<()> {
                     println!("fleet: branch {b}");
                 }
             }
-            Ok(())
         },
     }
-}
-
-// GatePolicy + ReviewQueue are referenced for callers that want to run
-// the executor's apply_outcomes path; the CLI uses the driver directly
-// (one-shot tasks) — kept imported so the extension point is obvious.
-#[allow(unused_imports)]
-use clawdius_core::fleet::{FleetExecutor, FleetRouter};
-
-#[allow(dead_code)]
-fn _executor_extension_point(driver: OpencodeDriver) -> FleetExecutor {
-    FleetExecutor::new(
-        clawdius_core::fleet::FleetRouter::new(),
-        Arc::new(driver),
-        4,
-    )
-}
-
-#[allow(dead_code)]
-fn _gate_extension_point() -> (GatePolicy, ReviewQueue) {
-    (GatePolicy::default(), ReviewQueue::default())
+    Ok(())
 }

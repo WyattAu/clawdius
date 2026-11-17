@@ -1617,7 +1617,7 @@ pub async fn handle_command(
         Commands::Checkpoint { action } => {
             checkpoint::handle_checkpoint(action, config_path, output_format).await
         },
-        Commands::Fleet { action } => fleet::handle_fleet(action).await,
+        Commands::Fleet { action } => fleet::handle_fleet(action),
         Commands::Timeline { action } => {
             timeline::handle_timeline(action, config_path, output_format).await
         },
