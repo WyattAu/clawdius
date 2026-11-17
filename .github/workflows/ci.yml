@@ -260,7 +260,12 @@ jobs:
   benchmarks:
     name: Benchmarks
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # GitHub reports job timeouts as "cancelled", which poisons the whole
+    # run's conclusion — live: every main CI run since 2026-11-16 showed
+    # cancelled while all substantive jobs were green, because the
+    # criterion suite (baseline build + benches) outgrew 30 minutes.
+    # Mirrors benchmarks.yml (90 min).
+    timeout-minutes: 90
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     env:
       SCCACHE_GHA_ENABLED: "true"
