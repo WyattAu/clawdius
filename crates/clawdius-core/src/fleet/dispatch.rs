@@ -22,6 +22,9 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use super::opencode_driver::{FleetTask, OpencodeDriver};
+use tracing::warn;
+
+use super::gates::{GateDecision, GateId, GatePolicy, ReviewQueue};
 use super::router::{DispatchDecision, FleetRouter};
 
 /// One finished (or failed-to-run) task handed back to the caller.
@@ -43,6 +46,9 @@ pub struct FleetExecutor {
     driver: Arc<OpencodeDriver>,
     /// Fleet-wide cap on concurrent opencode runs.
     pub max_parallel: usize,
+    /// Gates the fleet requires of a run. Exit-0 convention: the agent
+    /// was instructed to run these and a zero exit reports them passed.
+    pub required_gates: Vec<GateId>,
     /// Tasks currently dispatched but not yet collected.
     inflight: usize,
     /// Outcomes that arrived but were not yet returned to the caller.
@@ -62,6 +68,7 @@ impl FleetExecutor {
             router,
             driver,
             max_parallel: max_parallel.max(1),
+            required_gates: GateId::all().to_vec(),
             inflight: 0,
             pending: VecDeque::new(),
             tx,
@@ -129,6 +136,49 @@ impl FleetExecutor {
     pub fn inflight(&self) -> usize {
         self.inflight
     }
+
+    /// Walk collected outcomes and drive the router lanes + gates.
+    ///
+    /// Convention: an opencode exit of 0 reports the required gates as
+    /// passed (the agent's prompt instructs it to run verification and
+    /// state DONE); a non-zero exit or a driver failure requeues the
+    /// repo's lane. Gate decisions are returned so the caller can act
+    /// on them (review queue contents, notifications).
+    pub fn apply_outcomes(
+        &mut self,
+        policy: &GatePolicy,
+        review: &mut ReviewQueue,
+    ) -> Vec<(String, GateDecision)> {
+        let mut decisions = Vec::new();
+        for outcome in self.collect_ready() {
+            match outcome {
+                TaskOutcome::Done(report) => {
+                    let repo = report.slug.clone();
+                    if report.ok {
+                        if let Some(decision) = self.router.report_finish(
+                            &repo,
+                            &self.required_gates,
+                            "opencode run exited 0 (agent ran verification)",
+                            policy,
+                            review,
+                        ) {
+                            decisions.push((repo, decision));
+                        }
+                    } else {
+                        // Execution failure: the lane requeues silently —
+                        // a failed run is not a gate finish.
+                        self.router.report_failure(&repo);
+                    }
+                }
+                TaskOutcome::Failed(slug, err) => {
+                    self.router.report_failure(&slug);
+                    warn!("fleet task `{slug}` failed to run: {err}");
+                }
+            }
+        }
+        decisions
+    }
+
 
     /// Drain the channel; when `wait` is set, blocks until `inflight`
     /// reaches zero first.

@@ -267,19 +267,6 @@ impl OpencodeDriver {
         })
     }
 
-    /// Outcome of collecting a finished task branch.
-    #[derive(Debug, Clone, serde::Serialize)]
-    pub struct CollectReport {
-        /// Task slug that was collected.
-        pub slug: String,
-        /// Branch that was merged (`fleet/<slug>`).
-        pub branch: String,
-        /// Repo HEAD before the merge.
-        pub head_before: String,
-        /// Repo HEAD after the merge.
-        pub head_after: String,
-    }
-
     /// Collect a finished task: fast-forward the main repo's current
     /// branch to `fleet/<slug>`.
     ///
