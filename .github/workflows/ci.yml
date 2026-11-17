@@ -257,49 +257,6 @@ jobs:
           path: lcov.info
           retention-days: 30
 
-  benchmarks:
-    name: Benchmarks
-    runs-on: ubuntu-latest
-    # GitHub reports job timeouts as "cancelled", which poisons the whole
-    # run's conclusion — live: every main CI run since 2026-11-16 showed
-    # cancelled while all substantive jobs were green, because the
-    # criterion suite (baseline build + benches) outgrew 30 minutes.
-    # Mirrors benchmarks.yml (90 min).
-    timeout-minutes: 90
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    env:
-      SCCACHE_GHA_ENABLED: "true"
-      RUSTC_WRAPPER: sccache
-    steps:
-      - uses: actions/checkout@v7
-      - uses: mozilla-actions/sccache-action@v0.0.11
-      - name: sccache stats
-        run: sccache --start-server || true
-
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@1.96
-
-      - name: Cache Rust artifacts
-        uses: Swatinem/rust-cache@v2
-
-      - name: Cache benchmark results
-        uses: actions/cache@v6
-        with:
-          path: target/criterion
-          key: benchmark-results-${{ github.sha }}
-          restore-keys: |
-            benchmark-results-
-
-      - name: Run benchmarks
-        run: cargo bench --workspace --benches --locked
-
-      - name: Upload benchmark results
-        uses: actions/upload-artifact@v7
-        with:
-          name: benchmark-results
-          path: target/criterion
-          retention-days: 30
-
   scheduled-benchmarks:
     name: Scheduled Benchmarks
     runs-on: ubuntu-latest
