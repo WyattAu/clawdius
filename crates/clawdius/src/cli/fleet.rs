@@ -138,9 +138,7 @@ pub(super) fn handle_fleet(action: FleetCommands) -> anyhow::Result<()> {
             let report = driver.publish(&slug, &remote, &base, &title, &body)?;
             match report.pr_url {
                 Some(url) => println!("fleet: PR opened: {url}"),
-                None => println!(
-                    "fleet: pushed `{slug}` (gh unavailable — open the PR by hand)"
-                ),
+                None => println!("fleet: pushed `{slug}` (gh unavailable — open the PR by hand)"),
             }
         },
 
