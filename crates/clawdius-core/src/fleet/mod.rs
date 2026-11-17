@@ -40,6 +40,7 @@ pub mod registry;
 pub mod router;
 
 pub use cycle::{CyclePhase, DevCycle};
+pub use dispatch::{FleetExecutor, TaskOutcome};
 pub use gates::{GateDecision, GateId, GatePolicy, GateRecord, GateStatus, ReviewQueue};
 pub use opencode_client::{
     MessageSummary, ModelRef, OpenCodeClient, OpenCodeEvent, SessionSummary,
