@@ -1090,6 +1090,17 @@ fn is_rate_limit(text: &str) -> bool {
         "provider_error",
         "empty completion",
         "empty_completion",
+        // Transport shapes: a failed *connection* is the most transient
+        // class there is. Live: one reqwest "error sending request for
+        // url" turned the deps cycle RED while a direct probe 30 seconds
+        // later answered 200 in 0.6s.
+        "error sending request",
+        "connection refused",
+        "connection reset",
+        "connection closed",
+        "timed out",
+        "timeout",
+        "os error",
     ]
     .iter()
     .any(|needle| lower.contains(needle))
@@ -1291,6 +1302,11 @@ mod tests {
             "Request failed with status code '502 Bad Gateway'. \"code\":\"upstream_failed\""
         ));
         assert!(is_rate_limit("empty completion from GLM-4.5 Flash"));
+        // Transport errors live-caught on 2026-11-17 (reqwest send failure).
+        assert!(is_rate_limit(
+            "Reqwest error: error sending request for url (https://api.z.ai/api/paas/v4/chat/completions)"
+        ));
+        assert!(is_rate_limit("connection refused (os error 111)"));
         assert!(!is_rate_limit("semantic loop detected"));
         assert!(!is_rate_limit("compile error: expected `;`"));
         assert!(!is_rate_limit("error[E0308]: mismatched types"));
