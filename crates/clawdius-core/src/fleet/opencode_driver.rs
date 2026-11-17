@@ -240,14 +240,14 @@ impl OpencodeDriver {
                 Ok(Some(status)) => {
                     exited = Some(status);
                     break;
-                }
+                },
                 Ok(None) if Instant::now() >= deadline => {
                     let _ = child.kill();
                     let _ = child.wait();
                     return Err(crate::Error::Llm(format!(
                         "opencode task `{slug}` exceeded timeout of {timeout:?}"
                     )));
-                }
+                },
                 Ok(None) => std::thread::sleep(Duration::from_millis(50)),
                 Err(e) => return Err(crate::Error::Llm(format!("opencode wait failed: {e}"))),
             }
@@ -298,14 +298,22 @@ impl OpencodeDriver {
             ));
         }
         // Branch must exist.
-        if !git(&["show-ref", "--verify", "--quiet", &format!("refs/heads/{branch}")])?
-            .status
-            .success()
+        if !git(&[
+            "show-ref",
+            "--verify",
+            "--quiet",
+            &format!("refs/heads/{branch}"),
+        ])?
+        .status
+        .success()
         {
-            return Err(crate::Error::Llm(format!("branch `{branch}` does not exist")));
+            return Err(crate::Error::Llm(format!(
+                "branch `{branch}` does not exist"
+            )));
         }
-        let head_before =
-            String::from_utf8_lossy(&git(&["rev-parse", "HEAD"])?.stdout).trim().to_string();
+        let head_before = String::from_utf8_lossy(&git(&["rev-parse", "HEAD"])?.stdout)
+            .trim()
+            .to_string();
         let merge = git(&["merge", "--ff-only", &branch])?;
         if !merge.status.success() {
             return Err(crate::Error::Llm(format!(
@@ -313,9 +321,15 @@ impl OpencodeDriver {
                 String::from_utf8_lossy(&merge.stderr).trim()
             )));
         }
-        let head_after =
-            String::from_utf8_lossy(&git(&["rev-parse", "HEAD"])?.stdout).trim().to_string();
-        Ok(CollectReport { slug: slug.to_string(), branch, head_before, head_after })
+        let head_after = String::from_utf8_lossy(&git(&["rev-parse", "HEAD"])?.stdout)
+            .trim()
+            .to_string();
+        Ok(CollectReport {
+            slug: slug.to_string(),
+            branch,
+            head_before,
+            head_after,
+        })
     }
 
     /// Remove a task's worktree and branch (post-collect cleanup, or
@@ -435,7 +449,10 @@ mod tests {
 
         // The run happened INSIDE the worktree, with the right flags.
         let argv = std::fs::read_to_string(&record).unwrap();
-        assert!(argv.contains("fix-tests"), "pwd line should show the worktree path");
+        assert!(
+            argv.contains("fix-tests"),
+            "pwd line should show the worktree path"
+        );
         assert!(argv.contains("--archived"));
         assert!(argv.contains("--format"));
         assert!(argv.contains("fix it"));
@@ -461,7 +478,13 @@ mod tests {
         };
         let workdir = driver.prepare_worktree("cont").unwrap();
         let report = driver
-            .continue_session("cont", "ses_abc", &workdir, "next step", Duration::from_secs(10))
+            .continue_session(
+                "cont",
+                "ses_abc",
+                &workdir,
+                "next step",
+                Duration::from_secs(10),
+            )
             .unwrap();
         assert!(report.ok);
         assert_eq!(report.session_id.as_deref(), Some("ses_next"));
@@ -513,7 +536,11 @@ mod tests {
         let wt = driver.prepare_worktree("feat").unwrap();
         std::fs::write(wt.join("g.txt"), "work").unwrap();
         let git_wt = |args: &[&str]| {
-            Command::new("git").current_dir(&wt).args(args).output().unwrap()
+            Command::new("git")
+                .current_dir(&wt)
+                .args(args)
+                .output()
+                .unwrap()
         };
         git_wt(&["add", "."]);
         git_wt(&["commit", "-q", "-m", "feat: g"]);
@@ -543,20 +570,34 @@ mod tests {
         // untracked one does not block a merge).
         std::fs::write(repo.join("f.txt"), "dirty").unwrap();
         let err = driver.collect("feat").unwrap_err();
-        assert!(err.to_string().contains("uncommitted changes"), "got: {err}");
-        Command::new("git").current_dir(&repo).args(["checkout", "--", "f.txt"]).output().unwrap();
+        assert!(
+            err.to_string().contains("uncommitted changes"),
+            "got: {err}"
+        );
+        Command::new("git")
+            .current_dir(&repo)
+            .args(["checkout", "--", "f.txt"])
+            .output()
+            .unwrap();
 
         // Diverged target -> refused (non-fast-forward): BOTH sides
         // advance. (Only moving main keeps fleet/feat an ancestor and
         // `--ff-only` is a legal no-op "already up to date".)
         let git = |args: &[&str], cwd: &PathBuf| {
-            Command::new("git").current_dir(cwd).args(args).output().unwrap()
+            Command::new("git")
+                .current_dir(cwd)
+                .args(args)
+                .output()
+                .unwrap()
         };
         let wt = driver.worktree_root.join("feat");
         std::fs::write(wt.join("w.txt"), "work").unwrap();
         git(&["add", "."], &wt);
         git(&["commit", "-q", "-m", "feat: w"], &wt);
-        git(&["commit", "-q", "--allow-empty", "-m", "main moved on"], &repo);
+        git(
+            &["commit", "-q", "--allow-empty", "-m", "main moved on"],
+            &repo,
+        );
         let err = driver.collect("feat").unwrap_err();
         assert!(err.to_string().contains("diverged"), "got: {err}");
     }
