@@ -12,8 +12,8 @@ use super::FleetCommands;
 use clawdius_core::fleet::opencode_driver::{FleetTask, OpencodeDriver};
 
 /// Build the driver for a repo.
-fn driver_for(repo: &PathBuf) -> OpencodeDriver {
-    OpencodeDriver::new(repo.clone())
+fn driver_for(repo: &std::path::Path) -> OpencodeDriver {
+    OpencodeDriver::new(repo.to_path_buf())
 }
 
 /// Print a header line and the driver's report.
