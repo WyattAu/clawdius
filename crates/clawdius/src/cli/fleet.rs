@@ -12,8 +12,8 @@ use super::FleetCommands;
 use clawdius_core::fleet::opencode_driver::{FleetTask, OpencodeDriver};
 
 /// Build the driver for a repo.
-fn driver_for(repo: impl Into<PathBuf>) -> OpencodeDriver {
-    OpencodeDriver::new(repo.into())
+fn driver_for(repo: &PathBuf) -> OpencodeDriver {
+    OpencodeDriver::new(repo.clone())
 }
 
 /// Print a header line and the driver's report.
@@ -115,7 +115,8 @@ pub(super) fn handle_fleet(action: FleetCommands) -> anyhow::Result<()> {
         },
 
         FleetCommands::Collect { slug } => {
-            let driver = driver_for(std::env::current_dir()?);
+            let cwd = std::env::current_dir()?;
+            let driver = driver_for(cwd);
             let report = driver.collect(&slug)?;
             println!(
                 "fleet: collected `{}` ({} -> {})",
@@ -132,7 +133,8 @@ pub(super) fn handle_fleet(action: FleetCommands) -> anyhow::Result<()> {
             title,
             body,
         } => {
-            let driver = driver_for(std::env::current_dir()?);
+            let cwd = std::env::current_dir()?;
+            let driver = driver_for(cwd);
             let title = title.unwrap_or_else(|| format!("fleet/{slug}: automated task"));
             let body = body.unwrap_or_else(|| format!("Automated fleet task `{slug}`."));
             let report = driver.publish(&slug, &remote, &base, &title, &body)?;
