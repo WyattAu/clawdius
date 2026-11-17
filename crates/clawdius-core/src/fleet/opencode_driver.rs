@@ -70,6 +70,17 @@ pub struct CollectReport {
     pub head_after: String,
 }
 
+/// Outcome of publishing a task branch.
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct PublishReport {
+    /// Task slug that was published.
+    pub slug: String,
+    /// Whether the branch push succeeded.
+    pub pushed: bool,
+    /// PR url, when `gh` was available and the PR was created.
+    pub pr_url: Option<String>,
+}
+
 /// Driver for headless `opencode run` tasks with worktree isolation.
 pub struct OpencodeDriver {
     /// opencode binary (env `OPENCODE_BIN` overrides).
@@ -329,6 +340,66 @@ impl OpencodeDriver {
             branch,
             head_before,
             head_after,
+        })
+    }
+
+    /// Publish a finished task: push `fleet/<slug>` to `remote` and, if
+    /// the `gh` CLI is available, open a PR into `base`.
+    ///
+    /// Explicit opt-in — the library never touches remotes on its own.
+    /// A missing `gh` is not an error: the push still happens and
+    /// `pr_url` stays `None` (the caller can open the PR by hand).
+    ///
+    /// # Errors
+    ///
+    /// Push failures surface as [`crate::Error::Llm`].
+    pub fn publish(
+        &self,
+        slug: &str,
+        remote: &str,
+        base: &str,
+        title: &str,
+        body: &str,
+    ) -> Result<PublishReport, crate::Error> {
+        let branch = format!("fleet/{slug}");
+        let push = Command::new("git")
+            .current_dir(&self.repo)
+            .args(["push", remote, &branch])
+            .output()
+            .map_err(|e| crate::Error::Llm(format!("git push spawn failed: {e}")))?;
+        if !push.status.success() {
+            return Err(crate::Error::Llm(format!(
+                "push of `{branch}` failed: {}",
+                String::from_utf8_lossy(&push.stderr).trim()
+            )));
+        }
+        // PR creation needs the gh CLI; skip honestly when absent.
+        let gh_present = Command::new("gh")
+            .arg("--version")
+            .output()
+            .map(|o| o.status.success())
+            .unwrap_or(false);
+        let pr_url = if gh_present {
+            let out = Command::new("gh")
+                .current_dir(&self.repo)
+                .args([
+                    "pr", "create", "--head", &branch, "--base", base, "--title", title, "--body",
+                    body,
+                ])
+                .output()
+                .map_err(|e| crate::Error::Llm(format!("gh spawn failed: {e}")))?;
+            if out.status.success() {
+                Some(String::from_utf8_lossy(&out.stdout).trim().to_string())
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+        Ok(PublishReport {
+            slug: slug.to_string(),
+            pushed: true,
+            pr_url,
         })
     }
 
@@ -618,6 +689,66 @@ mod tests {
         driver.discard("gone").unwrap();
         assert!(!wt.exists());
         assert!(driver.discard("gone").is_err());
+    }
+
+    #[test]
+    fn publish_pushes_to_local_remote_and_skips_missing_gh() {
+        let dir = tempfile::tempdir().unwrap();
+        let repo = temp_git_repo(&dir);
+        // A bare remote to push into.
+        let remote = dir.path().join("origin.git");
+        Command::new("git")
+            .args(["init", "-q", "--bare"])
+            .arg(&remote)
+            .output()
+            .unwrap();
+        Command::new("git")
+            .current_dir(&repo)
+            .args(["remote", "add", "origin"])
+            .arg(&remote)
+            .output()
+            .unwrap();
+        let (fake, _record) = fake_opencode(&dir, "{}", "");
+        let driver = OpencodeDriver {
+            bin: fake,
+            repo: repo.clone(),
+            worktree_root: repo.join(".fleet-worktrees"),
+            default_timeout: Duration::from_secs(10),
+        };
+        // Commit something on the fleet branch so the push has content.
+        let wt = driver.prepare_worktree("pub").unwrap();
+        std::fs::write(wt.join("w.txt"), "x").unwrap();
+        Command::new("git")
+            .current_dir(&wt)
+            .args(["add", "."])
+            .output()
+            .unwrap();
+        Command::new("git")
+            .current_dir(&wt)
+            .args(["commit", "-q", "-m", "w"])
+            .output()
+            .unwrap();
+
+        let report = driver
+            .publish("pub", "origin", "main", "feat: pub", "body")
+            .unwrap();
+        assert!(report.pushed);
+        assert!(
+            report.pr_url.is_none(),
+            "no gh in this environment's test PATH assumption"
+        );
+        // The branch exists on the bare remote.
+        let ls = Command::new("git")
+            .args([
+                "--git-dir",
+                remote.to_str().unwrap(),
+                "branch",
+                "--list",
+                "fleet/pub",
+            ])
+            .output()
+            .unwrap();
+        assert!(String::from_utf8_lossy(&ls.stdout).contains("fleet/pub"));
     }
 
     #[test]
