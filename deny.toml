@@ -60,6 +60,20 @@ ignore = [
   "RUSTSEC-2026-0379",
   "RUSTSEC-2026-0381",
   "RUSTSEC-2026-0383",
+    # November 2026 wave, same three chains as above (SECURITY.md):
+    # rustls 0.22.4 + webpki 0.103 fix (discord), matrix-sdk 0.16 set
+    # (vodozemac/imbl-sized-chunks), candle-core's zip ^7 pin.
+    "RUSTSEC-2026-0346", # rustls 0.22.4: quiz help message downgrade (discord chain)
+    "RUSTSEC-2026-0349", # rustls 0.22.4: quiz help message downgrade (discord chain)
+    "RUSTSEC-2026-0382", # rustls-webpki 0.102.8: name constraint nul byte (discord chain)
+    "RUSTSEC-2026-0292", # imbl-sized-chunks 0.1.3 double free (matrix chain)
+    "RUSTSEC-2026-0451", # vodozemac 0.9.0 (matrix chain)
+    "RUSTSEC-2026-0510", # vodozemac 0.9.0 (matrix chain)
+    "RUSTSEC-2026-0367", # zip 7.4 via candle-core ^7 pin (ML chain)
+    "RUSTSEC-2026-0368", # zip 7.4 via candle-core ^7 pin (ML chain)
+    "RUSTSEC-2026-0369", # zip 7.4 via candle-core ^7 pin (ML chain)
+    "RUSTSEC-2026-0429", # zip 7.4 via candle-core ^7 pin (ML chain)
+
     "RUSTSEC-2025-0081", # unic-char-property via urlpattern
     "RUSTSEC-2025-0075", # unic-char-range via urlpattern
     "RUSTSEC-2025-0080", # unic-common via urlpattern

@@ -17,7 +17,7 @@ use ratatui::{
 };
 
 use clawdius_core::fleet::{
-    CyclePhase, DispatchDecision, FleetState, GateId, GatePolicy, ReviewQueue,
+    CyclePhase, DispatchDecision, FleetState, GateId, GatePolicy, ReviewQueue, SessionSummary,
 };
 
 use crate::tui_app::theme::Theme;
@@ -60,6 +60,14 @@ pub struct FleetManager {
     pub scan_root: PathBuf,
     /// Status line shown under the list.
     pub status_line: String,
+    /// Live `OpenCode` sessions (from the attached background server).
+    pub sessions: Vec<SessionSummary>,
+    /// Show the sessions pane instead of the repo list.
+    pub sessions_view: bool,
+    /// Selected session row.
+    pub sessions_selected: usize,
+    /// `OpenCode` attach/refresh status shown in the pane footer.
+    pub opencode_status: String,
 }
 
 impl FleetManager {
@@ -97,6 +105,10 @@ impl FleetManager {
             dashboard: false,
             scan_root: root.to_path_buf(),
             status_line: String::new(),
+            sessions: Vec::new(),
+            sessions_view: false,
+            sessions_selected: 0,
+            opencode_status: "press o to attach".to_string(),
         };
         manager.scan();
         manager
@@ -110,6 +122,38 @@ impl FleetManager {
         }
         self.rebuild_rows();
         self.status_line = format!("scanned {} repo(s)", self.state.registry.entries.len());
+    }
+
+    /// Show the `OpenCode` sessions pane (attach status until data lands).
+    pub const fn open_sessions(&mut self) {
+        self.sessions_view = true;
+        self.sessions_selected = 0;
+    }
+
+    /// Leave the sessions pane back to the repo list.
+    pub const fn close_sessions(&mut self) {
+        self.sessions_view = false;
+    }
+
+    /// Replace the session list with a fresh snapshot from the server.
+    pub fn set_sessions(&mut self, sessions: Vec<SessionSummary>, status: String) {
+        self.sessions = sessions;
+        self.opencode_status = status;
+        if self.sessions_selected >= self.sessions.len() {
+            self.sessions_selected = self.sessions.len().saturating_sub(1);
+        }
+    }
+
+    /// Move the session selection down one row.
+    pub const fn sessions_down(&mut self) {
+        if self.sessions_selected + 1 < self.sessions.len() {
+            self.sessions_selected += 1;
+        }
+    }
+
+    /// Move the session selection up one row.
+    pub const fn sessions_up(&mut self) {
+        self.sessions_selected = self.sessions_selected.saturating_sub(1);
     }
 
     /// Rebuild the rendered rows from registry/router/review state.
@@ -319,7 +363,9 @@ impl<'a> FleetManagerWidget<'a> {
 impl Widget for FleetManagerWidget<'_> {
     fn render(self, area: Rect, buf: &mut ratatui::buffer::Buffer) {
         Clear.render(area, buf);
-        if self.manager.dashboard {
+        if self.manager.sessions_view {
+            self.render_sessions(area, buf);
+        } else if self.manager.dashboard {
             self.render_dashboard(area, buf);
         } else {
             self.render_repos(area, buf);
@@ -495,6 +541,92 @@ fn truncate(s: &str, max: usize) -> String {
     )
 }
 
+impl FleetManagerWidget<'_> {
+    /// Render the live `OpenCode` sessions pane: every session on the
+    /// attached background server, newest activity first.
+    fn render_sessions(&self, area: Rect, buf: &mut ratatui::buffer::Buffer) {
+        let block = Block::default()
+            .title(" Fleet — OpenCode sessions ")
+            .borders(Borders::ALL)
+            .border_style(self.theme.border_focus());
+        let content_height = area.height.saturating_sub(2) as usize;
+        let mut lines: Vec<Line<'static>> = Vec::new();
+
+        lines.push(Line::from(Span::styled(
+            format!(
+                "  {:<9} {:<20} {:>9} {:>9}  {}",
+                "OUTCOME", "MODEL", "IN", "OUT", "TITLE"
+            ),
+            self.theme.title().add_modifier(Modifier::BOLD),
+        )));
+
+        if self.manager.sessions.is_empty() {
+            lines.push(Line::from(Span::styled(
+                format!("  {}", self.manager.opencode_status),
+                self.theme.muted(),
+            )));
+        } else {
+            let rows_visible = content_height.saturating_sub(2);
+            let start = self
+                .manager
+                .sessions_selected
+                .saturating_sub(rows_visible.saturating_sub(1));
+            for (i, s) in self
+                .manager
+                .sessions
+                .iter()
+                .enumerate()
+                .skip(start)
+                .take(rows_visible)
+            {
+                let selected = i == self.manager.sessions_selected;
+                let outcome = s.outcome.as_deref().unwrap_or("running");
+                let model = match (&s.provider_id, &s.model_id) {
+                    (Some(p), Some(m)) => format!("{p}/{m}"),
+                    _ => "-".to_string(),
+                };
+                let line = format!(
+                    "  {:<9} {:<20} {:>9} {:>9}  {}",
+                    truncate(outcome, 9),
+                    truncate(&model, 20),
+                    compact_tokens(s.input_tokens),
+                    compact_tokens(s.output_tokens),
+                    truncate(s.title.as_deref().unwrap_or("-"), 40),
+                );
+                let style = if selected {
+                    self.theme.status_highlight()
+                } else {
+                    self.theme.assistant_message()
+                };
+                lines.push(Line::from(Span::styled(line, style)));
+            }
+        }
+
+        let footer = format!(
+            "[j/k] move  [o/q] close  |  {} session(s)  |  {}",
+            self.manager.sessions.len(),
+            self.manager.opencode_status
+        );
+        lines.push(Line::from(Span::styled(footer, self.theme.muted())));
+
+        let paragraph = Paragraph::new(lines).block(block);
+        paragraph.render(area, buf);
+    }
+}
+
+/// Compact token counts (`1.2M`, `484k`, `512`).
+// Display only: token counts lose sub-unit precision by design.
+#[allow(clippy::cast_precision_loss)]
+fn compact_tokens(n: u64) -> String {
+    if n >= 1_000_000 {
+        format!("{:.1}M", n as f64 / 1_000_000.0)
+    } else if n >= 1_000 {
+        format!("{}k", n / 1_000)
+    } else {
+        n.to_string()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -503,6 +635,80 @@ mod tests {
 
     fn tmp_root() -> tempfile::TempDir {
         tempfile::tempdir().unwrap()
+    }
+
+    fn session(id: &str, outcome: &str, input: u64, output: u64, title: &str) -> SessionSummary {
+        SessionSummary {
+            id: id.to_string(),
+            title: Some(title.to_string()),
+            outcome: Some(outcome.to_string()),
+            agent: Some("build".to_string()),
+            provider_id: Some("zai-coding-plan".to_string()),
+            model_id: Some("glm-5.3-flash".to_string()),
+            directory: Some("/tmp".to_string()),
+            project_id: None,
+            input_tokens: input,
+            output_tokens: output,
+            reasoning_tokens: 0,
+            cache_read_tokens: 0,
+            cost: 0.0,
+            updated_ms: Some(1),
+        }
+    }
+
+    #[test]
+    fn sessions_pane_toggles_and_navigates() {
+        let tmp = tmp_root();
+        let mut manager = FleetManager::new(tmp.path());
+        manager.set_sessions(
+            vec![
+                session("ses_a", "succeeded", 1_200_000, 484_000, "first"),
+                session("ses_b", "failed", 512, 12, "second"),
+            ],
+            "live".to_string(),
+        );
+        manager.open_sessions();
+        assert!(manager.sessions_view);
+        manager.sessions_down();
+        assert_eq!(manager.sessions_selected, 1);
+        manager.sessions_down();
+        assert_eq!(manager.sessions_selected, 1, "clamped at the last row");
+        manager.sessions_up();
+        assert_eq!(manager.sessions_selected, 0);
+        manager.close_sessions();
+        assert!(!manager.sessions_view);
+    }
+
+    #[test]
+    fn sessions_snapshot_clamps_a_stale_selection() {
+        let tmp = tmp_root();
+        let mut manager = FleetManager::new(tmp.path());
+        manager.set_sessions(
+            vec![
+                session("ses_a", "succeeded", 1, 1, "a"),
+                session("ses_b", "failed", 1, 1, "b"),
+            ],
+            "live".to_string(),
+        );
+        manager.sessions_selected = 1;
+        manager.set_sessions(
+            vec![session("ses_a", "succeeded", 1, 1, "a")],
+            "live".to_string(),
+        );
+        assert_eq!(manager.sessions_selected, 0, "selection follows the shrink");
+    }
+
+    #[test]
+    fn token_compaction_reads_like_a_dashboard() {
+        assert_eq!(compact_tokens(512), "512");
+        assert_eq!(compact_tokens(484_069), "484k");
+        assert_eq!(compact_tokens(33_525_218), "33.5M");
+    }
+
+    #[test]
+    fn truncate_keeps_short_strings_and_ellipsizes_long_ones() {
+        assert_eq!(truncate("short", 10), "short");
+        assert_eq!(truncate("a very long title", 8), "a very …");
     }
 
     #[test]

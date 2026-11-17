@@ -136,7 +136,7 @@ async-trait = "0.1"
 lru = "0.18"
 
 # === Crypto (encryption at rest) ===
-aes-gcm = "0.11.0-rc.4"
+aes-gcm = "0.11"
 hmac = "0.13"
 sha2 = "0.11"
 hmac-sha256 = "1"
