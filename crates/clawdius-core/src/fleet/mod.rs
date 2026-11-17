@@ -32,8 +32,8 @@
 //!   under a fleet-wide concurrency cap
 
 pub mod cycle;
-pub mod gates;
 pub mod dispatch;
+pub mod gates;
 pub mod opencode_client;
 pub mod opencode_driver;
 pub mod registry;

@@ -169,16 +169,15 @@ impl FleetExecutor {
                         // a failed run is not a gate finish.
                         self.router.report_failure(&repo);
                     }
-                }
+                },
                 TaskOutcome::Failed(slug, err) => {
                     self.router.report_failure(&slug);
                     warn!("fleet task `{slug}` failed to run: {err}");
-                }
+                },
             }
         }
         decisions
     }
-
 
     /// Drain the channel; when `wait` is set, blocks until `inflight`
     /// reaches zero first.
@@ -189,7 +188,7 @@ impl FleetExecutor {
                     Ok(outcome) => {
                         self.inflight = self.inflight.saturating_sub(1);
                         self.pending.push_back(outcome);
-                    }
+                    },
                     Err(mpsc::RecvTimeoutError::Timeout) => continue,
                     Err(mpsc::RecvTimeoutError::Disconnected) => break,
                 }
@@ -200,7 +199,7 @@ impl FleetExecutor {
                 Ok(outcome) => {
                     self.inflight = self.inflight.saturating_sub(1);
                     self.pending.push_back(outcome);
-                }
+                },
                 Err(TryRecvError::Empty) | Err(TryRecvError::Disconnected) => break,
             }
         }
