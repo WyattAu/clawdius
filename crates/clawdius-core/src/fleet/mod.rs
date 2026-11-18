@@ -26,14 +26,21 @@
 //! - [`cycle`] — the per-repo dev-cycle state machine
 //! - [`gates`] — hard-gate policy, skip-and-flag, review queue
 //! - [`router`] — the central agent's task routing across repos
+//! - [`opencode_driver`] — headless `opencode run` CLI transport with
+//!   worktree-per-task isolation and session continuation
+//! - [`dispatch`] — the executor coupling router queues to the driver
+//!   under a fleet-wide concurrency cap
 
 pub mod cycle;
+pub mod dispatch;
 pub mod gates;
 pub mod opencode_client;
+pub mod opencode_driver;
 pub mod registry;
 pub mod router;
 
 pub use cycle::{CyclePhase, DevCycle};
+pub use dispatch::{FleetExecutor, TaskOutcome};
 pub use gates::{GateDecision, GateId, GatePolicy, GateRecord, GateStatus, ReviewQueue};
 pub use opencode_client::{
     MessageSummary, ModelRef, OpenCodeClient, OpenCodeEvent, SessionSummary,
