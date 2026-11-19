@@ -241,3 +241,33 @@ id = "RUSTSEC-2026-0369"
 [[ignore]]
 id = "RUSTSEC-2026-0429"
 # zip 7.4 via candle-core (optional ML stack); candle-core pins ^7, fixes in zip 9
+
+[[ignore]]
+id = "RUSTSEC-2026-0545"
+# zip 7.4 via candle-core (optional ML stack); candle-core pins ^7, fixes in zip 9
+
+[[ignore]]
+id = "RUSTSEC-2026-0546"
+# zip 7.4 via candle-core (optional ML stack); candle-core pins ^7, fixes in zip 9
+
+[[ignore]]
+id = "RUSTSEC-2026-0547"
+# zip 7.4 via candle-core (optional ML stack); candle-core pins ^7, fixes in zip 9
+
+[[ignore]]
+id = "RUSTSEC-2026-0548"
+# zip 7.4 via candle-core (optional ML stack); candle-core pins ^7, fixes in zip 9.0.5
+
+[[ignore]]
+id = "RUSTSEC-2026-0555"
+# chrono-tz 0.10.4 via arrow-array/datafusion (vector-db chain, optional feature)
+
+[[ignore]]
+id = "RUSTSEC-2026-0542"
+# humantime unmaintained via lance/object_store (vector-db chain, optional feature)
+
+[[ignore]]
+id = "RUSTSEC-2026-0543"
+# chrono 0.4.45 unmaintained (direct dep, every crate). Advisory is
+# maintenance-status only; no known vulnerability in 0.4.x. The jiff
+# migration is a cross-crate project, tracked in SECURITY.md.
