@@ -271,3 +271,34 @@ id = "RUSTSEC-2026-0543"
 # chrono 0.4.45 unmaintained (direct dep, every crate). Advisory is
 # maintenance-status only; no known vulnerability in 0.4.x. The jiff
 # migration is a cross-crate project, tracked in SECURITY.md.
+[[ignore]]
+id = "RUSTSEC-2026-0566"
+# wasmtime 49.0.x interlocked internals; 49.0.6 blocked by wasmtime-environ pin, 50.x is a project
+
+[[ignore]]
+id = "RUSTSEC-2026-0567"
+# wasmtime 49.0.x interlocked internals; 49.0.6 blocked by wasmtime-environ pin, 50.x is a project
+
+[[ignore]]
+id = "RUSTSEC-2026-0568"
+# wasmtime 49.0.x interlocked internals; 49.0.6 blocked by wasmtime-environ pin, 50.x is a project
+
+[[ignore]]
+id = "RUSTSEC-2026-0569"
+# wasmtime 49.0.x interlocked internals; 49.0.6 blocked by wasmtime-environ pin, 50.x is a project
+
+[[ignore]]
+id = "RUSTSEC-2026-0570"
+# wasmtime 49.0.x interlocked internals; 49.0.6 blocked by wasmtime-environ pin, 50.x is a project
+
+[[ignore]]
+id = "RUSTSEC-2026-0571"
+# wasmtime 49.0.x interlocked internals; 49.0.6 blocked by wasmtime-environ pin, 50.x is a project
+
+[[ignore]]
+id = "RUSTSEC-2026-0572"
+# wasmtime 49.0.x interlocked internals; 49.0.6 blocked by wasmtime-environ pin, 50.x is a project
+
+[[ignore]]
+id = "RUSTSEC-2026-0573"
+# wasmtime 49.0.x interlocked internals; 49.0.6 blocked by wasmtime-environ pin, 50.x is a project

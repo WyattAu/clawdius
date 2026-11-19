@@ -1770,11 +1770,19 @@ mod tests {
         assert!(!Autonomy::Mechanical.may_auto_merge(TaskKind::Deps));
         assert!(Autonomy::Full.may_auto_merge(TaskKind::Deps));
         // Protected paths disable it at every level.
-        assert!(diff_has_protected_paths(&[".github/workflows/ci.yml".into()]));
-        assert!(diff_has_protected_paths(&["supply-chain/imports.lock".into()]));
-        assert!(diff_has_protected_paths(&[".specs/02_architecture/proofs/host.lean".into()]));
+        assert!(diff_has_protected_paths(&[
+            ".github/workflows/ci.yml".into()
+        ]));
+        assert!(diff_has_protected_paths(&[
+            "supply-chain/imports.lock".into()
+        ]));
+        assert!(diff_has_protected_paths(&[
+            ".specs/02_architecture/proofs/host.lean".into()
+        ]));
         assert!(diff_has_protected_paths(&["Cargo.toml".into()]));
-        assert!(!diff_has_protected_paths(&["docs/maintenance-loop.md".into()]));
+        assert!(!diff_has_protected_paths(&[
+            "docs/maintenance-loop.md".into()
+        ]));
     }
 
     #[test]

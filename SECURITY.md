@@ -97,5 +97,7 @@ The following transitive CVEs are accepted under documented risk assessment:
 | RUSTSEC-2026-0543 (chrono unmaintained) | Direct workspace dependency (0.4.45, serde) used in every crate for timestamps. Advisory is maintenance-status only — no vulnerability in 0.4.x to date. Migration to jiff is a cross-crate project (serde formats, parsing, TZ data); tracked as a standing task rather than a drive-by refactor. |
 | RUSTSEC-2026-0002/0253 (lru) | Affect `vector-db`/`mariadb` features only (tantivy / mysql_async -> lru 0.12; the direct workspace dependency is lru 0.18). Unsoundness not triggered in Clawdius usage patterns. Low severity. |
 
+The 2026-11-19 wave (RUSTSEC-2026-0566..0573) rides the same wasmtime 49.0.x hold: 49.0.6 is blocked by the wasmtime-environ exact pin, so the 50.x migration closes all of them at once.
+
 **Review cadence:** Weekly via Dependabot alerts. Re-assessment upon upstream patch releases.
 **Contingency:** `[patch.crates-io]` overrides prepared in root Cargo.toml (commented). Activate if upstream does not patch within 90 days of this assessment (2026-06-11).
