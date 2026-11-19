@@ -165,6 +165,77 @@ impl Task {
 pub struct Backlog {
     #[serde(default)]
     pub tasks: Vec<Task>,
+    /// How far the loop may act without a human: `manual` (default) opens
+    /// PRs only, `mechanical` queues auto-merge for lint/tests fixes,
+    /// `full` queues auto-merge for every green cycle. Persisted so a
+    /// restart keeps the operator's choice.
+    #[serde(default)]
+    pub autonomy: Autonomy,
+}
+
+/// Loop autonomy level (low to high). Promotion is an operator decision,
+/// never automatic: one corrupt PR demotes harder than ten clean ones
+/// promote.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Autonomy {
+    /// Every green cycle opens a PR and waits for a human.
+    #[default]
+    Manual,
+    /// Lint/tests fixes queue auto-merge (`gh pr merge --auto`) after a
+    /// protected-path check; everything else stays a PR.
+    Mechanical,
+    /// Every green cycle queues auto-merge.
+    Full,
+}
+
+impl Autonomy {
+    /// Whether this level may auto-merge a task of `kind` whose diff
+    /// avoids protected paths.
+    #[must_use]
+    pub fn may_auto_merge(&self, kind: TaskKind) -> bool {
+        match self {
+            Self::Manual => false,
+            Self::Mechanical => matches!(kind, TaskKind::Lint | TaskKind::Tests),
+            Self::Full => true,
+        }
+    }
+
+    /// Paths that disqualify a diff from auto-merge at any level:
+    /// CI/security configuration and the proof estate.
+    #[must_use]
+    pub fn diff_has_protected_paths(paths: &[String]) -> bool {
+        paths.iter().any(|p| {
+            p.starts_with(".github/")
+                || p.starts_with("supply-chain/")
+                || p.starts_with(".specs/")
+                || p.ends_with("Cargo.toml")
+                || p == "Cargo.lock"
+        })
+    }
+}
+
+impl std::fmt::Display for Autonomy {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Manual => write!(f, "manual"),
+            Self::Mechanical => write!(f, "mechanical"),
+            Self::Full => write!(f, "full"),
+        }
+    }
+}
+
+impl std::str::FromStr for Autonomy {
+    type Err = crate::Error;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "manual" | "l0" => Ok(Self::Manual),
+            "mechanical" | "l1" => Ok(Self::Mechanical),
+            "full" | "l2" => Ok(Self::Full),
+            other => Err(crate::Error::Config(format!(
+                "unknown autonomy level '{other}' (manual|mechanical|full)"
+            ))),
+        }
+    }
 }
 
 impl Backlog {

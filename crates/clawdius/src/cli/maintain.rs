@@ -16,7 +16,7 @@
 use anyhow::{anyhow, Context, Result};
 use clawdius_core::config::LlmConfig;
 use clawdius_core::maintenance::{
-    now_rfc3339, Backlog, CycleOutcome, CycleRecord, Ledger, Task, TaskKind, TaskStatus,
+    now_rfc3339, Autonomy, Backlog, CycleOutcome, CycleRecord, Ledger, Task, TaskKind, TaskStatus,
 };
 use clawdius_core::orchestrator::fallback::{FallbackCoordinator, FallbackPolicy};
 use clawdius_core::orchestrator::pipeline::{Pipeline, StageKind};
@@ -59,10 +59,12 @@ pub(super) async fn handle_maintain(
     worktree_root: Option<PathBuf>,
     no_pr: bool,
     replenish: bool,
+    autonomy: String,
     config_path: Option<PathBuf>,
 ) -> Result<()> {
     let repo = repo_root()?;
     let backlog_path = backlog_path.unwrap_or_else(|| default_backlog(&repo));
+    let autonomy: Autonomy = autonomy.parse().map_err(|e| anyhow!("{e}"))?;
     let ledger = Ledger::new(repo.join(".clawdius/maintenance/ledger.jsonl"));
     let worktrees = worktree_root.unwrap_or_else(|| repo.join(".clawdius/worktrees"));
 
@@ -71,7 +73,19 @@ pub(super) async fn handle_maintain(
         print_backlog(&backlog, &backlog_path);
         println!("\nLedger: {}", ledger.path().display());
         println!("Worktrees: {}", worktrees.display());
+        println!("Autonomy: {autonomy}");
         return Ok(());
+    }
+
+    {
+        // Persist so restarts keep the operator's choice; the backlog is
+        // re-read every cycle and would otherwise reset it. After the
+        // dry-run branch: a read-only command must not write state.
+        let mut b = Backlog::load(&backlog_path)?;
+        if b.autonomy != autonomy {
+            b.autonomy = autonomy;
+            b.save(&backlog_path)?;
+        }
     }
 
     println!("Maintenance loop — repo {}", repo.display());
@@ -92,6 +106,7 @@ pub(super) async fn handle_maintain(
             .map(|n| format!(", max {n} cycles"))
             .unwrap_or_default()
     );
+    println!("  autonomy:  {autonomy}");
     println!();
 
     // Only providers the stages can actually authenticate against enter
@@ -145,7 +160,7 @@ pub(super) async fn handle_maintain(
 
         if backlog.next_pending().is_none() {
             if replenish {
-                if let Some(task) = replenish_task(&mut backlog)? {
+                if let Some(task) = replenish_task(&mut backlog, &repo, true)? {
                     println!(
                         "backlog dry — enqueued `{}` ({})",
                         task.id,
@@ -204,6 +219,7 @@ pub(super) async fn handle_maintain(
             &worktrees,
             &mut coordinator,
             &provider,
+            autonomy,
             model.as_deref(),
             no_pr,
             config_path.as_deref(),
@@ -392,6 +408,7 @@ async fn run_task_with_rotation(
     worktrees: &Path,
     coordinator: &mut FallbackCoordinator,
     preferred: &str,
+    autonomy: Autonomy,
     model: Option<&str>,
     no_pr: bool,
     config_path: Option<&Path>,
@@ -437,6 +454,7 @@ async fn run_task_with_rotation(
             worktrees,
             &provider,
             attempt_model,
+            autonomy,
             no_pr,
             config_path,
         )
@@ -550,6 +568,7 @@ async fn run_task_once(
     worktrees: &Path,
     provider: &str,
     model: Option<&str>,
+    autonomy: Autonomy,
     no_pr: bool,
     config_path: Option<&Path>,
 ) -> Result<CycleReport> {
@@ -615,6 +634,25 @@ async fn run_task_once(
             if staged.is_empty() && model_commits > 0 {
                 println!("    model made {model_commits} commit(s) inside the tool loop");
             }
+            // Diff-sanity gate: the compile gates cannot see prose. Every
+            // rule here is a live defect with a PR number.
+            let problems = diff_sanity_violations(&wt, staged.iter());
+            if !problems.is_empty() {
+                cleanup(false);
+                return Ok(CycleReport {
+                    outcome: CycleOutcome::Red,
+                    note: format!(
+                        "diff-sanity gate: {} — gates cannot see prose, so this \
+                         runs before commit",
+                        problems.join("; ")
+                    ),
+                    quota_blocked: false,
+                    branch: None,
+                    pr_url: None,
+                    tool_calls,
+                    files_changed: 0,
+                });
+            }
             let commit = Command::new("git")
                 .args(["-C", &wt.to_string_lossy()])
                 .args(["-c", "user.name=clawdius-maint"])
@@ -667,11 +705,39 @@ async fn run_task_once(
                 None
             };
 
+            // Autonomy: queue auto-merge when the level and the diff both
+            // allow it. `gh pr merge --auto` lets GitHub wait for the PR's
+            // own checks, so the decision here is cheap and reversible
+            // (a human can cancel auto-merge on the PR page). Protected
+            // paths disable it at every level: CI/security config and the
+            // proof estate are never touched by an unattended merge.
+            let mut note_extra = String::new();
+            let changed: Vec<String> = dirty_paths(repo)
+                .into_iter()
+                .chain(dirty_paths(&wt))
+                .collect();
+            if pr_url.is_some() && autonomy.may_auto_merge(task.kind) {
+                if Autonomy::diff_has_protected_paths(&changed) {
+                    note_extra = "; protected paths — human merge".to_string();
+                } else {
+                    let merged = Command::new("gh")
+                        .current_dir(repo)
+                        .args(["pr", "merge", &branch, "--auto", "--merge"])
+                        .output()
+                        .is_ok_and(|o| o.status.success());
+                    note_extra = if merged {
+                        "; auto-merge queued".to_string()
+                    } else {
+                        "; auto-merge not queued (gh failed)".to_string()
+                    };
+                }
+            }
+
             cleanup(true);
             Ok(CycleReport {
                 outcome: CycleOutcome::Green,
                 note: if push_ok {
-                    format!("committed to `{branch}` ({files_changed} file(s) changed)")
+                    format!("committed to `{branch}` ({files_changed} file(s) changed){note_extra}")
                 } else {
                     format!(
                         "committed to local branch `{branch}` ({files_changed} file(s), no remote push)"
@@ -691,6 +757,106 @@ async fn run_task_once(
             Err(e)
         },
     }
+}
+
+/// Diff-sanity gate: catches the "green but wrong" classes the compile
+/// gates cannot see. Each rule is a live defect with a PR number:
+///
+/// - plan dumps: new files under `docs/plans/` (#105 — a hand-typed
+///   "dependency upgrade plan" table with a fabricated date, zero real
+///   work),
+/// - markdown table problems: a table whose rows disagree on pipe count
+///   (#104 — `\| :exit \| Exit the TUI \|doc\` \| Generate documentation
+///   \|`), or a header+separator with no data rows (#103's empty
+///   `DEPS_UPGRADE.md`).
+///
+/// Deliberately narrow: these three produced four closed PRs; anything
+/// broader would gate honest edits on heuristic guesses.
+fn diff_sanity_violations(wt: &Path, staged: impl Iterator<Item = impl AsRef<str>>) -> Vec<String> {
+    let mut problems = Vec::new();
+    let paths: Vec<String> = staged.map(|p| p.as_ref().to_string()).collect();
+
+    // Rule 1: plan dumps. The standing goals forbid scratch/plan files;
+    // a new file under docs/plans/ is always one.
+    for path in &paths {
+        if path.starts_with("docs/plans/") {
+            problems.push(format!("plan dump created: {path}"));
+        }
+    }
+
+    // Rules 2-3 apply to changed markdown files, read from the worktree
+    // (the diff alone lacks the surrounding table context).
+    for path in &paths {
+        if !path.ends_with(".md") {
+            continue;
+        }
+        let Ok(content) = std::fs::read_to_string(wt.join(path)) else {
+            continue;
+        };
+        for problem in table_problems(&content) {
+            problems.push(format!("{path}: {problem}"));
+        }
+    }
+    problems
+}
+
+/// Markdown table problems in `content`: rows disagreeing with their
+/// table's header pipe count, and header+separator tables with no data
+/// rows. Fence-aware: pipes inside ``` blocks are not table rows.
+fn table_problems(content: &str) -> Vec<String> {
+    let mut problems = Vec::new();
+    let mut in_fence = false;
+    let mut rows: Vec<(usize, usize)> = Vec::new(); // (line no, pipe count)
+    let mut header: Option<(usize, usize)> = None;
+    let mut check_table = |header: &mut Option<(usize, usize)>,
+                           rows: &mut Vec<(usize, usize)>,
+                           problems: &mut Vec<String>| {
+        if let Some((hline, hpipes)) = *header {
+            if rows.is_empty() {
+                problems.push(format!("line {hline}: table has no data rows"));
+            } else {
+                for (line, pipes) in rows.iter() {
+                    if *pipes != hpipes {
+                        problems.push(format!(
+                            "line {line}: table row has {pipes} pipes, header has {hpipes}"
+                        ));
+                    }
+                }
+            }
+        }
+        header.take();
+        rows.clear();
+    };
+    for (i, line) in content.lines().enumerate() {
+        let line_no = i + 1;
+        if line.trim_start().starts_with("```") {
+            in_fence = !in_fence;
+            check_table(&mut header, &mut rows, &mut problems);
+            continue;
+        }
+        if in_fence {
+            continue;
+        }
+        let trimmed = line.trim();
+        if trimmed.starts_with('|') && trimmed.ends_with('|') {
+            let pipes = trimmed.matches('|').count();
+            if header.is_none() {
+                header = Some((line_no, pipes));
+            } else if trimmed
+                .trim_matches('|')
+                .replace(['-', ':', ' '], "")
+                .is_empty()
+            {
+                // separator row — keep the header
+            } else {
+                rows.push((line_no, pipes));
+            }
+        } else if !trimmed.is_empty() {
+            check_table(&mut header, &mut rows, &mut problems);
+        }
+    }
+    check_table(&mut header, &mut rows, &mut problems);
+    problems
 }
 
 /// Prepare a fresh worktree at `wt` on a new `branch`.
@@ -928,6 +1094,46 @@ fn open_pr(repo: &Path, branch: &str, task: &Task) -> Option<String> {
 }
 
 /// Enqueue one standing task per day when the backlog is dry.
+/// Deterministic "would this kind find work?" probes. Only the kinds
+/// with a cheap, sound check are probed; docs/tests staleness is
+/// semantic, so those kinds always enqueue (their no-op is honest).
+fn kind_has_work(kind: TaskKind, repo: &Path) -> bool {
+    match kind {
+        TaskKind::Lint => !fmt_clean(repo),
+        TaskKind::Deps => updates_available(repo),
+        _ => true,
+    }
+}
+
+/// `cargo fmt --check` exits 0 when the tree is already formatted.
+fn fmt_clean(repo: &Path) -> bool {
+    Command::new("cargo")
+        .args(["fmt", "--check"])
+        .current_dir(repo)
+        .output()
+        .is_ok_and(|o| o.status.success())
+}
+
+/// `cargo update --dry-run` lists compatible updates as "Updating ..." on
+/// stderr (the index line excluded — it is not an update).
+fn updates_available(repo: &Path) -> bool {
+    Command::new("cargo")
+        .args(["update", "--dry-run"])
+        .current_dir(repo)
+        .output()
+        .is_ok_and(|o| {
+            let out = format!(
+                "{}{}",
+                String::from_utf8_lossy(&o.stdout),
+                String::from_utf8_lossy(&o.stderr)
+            );
+            o.status.success()
+                && out
+                    .lines()
+                    .any(|l| l.starts_with("    Updating ") && !l.contains("crates.io index"))
+        })
+}
+
 /// How many times a failed task is requeued before the loop leaves it
 /// failed. One retry per task per day: enough to recover from a transient
 /// provider or environment fault, not enough to spin on a broken goal.
@@ -940,11 +1146,18 @@ const MAX_TASK_ATTEMPTS: u32 = 2;
 /// moment today's four kinds are spent — live: eleven hours idle with a
 /// failed `docs-2026-11-15` sitting in the backlog, one cycle after the
 /// defect that failed it was fixed.
-fn replenish_task(backlog: &mut Backlog) -> Result<Option<Task>> {
+fn replenish_task(backlog: &mut Backlog, repo: &Path, probe: bool) -> Result<Option<Task>> {
     let today = chrono::Utc::now().format("%Y-%m-%d").to_string();
     for kind in REPLENISH_ROTATION {
         let id = format!("{}-{today}", kind.slug());
         if !backlog.tasks.iter().any(|t| t.id == id) {
+            // A deterministic "is there work?" probe keeps the rotation
+            // honest: a deps task over a lockfile refreshed an hour ago
+            // runs gates for twenty minutes to conclude no-op. Fail open:
+            // a probe that cannot run never blocks a task.
+            if probe && !kind_has_work(kind, repo) {
+                continue;
+            }
             let mut task = Task::new(id, kind, 5);
             task.goal = kind.default_goal().to_string();
             backlog.push(task.clone())?;
@@ -1424,13 +1637,13 @@ mod tests {
     #[test]
     fn replenish_enqueues_one_standing_task_per_kind_per_day() {
         let mut backlog = Backlog::default();
-        let first = replenish_task(&mut backlog)
+        let first = replenish_task(&mut backlog, Path::new("."), false)
             .expect("replenish")
             .expect("first replenish");
         assert_eq!(first.kind, TaskKind::Lint);
         assert_eq!(backlog.tasks.len(), 1, "replenish must persist the task");
 
-        let second = replenish_task(&mut backlog)
+        let second = replenish_task(&mut backlog, Path::new("."), false)
             .expect("replenish")
             .expect("second replenish");
         assert_eq!(second.kind, TaskKind::Deps);
@@ -1442,7 +1655,9 @@ mod tests {
                 backlog.push(Task::new(id, kind, 5)).unwrap();
             }
         }
-        assert!(replenish_task(&mut backlog).expect("replenish").is_none());
+        assert!(replenish_task(&mut backlog, Path::new("."), false)
+            .expect("replenish")
+            .is_none());
     }
 
     #[test]
@@ -1463,7 +1678,7 @@ mod tests {
             backlog.push(task).unwrap();
         }
 
-        let retry = replenish_task(&mut backlog)
+        let retry = replenish_task(&mut backlog, Path::new("."), false)
             .expect("replenish")
             .expect("failed task is retried");
         assert_eq!(retry.kind, TaskKind::Docs);
@@ -1481,7 +1696,7 @@ mod tests {
                 task.status = TaskStatus::Failed;
             }
         }
-        let again = replenish_task(&mut backlog)
+        let again = replenish_task(&mut backlog, Path::new("."), false)
             .expect("replenish")
             .expect("second retry");
         assert_eq!(again.attempts, MAX_TASK_ATTEMPTS);
@@ -1490,7 +1705,9 @@ mod tests {
                 task.status = TaskStatus::Failed;
             }
         }
-        assert!(replenish_task(&mut backlog).expect("replenish").is_none());
+        assert!(replenish_task(&mut backlog, Path::new("."), false)
+            .expect("replenish")
+            .is_none());
     }
 
     #[test]
@@ -1504,13 +1721,69 @@ mod tests {
             task.status = TaskStatus::Failed;
             backlog.push(task).unwrap();
         }
-        let task = replenish_task(&mut backlog)
+        let task = replenish_task(&mut backlog, Path::new("."), false)
             .expect("replenish")
             .expect("today's rotation is enqueued");
         assert_eq!(task.kind, TaskKind::Lint);
         assert!(task
             .id
             .ends_with(&chrono::Utc::now().format("%Y-%m-%d").to_string()));
+    }
+
+    #[test]
+    fn table_gate_catches_the_live_defect_classes() {
+        // Well-formed table: no problems.
+        let good = "| a | b |\n|---|---|\n| 1 | 2 |\n";
+        assert!(table_problems(good).is_empty());
+        // #104: a replaced row with a broken pipe count.
+        let mangled = "| Command | Description |\n|---|---|\n| :x | X |\n| :exit | Exit the TUI |doc` | Generate documentation |\n";
+        let problems = table_problems(mangled);
+        assert_eq!(problems.len(), 1, "{problems:?}");
+        assert!(problems[0].contains("4 pipes, header has 3"));
+        // #103: header + separator, no data rows.
+        let empty = "# Dependency Upgrade Log\n\n| Date | Dep | Result | Notes |\n|------|-----|--------|-------|\n";
+        let problems = table_problems(empty);
+        assert_eq!(problems.len(), 1, "{problems:?}");
+        assert!(problems[0].contains("no data rows"));
+        // Pipes inside a fenced block are not table rows.
+        let fenced = "```\n| not | a | table |\n```\n";
+        assert!(table_problems(fenced).is_empty());
+    }
+
+    #[test]
+    fn plan_dumps_are_rejected() {
+        // #105: docs/plans/dependency-upgrade-plan.md with a fabricated date.
+        let problems = diff_sanity_violations(
+            Path::new("/nonexistent"),
+            ["docs/plans/dependency-upgrade-plan.md", "README.md"],
+        );
+        assert_eq!(problems.len(), 1, "{problems:?}");
+        assert!(problems[0].contains("plan dump"));
+    }
+
+    #[test]
+    fn autonomy_ladder_gates_auto_merge() {
+        use Autonomy::diff_has_protected_paths;
+        assert!(!Autonomy::Manual.may_auto_merge(TaskKind::Lint));
+        assert!(Autonomy::Mechanical.may_auto_merge(TaskKind::Lint));
+        assert!(Autonomy::Mechanical.may_auto_merge(TaskKind::Tests));
+        assert!(!Autonomy::Mechanical.may_auto_merge(TaskKind::Deps));
+        assert!(Autonomy::Full.may_auto_merge(TaskKind::Deps));
+        // Protected paths disable it at every level.
+        assert!(diff_has_protected_paths(&[".github/workflows/ci.yml".into()]));
+        assert!(diff_has_protected_paths(&["supply-chain/imports.lock".into()]));
+        assert!(diff_has_protected_paths(&[".specs/02_architecture/proofs/host.lean".into()]));
+        assert!(diff_has_protected_paths(&["Cargo.toml".into()]));
+        assert!(!diff_has_protected_paths(&["docs/maintenance-loop.md".into()]));
+    }
+
+    #[test]
+    fn autonomy_parses_the_operator_alphabet() {
+        use std::str::FromStr;
+        assert_eq!(Autonomy::from_str("manual"), Ok(Autonomy::Manual));
+        assert_eq!(Autonomy::from_str("mechanical"), Ok(Autonomy::Mechanical));
+        assert_eq!(Autonomy::from_str("l2"), Ok(Autonomy::Full));
+        assert!(Autonomy::from_str("yolo").is_err());
     }
 
     #[test]

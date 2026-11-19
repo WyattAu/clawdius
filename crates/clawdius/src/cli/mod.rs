@@ -394,6 +394,10 @@ pub enum Commands {
 
         #[arg(long, help = "Do not enqueue standing tasks when the backlog is dry")]
         no_replenish: bool,
+
+        #[arg(long, default_value = "manual")]
+        #[arg(help = "Auto-merge depth: manual | mechanical (lint/tests) | full")]
+        autonomy: String,
     },
 
     #[command(about = "Render the morning briefing from run journals (Telegram-ready markdown)")]
@@ -1506,6 +1510,7 @@ pub async fn handle_command(
             worktree_root,
             no_pr,
             no_replenish,
+            autonomy,
         } => {
             maintain::handle_maintain(
                 backlog,
@@ -1518,6 +1523,7 @@ pub async fn handle_command(
                 worktree_root,
                 no_pr,
                 !no_replenish,
+                autonomy,
                 config_path,
             )
             .await
