@@ -23,6 +23,7 @@ ignore = [
     "RUSTSEC-2026-0104", # rustls-webpki 0.102.8: CRL parse panic (discord chain)
 
     # Unmaintained crates (not vulnerabilities)
+    "RUSTSEC-2026-0543", # chrono unmaintained (direct dep, 0.4.45); jiff migration is a project
     "RUSTSEC-2025-0141", # bincode via syntect
     "RUSTSEC-2024-0436", # paste (widespread transitive)
     "RUSTSEC-2024-0320", # yaml-rust via syntect
@@ -73,6 +74,12 @@ ignore = [
     "RUSTSEC-2026-0368", # zip 7.4 via candle-core ^7 pin (ML chain)
     "RUSTSEC-2026-0369", # zip 7.4 via candle-core ^7 pin (ML chain)
     "RUSTSEC-2026-0429", # zip 7.4 via candle-core ^7 pin (ML chain)
+    "RUSTSEC-2026-0545", # zip 7.4 November wave, same candle-core ^7 pin
+    "RUSTSEC-2026-0546", # zip 7.4 November wave, same candle-core ^7 pin
+    "RUSTSEC-2026-0547", # zip 7.4 November wave, same candle-core ^7 pin
+    "RUSTSEC-2026-0548", # zip 7.4 November wave, same candle-core ^7 pin
+    "RUSTSEC-2026-0555", # chrono-tz 0.10.4 via arrow-array/datafusion (vector-db chain)
+    "RUSTSEC-2026-0542", # humantime unmaintained via lance/object_store (vector-db chain)
 
     "RUSTSEC-2025-0081", # unic-char-property via urlpattern
     "RUSTSEC-2025-0075", # unic-char-range via urlpattern
