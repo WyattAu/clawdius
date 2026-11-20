@@ -765,10 +765,9 @@ async fn run_task_once(
 /// - plan dumps: new files under `docs/plans/` (#105 — a hand-typed
 ///   "dependency upgrade plan" table with a fabricated date, zero real
 ///   work),
-/// - markdown table problems: a table whose rows disagree on pipe count
-///   (#104 — `\| :exit \| Exit the TUI \|doc\` \| Generate documentation
-///   \|`), or a header+separator with no data rows (#103's empty
-///   `DEPS_UPGRADE.md`).
+/// - markdown table problems (#104: a row whose pipe count disagrees
+///   with its header, and #103: a header plus separator with no data
+///   rows)
 ///
 /// Deliberately narrow: these three produced four closed PRs; anything
 /// broader would gate honest edits on heuristic guesses.
@@ -787,7 +786,10 @@ fn diff_sanity_violations(wt: &Path, staged: impl Iterator<Item = impl AsRef<str
     // Rules 2-3 apply to changed markdown files, read from the worktree
     // (the diff alone lacks the surrounding table context).
     for path in &paths {
-        if !path.ends_with(".md") {
+        let is_md = std::path::Path::new(path)
+            .extension()
+            .is_some_and(|e| e.eq_ignore_ascii_case("md"));
+        if !is_md {
             continue;
         }
         let Ok(content) = std::fs::read_to_string(wt.join(path)) else {
@@ -800,17 +802,18 @@ fn diff_sanity_violations(wt: &Path, staged: impl Iterator<Item = impl AsRef<str
     problems
 }
 
-/// Markdown table problems in `content`: rows disagreeing with their
-/// table's header pipe count, and header+separator tables with no data
-/// rows. Fence-aware: pipes inside ``` blocks are not table rows.
+/// Markdown table problems in the given file content: rows disagreeing
+/// with their table header pipe count, and header plus separator tables
+/// with no data rows. Fence-aware: pipes inside code fences are not
+/// table rows.
 fn table_problems(content: &str) -> Vec<String> {
     let mut problems = Vec::new();
     let mut in_fence = false;
     let mut rows: Vec<(usize, usize)> = Vec::new(); // (line no, pipe count)
     let mut header: Option<(usize, usize)> = None;
-    let mut check_table = |header: &mut Option<(usize, usize)>,
-                           rows: &mut Vec<(usize, usize)>,
-                           problems: &mut Vec<String>| {
+    let check_table = |header: &mut Option<(usize, usize)>,
+                       rows: &mut Vec<(usize, usize)>,
+                       problems: &mut Vec<String>| {
         if let Some((hline, hpipes)) = *header {
             if rows.is_empty() {
                 problems.push(format!("line {hline}: table has no data rows"));
@@ -840,13 +843,14 @@ fn table_problems(content: &str) -> Vec<String> {
         let trimmed = line.trim();
         if trimmed.starts_with('|') && trimmed.ends_with('|') {
             let pipes = trimmed.matches('|').count();
+            // separator row: only pipes, dashes and colons after trimming
+            // spaces (the naive trim matches on the outer pipes and keeps
+            // the middle ones, misreading `|---|---|` as data).
+            let compact: String = trimmed.chars().filter(|c| *c != ' ').collect();
+            let is_separator = compact.chars().all(|c| c == '|' || c == '-' || c == ':');
             if header.is_none() {
                 header = Some((line_no, pipes));
-            } else if trimmed
-                .trim_matches('|')
-                .replace(['-', ':', ' '], "")
-                .is_empty()
-            {
+            } else if is_separator {
                 // separator row — keep the header
             } else {
                 rows.push((line_no, pipes));
@@ -1739,7 +1743,10 @@ mod tests {
         let mangled = "| Command | Description |\n|---|---|\n| :x | X |\n| :exit | Exit the TUI |doc` | Generate documentation |\n";
         let problems = table_problems(mangled);
         assert_eq!(problems.len(), 1, "{problems:?}");
-        assert!(problems[0].contains("4 pipes, header has 3"));
+        assert!(
+            problems[0].contains("5 pipes, header has 3"),
+            "{problems:?}"
+        );
         // #103: header + separator, no data rows.
         let empty = "# Dependency Upgrade Log\n\n| Date | Dep | Result | Notes |\n|------|-----|--------|-------|\n";
         let problems = table_problems(empty);
@@ -1755,7 +1762,7 @@ mod tests {
         // #105: docs/plans/dependency-upgrade-plan.md with a fabricated date.
         let problems = diff_sanity_violations(
             Path::new("/nonexistent"),
-            ["docs/plans/dependency-upgrade-plan.md", "README.md"],
+            ["docs/plans/dependency-upgrade-plan.md", "README.md"].into_iter(),
         );
         assert_eq!(problems.len(), 1, "{problems:?}");
         assert!(problems[0].contains("plan dump"));
@@ -1763,24 +1770,23 @@ mod tests {
 
     #[test]
     fn autonomy_ladder_gates_auto_merge() {
-        use Autonomy::diff_has_protected_paths;
         assert!(!Autonomy::Manual.may_auto_merge(TaskKind::Lint));
         assert!(Autonomy::Mechanical.may_auto_merge(TaskKind::Lint));
         assert!(Autonomy::Mechanical.may_auto_merge(TaskKind::Tests));
         assert!(!Autonomy::Mechanical.may_auto_merge(TaskKind::Deps));
         assert!(Autonomy::Full.may_auto_merge(TaskKind::Deps));
         // Protected paths disable it at every level.
-        assert!(diff_has_protected_paths(&[
+        assert!(Autonomy::diff_has_protected_paths(&[
             ".github/workflows/ci.yml".into()
         ]));
-        assert!(diff_has_protected_paths(&[
+        assert!(Autonomy::diff_has_protected_paths(&[
             "supply-chain/imports.lock".into()
         ]));
-        assert!(diff_has_protected_paths(&[
+        assert!(Autonomy::diff_has_protected_paths(&[
             ".specs/02_architecture/proofs/host.lean".into()
         ]));
-        assert!(diff_has_protected_paths(&["Cargo.toml".into()]));
-        assert!(!diff_has_protected_paths(&[
+        assert!(Autonomy::diff_has_protected_paths(&["Cargo.toml".into()]));
+        assert!(!Autonomy::diff_has_protected_paths(&[
             "docs/maintenance-loop.md".into()
         ]));
     }
@@ -1788,9 +1794,12 @@ mod tests {
     #[test]
     fn autonomy_parses_the_operator_alphabet() {
         use std::str::FromStr;
-        assert_eq!(Autonomy::from_str("manual"), Ok(Autonomy::Manual));
-        assert_eq!(Autonomy::from_str("mechanical"), Ok(Autonomy::Mechanical));
-        assert_eq!(Autonomy::from_str("l2"), Ok(Autonomy::Full));
+        assert_eq!(Autonomy::from_str("manual").unwrap(), Autonomy::Manual);
+        assert_eq!(
+            Autonomy::from_str("mechanical").unwrap(),
+            Autonomy::Mechanical
+        );
+        assert_eq!(Autonomy::from_str("l2").unwrap(), Autonomy::Full);
         assert!(Autonomy::from_str("yolo").is_err());
     }
 
