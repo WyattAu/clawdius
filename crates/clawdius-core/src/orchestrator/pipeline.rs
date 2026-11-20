@@ -340,10 +340,49 @@ pub fn default_gate_command(kind: &StageKind) -> Vec<String> {
 }
 
 /// Run one gate's command in `workdir`; capture a tail of the output.
-#[allow(clippy::needless_pass_by_value)]
+///
+/// Per-repo override: `.clawdius/pipeline.toml` with
+/// `[verify] command = "..."` (same for `[test]`, `[lint]`) replaces the
+/// cargo defaults — the enabler for non-Rust repos (python, docs, script
+/// estates) to run the same loop machinery. A malformed profile falls
+/// back to the cargo defaults; never a silent gate skip.
 pub fn run_gate(kind: &StageKind, workdir: &Path) -> GateResult {
+    let profile_path = workdir.join(".clawdius/pipeline.toml");
+    let profile: Option<GateProfile> = std::fs::read_to_string(&profile_path)
+        .ok()
+        .and_then(|raw| toml::from_str(&raw).ok());
+    if let Some(cmd) = profile.as_ref().and_then(|p| p.command_for(kind)) {
+        return run_command(
+            kind.slug(),
+            &["sh".to_string(), "-c".to_string(), cmd.clone()],
+            workdir,
+        );
+    }
     let cmd = default_gate_command(kind);
     run_command(kind.slug(), &cmd, workdir)
+}
+
+/// Per-repo gate command overrides from `.clawdius/pipeline.toml`.
+#[derive(Debug, Clone, Default, serde::Deserialize)]
+pub struct GateProfile {
+    #[serde(default)]
+    verify: Option<String>,
+    #[serde(default)]
+    test: Option<String>,
+    #[serde(default)]
+    lint: Option<String>,
+}
+
+impl GateProfile {
+    #[must_use]
+    pub fn command_for(&self, kind: &StageKind) -> Option<&String> {
+        match kind {
+            StageKind::Verify => self.verify.as_ref(),
+            StageKind::Test => self.test.as_ref(),
+            StageKind::Lint => self.lint.as_ref(),
+            _ => None,
+        }
+    }
 }
 
 /// Run an explicit command as a gate (test-visible).
@@ -527,5 +566,37 @@ mod tests {
             default_gate_command(&StageKind::MarketResearch),
             vec!["true".to_string()]
         );
+    }
+}
+
+#[cfg(test)]
+mod gate_profile_tests {
+    use super::*;
+
+    #[test]
+    fn profile_overrides_gate_commands() {
+        let raw = r#"
+[verify]
+command = "python3 -m compileall -q ."
+[test]
+command = "python3 -m pytest -q"
+[lint]
+command = "ruff check ."
+"#;
+        let profile: GateProfile = toml::from_str(raw).expect("parse");
+        assert_eq!(
+            profile.command_for(&StageKind::Verify).map(String::as_str),
+            Some("python3 -m compileall -q .")
+        );
+        assert_eq!(
+            profile.command_for(&StageKind::Lint).map(String::as_str),
+            Some("ruff check .")
+        );
+    }
+
+    #[test]
+    fn missing_profile_file_falls_back_to_cargo() {
+        let cmd = default_gate_command(&StageKind::Verify);
+        assert_eq!(cmd, vec!["cargo", "check", "--workspace"]);
     }
 }
