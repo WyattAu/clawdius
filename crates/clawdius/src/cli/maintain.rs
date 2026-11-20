@@ -111,15 +111,12 @@ pub(super) async fn handle_maintain(
     // Single instance per backlog: the lock file is held for the whole
     // process lifetime; a second loop exits here instead of racing the
     // first for tasks.
-    let _loop_lock = match acquire_loop_lock(&backlog_path) {
-        Some(f) => f,
-        None => {
-            println!(
-                "another maintain loop holds {} — exiting",
-                backlog_path.with_extension("lock").display()
-            );
-            return Ok(());
-        },
+    let Some(_loop_lock) = acquire_loop_lock(&backlog_path) else {
+        println!(
+            "another maintain loop holds {} — exiting",
+            backlog_path.with_extension("lock").display()
+        );
+        return Ok(());
     };
     write_heartbeat(interval_secs);
     println!();
