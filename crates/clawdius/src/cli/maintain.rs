@@ -20,6 +20,7 @@ use clawdius_core::maintenance::{
 };
 use clawdius_core::orchestrator::fallback::{FallbackCoordinator, FallbackPolicy};
 use clawdius_core::orchestrator::pipeline::{Pipeline, StageKind};
+use serde_json::json;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::{Duration, Instant};
@@ -544,9 +545,28 @@ async fn run_task_with_rotation(
                     }
                 } else {
                     // Not a quota problem: retrying the same provider with
-                    // the same inputs cannot help. Report the task as RED
-                    // and move on to the next task.
+                    // the same inputs cannot help. Report the task as RED,
+                    // land it in the estate findings feed (watchers commit
+                    // and surface it), and move on to the next task.
                     coordinator.note_failed();
+                    let findings = repo.join(".clawdius/maintenance/findings.jsonl");
+                    if let Ok(mut f) = std::fs::OpenOptions::new()
+                        .create(true)
+                        .append(true)
+                        .open(&findings)
+                    {
+                        use std::io::Write;
+                        let _ = writeln!(
+                            f,
+                            "{}",
+                            json!({
+                                "at": now_rfc3339(),
+                                "task": task.id,
+                                "provider": provider,
+                                "note": text.chars().take(300).collect::<String>(),
+                            })
+                        );
+                    }
                     return Ok(CycleReport {
                         outcome: CycleOutcome::Red,
                         note: text,
