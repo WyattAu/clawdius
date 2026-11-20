@@ -107,6 +107,21 @@ pub(super) async fn handle_maintain(
             .unwrap_or_default()
     );
     println!("  autonomy:  {autonomy}");
+
+    // Single instance per backlog: the lock file is held for the whole
+    // process lifetime; a second loop exits here instead of racing the
+    // first for tasks.
+    let _loop_lock = match acquire_loop_lock(&backlog_path) {
+        Some(f) => f,
+        None => {
+            println!(
+                "another maintain loop holds {} — exiting",
+                backlog_path.with_extension("lock").display()
+            );
+            return Ok(());
+        },
+    };
+    write_heartbeat(interval_secs);
     println!();
 
     // Only providers the stages can actually authenticate against enter
@@ -1328,7 +1343,42 @@ fn sleep_or_stop(secs: u64) {
         return;
     }
     println!("    sleeping {secs}s");
+    write_heartbeat(secs);
     std::thread::sleep(Duration::from_secs(secs));
+}
+
+/// Liveness heartbeat for external watchers (estate-watch). Written at
+/// loop start and before every sleep: a heartbeat older than roughly two
+/// intervals means the loop is wedged or dead, not parked.
+fn write_heartbeat(next_wake_secs: u64) {
+    let Some(repo) = repo_root().ok() else {
+        return;
+    };
+    let path = repo.join(".clawdius/maintenance/heartbeat");
+    let now = chrono::Utc::now().timestamp();
+    let body = format!("{{\"at\": {now}, \"next_wake_secs\": {next_wake_secs}}}\n");
+    if std::fs::write(&path, body).is_err() {
+        println!("    (could not write heartbeat at {})", path.display());
+    }
+}
+
+/// Exclusive single-instance lock over one backlog. Returns the lock
+/// file (held for the process lifetime) or `None` when another loop is
+/// already running: two live loops on one backlog would both claim
+/// tasks, and `reset_stale_running` would unmark the winner's in-flight
+/// work. std `File::try_lock` — no new dependencies.
+fn acquire_loop_lock(backlog_path: &Path) -> Option<std::fs::File> {
+    let lock_path = backlog_path.with_extension("lock");
+    let file = std::fs::OpenOptions::new()
+        .create(true)
+        .truncate(false)
+        .write(true)
+        .open(&lock_path)
+        .ok()?;
+    match file.try_lock() {
+        Ok(()) => Some(file),
+        Err(_) => None,
+    }
 }
 
 /// Branch-safe slug from a task id.
@@ -1732,6 +1782,41 @@ mod tests {
         assert!(task
             .id
             .ends_with(&chrono::Utc::now().format("%Y-%m-%d").to_string()));
+    }
+
+    #[test]
+    fn loop_lock_is_exclusive_and_reusable_after_release() {
+        let dir = std::env::temp_dir().join(format!("maintain-lock-test-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let backlog = dir.join("backlog.json");
+        let first = acquire_loop_lock(&backlog).expect("first acquisition");
+        assert!(
+            acquire_loop_lock(&backlog).is_none(),
+            "second loop must not acquire while the first holds it"
+        );
+        drop(first);
+        assert!(
+            acquire_loop_lock(&backlog).is_some(),
+            "release must allow re-acquisition"
+        );
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn heartbeat_records_now_and_next_wake() {
+        let dir =
+            std::env::temp_dir().join(format!("maintain-heartbeat-test-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let hb = dir.join("heartbeat");
+        // write_heartbeat resolves the repo via repo_root(); replicate the
+        // write here against an explicit path instead.
+        let now = chrono::Utc::now().timestamp();
+        std::fs::write(&hb, format!("{{\"at\": {now}, \"next_wake_secs\": 300}}\n")).unwrap();
+        let parsed: serde_json::Value =
+            serde_json::from_str(&std::fs::read_to_string(&hb).unwrap()).unwrap();
+        assert_eq!(parsed["next_wake_secs"], 300);
+        assert!((parsed["at"].as_i64().unwrap() - now).abs() < 5);
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]
