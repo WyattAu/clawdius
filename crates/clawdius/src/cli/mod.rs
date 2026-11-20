@@ -335,7 +335,7 @@ pub enum Commands {
         about = "Run the formalized dev pipeline (research -> implement -> gates -> repeat)"
     )]
     Pipeline {
-        #[arg(help = "Pipeline name (product-loop)")]
+        #[arg(help = "Pipeline name (product-loop, dev-loop, idea-loop)")]
         name: String,
 
         #[arg(help = "The goal to drive the pipeline with")]

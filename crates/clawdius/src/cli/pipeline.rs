@@ -41,9 +41,10 @@ pub(super) async fn handle_pipeline(
     let mut pipeline = match name.as_str() {
         "product-loop" => Pipeline::product_loop(&goal),
         "dev-loop" => Pipeline::dev_loop(&goal),
+        "idea-loop" => Pipeline::idea_loop(&goal),
         other => {
             return Err(anyhow!(
-                "unknown pipeline '{other}' (available: product-loop, dev-loop)"
+                "unknown pipeline '{other}' (available: product-loop, dev-loop, idea-loop)"
             ))
         },
     };
