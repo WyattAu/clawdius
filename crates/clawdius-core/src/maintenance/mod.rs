@@ -177,6 +177,7 @@ pub struct Backlog {
 /// never automatic: one corrupt PR demotes harder than ten clean ones
 /// promote.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum Autonomy {
     /// Every green cycle opens a PR and waits for a human.
     #[default]
