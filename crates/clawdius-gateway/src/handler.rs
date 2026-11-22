@@ -60,6 +60,10 @@ pub struct ClawdiusHandler {
     /// Maximum history messages to include in LLM context.
     max_history: usize,
 
+    /// Optional fleet commander: `/fleet …` lines are routed here instead
+    /// of the LLM.
+    fleet_commander: Option<Arc<tokio::sync::Mutex<crate::fleet_cmds::FleetCommander>>>,
+
     /// LLM response cache (provider-agnostic, keyed by message hash).
     cache: Arc<LlmResponseCache>,
 
@@ -82,6 +86,7 @@ impl ClawdiusHandler {
             message_history: Arc::new(RwLock::new(HashMap::new())),
             system_prompt: GATEWAY_SYSTEM_PROMPT.to_string(),
             max_history: 50,
+            fleet_commander: None,
             cache: Arc::new(LlmResponseCache::new(Duration::from_mins(5), 1000)),
             #[cfg(feature = "audit")]
             audit: None,
@@ -93,6 +98,48 @@ impl ClawdiusHandler {
     pub fn with_config_path(mut self, path: impl Into<PathBuf>) -> Self {
         self.config_path = Some(path.into());
         self
+    }
+
+    /// Enable `/fleet …` command handling with the given commander.
+    #[must_use]
+    pub fn with_fleet_commander(mut self, commander: crate::fleet_cmds::FleetCommander) -> Self {
+        self.fleet_commander = Some(Arc::new(tokio::sync::Mutex::new(commander)));
+        self
+    }
+
+    /// Route `/fleet …` lines to the fleet commander.
+    ///
+    /// `None` = the line is ordinary chat and should go to the LLM.
+    async fn fleet_intercept(
+        &self,
+        message: &IncomingMessage,
+    ) -> Option<Result<String, GatewayError>> {
+        let cmd = crate::fleet_cmds::FleetCommander::parse(&message.text)?;
+        Some(match &self.fleet_commander {
+            Some(fleet) => fleet.lock().await.execute(cmd, &message.user).await,
+            None => Ok("fleet commands are disabled on this instance.".to_string()),
+        })
+    }
+
+    /// Record request metrics for one LLM chat call.
+    async fn record_chat_metrics(
+        &self,
+        provider_name: &str,
+        model_name: &str,
+        duration: std::time::Duration,
+        success: bool,
+    ) {
+        clawdius_core::metrics::record_llm_request(
+            provider_name,
+            model_name,
+            duration,
+            0, // prompt tokens (not available from simple chat())
+            0, // completion tokens
+            success,
+        );
+        if success {
+            clawdius_core::metrics::record_session_count(self.session_map.read().await.len());
+        }
     }
 
     /// Set the LLM provider override.
@@ -317,6 +364,11 @@ impl Default for ClawdiusHandler {
 #[async_trait]
 impl MessageHandler for ClawdiusHandler {
     async fn handle_message(&self, message: IncomingMessage) -> Result<String, GatewayError> {
+        // 0. Fleet commands bypass the LLM entirely.
+        if let Some(reply) = self.fleet_intercept(&message).await {
+            return reply;
+        }
+
         // 1. Ensure we're initialized
         self.ensure_initialized().await?;
 
@@ -361,30 +413,10 @@ impl MessageHandler for ClawdiusHandler {
         let llm_result = llm.chat(messages.clone()).await;
         let duration = start.elapsed();
 
-        match &llm_result {
-            Ok(response) => {
-                clawdius_core::metrics::record_llm_request(
-                    provider_name,
-                    model_name,
-                    duration,
-                    0, // prompt tokens (not available from simple chat())
-                    0, // completion tokens
-                    true,
-                );
-                clawdius_core::metrics::record_session_count(self.session_map.read().await.len());
-                let _ = response; // already used below
-            },
-            Err(e) => {
-                clawdius_core::metrics::record_llm_request(
-                    provider_name,
-                    model_name,
-                    duration,
-                    0,
-                    0,
-                    false,
-                );
-                return Err(GatewayError::Agent(format!("LLM call failed: {e}")));
-            },
+        self.record_chat_metrics(provider_name, model_name, duration, llm_result.is_ok())
+            .await;
+        if let Err(e) = &llm_result {
+            return Err(GatewayError::Agent(format!("LLM call failed: {e}")));
         }
 
         let response =

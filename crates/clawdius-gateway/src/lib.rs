@@ -44,6 +44,7 @@ pub mod adapter;
 pub mod adapters;
 pub mod admin;
 pub mod error;
+pub mod fleet_cmds;
 pub mod formatter;
 pub mod gateway;
 pub mod handler;
@@ -52,6 +53,7 @@ pub mod robust;
 
 pub use adapter::{IncomingMessage, OutgoingMessage, PlatformAdapter, PlatformConfig};
 pub use error::GatewayError;
+pub use fleet_cmds::FleetCommander;
 pub use formatter::ResponseFormatter;
 pub use gateway::MessageGateway;
 pub use handler::ClawdiusHandler;
