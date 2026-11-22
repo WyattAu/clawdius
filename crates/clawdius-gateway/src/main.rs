@@ -452,6 +452,17 @@ async fn main() -> anyhow::Result<()> {
         handler = handler.with_model(model);
     }
 
+    // Enable /fleet chat commands when the env asks for them.
+    match clawdius_gateway::FleetCommander::from_env() {
+        Ok(fleet) => {
+            handler = handler.with_fleet_commander(fleet);
+            tracing::info!("fleet chat commands enabled");
+        },
+        Err(reason) => {
+            tracing::info!(%reason, "fleet chat commands disabled");
+        },
+    }
+
     // Initialize audit logging if config provides audit settings
     #[cfg(feature = "audit")]
     {
