@@ -428,8 +428,14 @@ impl MessageHandler for ClawdiusHandler {
         // above), so chat quota never gates fleet verbs.
         let tenant = crate::quotas::model_key(provider_name, model_name);
         if let Some(governor) = &self.resource_governor {
-            crate::quotas::acquire_model_slot(governor, &tenant, &message.id, &message.user.id, message.platform)
-                .await?;
+            crate::quotas::acquire_model_slot(
+                governor,
+                &tenant,
+                &message.id,
+                &message.user.id,
+                message.platform,
+            )
+            .await?;
         }
 
         let start = std::time::Instant::now();

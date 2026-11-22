@@ -35,7 +35,7 @@ pub mod sandbox;
 pub use database::{DatabaseConfig, FeatureDimension, ProgramDatabase};
 pub use engine::{converge, run, EvolutionConfig, RunStats};
 pub use evaluator::{CommandEvaluator, Evaluated, Evaluator, FnEvaluator};
-pub use sandbox::SandboxedCommandEvaluator;
 pub use mutator::{Mutator, StubMutator};
 pub use program::Program;
 pub use rng::Rng;
+pub use sandbox::SandboxedCommandEvaluator;

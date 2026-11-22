@@ -66,8 +66,12 @@ impl Evaluator for SandboxedCommandEvaluator {
             },
         };
 
-        let evaluated =
-            run_evaluator_subprocess(&self.argv, self.timeout, program, Some(&session.worktree_path));
+        let evaluated = run_evaluator_subprocess(
+            &self.argv,
+            self.timeout,
+            program,
+            Some(&session.worktree_path),
+        );
 
         // Best-effort teardown: a leftover worktree is visible to
         // `WorktreeManager::cleanup_all` and must not fail the evaluation.
