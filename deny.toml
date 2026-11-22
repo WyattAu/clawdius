@@ -102,6 +102,11 @@ ignore = [
     "RUSTSEC-2024-0429", # glib 0.18 iterator unsoundness via gtk 0.18 chain (clawdius-tauri); fix = gtk-rs 0.19+
     "RUSTSEC-2026-0002", # lru 0.12 IterMut unsoundness via mysql_async/tantivy (direct lru dep is 0.18)
     "RUSTSEC-2026-0253", # lru 0.12 pop() panic safety via mysql_async/tantivy (same chain)
+
+    # Accepted 2026-11-22 (same-day advisory wave; Deny step red on main, issue #120)
+    "RUSTSEC-2026-0588", # ruma-identifiers-validation 0.12.1 content-URI panic via matrix-sdk 0.16 (optional `matrix` feature, same chain as 0247); fix = ruma 0.13, blocked by matrix-sdk pin
+    "RUSTSEC-2026-0589", # ruma-identifiers-validation 0.12.1 key-ID panic, same chain
+    "RUSTSEC-2026-0592", # url 2.5.8 Url::origin() stack overflow on nested blob: URLs; no patch release in the 2.5 line yet
 ]
 
 [licenses]

@@ -302,3 +302,15 @@ id = "RUSTSEC-2026-0572"
 [[ignore]]
 id = "RUSTSEC-2026-0573"
 # wasmtime 49.0.x interlocked internals; 49.0.6 blocked by wasmtime-environ pin, 50.x is a project
+
+[[ignore]]
+id = "RUSTSEC-2026-0588"
+# ruma-identifiers-validation 0.12.1 content-URI panic via matrix-sdk 0.16 (optional `matrix` feature); fix = ruma 0.13, blocked by matrix-sdk pin
+
+[[ignore]]
+id = "RUSTSEC-2026-0589"
+# ruma-identifiers-validation 0.12.1 key-ID panic, same matrix-sdk chain
+
+[[ignore]]
+id = "RUSTSEC-2026-0592"
+# url 2.5.8 Url::origin() stack overflow on nested blob: URLs; no patch release in the 2.5 line yet
