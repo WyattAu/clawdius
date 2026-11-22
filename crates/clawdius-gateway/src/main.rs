@@ -463,6 +463,12 @@ async fn main() -> anyhow::Result<()> {
         },
     }
 
+    // Enable per-model resource caps when CLAWDIUS_MODEL_QUOTAS is set.
+    if let Some(governor) = clawdius_gateway::quotas::governor_from_env() {
+        handler = handler.with_resource_governor(governor);
+        tracing::info!("per-model resource caps enabled");
+    }
+
     // Initialize audit logging if config provides audit settings
     #[cfg(feature = "audit")]
     {

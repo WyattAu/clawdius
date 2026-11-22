@@ -22,6 +22,7 @@
 //! - [`mutator`] — the mutation contract + deterministic stub
 //! - [`engine`] — the evolution loop + convergence acceptance
 //! - [`rng`] — seeded SplitMix64 (zero-dependency PRNG)
+//! - [`sandbox`] — per-evaluation worktree isolation (fleet worktree dogfood)
 
 pub mod database;
 pub mod engine;
@@ -29,10 +30,12 @@ pub mod evaluator;
 pub mod mutator;
 pub mod program;
 pub mod rng;
+pub mod sandbox;
 
 pub use database::{DatabaseConfig, FeatureDimension, ProgramDatabase};
 pub use engine::{converge, run, EvolutionConfig, RunStats};
 pub use evaluator::{CommandEvaluator, Evaluated, Evaluator, FnEvaluator};
+pub use sandbox::SandboxedCommandEvaluator;
 pub use mutator::{Mutator, StubMutator};
 pub use program::Program;
 pub use rng::Rng;

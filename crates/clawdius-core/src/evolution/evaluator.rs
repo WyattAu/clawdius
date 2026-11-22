@@ -88,16 +88,38 @@ impl CommandEvaluator {
 
 impl Evaluator for CommandEvaluator {
     fn evaluate(&self, program: &Program) -> Evaluated {
-        use std::io::Write;
-        use std::process::{Command, Stdio};
+        run_evaluator_subprocess(&self.argv, self.timeout, program, None)
+    }
+}
 
-        let mut eval_script = Command::new(&self.argv[0]);
-        for arg in &self.argv[1..] {
-            eval_script.arg(arg);
-        }
+/// Run one evaluator subprocess and parse its `{"metrics": ...}` output.
+///
+/// Shared by [`CommandEvaluator`] (cwd = inherit) and the island sandbox
+/// ([`super::sandbox::SandboxedCommandEvaluator`], cwd = the worktree). When
+/// `cwd` is set, the program temp file is written inside that directory so
+/// no evaluator artifact escapes the sandbox.
+pub(crate) fn run_evaluator_subprocess(
+    argv: &[String],
+    timeout: std::time::Duration,
+    program: &Program,
+    cwd: Option<&std::path::Path>,
+) -> Evaluated {
+    use std::process::{Command, Stdio};
 
-        // Write program code to a temp file for the evaluator to read.
-        let tmp = std::env::temp_dir().join(format!("evo-eval-{}.rs", program.id));
+    let mut eval_script = Command::new(&argv[0]);
+    for arg in &argv[1..] {
+        eval_script.arg(arg);
+    }
+    if let Some(dir) = cwd {
+        eval_script.current_dir(dir);
+    }
+
+    // Write program code to a temp file for the evaluator to read — inside
+    // the sandbox when one is active.
+    let tmp = match cwd {
+        Some(dir) => dir.join(format!(".evo-eval-{}.rs", program.id)),
+        None => std::env::temp_dir().join(format!("evo-eval-{}.rs", program.id)),
+    };
         if std::fs::write(&tmp, &program.code).is_err() {
             return Evaluated::single("score", f64::NEG_INFINITY);
         }
@@ -114,7 +136,7 @@ impl Evaluator for CommandEvaluator {
         };
 
         // Bounded wait: an evaluator that hangs scores NEG_INFINITY.
-        let deadline = std::time::Instant::now() + self.timeout;
+        let deadline = std::time::Instant::now() + timeout;
         let status = loop {
             match child.try_wait() {
                 Ok(Some(s)) => break s,
@@ -164,7 +186,6 @@ impl Evaluator for CommandEvaluator {
             },
             Err(_) => Evaluated::single("score", f64::NEG_INFINITY),
         }
-    }
 }
 
 #[cfg(test)]

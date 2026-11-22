@@ -48,6 +48,7 @@ pub mod fleet_cmds;
 pub mod formatter;
 pub mod gateway;
 pub mod handler;
+pub mod quotas;
 pub mod rate_limit;
 pub mod robust;
 
@@ -57,4 +58,5 @@ pub use fleet_cmds::FleetCommander;
 pub use formatter::ResponseFormatter;
 pub use gateway::MessageGateway;
 pub use handler::ClawdiusHandler;
+pub use quotas::parse_model_quotas;
 pub use rate_limit::RateLimiter;
