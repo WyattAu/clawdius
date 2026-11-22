@@ -1,0 +1,20 @@
+{
+  "gates": {
+    "plan": [
+      {
+        "name": "plan-artifacts",
+        "run": "bash scripts/proof-loop-gate.sh plan",
+        "timeoutSecs": 60,
+        "failOn": []
+      }
+    ],
+    "research": [
+      {
+        "name": "research-citations",
+        "run": "bash scripts/proof-loop-gate.sh research",
+        "timeoutSecs": 300,
+        "failOn": []
+      }
+    ]
+  }
+}
