@@ -575,13 +575,12 @@ mod gate_profile_tests {
 
     #[test]
     fn profile_overrides_gate_commands() {
+        // Flat keys: GateProfile deserializes string overrides directly
+        // (a [section]-table form parses as a map and is rejected — #115).
         let raw = r#"
-[verify]
-command = "python3 -m compileall -q ."
-[test]
-command = "python3 -m pytest -q"
-[lint]
-command = "ruff check ."
+verify = "python3 -m compileall -q ."
+test = "python3 -m pytest -q"
+lint = "ruff check ."
 "#;
         let profile: GateProfile = toml::from_str(raw).expect("parse");
         assert_eq!(
