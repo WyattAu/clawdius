@@ -9,21 +9,20 @@ running research iterations; this file is the always-on orientation.
 
 ## The proof estate (`.specs/`)
 
-`.specs/02_architecture/proofs/` is the ONLY proof tree. The legacy
-`.clawdius/specs/02_architecture/proofs/` was retired in loop 3 — never
-recreate it, never import from it.
+Proof FILES live in [`WyattAu/clawdius-spec`](https://github.com/WyattAu/clawdius-spec)
+— the shared Lean proof package (see `.specs/02_architecture/proofs/README.md`).
+This repo consumes them at a pinned tag via `lakefile.toml`; the
+`lean4-proofs` CI job builds the pinned package and greps the log for
+sorries.
 
-- One Lean file per domain (`host.lean`, `container.lean`,
-  `security_policy.lean`, `repo_map_scoring.lean`, `fsm.lean`,
-  `sandbox_policy.lean`, `tier_isolation.lean`, `invariant_ledger.lean`,
-  …).
-- **New file = new `[[lean_lib]]` + `defaultTargets` entry** in
-  lakefile.toml. A proof file no lib builds is only hand-checked — that
-  is how stale proofs survive. (ProofHost pointed at the LEGACY tree for
-  a full loop before anyone noticed.)
-- The files are deliberately import-free. Cross-file concepts are
-  restated and tied by enumeration theorems (see tier_isolation.lean's
-  T4). Duplication + a tie theorem beats hidden coupling.
+- Proof changes: PR against `clawdius-spec`. Never recreate `.lean`
+  proof files here, and never resurrect the legacy
+  `.clawdius/specs/02_architecture/proofs/` tree.
+- To bump the proof pin: merge the release in `clawdius-spec`, move the
+  tag, PR the `rev` in `lakefile.toml`. Tags are claim pins — bump only
+  on green CI there.
+- YP files (`proof_files` frontmatter) reference modules by their
+  `clawdius-spec` file names.
 
 ## Yellow Papers (`.specs/01_research/YP-*.md`)
 

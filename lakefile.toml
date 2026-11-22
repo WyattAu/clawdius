@@ -1,129 +1,14 @@
 name = "clawdius"
 version = "0.1.0"
-defaultTargets = [
-  "ProofAgentLoop", "ProofConcurrentExecution", "ProofCarryingEdits",
-  "ProofRepoMapScoring", "ProofSanitizerSoundness", "ProofSecurityPolicy",
-  "ProofTokenBudgetScan", "ProofVfsSafety",
-  "ProofAudit", "ProofCapability", "ProofContainer", "ProofFsm",
-  "ProofHost",
-  "ProofSandboxExtended", "ProofSandboxPolicy", "ProofTierIsolation",
-  "ProofInvariantLedger",
-  "ProofRpc", "ProofRingBufferExtended", "ProofCache", "ProofSymbolIndex",
-  "ProofGatewayRouting",
-]
+description = "Remote agentic coding without worries: wasm sandbox + bubble-wrap isolation. Proofs live in the clawdius-spec package."
+
+[[require]]
+name = "clawdius-spec"
+git = "https://github.com/WyattAu/clawdius-spec"
+rev = "v0.1.0"
 
 [[lean_lib]]
 name = "Clawdius"
-
-[[lean_lib]]
-name = "ProofAgentLoop"
-srcDir = ".specs/02_architecture/proofs"
-roots = ["agent_loop"]
-
-[[lean_lib]]
-name = "ProofConcurrentExecution"
-srcDir = ".specs/02_architecture/proofs"
-roots = ["concurrent_execution"]
-
-[[lean_lib]]
-name = "ProofCarryingEdits"
-srcDir = ".specs/02_architecture/proofs"
-roots = ["proof_carrying_edits"]
-
-[[lean_lib]]
-name = "ProofRepoMapScoring"
-srcDir = ".specs/02_architecture/proofs"
-roots = ["repo_map_scoring"]
-
-[[lean_lib]]
-name = "ProofSanitizerSoundness"
-srcDir = ".specs/02_architecture/proofs"
-roots = ["sanitizer_soundness"]
-
-[[lean_lib]]
-name = "ProofSecurityPolicy"
-srcDir = ".specs/02_architecture/proofs"
-roots = ["security_policy"]
-
-[[lean_lib]]
-name = "ProofTokenBudgetScan"
-srcDir = ".specs/02_architecture/proofs"
-roots = ["token_budget_scan"]
-
-[[lean_lib]]
-name = "ProofVfsSafety"
-srcDir = ".specs/02_architecture/proofs"
-roots = ["vfs_safety"]
-
-[[lean_lib]]
-name = "ProofAudit"
-srcDir = ".specs/02_architecture/proofs"
-roots = ["audit"]
-
-[[lean_lib]]
-name = "ProofCapability"
-srcDir = ".specs/02_architecture/proofs"
-roots = ["capability"]
-
-[[lean_lib]]
-name = "ProofContainer"
-srcDir = ".specs/02_architecture/proofs"
-roots = ["container"]
-
-[[lean_lib]]
-name = "ProofFsm"
-srcDir = ".specs/02_architecture/proofs"
-roots = ["fsm"]
-
-[[lean_lib]]
-name = "ProofHost"
-srcDir = ".specs/02_architecture/proofs"
-roots = ["host"]
-
-[[lean_lib]]
-name = "ProofSandboxExtended"
-srcDir = ".specs/02_architecture/proofs"
-roots = ["proof_sandbox_extended"]
-
-[[lean_lib]]
-name = "ProofSandboxPolicy"
-srcDir = ".specs/02_architecture/proofs"
-roots = ["sandbox_policy"]
-
-[[lean_lib]]
-name = "ProofTierIsolation"
-srcDir = ".specs/02_architecture/proofs"
-roots = ["tier_isolation"]
-
-[[lean_lib]]
-name = "ProofInvariantLedger"
-srcDir = ".specs/02_architecture/proofs"
-roots = ["invariant_ledger"]
-
-[[lean_lib]]
-name = "ProofRpc"
-srcDir = ".specs/02_architecture/proofs"
-roots = ["proof_rpc"]
-
-[[lean_lib]]
-name = "ProofRingBufferExtended"
-srcDir = ".specs/02_architecture/proofs"
-roots = ["proof_ring_buffer_extended"]
-
-[[lean_lib]]
-name = "ProofCache"
-srcDir = ".specs/02_architecture/proofs"
-roots = ["proof_cache"]
-
-[[lean_lib]]
-name = "ProofSymbolIndex"
-srcDir = ".specs/02_architecture/proofs"
-roots = ["proof_symbol_index"]
-
-[[lean_lib]]
-name = "ProofGatewayRouting"
-srcDir = ".specs/02_architecture/proofs"
-roots = ["proof_gateway_routing"]
 
 [[lean_exe]]
 name = "clawdius"

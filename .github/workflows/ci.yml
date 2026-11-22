@@ -171,10 +171,11 @@ jobs:
           fi
           echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
 
-      - name: Build Lean4
+      - name: Build Lean4 + proof gate (green AND sorry-free)
         run: |
           export PATH="$HOME/.elan/bin:$PATH"
-          lake build
+          lake build ClawdiusSpec 2>&1 | tee build.log
+          ! grep -q "declaration uses" build.log
 
   publish-dry-run:
     name: Publish Dry Run (clawdius-core)
