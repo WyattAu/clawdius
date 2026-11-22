@@ -181,11 +181,14 @@ pub struct Backlog {
 pub enum Autonomy {
     /// Every green cycle opens a PR and waits for a human.
     #[default]
+    #[serde(alias = "Manual")]
     Manual,
     /// Lint/tests fixes queue auto-merge (`gh pr merge --auto`) after a
     /// protected-path check; everything else stays a PR.
+    #[serde(alias = "Mechanical")]
     Mechanical,
     /// Every green cycle queues auto-merge.
+    #[serde(alias = "Full")]
     Full,
 }
 
