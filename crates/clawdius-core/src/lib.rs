@@ -53,6 +53,7 @@ pub mod diff;
 pub mod distributed;
 pub mod encryption;
 pub mod error;
+pub mod evolution;
 pub mod fleet;
 pub mod graph_rag;
 #[cfg(feature = "i18n")]
