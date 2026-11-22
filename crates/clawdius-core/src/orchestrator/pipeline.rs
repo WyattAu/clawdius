@@ -9,6 +9,11 @@
 //! LLM stages (research/suggestion/planning/implementation) execute via
 //! the `auto` engine; gate stages (verify/test/lint) are deterministic
 //! shell commands — the same ground-truth rule the engine already uses.
+//!
+//! The `idea-loop` is a second canon: source scan → triage → verify →
+//! ledger cards → gates. It harvests candidate ideas/changes into a
+//! scored ledger instead of shipping code; the gates still run, proving
+//! the repo stayed green across the harvest.
 
 use std::path::Path;
 use std::process::Command;
@@ -35,6 +40,9 @@ pub enum StageKind {
     Test,
     /// Deterministic gate: lint + format.
     Lint,
+    /// Deterministic gate: run the idea-engine digest scraper.
+    /// Fails loudly when the engine is absent — no silent skip.
+    SourceScan,
 }
 
 impl StageKind {
@@ -50,13 +58,17 @@ impl StageKind {
             Self::Verify => "verify",
             Self::Test => "test",
             Self::Lint => "lint",
+            Self::SourceScan => "source-scan",
         }
     }
 
     /// Whether humans/models produce the artifact (vs. shell gates).
     #[must_use]
     pub fn is_llm_stage(&self) -> bool {
-        !matches!(self, Self::Verify | Self::Test | Self::Lint)
+        !matches!(
+            self,
+            Self::Verify | Self::Test | Self::Lint | Self::SourceScan
+        )
     }
 }
 
@@ -159,6 +171,52 @@ impl Pipeline {
             ],
             max_loops: 2,
             repeat_from: 1, // restart at Implementation on gate failure
+        }
+    }
+
+    /// The idea-harvest loop for `goal`: scan → triage → verify →
+    /// ledger → gates. Collects candidate ideas/changes into a scored
+    /// ledger (`scripts/idea-engine/IDEAS-LEDGER.md`) instead of
+    /// shipping code; the cargo gates still run, proving the harvest
+    /// left the repo green. The `SourceScan` gate runs the digest
+    /// scraper and fails loudly if the engine is absent.
+    #[must_use]
+    pub fn idea_loop(goal: &str) -> Self {
+        let mk = |kind: StageKind, instruction: &str| Stage {
+            kind,
+            instruction: instruction.to_string(),
+        };
+        let mk_gate = |kind: StageKind| Stage {
+            kind,
+            instruction: String::new(),
+        };
+        Self {
+            name: "idea-loop".to_string(),
+            goal: goal.to_string(),
+            stages: vec![
+                mk_gate(StageKind::SourceScan),
+                mk(
+                    StageKind::MarketResearch,
+                    "Read the newest digests under scripts/idea-engine/digests/. Triage each new item against the pattern rubric in scripts/idea-engine/PLAYBOOK.md: keep candidates that plausibly score >=8/12, drop noise, and note what evidence is missing per candidate.",
+                ),
+                mk(
+                    StageKind::TechnicalResearch,
+                    "For each surviving candidate, verify load-bearing claims against dated primary sources (venue fee guides, regulator pages, announcements). Mark claims verified or [U]; kill candidates whose unlock is stale (>24 months), contradicted, or already saturated.",
+                ),
+                mk(
+                    StageKind::FeatureSuggestions,
+                    "Write one ledger card per surviving candidate into scripts/idea-engine/IDEAS-LEDGER.md: rubric scores, capital estimate, cheapest falsifying test, status (research|watchlist). Never re-litigate cards marked dead; change a status only with cited evidence.",
+                ),
+                mk(
+                    StageKind::Implementation,
+                    "Apply the ledger and report edits only. Do not touch crates/ or .specs/ in this pipeline; the gates below just prove the repo stayed green.",
+                ),
+                mk_gate(StageKind::Verify),
+                mk_gate(StageKind::Test),
+                mk_gate(StageKind::Lint),
+            ],
+            max_loops: 2,
+            repeat_from: 1, // restart at triage on gate failure
         }
     }
 
@@ -268,15 +326,63 @@ pub fn default_gate_command(kind: &StageKind) -> Vec<String> {
         .into_iter()
         .map(String::from)
         .collect(),
+        // The digest scraper is ground truth for the harvest loop: a
+        // missing engine or a failing fetch is a failed gate, not a
+        // silent skip.
+        StageKind::SourceScan => vec![
+            "python3".to_string(),
+            "scripts/idea-engine/idea_digest.py".to_string(),
+            "--days".to_string(),
+            "7".to_string(),
+        ],
         _ => vec!["true".to_string()],
     }
 }
 
 /// Run one gate's command in `workdir`; capture a tail of the output.
-#[allow(clippy::needless_pass_by_value)]
+///
+/// Per-repo override: `.clawdius/pipeline.toml` with
+/// `[verify] command = "..."` (same for `[test]`, `[lint]`) replaces the
+/// cargo defaults — the enabler for non-Rust repos (python, docs, script
+/// estates) to run the same loop machinery. A malformed profile falls
+/// back to the cargo defaults; never a silent gate skip.
 pub fn run_gate(kind: &StageKind, workdir: &Path) -> GateResult {
+    let profile_path = workdir.join(".clawdius/pipeline.toml");
+    let profile: Option<GateProfile> = std::fs::read_to_string(&profile_path)
+        .ok()
+        .and_then(|raw| toml::from_str(&raw).ok());
+    if let Some(cmd) = profile.as_ref().and_then(|p| p.command_for(kind)) {
+        return run_command(
+            kind.slug(),
+            &["sh".to_string(), "-c".to_string(), cmd.clone()],
+            workdir,
+        );
+    }
     let cmd = default_gate_command(kind);
     run_command(kind.slug(), &cmd, workdir)
+}
+
+/// Per-repo gate command overrides from `.clawdius/pipeline.toml`.
+#[derive(Debug, Clone, Default, serde::Deserialize)]
+pub struct GateProfile {
+    #[serde(default)]
+    verify: Option<String>,
+    #[serde(default)]
+    test: Option<String>,
+    #[serde(default)]
+    lint: Option<String>,
+}
+
+impl GateProfile {
+    #[must_use]
+    pub fn command_for(&self, kind: &StageKind) -> Option<&String> {
+        match kind {
+            StageKind::Verify => self.verify.as_ref(),
+            StageKind::Test => self.test.as_ref(),
+            StageKind::Lint => self.lint.as_ref(),
+            _ => None,
+        }
+    }
 }
 
 /// Run an explicit command as a gate (test-visible).
@@ -418,5 +524,79 @@ mod tests {
         assert_eq!(verify, vec!["cargo", "check", "--workspace"]);
         let lint = default_gate_command(&StageKind::Lint);
         assert!(lint.join(" ").contains("cargo clippy"));
+    }
+
+    #[test]
+    fn idea_loop_validates_with_harvest_stage_order() {
+        let p = Pipeline::idea_loop("collect candidate ideas");
+        p.validate().expect("idea-loop must validate");
+        assert_eq!(p.name, "idea-loop");
+        let slugs: Vec<&str> = p.stages.iter().map(|s| s.kind.slug()).collect();
+        assert_eq!(
+            slugs,
+            vec![
+                "source-scan",
+                "market-research",
+                "technical-research",
+                "feature-suggestions",
+                "implementation",
+                "verify",
+                "test",
+                "lint",
+            ]
+        );
+        // The loop's tail restarts at triage, not at the scan gate.
+        assert_eq!(p.repeat_from, 1);
+        assert_eq!(p.stages[p.repeat_from].kind, StageKind::MarketResearch);
+        // SourceScan is a gate (deterministic), the three harvest
+        // stages are LLM stages, Implementation is the fourth.
+        assert!(!StageKind::SourceScan.is_llm_stage());
+        assert_eq!(p.stages.iter().filter(|s| s.kind.is_llm_stage()).count(), 4);
+    }
+
+    #[test]
+    fn source_scan_gate_runs_the_vendored_scraper() {
+        let cmd = default_gate_command(&StageKind::SourceScan);
+        assert_eq!(cmd.first().map(String::as_str), Some("python3"));
+        let joined = cmd.join(" ");
+        assert!(joined.contains("scripts/idea-engine/idea_digest.py"));
+        assert!(joined.contains("--days 7"));
+        // LLM kinds keep the no-op gate.
+        assert_eq!(
+            default_gate_command(&StageKind::MarketResearch),
+            vec!["true".to_string()]
+        );
+    }
+}
+
+#[cfg(test)]
+mod gate_profile_tests {
+    use super::*;
+
+    #[test]
+    fn profile_overrides_gate_commands() {
+        let raw = r#"
+[verify]
+command = "python3 -m compileall -q ."
+[test]
+command = "python3 -m pytest -q"
+[lint]
+command = "ruff check ."
+"#;
+        let profile: GateProfile = toml::from_str(raw).expect("parse");
+        assert_eq!(
+            profile.command_for(&StageKind::Verify).map(String::as_str),
+            Some("python3 -m compileall -q .")
+        );
+        assert_eq!(
+            profile.command_for(&StageKind::Lint).map(String::as_str),
+            Some("ruff check .")
+        );
+    }
+
+    #[test]
+    fn missing_profile_file_falls_back_to_cargo() {
+        let cmd = default_gate_command(&StageKind::Verify);
+        assert_eq!(cmd, vec!["cargo", "check", "--workspace"]);
     }
 }

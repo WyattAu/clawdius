@@ -61,6 +61,16 @@ ignore = [
   "RUSTSEC-2026-0379",
   "RUSTSEC-2026-0381",
   "RUSTSEC-2026-0383",
+  # November 19 wave - same interlocked wasmtime 49.0.x internals
+  # (49.0.6 blocked by wasmtime-environ exact pin; 50.x is the project).
+  "RUSTSEC-2026-0566",
+  "RUSTSEC-2026-0567",
+  "RUSTSEC-2026-0568",
+  "RUSTSEC-2026-0569",
+  "RUSTSEC-2026-0570",
+  "RUSTSEC-2026-0571",
+  "RUSTSEC-2026-0572",
+  "RUSTSEC-2026-0573",
     # November 2026 wave, same three chains as above (SECURITY.md):
     # rustls 0.22.4 + webpki 0.103 fix (discord), matrix-sdk 0.16 set
     # (vodozemac/imbl-sized-chunks), candle-core's zip ^7 pin.

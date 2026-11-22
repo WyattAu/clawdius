@@ -310,3 +310,8 @@ crates/clawdius-tauri/gen/
 
 # machine-local cargo config (CARGO_TARGET_DIR override) — never commit
 .cargo/config.toml
+
+# idea-engine ephemeral state (digests + dedup store + pycache); ledger is committed
+scripts/idea-engine/digests/
+scripts/idea-engine/.seen.json
+scripts/idea-engine/__pycache__/

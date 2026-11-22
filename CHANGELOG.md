@@ -2,6 +2,24 @@
 
 ## [Unreleased]
 
+### Added
+
+- **`idea-loop` pipeline** — `clawdius pipeline idea-loop "<goal>"` runs
+  the idea-harvest loop as data: a deterministic `SourceScan` gate runs
+  the digest scraper (`scripts/idea-engine/idea_digest.py --days 7`,
+  vendored under `scripts/idea-engine/` together with the pattern
+  playbook and a seeded ledger), then LLM stages triage new items
+  against the rubric, verify load-bearing claims against dated
+  sources, and append scored cards to `IDEAS-LEDGER.md`. The cargo
+  gates still run, proving the harvest left the repo green. Schedulable
+  from the 24/7 maintenance loop as a `TaskKind::Custom` task; a native
+  `TaskKind::IdeaHarvest` check (scan-relevant like Lint/Deps) is a
+  noted follow-up.
+- **`StageKind::SourceScan`** — new shell-gate stage kind. Its default
+  gate command runs the vendored scraper and fails loudly when the
+  engine is absent or a fetch fails (no silent-skip fallback), per the
+  house ground-truth rule for gates.
+
 ### Changed
 
 - **Public API marked `#[non_exhaustive]` where a feature gates part of it.**
