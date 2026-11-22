@@ -487,6 +487,12 @@ pub enum Commands {
         action: CheckpointCommands,
     },
 
+    #[command(about = "Fleet: run opencode tasks in isolated worktrees")]
+    Fleet {
+        #[command(subcommand)]
+        action: FleetCommands,
+    },
+
     #[command(about = "Manage file timeline and version history")]
     Timeline {
         #[command(subcommand)]
@@ -814,6 +820,59 @@ pub enum CheckpointCommands {
         #[arg(help = "Session ID (defaults to current session)")]
         session: Option<String>,
     },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, clap::Subcommand)]
+pub enum FleetCommands {
+    /// Run a task in an isolated worktree via the opencode CLI.
+    Work {
+        /// Repository to work on.
+        repo: PathBuf,
+        /// Task slug — names the worktree and branch (fleet/<slug>).
+        slug: String,
+        /// Task prompt (rest of the arguments).
+        #[arg(last = true, help = "Task prompt for opencode")]
+        prompt: Vec<String>,
+        /// opencode agent (build, plan, ...).
+        #[arg(long)]
+        agent: Option<String>,
+        /// Model override (provider/model).
+        #[arg(long)]
+        model: Option<String>,
+        /// Hard wall-clock cap in seconds.
+        #[arg(long)]
+        timeout_secs: Option<u64>,
+        /// Skip the push + PR step.
+        #[arg(long)]
+        no_publish: bool,
+        /// Keep the worktree after collecting.
+        #[arg(long)]
+        keep: bool,
+    },
+    /// Collect a finished task branch (ff-only merge into the checkout).
+    Collect {
+        /// Task slug to collect.
+        slug: String,
+    },
+    /// Push fleet/<slug> and open a PR via gh.
+    Publish {
+        /// Task slug to publish.
+        slug: String,
+        /// Remote to push to.
+        #[arg(long, default_value = "origin")]
+        remote: String,
+        /// PR base branch.
+        #[arg(long, default_value = "main")]
+        base: String,
+        /// PR title (defaults to the branch name).
+        #[arg(long)]
+        title: Option<String>,
+        /// PR body.
+        #[arg(long)]
+        body: Option<String>,
+    },
+    /// List fleet task worktrees and branches.
+    Status,
 }
 
 #[derive(Debug, Subcommand)]
@@ -1341,6 +1400,7 @@ pub mod complete;
 pub mod config_cmd;
 pub mod doc;
 pub mod edit;
+pub mod fleet;
 pub mod generate;
 pub mod git;
 pub mod index;
@@ -1563,6 +1623,7 @@ pub async fn handle_command(
         Commands::Checkpoint { action } => {
             checkpoint::handle_checkpoint(action, config_path, output_format).await
         },
+        Commands::Fleet { action } => fleet::handle_fleet(action),
         Commands::Timeline { action } => {
             timeline::handle_timeline(action, config_path, output_format).await
         },
