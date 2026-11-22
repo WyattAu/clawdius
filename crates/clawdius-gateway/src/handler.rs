@@ -64,6 +64,9 @@ pub struct ClawdiusHandler {
     /// of the LLM.
     fleet_commander: Option<Arc<tokio::sync::Mutex<crate::fleet_cmds::FleetCommander>>>,
 
+    /// Optional per-model resource caps (`CLAWDIUS_MODEL_QUOTAS`).
+    resource_governor: Option<Arc<clawdius_core::orchestrator::ResourceGovernor>>,
+
     /// LLM response cache (provider-agnostic, keyed by message hash).
     cache: Arc<LlmResponseCache>,
 
@@ -87,6 +90,7 @@ impl ClawdiusHandler {
             system_prompt: GATEWAY_SYSTEM_PROMPT.to_string(),
             max_history: 50,
             fleet_commander: None,
+            resource_governor: None,
             cache: Arc::new(LlmResponseCache::new(Duration::from_mins(5), 1000)),
             #[cfg(feature = "audit")]
             audit: None,
@@ -104,6 +108,16 @@ impl ClawdiusHandler {
     #[must_use]
     pub fn with_fleet_commander(mut self, commander: crate::fleet_cmds::FleetCommander) -> Self {
         self.fleet_commander = Some(Arc::new(tokio::sync::Mutex::new(commander)));
+        self
+    }
+
+    /// Enable per-model resource caps with the given governor.
+    #[must_use]
+    pub fn with_resource_governor(
+        mut self,
+        governor: Arc<clawdius_core::orchestrator::ResourceGovernor>,
+    ) -> Self {
+        self.resource_governor = Some(governor);
         self
     }
 
@@ -409,9 +423,28 @@ impl MessageHandler for ClawdiusHandler {
         let provider_name = self.provider.as_deref().unwrap_or("unknown");
         let model_name = self.model.as_deref().unwrap_or("unknown");
 
+        // 5a. Per-model resource cap: reserve a slot or bounce with 429-ish
+        // semantics. Fleet commands never reach this path (intercepted
+        // above), so chat quota never gates fleet verbs.
+        let tenant = crate::quotas::model_key(provider_name, model_name);
+        if let Some(governor) = &self.resource_governor {
+            crate::quotas::acquire_model_slot(
+                governor,
+                &tenant,
+                &message.id,
+                &message.user.id,
+                message.platform,
+            )
+            .await?;
+        }
+
         let start = std::time::Instant::now();
         let llm_result = llm.chat(messages.clone()).await;
         let duration = start.elapsed();
+
+        if let Some(governor) = &self.resource_governor {
+            crate::quotas::release_model_slot(governor, &tenant, &message.id).await;
+        }
 
         self.record_chat_metrics(provider_name, model_name, duration, llm_result.is_ok())
             .await;

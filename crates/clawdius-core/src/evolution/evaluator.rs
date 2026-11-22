@@ -88,82 +88,103 @@ impl CommandEvaluator {
 
 impl Evaluator for CommandEvaluator {
     fn evaluate(&self, program: &Program) -> Evaluated {
-        use std::io::Write;
-        use std::process::{Command, Stdio};
+        run_evaluator_subprocess(&self.argv, self.timeout, program, None)
+    }
+}
 
-        let mut eval_script = Command::new(&self.argv[0]);
-        for arg in &self.argv[1..] {
-            eval_script.arg(arg);
-        }
+/// Run one evaluator subprocess and parse its `{"metrics": ...}` output.
+///
+/// Shared by [`CommandEvaluator`] (cwd = inherit) and the island sandbox
+/// ([`super::sandbox::SandboxedCommandEvaluator`], cwd = the worktree). When
+/// `cwd` is set, the program temp file is written inside that directory so
+/// no evaluator artifact escapes the sandbox.
+pub(crate) fn run_evaluator_subprocess(
+    argv: &[String],
+    timeout: std::time::Duration,
+    program: &Program,
+    cwd: Option<&std::path::Path>,
+) -> Evaluated {
+    use std::process::{Command, Stdio};
 
-        // Write program code to a temp file for the evaluator to read.
-        let tmp = std::env::temp_dir().join(format!("evo-eval-{}.rs", program.id));
-        if std::fs::write(&tmp, &program.code).is_err() {
-            return Evaluated::single("score", f64::NEG_INFINITY);
-        }
+    let mut eval_script = Command::new(&argv[0]);
+    for arg in &argv[1..] {
+        eval_script.arg(arg);
+    }
+    if let Some(dir) = cwd {
+        eval_script.current_dir(dir);
+    }
 
-        let child = eval_script
-            .arg(&tmp)
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .spawn();
+    // Write program code to a temp file for the evaluator to read — inside
+    // the sandbox when one is active.
+    let tmp = match cwd {
+        Some(dir) => dir.join(format!(".evo-eval-{}.rs", program.id)),
+        None => std::env::temp_dir().join(format!("evo-eval-{}.rs", program.id)),
+    };
+    if std::fs::write(&tmp, &program.code).is_err() {
+        return Evaluated::single("score", f64::NEG_INFINITY);
+    }
 
-        let Ok(mut child) = child else {
-            let _ = std::fs::remove_file(&tmp);
-            return Evaluated::single("score", f64::NEG_INFINITY);
-        };
+    let child = eval_script
+        .arg(&tmp)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn();
 
-        // Bounded wait: an evaluator that hangs scores NEG_INFINITY.
-        let deadline = std::time::Instant::now() + self.timeout;
-        let status = loop {
-            match child.try_wait() {
-                Ok(Some(s)) => break s,
-                Ok(None) if std::time::Instant::now() >= deadline => {
-                    let _ = child.kill();
-                    let _ = child.wait();
-                    let _ = std::fs::remove_file(&tmp);
-                    return Evaluated::single("score", f64::NEG_INFINITY);
-                },
-                Ok(None) => std::thread::sleep(std::time::Duration::from_millis(20)),
-                Err(_) => {
-                    let _ = std::fs::remove_file(&tmp);
-                    return Evaluated::single("score", f64::NEG_INFINITY);
-                },
-            }
-        };
-
-        let output = match child.wait_with_output() {
-            Ok(o) => String::from_utf8_lossy(&o.stdout).into_owned(),
-            Err(_) => String::new(),
-        };
+    let Ok(mut child) = child else {
         let _ = std::fs::remove_file(&tmp);
+        return Evaluated::single("score", f64::NEG_INFINITY);
+    };
 
-        if !status.success() {
-            // Evaluator script ran but rejected the program: score it
-            // failed, and keep its stderr as artifacts for the prompt.
-            let mut ev = Evaluated::single("score", f64::NEG_INFINITY);
-            ev.artifacts = Some("evaluator rejected the program".into());
-            return ev;
+    // Bounded wait: an evaluator that hangs scores NEG_INFINITY.
+    let deadline = std::time::Instant::now() + timeout;
+    let status = loop {
+        match child.try_wait() {
+            Ok(Some(s)) => break s,
+            Ok(None) if std::time::Instant::now() >= deadline => {
+                let _ = child.kill();
+                let _ = child.wait();
+                let _ = std::fs::remove_file(&tmp);
+                return Evaluated::single("score", f64::NEG_INFINITY);
+            },
+            Ok(None) => std::thread::sleep(std::time::Duration::from_millis(20)),
+            Err(_) => {
+                let _ = std::fs::remove_file(&tmp);
+                return Evaluated::single("score", f64::NEG_INFINITY);
+            },
         }
+    };
 
-        match serde_json::from_str::<Value>(&output) {
-            Ok(v) => {
-                let mut metrics = std::collections::BTreeMap::new();
-                if let Some(obj) = v.get("metrics").and_then(Value::as_object) {
-                    for (k, val) in obj {
-                        if let Some(n) = val.as_f64() {
-                            metrics.insert(k.clone(), n);
-                        }
+    let output = match child.wait_with_output() {
+        Ok(o) => String::from_utf8_lossy(&o.stdout).into_owned(),
+        Err(_) => String::new(),
+    };
+    let _ = std::fs::remove_file(&tmp);
+
+    if !status.success() {
+        // Evaluator script ran but rejected the program: score it
+        // failed, and keep its stderr as artifacts for the prompt.
+        let mut ev = Evaluated::single("score", f64::NEG_INFINITY);
+        ev.artifacts = Some("evaluator rejected the program".into());
+        return ev;
+    }
+
+    match serde_json::from_str::<Value>(&output) {
+        Ok(v) => {
+            let mut metrics = std::collections::BTreeMap::new();
+            if let Some(obj) = v.get("metrics").and_then(Value::as_object) {
+                for (k, val) in obj {
+                    if let Some(n) = val.as_f64() {
+                        metrics.insert(k.clone(), n);
                     }
                 }
-                let artifacts = v
-                    .get("artifacts")
-                    .and_then(Value::as_str)
-                    .map(str::to_string);
-                Evaluated { metrics, artifacts }
-            },
-            Err(_) => Evaluated::single("score", f64::NEG_INFINITY),
-        }
+            }
+            let artifacts = v
+                .get("artifacts")
+                .and_then(Value::as_str)
+                .map(str::to_string);
+            Evaluated { metrics, artifacts }
+        },
+        Err(_) => Evaluated::single("score", f64::NEG_INFINITY),
     }
 }
 
