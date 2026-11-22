@@ -648,7 +648,8 @@ async fn run_task_once(
             let model_commits = commits_since(base.as_deref(), &wt);
             let _ = Command::new("git")
                 .args(["-C", &wt.to_string_lossy()])
-                .args(["add", "-A"])
+                .args(["add", "-A", "--"])
+                .args([".", ":(exclude).clawdius", ":(exclude).clawdius/**"])
                 .output();
             let staged = dirty_paths(&wt);
             if staged.is_empty() && model_commits == 0 {
