@@ -58,7 +58,12 @@ jobs:
 
       - name: Run benchmarks (no baseline)
         if: "!(github.event_name == 'push' && github.ref == 'refs/heads/main')"
-        run: cargo bench --workspace --benches --locked
+        # --exclude half: the vendored [patch.crates-io] path lives inside
+        # the workspace dir, so cargo counts it as a member and --workspace
+        # would bench its own benches; plotters 0.3.7 panics on the NaN
+        # ranges their criterion setup produces under outlier storms (#113).
+        # The vendored patch exists to resolve lancedb's half pin only.
+        run: cargo bench --workspace --benches --locked --exclude half
 
       - name: Upload benchmark results
         uses: actions/upload-artifact@v7
