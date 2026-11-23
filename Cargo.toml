@@ -169,7 +169,7 @@ arrow-schema = "57"
 candle-core = "0.10"
 candle-nn = "0.10"
 candle-transformers = "0.10"
-tokenizers = "0.15"
+tokenizers = "0.22"
 hf-hub = "0.5"
 
 # === Testing ===
