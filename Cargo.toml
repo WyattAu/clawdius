@@ -72,7 +72,7 @@ tree-sitter-go = "0.25"
 tree-sitter-java = "0.23"
 tree-sitter-cpp = "0.23"
 tree-sitter-ruby = "0.23"
-tree-sitter-php = "0.24"
+tree-sitter-php = "0.25"
 syntect = "5.3"
 
 # === Terminal UI ===
