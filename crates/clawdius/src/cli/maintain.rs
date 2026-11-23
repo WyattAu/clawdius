@@ -40,7 +40,7 @@ const MAX_PROVIDER_ROTATIONS: usize = 3;
 /// beyond this is a daily quota reset: sleeping would wedge the task for
 /// hours (live: 5 attempts x 30 min against a 16 h hint), so the cycle
 /// fails fast and the task is retried after the reset.
-const MAX_HONORED_WAIT: Duration = Duration::from_secs(600);
+const MAX_HONORED_WAIT: Duration = Duration::from_mins(10);
 
 /// Whether a provider reset hint is short enough to sleep through.
 /// Longer hints are daily quota resets: the cycle fails fast instead of
@@ -1131,7 +1131,7 @@ fn open_pr(repo: &Path, branch: &str, task: &Task) -> Option<String> {
             }
         }
     }
-    let Some(output) = Command::new("gh")
+    let output = Command::new("gh")
         .current_dir(repo)
         .args(["pr", "create", "--head", branch, "--fill", "--title"])
         .arg(&title)
@@ -1141,10 +1141,7 @@ fn open_pr(repo: &Path, branch: &str, task: &Task) -> Option<String> {
             task.effective_goal()
         ))
         .output()
-        .ok()
-    else {
-        return None;
-    };
+        .ok()?;
     if !output.status.success() {
         // Failure-as-finding: a PR that cannot open silently degrades the
         // whole autonomy ladder (live: aileron's rotation pushed branches
