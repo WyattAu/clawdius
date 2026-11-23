@@ -17,7 +17,9 @@ env:
   RUST_BACKTRACE: 1
 
 concurrency:
-  group: "ci-${{ github.ref }}"
+  # Include the event name: push and scheduled runs on main share the ref,
+  # and without this each cron tick cancels the in-flight push run.
+  group: "ci-${{ github.ref }}-${{ github.event_name }}"
   cancel-in-progress: true
 
 jobs:
