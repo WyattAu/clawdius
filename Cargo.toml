@@ -133,7 +133,7 @@ async-stream = "0.3"
 tokio-stream = "0.1"
 async-trait = "0.1"
 # Fix RUSTSEC-2026-0253 (unsound LruCache::pop) - upgraded to 0.18.2+
-lru = "0.18"
+lru = "0.19"
 
 # === Crypto (encryption at rest) ===
 aes-gcm = "0.11"
