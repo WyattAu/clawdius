@@ -11,6 +11,8 @@
 )]
 
 use clap::{Parser, Subcommand, ValueEnum};
+
+use self::evolve::EvolveArgs;
 use std::path::{Path, PathBuf};
 
 use clawdius_core::output::OutputFormat as CoreOutputFormat;
@@ -492,6 +494,9 @@ pub enum Commands {
         #[command(subcommand)]
         action: FleetCommands,
     },
+
+    #[command(about = "Evolve: run the evolution engine over seeds with a command evaluator")]
+    Evolve(EvolveArgs),
 
     #[command(about = "Manage file timeline and version history")]
     Timeline {
@@ -1400,6 +1405,7 @@ pub mod complete;
 pub mod config_cmd;
 pub mod doc;
 pub mod edit;
+pub mod evolve;
 pub mod fleet;
 pub mod generate;
 pub mod git;
@@ -1624,6 +1630,7 @@ pub async fn handle_command(
             checkpoint::handle_checkpoint(action, config_path, output_format).await
         },
         Commands::Fleet { action } => fleet::handle_fleet(action),
+        Commands::Evolve(args) => evolve::handle_evolve(&args),
         Commands::Timeline { action } => {
             timeline::handle_timeline(action, config_path, output_format).await
         },
