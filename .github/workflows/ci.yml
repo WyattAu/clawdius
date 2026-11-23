@@ -162,7 +162,7 @@ jobs:
         uses: actions/cache@v6
         with:
           path: ~/.elan
-          key: elan-${{ runner.os }}-v4.28.0
+          key: elan-${{ runner.os }}-v4.35.0
 
       - name: Install elan
         run: |

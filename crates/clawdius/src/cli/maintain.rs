@@ -20,7 +20,7 @@ use clawdius_core::maintenance::{
 };
 use clawdius_core::orchestrator::fallback::{FallbackCoordinator, FallbackPolicy};
 use clawdius_core::orchestrator::pipeline::{Pipeline, StageKind};
-use serde_json::json;
+use serde_json::{json, Value};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::{Duration, Instant};
@@ -40,7 +40,7 @@ const MAX_PROVIDER_ROTATIONS: usize = 3;
 /// beyond this is a daily quota reset: sleeping would wedge the task for
 /// hours (live: 5 attempts x 30 min against a 16 h hint), so the cycle
 /// fails fast and the task is retried after the reset.
-const MAX_HONORED_WAIT: Duration = Duration::from_secs(600);
+const MAX_HONORED_WAIT: Duration = Duration::from_mins(10);
 
 /// Whether a provider reset hint is short enough to sleep through.
 /// Longer hints are daily quota resets: the cycle fails fast instead of
@@ -1108,6 +1108,29 @@ fn open_pr(repo: &Path, branch: &str, task: &Task) -> Option<String> {
         task.kind.slug(),
         first_sentence_capped(task.effective_goal().as_str(), 70)
     );
+    // Reuse an open PR for this branch: a re-run rotation on the same
+    // task id must not pile up duplicate PRs whose heads go stale
+    // (live: aileron #21-23 pointed at replaced refs and became
+    // undiffable).
+    let existing = Command::new("gh")
+        .current_dir(repo)
+        .args([
+            "pr", "list", "--head", branch, "--state", "open", "--limit", "1", "--json", "url",
+        ])
+        .output()
+        .ok();
+    if let Some(existing) = existing {
+        if let Ok(list) = serde_json::from_slice::<Value>(&existing.stdout) {
+            if let Some(url) = list
+                .as_array()
+                .and_then(|a| a.first())
+                .and_then(|p| p.get("url"))
+                .and_then(Value::as_str)
+            {
+                return Some(url.to_string());
+            }
+        }
+    }
     let output = Command::new("gh")
         .current_dir(repo)
         .args(["pr", "create", "--head", branch, "--fill", "--title"])
@@ -1120,6 +1143,31 @@ fn open_pr(repo: &Path, branch: &str, task: &Task) -> Option<String> {
         .output()
         .ok()?;
     if !output.status.success() {
+        // Failure-as-finding: a PR that cannot open silently degrades the
+        // whole autonomy ladder (live: aileron's rotation pushed branches
+        // but no PRs appeared, and nothing surfaced why). Land the gh
+        // stderr in the findings feed before giving up.
+        let findings = repo.join(".clawdius/maintenance/findings.jsonl");
+        if let Ok(mut f) = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(&findings)
+        {
+            use std::io::Write;
+            let _ = writeln!(
+                f,
+                "{}",
+                json!({
+                    "at": now_rfc3339(),
+                    "task": task.id,
+                    "provider": "github-pr",
+                    "note": format!(
+                        "gh pr create failed for {branch}: {}",
+                        String::from_utf8_lossy(&output.stderr).trim().chars().take(250).collect::<String>()
+                    ),
+                })
+            );
+        }
         return None;
     }
     let url = String::from_utf8_lossy(&output.stdout).trim().to_string();
