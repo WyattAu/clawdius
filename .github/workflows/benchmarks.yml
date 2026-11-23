@@ -58,7 +58,12 @@ jobs:
 
       - name: Run benchmarks (no baseline)
         if: "!(github.event_name == 'push' && github.ref == 'refs/heads/main')"
-        run: cargo bench --workspace --benches --locked
+        # --exclude half: the vendored [patch.crates-io] path lives inside
+        # the workspace dir, so cargo counts it as a member and --workspace
+        # would bench its own benches; plotters 0.3.7 panics on the NaN
+        # ranges their criterion setup produces under outlier storms (#113).
+        # The vendored patch exists to resolve lancedb's half pin only.
+        run: cargo bench --workspace --benches --locked --exclude half
 
       - name: Upload benchmark results
         uses: actions/upload-artifact@v7
@@ -136,6 +141,10 @@ jobs:
             echo "Regression threshold: **>15%** slowdown"
             echo ""
             echo "Benchmarks compared against \`main\` branch baseline using criterion."
+            # Terminate the body<<COMMENT_EOF heredoc — without this the
+            # GITHUB_OUTPUT parser fails the whole step (and the downstream
+            # comment posts blank).
+            echo "COMMENT_EOF"
           } >> "$GITHUB_OUTPUT"
 
       - name: Comment on PR
