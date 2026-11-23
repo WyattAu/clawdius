@@ -120,11 +120,11 @@ repo_map.py:450-500 — to_tree() — Tree formatting with budget
 
 **SEARCH/REPLACE Edit Format**
 ```
-<<<<<<< SEARCH
-exact text to find (must be unique)
-=======
-replacement text
->>>>>>> REPLACE
+ ^<<<<<<< SEARCH
+ exact text to find (must be unique)
+ =======
+ replacement text
+ ^>>>>>>> REPLACE
 ```
 - Fuzzy matching code EXISTS but is **disabled by early return on line 183** (dead code)
 - Uses `difflib.SequenceMatcher` for potential fuzzy matching (never executed)

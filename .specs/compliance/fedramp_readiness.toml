@@ -105,7 +105,7 @@ name = "Flaw Remediation"
 status = "Implemented"
 description = "Identify, report, and correct system flaws."
 evidence = [
-    ".cargo-audit.toml — Automated vulnerability scanning (cargo audit)",
+    ".audit.toml — Automated vulnerability scanning (cargo audit)",
     "crates/clawdius-core/src/analysis/debt.rs — Technical debt detection",
     "crates/clawdius-core/src/retry.rs — Circuit breaker for resilience",
 ]
@@ -173,7 +173,7 @@ name = "Vulnerability Monitoring and Scanning"
 status = "Implemented"
 description = "Monitor for and scan for vulnerabilities."
 evidence = [
-    ".cargo-audit.toml — Cargo audit configuration (deny vulnerabilities, yanked crates)",
+    ".audit.toml — Cargo audit configuration (deny vulnerabilities, yanked crates)",
     "deploy/terraform/ — Infrastructure as Code for reproducible deployment",
 ]
 

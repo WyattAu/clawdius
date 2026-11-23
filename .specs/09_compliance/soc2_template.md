@@ -31,7 +31,7 @@ Related machine-readable artifacts: `.specs/compliance/soc2_readiness.toml`
 | CC7.2 | Incident Response | Respond to identified incidents to mitigate impact | IN_PROGRESS | Error classification taxonomy (10 levels); formal runbook needed | `crates/clawdius-core/src/error.rs` |
 | CC7.3 | Security Event Evaluation | Evaluate security events for potential incidents | PLANNED | Structured telemetry events exist; automated evaluation pipeline not implemented | `crates/clawdius-core/src/telemetry/structured.rs` |
 | CC8.1 | Change Management | Authorize, design, develop, configure, test, and approve changes | COMPLIANT | Git-based change tracking, Lean4 formal proofs (114 theorems, 0 sorry), CI/CD | `proofs/`, `.github/` |
-| CC8.2 | System Development Life Cycle | Maintain a documented SDLC with security checkpoints | COMPLIANT | Rust module structure, `deny.toml` dependency audit, `.cargo-audit.toml` | `deny.toml`, `.cargo-audit.toml` |
+| CC8.2 | System Development Life Cycle | Maintain a documented SDLC with security checkpoints | COMPLIANT | Rust module structure, `deny.toml` dependency audit, `.audit.toml` | `deny.toml`, `.audit.toml` |
 | CC9.1 | Risk Mitigation | Identify and mitigate risks that could affect objectives | IN_PROGRESS | Sandbox tiers (4 levels), circuit breaker pattern; formal risk register pending | `crates/clawdius-core/src/sandbox.rs`, `crates/clawdius-core/src/retry.rs` |
 | CC9.2 | Threat Intelligence | Identify and respond to threats | PLANNED | No automated threat feed integration | -- |
 
@@ -140,5 +140,5 @@ crates/clawdius-gateway/
 
 proofs/                     -> CC8.1 (Lean4 formal verification)
 deny.toml                   -> CC8.2 (cargo-deny dependency audit)
-.cargo-audit.toml           -> CC8.2 (cargo-audit configuration)
+.audit.toml           -> CC8.2 (cargo-audit configuration)
 ```
