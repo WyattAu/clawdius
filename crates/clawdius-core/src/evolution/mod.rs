@@ -23,19 +23,25 @@
 //! - [`engine`] — the evolution loop + convergence acceptance
 //! - [`rng`] — seeded SplitMix64 (zero-dependency PRNG)
 //! - [`sandbox`] — per-evaluation worktree isolation (fleet worktree dogfood)
+//! - [`prompt`] — artifact-conditioned mutation prompts (Phase B)
+//! - [`llm_mutator`] — LLM-driven mutation with governor caps + stub fallback (Phase B)
 
 pub mod database;
 pub mod engine;
 pub mod evaluator;
+pub mod llm_mutator;
 pub mod mutator;
 pub mod program;
+pub mod prompt;
 pub mod rng;
 pub mod sandbox;
 
 pub use database::{DatabaseConfig, FeatureDimension, ProgramDatabase};
 pub use engine::{converge, run, EvolutionConfig, RunStats};
 pub use evaluator::{CommandEvaluator, Evaluated, Evaluator, FnEvaluator};
+pub use llm_mutator::{extract_code_block, LlmMutator};
 pub use mutator::{Mutator, StubMutator};
 pub use program::Program;
+pub use prompt::{AttemptRecord, PromptConfig, PromptSampler};
 pub use rng::Rng;
 pub use sandbox::SandboxedCommandEvaluator;
