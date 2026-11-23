@@ -37,7 +37,7 @@ pub mod rng;
 pub mod sandbox;
 
 pub use database::{DatabaseConfig, FeatureDimension, ProgramDatabase};
-pub use engine::{converge, run, EvolutionConfig, RunStats};
+pub use engine::{converge, run, run_parallel, EvolutionConfig, RunStats};
 pub use evaluator::{CommandEvaluator, Evaluated, Evaluator, FnEvaluator};
 pub use llm_mutator::{extract_code_block, LlmMutator};
 pub use mutator::{Mutator, StubMutator};

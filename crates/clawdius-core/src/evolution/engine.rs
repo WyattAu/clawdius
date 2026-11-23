@@ -61,27 +61,7 @@ pub fn run(
     mutator: &dyn Mutator,
 ) -> Result<(ProgramDatabase, RunStats)> {
     let mut rng = Rng::new(config.seed);
-    let mut db = ProgramDatabase::new(config.database.clone());
-
-    // Seed population: round-robin across islands.
-    for (i, code) in seed_codes.iter().enumerate() {
-        let id = uuid_from(i as u64, config.seed);
-        let mut p = Program::new(code.clone(), id);
-        p.generation = 0;
-        // Give seeds a spread across the feature dimensions so the grid
-        // populates distinct bins from the start.
-        p.set_metrics([
-            ("size".into(), code.len() as f64),
-            ("complexity".into(), (code.lines().count() * 7) as f64),
-            ("score".into(), f64::NEG_INFINITY),
-        ]);
-        let island = if config.island_round_robin {
-            i % db.config().num_islands.max(1)
-        } else {
-            0
-        };
-        db.add_seed(island, p);
-    }
+    let mut db = seed_population(config, &seed_codes);
 
     let mut evaluations = 0usize;
     let mut migrations = 0usize;
@@ -135,6 +115,159 @@ pub fn run(
         if evaluations_since_migration >= config.database.migration_interval.max(1) {
             migrations += db.advance_generation(&mut rng);
             evaluations_since_migration = 0;
+        }
+    }
+
+    let stats = RunStats {
+        evaluations,
+        generations: db.generation(),
+        migrations,
+        final_best_score: db
+            .champion()
+            .map(|c| c.fitness(&db.config().fitness_metric)),
+        final_best_generation: db.champion().map(|c| c.generation).unwrap_or_default(),
+    };
+    Ok((db, stats))
+}
+
+/// Seed the database: round-robin across islands with dimension spread.
+///
+/// Shared by [`run`] and [`run_parallel`].
+fn seed_population(config: &EvolutionConfig, seed_codes: &[String]) -> ProgramDatabase {
+    let mut db = ProgramDatabase::new(config.database.clone());
+    for (i, code) in seed_codes.iter().enumerate() {
+        let id = uuid_from(i as u64, config.seed);
+        let mut p = Program::new(code.clone(), id);
+        p.generation = 0;
+        // Give seeds a spread across the feature dimensions so the grid
+        // populates distinct bins from the start.
+        p.set_metrics([
+            ("size".into(), code.len() as f64),
+            ("complexity".into(), (code.lines().count() * 7) as f64),
+            ("score".into(), f64::NEG_INFINITY),
+        ]);
+        let island = if config.island_round_robin {
+            i % db.config().num_islands.max(1)
+        } else {
+            0
+        };
+        db.add_seed(island, p);
+    }
+    db
+}
+
+/// Run the evolution loop with `workers`-way mutation/evaluation
+/// parallelism.
+///
+/// The expensive steps (mutator call, evaluator call — an LLM request or a
+/// sandboxed subprocess) fan out across scoped threads each round, while
+/// sampling and MAP-Elites insertion stay on the coordinator thread: the
+/// database is never shared, so there are no locks and the replay
+/// guarantees hold — each candidate gets its own [`Rng`] derived from
+/// `(seed, candidate id)`, and insertion happens in slot order.
+///
+/// Rounds are `workers`-wide instead of one evaluation each, so migration
+/// cadence advances in `migration_interval`-multiple chunks; everything
+/// else (empty-island fallback, finite-fitness filter, island round-robin)
+/// matches [`run`].
+///
+/// # Errors
+///
+/// Propagates the first mutator error in slot order (matching [`run`]'s
+/// abort-on-mutator-failure semantics); evaluator failures degrade to
+/// NEG_INFINITY and are dropped.
+pub fn run_parallel(
+    config: &EvolutionConfig,
+    seed_codes: Vec<String>,
+    evaluator: &dyn Evaluator,
+    mutator: &dyn Mutator,
+    workers: usize,
+) -> Result<(ProgramDatabase, RunStats)> {
+    let workers = workers.max(1);
+    let mut rng = Rng::new(config.seed);
+    let mut db = seed_population(config, &seed_codes);
+    let num_islands = db.config().num_islands.max(1);
+
+    let mut evaluations = 0usize;
+    let mut migrations = 0usize;
+    let mut evaluations_since_migration = 0usize;
+
+    while evaluations < config.max_evaluations {
+        let width = workers.min(config.max_evaluations - evaluations);
+
+        // Sample `width` parents serially — deterministic order, one rng.
+        let mut slots: Vec<Option<(Program, Vec<Program>)>> = Vec::with_capacity(width);
+        for i in 0..width {
+            let island = if config.island_round_robin {
+                (evaluations + i) % num_islands
+            } else {
+                0
+            };
+            slots.push(
+                db.sample(island, config.exploit_ratio, &mut rng)
+                    .or_else(|| {
+                        (0..num_islands)
+                            .find_map(|island| db.sample(island, config.exploit_ratio, &mut rng))
+                    }),
+            );
+        }
+        if slots.iter().all(Option::is_none) {
+            break; // no programs anywhere
+        }
+
+        let generation = db.generation() as usize + 1;
+
+        // Fan out: mutate + evaluate concurrently. The database stays on
+        // this thread — threads only touch their (parent, inspirations)
+        // pair and their own rng.
+        let results: Vec<std::result::Result<Option<Program>, anyhow::Error>> =
+            std::thread::scope(|scope| {
+                let handles: Vec<_> = slots
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(i, slot)| {
+                        let (parent, inspirations) = slot.as_ref()?;
+                        let child_id = uuid_from((evaluations + i) as u64 + 10_000, config.seed);
+                        let mut candidate_rng = Rng::new(config.seed ^ child_id.as_u64_pair().0);
+                        Some(scope.spawn(move || {
+                            let child_code =
+                                mutator.mutate(parent, inspirations, &mut candidate_rng)?;
+                            let mut child =
+                                Program::child_of(parent, child_code, child_id, generation);
+                            let evaluated = evaluator.evaluate(&child);
+                            child.metrics = evaluated.metrics.clone();
+                            child.artifacts = evaluated.artifacts.clone();
+                            Ok(Some(child))
+                        }))
+                    })
+                    .collect();
+                handles
+                    .into_iter()
+                    .map(|h| h.join().expect("worker panics propagate"))
+                    .collect()
+            });
+
+        // Propagate the first mutator failure in slot order (run()'s
+        // abort semantics), then insert finite children in slot order.
+        for result in &results {
+            if let Err(e) = result {
+                return Err(anyhow::anyhow!("mutator failed (slot evaluation): {e}"));
+            }
+        }
+        for child in results.into_iter().flatten().flatten() {
+            if child
+                .fitness_opt(&db.config().fitness_metric)
+                .is_some_and(|f| f.is_finite())
+            {
+                db.add_child(child);
+            }
+        }
+
+        evaluations += width;
+        evaluations_since_migration += width;
+        while evaluations_since_migration >= config.database.migration_interval.max(1) {
+            migrations += db.advance_generation(&mut rng);
+            evaluations_since_migration -= config.database.migration_interval.max(1);
         }
     }
 
@@ -313,5 +446,204 @@ mod tests {
         let (db, _) = run(&config, vec!["seed".into()], &evaluator, &mutator).unwrap();
         // Failed children drop out of the ledger; the seeds remain.
         assert!(db.len() <= 2);
+    }
+
+    /// Shared convergence scenario for the parallel tests: stub mutator
+    /// + line-marker fitness, 2 islands, fixed seed.
+    fn convergence_scenario(
+        max_evaluations: usize,
+    ) -> (EvolutionConfig, FnEvaluator<impl Fn(&Program) -> Evaluated>) {
+        const TARGET_LINES: usize = 8;
+        let evaluator = FnEvaluator::new(|p: &Program| {
+            let lines: Vec<&str> = p.code.lines().collect();
+            let correct = lines.iter().filter(|l| l.starts_with("// correct")).count();
+            let score = if lines.is_empty() {
+                0.0
+            } else {
+                (correct as f64 / TARGET_LINES as f64).min(1.0)
+            };
+            let mut ev = Evaluated::single("score", score);
+            ev.metrics.insert("size".into(), p.code.len() as f64);
+            ev.metrics
+                .insert("complexity".into(), (lines.len() * 5) as f64);
+            ev
+        });
+        let config = EvolutionConfig {
+            database: crate::evolution::database::DatabaseConfig {
+                num_islands: 2,
+                migration_interval: 10,
+                migration_rate: 0.2,
+                grid_bins: 4,
+                feature_dimensions: vec![
+                    crate::evolution::database::FeatureDimension {
+                        metric: "size".into(),
+                        bins: 4,
+                        min: 0.0,
+                        max: 1_000.0,
+                    },
+                    crate::evolution::database::FeatureDimension {
+                        metric: "complexity".into(),
+                        bins: 4,
+                        min: 0.0,
+                        max: 100.0,
+                    },
+                ],
+                fitness_metric: "score".into(),
+            },
+            seed: 0xAC0,
+            max_evaluations,
+            exploit_ratio: 0.7,
+            island_round_robin: true,
+        };
+        (config, evaluator)
+    }
+
+    struct ParallelMutator;
+    impl Mutator for ParallelMutator {
+        fn mutate(&self, parent: &Program, _insp: &[Program], rng: &mut Rng) -> Result<String> {
+            let mut lines: Vec<String> = parent.code.lines().map(String::from).collect();
+            while lines.len() < 8 {
+                lines.push("// filler".into());
+            }
+            let flip = rng.below(8);
+            if rng.f64() < 0.6 {
+                lines[flip] = format!("// correct {flip}");
+            }
+            Ok(lines.join("\n"))
+        }
+    }
+
+    #[test]
+    fn run_parallel_converges_under_fixed_seed() {
+        let (config, evaluator) = convergence_scenario(300);
+        let mutator = ParallelMutator;
+        let (db, stats) =
+            run_parallel(&config, vec!["// start\n".into()], &evaluator, &mutator, 4).unwrap();
+
+        assert_eq!(stats.evaluations, 300);
+        let champion = db.champion().expect("champion must exist");
+        let lines = champion.code.lines().count();
+        assert!(
+            lines >= 8,
+            "champion should hold a full program, got {lines} lines"
+        );
+        assert!(
+            stats.final_best_score.expect("score").ge(&0.99),
+            "parallel loop must converge like the sequential one, best {:?}",
+            stats.final_best_score
+        );
+    }
+
+    #[test]
+    fn run_parallel_is_deterministic_per_seed() {
+        let (config, evaluator) = convergence_scenario(60);
+        let mutator = ParallelMutator;
+        let (db1, stats1) =
+            run_parallel(&config, vec!["// start\n".into()], &evaluator, &mutator, 4).unwrap();
+        let (db2, stats2) =
+            run_parallel(&config, vec!["// start\n".into()], &evaluator, &mutator, 4).unwrap();
+
+        assert_eq!(stats1.evaluations, stats2.evaluations);
+        assert_eq!(stats1.generations, stats2.generations);
+        assert_eq!(stats1.migrations, stats2.migrations);
+        assert_eq!(stats1.final_best_score, stats2.final_best_score);
+        let c1 = db1.champion().expect("champion 1");
+        let c2 = db2.champion().expect("champion 2");
+        assert_eq!(c1.code, c2.code, "same seed must replay the same champion");
+        assert_eq!(c1.id, c2.id);
+    }
+
+    #[test]
+    fn parallel_rounds_actually_overlap_evaluations() {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        use std::time::Duration;
+
+        struct ConcurrencyProbe {
+            active: AtomicUsize,
+            peak: AtomicUsize,
+        }
+        impl Evaluator for ConcurrencyProbe {
+            fn evaluate(&self, program: &Program) -> Evaluated {
+                let now = self.active.fetch_add(1, Ordering::SeqCst) + 1;
+                self.peak.fetch_max(now, Ordering::SeqCst);
+                std::thread::sleep(Duration::from_millis(20));
+                self.active.fetch_sub(1, Ordering::SeqCst);
+                let mut ev = Evaluated::single("score", 0.5);
+                ev.metrics.insert("size".into(), program.code.len() as f64);
+                ev.metrics.insert(
+                    "complexity".into(),
+                    (program.code.lines().count() * 5) as f64,
+                );
+                ev
+            }
+        }
+
+        let probe = ConcurrencyProbe {
+            active: AtomicUsize::new(0),
+            peak: AtomicUsize::new(0),
+        };
+        let (config, _noop) = convergence_scenario(12);
+        // Use the probe directly as the evaluator.
+        let mutator = ParallelMutator;
+        let evaluator_ref: &dyn Evaluator = &probe;
+        run_parallel(
+            &config,
+            vec!["// start\n".into()],
+            evaluator_ref,
+            &mutator,
+            4,
+        )
+        .unwrap();
+
+        let peak = probe.peak.load(Ordering::SeqCst);
+        assert!(
+            peak > 1,
+            "workers=4 must evaluate concurrently; peak was {peak}"
+        );
+
+        // And a sequential-width run must stay strictly serial.
+        let probe2 = ConcurrencyProbe {
+            active: AtomicUsize::new(0),
+            peak: AtomicUsize::new(0),
+        };
+        let evaluator_ref2: &dyn Evaluator = &probe2;
+        run_parallel(
+            &config,
+            vec!["// start\n".into()],
+            evaluator_ref2,
+            &mutator,
+            1,
+        )
+        .unwrap();
+        assert_eq!(
+            probe2.peak.load(Ordering::SeqCst),
+            1,
+            "workers=1 must not overlap"
+        );
+    }
+
+    #[test]
+    fn run_parallel_propagates_mutator_errors() {
+        struct ExplodingMutator;
+        impl Mutator for ExplodingMutator {
+            fn mutate(
+                &self,
+                _parent: &Program,
+                _insp: &[Program],
+                _rng: &mut Rng,
+            ) -> Result<String> {
+                Err(anyhow::anyhow!("mutation exploded"))
+            }
+        }
+        let (config, evaluator) = convergence_scenario(10);
+        let err = run_parallel(
+            &config,
+            vec!["// start\n".into()],
+            &evaluator,
+            &ExplodingMutator,
+            2,
+        )
+        .expect_err("mutator failure must abort the run");
+        assert!(err.to_string().contains("mutation exploded"), "{err}");
     }
 }
