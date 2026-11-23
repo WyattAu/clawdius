@@ -141,6 +141,10 @@ jobs:
             echo "Regression threshold: **>15%** slowdown"
             echo ""
             echo "Benchmarks compared against \`main\` branch baseline using criterion."
+            # Terminate the body<<COMMENT_EOF heredoc — without this the
+            # GITHUB_OUTPUT parser fails the whole step (and the downstream
+            # comment posts blank).
+            echo "COMMENT_EOF"
           } >> "$GITHUB_OUTPUT"
 
       - name: Comment on PR
