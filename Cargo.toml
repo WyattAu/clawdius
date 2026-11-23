@@ -99,7 +99,7 @@ rpassword = "7.5"
 # === HTTP ===
 axum = { version = "0.8", features = ["macros"] }
 tower = "0.5"
-tower-http = { version = "0.6", features = ["cors", "fs"] }
+tower-http = { version = "0.7", features = ["cors", "fs"] }
 
 # === Browser Automation ===
 # NOTE: default-features = false is required to exclude async-std (RUSTSEC-2025-0052)
