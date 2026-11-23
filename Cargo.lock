@@ -18240,7 +18240,7 @@ dependencies = [
  "hyper-util",
  "indexmap 2.14.2",
  "inout 0.1.4",
- "itertools 0.14.0",
+ "itertools 0.15.0",
  "js_int",
  "leptos",
  "leptos_dom",
