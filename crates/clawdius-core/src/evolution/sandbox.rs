@@ -98,24 +98,35 @@ mod tests {
                 .as_nanos()
         ));
         std::fs::create_dir_all(&root).expect("mkdir");
+        // Hermetic: ambient global/system git config (hooks, signing) and
+        // /tmp pressure are the suspected flake sources (#116) — isolate
+        // config the same way the maintain test does.
         let git = |args: &[&str]| {
-            let out = std::process::Command::new("git")
+            std::process::Command::new("git")
                 .args(args)
                 .current_dir(&root)
+                .env("GIT_CONFIG_GLOBAL", "/dev/null")
+                .env("GIT_CONFIG_SYSTEM", "/dev/null")
+                .env("GIT_CONFIG_NOSYSTEM", "1")
+                .env("GIT_TERMINAL_PROMPT", "0")
+                .env("GIT_AUTHOR_NAME", "evo")
+                .env("GIT_AUTHOR_EMAIL", "evo@test")
+                .env("GIT_COMMITTER_NAME", "evo")
+                .env("GIT_COMMITTER_EMAIL", "evo@test")
                 .output()
-                .expect("git runs");
+                .expect("git runs")
+        };
+        let ok = |step: &str, out: &std::process::Output| {
             assert!(
                 out.status.success(),
-                "git {args:?} failed: {}",
+                "git {step} failed: {}",
                 String::from_utf8_lossy(&out.stderr)
             );
         };
-        git(&["init", "-q"]);
-        git(&["config", "user.email", "evo@test"]);
-        git(&["config", "user.name", "evo"]);
+        ok("init", &git(&["init", "-q"]));
         std::fs::write(root.join("README.md"), "sandbox test\n").expect("seed file");
-        git(&["add", "."]);
-        git(&["commit", "-q", "-m", "seed"]);
+        ok("add", &git(&["add", "."]));
+        ok("commit", &git(&["commit", "-q", "-m", "seed"]));
         root
     }
 
