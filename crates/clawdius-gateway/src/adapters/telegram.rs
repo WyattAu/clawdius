@@ -70,7 +70,17 @@ pub struct TelegramAdapter {
 impl TelegramAdapter {
     /// Create a new Telegram adapter from a bot token.
     pub fn new(token: impl Into<String>) -> Self {
-        let bot = teloxide::Bot::new(token);
+        // Bind the client to the IPv4 wildcard: fleet boxes commonly
+        // advertise IPv6 DNS (AAAA-first) without a working v6 route, and
+        // each Telegram API call then hangs on the dead family until the
+        // request times out ("error sending request" flapping with
+        // rate-limit retries). The Telegram API is IPv4-healthy; forcing
+        // v4 sockets removes the whole failure mode. (2026-11-24 live.)
+        let client = reqwest::Client::builder()
+            .local_address(std::net::IpAddr::from([0, 0, 0, 0]))
+            .build()
+            .expect("telegram http client builds");
+        let bot = teloxide::Bot::with_client(token, client);
         Self {
             bot,
             message_callback: Arc::new(Mutex::new(None)),
