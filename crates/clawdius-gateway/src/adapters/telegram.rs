@@ -78,6 +78,12 @@ impl TelegramAdapter {
         // v4 sockets removes the whole failure mode. (2026-11-24 live.)
         let client = reqwest::Client::builder()
             .local_address(std::net::IpAddr::from([0, 0, 0, 0]))
+            // Bound every request: without this a wedged call (server
+            // accepts, never answers) hangs the verify/poll loop forever —
+            // the retry loop only advances when requests END. 90s clears
+            // the long-poll getUpdates window (50s) with headroom.
+            .timeout(std::time::Duration::from_secs(90))
+            .connect_timeout(std::time::Duration::from_secs(15))
             .build()
             .expect("telegram http client builds");
         let bot = teloxide::Bot::with_client(token, client);
