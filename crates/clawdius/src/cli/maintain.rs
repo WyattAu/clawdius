@@ -1547,19 +1547,41 @@ mod tests {
         }
         let dir = tempfile::tempdir().unwrap();
         let repo = dir.path();
-        // `git -c` options must come before the subcommand.
+        // `git -c` options must come before the subcommand. The closures
+        // are hermetic: ambient global/system config (hooks, signing,
+        // maintenance) and the shared /tmp tmpfs are the suspected flake
+        // sources (#116) — isolate config, and carry stderr into the
+        // asserts so a recurrence names its cause instead of panicking
+        // with a bare `assertion failed`.
         let git = |args: &[&str]| {
             Command::new("git")
                 .args(["-C", repo.to_str().unwrap()])
                 .args(["-c", "user.email=t@t", "-c", "user.name=t"])
+                .args([
+                    "-c",
+                    "core.hooksPath=/dev/null",
+                    "-c",
+                    "commit.gpgsign=false",
+                ])
+                .env("GIT_CONFIG_GLOBAL", "/dev/null")
+                .env("GIT_CONFIG_SYSTEM", "/dev/null")
+                .env("GIT_CONFIG_NOSYSTEM", "1")
+                .env("GIT_TERMINAL_PROMPT", "0")
                 .args(args)
                 .output()
                 .unwrap()
         };
-        assert!(git(&["init", "-q"]).status.success());
+        let ok = |step: &str, out: &std::process::Output| {
+            assert!(
+                out.status.success(),
+                "git {step} failed: {}",
+                String::from_utf8_lossy(&out.stderr)
+            );
+        };
+        ok("init", &git(&["init", "-q"]));
         std::fs::write(repo.join("f.txt"), "x").unwrap();
-        assert!(git(&["add", "-A"]).status.success());
-        assert!(git(&["commit", "-qm", "seed"]).status.success());
+        ok("add", &git(&["add", "-A"]));
+        ok("commit", &git(&["commit", "-qm", "seed"]));
 
         let wt = repo.join("wt");
         let add = |branch: &str| {
@@ -1576,7 +1598,12 @@ mod tests {
                 .output()
                 .unwrap()
         };
-        assert!(add("maint/x").status.success(), "first add must succeed");
+        let added = add("maint/x");
+        assert!(
+            added.status.success(),
+            "first worktree add failed: {}",
+            String::from_utf8_lossy(&added.stderr)
+        );
         // Simulate a killed cycle: directory gone, registration stale.
         std::fs::remove_dir_all(&wt).unwrap();
 
