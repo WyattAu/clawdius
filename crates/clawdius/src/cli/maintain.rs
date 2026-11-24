@@ -15,6 +15,7 @@
 
 use anyhow::{anyhow, Context, Result};
 use clawdius_core::config::LlmConfig;
+use clawdius_core::maintenance::model_quality::{Attribution, ModelQuality};
 use clawdius_core::maintenance::{
     now_rfc3339, Autonomy, Backlog, CycleOutcome, CycleRecord, Ledger, Task, TaskKind, TaskStatus,
 };
@@ -428,6 +429,20 @@ async fn run_task_with_rotation(
 ) -> Result<CycleReport> {
     let mut last_error: Option<String> = None;
 
+    // Quality-scored routing: `--model auto:quality` resolves to the
+    // best non-quarantined model from the loop's own outcome history.
+    let mut quality = ModelQuality::load(&repo.join(".clawdius/maintenance/model-quality.json"));
+    let resolved_model: Option<String> = if model.as_deref() == Some("auto:quality") {
+        let best = quality.best_model(preferred);
+        if best.is_none() {
+            println!("    auto:quality: no proven model yet — falling back to provider default");
+        }
+        best.map(|(_, m)| m)
+    } else {
+        model.map(String::from)
+    };
+    let model_ref: Option<&str> = resolved_model.as_deref();
+
     for attempt in 1..=MAX_PROVIDER_ROTATIONS {
         let provider = match coordinator.next() {
             clawdius_core::orchestrator::fallback::FallbackDecision::Try(p) => p,
@@ -453,7 +468,7 @@ async fn run_task_with_rotation(
             },
         };
 
-        let attempt_model = model_for_attempt(preferred, &provider, model);
+        let attempt_model = model_for_attempt(preferred, &provider, model_ref);
         match attempt_model {
             Some(m) => println!("    attempt {attempt}: provider `{provider}` model `{m}`"),
             None => println!(
@@ -475,10 +490,29 @@ async fn run_task_with_rotation(
         {
             Ok(report) => {
                 coordinator.note_solved(&provider);
+                // Attribute the outcome to the model that ran the cycle:
+                // green = clean, quota/transport = neutral (the model never
+                // ran), anything else = defective.
+                let attribution = match report.outcome {
+                    CycleOutcome::Green => Attribution::Clean,
+                    _ if report.quota_blocked => Attribution::Neutral,
+                    _ => Attribution::Defective,
+                };
+                if let Some(m) = attempt_model {
+                    quality.record(&provider, m, attribution);
+                }
                 return Ok(report);
             },
             Err(e) => {
                 let text = format!("{e:#}");
+                if let Some(m) = attempt_model {
+                    let attr = if is_rate_limit(&text) {
+                        Attribution::Neutral
+                    } else {
+                        Attribution::Defective
+                    };
+                    quality.record(&provider, m, attr);
+                }
                 if is_rate_limit(&text) {
                     // Honour the provider's own reset window when it gives
                     // one; free tiers reset in under a minute while the

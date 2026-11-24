@@ -13,6 +13,8 @@
 //! gates), and records what happened. Green work becomes a branch + PR;
 //! red work is discarded. Nothing here touches the main working tree.
 
+pub mod model_quality;
+
 use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
