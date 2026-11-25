@@ -463,6 +463,14 @@ async fn main() -> anyhow::Result<()> {
         },
     }
 
+    // Persist chat sessions + history across restarts.
+    let chat_state = std::env::var("CLAWDIUS_GATEWAY_CHAT_STATE")
+        .unwrap_or_else(|_| "/home/wyatt/.local/share/clawdius/gateway-chat-state.json".into());
+    if !chat_state.is_empty() {
+        handler = handler.with_chat_state_path(chat_state);
+        tracing::info!("chat state persistence enabled");
+    }
+
     // Enable per-model resource caps when CLAWDIUS_MODEL_QUOTAS is set.
     if let Some(governor) = clawdius_gateway::quotas::governor_from_env() {
         handler = handler.with_resource_governor(governor);
