@@ -204,6 +204,7 @@ impl ReviewQueue {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use proptest::prelude::*;
 
     #[test]
     fn complete_when_all_hard_gates_pass() {
@@ -256,5 +257,134 @@ mod tests {
             !queue.resolve("r", GateId::Proofs, true),
             "already resolved"
         );
+    }
+
+    proptest! {
+        /// skip_on_finish flags exactly the hard gates not in `passed` —
+        /// nothing more, nothing less — in hard-gate order. A fully-passed
+        /// report is Complete under either policy; with skip disabled the
+        /// single unmet-gate record is Rejected, not AwaitingReview.
+        #[test]
+        fn prop_skip_on_finish_flags_exactly_unmet(
+            hard in proptest::collection::vec(any::<bool>(), 5usize),
+            passed in proptest::collection::vec(any::<bool>(), 5usize),
+            skip in any::<bool>(),
+        ) {
+            let hard_gates: Vec<GateId> = GateId::all()
+                .iter()
+                .zip(&hard)
+                .filter(|(_, h)| **h)
+                .map(|(g, _)| *g)
+                .collect();
+            let passed_gates: Vec<GateId> = GateId::all()
+                .iter()
+                .zip(&passed)
+                .filter(|(_, p)| **p)
+                .map(|(g, _)| *g)
+                .collect();
+            let policy = GatePolicy {
+                hard_gates: hard_gates.clone(),
+                skip_on_finish: skip,
+            };
+            let unmet: Vec<GateId> = hard_gates
+                .iter()
+                .copied()
+                .filter(|g| !passed_gates.contains(g))
+                .collect();
+
+            let decision = policy.on_finish("r", &passed_gates, "why");
+            if unmet.is_empty() {
+                assert_eq!(decision, GateDecision::Complete);
+            } else {
+                let GateDecision::SkippedAndFlagged(records) = decision else {
+                    panic!("expected flags for unmet gates");
+                };
+                assert!(!records.is_empty());
+                assert!(records.iter().all(|r| r.repo == "r"));
+                if skip {
+                    let flagged: Vec<GateId> = records.iter().map(|r| r.gate).collect();
+                    assert_eq!(flagged, unmet, "flagged set must equal the unmet set");
+                    assert!(records
+                        .iter()
+                        .all(|r| r.reason == "why" && r.status == GateStatus::AwaitingReview));
+                } else {
+                    assert_eq!(records.len(), 1, "blocking policy flags one record");
+                    assert_eq!(records[0].gate, unmet[0]);
+                    assert_eq!(records[0].status, GateStatus::Rejected);
+                }
+            }
+        }
+
+        /// resolve flips only the first pending record matching
+        /// (repo, gate): every other record is untouched, repeated
+        /// resolves walk duplicate matches one at a time, and resolving
+        /// an exhausted pair changes nothing and returns false.
+        #[test]
+        fn prop_resolve_only_matching_record(
+            entries in proptest::collection::vec((0usize..2, 0usize..5), 1usize..15),
+            target_repo in 0usize..2,
+            target_gate in 0usize..5,
+            approved in any::<bool>(),
+        ) {
+            let repos = ["alpha", "beta"];
+            let gates = GateId::all();
+            let mut queue = ReviewQueue::new();
+            for (r, g) in &entries {
+                queue.extend(vec![GateRecord {
+                    repo: repos[*r].to_string(),
+                    gate: gates[*g],
+                    status: GateStatus::AwaitingReview,
+                    reason: "x".to_string(),
+                    flagged_at: Utc::now(),
+                }]);
+            }
+
+            let repo = repos[target_repo];
+            let gate = gates[target_gate];
+            let matching: Vec<usize> = queue
+                .records
+                .iter()
+                .enumerate()
+                .filter(|(_, rec)| {
+                    rec.status == GateStatus::AwaitingReview
+                        && rec.repo == repo
+                        && rec.gate == gate
+                })
+                .map(|(i, _)| i)
+                .collect();
+            let expected_status = if approved {
+                GateStatus::Approved
+            } else {
+                GateStatus::Rejected
+            };
+
+            let mut flips = 0usize;
+            loop {
+                let before: Vec<GateStatus> =
+                    queue.records.iter().map(|rec| rec.status).collect();
+                let found = queue.resolve(repo, gate, approved);
+                assert_eq!(found, flips < matching.len());
+                let after: Vec<GateStatus> =
+                    queue.records.iter().map(|rec| rec.status).collect();
+                if found {
+                    let idx = matching[flips];
+                    for i in 0..before.len() {
+                        if i == idx {
+                            assert_eq!(after[i], expected_status);
+                        } else {
+                            assert_eq!(
+                                after[i], before[i],
+                                "resolve touched non-matching record {i}"
+                            );
+                        }
+                    }
+                    flips += 1;
+                } else {
+                    assert_eq!(after, before, "unsuccessful resolve changed records");
+                    break;
+                }
+            }
+            assert_eq!(flips, matching.len());
+        }
     }
 }

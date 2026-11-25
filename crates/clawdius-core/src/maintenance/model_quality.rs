@@ -92,8 +92,8 @@ impl ModelQuality {
         let preferred = candidates
             .iter()
             .find(|(k, _)| k.starts_with(&format!("{preferred_provider}/")))
-            .map(|(k, _)| k.clone());
-        let chosen = preferred.or_else(|| candidates.first().map(|(k, _)| k.clone()))?;
+            .map(|(k, _)| (*k).clone());
+        let chosen = preferred.or_else(|| candidates.first().map(|(k, _)| (*k).clone()))?;
         let (provider, model) = chosen.split_once('/')?;
         Some((provider.to_string(), model.to_string()))
     }
