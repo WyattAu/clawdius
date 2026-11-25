@@ -432,7 +432,7 @@ async fn run_task_with_rotation(
     // Quality-scored routing: `--model auto:quality` resolves to the
     // best non-quarantined model from the loop's own outcome history.
     let mut quality = ModelQuality::load(&repo.join(".clawdius/maintenance/model-quality.json"));
-    let resolved_model: Option<String> = if model.as_deref() == Some("auto:quality") {
+    let resolved_model: Option<String> = if model == Some("auto:quality") {
         let best = quality.best_model(preferred);
         if best.is_none() {
             println!("    auto:quality: no proven model yet — falling back to provider default");
