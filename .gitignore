@@ -256,6 +256,8 @@ logs/
 /.reports/*.html
 /.knowledge_graph/cache/
 /.clawdius/cache/
+/.fleet-worktrees/
+/.fleet-sessions/
 /.clawdius/learnings/
 /.clawdius/maintenance/
 /.clawdius/pipeline/

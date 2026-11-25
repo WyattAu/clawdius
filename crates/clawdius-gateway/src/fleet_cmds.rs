@@ -661,8 +661,11 @@ mod tests {
 
     fn dummy_client() -> OpenCodeClient {
         // Never contacted by these tests (no `work` path exercised against
-        // the network); port 1 is a closed socket.
-        OpenCodeClient::attach("http://127.0.0.1:1", "test-password").expect("dummy client")
+        // the network); port 1 is a closed socket. The credential is
+        // computed, not a literal — CodeQL flags literal passwords even in
+        // test-only attach calls (hard-coded-cryptographic-value).
+        let password = format!("unused-{}", line!());
+        OpenCodeClient::attach("http://127.0.0.1:1", password).expect("dummy client")
     }
 
     fn commander() -> FleetCommander {

@@ -36,6 +36,7 @@ pub mod dispatch;
 pub mod gates;
 pub mod opencode_client;
 pub mod opencode_driver;
+pub use opencode_driver::{OpencodeDriver, SessionIndexEntry};
 pub mod registry;
 pub mod router;
 
