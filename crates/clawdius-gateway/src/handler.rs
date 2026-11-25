@@ -64,6 +64,9 @@ pub struct ClawdiusHandler {
     /// of the LLM.
     fleet_commander: Option<Arc<tokio::sync::Mutex<crate::fleet_cmds::FleetCommander>>>,
 
+    /// Optional durable chat state (sessions + history survive restarts).
+    chat_persist: Arc<std::sync::Mutex<crate::chat_state::ChatPersist>>,
+
     /// Optional per-model resource caps (`CLAWDIUS_MODEL_QUOTAS`).
     resource_governor: Option<Arc<clawdius_core::orchestrator::ResourceGovernor>>,
 
@@ -91,6 +94,9 @@ impl ClawdiusHandler {
             max_history: 50,
             fleet_commander: None,
             resource_governor: None,
+            chat_persist: Arc::new(std::sync::Mutex::new(crate::chat_state::ChatPersist::load(
+                None,
+            ))),
             cache: Arc::new(LlmResponseCache::new(Duration::from_mins(5), 1000)),
             #[cfg(feature = "audit")]
             audit: None,
@@ -118,6 +124,16 @@ impl ClawdiusHandler {
         governor: Arc<clawdius_core::orchestrator::ResourceGovernor>,
     ) -> Self {
         self.resource_governor = Some(governor);
+        self
+    }
+
+    /// Persist chat sessions + history to `path` (JSON, write-through).
+    /// Restores on startup — gateway restarts stop amnesiac-ing chats.
+    #[must_use]
+    pub fn with_chat_state_path(mut self, path: impl Into<PathBuf>) -> Self {
+        self.chat_persist = Arc::new(std::sync::Mutex::new(crate::chat_state::ChatPersist::load(
+            Some(path.into()),
+        )));
         self
     }
 
@@ -295,7 +311,7 @@ impl ClawdiusHandler {
         // Store the mapping
         {
             let mut map = self.session_map.write().await;
-            map.insert(key, session.id.to_string());
+            map.insert(key.clone(), session.id.to_string());
         }
 
         // Initialize empty history
@@ -304,6 +320,10 @@ impl ClawdiusHandler {
             history.insert(Self::session_key(platform, chat_id), Vec::new());
         }
 
+        self.chat_persist
+            .lock()
+            .expect("chat persist")
+            .insert_session(key, session.id.to_string());
         Ok(())
     }
 
@@ -361,11 +381,15 @@ impl ClawdiusHandler {
     ) {
         let key = Self::session_key(platform, chat_id);
         let mut history = self.message_history.write().await;
-        let history = history.entry(key).or_insert_with(Vec::new);
+        let history = history.entry(key.clone()).or_insert_with(Vec::new);
         history.push(clawdius_core::llm::ChatMessage {
             role,
             content: content.to_string(),
         });
+        self.chat_persist
+            .lock()
+            .expect("chat persist")
+            .set_history(key, history.clone());
     }
 }
 

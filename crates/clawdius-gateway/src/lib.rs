@@ -43,6 +43,7 @@
 pub mod adapter;
 pub mod adapters;
 pub mod admin;
+pub mod chat_state;
 pub mod error;
 pub mod fleet_cmds;
 pub mod formatter;
