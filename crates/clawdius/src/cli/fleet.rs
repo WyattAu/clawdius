@@ -5,7 +5,7 @@
 //! The gateway/chat surfaces (Telegram `work` etc., #100) sit on top of
 //! the same primitives; this module is the human-in-the-loop path.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use super::FleetCommands;
@@ -34,6 +34,66 @@ fn print_report(slug: &str, ok: bool, output: &str, duration_ms: u64) {
             .join("\n  ");
         println!("  last lines:\n  {tail}");
     }
+}
+
+/// `fleet log <slug>`: the last assistant message from the task's
+/// session log (written by the driver on every finish, including
+/// timeouts).
+fn handle_log(repo: &Path, slug: &str) -> anyhow::Result<()> {
+    let driver = driver_for(repo);
+    let path = driver.session_log_path(slug);
+    let raw = std::fs::read_to_string(&path).map_err(|e| {
+        anyhow::anyhow!(
+            "no session log for `{slug}` ({}): {e} — the task may not have finished",
+            path.display()
+        )
+    })?;
+    let mut last_text = None;
+    for line in raw.lines() {
+        if let Ok(v) = serde_json::from_str::<serde_json::Value>(line) {
+            if v.get("type").and_then(|t| t.as_str()) == Some("text") {
+                if let Some(t) = v.pointer("/part/text").and_then(|t| t.as_str()) {
+                    if !t.trim().is_empty() {
+                        last_text = Some(t.to_string());
+                    }
+                }
+            }
+        }
+    }
+    match last_text {
+        Some(text) => println!("{text}"),
+        None => anyhow::bail!(
+            "session log for `{slug}` has no assistant text ({} lines)",
+            raw.lines().count()
+        ),
+    }
+    Ok(())
+}
+
+/// `fleet sessions`: the session index — every finished task with its
+/// outcome, duration, and session id.
+fn handle_sessions(repo: &Path) -> anyhow::Result<()> {
+    let driver = driver_for(repo);
+    let index_path = driver.repo.join(".fleet-sessions").join("index.json");
+    let raw = std::fs::read_to_string(&index_path)
+        .map_err(|e| anyhow::anyhow!("no session index ({}): {e}", index_path.display()))?;
+    let index: std::collections::BTreeMap<String, clawdius_core::fleet::SessionIndexEntry> =
+        serde_json::from_str(&raw)?;
+    if index.is_empty() {
+        println!("no finished tasks yet");
+        return Ok(());
+    }
+    println!("{:<34} {:>6} {:>9}  session", "slug", "ok", "secs");
+    for (slug, entry) in &index {
+        println!(
+            "{:<34} {:>6} {:>9}  {}",
+            slug,
+            if entry.ok { "ok" } else { "FAIL" },
+            entry.duration_ms / 1000,
+            entry.session_id.as_deref().unwrap_or("-"),
+        );
+    }
+    Ok(())
 }
 
 pub(super) fn handle_fleet(action: FleetCommands) -> anyhow::Result<()> {
@@ -114,6 +174,8 @@ pub(super) fn handle_fleet(action: FleetCommands) -> anyhow::Result<()> {
             }
         },
 
+        FleetCommands::Log { repo, slug } => handle_log(&repo, &slug)?,
+        FleetCommands::Sessions { repo } => handle_sessions(&repo)?,
         FleetCommands::Collect { slug } => {
             let driver = driver_for(std::env::current_dir()?);
             let report = driver.collect(&slug)?;

@@ -81,6 +81,21 @@ pub struct PublishReport {
     pub pr_url: Option<String>,
 }
 
+/// One finished fleet task in the session index.
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct SessionIndexEntry {
+    /// opencode session id (for `-s <id>` continuation).
+    pub session_id: Option<String>,
+    /// Whether opencode exited 0.
+    pub ok: bool,
+    /// Whether the run hit the driver's timeout instead of finishing.
+    pub timed_out: bool,
+    /// Wall-clock duration of the run.
+    pub duration_ms: u64,
+    /// RFC-3339 finish timestamp.
+    pub finished_at: String,
+}
+
 /// Driver for headless `opencode run` tasks with worktree isolation.
 pub struct OpencodeDriver {
     /// opencode binary (env `OPENCODE_BIN` overrides).
@@ -202,6 +217,57 @@ impl OpencodeDriver {
         self.run_in(slug, workdir, prompt, Some(session), None, None, timeout)
     }
 
+    /// Persist one task's session log and index entry under
+    /// `<repo>/.fleet-sessions/` — written on success, non-zero exit, AND
+    /// timeout so `fleet log` always sees what happened, even for runs
+    /// that died mid-session.
+    fn persist_session_log(
+        &self,
+        slug: &str,
+        stdout: &str,
+        ok: bool,
+        timed_out: bool,
+        elapsed: Duration,
+    ) {
+        use std::io::Write;
+
+        let dir = self.repo.join(".fleet-sessions");
+        if std::fs::create_dir_all(&dir).is_err() {
+            return; // runtime state: never fail the task over bookkeeping
+        }
+        let raw_path = dir.join(format!("{slug}.jsonl"));
+        if let Ok(mut f) = std::fs::File::create(&raw_path) {
+            let _ = f.write_all(stdout.as_bytes());
+        }
+
+        let index_path = dir.join("index.json");
+        let mut index: std::collections::BTreeMap<String, SessionIndexEntry> =
+            std::fs::read(&index_path)
+                .ok()
+                .and_then(|b| serde_json::from_slice(&b).ok())
+                .unwrap_or_default();
+        index.insert(
+            slug.to_string(),
+            SessionIndexEntry {
+                session_id: extract_session_id(stdout),
+                ok,
+                timed_out,
+                duration_ms: elapsed.as_millis() as u64,
+                finished_at: chrono::Utc::now().to_rfc3339(),
+            },
+        );
+        if let Ok(json) = serde_json::to_vec_pretty(&index) {
+            let _ = std::fs::write(index_path, json);
+        }
+    }
+
+    /// The session log path for a slug (also where it will be once the
+    /// task finishes — the file only exists after the first run).
+    #[must_use]
+    pub fn session_log_path(&self, slug: &str) -> PathBuf {
+        self.repo.join(".fleet-sessions").join(format!("{slug}.jsonl"))
+    }
+
     /// Core spawn: `opencode run --archived --format json [-s session]
     /// [--agent a] [--model m] <prompt>` with a hard timeout.
     #[allow(clippy::too_many_arguments)]
@@ -240,12 +306,35 @@ impl OpencodeDriver {
             .spawn()
             .map_err(|e| crate::Error::Llm(format!("opencode spawn failed: {e}")))?;
 
+        // Collect stdout on a side thread: on a timeout kill the pipe
+        // still drains, so the partial session log survives for
+        // `fleet log` (previously a timed-out task lost everything).
+        let stdout_pipe = child.stdout.take();
+        let collected = std::sync::Arc::new(std::sync::Mutex::new(Vec::<u8>::new()));
+        let collector = stdout_pipe.map(|mut pipe| {
+            let shared = std::sync::Arc::clone(&collected);
+            std::thread::spawn(move || {
+                use std::io::Read;
+                let mut buf = [0u8; 8192];
+                loop {
+                    match pipe.read(&mut buf) {
+                        Ok(0) | Err(_) => break,
+                        Ok(n) => shared
+                            .lock()
+                            .expect("stdout collector")
+                            .extend_from_slice(&buf[..n]),
+                    }
+                }
+            })
+        });
+
         // Poll with a deadline: std has no blocking-wait timeout, and
         // the escalator's timeout field is decorative — this one is
         // enforced. On expiry the child is killed (its worktree stays
         // for inspection).
         let deadline = Instant::now() + timeout;
-        let exited;
+        let mut exited: Option<std::process::ExitStatus> = None;
+        let mut timed_out = false;
         loop {
             match child.try_wait() {
                 Ok(Some(status)) => {
@@ -255,22 +344,33 @@ impl OpencodeDriver {
                 Ok(None) if Instant::now() >= deadline => {
                     let _ = child.kill();
                     let _ = child.wait();
-                    return Err(crate::Error::Llm(format!(
-                        "opencode task `{slug}` exceeded timeout of {timeout:?}"
-                    )));
+                    timed_out = true;
+                    break;
                 },
                 Ok(None) => std::thread::sleep(Duration::from_millis(50)),
                 Err(e) => return Err(crate::Error::Llm(format!("opencode wait failed: {e}"))),
             }
         }
-        let out = child
-            .wait_with_output()
-            .map_err(|e| crate::Error::Llm(format!("opencode wait failed: {e}")))?;
-        let stdout = String::from_utf8_lossy(&out.stdout).into_owned();
+        if let Some(handle) = collector {
+            let _ = handle.join();
+        }
+        let stdout =
+            String::from_utf8_lossy(&collected.lock().expect("stdout collector")).into_owned();
+        let ok = exited.is_some_and(|st| st.success());
+
+        // Session log + index entry — written on success, non-zero exit,
+        // AND timeout so `fleet log` always sees what happened.
+        self.persist_session_log(slug, &stdout, ok, timed_out, start.elapsed());
+
+        if timed_out {
+            return Err(crate::Error::Llm(format!(
+                "opencode task `{slug}` exceeded timeout of {timeout:?}"
+            )));
+        }
         let session_id = extract_session_id(&stdout);
         Ok(DriverReport {
             slug: slug.to_string(),
-            ok: exited.is_some_and(|s| s.success()),
+            ok,
             output: stdout,
             session_id,
             duration_ms: start.elapsed().as_millis() as u64,

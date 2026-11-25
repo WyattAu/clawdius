@@ -854,6 +854,18 @@ pub enum FleetCommands {
         #[arg(long)]
         keep: bool,
     },
+    /// Print the last assistant message from a finished task's session log.
+    Log {
+        /// Repository the task ran in.
+        repo: PathBuf,
+        /// Task slug.
+        slug: String,
+    },
+    /// List finished tasks from the session index.
+    Sessions {
+        /// Repository the tasks ran in.
+        repo: PathBuf,
+    },
     /// Collect a finished task branch (ff-only merge into the checkout).
     Collect {
         /// Task slug to collect.
