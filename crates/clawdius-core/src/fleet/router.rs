@@ -161,6 +161,7 @@ impl FleetRouter {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use proptest::prelude::*;
 
     use crate::fleet::gates::GateStatus;
 
@@ -248,5 +249,169 @@ mod tests {
             .unwrap();
         let next = router.dispatch_next(&repos).unwrap();
         assert_eq!(next.task, "task-2");
+    }
+
+    proptest! {
+        /// Round-robin fairness: with equal queue depths, the first `n`
+        /// dispatches hit every repo exactly once (no repo repeats before
+        /// all others have had a turn), and a full drain dispatches each
+        /// repo exactly `depth` times.
+        #[test]
+        fn prop_dispatch_round_robin_fair(n in 2usize..=6, depth in 1usize..=3) {
+            let mut router = FleetRouter::new();
+            let repos: Vec<String> = (0..n).map(|i| format!("repo-{i}")).collect();
+            for repo in &repos {
+                for j in 0..depth {
+                    router.enqueue(repo, &format!("task-{repo}-{j}"));
+                }
+            }
+            let policy = GatePolicy {
+                skip_on_finish: true,
+                ..GatePolicy::default()
+            };
+            let mut review = ReviewQueue::new();
+            let mut dispatched: Vec<String> = Vec::new();
+
+            for _ in 0..(n * depth) {
+                let decision = router
+                    .dispatch_next(&repos)
+                    .expect("drain: some repo has queued work and a free lane");
+                dispatched.push(decision.repo.clone());
+                // Free the lane (all gates passed -> Completed) so the next
+                // dispatch can rotate to the least-recently-dispatched repo.
+                router.mark_running(&decision.repo);
+                router
+                    .report_finish(&decision.repo, &GateId::all(), "clean", &policy, &mut review)
+                    .unwrap();
+            }
+
+            let mut first_round = dispatched[..n].to_vec();
+            first_round.sort();
+            assert_eq!(
+                first_round, repos,
+                "first n dispatches must be one turn per repo"
+            );
+            let mut counts: BTreeMap<&str, usize> = BTreeMap::new();
+            for repo in &dispatched {
+                *counts.entry(repo.as_str()).or_insert(0) += 1;
+            }
+            for repo in &repos {
+                assert_eq!(
+                    counts.get(repo.as_str()).copied(),
+                    Some(depth),
+                    "repo {repo} dispatched the wrong number of times"
+                );
+            }
+        }
+
+        /// FIFO under interleaved enqueue/dispatch: however enqueues are
+        /// interleaved with dispatch cycles, tasks leave the queue in
+        /// exactly the order they entered.
+        #[test]
+        fn prop_queue_fifo_under_interleaving(
+            tasks in proptest::collection::vec("[a-z]{1,12}", 0usize..20),
+            coins in proptest::collection::vec(any::<bool>(), 0usize..64),
+        ) {
+            let mut router = FleetRouter::new();
+            let repo = "r";
+            let policy = GatePolicy {
+                skip_on_finish: true,
+                ..GatePolicy::default()
+            };
+            let mut review = ReviewQueue::new();
+            let mut next_enq = 0usize;
+            let mut out: Vec<String> = Vec::new();
+            let mut k = 0usize;
+
+            while next_enq < tasks.len() || router.queue_len(repo) > 0 {
+                let can_dispatch = router.queue_len(repo) > 0
+                    && !router.lane(repo).is_some_and(CyclePhase::occupies_lane);
+                let coin = coins.get(k % coins.len().max(1)).copied().unwrap_or(false);
+                if next_enq < tasks.len() && (coin || !can_dispatch) {
+                    router.enqueue(repo, &tasks[next_enq]);
+                    next_enq += 1;
+                } else {
+                    let decision = router
+                        .dispatch_next(&[repo.to_string()])
+                        .expect("dispatchable by construction");
+                    out.push(decision.task);
+                    router.mark_running(repo);
+                    router
+                        .report_finish(repo, &GateId::all(), "clean", &policy, &mut review)
+                        .unwrap();
+                }
+                k += 1;
+            }
+            assert_eq!(out, tasks, "dequeued order must equal enqueue order");
+        }
+
+        /// dispatch_next never returns a repo whose lane occupies: every
+        /// returned repo had a free lane, queued work, and was active
+        /// immediately before the dispatch; when it returns None, no
+        /// active repo was dispatchable.
+        #[test]
+        fn prop_dispatch_never_takes_occupied_lane(
+            n in 2usize..=4,
+            ops in proptest::collection::vec((any::<u8>(), any::<u8>(), any::<bool>()), 0usize..60),
+        ) {
+            let repos: Vec<String> = (0..n).map(|i| format!("repo-{i}")).collect();
+            let mut router = FleetRouter::new();
+            let mut review = ReviewQueue::new();
+            let policy = GatePolicy {
+                skip_on_finish: true,
+                ..GatePolicy::default()
+            };
+
+            for (k, (raw_op, raw_repo, coin)) in ops.iter().enumerate() {
+                let repo = &repos[(*raw_repo as usize) % n];
+                match raw_op % 4 {
+                    0 => router.enqueue(repo, &format!("task-{k}")),
+                    1 => {
+                        let pre: BTreeMap<String, (Option<CyclePhase>, usize)> = repos
+                            .iter()
+                            .map(|r| (r.clone(), (router.lane(r), router.queue_len(r))))
+                            .collect();
+                        let decision = router.dispatch_next(&repos);
+                        match &decision {
+                            Some(d) => {
+                                let (pre_lane, pre_queue) = pre[&d.repo];
+                                assert!(repos.contains(&d.repo), "dispatched an inactive repo");
+                                assert!(
+                                    !pre_lane.unwrap_or(CyclePhase::Queued).occupies_lane(),
+                                    "dispatched {} whose lane was occupied ({pre_lane:?})",
+                                    d.repo
+                                );
+                                assert!(
+                                    pre_queue > 0,
+                                    "dispatched {} whose queue was empty",
+                                    d.repo
+                                );
+                                assert_eq!(router.lane(&d.repo), Some(CyclePhase::Dispatched));
+                            },
+                            None => {
+                                for r in &repos {
+                                    let (lane, queue) = pre[r];
+                                    assert!(
+                                        queue == 0 || lane.is_some_and(CyclePhase::occupies_lane),
+                                        "dispatch_next returned None though {r} was dispatchable"
+                                    );
+                                }
+                            },
+                        }
+                    },
+                    2 => {
+                        if *coin {
+                            router.mark_running(repo);
+                        } else {
+                            router.report_failure(repo);
+                        }
+                    },
+                    _ => {
+                        let passed: &[GateId] = if *coin { &GateId::all() } else { &[] };
+                        let _ = router.report_finish(repo, passed, "op", &policy, &mut review);
+                    },
+                }
+            }
+        }
     }
 }
