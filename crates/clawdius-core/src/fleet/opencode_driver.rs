@@ -265,7 +265,9 @@ impl OpencodeDriver {
     /// task finishes — the file only exists after the first run).
     #[must_use]
     pub fn session_log_path(&self, slug: &str) -> PathBuf {
-        self.repo.join(".fleet-sessions").join(format!("{slug}.jsonl"))
+        self.repo
+            .join(".fleet-sessions")
+            .join(format!("{slug}.jsonl"))
     }
 
     /// Core spawn: `opencode run --archived --format json [-s session]
