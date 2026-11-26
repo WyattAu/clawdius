@@ -90,6 +90,7 @@ jsonrpsee = { version = "0.24", features = ["server", "client", "ws-client"] }
 # === Auth shared crates ===
 salting = { version = "1" }
 tokenkit = { version = "0.1" }
+aegis = "0.9.22"
 
 # === Security ===
 keyring = { version = "4", features = ["cli"] }
